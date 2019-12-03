@@ -1,0 +1,56 @@
+v: 2
+
+identity:
+  cert:                 fabric/etc/ca/intermediate/certs/001-client.cert.pem
+  server_cert:          fabric/etc/ca/intermediate/certs/001-server.cert.pem
+  key:                  fabric/etc/ca/intermediate/private/001.key.pem
+  ca:                   fabric/etc/ca/intermediate/certs/ca-chain.cert.pem
+
+# Configure the forwarder options
+#
+forwarder:
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
+  latencyProbeInterval: 1000
+
+#trace:
+#  path:                 001.trace
+
+#profile:
+#  memory:
+#    path:               001.memprof
+#  cpu:
+#    path:               001.cpuprof
+
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+
+listeners:
+  - binding:            proxy
+    address:            tcp:0.0.0.0:1122
+    service:            ssh
+
+  - binding:            proxy
+    address:            tcp:0.0.0.0:10001
+    service:            mgmt
+
+  - binding:            transport
+    address:            tls:0.0.0.0:7001
+    options:
+      retransmission:   true
+      randomDrops:      true
+      drop1InN:         5000
+
+  - binding:            udp
+    address:            udp:0.0.0.0:7002
+    options:
+      retransmission:   true
+      randomDrops:      true
+      drop1InN:         5000
+
+# xctrl_example
+#
+#example:
+#  delay:                1
