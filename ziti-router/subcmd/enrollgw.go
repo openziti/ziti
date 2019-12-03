@@ -18,7 +18,7 @@ package subcmd
 
 import (
 	"github.com/netfoundry/ziti-edge/edge/gateway/enroll"
-	"github.com/netfoundry/ziti-fabric/fabric/router"
+	"github.com/netfoundry/ziti-fabric/router"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 	"io/ioutil"

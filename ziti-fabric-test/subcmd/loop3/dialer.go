@@ -18,7 +18,7 @@ package loop3
 
 import (
 	loop3_pb "github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/loop3/pb"
-	"github.com/netfoundry/ziti-fabric/fabric/xgress_transport"
+	"github.com/netfoundry/ziti-fabric/xgress_transport"
 	"github.com/netfoundry/ziti-foundation/identity/dotziti"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-edge/sdk/ziti"

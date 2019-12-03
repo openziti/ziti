@@ -18,9 +18,9 @@ package subcmd
 
 import (
 	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-fabric/fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
+	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/trace/pb"
 	"errors"
 	"fmt"
