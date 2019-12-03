@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package loop3.pb;
+
+message Test {
+    string name = 1;
+    int32 txRequests = 2;
+    int32 txPacing = 3;
+    int32 txMaxJitter = 4;
+    int32 rxRequests = 5;
+    int32 rxTimeout = 6;
+    int32 payloadMinBytes = 7;
+    int32 payloadMaxBytes = 8;
+}
+
+message Result {
+    bool success = 1;
+    string message = 2;
+}
