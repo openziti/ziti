@@ -1,0 +1,21 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/enroll-er.post.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "serverCertCsr",
+    "certCsr"
+  ],
+  "properties": {
+    "certCsr": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5120
+    },
+    "serverCertCsr": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5120
+    }
+  }
+}

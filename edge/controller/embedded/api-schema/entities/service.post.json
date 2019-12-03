@@ -1,0 +1,48 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/services.post.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "dns",
+    "egressRouter",
+    "endpointAddress"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name"
+    },
+    "hostIds": {
+      "$ref": "definitions.all.json#/definitions/arrayOfIds-null"
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname",
+        "port"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    },
+    "egressRouter": {
+      "type": "string"
+    },
+    "endpointAddress": {
+      "type": "string"
+    },
+    "clusters": {
+      "$ref": "definitions.all.json#/definitions/arrayOfIds"
+    },
+    "tags": {
+      "default": {},
+      "$ref": "definitions.all.json#/definitions/tags-null"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+cache/*.jwt
+cache/*.pem
+cache/*.key
+cache/*.cert
+cache/*.jwt
+cache/*.json
+
+ignore.*

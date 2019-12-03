@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package edge_ctrl.pb;
+
+enum ContentType {
+    Zero = 0;
+    ServerHelloType = 20000;
+    ClientHelloType = 20001;
+    ErrorType = 20002;
+    SessionAddedType = 20100;
+    SessionUpdatedType = 20101;
+    SessionRemovedType = 20102;
+    ApiSessionAddedType = 20200;
+    ApiSessionUpdatedType = 20201;
+    ApiSessionRemovedType = 20202;
+    ApiSessionHeartbeatType = 20203;
+    EnrollType = 20300;
+    EnrollCertsType = 20301;
+}
+
+message ServerHello {
+    string version = 1;
+    map<string, string> data = 2;
+}
+
+message ClientHello {
+    string version = 1;
+    string hostname = 2;
+    repeated string protocols = 3;
+    map<string, string> data = 4;
+}
+
+message Error {
+    string code = 1;
+    string message = 2;
+    string cause = 3;
+}
+
+message Dns {
+    string hostname = 1;
+    int32 port = 2;
+    string protocol = 3;
+}
+
+message Service {
+    string id = 1;
+    string name = 2;
+    string supportedProtocol = 4;
+    string egressRouter = 5;
+    string endpointAddress = 6;
+    Dns dns = 8;
+
+}
+
+message Session {
+    string token = 1;
+    bool hosting = 2;
+    repeated string certFingerprints = 3;
+    repeated string urls = 4;
+    Service service = 5;
+    string sessionToken = 6;
+}
+
+message ApiSession {
+    string token = 1;
+    repeated string certFingerprints = 2;
+}
+
+message ApiSessionAdded {
+    bool isFullState = 1;
+    repeated ApiSession apiSessions = 2;
+}
+
+message ApiSessionUpdated {
+    repeated ApiSession apiSessions = 1;
+}
+
+message ApiSessionRemoved {
+    repeated string tokens = 1;
+}
+
+message ApiSessionHeartbeat {
+    repeated string tokens = 1;
+}
+
+message SessionAdded {
+    bool isFullState = 1;
+    repeated Session sessions = 2;
+}
+
+message SessionRemoved {
+    repeated string tokens = 1;
+}
+
+message SessionUpdated {
+    string token = 1;
+    repeated string urls = 2;
+    Service service = 3;
+}

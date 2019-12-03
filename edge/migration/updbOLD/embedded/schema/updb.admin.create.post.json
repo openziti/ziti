@@ -1,0 +1,21 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator.updb.admin.create.post.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "password",
+    "username"
+  ],
+  "properties": {
+    "password": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 100
+    },
+    "username": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 100
+    }
+  }
+}

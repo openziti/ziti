@@ -1,0 +1,1 @@
+DROP TABLE ziti_edge.gateway_protocols

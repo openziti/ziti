@@ -1,0 +1,5 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/ott.json",
+  "type": "boolean"
+}
+

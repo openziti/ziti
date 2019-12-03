@@ -1,0 +1,22 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/edge-routers.put.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "clusterId",
+    "tags"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name"
+    },
+    "clusterId": {
+      "$ref": "definitions.all.json#/definitions/id"
+    },
+    "tags": {
+      "default": {},
+      "$ref": "definitions.all.json#/definitions/tags"
+    }
+  }
+}

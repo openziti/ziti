@@ -1,0 +1,5 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/ott.json",
+  "$ref": "definitions.all.json#/definitions/id-str"
+}
+

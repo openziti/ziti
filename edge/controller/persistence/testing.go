@@ -1,0 +1,272 @@
+/*
+	Copyright 2019 Netfoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package persistence
+
+import (
+	"github.com/netfoundry/ziti-fabric/fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"testing"
+	"time"
+)
+
+type TestContext struct {
+	require.Assertions
+	t             *testing.T
+	dbFile        *os.File
+	db            *db.Db
+	serviceStore  network.ServiceStore
+	routerStore   network.RouterStore
+	stores        *Stores
+	ReferenceTime time.Time
+	err           error
+}
+
+func NewTestContext(t *testing.T) *TestContext {
+	return &TestContext{
+		Assertions:    *require.New(t),
+		t:             t,
+		dbFile:        nil,
+		db:            nil,
+		serviceStore:  nil,
+		routerStore:   nil,
+		stores:        nil,
+		ReferenceTime: time.Now(),
+		err:           nil,
+	}
+}
+
+func (ctx *TestContext) GetDb() boltz.Db {
+	return ctx.db
+}
+
+func (ctx *TestContext) GetServiceStore() network.ServiceStore {
+	return ctx.serviceStore
+}
+
+func (ctx *TestContext) GetServiceCache() network.Cache {
+	return ctx
+}
+
+func (ctx *TestContext) GetRouterStore() network.RouterStore {
+	return ctx.routerStore
+}
+
+func (ctx *TestContext) RemoveFromCache(_ string) {
+}
+
+func (ctx *TestContext) Init() {
+	ctx.dbFile, ctx.err = ioutil.TempFile("", "query-bolt-ctx-db")
+	if ctx.err != nil {
+		return
+	}
+	ctx.err = ctx.dbFile.Close()
+	if ctx.err != nil {
+		return
+	}
+	ctx.db, ctx.err = db.Open(ctx.dbFile.Name())
+	if ctx.err != nil {
+		return
+	}
+	ctx.serviceStore = network.NewServiceStore(ctx.db)
+	ctx.routerStore = network.NewRouterStore(ctx.db)
+	ctx.stores, ctx.err = NewBoltStores(ctx)
+}
+
+func (ctx *TestContext) Cleanup() {
+	if ctx.db != nil {
+		if err := ctx.db.Close(); err != nil {
+			fmt.Printf("error closing bolt db: %v", err)
+		}
+	}
+
+	if ctx.dbFile != nil {
+		if err := os.Remove(ctx.dbFile.Name()); err != nil {
+			fmt.Printf("error deleting bolt db file: %v", err)
+		}
+	}
+}
+
+func (ctx *TestContext) requireNewCluster(name string) *Cluster {
+	cluster := &Cluster{
+		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
+		Name:               uuid.New().String(),
+	}
+	ctx.requireCreate(cluster)
+	return cluster
+}
+
+func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
+	identity := &Identity{
+		BaseEdgeEntityImpl: *NewBaseEdgeEntity(uuid.New().String(), nil),
+		Name:               name,
+		IsAdmin:            isAdmin,
+	}
+	ctx.requireCreate(identity)
+	return identity
+}
+
+func (ctx *TestContext) requireNewService(name string) *EdgeService {
+	edgeService := &EdgeService{
+		Service: network.Service{
+			Id:              uuid.New().String(),
+			Binding:         "edge",
+			EndpointAddress: "hosted:unclaimed",
+			Egress:          "unclaimed",
+		},
+		Name:        name,
+		DnsHostname: name,
+		DnsPort:     0,
+	}
+	ctx.requireCreate(edgeService)
+	return edgeService
+}
+
+func (ctx *TestContext) requireDelete(entity boltz.BaseEntity) {
+	err := ctx.delete(entity)
+	ctx.NoError(err)
+	ctx.validateDeleted(entity.GetId())
+}
+
+func (ctx *TestContext) delete(entity boltz.BaseEntity) error {
+	return ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+		mutateContext := boltz.NewMutateContext(tx)
+		store := ctx.stores.getStoreForEntity(entity)
+		if store == nil {
+			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
+		}
+		return store.DeleteById(mutateContext, entity.GetId())
+	})
+}
+
+func (ctx *TestContext) validateDeleted(id string) {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		return boltz.ValidateDeleted(tx, id)
+	})
+	ctx.NoError(err)
+}
+
+func (ctx *TestContext) requireCreate(entity boltz.BaseEntity) {
+	ctx.NoError(ctx.create(entity))
+}
+
+func (ctx *TestContext) create(entity boltz.BaseEntity) error {
+	return ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+		mutateContext := boltz.NewMutateContext(tx)
+		var store boltz.CrudStore
+		if _, ok := entity.(*network.Service); ok {
+			store = ctx.GetServiceStore()
+		} else if _, ok := entity.(*network.Router); ok {
+			store = ctx.GetRouterStore()
+		} else {
+			store = ctx.stores.getStoreForEntity(entity)
+			if store == nil {
+				return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
+			}
+		}
+		return store.Create(mutateContext, entity)
+	})
+}
+
+func (ctx *TestContext) validateBaseline(entity BaseEdgeEntity, loaded BaseEdgeEntity) {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		store := ctx.stores.getStoreForEntity(entity)
+		if store == nil {
+			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
+		}
+
+		found, err := store.BaseLoadOneById(tx, entity.GetId(), loaded)
+		ctx.NoError(err)
+		ctx.Equal(true, found)
+
+		now := time.Now()
+		ctx.Equal(entity.GetId(), loaded.GetId())
+		ctx.Equal(entity.GetEntityType(), loaded.GetEntityType())
+		ctx.True(loaded.GetCreatedAt().Equal(loaded.GetUpdatedAt()))
+		ctx.True(loaded.GetCreatedAt().Equal(ctx.ReferenceTime) || loaded.GetCreatedAt().After(ctx.ReferenceTime))
+		ctx.True(loaded.GetCreatedAt().Equal(now) || loaded.GetCreatedAt().Before(now))
+
+		return nil
+	})
+	ctx.NoError(err)
+
+	entity.setCreateAt(loaded.GetCreatedAt())
+	entity.setUpdatedAt(loaded.GetUpdatedAt())
+	if entity.GetTags() == nil {
+		entity.setTags(map[string]interface{}{})
+	}
+
+	ctx.True(cmp.Equal(entity, loaded), cmp.Diff(entity, loaded))
+}
+
+func (ctx *TestContext) getRelatedIds(entity boltz.BaseEntity, field string) []string {
+	var result []string
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		store := ctx.stores.getStoreForEntity(entity)
+		if store == nil {
+			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
+		}
+		result = store.GetRelatedEntitiesIdList(tx, entity.GetId(), field)
+		return nil
+	})
+	ctx.NoError(err)
+	return result
+}
+
+func (ctx *TestContext) createTags() map[string]interface{} {
+	return map[string]interface{}{
+		"hello":             uuid.New().String(),
+		uuid.New().String(): "hello",
+		"count":             rand.Int63(),
+		"enabled":           rand.Int()%2 == 0,
+		uuid.New().String(): int32(27),
+		"markerKey":         nil,
+	}
+}
+
+func (ctx *TestContext) cleanupAll() {
+	stores := []boltz.CrudStore{
+		ctx.stores.Session,
+		ctx.stores.ApiSession,
+		ctx.stores.Appwan,
+		ctx.GetServiceStore(),
+		ctx.stores.EdgeService,
+		ctx.stores.Identity,
+		ctx.stores.EdgeRouter,
+		ctx.stores.Cluster,
+	}
+	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+		mutateContext := boltz.NewMutateContext(tx)
+		for _, store := range stores {
+			if err := store.DeleteWhere(mutateContext, `true limit none`); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())
+				return err
+			}
+		}
+		return nil
+	})
+}

@@ -1,0 +1,1 @@
+alter table ziti_edge.gateways drop column is_online;

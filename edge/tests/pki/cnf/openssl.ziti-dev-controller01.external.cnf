@@ -1,0 +1,22 @@
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = US
+ST = NC
+L = Charlotte
+O = NetFoundry
+OU = AdvDev
+CN = ziti-dev-controller01
+
+[v3_req]
+keyUsage = keyEncipherment, digitalSignature, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = ziti-dev-controller01
+DNS.2 = ziti-dev-controller01.localhost
+DNS.3 = localhost
+IP.1 = 127.0.0.1

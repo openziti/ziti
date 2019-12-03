@@ -1,0 +1,1 @@
+drop table ziti_edge.enrollment_updbs;
