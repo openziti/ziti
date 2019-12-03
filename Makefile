@@ -103,7 +103,7 @@ endef
 semver-bump:
 	$(call semver-bump-check)
 	$(info ============ PRE_BUMP_STATUS is: '$(PRE_BUMP_STATUS)' ============)
-	$(if $(filter $(strip $(PRE_BUMP_STATUS)),200),$(info ============ Short-circuiting build here since semver-bump has occurred ============),$(MAKE) -f Jenkins.Makefile release) 
+	$(if $(filter $(strip $(PRE_BUMP_STATUS)),200),$(info ============ Short-circuiting build here since semver-bump has occurred ============),$(MAKE) release) 
 
 
 full: $(PKGS)
