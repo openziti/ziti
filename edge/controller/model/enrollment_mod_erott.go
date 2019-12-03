@@ -19,7 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/edge/internal/cert"
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"encoding/json"
 	"fmt"
 	"github.com/xeipuuv/gojsonschema"

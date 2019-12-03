@@ -19,7 +19,7 @@ package persistence
 import (
 	"github.com/netfoundry/ziti-edge/edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/edge/migration"
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/util/stringz"

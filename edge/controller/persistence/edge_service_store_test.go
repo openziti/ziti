@@ -17,7 +17,7 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/go-cmp/cmp"

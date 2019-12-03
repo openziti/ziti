@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/netfoundry/ziti-edge/edge/controller/util"
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"

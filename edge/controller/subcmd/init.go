@@ -18,7 +18,7 @@ package subcmd
 
 import (
 	"github.com/netfoundry/ziti-edge/edge/controller/server"
-	"github.com/netfoundry/ziti-fabric/fabric/controller"
+	"github.com/netfoundry/ziti-fabric/controller"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/util/term"

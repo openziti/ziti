@@ -17,7 +17,7 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-fabric/fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
 	"fmt"

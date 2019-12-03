@@ -22,7 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/migration"
 	"github.com/netfoundry/ziti-edge/edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"bytes"
 	"fmt"

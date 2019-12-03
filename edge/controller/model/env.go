@@ -22,7 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/edge/internal/cert"
 	"github.com/netfoundry/ziti-edge/edge/internal/jwt"
 	"github.com/netfoundry/ziti-edge/edge/migration"
-	"github.com/netfoundry/ziti-fabric/fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/xeipuuv/gojsonschema"
 )
 

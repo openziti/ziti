@@ -45,14 +45,14 @@ running with Edge functionality enabled.
 If you wish to start the controller with the Ziti Fabric and Ziti Edge enabled:
 
 ```
-ziti-controller run $GOPATH/src/github.com/netfoundry/ziti-fabric/fabric/etc/ctrl.with.edge.yml
+ziti-controller run $GOPATH/src/github.com/netfoundry/ziti-fabric/etc/ctrl.with.edge.yml
 ```
 
 
 If you wish to start the Ziti Fabric standalone:
 
 ```
-ziti-controller run $GOPATH/src/github.com/netfoundry/ziti-fabric/fabric/etc/ctrl.yml
+ziti-controller run $GOPATH/src/github.com/netfoundry/ziti-fabric/etc/ctrl.yml
 ```
 
 Please note that if you start the controller without the Ziti Edge enabled, the Ziti SDK, and edge router functionality
@@ -80,7 +80,7 @@ Where `XXX` is replaced with `001` through `004`.
 Run:
 
 ```
-ziti-router run $GOPATH/src/github.com/netfoundry/ziti-fabric/fabric/etc/XXX.yml
+ziti-router run $GOPATH/src/github.com/netfoundry/ziti-fabric/etc/XXX.yml
 ```
 
 Where `XXX` is replaced with `001` through `004`.
@@ -172,7 +172,7 @@ edge routers via `GET /edge-routers`. The response from retrieving a edge router
 ### Enroll the Edge Router
 
 ```
-ziti-router enroll --jwt <path to enrollment.jwt> $GOPATH/src/github.com/netfoundry/ziti-fabric/fabric/etc/edge.router.yml
+ziti-router enroll --jwt <path to enrollment.jwt> $GOPATH/src/github.com/netfoundry/ziti-fabric/etc/edge.router.yml
 ```
 
 ...where `path to enrollment.jwt` is the enrollment JWT for the edge router.
@@ -180,7 +180,7 @@ ziti-router enroll --jwt <path to enrollment.jwt> $GOPATH/src/github.com/netfoun
 ### Start Ziti Edge Router
 
 ```
-ziti-router run $GOPATH/src/github.com/netfoundry/ziti-fabric/fabric/etc/edge.router.yml
+ziti-router run $GOPATH/src/github.com/netfoundry/ziti-fabric/etc/edge.router.yml
 ```
 
 # Further Exploration

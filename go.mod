@@ -4,10 +4,15 @@ go 1.13
 
 require (
 	github.com/Jeffail/gabs v1.4.0
+	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/achanda/go-sysctl v0.0.0-20160222034550-6be7678c45d2
 	github.com/antlr/antlr4 v0.0.0-20191115170859-54daca92f7b0
 	github.com/coreos/go-iptables v0.4.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/docker v1.13.1 // indirect
+	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-units v0.4.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gobuffalo/packr v1.30.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
@@ -24,8 +29,10 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.22
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/netfoundry/ziti-fabric v0.0.0-20191203170918-f312601f55c9
+	github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864
 	github.com/netfoundry/ziti-foundation v0.0.0-20191203170231-5c1204e0e65d
+	github.com/oleiade/reflections v1.0.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5

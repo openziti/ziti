@@ -32,7 +32,7 @@ import (
 
 	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-edge/edge/controller/server"
-	"github.com/netfoundry/ziti-fabric/fabric/controller"
+	"github.com/netfoundry/ziti-fabric/controller"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
