@@ -5,7 +5,7 @@ SHELL := /bin/bash
 RELEASE_BRANCH := master
 SEMVER_AUTOBUMP_BRANCH := master
 
-CMD_LIST := controller fabric fabric-gw fabric-test router tunnel
+CMD_LIST := controller enroller fabric fabric-gw fabric-test router tunnel
 CMD_TARGETS := $(addprefix cmd-ziti-, $(CMD_LIST))
 
 SDK_CMD_LIST := enroller proxy
@@ -192,6 +192,9 @@ ziti-cli:
 cmd-ziti-controller:
 	cd ziti-controller; $(call make-target,ziti-controller)
 
+cmd-ziti-enroller:
+	cd ziti-enroller; $(call make-target,ziti-enroller)
+
 cmd-ziti-fabric:
 	cd ziti-fabric; $(call make-target,ziti-fabric)
 
@@ -225,11 +228,18 @@ else
 endif
 
 ziti-controller-common:
-	$(info ============ ziti-fabric-common starting ============)
+	$(info ============ ziti-controller-common starting ============)
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=/opt/osxcross/target/bin/o64-clang CXX=/opt/osxcross/target/bin/o64-clang++ gox -cgo -os="darwin" -arch=amd64 $(BUILDFLAGS_DARWIN_AMD64) github.com/netfoundry/ziti-cmd/ziti-controller/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) gox -cgo -os="linux" -arch=amd64 $(BUILDFLAGS_LINUX_AMD64) github.com/netfoundry/ziti-cmd/ziti-controller/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc gox -cgo -os="linux" -arch=arm $(BUILDFLAGS_LINUX_ARM) github.com/netfoundry/ziti-cmd/ziti-controller/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ gox -cgo -os="windows" -arch=amd64 $(BUILDFLAGS_WINDOWS_AMD64) github.com/netfoundry/ziti-cmd/ziti-controller/...
+
+ziti-enroller-common:
+	$(info ============ ziti-enroller-common starting ============)
+	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=/opt/osxcross/target/bin/o64-clang CXX=/opt/osxcross/target/bin/o64-clang++ gox -cgo -os="darwin" -arch=amd64 $(BUILDFLAGS_DARWIN_AMD64) github.com/netfoundry/ziti-cmd/ziti-enroller/...
+	cd release; CGO_ENABLED=$(CGO_ENABLED) gox -cgo -os="linux" -arch=amd64 $(BUILDFLAGS_LINUX_AMD64) github.com/netfoundry/ziti-cmd/ziti-enroller/...
+	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc gox -cgo -os="linux" -arch=arm $(BUILDFLAGS_LINUX_ARM) github.com/netfoundry/ziti-cmd/ziti-enroller/...
+	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ gox -cgo -os="windows" -arch=amd64 $(BUILDFLAGS_WINDOWS_AMD64) github.com/netfoundry/ziti-cmd/ziti-enroller/...
 
 ziti-fabric-common:
 	$(info ============ ziti-fabric-common starting ============)
@@ -239,21 +249,21 @@ ziti-fabric-common:
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ gox -cgo -os="windows" -arch=amd64 $(BUILDFLAGS_WINDOWS_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric/...
 
 ziti-fabric-gw-common:
-	$(info ============ ziti-fabric-common starting ============)
+	$(info ============ ziti-fabric-gw-common starting ============)
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=/opt/osxcross/target/bin/o64-clang CXX=/opt/osxcross/target/bin/o64-clang++ gox -cgo -os="darwin" -arch=amd64 $(BUILDFLAGS_DARWIN_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-gw/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) gox -cgo -os="linux" -arch=amd64 $(BUILDFLAGS_LINUX_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-gw/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc gox -cgo -os="linux" -arch=arm $(BUILDFLAGS_LINUX_ARM) github.com/netfoundry/ziti-cmd/ziti-fabric-gw/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ gox -cgo -os="windows" -arch=amd64 $(BUILDFLAGS_WINDOWS_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-gw/...
 
 ziti-fabric-test-common:
-	$(info ============ ziti-fabric-common starting ============)
+	$(info ============ ziti-fabric-test-common starting ============)
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=/opt/osxcross/target/bin/o64-clang CXX=/opt/osxcross/target/bin/o64-clang++ gox -cgo -os="darwin" -arch=amd64 $(BUILDFLAGS_DARWIN_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-test/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) gox -cgo -os="linux" -arch=amd64 $(BUILDFLAGS_LINUX_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-test/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc gox -cgo -os="linux" -arch=arm $(BUILDFLAGS_LINUX_ARM) github.com/netfoundry/ziti-cmd/ziti-fabric-test/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ gox -cgo -os="windows" -arch=amd64 $(BUILDFLAGS_WINDOWS_AMD64) github.com/netfoundry/ziti-cmd/ziti-fabric-test/...
 
 ziti-router-common:
-	$(info ============ ziti-fabric-common starting ============)
+	$(info ============ ziti-fabrouterric-common starting ============)
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=/opt/osxcross/target/bin/o64-clang CXX=/opt/osxcross/target/bin/o64-clang++ gox -cgo -os="darwin" -arch=amd64 $(BUILDFLAGS_DARWIN_AMD64) github.com/netfoundry/ziti-cmd/ziti-router/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) gox -cgo -os="linux" -arch=amd64 $(BUILDFLAGS_LINUX_AMD64) github.com/netfoundry/ziti-cmd/ziti-router/...
 	cd release; CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc gox -cgo -os="linux" -arch=arm $(BUILDFLAGS_LINUX_ARM) github.com/netfoundry/ziti-cmd/ziti-router/...
@@ -277,7 +287,7 @@ build-publish:
 	jfrog rt bce ziti $(VERSION)
 	jfrog rt bp --apikey $(JFROG_API_KEY) --url https://netfoundry.jfrog.io/netfoundry ziti $(VERSION)
 
-release: getgox ziti-cli-common ziti-controller-common ziti-fabric-common ziti-fabric-gw-common ziti-fabric-test-common ziti-router-common ziti-tunnel-common ziti-cli $(CMD_TARGETS) everything-tarball build-publish launch-smoketest
+release: getgox ziti-cli-common ziti-controller-common ziti-enroller-common ziti-fabric-common ziti-fabric-gw-common ziti-fabric-test-common ziti-router-common ziti-tunnel-common ziti-cli $(CMD_TARGETS) everything-tarball build-publish launch-smoketest
 
 pre-release: check semver-bump
 
