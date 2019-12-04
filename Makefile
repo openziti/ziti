@@ -5,14 +5,8 @@ SHELL := /bin/bash
 RELEASE_BRANCH := master
 SEMVER_AUTOBUMP_BRANCH := master
 
-EDGE_CMD_LIST := edge-controller gateway
-EDGE_TARGETS := $(addprefix ziti-, $(EDGE_CMD_LIST))
-
-FABRIC_CMD_LIST := controller fabric fabric-gw fabric-test router
-FABRIC_TARGETS := $(addprefix ziti-, $(FABRIC_CMD_LIST))
-
-TUNNEL_CMD_LIST := tunnel
-TUNNEL_TARGETS := $(addprefix ziti-, $(TUNNEL_CMD_LIST))
+CMD_LIST := controller fabric fabric-gw fabric-test router tunnel
+CMD_TARGETS := $(addprefix cmd-ziti-, $(CMD_LIST))
 
 SDK_CMD_LIST := enroller proxy
 SDK_TARGETS := $(addprefix ziti-, $(SDK_CMD_LIST))
@@ -115,9 +109,7 @@ fmt:
 getgox:
 	$(GO) get github.com/mitchellh/gox
 
-$(EDGE_TARGETS): ziti%:
-$(FABRIC_TARGETS): ziti%:
-$(TUNNEL_TARGETS): ziti%:
+$(CMD_TARGETS): cmd-ziti%:
 $(SDK_TARGETS): ziti%:
 
 define publish-target-as-release
@@ -197,23 +189,23 @@ endef
 ziti-cli:
 	cd ziti; $(call make-target,ziti)
 
-ziti-controller:
-	cd fabric; $(call make-target,ziti-controller)
+cmd-ziti-controller:
+	cd ziti-controller; $(call make-target,ziti-controller)
 
-ziti-fabric:
-	cd fabric; $(call make-target,ziti-fabric)
+cmd-ziti-fabric:
+	cd ziti-fabric; $(call make-target,ziti-fabric)
 
-ziti-fabric-gw:
-	cd fabric; $(call make-target,ziti-fabric-gw)
+cmd-ziti-fabric-gw:
+	cd ziti-fabric-gw; $(call make-target,ziti-fabric-gw)
 
-ziti-fabric-test:
-	cd fabric; $(call make-target,ziti-fabric-test)
+cmd-ziti-fabric-test:
+	cd ziti-fabric-test; $(call make-target,ziti-fabric-test)
 
-ziti-router:
-	cd fabric; $(call make-target,ziti-router)
+cmd-ziti-router:
+	cd ziti-router; $(call make-target,ziti-router)
 
-ziti-tunnel:
-	cd tunnel; $(call make-target,ziti-tunnel)
+cmd-ziti-tunnel:
+	cd ziti-tunnel; $(call make-target,ziti-tunnel)
 
 ziti-enroller:
 	cd sdk; $(call make-target,ziti-enroller)
@@ -285,7 +277,7 @@ build-publish:
 	jfrog rt bce ziti $(VERSION)
 	jfrog rt bp --apikey $(JFROG_API_KEY) --url https://netfoundry.jfrog.io/netfoundry ziti $(VERSION)
 
-release: getgox ziti-cli-common ziti-controller-common ziti-fabric-common ziti-fabric-gw-common ziti-fabric-test-common ziti-router-common ziti-tunnel-common ziti-cli ziti-controller ziti-fabric ziti-fabric-gw ziti-fabric-test ziti-router ziti-tunnel everything-tarball build-publish launch-smoketest
+release: getgox ziti-cli-common ziti-controller-common ziti-fabric-common ziti-fabric-gw-common ziti-fabric-test-common ziti-router-common ziti-tunnel-common ziti-cli $(CMD_TARGETS) everything-tarball build-publish launch-smoketest
 
 pre-release: check semver-bump
 
