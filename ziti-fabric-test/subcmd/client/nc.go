@@ -18,7 +18,7 @@ package client
 
 import (
 	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
-	"github.com/netfoundry/ziti-fabric/fabric/xgress_transport"
+	"github.com/netfoundry/ziti-fabric/xgress_transport"
 	"github.com/netfoundry/ziti-foundation/identity/dotziti"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport"

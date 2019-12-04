@@ -16,9 +16,9 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/mitchellh/gox v1.0.1 // indirect
-	github.com/netfoundry/ziti-edge v0.0.0-20191203171740-9debc34cc63a
-	github.com/netfoundry/ziti-fabric v0.0.0-20191203170918-f312601f55c9
+	github.com/mitchellh/gox v1.0.1 // indirect	
+	github.com/netfoundry/ziti-edge v0.0.0-20191203205045-c1d47f2cacf4
+	github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864
 	github.com/netfoundry/ziti-foundation v0.0.0-20191203170231-5c1204e0e65d
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.8.1

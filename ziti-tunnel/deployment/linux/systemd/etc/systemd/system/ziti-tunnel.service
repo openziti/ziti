@@ -1,0 +1,26 @@
+# Copyright (c) 2017-2019 NetFoundry, Inc.
+# All rights reserved.
+# https://netfoundry.io
+
+
+[Unit]
+Description=NetFoundry Ziti Tunnel
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/systemd/system/ziti-tunnel.env
+ExecStart=/opt/netfoundry/bin/ziti-tunnel --identity "${IDENTITY_JSON}" --resolver "${RESOLVER_OPTS}" ${INTERCEPT_MODE}
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=network-online.target
+
+# capabilities don't work for tproxy, because it shells out to `iptables` which does things
+# that require CAP_NET_RAW. Unfortunately (for us), CAP_NET_RAW is not in the inheritable
+# capability set of /sbin/iptables.
+#CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+#ProtectSystem=full
+#ProtectHome=true
+#ProtectKernelTunables=true
+#ProtectKernelModules=true

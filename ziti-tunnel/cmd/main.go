@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-tunnel/subcmd"
+	"github.com/netfoundry/ziti-cmd/ziti-tunnel/cmd/subcmd"
 	"github.com/netfoundry/ziti-foundation/util/debugz"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
