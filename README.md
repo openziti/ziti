@@ -1,8 +1,8 @@
 # Ziti Fabric
 
-Ziti is a modern, programmable network overlay with associated edge components, for application-embedded, zero trust network connectivity, written by developers for developers. Ziti allows developers to take control of networking while with secure connectivity and advanced security concepts such as Zero Trust.
+Ziti is a modern, programmable network overlay with associated edge components, for application-embedded, zero trust network connectivity, written by developers for developers. Ziti allows developers to take control of networking, with secure connectivity and advanced security concepts such as Zero Trust.
 
-The Ziti Fabric implements a geo-scale routable mesh network overlay, with smart routing and dynamic healing features.
+The Ziti Fabric is a layer of the Ziti architecture, which implements a geo-scale routable mesh network overlay, with smart routing and dynamic healing features. The fabric provides an open, extensible addressing model, allowing your deployments to utilize overlay network addressing natively.
 
 ## Ziti Overview
 
