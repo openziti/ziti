@@ -12,7 +12,7 @@ SDK_CMD_LIST := enroller proxy
 SDK_TARGETS := $(addprefix ziti-, $(SDK_CMD_LIST))
 
 GO := go
-ROOT_PACKAGE := common
+ROOT_PACKAGE := github.com/netfoundry/ziti-cmd/common
 GO_VERSION := $(shell $(GO) version | sed -e 's/^[^0-9.]*\([0-9.]*\).*/\1/')
 PACKAGE_DIRS := $(shell $(GO) list ./... | grep -v /vendor/)
 PKGS := $(shell go list ./... | grep -v /vendor | grep -v generated)
