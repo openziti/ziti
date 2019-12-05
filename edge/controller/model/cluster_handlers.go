@@ -105,8 +105,8 @@ func (handler *ClusterHandler) HandleCollectEdgeRouters(id string, collector fun
 		if err != nil {
 			return err
 		}
-		association := handler.store.GetLinkCollection(persistence.FieldClusterEdgeRouters)
-		for _, edgeRouterId := range association.GetLinks(tx, id) {
+		edgeRouterIds := handler.store.GetRelatedEntitiesIdList(tx, id, persistence.FieldClusterEdgeRouters)
+		for _, edgeRouterId := range edgeRouterIds {
 			edgeRouter, err := handler.env.GetHandlers().EdgeRouter.handleReadInTx(tx, edgeRouterId)
 			if err != nil {
 				return err
