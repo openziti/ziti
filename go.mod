@@ -41,5 +41,3 @@ require (
 	gopkg.in/yaml.v2 v2.2.7
 	rsc.io/goversion v1.2.0
 )
-
-replace github.com/netfoundry/ziti-edge => ../ziti-edge
