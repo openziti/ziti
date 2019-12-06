@@ -10,10 +10,10 @@ v: 3
 db:                     ${ZITI_DATA}db/ctrl.db
 
 identity:
-  cert:                 ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert:          ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key:                  ${ZITI_SOURCE}fabric/etc/ca/intermediate/private/ctrl.key.pem
-  ca:                   ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert:                 ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert:          ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ctrl-server.cert.pem
+  key:                  ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/private/ctrl.key.pem
+  ca:                   ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ca-chain.cert.pem
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
@@ -59,8 +59,8 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller. 
     signingCert:
-      cert: ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}fabric/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/intermediate.cert.pem
+      key: ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/private/intermediate.key.decrypted.pem
     edgeIdentity:
       # (optional, defaults to 5) The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
@@ -69,11 +69,14 @@ edge:
       # (optional, defaults to 5) The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       durationMinutes: 5
-  persistence:
-    # See  documentation:
-    # - https://godoc.org/github.com/lib/pq
-    # - https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
-    # (required) A Postgres connection string used to connect to a database
-    connectionUrl: postgres://postgres:ztpassword@localhost/postgres?sslmode=disable
-    # (required) The Postgres database name to use
-    dbName: postgres
+
+# Only specify the persistence config if you want to migrate data from a PG database to the new bbolt datastore
+#
+#  persistence:
+#    # See  documentation:
+#    # - https://godoc.org/github.com/lib/pq
+#    # - https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+#    # (required) A Postgres connection string used to connect to a database
+#    connectionUrl: postgres://postgres:ztpassword@localhost/postgres?sslmode=disable
+#    # (required) The Postgres database name to use
+#    dbName: postgres
