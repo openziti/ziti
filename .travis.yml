@@ -1,0 +1,6 @@
+language: go
+
+go:
+  - "1.13"
+
+gobuild_args: --tags apitests
