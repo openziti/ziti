@@ -17,11 +17,11 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/util/debugz"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -76,7 +76,7 @@ func main() {
 	}
 }
 
-func runFunc(cmd *cobra.Command, args []string) {
+func runFunc(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 	ztContext := ziti.NewContext()
 

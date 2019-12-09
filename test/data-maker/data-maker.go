@@ -17,9 +17,9 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"log"
@@ -72,12 +72,12 @@ func respond(conn io.ReadWriteCloser) {
 		sizeUnits := 'b'
 
 		cmd := string(buf[:n])
-		for _, rune := range cmd {
-			if unicode.IsDigit(rune) {
-				num := (int)(rune - '0')
-				size = size * 10 + num
+		for _, ch := range cmd {
+			if unicode.IsDigit(ch) {
+				num := (int)(ch - '0')
+				size = size*10 + num
 			} else {
-				sizeUnits = rune
+				sizeUnits = ch
 				break
 			}
 		}

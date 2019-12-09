@@ -17,12 +17,12 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/config"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/intercept"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -62,7 +62,7 @@ func Execute() {
 	}
 }
 
-func rootPreRun(cmd *cobra.Command, args []string) {
+func rootPreRun(cmd *cobra.Command, _ []string) {
 	verbose, err := cmd.Flags().GetBool("verbose")
 	if err != nil {
 		println("err")
@@ -83,7 +83,7 @@ func rootPreRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func rootPostRun(cmd *cobra.Command, args []string) {
+func rootPostRun(cmd *cobra.Command, _ []string) {
 	log := pfxlog.Logger()
 
 	identityJson := cmd.Flag("identity").Value.String()
