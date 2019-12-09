@@ -204,8 +204,8 @@ github.com/mattn/go-sqlite3 v1.11.0 h1:LDdKkqtYlom37fkvqs8rMPFKAMe8+SgjbwZ6ex1/A
 github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mdlayher/netlink v0.0.0-20190409211403-11939a169225/go.mod h1:eQB3mZE4aiYnlUsyGGCOpPETfdQq4Jhsgf1fk3cwQaA=
-github.com/mdlayher/netlink v1.0.0 h1:vySPY5Oxnn/8lxAPn2cK6kAzcZzYJl3KriSLO46OT18=
-github.com/mdlayher/netlink v1.0.0/go.mod h1:KxeJAFOFLG6AjpyDkQ/iIhxygIUKD+vcwqcnu43w/+M=
+github.com/mdlayher/netlink v0.0.0-20191009155606-de872b0d824b h1:W3er9pI7mt2gOqOWzwvx20iJ8Akiqz1mUMTxU6wdvl8=
+github.com/mdlayher/netlink v0.0.0-20191009155606-de872b0d824b/go.mod h1:KxeJAFOFLG6AjpyDkQ/iIhxygIUKD+vcwqcnu43w/+M=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b h1:j7+1HpAFS1zy5+Q4qx1fWh90gTKwiN4QCGoY9TWyyO4=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc h1:PQrqw9XKYcPRI9rKwoGZucMjWvfZpyfb5j8Lc13j8YY=
@@ -218,8 +218,8 @@ github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrk
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/netfoundry/ziti-edge v0.0.0-20191206152118-c8a0152d0cc7 h1:7IoGnJ1v/wYpmJU519CtltHk08qvru5AFMghKEf5s+s=
-github.com/netfoundry/ziti-edge v0.0.0-20191206152118-c8a0152d0cc7/go.mod h1:BsXaKKCj1etLy3J6nyRLBnWUIztdZte44PGhkiIjgjE=
+github.com/netfoundry/ziti-edge v0.0.0-20191203205045-c1d47f2cacf4 h1:uUhIlQ0IS7Nen/GDfyl/YSPpRcTlJCMjEBhBGx5ykZE=
+github.com/netfoundry/ziti-edge v0.0.0-20191203205045-c1d47f2cacf4/go.mod h1:CxNFWjGAIX4Ii3tSQG5yHsdXVZCxzsNwMUJgHFC8hso=
 github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864 h1:GGMpVeTIqeN+ZFC2MJX3qQNX+V9Zkda9lquhw1Toh+k=
 github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864/go.mod h1:ktqE4LYK1Z4MGBpP29ylnUvEsSNwk7jXBfq2K/kq4nw=
 github.com/netfoundry/ziti-foundation v0.0.0-20191203170231-5c1204e0e65d h1:V6VZeV8JVUipJhZgDUNUhaJ2L6bqmosAf+SNUj6C1f0=
