@@ -17,8 +17,8 @@
 package udp_vconn
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
 	"github.com/netfoundry/ziti-foundation/util/mempool"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"net"
 	"time"
 )
@@ -84,4 +84,3 @@ func NewManager(context ziti.Context, newConnPolicy NewConnPolicy, expirationPol
 	go manager.run()
 	return manager
 }
-

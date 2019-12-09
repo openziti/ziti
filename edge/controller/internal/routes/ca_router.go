@@ -17,17 +17,17 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/edge/controller/env"
-	"github.com/netfoundry/ziti-edge/edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/edge/controller/response"
-	"github.com/netfoundry/ziti-edge/edge/controller/util"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/config"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
+	"github.com/netfoundry/ziti-edge/edge/controller/env"
+	"github.com/netfoundry/ziti-edge/edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/edge/controller/response"
+	"github.com/netfoundry/ziti-edge/edge/controller/util"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"

@@ -17,16 +17,16 @@
 package enroll
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/response"
-	"github.com/netfoundry/ziti-edge/edge/gateway/internal/gateway"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/enroll"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/edge/controller/response"
+	"github.com/netfoundry/ziti-edge/edge/gateway/internal/gateway"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
 	"io/ioutil"
 	"net/http"

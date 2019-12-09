@@ -17,9 +17,9 @@
 package udp_vconn
 
 import (
-	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"io"
 	"net"
 	"time"

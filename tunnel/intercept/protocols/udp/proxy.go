@@ -17,10 +17,10 @@
 package udp
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
-	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

@@ -17,11 +17,11 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-fabric/xgress"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"strings"
 	"time"
 )

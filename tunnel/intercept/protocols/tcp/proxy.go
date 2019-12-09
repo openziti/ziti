@@ -17,10 +17,10 @@
 package tcp
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
-	"github.com/netfoundry/ziti-edge/tunnel"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/tunnel"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

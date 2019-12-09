@@ -17,12 +17,12 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-edge/edge/gateway/handler_edge_ctrl"
 	"github.com/netfoundry/ziti-edge/edge/gateway/internal/apiproxy"
 	"github.com/netfoundry/ziti-edge/edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/edge/gateway/internal/gateway"
 	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"

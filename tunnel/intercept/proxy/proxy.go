@@ -17,16 +17,16 @@
 package proxy
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
-	"github.com/netfoundry/ziti-foundation/transport/udp"
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
+	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"github.com/netfoundry/ziti-foundation/util/mempool"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
 )
@@ -41,7 +41,7 @@ type interceptor struct {
 	interceptIP net.IP
 	services    map[string]*Service
 	closeCh     chan interface{}
-	context        ziti.Context
+	context     ziti.Context
 }
 
 func New(ip net.IP, services map[string]*Service) (intercept.Interceptor, error) {

@@ -17,11 +17,11 @@
 package udp_vconn
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-edge/tunnel"
-	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/tunnel"
+	"github.com/netfoundry/ziti-foundation/util/mempool"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"io"
 	"net"
 	"time"

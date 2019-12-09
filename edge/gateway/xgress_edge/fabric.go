@@ -17,12 +17,12 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/xgress"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/sequencer"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"io"
 )
 

@@ -19,12 +19,12 @@
 package protocols
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/ip"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/tcp"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/udp"
 	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 )

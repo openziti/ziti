@@ -17,14 +17,14 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-edge/edge/gateway/internal/fabric"
-	"github.com/netfoundry/ziti-edge/edge/internal/cert"
-	"github.com/netfoundry/ziti-edge/edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/edge/internal/cert"
+	"github.com/netfoundry/ziti-edge/edge/pb/edge_ctrl_pb"
+	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"time"
 )
 

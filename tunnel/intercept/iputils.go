@@ -17,10 +17,10 @@
 package intercept
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/utils"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/utils"
 	"net"
 )
 

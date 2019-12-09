@@ -17,8 +17,8 @@
 package tunnel
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

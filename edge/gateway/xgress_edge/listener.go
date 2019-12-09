@@ -17,16 +17,16 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/edge/internal/cert"
 	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/edge"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/util/sequencer"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"time"
 )
 
@@ -73,7 +73,7 @@ type ingressProxy struct {
 	ch           channel2.Channel
 }
 
-func (proxy *ingressProxy) HandleClose(ch channel2.Channel) {
+func (proxy *ingressProxy) HandleClose(_ channel2.Channel) {
 	proxy.msgMux.Event(&ingressChannelCloseEvent{proxy: proxy})
 }
 
@@ -81,7 +81,7 @@ type ingressChannelCloseEvent struct {
 	proxy *ingressProxy
 }
 
-func (event *ingressChannelCloseEvent) Handle(mux *edge.MsgMux) {
+func (event *ingressChannelCloseEvent) Handle(_ *edge.MsgMux) {
 	event.proxy.close()
 }
 

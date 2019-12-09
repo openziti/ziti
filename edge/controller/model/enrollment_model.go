@@ -17,13 +17,13 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/sdk/ziti/config"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
+	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
