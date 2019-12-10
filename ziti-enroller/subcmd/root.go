@@ -14,21 +14,21 @@
 	limitations under the License.
 */
 
- 	package subcmd
+package subcmd
 
-	import (
-		"github.com/netfoundry/ziti-foundation/identity/certtools"
-		"github.com/netfoundry/ziti-edge/sdk/ziti/enroll"
-		"encoding/json"
-		"fmt"
-		"github.com/michaelquigley/pfxlog"
-		"github.com/pkg/errors"
-		"github.com/sirupsen/logrus"
-		"github.com/spf13/cobra"
-		"io/ioutil"
-		"os"
-		"strings"
-	)
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"io/ioutil"
+	"os"
+	"strings"
+)
 
 // global state used by all subcommands are located here for easy discovery
 var verbose bool

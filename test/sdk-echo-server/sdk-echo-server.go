@@ -17,10 +17,10 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-edge/sdk/ziti"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/util/debugz"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
