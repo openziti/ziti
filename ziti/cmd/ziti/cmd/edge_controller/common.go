@@ -19,8 +19,37 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"strings"
 )
+
+func mapNameToID(entityType string, val string) (string, error) {
+	// If we can parse it as a UUID, treat it as such
+	_, err := uuid.Parse(val)
+	if err == nil {
+		return val, nil
+	}
+
+	// Allow UUID formatted names to be recognized with a name: prefix
+	name := strings.TrimPrefix(val, "name:")
+	list, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false)
+	if err != nil {
+		return "", err
+	}
+
+	if len(list) < 1 {
+		return "", errors.Errorf("no %v found for name %v", entityType, val)
+	}
+
+	if len(list) > 1 {
+		return "", errors.Errorf("multiple %v found for name %v, please use id instead", entityType, val)
+	}
+
+	entity := list[0]
+	entityId, _ := entity.Path("id").Data().(string)
+	fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
+	return entityId, nil
+}
 
 func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 	var result []string
@@ -49,37 +78,9 @@ func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 }
 
 func mapIdentityNameToID(nameOrId string) (string, error) {
-	ids, err := mapNamesToIDs("identities", nameOrId)
-
-	if err != nil {
-		return "", err
-	}
-
-	if len(ids) == 0 {
-		return "", fmt.Errorf("invalid identity name: %s", nameOrId)
-	}
-
-	if len(ids) > 1 {
-		return "", fmt.Errorf("too many identities with name: %s, use id", nameOrId)
-	}
-
-	return ids[0], nil
+	return mapNameToID("identities", nameOrId)
 }
 
 func mapCaNameToID(nameOrId string) (string, error) {
-	ids, err := mapNamesToIDs("cas", nameOrId)
-
-	if err != nil {
-		return "", err
-	}
-
-	if len(ids) == 0 {
-		return "", fmt.Errorf("invalid CA name: %s", nameOrId)
-	}
-
-	if len(ids) > 1 {
-		return "", fmt.Errorf("too many CAs with name: %s, use id", nameOrId)
-	}
-
-	return ids[0], nil
+	return mapNameToID("cas", nameOrId)
 }

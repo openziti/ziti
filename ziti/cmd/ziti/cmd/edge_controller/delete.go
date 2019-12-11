@@ -17,14 +17,15 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
+	"strings"
 )
 
 // newDeleteCmd creates a command object for the "edge controller delete" command
@@ -51,8 +52,8 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 
 	cmd.AddCommand(newDeleteCmdForEntityType("app-wan", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("ca", runDeleteEntityOfType, newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("cluster", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("gateway", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("identity", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("network-session", runDeleteEntityOfType, newOptions()))
@@ -115,8 +116,8 @@ func runDeleteEntityOfType(o *commonOptions, entityType string) error {
 }
 
 func getPlural(entityType string) string {
-	if entityType == "identity" {
-		return "identities"
+	if strings.HasSuffix(entityType, "y") {
+		return strings.TrimSuffix(entityType, "y") + "ies"
 	}
 	return entityType + "s"
 }

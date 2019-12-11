@@ -18,16 +18,16 @@ package util
 
 import (
 	"archive/tar"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-foundation/common/constants"
-	"github.com/netfoundry/ziti-cmd/common/version"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/blang/semver"
+	"github.com/netfoundry/ziti-cmd/common/version"
+	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
+	"github.com/netfoundry/ziti-foundation/common/constants"
 	"gopkg.in/resty.v1"
 	"io"
 	"net/http"
@@ -419,34 +419,51 @@ func EdgeControllerLogin(url string, cert string, authentication string) (*gabs.
 	return jsonParsed, nil
 }
 
+type Session interface {
+	GetBaseUrl() string
+	GetCert() string
+	GetToken() string
+}
+
 // EdgeControllerListEntities will list entities of the given type in the given Edge Controller
-func EdgeControllerListEntities(baseUrl string, cert string, token string, entityType string, filter string, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerListEntities(session Session, entityType string, filter string, logJSON bool) (*gabs.Container, error) {
+	return EdgeControllerList(session, entityType, filter, logJSON)
+}
+
+// EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
+func EdgeControllerListSubEntities(session Session, entityType, subType, entityId string, filter string, logJSON bool) (*gabs.Container, error) {
+	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, filter, logJSON)
+}
+
+// EdgeControllerList will list entities of the given type in the given Edge Controller
+func EdgeControllerList(session Session, path, filter string, logJSON bool) (*gabs.Container, error) {
 	client := newClient()
 
-	if cert != "" {
-		client.SetRootCertificate(cert)
+	if session.GetCert() != "" {
+		client.SetRootCertificate(session.GetCert())
 	}
 
-	queryURL := baseUrl + "/" + entityType
+	queryUrl := session.GetBaseUrl() + "/" + path
+
 	if filter != "" {
 		params := url.Values{}
 		params.Add("filter", filter)
-		queryURL += "?" + params.Encode()
+		queryUrl += "?" + params.Encode()
 	}
 
 	resp, err := client.
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token).
-		Get(queryURL)
+		SetHeader(constants.ZitiSession, session.GetToken()).
+		Get(queryUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to list %v in Ziti Edge Controller at %v. Error: %v", entityType, baseUrl, err)
+		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), resp.String())
+		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
+			queryUrl, resp.Status(), resp.String())
 	}
 
 	if logJSON {
@@ -459,7 +476,7 @@ func EdgeControllerListEntities(baseUrl string, cert string, token string, entit
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", baseUrl, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", queryUrl, resp.String())
 	}
 
 	return jsonParsed, nil

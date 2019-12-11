@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
@@ -29,7 +29,8 @@ import (
 
 type createEdgeRouterOptions struct {
 	commonOptions
-	jwtOutputFile string
+	roleAttributes []string
+	jwtOutputFile  string
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -40,10 +41,11 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	}
 
 	cmd := &cobra.Command{
-		Use:     "edge-router <name> [cluster]?",
+		Use:     "edge-router <name>",
 		Aliases: []string{"gateway"},
 		Short:   "creates an edge router managed by the Ziti Edge Controller",
 		Long:    "creates an edge router managed by the Ziti Edge Controller",
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -55,6 +57,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "r", nil, "Role attributes of the new edge router")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
 	return cmd
@@ -64,18 +67,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	routerData := gabs.New()
 	setJSONValue(routerData, o.Args[0], "name")
-	if len(o.Args) > 1 {
-		clusterIds, err := mapNamesToIDs("clusters", o.Args[1])
-		if err != nil {
-			return err
-		}
-		if len(clusterIds) == 0 {
-			return fmt.Errorf("cluster not found by id/name: %v", o.Args[1])
-		}
-		setJSONValue(routerData, clusterIds[0], "clusterId")
-	} else {
-		setJSONValue(routerData, getFirstCluster(o), "clusterId")
-	}
+	setJSONValue(routerData, o.roleAttributes, "roleAttributes")
 
 	result, err := createEntityOfType("edge-routers", routerData.String(), &o.commonOptions)
 
@@ -132,17 +124,4 @@ func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
 	}
 
 	return err
-}
-
-func getFirstCluster(o *createEdgeRouterOptions) string {
-	clusterList, err := listEntitiesOfType("clusters", &o.commonOptions)
-	if err != nil {
-		panic(err)
-	}
-
-	if len(clusterList) == 0 {
-		panic("no clusters available. please create cluster before creating a service.")
-	}
-
-	return clusterList[0].Path("id").Data().(string)
 }

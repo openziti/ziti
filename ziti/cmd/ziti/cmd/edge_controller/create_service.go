@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 	"strconv"
@@ -29,10 +29,10 @@ import (
 
 type createServiceOptions struct {
 	commonOptions
-	hostedService bool
-	tags          map[string]string
-	clusters      []string
-	hostIds       []string
+	hostedService   bool
+	tags            map[string]string
+	edgeRouterRoles []string
+	hostIds         []string
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -67,7 +67,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.hostedService, "hosted", false, "Indicates that this is a hosted service")
-	cmd.Flags().StringSliceVarP(&options.clusters, "clusters", "c", nil, "Clusters to add this service to")
+	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new service")
 	cmd.Flags().StringSliceVarP(&options.hostIds, "host-ids", "i", nil, "Identities allowed to host this service")
 
 	return cmd
@@ -75,13 +75,6 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateNativeService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	var clusterIds []string
-	if len(o.clusters) == 0 {
-		clusterIds = getClusters(o)
-	} else if clusterIds, err = mapNamesToIDs("clusters", o.clusters...); err != nil {
-		return err
-	}
-
 	var port int
 	if port, err = strconv.Atoi(o.Args[2]); err != nil {
 		return err
@@ -89,7 +82,7 @@ func runCreateService(o *createServiceOptions) (err error) {
 
 	serviceData := gabs.New()
 	setJSONValue(serviceData, o.Args[0], "name")
-	setJSONValue(serviceData, clusterIds, "clusters")
+	setJSONValue(serviceData, o.edgeRouterRoles, "edgeRouterRoles")
 	setJSONValue(serviceData, o.Args[1], "dns", "hostname")
 	setJSONValue(serviceData, port, "dns", "port")
 
@@ -124,24 +117,4 @@ func runCreateService(o *createServiceOptions) (err error) {
 	}
 
 	return err
-}
-
-func getClusters(o *createServiceOptions) []string {
-	clusterList, err := listEntitiesOfType("clusters", &o.commonOptions)
-	if err != nil {
-		panic(err)
-	}
-
-	if len(clusterList) == 0 {
-		panic("no clusters available. please create cluster before creating a service.")
-	}
-
-	var clusterIds []string
-
-	for _, cluster := range clusterList {
-		clusterId, _ := cluster.Path("id").Data().(string)
-		clusterIds = append(clusterIds, clusterId)
-	}
-
-	return clusterIds
 }

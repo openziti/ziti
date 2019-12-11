@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
@@ -31,8 +31,9 @@ import (
 
 type createIdentityOptions struct {
 	commonOptions
-	isAdmin       bool
-	jwtOutputFile string
+	isAdmin        bool
+	roleAttributes []string
+	jwtOutputFile  string
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
@@ -78,20 +79,21 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "r", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 
 	return cmd
 }
 
 func runCreateIdentity(idType string, o *createIdentityOptions) error {
+	entityData := gabs.New()
+	setJSONValue(entityData, o.Args[0], "name")
+	setJSONValue(entityData, strings.Title(idType), "type")
+	setJSONValue(entityData, true, "enrollment", "ott")
+	setJSONValue(entityData, o.isAdmin, "isAdmin")
+	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 
-	serviceData := gabs.New()
-	setJSONValue(serviceData, o.Args[0], "name")
-	setJSONValue(serviceData, strings.Title(idType), "type")
-	setJSONValue(serviceData, true, "enrollment", "ott")
-	setJSONValue(serviceData, o.isAdmin, "isAdmin")
-
-	result, err := createEntityOfType("identities", serviceData.String(), &o.commonOptions)
+	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
