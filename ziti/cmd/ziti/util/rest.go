@@ -458,7 +458,7 @@ func EdgeControllerList(session Session, path, filter string, logJSON bool) (*ga
 		Get(queryUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, err)
+		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, session.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
