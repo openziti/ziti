@@ -222,6 +222,8 @@ github.com/netfoundry/ziti-edge v0.0.0-20191209152826-1b734f68ffb4 h1:AB+YmEEPrU
 github.com/netfoundry/ziti-edge v0.0.0-20191209152826-1b734f68ffb4/go.mod h1:b9NqxGsJSVKqW8kurADYrvPrC6OfJZAIsaeMk7v5bSg=
 github.com/netfoundry/ziti-edge v0.0.0-20191211205214-958bacc85eaf h1:ZTmtk6HdgWnJCQRsA5hrX4RNCgOHJsveEo0nCNHu/MU=
 github.com/netfoundry/ziti-edge v0.0.0-20191211205214-958bacc85eaf/go.mod h1:iYyr7AlV7ocqajWxo+pFcQFiK/y5mJ7fzmiv365i/lY=
+github.com/netfoundry/ziti-edge v0.0.0-20191212032226-0fb809e7ebff h1:qJGXcwHzjMGQaz5JXdAGh8b6wGkw0WlhRmmm+pK2Z9w=
+github.com/netfoundry/ziti-edge v0.0.0-20191212032226-0fb809e7ebff/go.mod h1:iYyr7AlV7ocqajWxo+pFcQFiK/y5mJ7fzmiv365i/lY=
 github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864 h1:GGMpVeTIqeN+ZFC2MJX3qQNX+V9Zkda9lquhw1Toh+k=
 github.com/netfoundry/ziti-fabric v0.0.0-20191203174113-af4eb6e60864/go.mod h1:ktqE4LYK1Z4MGBpP29ylnUvEsSNwk7jXBfq2K/kq4nw=
 github.com/netfoundry/ziti-fabric v0.0.0-20191209202137-4205e73d614e h1:EdTaD5+hjMJpKRQW6yelbeqzrnSfpvXPb45XA0zUCe4=
