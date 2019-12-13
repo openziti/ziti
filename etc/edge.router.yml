@@ -15,10 +15,10 @@ v: 2
 # as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
 # 'ca' value is used to populate an internally Trusted CA pool.
 identity:
-  cert:                 ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ignore.gw001-client.cert.pem
-  server_cert:          ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ignore.gw001-server.cert.pem
-  key:                  ${ZITI_SOURCE}fabric/etc/ca/intermediate/private/ignore.gw001.key.pem
-  ca:                   ${ZITI_SOURCE}fabric/etc/ca/intermediate/certs/ignore.gw001-ca-chain.cert.pem
+  cert:                 ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ignore.gw001-client.cert.pem
+  server_cert:          ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ignore.gw001-server.cert.pem
+  key:                  ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/private/ignore.gw001.key.pem
+  ca:                   ${ZITI_SOURCE}ziti-fabric/etc/ca/intermediate/certs/ignore.gw001-ca-chain.cert.pem
 
 #trace:
 # path:                 001.trace
