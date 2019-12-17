@@ -34,6 +34,14 @@
     "endpointAddress": {
       "type": "string"
     },
+    "edgeRouterRoles" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    },
+    "roleAttributes" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    },
     "tags": {
       "default": {},
       "$ref": "definitions.all.json#/definitions/tags-null"

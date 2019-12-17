@@ -21,10 +21,12 @@ package tests
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
+	"sort"
 )
 
 type testEntity interface {
 	getId() string
+	setId(string)
 	getEntityType() string
 	toJson(create bool, ctx *TestContext) string
 	validate(ctx *TestContext, c *gabs.Container)
@@ -48,6 +50,10 @@ type testAppwan struct {
 
 func (entity *testAppwan) getId() string {
 	return entity.id
+}
+
+func (entity *testAppwan) setId(id string) {
+	entity.id = id
 }
 
 func (entity *testAppwan) getEntityType() string {
@@ -81,13 +87,18 @@ type testService struct {
 	dnsPort         int
 	egressRouter    string
 	endpointAddress string
-	clusterIds      []string
 	hostIds         []string
+	edgeRouterRoles []string
+	roleAttributes  []string
 	tags            map[string]interface{}
 }
 
 func (entity *testService) getId() string {
 	return entity.id
+}
+
+func (entity *testService) setId(id string) {
+	entity.id = id
 }
 
 func (entity *testService) getEntityType() string {
@@ -101,11 +112,9 @@ func (entity *testService) toJson(create bool, ctx *TestContext) string {
 	ctx.setJsonValue(entityData, entity.endpointAddress, "endpointAddress")
 	ctx.setJsonValue(entityData, entity.dnsHostname, "dns", "hostname")
 	ctx.setJsonValue(entityData, entity.dnsPort, "dns", "port")
-
+	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
+	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	if create {
-		if len(entity.clusterIds) > 0 {
-			ctx.setJsonValue(entityData, entity.clusterIds, "clusters")
-		}
 		if len(entity.hostIds) > 0 {
 			ctx.setJsonValue(entityData, entity.hostIds, "hostIds")
 		}
@@ -129,8 +138,222 @@ func (entity *testService) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, float64(entity.dnsPort), path("dns.port"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 
-	cluster := c.Search("clusters")
-	for _, clusterId := range entity.clusterIds {
-		ctx.requireChildWith(cluster, "id", clusterId)
+	sort.Strings(entity.edgeRouterRoles)
+	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
+
+	sort.Strings(entity.roleAttributes)
+	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
+}
+
+func newTestIdentity(isAdmin bool, roleAttributes ...string) *testIdentity {
+	return &testIdentity{
+		name:           uuid.New().String(),
+		identityType:   "User",
+		isAdmin:        isAdmin,
+		roleAttributes: roleAttributes,
 	}
+}
+
+type testIdentity struct {
+	id             string
+	name           string
+	identityType   string
+	isAdmin        bool
+	roleAttributes []string
+	tags           map[string]interface{}
+}
+
+func (entity *testIdentity) getId() string {
+	return entity.id
+}
+
+func (entity *testIdentity) setId(id string) {
+	entity.id = id
+}
+
+func (entity *testIdentity) getEntityType() string {
+	return "identities"
+}
+
+func (entity *testIdentity) toJson(_ bool, ctx *TestContext) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.identityType, "type")
+	ctx.setJsonValue(entityData, entity.isAdmin, "isAdmin")
+	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
+
+	enrollments := map[string]interface{}{
+		"updb": entity.name,
+	}
+	ctx.setJsonValue(entityData, enrollments, "enrollment")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+	return entityData.String()
+}
+
+func (entity *testIdentity) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	sort.Strings(entity.roleAttributes)
+	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func newTestEdgeRouter(roleAttributes ...string) *testEdgeRouter {
+	return &testEdgeRouter{
+		name:           uuid.New().String(),
+		roleAttributes: roleAttributes,
+	}
+}
+
+type testEdgeRouter struct {
+	id             string
+	name           string
+	roleAttributes []string
+	tags           map[string]interface{}
+}
+
+func (entity *testEdgeRouter) getId() string {
+	return entity.id
+}
+
+func (entity *testEdgeRouter) setId(id string) {
+	entity.id = id
+}
+
+func (entity *testEdgeRouter) getEntityType() string {
+	return "edge-routers"
+}
+
+func (entity *testEdgeRouter) toJson(_ bool, ctx *TestContext) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+	return entityData.String()
+}
+
+func (entity *testEdgeRouter) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	sort.Strings(entity.roleAttributes)
+	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *testEdgeRouterPolicy {
+	return &testEdgeRouterPolicy{
+		name:            uuid.New().String(),
+		edgeRouterRoles: edgeRouterRoles,
+		identityRoles:   identityRoles,
+	}
+}
+
+type testEdgeRouterPolicy struct {
+	id              string
+	name            string
+	edgeRouterRoles []string
+	identityRoles   []string
+	tags            map[string]interface{}
+}
+
+func (entity *testEdgeRouterPolicy) getId() string {
+	return entity.id
+}
+
+func (entity *testEdgeRouterPolicy) setId(id string) {
+	entity.id = id
+}
+
+func (entity *testEdgeRouterPolicy) getEntityType() string {
+	return "edge-router-policies"
+}
+
+func (entity *testEdgeRouterPolicy) toJson(_ bool, ctx *TestContext) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
+	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+	return entityData.String()
+}
+
+func (entity *testEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	sort.Strings(entity.edgeRouterRoles)
+	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
+	sort.Strings(entity.identityRoles)
+	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func newTestServicePolicy(policyType string, serviceRoles, identityRoles []string) *testServicePolicy {
+	return &testServicePolicy{
+		name:          uuid.New().String(),
+		policyType:    policyType,
+		serviceRoles:  serviceRoles,
+		identityRoles: identityRoles,
+	}
+}
+
+type testServicePolicy struct {
+	id            string
+	name          string
+	policyType    string
+	identityRoles []string
+	serviceRoles  []string
+	tags          map[string]interface{}
+}
+
+func (entity *testServicePolicy) getId() string {
+	return entity.id
+}
+
+func (entity *testServicePolicy) setId(id string) {
+	entity.id = id
+}
+
+func (entity *testServicePolicy) getEntityType() string {
+	return "service-policies"
+}
+
+func (entity *testServicePolicy) toJson(_ bool, ctx *TestContext) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.policyType, "type")
+	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
+	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+	return entityData.String()
+}
+
+func (entity *testServicePolicy) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.policyType, path("type"))
+	sort.Strings(entity.identityRoles)
+	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
+	sort.Strings(entity.serviceRoles)
+	ctx.pathEqualsStringSlice(c, entity.serviceRoles, path("serviceRoles"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
 }

@@ -47,7 +47,7 @@ func (handler *AssociationsHandler) UpdateAssociations(store persistence.Store, 
 
 	return handler.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
 		if !store.IsEntityPresent(tx, parentId) {
-			return util.RecordNotFoundError{}
+			return util.NewNotFoundError(store.GetEntityType(), "id", parentId)
 		}
 
 		if err := ValidateEntityList(tx, linkCollection.GetLinkedSymbol().GetStore(), association, childIds); err != nil {

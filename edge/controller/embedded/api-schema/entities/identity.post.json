@@ -5,7 +5,6 @@
   "required": [
     "name",
     "type",
-    "permissions",
     "isAdmin"
   ],
   "properties": {
@@ -41,12 +40,9 @@
       "type": "boolean",
       "default": false
     },
-    "permissions": {
-      "type": "array",
-      "items": {
-        "$ref": "definitions.all.json#/definitions/name"
-      },
-      "default": []
+    "roleAttributes" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

@@ -17,15 +17,15 @@
 package model
 
 import (
+	"encoding/base64"
+	"errors"
+	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/controller/util"
 	"github.com/netfoundry/ziti-edge/edge/crypto"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"encoding/base64"
-	"errors"
-	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"go.etcd.io/bbolt"
 )
 
@@ -384,4 +384,12 @@ func (handler *IdentityHandler) HandleCreateWithAuthenticator(identity *Identity
 	}
 
 	return identity.Id, authenticator.Id, nil
+}
+
+func (handler *IdentityHandler) HandleCollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
+}
+
+func (handler *IdentityHandler) HandleCollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.HandleCollectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
 }

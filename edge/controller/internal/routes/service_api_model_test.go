@@ -24,7 +24,7 @@ import (
 
 func TestServiceApiCreate_ToModelService(t *testing.T) {
 	type fields struct {
-		Clusters        []string
+		EdgeRouterRoles []string
 		Dns             *ServiceDnsApiPost
 		Name            *string
 		HostIds         []string
@@ -39,7 +39,7 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "test all fields", fields: fields{
-			Clusters: []string{"one", "two"},
+			EdgeRouterRoles: []string{"one", "two"},
 			Dns: &ServiceDnsApiPost{
 				Hostname: strPtr("foo"),
 				Port:     uint16Ptr(1234),
@@ -58,14 +58,14 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 			DnsPort:         1234,
 			EgressRouter:    "001",
 			EndpointAddress: "tcp:localhost:8908",
-			Clusters:        []string{"one", "two"},
+			EdgeRouterRoles: []string{"one", "two"},
 			HostIds:         []string{"id1", "id2"},
 		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiCreate{
-				Clusters:        tt.fields.Clusters,
+				EdgeRouterRoles: tt.fields.EdgeRouterRoles,
 				Dns:             tt.fields.Dns,
 				Name:            tt.fields.Name,
 				HostIds:         tt.fields.HostIds,

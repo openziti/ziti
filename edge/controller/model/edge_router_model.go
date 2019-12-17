@@ -32,7 +32,7 @@ import (
 type EdgeRouter struct {
 	BaseModelEntityImpl
 	Name                string
-	ClusterId           string
+	RoleAttributes      []string
 	IsVerified          bool
 	Fingerprint         *string
 	CertPem             *string
@@ -44,17 +44,13 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 }
 
-func (entity *EdgeRouter) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) ToBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	et := uuid.New().String()
-
-	if _, err := handler.GetEnv().GetStores().Cluster.LoadOneById(tx, entity.ClusterId); err != nil {
-		return nil, err
-	}
 
 	boltEntity := &persistence.EdgeRouter{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
-		ClusterId:          entity.ClusterId,
+		RoleAttributes:     entity.RoleAttributes,
 		Fingerprint:        nil,
 		IsVerified:         false,
 		EnrollmentToken:    &et,
@@ -95,15 +91,11 @@ func (entity *EdgeRouter) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	if _, err := handler.GetEnv().GetStores().Cluster.LoadOneById(tx, entity.ClusterId); err != nil {
-		return nil, err
-	}
-
+func (entity *EdgeRouter) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.EdgeRouter{
 		BaseEdgeEntityImpl:  *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:                entity.Name,
-		ClusterId:           entity.ClusterId,
+		RoleAttributes:      entity.RoleAttributes,
 		IsVerified:          entity.IsVerified,
 		Fingerprint:         entity.Fingerprint,
 		CertPem:             entity.CertPem,
@@ -120,24 +112,24 @@ func (entity *EdgeRouter) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (p
 	return entity.ToBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *EdgeRouter) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
-	boltGw, ok := boltEntity.(*persistence.EdgeRouter)
+func (entity *EdgeRouter) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router", reflect.TypeOf(boltEntity))
 	}
 
-	entity.fillCommon(boltGw)
-	entity.Name = boltGw.Name
-	entity.ClusterId = boltGw.ClusterId
-	entity.IsVerified = boltGw.IsVerified
-	entity.Fingerprint = boltGw.Fingerprint
-	entity.CertPem = boltGw.CertPem
-	entity.EnrollmentToken = boltGw.EnrollmentToken
-	entity.Hostname = boltGw.Hostname
-	entity.EnrollmentJwt = boltGw.EnrollmentJwt
-	entity.EnrollmentCreatedAt = boltGw.EnrollmentCreatedAt
-	entity.EnrollmentExpiresAt = boltGw.EnrollmentExpiresAt
-	entity.EdgeRouterProtocols = boltGw.EdgeRouterProtocols
+	entity.fillCommon(boltEdgeRouter)
+	entity.Name = boltEdgeRouter.Name
+	entity.RoleAttributes = boltEdgeRouter.RoleAttributes
+	entity.IsVerified = boltEdgeRouter.IsVerified
+	entity.Fingerprint = boltEdgeRouter.Fingerprint
+	entity.CertPem = boltEdgeRouter.CertPem
+	entity.EnrollmentToken = boltEdgeRouter.EnrollmentToken
+	entity.Hostname = boltEdgeRouter.Hostname
+	entity.EnrollmentJwt = boltEdgeRouter.EnrollmentJwt
+	entity.EnrollmentCreatedAt = boltEdgeRouter.EnrollmentCreatedAt
+	entity.EnrollmentExpiresAt = boltEdgeRouter.EnrollmentExpiresAt
+	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 
 	return nil
 }

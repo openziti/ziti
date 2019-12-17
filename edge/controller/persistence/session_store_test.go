@@ -17,12 +17,11 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -32,8 +31,6 @@ func Test_SessionStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
-	req := require.New(t)
-	req.NoError(ctx.err)
 
 	t.Run("test create invalid sessions", ctx.testCreateInvalidSessions)
 	t.Run("test create sessions", ctx.testCreateSessions)
@@ -89,11 +86,11 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	loadedSession := &Session{}
 	ctx.validateBaseline(session, loadedSession)
 
-	sessionIds := ctx.getRelatedIds(apiSession, FieldApiSessionSessions)
+	sessionIds := ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
 	ctx.EqualValues(session.Id, sessionIds[0])
 
-	sessionIds = ctx.getRelatedIds(service, FieldServiceSessions)
+	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
 	ctx.EqualValues(session.Id, sessionIds[0])
 
@@ -104,23 +101,23 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	loadedSession2 := &Session{}
 	ctx.validateBaseline(session2, loadedSession2)
 
-	sessionIds = ctx.getRelatedIds(apiSession, FieldApiSessionSessions)
+	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(2, len(sessionIds))
 	ctx.True(stringz.Contains(sessionIds, session.Id))
 	ctx.True(stringz.Contains(sessionIds, session2.Id))
 
-	sessionIds = ctx.getRelatedIds(service, FieldServiceSessions)
+	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
 	ctx.EqualValues(2, len(sessionIds))
 	ctx.True(stringz.Contains(sessionIds, session.Id))
 	ctx.True(stringz.Contains(sessionIds, session2.Id))
 
 	ctx.requireDelete(session)
 
-	sessionIds = ctx.getRelatedIds(apiSession, FieldApiSessionSessions)
+	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
 	ctx.EqualValues(session2.Id, sessionIds[0])
 
-	sessionIds = ctx.getRelatedIds(service, FieldServiceSessions)
+	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
 	ctx.EqualValues(session2.Id, sessionIds[0])
 }
@@ -229,9 +226,8 @@ func (ctx *TestContext) testLoadQuerySessions(_ *testing.T) {
 		ids, _, err := ctx.stores.Session.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
-		strIds := stringz.ToStringSlice(ids)
-		ctx.True(stringz.Contains(strIds, entities.session2.Id))
-		ctx.True(stringz.Contains(strIds, entities.session3.Id))
+		ctx.True(stringz.Contains(ids, entities.session2.Id))
+		ctx.True(stringz.Contains(ids, entities.session3.Id))
 		return nil
 	})
 	ctx.NoError(err)

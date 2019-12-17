@@ -25,19 +25,22 @@ import (
 type Stores struct {
 	DbProvider DbProvider
 
-	ApiSession    ApiSessionStore
-	Appwan        AppwanStore
-	Ca            CaStore
-	Cluster       ClusterStore
-	EdgeRouter    EdgeRouterStore
-	EdgeService   EdgeServiceStore
-	EventLog      EventLogStore
-	GeoRegion     GeoRegionStore
-	Identity      IdentityStore
-	IdentityType  IdentityTypeStore
-	Session       SessionStore
-	Enrollment    EnrollmentStore
-	Authenticator AuthenticatorStore
+	ApiSession       ApiSessionStore
+	Appwan           AppwanStore
+	Ca               CaStore
+	Cluster          ClusterStore
+	EdgeRouter       EdgeRouterStore
+	EdgeRouterPolicy EdgeRouterPolicyStore
+	EdgeService      EdgeServiceStore
+	EventLog         EventLogStore
+	GeoRegion        GeoRegionStore
+	Identity         IdentityStore
+	IdentityType     IdentityTypeStore
+	Session          SessionStore
+	ServiceConfig    ServiceConfigsStore
+	ServicePolicy    ServicePolicyStore
+	Enrollment       EnrollmentStore
+	Authenticator    AuthenticatorStore
 
 	storeList []Store
 }
@@ -54,19 +57,22 @@ func (stores *Stores) getStoreForEntity(entity boltz.BaseEntity) boltz.CrudStore
 type stores struct {
 	DbProvider DbProvider
 
-	apiSession    *apiSessionStoreImpl
-	appwan        *appwanStoreImpl
-	ca            *caStoreImpl
-	cluster       *clusterStoreImpl
-	edgeRouter    *edgeRouterStoreImpl
-	edgeService   *edgeServiceStoreImpl
-	eventLog      *eventLogStoreImpl
-	geoRegion     *geoRegionStoreImpl
-	identity      *identityStoreImpl
-	identityType  *IdentityTypeStoreImpl
-	session       *sessionStoreImpl
-	enrollment    *enrollmentStoreImpl
-	authenticator *authenticatorStoreImpl
+	apiSession       *apiSessionStoreImpl
+	appwan           *appwanStoreImpl
+	ca               *caStoreImpl
+	cluster          *clusterStoreImpl
+	edgeRouter       *edgeRouterStoreImpl
+	edgeRouterPolicy *edgeRouterPolicyStoreImpl
+	edgeService      *edgeServiceStoreImpl
+	eventLog         *eventLogStoreImpl
+	geoRegion        *geoRegionStoreImpl
+	identity         *identityStoreImpl
+	identityType     *IdentityTypeStoreImpl
+	serviceConfig    *serviceConfigsStoreImpl
+	servicePolicy    *servicePolicyStoreImpl
+	session          *sessionStoreImpl
+	enrollment       *enrollmentStoreImpl
+	authenticator    *authenticatorStoreImpl
 }
 
 func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
@@ -81,6 +87,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.cluster = newClusterStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
+	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetServiceStore())
 	internalStores.eventLog = newEventLogStore(internalStores)
 	internalStores.geoRegion = newGeoRegionStore(internalStores)
@@ -88,39 +95,47 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.identityType = newIdentityTypeStore(internalStores)
 	internalStores.enrollment = newEnrollmentStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
+	internalStores.serviceConfig = newServiceConfigsStore(internalStores)
+	internalStores.servicePolicy = newServicePolicyStore(internalStores)
 	internalStores.session = newSessionStore(internalStores)
 
 	externalStores := &Stores{
 		DbProvider: dbProvider,
 
-		ApiSession:    internalStores.apiSession,
-		Appwan:        internalStores.appwan,
-		Ca:            internalStores.ca,
-		Cluster:       internalStores.cluster,
-		EdgeRouter:    internalStores.edgeRouter,
-		EdgeService:   internalStores.edgeService,
-		EventLog:      internalStores.eventLog,
-		GeoRegion:     internalStores.geoRegion,
-		Identity:      internalStores.identity,
-		IdentityType:  internalStores.identityType,
-		Session:       internalStores.session,
-		Authenticator: internalStores.authenticator,
-		Enrollment:    internalStores.enrollment,
+		ApiSession:       internalStores.apiSession,
+		Appwan:           internalStores.appwan,
+		Ca:               internalStores.ca,
+		Cluster:          internalStores.cluster,
+		EdgeRouter:       internalStores.edgeRouter,
+		EdgeRouterPolicy: internalStores.edgeRouterPolicy,
+		EdgeService:      internalStores.edgeService,
+		EventLog:         internalStores.eventLog,
+		GeoRegion:        internalStores.geoRegion,
+		Identity:         internalStores.identity,
+		IdentityType:     internalStores.identityType,
+		ServiceConfig:    internalStores.serviceConfig,
+		ServicePolicy:    internalStores.servicePolicy,
+		Session:          internalStores.session,
+		Authenticator:    internalStores.authenticator,
+		Enrollment:       internalStores.enrollment,
 	}
 
 	externalStores.storeList = []Store{
 		internalStores.apiSession,
+		internalStores.authenticator,
 		internalStores.appwan,
 		internalStores.ca,
 		internalStores.cluster,
 		internalStores.edgeRouter,
+		internalStores.edgeRouterPolicy,
 		internalStores.edgeService,
+		internalStores.enrollment,
 		internalStores.geoRegion,
 		internalStores.identity,
 		internalStores.identityType,
 		internalStores.session,
-		internalStores.authenticator,
-		internalStores.enrollment,
+		internalStores.serviceConfig,
+		internalStores.servicePolicy,
 	}
 
 	err := dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {

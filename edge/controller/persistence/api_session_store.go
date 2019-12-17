@@ -17,15 +17,14 @@
 package persistence
 
 import (
+	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/google/uuid"
 	"go.etcd.io/bbolt"
 )
 
 const (
 	FieldApiSessionIdentity = "identity"
-	FieldApiSessionSessions = "sessions"
 	FieldApiSessionToken    = "token"
 )
 
@@ -65,6 +64,7 @@ type ApiSessionStore interface {
 	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error)
 	GetTokenIndex() boltz.ReadIndex
+	MarkActivity(tx *bbolt.Tx, tokens []string) error
 }
 
 func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
@@ -96,7 +96,7 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	symbolToken := store.AddSymbol(FieldApiSessionToken, ast.NodeTypeString)
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 	store.symbolIdentity = store.AddFkSymbol(FieldApiSessionIdentity, store.stores.identity)
-	store.symbolSessions = store.AddFkSetSymbol(FieldApiSessionSessions, store.stores.session)
+	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 }
 
 func (store *apiSessionStoreImpl) initializeLinked() {
@@ -105,7 +105,7 @@ func (store *apiSessionStoreImpl) initializeLinked() {
 
 func (store *apiSessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ApiSession, error) {
 	entity := &ApiSession{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
@@ -128,10 +128,24 @@ func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*A
 }
 
 func (store *apiSessionStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	for _, sessionId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldApiSessionSessions) {
+	for _, sessionId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeSessions) {
 		if err := store.stores.session.DeleteById(ctx, sessionId); err != nil {
 			return err
 		}
 	}
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *apiSessionStoreImpl) MarkActivity(tx *bbolt.Tx, tokens []string) error {
+	mutCtx := boltz.NewMutateContext(tx)
+	for _, token := range tokens {
+		apiSession, err := store.LoadOneByToken(tx, token)
+		if err != nil {
+			return err
+		}
+		if err = store.Update(mutCtx, apiSession, UpdateTimeOnlyFieldChecker{}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

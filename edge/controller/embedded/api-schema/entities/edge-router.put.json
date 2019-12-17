@@ -4,19 +4,19 @@
   "additionalProperties": false,
   "required": [
     "name",
-    "clusterId",
     "tags"
   ],
   "properties": {
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "clusterId": {
-      "$ref": "definitions.all.json#/definitions/id"
+    "roleAttributes" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},
-      "$ref": "definitions.all.json#/definitions/tags"
+      "$ref": "definitions.all.json#/definitions/tags-null"
     }
   }
 }

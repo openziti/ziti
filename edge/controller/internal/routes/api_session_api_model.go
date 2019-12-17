@@ -17,14 +17,17 @@
 package routes
 
 import (
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/model"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 )
 
-const EntityNameSession = "sessions"
+const (
+	EntityNameApiSession       = "api-sessions"
+	EntityNameApiSessionLegacy = "sessions"
+)
 
 func NewApiSessionEntityRef(s *model.ApiSession) *EntityApiRef {
 	links := &response.Links{
@@ -39,7 +42,7 @@ func NewApiSessionEntityRef(s *model.ApiSession) *EntityApiRef {
 }
 
 func NewApiSessionLink(sessionId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameSession, sessionId))
+	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameApiSession, sessionId))
 }
 
 type ApiSessionApiList struct {
@@ -67,7 +70,7 @@ func (e *ApiSessionApiList) PopulateLinks() {
 func (e *ApiSessionApiList) ToEntityApiRef() *EntityApiRef {
 	e.PopulateLinks()
 	return &EntityApiRef{
-		Entity: EntityNameSession,
+		Entity: EntityNameApiSession,
 		Name:   nil,
 		Id:     e.Id,
 		Links:  e.Links,
@@ -106,4 +109,3 @@ func MapApiSessionToApiList(i *model.ApiSession) (*ApiSessionApiList, error) {
 
 	return ret, nil
 }
-

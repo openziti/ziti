@@ -117,7 +117,7 @@ func (store *eventLogStoreImpl) initializeLinked() {
 
 func (store *eventLogStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EventLog, error) {
 	entity := &EventLog{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil

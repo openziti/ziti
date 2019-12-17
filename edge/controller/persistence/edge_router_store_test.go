@@ -17,17 +17,16 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"testing"
-	"time"
 )
 
 func Test_EdgeRouterStore(t *testing.T) {
-	ctx := &TestContext{ReferenceTime: time.Now()}
+	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
 
@@ -49,7 +48,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 	edgeRouter := &EdgeRouter{
 		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: edgeRouterId},
 		Name:               "edgeRouter1",
-		ClusterId:          cluster1Id,
+		ClusterId:          &cluster1Id,
 	}
 
 	req := require.New(t)
@@ -88,7 +87,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 		req.Equal("edgeRouter1", testGw.Name)
 		req.NotNil(testGw.CreatedAt)
 		req.NotNil(testGw.UpdatedAt)
-		req.Equal(cluster1Id, testGw.ClusterId)
+		req.Equal(cluster1Id, *testGw.ClusterId)
 
 		testCluster, err := ctx.stores.Cluster.LoadOneById(tx, cluster1Id)
 		req.NoError(err)
@@ -138,7 +137,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 		testGw, err := ctx.stores.EdgeRouter.LoadOneById(tx, edgeRouterId)
 		req.NoError(err)
 		req.NotNil(testGw)
-		req.Equal(cluster2Id, testGw.ClusterId)
+		req.Equal(cluster2Id, *testGw.ClusterId)
 
 		return nil
 	})

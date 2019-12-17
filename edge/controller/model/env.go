@@ -21,7 +21,6 @@ import (
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/internal/cert"
 	"github.com/netfoundry/ziti-edge/edge/internal/jwt"
-	"github.com/netfoundry/ziti-edge/edge/migration"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -32,15 +31,14 @@ type Env interface {
 	GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator
 	GetDbProvider() persistence.DbProvider
 	GetStores() *persistence.Stores
-	GetDbStores() *migration.Stores
 	GetAuthRegistry() AuthRegistry
 	GetEnrollRegistry() EnrollmentRegistry
-	ClusterHasEdgeRouterOnline(clusterId string) bool
 	GetApiClientCsrSigner() cert.Signer
 	GetApiServerCsrSigner() cert.Signer
 	GetControlClientCsrSigner() cert.Signer
 	GetHostController() HostController
 	GetSchemas() Schemas
+	IsEdgeRouterOnline(id string) bool
 }
 
 type HostController interface {

@@ -17,11 +17,11 @@
 package persistence
 
 import (
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/edge/migration"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"time"
 )
@@ -349,7 +349,7 @@ func migrateEdgeRoutersFromPG(mtx *MigrationContext) error {
 		edgeRouter := &EdgeRouter{
 			BaseEdgeEntityImpl:  *toBaseBoltEntity(&pgEdgeRouter.BaseDbEntity),
 			Name:                *pgEdgeRouter.Name,
-			ClusterId:           *pgEdgeRouter.ClusterID,
+			ClusterId:           pgEdgeRouter.ClusterID,
 			Fingerprint:         pgEdgeRouter.Fingerprint,
 			CertPem:             pgEdgeRouter.CertPem,
 			IsVerified:          *pgEdgeRouter.IsVerified,

@@ -19,8 +19,8 @@
 package tests
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"net/url"
 	"testing"
 	"time"
@@ -36,26 +36,12 @@ func Test_Services(t *testing.T) {
 
 	nonAdminUser := ctx.createUserAndLogin(false)
 
+	ctx.enabledJsonLogging = true
 	t.Run("create without name should fail", func(t *testing.T) {
 		service := ctx.newTestService()
 		service.name = ""
 		httpCode, body := ctx.createEntity(service)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
-	})
-
-	t.Run("create missing cluster should fail", func(t *testing.T) {
-		service := ctx.newTestService()
-		service.clusterIds = []string{}
-		httpCode, body := ctx.createEntity(service)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "clusters")
-	})
-
-	t.Run("create with invalid cluster should fail", func(t *testing.T) {
-		service := ctx.newTestService()
-		service.clusterIds = []string{uuid.New().String()}
-		httpCode, body := ctx.createEntity(service)
-		parsed := ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "clusters")
-		ctx.pathEquals(parsed, toIntfSlice(service.clusterIds), path("error.cause.value"))
 	})
 
 	t.Run("create with invalid hostId should fail", func(t *testing.T) {
@@ -160,60 +146,6 @@ func Test_Services(t *testing.T) {
 		ctx.requireNotFoundError(ctx.query(nonAdminUser.sessionId, "services/"+service.id))
 	})
 
-	t.Run("add cluster should pass", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-
-		clusterId2 := ctx.requireCreateCluster(uuid.New().String())
-		ctx.requireAddAssociation("services/"+service.id+"/clusters", clusterId2)
-
-		result := ctx.requireQuery(ctx.adminSessionId, "services/"+service.id)
-		jsonService := ctx.requirePath(result, "data")
-		service.clusterIds = append(service.clusterIds, clusterId2)
-		service.validate(ctx, jsonService)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-	})
-
-	t.Run("add non-existent cluster should fail", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-		fakeClusterId := uuid.New().String()
-		httpStatus, body := ctx.addAssociation("services/"+service.id+"/clusters", fakeClusterId)
-		ctx.requireMultiFieldError(httpStatus, body, apierror.InvalidFieldCode, "clusters", fakeClusterId)
-	})
-
-	t.Run("add multiple non-existent clusters should fail", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-		list := []string{uuid.New().String(), uuid.New().String(), uuid.New().String()}
-		httpStatus, body := ctx.addAssociation("services/"+service.id+"/clusters", list...)
-		ctx.requireMultiFieldError(httpStatus, body, apierror.InvalidFieldCode, "clusters", list...)
-	})
-
-	t.Run("remove cluster should pass", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-
-		clusterId2 := ctx.requireCreateCluster(uuid.New().String())
-		ctx.requireAddAssociation("services/"+service.id+"/clusters", clusterId2)
-
-		ctx.requireRemoveAssociation("services/"+service.id+"/clusters", clusterId2)
-
-		result := ctx.requireQuery(ctx.adminSessionId, "services/"+service.id)
-		jsonService := ctx.requirePath(result, "data")
-		service.clusterIds = []string{ctx.clusterId}
-		service.validate(ctx, jsonService)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-	})
-
-	t.Run("remove non-existent cluster should fail", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-
-		fakeClusterId := uuid.New().String()
-		httpStatus, body := ctx.removeAssociation("services/"+service.id+"/clusters", fakeClusterId)
-		ctx.requireMultiFieldError(httpStatus, body, apierror.InvalidFieldCode, "clusters", fakeClusterId)
-
-		result := ctx.requireQuery(ctx.adminSessionId, "services/"+service.id)
-		jsonService := ctx.requirePath(result, "data")
-		service.validate(ctx, jsonService)
-	})
-
 	t.Run("update service should pass", func(t *testing.T) {
 		now := time.Now()
 		service := ctx.requireCreateNewService()
@@ -229,5 +161,29 @@ func Test_Services(t *testing.T) {
 		jsonService := ctx.requirePath(result, "data")
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
+	})
+
+	t.Run("role attributes should be created", func(t *testing.T) {
+		role1 := uuid.New().String()
+		role2 := uuid.New().String()
+		service := ctx.newTestService()
+		service.edgeRouterRoles = []string{role1, role2}
+		service.id = ctx.requireCreateEntity(service)
+		ctx.validateEntityWithQuery(service)
+		ctx.validateEntityWithLookup(service)
+	})
+
+	ctx.enabledJsonLogging = true
+	t.Run("role attributes should be updated", func(t *testing.T) {
+		role1 := uuid.New().String()
+		role2 := uuid.New().String()
+		service := ctx.newTestService()
+		service.edgeRouterRoles = []string{role1, role2}
+		service.id = ctx.requireCreateEntity(service)
+
+		role3 := uuid.New().String()
+		service.edgeRouterRoles = []string{role2, role3}
+		ctx.requireUpdateEntity(service)
+		ctx.validateEntityWithLookup(service)
 	})
 }

@@ -37,6 +37,7 @@ const (
 	EntityTypeIdentities         = "identities"
 	EntityTypeIdentityTypes      = "identityTypes"
 	EntityTypeServices           = "services"
+	EntityTypeServicePolicies    = "servicePolicies"
 	EntityTypeSessions           = "sessions"
 	EntityTypeSessionCerts       = "sessionCerts"
 	EntityTypeEnrollments        = "enrollments"

@@ -106,6 +106,13 @@
         "$ref": "#/definitions/id-str"
       }
     },
+    "arrayOfString-null": {
+      "type": ["array", "null"],
+      "default": [],
+      "items": {
+        "type" : "string"
+      }
+    },
     "password": {
       "type": "string",
       "minLength": 6,

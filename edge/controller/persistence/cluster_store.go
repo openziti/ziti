@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -96,11 +96,11 @@ func (store *clusterStoreImpl) initializeLinked() {
 }
 
 func (store *clusterStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Cluster, error) {
-	cluster := &Cluster{}
-	if found, err := store.BaseLoadOneById(tx, id, cluster); !found || err != nil {
+	entity := &Cluster{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return cluster, nil
+	return entity, nil
 }
 
 func (store *clusterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Cluster, error) {

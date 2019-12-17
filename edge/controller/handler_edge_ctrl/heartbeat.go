@@ -17,11 +17,11 @@
 package handler_edge_ctrl
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-edge/edge/controller/env"
-	"github.com/netfoundry/ziti-edge/edge/pb/edge_ctrl_pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/edge/controller/env"
+	"github.com/netfoundry/ziti-edge/edge/pb/edge_ctrl_pb"
+	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type sessionHeartbeatHandler struct {
@@ -38,12 +38,12 @@ func (h *sessionHeartbeatHandler) ContentType() int32 {
 	return env.ApiSessionHeartbeatType
 }
 
-func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionHeartbeat{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			err := h.appEnv.Stores.Session.MarkActivity(req.Tokens)
+			err := h.appEnv.GetHandlers().ApiSession.HandleMarkActivity(req.Tokens)
 
 			if err != nil {
 				pfxlog.Logger().

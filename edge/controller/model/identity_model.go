@@ -30,6 +30,7 @@ type Identity struct {
 	IdentityTypeId string
 	IsDefaultAdmin bool
 	IsAdmin        bool
+	RoleAttributes []string
 }
 
 func (entity *Identity) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
@@ -39,6 +40,7 @@ func (entity *Identity) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (pe
 		IdentityTypeId:     entity.IdentityTypeId,
 		IsDefaultAdmin:     entity.IsDefaultAdmin,
 		IsAdmin:            entity.IsAdmin,
+		RoleAttributes:     entity.RoleAttributes,
 	}
 
 	return edgeService, nil
@@ -47,7 +49,9 @@ func (entity *Identity) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (pe
 func (entity *Identity) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.Identity{
 		Name:               entity.Name,
+		IdentityTypeId:     entity.IdentityTypeId,
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		RoleAttributes:     entity.RoleAttributes,
 	}, nil
 }
 
@@ -65,6 +69,7 @@ func (entity *Identity) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.IdentityTypeId = boltIdentity.IdentityTypeId
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
+	entity.RoleAttributes = boltIdentity.RoleAttributes
 
 	return nil
 

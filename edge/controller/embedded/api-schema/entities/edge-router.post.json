@@ -3,15 +3,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "name",
-    "clusterId"
+    "name"
   ],
   "properties": {
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "clusterId": {
-      "$ref": "definitions.all.json#/definitions/id"
+    "roleAttributes" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

@@ -17,12 +17,13 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/edge/controller/util"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"strconv"
 )
 
 func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
@@ -32,9 +33,9 @@ func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 			store: env.GetStores().EdgeRouter,
 		},
 		allowedFieldsChecker: boltz.MapFieldChecker{
-			persistence.FieldName:              struct{}{},
-			persistence.FieldEdgeRouterCluster: struct{}{},
-			persistence.FieldTags:              struct{}{},
+			persistence.FieldName:           struct{}{},
+			persistence.FieldRoleAttributes: struct{}{},
+			persistence.FieldTags:           struct{}{},
 		},
 	}
 	handler.impl = handler
@@ -51,19 +52,6 @@ func (handler *EdgeRouterHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *EdgeRouterHandler) HandleCreate(modelEntity *EdgeRouter) (string, error) {
-	cluster, err := handler.env.GetHandlers().Cluster.HandleRead(modelEntity.ClusterId)
-
-	if err != nil && !util.IsErrNotFoundErr(err) {
-		return "", err
-	}
-
-	if cluster == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("clusterId not found", "clusterId", modelEntity.ClusterId)
-		apiErr.AppendCause = true
-		return "", apiErr
-	}
-
 	return handler.create(modelEntity, nil)
 }
 
@@ -140,16 +128,69 @@ func (handler *EdgeRouterHandler) HandleList(queryOptions *QueryOptions) (*EdgeR
 	return result, nil
 }
 
+func (handler *EdgeRouterHandler) HandleListForSession(sessionId string) (*EdgeRouterListResult, error) {
+	var result *EdgeRouterListResult
+
+	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		session, err := handler.env.GetStores().Session.LoadOneById(tx, sessionId)
+		if err != nil {
+			return err
+		}
+		apiSession, err := handler.env.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
+		if err != nil {
+			return err
+		}
+
+		result, err = handler.HandleListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, nil)
+		return err
+	})
+	return result, err
+}
+
+func (handler *EdgeRouterHandler) HandleListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+	service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
+	if err != nil {
+		return nil, err
+	}
+	if service == nil {
+		return nil, errors.Errorf("no service with id %v found", serviceId)
+	}
+
+	query := fmt.Sprintf(`anyOf(edgeRouterPolicies.identities) = "%v"`, identityId)
+
+	if len(service.RoleAttributes) > 0 && !stringz.Contains(service.RoleAttributes, "all") {
+		query += fmt.Sprintf(` and anyOf(services) = "%v"`, service.Id)
+	}
+
+	if limit != nil {
+		query += " limit " + strconv.Itoa(*limit)
+	}
+
+	result := &EdgeRouterListResult{handler: handler}
+	if err = handler.listWithTx(tx, query, result.collect); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (handler *EdgeRouterHandler) HandleCollectServices(id string, collector func(entity BaseModelEntity)) error {
+	return handler.HandleCollectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
+}
+
+func (handler *EdgeRouterHandler) HandleCollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
+}
+
 type EdgeRouterListResult struct {
 	handler     *EdgeRouterHandler
 	EdgeRouters []*EdgeRouter
 	QueryMetaData
 }
 
-func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids [][]byte, queryMetaData *QueryMetaData) error {
+func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, string(key))
+		entity, err := result.handler.handleReadInTx(tx, key)
 		if err != nil {
 			return err
 		}

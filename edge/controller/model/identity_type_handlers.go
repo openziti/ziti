@@ -117,7 +117,7 @@ func (handler *IdentityTypeHandler) HandleList(queryOptions *QueryOptions) (*Ide
 func (handler *IdentityTypeHandler) HandleReadByName(name string) (*IdentityType, error) {
 	modelIdentityType := &IdentityType{}
 	nameIndex := handler.env.GetStores().IdentityType.GetNameIndex()
-	if err := handler.readWithIndex([]byte(name), nameIndex, modelIdentityType); err != nil {
+	if err := handler.readWithIndex("name", []byte(name), nameIndex, modelIdentityType); err != nil {
 		return nil, err
 	}
 	return modelIdentityType, nil
@@ -129,10 +129,10 @@ type IdentityTypeListResult struct {
 	QueryMetaData
 }
 
-func (result *IdentityTypeListResult) collect(tx *bbolt.Tx, ids [][]byte, queryMetaData *QueryMetaData) error {
+func (result *IdentityTypeListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, string(key))
+		entity, err := result.handler.handleReadInTx(tx, key)
 		if err != nil {
 			return err
 		}

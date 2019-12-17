@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -100,11 +100,11 @@ func (store *appwanStoreImpl) initializeLinked() {
 }
 
 func (store *appwanStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Appwan, error) {
-	appwan := &Appwan{}
-	if found, err := store.BaseLoadOneById(tx, id, appwan); !found || err != nil {
+	entity := &Appwan{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return appwan, nil
+	return entity, nil
 }
 
 func (store *appwanStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Appwan, error) {

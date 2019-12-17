@@ -17,17 +17,18 @@
 package model
 
 type Handlers struct {
-	ApiSession   *ApiSessionHandler
-	Appwan       *AppwanHandler
-	Ca           *CaHandler
-	Cluster      *ClusterHandler
-	EdgeRouter   *EdgeRouterHandler
-	EventLog     *EventLogHandler
-	GeoRegion    *GeoRegionHandler
-	Identity     *IdentityHandler
-	IdentityType *IdentityTypeHandler
-	Service      *ServiceHandler
-	Session      *SessionHandler
+	ApiSession       *ApiSessionHandler
+	Appwan           *AppwanHandler
+	Ca               *CaHandler
+	EdgeRouter       *EdgeRouterHandler
+	EdgeRouterPolicy *EdgeRouterPolicyHandler
+	EventLog         *EventLogHandler
+	GeoRegion        *GeoRegionHandler
+	Identity         *IdentityHandler
+	IdentityType     *IdentityTypeHandler
+	Service          *ServiceHandler
+	ServicePolicy    *ServicePolicyHandler
+	Session          *SessionHandler
 
 	Authenticator *AuthenticatorHandler
 	Enrollment    *EnrollmentHandler
@@ -38,17 +39,18 @@ type Handlers struct {
 func InitHandlers(env Env) *Handlers {
 	handlers := &Handlers{}
 	handlers.ApiSession = NewApiSessionHandler(env)
+	handlers.Authenticator = NewAuthenticatorHandler(env)
 	handlers.Appwan = NewAppwanHandler(env)
 	handlers.Ca = NewCaHandler(env)
-	handlers.Cluster = NewClusterHandler(env)
 	handlers.EdgeRouter = NewEdgeRouterHandler(env)
+	handlers.EdgeRouterPolicy = NewEdgeRouterPolicyHandler(env)
+	handlers.Enrollment = NewEnrollmentHandler(env)
 	handlers.EventLog = NewEventLogHandler(env)
-	handlers.Service = NewServiceHandler(env)
 	handlers.GeoRegion = NewGeoRegionHandler(env)
 	handlers.Identity = NewIdentityHandler(env)
 	handlers.IdentityType = NewIdentityTypeHandler(env)
-	handlers.Authenticator = NewAuthenticatorHandler(env)
-	handlers.Enrollment = NewEnrollmentHandler(env)
+	handlers.Service = NewServiceHandler(env)
+	handlers.ServicePolicy = NewServicePolicyHandler(env)
 	handlers.Session = NewSessionHandler(env)
 
 	handlers.Associations = NewAssociationsHandler(env)

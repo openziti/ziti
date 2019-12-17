@@ -17,15 +17,15 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"math/rand"
+	"sort"
 	"testing"
 	"time"
 )
@@ -34,8 +34,6 @@ func Test_EdgeServiceStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
-	req := require.New(t)
-	req.NoError(ctx.err)
 
 	t.Run("test service parent child relationship", ctx.testServiceParentChild)
 	t.Run("test create invalid api services", ctx.testCreateInvalidServices)
@@ -43,6 +41,7 @@ func Test_EdgeServiceStore(t *testing.T) {
 	t.Run("test load/query services", ctx.testLoadQueryServices)
 	t.Run("test update services", ctx.testUpdateServices)
 	t.Run("test delete services", ctx.testDeleteServices)
+	t.Run("test edge router role evaluation", ctx.testServiceEdgeRouterRoleEvaluation)
 }
 
 func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
@@ -229,9 +228,8 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
-		strIds := stringz.ToStringSlice(ids)
-		ctx.True(stringz.Contains(strIds, entities.service1.Id))
-		ctx.True(stringz.Contains(strIds, entities.service2.Id))
+		ctx.True(stringz.Contains(ids, entities.service1.Id))
+		ctx.True(stringz.Contains(ids, entities.service2.Id))
 		return nil
 	})
 	ctx.NoError(err)
@@ -282,4 +280,176 @@ func (ctx *TestContext) testDeleteServices(_ *testing.T) {
 	entities := ctx.createServiceTestEntities()
 	ctx.requireDelete(entities.service1)
 	ctx.requireDelete(entities.service2)
+}
+
+func (ctx *TestContext) testServiceEdgeRouterRoleEvaluation(_ *testing.T) {
+	ctx.cleanupAll()
+
+	// create some identities, edge routers for reference by id
+	// create initial policies, check state
+	// create edge routers/identities with roles on create, check state
+	// delete all er/identities, check state
+	// create edge routers/identities with roles added after create, check state
+	// add 5 new policies, check
+	// modify polices, add roles, check
+	// modify policies, remove roles, check
+
+	var edgeRouters []*EdgeRouter
+	for i := 0; i < 5; i++ {
+		edgeRouter := newEdgeRouter(uuid.New().String())
+		ctx.requireCreate(edgeRouter)
+		edgeRouters = append(edgeRouters, edgeRouter)
+	}
+
+	edgeRouterRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
+	var edgeRouterRoles []string
+	for _, role := range edgeRouterRoleAttrs {
+		edgeRouterRoles = append(edgeRouterRoles, "@"+role)
+	}
+
+	multipleEdgeRouterList := []string{edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+
+	services := ctx.createServiceWithEdgeRouterLimits(edgeRouterRoles, edgeRouters, true)
+
+	for i := 0; i < 9; i++ {
+		relatedEdgeRouters := ctx.getRelatedIds(services[i], EntityTypeEdgeRouters)
+		if i == 3 {
+			ctx.Equal([]string{edgeRouters[0].Id}, relatedEdgeRouters)
+		} else if i == 4 || i == 5 {
+			sort.Strings(multipleEdgeRouterList)
+			ctx.Equal(multipleEdgeRouterList, relatedEdgeRouters)
+		} else if i == 7 {
+			ctx.Equal([]string{edgeRouters[4].Id}, relatedEdgeRouters)
+		} else if i == 9 {
+			ctx.Equal(6, len(relatedEdgeRouters))
+		} else {
+			ctx.Equal(0, len(relatedEdgeRouters))
+		}
+	}
+
+	stringz.Permutations(edgeRouterRoleAttrs, func(roles []string) {
+		edgeRouter := newEdgeRouter(uuid.New().String(), roles...)
+		ctx.requireCreate(edgeRouter)
+		edgeRouters = append(edgeRouters, edgeRouter)
+	})
+
+	ctx.validateServiceEdgeRouters(edgeRouters, services)
+
+	for _, edgeRouter := range edgeRouters {
+		ctx.requireDelete(edgeRouter)
+	}
+
+	edgeRouters = nil
+
+	stringz.Permutations(edgeRouterRoleAttrs, func(roles []string) {
+		edgeRouter := newEdgeRouter(uuid.New().String())
+		ctx.requireCreate(edgeRouter)
+		edgeRouter.RoleAttributes = roles
+		ctx.requireUpdate(edgeRouter)
+		edgeRouters = append(edgeRouters, edgeRouter)
+	})
+
+	ctx.validateServiceEdgeRouters(edgeRouters, services)
+
+	// ensure policies get cleaned up
+	for _, service := range services {
+		ctx.requireDelete(service)
+	}
+
+	// test with policies created after identities/edge routers
+	services = ctx.createServiceWithEdgeRouterLimits(edgeRouterRoles, edgeRouters, true)
+
+	ctx.validateServiceEdgeRouters(edgeRouters, services)
+
+	for _, service := range services {
+		ctx.requireDelete(service)
+	}
+
+	// test with policies created after identities/edge routers and roles added after created
+	services = ctx.createServiceWithEdgeRouterLimits(edgeRouterRoles, edgeRouters, false)
+
+	ctx.validateServiceEdgeRouters(edgeRouters, services)
+
+	for _, edgeRouter := range edgeRouters {
+		if len(edgeRouter.RoleAttributes) > 0 {
+			edgeRouter.RoleAttributes = edgeRouter.RoleAttributes[1:]
+			ctx.requireUpdate(edgeRouter)
+		}
+	}
+
+	for _, service := range services {
+		if len(service.EdgeRouterRoles) > 0 {
+			service.EdgeRouterRoles = service.EdgeRouterRoles[1:]
+		}
+		ctx.requireUpdate(service)
+	}
+
+	ctx.validateServiceEdgeRouters(edgeRouters, services)
+}
+
+func (ctx *TestContext) createServiceWithEdgeRouterLimits(edgeRouterRoles []string, edgeRouters []*EdgeRouter, oncreate bool) []*EdgeService {
+	var services []*EdgeService
+	for i := 0; i < 10; i++ {
+		service := newEdgeService(uuid.New().String())
+		if !oncreate {
+			ctx.requireCreate(service)
+		}
+		if i == 1 {
+			service.EdgeRouterRoles = []string{edgeRouterRoles[0]}
+		}
+		if i == 2 {
+			service.EdgeRouterRoles = []string{edgeRouterRoles[1], edgeRouterRoles[2], edgeRouterRoles[3]}
+		}
+		if i == 3 {
+			service.EdgeRouterRoles = []string{edgeRouters[0].Id}
+		}
+		if i == 4 {
+			service.EdgeRouterRoles = []string{edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+		}
+		if i == 5 {
+			service.EdgeRouterRoles = []string{edgeRouterRoles[4], edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+		}
+		if i == 6 {
+			service.EdgeRouterRoles = []string{uuid.New().String()}
+		}
+		if i == 7 {
+			service.EdgeRouterRoles = []string{uuid.New().String(), edgeRouters[4].Id}
+		}
+		if i == 8 {
+			service.EdgeRouterRoles = []string{uuid.New().String(), edgeRouterRoles[5]}
+		}
+		if i == 9 {
+			service.EdgeRouterRoles = []string{"@all"}
+		}
+
+		services = append(services, service)
+		if oncreate {
+			ctx.requireCreate(service)
+		} else {
+			ctx.requireUpdate(service)
+		}
+	}
+	return services
+}
+
+func (ctx *TestContext) validateServiceEdgeRouters(edgeRouters []*EdgeRouter, services []*EdgeService) {
+	for _, service := range services {
+		count := 0
+		relatedEdgeRouters := ctx.getRelatedIds(service, EntityTypeEdgeRouters)
+		for _, edgeRouter := range edgeRouters {
+			relatedServices := ctx.getRelatedIds(edgeRouter, EntityTypeServices)
+			shouldContain := ctx.policyShouldMatch(service.EdgeRouterRoles, edgeRouter.Id, edgeRouter.RoleAttributes)
+			policyContains := stringz.Contains(relatedEdgeRouters, edgeRouter.Id)
+			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. service roles: %v, service edge routers %+v, edge router services: %+v",
+				edgeRouter.RoleAttributes, service.EdgeRouterRoles, relatedEdgeRouters, relatedServices)
+			if shouldContain {
+				count++
+			}
+
+			entityContains := stringz.Contains(relatedServices, service.Id)
+			ctx.Equal(shouldContain, entityContains, "identity: %v, service: %v, entity roles attr: %v. service roles: %v",
+				edgeRouter.Id, service.Id, edgeRouter.RoleAttributes, service.EdgeRouterRoles)
+		}
+		ctx.Equal(count, len(relatedEdgeRouters))
+	}
 }

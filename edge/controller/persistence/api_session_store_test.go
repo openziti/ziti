@@ -17,12 +17,11 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -32,8 +31,6 @@ func Test_ApiSessionStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
-	req := require.New(t)
-	req.NoError(ctx.err)
 
 	t.Run("test create invalid api sessions", ctx.testCreateInvalidApiSessions)
 	t.Run("test create api sessions", ctx.testCreateApiSessions)
@@ -165,9 +162,8 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 		ids, _, err := ctx.stores.ApiSession.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
-		strIds := stringz.ToStringSlice(ids)
-		ctx.True(stringz.Contains(strIds, entities.apiSession2.Id))
-		ctx.True(stringz.Contains(strIds, entities.apiSession3.Id))
+		ctx.True(stringz.Contains(ids, entities.apiSession2.Id))
+		ctx.True(stringz.Contains(ids, entities.apiSession3.Id))
 
 		query = fmt.Sprintf(`anyOf(sessions.service.id) = "%v"`, entities.serviceId)
 		ids, _, err = ctx.stores.ApiSession.QueryIds(tx, query)

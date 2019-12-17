@@ -17,16 +17,16 @@
 package routes
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/model"
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
 	"github.com/netfoundry/ziti-edge/edge/controller/util"
-	"encoding/json"
-	"fmt"
-	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"strings"
@@ -433,7 +433,7 @@ func ListAssociations(ae *env.AppEnv, rc *response.RequestContext, idType respon
 	})
 
 	if err != nil {
-		if _, ok := err.(*util.RecordNotFoundError); ok {
+		if util.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -531,7 +531,7 @@ func UpdateAssociations(ae *env.AppEnv, rc *response.RequestContext, idType resp
 	err = assocF(parentId, in.Ids)
 
 	if err != nil {
-		if _, ok := err.(*util.RecordNotFoundError); ok {
+		if util.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -580,7 +580,7 @@ func RemoveAssociationForModel(rc *response.RequestContext, idType response.IdTy
 	err = assocF(parentId, []string{subId})
 
 	if err != nil {
-		if _, ok := err.(*util.RecordNotFoundError); ok {
+		if util.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}

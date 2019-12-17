@@ -54,7 +54,7 @@ func (handler *ApiSessionHandler) HandleRead(id string) (*ApiSession, error) {
 func (handler *ApiSessionHandler) HandleReadByToken(token string) (*ApiSession, error) {
 	modelApiSession := &ApiSession{}
 	tokenIndex := handler.env.GetStores().ApiSession.GetTokenIndex()
-	if err := handler.readWithIndex([]byte(token), tokenIndex, modelApiSession); err != nil {
+	if err := handler.readWithIndex("token", []byte(token), tokenIndex, modelApiSession); err != nil {
 		return nil, err
 	}
 	return modelApiSession, nil
@@ -78,6 +78,12 @@ func (handler *ApiSessionHandler) HandleUpdate(apiSession *ApiSession) error {
 
 func (handler *ApiSessionHandler) HandleDelete(id string) error {
 	return handler.delete(id, nil, nil)
+}
+
+func (handler *ApiSessionHandler) HandleMarkActivity(tokens []string) error {
+	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		return handler.GetEnv().GetStores().ApiSession.MarkActivity(tx, tokens)
+	})
 }
 
 func (handler *ApiSessionHandler) HandleQuery(query string) (*ApiSessionListResult, error) {
@@ -104,10 +110,10 @@ type ApiSessionListResult struct {
 	QueryMetaData
 }
 
-func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids [][]byte, queryMetaData *QueryMetaData) error {
+func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		ApiSession, err := result.handler.handleReadInTx(tx, string(key))
+		ApiSession, err := result.handler.handleReadInTx(tx, key)
 		if err != nil {
 			return err
 		}

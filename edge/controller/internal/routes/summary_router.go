@@ -19,8 +19,9 @@ package routes
 import (
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
-	"github.com/netfoundry/ziti-edge/edge/migration"
+	"go.etcd.io/bbolt"
 
 	"github.com/Jeffail/gabs"
 	"reflect"
@@ -52,33 +53,29 @@ func (ir *SummaryRouter) Register(ae *env.AppEnv) {
 func (ir *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	data := gabs.New()
 
-	v := reflect.ValueOf(ae.Stores).Elem()
+	v := reflect.ValueOf(ae.BoltStores).Elem()
 
-	//todo: this used to remove updb/cert stores, not necessary anymore?
-	filter := map[string]bool{}
+	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for i := 0; i < v.NumField(); i++ {
+			is := v.Field(i).Interface()
 
-	for i := 0; i < v.NumField(); i++ {
-		is := v.Field(i).Interface()
+			if store, ok := is.(persistence.Store); ok {
+				_, count, err := store.QueryIds(tx, "true limit 1")
+				if err != nil {
+					return err
+				}
 
-		if store, ok := is.(migration.Store); ok {
-			stats, err := store.BaseStatsList(&migration.QueryOptions{})
-			if err != nil {
-				rc.RequestResponder.RespondWithError(err)
-				return
-			}
-
-			if filter[store.PluralEntityName()] {
-				continue
-			}
-
-			_, err = data.SetP(stats.Count, store.PluralEntityName())
-
-			if err != nil {
-				rc.RequestResponder.RespondWithError(err)
-				return
+				if _, err = data.SetP(count, store.GetEntityType()); err != nil {
+					return err
+				}
 			}
 		}
-	}
+		return nil
+	})
 
-	rc.RequestResponder.RespondWithOk(data.Data(), nil)
+	if err != nil {
+		rc.RequestResponder.RespondWithError(err)
+	} else {
+		rc.RequestResponder.RespondWithOk(data.Data(), nil)
+	}
 }

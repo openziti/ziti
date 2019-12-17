@@ -21,21 +21,23 @@ package tests
 import (
 	cryptoTls "crypto/tls"
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"gopkg.in/resty.v1"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"sort"
 	"testing"
 	"time"
 
-	"github.com/netfoundry/ziti-foundation/common/constants"
-	"github.com/netfoundry/ziti-edge/edge/controller/server"
-	"github.com/netfoundry/ziti-fabric/controller"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/edge/controller/server"
+	"github.com/netfoundry/ziti-fabric/controller"
+	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
@@ -65,7 +67,6 @@ type TestContext struct {
 	req                *require.Assertions
 	client             *resty.Client
 	enabledJsonLogging bool
-	clusterId          string
 }
 
 var defaultTestContext = &TestContext{}
@@ -109,7 +110,7 @@ func (ctx *TestContext) HttpClient(transport *http.Transport) *http.Client {
 		Transport:     transport,
 		CheckRedirect: nil,
 		Jar:           jar,
-		Timeout:       20 * time.Second,
+		Timeout:       2000 * time.Second,
 	}
 }
 
@@ -239,11 +240,12 @@ func (ctx *TestContext) requireCreateCluster(name string) string {
 	return ctx.getEntityId(body)
 }
 
-func (ctx *TestContext) requireCreateIdentity(name string, password string, isAdmin bool) string {
+func (ctx *TestContext) requireCreateIdentity(name string, password string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, name, "name")
 	ctx.setJsonValue(entityData, "User", "type")
 	ctx.setJsonValue(entityData, isAdmin, "isAdmin")
+	ctx.setJsonValue(entityData, rolesAttributes, "roleAttributes")
 
 	enrollments := map[string]interface{}{
 		"updb": name,
@@ -258,10 +260,43 @@ func (ctx *TestContext) requireCreateIdentity(name string, password string, isAd
 	return id
 }
 
+func (ctx *TestContext) requireNewService(roleAttributes ...string) *testService {
+	service := ctx.newTestService()
+	service.roleAttributes = roleAttributes
+	ctx.requireCreateEntity(service)
+	return service
+}
+
+func (ctx *TestContext) requireNewEdgeRouter(roleAttributes ...string) *testEdgeRouter {
+	edgeRouter := newTestEdgeRouter(roleAttributes...)
+	ctx.requireCreateEntity(edgeRouter)
+	return edgeRouter
+}
+
+func (ctx *TestContext) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *testServicePolicy {
+	servicePolicy := newTestServicePolicy(policyType, serviceRoles, identityRoles)
+	ctx.requireCreateEntity(servicePolicy)
+	return servicePolicy
+}
+
+func (ctx *TestContext) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *testEdgeRouterPolicy {
+	edgeRouterPolicy := newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles)
+	ctx.requireCreateEntity(edgeRouterPolicy)
+	return edgeRouterPolicy
+}
+
+func (ctx *TestContext) requireNewIdentity(isAdmin bool, roleAttributes ...string) *testIdentity {
+	identity := newTestIdentity(isAdmin, roleAttributes...)
+	ctx.requireCreateEntity(identity)
+	return identity
+}
+
 func (ctx *TestContext) requireCreateEntity(entity testEntity) string {
 	httpStatus, body := ctx.createEntity(entity)
 	ctx.req.Equal(http.StatusCreated, httpStatus)
-	return ctx.getEntityId(body)
+	id := ctx.getEntityId(body)
+	entity.setId(id)
+	return id
 }
 
 func (ctx *TestContext) requireDeleteEntity(entity testEntity) {
@@ -370,6 +405,54 @@ func (ctx *TestContext) requireAddAssociation(url string, ids ...string) {
 	ctx.req.Equal(http.StatusOK, httpStatus)
 }
 
+func (ctx *TestContext) validateAssociations(entity testEntity, childType string, children ...testEntity) {
+	var ids []string
+	for _, child := range children {
+		ids = append(ids, child.getId())
+	}
+	ctx.validateAssociationsAt(fmt.Sprintf("%v/%v/%v", entity.getEntityType(), entity.getId(), childType), ids...)
+}
+
+func (ctx *TestContext) validateAssociationContains(entity testEntity, childType string, children ...testEntity) {
+	var ids []string
+	for _, child := range children {
+		ids = append(ids, child.getId())
+	}
+	ctx.validateAssociationsAtContains(fmt.Sprintf("%v/%v/%v", entity.getEntityType(), entity.getId(), childType), ids...)
+}
+
+func (ctx *TestContext) validateAssociationsAt(url string, ids ...string) {
+	result := ctx.requireQuery(ctx.adminSessionId, url)
+	data := ctx.requirePath(result, "data")
+	children, err := data.Children()
+
+	var actualIds []string
+	ctx.req.NoError(err)
+	for _, child := range children {
+		actualIds = append(actualIds, child.S("id").Data().(string))
+	}
+
+	sort.Strings(ids)
+	sort.Strings(actualIds)
+	ctx.req.Equal(ids, actualIds)
+}
+
+func (ctx *TestContext) validateAssociationsAtContains(url string, ids ...string) {
+	result := ctx.requireQuery(ctx.adminSessionId, url)
+	data := ctx.requirePath(result, "data")
+	children, err := data.Children()
+
+	var actualIds []string
+	ctx.req.NoError(err)
+	for _, child := range children {
+		actualIds = append(actualIds, child.S("id").Data().(string))
+	}
+
+	for _, id := range ids {
+		ctx.req.True(stringz.Contains(actualIds, id), "%+v should contain %v", actualIds, id)
+	}
+}
+
 func (ctx *TestContext) addAssociation(url string, ids ...string) (int, []byte) {
 	return ctx.updateAssociation(http.MethodPut, url, ids...)
 }
@@ -404,17 +487,12 @@ func (ctx *TestContext) isServiceVisibleToUser(info *userInfo, serviceId string)
 }
 
 func (ctx *TestContext) newTestService() *testService {
-	if ctx.clusterId == "" {
-		ctx.clusterId = ctx.requireCreateCluster(uuid.New().String())
-	}
-
 	return &testService{
 		name:            uuid.New().String(),
 		dnsHostname:     uuid.New().String(),
 		dnsPort:         0,
 		egressRouter:    uuid.New().String(),
 		endpointAddress: uuid.New().String(),
-		clusterIds:      []string{ctx.clusterId},
 		hostIds:         nil,
 		tags:            nil,
 	}

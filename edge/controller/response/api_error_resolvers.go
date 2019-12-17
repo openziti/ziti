@@ -17,13 +17,13 @@
 package response
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/edge/controller/util"
-	"fmt"
 )
 
 func NotFoundByFieldErrorHandler(e error, entityName, field string, value interface{}) error {
-	if _, ok := e.(*util.RecordNotFoundError); ok {
+	if util.IsErrNotFoundErr(e) {
 		return apierror.NewField(apierror.NewFieldError(fmt.Sprintf("%s not found", entityName), field, value))
 	}
 	return e

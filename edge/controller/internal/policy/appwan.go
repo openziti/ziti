@@ -17,10 +17,10 @@
 package policy
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/runner"
-	"fmt"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -62,7 +62,7 @@ func (enforcer *AppWanEnforcer) Run() error {
 				return err
 			}
 
-			if identity.IsAdmin == true {
+			if identity.IsAdmin {
 				continue
 			}
 

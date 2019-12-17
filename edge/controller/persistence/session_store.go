@@ -17,9 +17,9 @@
 package persistence
 
 import (
+	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -164,7 +164,7 @@ func (store *sessionStoreImpl) initializeLinked() {
 
 func (store *sessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Session, error) {
 	entity := &Session{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil

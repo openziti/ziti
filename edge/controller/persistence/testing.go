@@ -17,13 +17,13 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -43,7 +43,6 @@ type TestContext struct {
 	routerStore   network.RouterStore
 	stores        *Stores
 	ReferenceTime time.Time
-	err           error
 }
 
 func NewTestContext(t *testing.T) *TestContext {
@@ -56,7 +55,6 @@ func NewTestContext(t *testing.T) *TestContext {
 		routerStore:   nil,
 		stores:        nil,
 		ReferenceTime: time.Now(),
-		err:           nil,
 	}
 }
 
@@ -76,25 +74,30 @@ func (ctx *TestContext) GetRouterStore() network.RouterStore {
 	return ctx.routerStore
 }
 
+func (ctx *TestContext) GetStores() *Stores {
+	return ctx.stores
+}
+
 func (ctx *TestContext) RemoveFromCache(_ string) {
 }
 
 func (ctx *TestContext) Init() {
-	ctx.dbFile, ctx.err = ioutil.TempFile("", "query-bolt-ctx-db")
-	if ctx.err != nil {
-		return
-	}
-	ctx.err = ctx.dbFile.Close()
-	if ctx.err != nil {
-		return
-	}
-	ctx.db, ctx.err = db.Open(ctx.dbFile.Name())
-	if ctx.err != nil {
-		return
-	}
+	var err error
+	ctx.dbFile, err = ioutil.TempFile("", "query-bolt-ctx-db")
+	ctx.NoError(err)
+
+	err = ctx.dbFile.Close()
+	ctx.NoError(err)
+
+	ctx.db, err = db.Open(ctx.dbFile.Name())
+	ctx.NoError(err)
+
 	ctx.serviceStore = network.NewServiceStore(ctx.db)
 	ctx.routerStore = network.NewRouterStore(ctx.db)
-	ctx.stores, ctx.err = NewBoltStores(ctx)
+	ctx.stores, err = NewBoltStores(ctx)
+	ctx.NoError(err)
+
+	ctx.NoError(RunMigrations(ctx, ctx.stores, nil))
 }
 
 func (ctx *TestContext) Cleanup() {
@@ -114,7 +117,7 @@ func (ctx *TestContext) Cleanup() {
 func (ctx *TestContext) requireNewCluster(name string) *Cluster {
 	cluster := &Cluster{
 		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               uuid.New().String(),
+		Name:               name,
 	}
 	ctx.requireCreate(cluster)
 	return cluster
@@ -171,25 +174,54 @@ func (ctx *TestContext) validateDeleted(id string) {
 }
 
 func (ctx *TestContext) requireCreate(entity boltz.BaseEntity) {
-	ctx.NoError(ctx.create(entity))
+	err := ctx.create(entity)
+	if err != nil {
+		fmt.Printf("error: %+v\n", err)
+	}
+	ctx.NoError(err)
+}
+
+func (ctx *TestContext) requireUpdate(entity boltz.BaseEntity) {
+	ctx.NoError(ctx.update(entity))
 }
 
 func (ctx *TestContext) create(entity boltz.BaseEntity) error {
 	return ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		mutateContext := boltz.NewMutateContext(tx)
-		var store boltz.CrudStore
-		if _, ok := entity.(*network.Service); ok {
-			store = ctx.GetServiceStore()
-		} else if _, ok := entity.(*network.Router); ok {
-			store = ctx.GetRouterStore()
-		} else {
-			store = ctx.stores.getStoreForEntity(entity)
-			if store == nil {
-				return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
-			}
+		store, err := ctx.getStoreForEntity(entity)
+		if err != nil {
+			return err
 		}
 		return store.Create(mutateContext, entity)
 	})
+}
+
+func (ctx *TestContext) update(entity boltz.BaseEntity) error {
+	return ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+		mutateContext := boltz.NewMutateContext(tx)
+		store, err := ctx.getStoreForEntity(entity)
+		if err != nil {
+			return err
+		}
+		return store.Update(mutateContext, entity, nil)
+	})
+}
+
+func (ctx *TestContext) getStoreForEntity(entity boltz.BaseEntity) (boltz.CrudStore, error) {
+	var store boltz.CrudStore
+
+	if _, ok := entity.(*network.Service); ok {
+		store = ctx.GetServiceStore()
+	} else if _, ok := entity.(*network.Router); ok {
+		store = ctx.GetRouterStore()
+	} else {
+		store = ctx.stores.getStoreForEntity(entity)
+	}
+	if store != nil {
+		return store, nil
+	}
+
+	return nil, errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
 }
 
 func (ctx *TestContext) validateBaseline(entity BaseEdgeEntity, loaded BaseEdgeEntity) {
@@ -252,6 +284,7 @@ func (ctx *TestContext) cleanupAll() {
 	stores := []boltz.CrudStore{
 		ctx.stores.Session,
 		ctx.stores.ApiSession,
+		ctx.stores.EdgeRouterPolicy,
 		ctx.stores.Appwan,
 		ctx.GetServiceStore(),
 		ctx.stores.EdgeService,
@@ -269,4 +302,18 @@ func (ctx *TestContext) cleanupAll() {
 		}
 		return nil
 	})
+}
+
+func (ctx *TestContext) getIdentityTypeId() string {
+	var result string
+	err := ctx.db.View(func(tx *bbolt.Tx) error {
+		ids, _, err := ctx.stores.IdentityType.QueryIds(tx, "true")
+		if err != nil {
+			return err
+		}
+		result = ids[0]
+		return nil
+	})
+	ctx.NoError(err)
+	return result
 }

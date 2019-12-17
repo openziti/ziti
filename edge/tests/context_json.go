@@ -19,10 +19,10 @@
 package tests
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	"net/http"
 	"reflect"
 	"sort"
@@ -56,6 +56,18 @@ func (ctx *TestContext) pathEquals(container *gabs.Container, val interface{}, p
 		ctx.req.Nil(pathValue)
 	} else {
 		ctx.req.Equal(val, pathValue.Data())
+	}
+}
+
+func (ctx *TestContext) pathEqualsStringSlice(container *gabs.Container, val interface{}, path []string) {
+	pathValue := container.Search(path...)
+	if val == nil || reflect.ValueOf(val).IsNil() {
+		if pathValue != nil {
+			ctx.req.Nil(pathValue.Data())
+		}
+	} else {
+		slice := ctx.toStringSlice(pathValue)
+		ctx.req.Equal(val, slice)
 	}
 }
 
@@ -171,4 +183,8 @@ func path(path ...string) []string {
 		return strings.Split(path[0], ".")
 	}
 	return path
+}
+
+func s(vals ...string) []string {
+	return vals
 }

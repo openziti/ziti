@@ -17,11 +17,11 @@
 package routes
 
 import (
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/model"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -33,13 +33,14 @@ type ServiceDnsApiPost struct {
 }
 
 type ServiceApiCreate struct {
-	Clusters        []string               `json:"clusters"`
 	Dns             *ServiceDnsApiPost     `json:"dns"`
 	Name            *string                `json:"name"`
 	HostIds         []string               `json:"hostIds"`
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
+	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
+	RoleAttributes  []string               `json:"roleAttributes"`
 }
 
 // DnsHostname is used by deepcopy to copy the dnsHostname value into the target struct
@@ -65,8 +66,9 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
 	result.DnsHostname = i.DnsHostname()
 	result.DnsPort = i.DnsPort()
-	result.Clusters = i.Clusters
+	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.HostIds = i.HostIds
+	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
 	return result
 }
@@ -77,6 +79,8 @@ type ServiceApiUpdate struct {
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
+	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
+	RoleAttributes  []string               `json:"roleAttributes"`
 }
 
 func (i *ServiceApiUpdate) DnsHostname() string {
@@ -102,6 +106,8 @@ func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
 	result.DnsHostname = i.DnsHostname()
 	result.DnsPort = i.DnsPort()
 	result.Tags = i.Tags
+	result.EdgeRouterRoles = i.EdgeRouterRoles
+	result.RoleAttributes = i.RoleAttributes
 	return result
 }
 
@@ -124,11 +130,11 @@ func NewServiceLink(sessionId string) *response.Link {
 type ServiceApiList struct {
 	*env.BaseApi
 	Name            *string            `json:"name"`
-	Clusters        []*ClusterApiList  `json:"clusters"`
 	Dns             *ServiceDnsApiPost `json:"dns"`
 	EndpointAddress *string            `json:"endpointAddress"`
 	EgressRouter    *string            `json:"egressRouter"`
 	Hostable        *bool              `json:"hostable"`
+	EdgeRouterRoles []string           `json:"edgeRouterRoles"`
 }
 
 func (e *ServiceApiList) GetSelfLink() *response.Link {
@@ -143,14 +149,14 @@ func (e *ServiceApiList) PopulateLinks() {
 	if e.Links == nil {
 		e.Links = &response.Links{
 			EntityNameSelf: e.GetSelfLink(),
-			"clusters":     e.GetClustersLink(),
+			"edge-routers": e.GetEdgeRoutersLink(),
 			"hosts":        e.GetHostsLink(),
 		}
 	}
 }
 
-func (e *ServiceApiList) GetClustersLink() *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s/%s", EntityNameService, e.Id, EntityNameCluster))
+func (e *ServiceApiList) GetEdgeRoutersLink() *response.Link {
+	return response.NewLink(fmt.Sprintf("./%s/%s/%s", EntityNameService, e.Id, EntityNameEdgeRouter))
 
 }
 
@@ -206,22 +212,7 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 	return al, nil
 }
 
-func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
-	var cls []*ClusterApiList
-	for _, clusterId := range i.Clusters {
-		cl, err := ae.GetHandlers().Cluster.HandleRead(clusterId)
-		if err != nil {
-			return nil, err
-		}
-		nc, err := MapClusterToApiList(cl)
-
-		if err != nil {
-			return nil, err
-		}
-
-		cls = append(cls, nc)
-	}
-
+func MapToServiceApiList(_ *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
 	var hostable bool
 	for _, hostId := range i.HostIds {
 		if hostId == rc.Identity.Id {
@@ -235,12 +226,12 @@ func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.S
 		Name:            &i.Name,
 		EndpointAddress: &i.EndpointAddress,
 		EgressRouter:    &i.EgressRouter,
-		Clusters:        cls,
 		Dns: &ServiceDnsApiPost{
 			Port:     &i.DnsPort,
 			Hostname: &i.DnsHostname,
 		},
-		Hostable: &hostable,
+		Hostable:        &hostable,
+		EdgeRouterRoles: i.EdgeRouterRoles,
 	}
 
 	ret.PopulateLinks()

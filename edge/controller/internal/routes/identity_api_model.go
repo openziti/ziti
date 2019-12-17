@@ -17,13 +17,13 @@
 package routes
 
 import (
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/model"
 	"github.com/netfoundry/ziti-edge/edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
 	"github.com/netfoundry/ziti-edge/edge/migration"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -46,15 +46,15 @@ type IdentityApiList struct {
 	IsAdmin        *bool                  `json:"isAdmin"`
 	Authenticators map[string]interface{} `json:"authenticators"`
 	Enrollments    map[string]interface{} `json:"enrollment"` //per original API "enrollment" is correct
-	Permissions    *PermissionsApi        `json:"permissions"`
+	RoleAttributes []string               `json:"roleAttributes"`
 }
 
 type IdentityApiUpdate struct {
-	Tags        *migration.PropertyMap `json:"tags"`
-	Name        *string                `json:"name"`
-	Type        *string                `json:"type"`
-	IsAdmin     *bool                  `json:"isAdmin"`
-	Permissions []string               `json:"permissions"`
+	Tags           *migration.PropertyMap `json:"tags"`
+	Name           *string                `json:"name"`
+	Type           *string                `json:"type"`
+	IsAdmin        *bool                  `json:"isAdmin"`
+	RoleAttributes []string               `json:"roleAttributes"`
 }
 
 func (i IdentityApiUpdate) ToModel(id string) *model.Identity {
@@ -64,6 +64,7 @@ func (i IdentityApiUpdate) ToModel(id string) *model.Identity {
 	result.IsAdmin = boolOrFalse(i.IsAdmin)
 	result.IsDefaultAdmin = false
 	result.IdentityTypeId = stringz.OrEmpty(i.Type)
+	result.RoleAttributes = i.RoleAttributes
 	if i.Tags != nil {
 		result.Tags = *i.Tags
 	}
@@ -71,19 +72,18 @@ func (i IdentityApiUpdate) ToModel(id string) *model.Identity {
 }
 
 type IdentityApiCreate struct {
-	Tags        map[string]interface{} `json:"tags"`
-	Enrollment  map[string]interface{} `json:"enrollment"`
-	Name        *string                `json:"name"`
-	Type        *string                `json:"type"`
-	IsAdmin     *bool                  `json:"isAdmin"`
-	Permissions []string               `json:"permissions"`
+	Tags           map[string]interface{} `json:"tags"`
+	Enrollment     map[string]interface{} `json:"enrollment"`
+	Name           *string                `json:"name"`
+	Type           *string                `json:"type"`
+	IsAdmin        *bool                  `json:"isAdmin"`
+	RoleAttributes []string               `json:"roleAttributes"`
 }
 
 func NewIdentityApiCreate() *IdentityApiCreate {
 	f := false
 	return &IdentityApiCreate{
-		IsAdmin:     &f,
-		Permissions: []string{},
+		IsAdmin: &f,
 	}
 }
 
@@ -93,6 +93,7 @@ func (i *IdentityApiCreate) ToModel() (*model.Identity, []*model.Enrollment) {
 	identity.IdentityTypeId = stringz.OrEmpty(i.Type)
 	identity.IsDefaultAdmin = false
 	identity.IsAdmin = boolOrFalse(i.IsAdmin)
+	identity.RoleAttributes = i.RoleAttributes
 	identity.Tags = i.Tags
 
 	var enrollments []*model.Enrollment
@@ -222,7 +223,7 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		IsAdmin:        &i.IsAdmin,
 		Authenticators: map[string]interface{}{},
 		Enrollments:    map[string]interface{}{},
-		Permissions:    &PermissionsApi{},
+		RoleAttributes: i.RoleAttributes,
 	}
 
 	err = ae.GetHandlers().Identity.HandleCollectEnrollments(ret.Id, func(entity model.BaseModelEntity) error {
@@ -272,7 +273,7 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 	return ret, nil
 }
 
-func MapToIdentityAuthenticatorApiList(appEnv *env.AppEnv, authenticator *model.Authenticator) (interface{}, error) {
+func MapToIdentityAuthenticatorApiList(_ *env.AppEnv, authenticator *model.Authenticator) (interface{}, error) {
 	var ret map[string]interface{}
 	switch authenticator.Method {
 	case persistence.MethodAuthenticatorCert:

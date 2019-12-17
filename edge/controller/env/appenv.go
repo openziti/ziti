@@ -25,7 +25,6 @@ import (
 	"github.com/gobuffalo/packr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/edge/controller/apierror"
 	edgeconfig "github.com/netfoundry/ziti-edge/edge/controller/config"
@@ -53,9 +52,6 @@ import (
 )
 
 type AppEnv struct {
-	db                      *gorm.DB
-	dbWithPreload           *gorm.DB
-	Stores                  *migration.Stores
 	BoltStores              *persistence.Stores
 	Handlers                *model.Handlers
 	Embedded                *packr.Box
@@ -71,7 +67,6 @@ type AppEnv struct {
 	FingerprintGenerator    cert.FingerprintGenerator
 	RootRouter              *mux.Router
 	RequestResponderFactory response.RequestResponderFactory
-	RequestResponder        interface{}
 	ModelHandlers           *migration.ModelHandlers
 	AuthRegistry            model.AuthRegistry
 	EnrollRegistry          model.EnrollmentRegistry
@@ -115,10 +110,6 @@ func (ae *AppEnv) GetStores() *persistence.Stores {
 	return ae.BoltStores
 }
 
-func (ae *AppEnv) GetDbStores() *migration.Stores {
-	return ae.Stores
-}
-
 func (ae *AppEnv) GetAuthRegistry() model.AuthRegistry {
 	return ae.AuthRegistry
 }
@@ -127,8 +118,8 @@ func (ae *AppEnv) GetEnrollRegistry() model.EnrollmentRegistry {
 	return ae.EnrollRegistry
 }
 
-func (ae *AppEnv) ClusterHasEdgeRouterOnline(clusterId string) bool {
-	return ae.Broker.ClusterHasEdgeRouterOnline(clusterId)
+func (ae *AppEnv) IsEdgeRouterOnline(id string) bool {
+	return ae.Broker.GetOnlineEdgeRouter(id) != nil
 }
 
 func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
@@ -142,20 +133,22 @@ type HostController interface {
 }
 
 type Schemes struct {
-	AppWan         *BasicEntitySchema
-	Association    *BasicEntitySchema
-	Ca             *BasicEntitySchema
-	Cluster        *BasicEntitySchema
-	Device         *BasicEntitySchema
-	Enroller       *BasicEntitySchema
-	EnrollEr       *BasicEntitySchema
-	EnrollUpdb     *BasicEntitySchema
-	EdgeRouter     *BasicEntitySchema
-	Identity       *BasicEntitySchema
-	NetworkSession *BasicEntitySchema
-	Policy         *BasicEntitySchema
-	Service        *BasicEntitySchema
-	FabricConfigs  *FabricConfigSchemas
+	AppWan           *BasicEntitySchema
+	Association      *BasicEntitySchema
+	Ca               *BasicEntitySchema
+	Cluster          *BasicEntitySchema
+	Device           *BasicEntitySchema
+	Enroller         *BasicEntitySchema
+	EnrollEr         *BasicEntitySchema
+	EnrollUpdb       *BasicEntitySchema
+	EdgeRouter       *BasicEntitySchema
+	EdgeRouterPolicy *BasicEntitySchema
+	Identity         *BasicEntitySchema
+	NetworkSession   *BasicEntitySchema
+	Policy           *BasicEntitySchema
+	Service          *BasicEntitySchema
+	ServicePolicy    *BasicEntitySchema
+	FabricConfigs    *FabricConfigSchemas
 }
 
 func (s Schemes) GetEnrollErPost() *gojsonschema.Schema {
@@ -191,11 +184,8 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 	c.Persistence.AddMigrationBox(&embedded)
 
 	ae := &AppEnv{
-		Config:        c,
-		db:            nil,
-		dbWithPreload: nil,
-		Embedded:      &embedded,
-		Stores:        nil,
+		Config:   c,
+		Embedded: &embedded,
 		Versions: &config.Versions{
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
@@ -237,15 +227,16 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 func (ae *AppEnv) InitPersistence() error {
 	var err error
 
-	ae.db = InitPersistence(&ae.Config.Persistence)
-	if ae.db != nil {
-		ae.dbWithPreload = ae.db.New().Set("gorm:auto_preload", true)
-		ae.Stores = migration.NewGormStores(ae.db, ae.dbWithPreload)
+	db := InitPersistence(&ae.Config.Persistence)
+	var dbStores *migration.Stores
+	if db != nil {
+		dbWithPreload := db.New().Set("gorm:auto_preload", true)
+		dbStores = migration.NewGormStores(db, dbWithPreload)
 	}
 
 	ae.BoltStores, err = persistence.NewBoltStores(ae.HostController.GetNetwork())
 	if err == nil {
-		err = persistence.RunMigrations(ae.HostController.GetNetwork(), ae.BoltStores, ae.Stores)
+		err = persistence.RunMigrations(ae.HostController.GetNetwork(), ae.BoltStores, dbStores)
 	}
 
 	if err == nil {
@@ -291,14 +282,6 @@ func (ae *AppEnv) getSessionTokenFromRequest(r *http.Request) string {
 		}
 	}
 	return token
-}
-
-func (ae *AppEnv) Db() *gorm.DB {
-	return ae.db.New()
-}
-
-func (ae *AppEnv) DbWithPreload() *gorm.DB {
-	return ae.dbWithPreload.New()
 }
 
 func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.HandlerFunc {

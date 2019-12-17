@@ -17,9 +17,9 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/michaelquigley/pfxlog"
 	"go.etcd.io/bbolt"
 )
 
@@ -184,11 +184,11 @@ func (store *authenticatorStoreImpl) initializeLinked() {
 }
 
 func (store *authenticatorStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Authenticator, error) {
-	enrollment := &Authenticator{}
-	if found, err := store.BaseLoadOneById(tx, id, enrollment); !found || err != nil {
+	entity := &Authenticator{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return enrollment, nil
+	return entity, nil
 }
 
 func (store *authenticatorStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Authenticator, error) {

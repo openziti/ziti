@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/edge/controller/env"
 	"github.com/netfoundry/ziti-edge/edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/edge/controller/response"
@@ -43,12 +44,23 @@ func NewIdentityRouter() *IdentityRouter {
 }
 
 func (ir *IdentityRouter) Register(ae *env.AppEnv) {
-	_ = registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	currentIdentityRouter := ae.RootRouter.PathPrefix("/current-identity").Subrouter()
 	currentIdentityRouter.HandleFunc("", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
 	currentIdentityRouter.HandleFunc("/", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
 
+	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
+	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions.IsAdmin())
+
+	sr.HandleFunc(edgeRouterPolicyUrl, edgeRouterPoliciesListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(edgeRouterPolicyUrl+"/", edgeRouterPoliciesListHandler).Methods(http.MethodGet)
+
+	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
+	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
+
+	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
@@ -98,4 +110,12 @@ func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	Patch(rc, ae.Schemes.Identity.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
 		return ae.Handlers.Identity.HandlePatch(apiEntity.ToModel(id), fields.ConcatNestedNames())
 	})
+}
+
+func (ir *IdentityRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.HandleCollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
+}
+
+func (ir *IdentityRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.HandleCollectServicePolicies, MapServicePolicyToApiEntity)
 }

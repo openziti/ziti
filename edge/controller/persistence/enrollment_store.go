@@ -120,11 +120,11 @@ func (store *enrollmentStoreImpl) initializeLinked() {
 }
 
 func (store *enrollmentStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error) {
-	enrollment := &Enrollment{}
-	if found, err := store.BaseLoadOneById(tx, id, enrollment); !found || err != nil {
+	entity := &Enrollment{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return enrollment, nil
+	return entity, nil
 }
 
 func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error) {

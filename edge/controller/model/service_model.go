@@ -33,17 +33,13 @@ type Service struct {
 	DnsPort         uint16   `json:"port"`
 	EgressRouter    string   `json:"egressRouter"`
 	EndpointAddress string   `json:"endpointAddress"`
-	Clusters        []string `json:"clusters"`
 	HostIds         []string `json:"hostIds"`
+	EdgeRouterRoles []string `json:"edgeRouterRoles"`
+	RoleAttributes  []string `json:"roleAttributes"`
 }
 
 func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	entity.Sanitize()
-
-	// validate clusters exist
-	if err := ValidateEntityList(tx, handler.GetEnv().GetStores().Cluster, "clusters", entity.Clusters); err != nil {
-		return nil, err
-	}
 
 	// validate identities exist
 	if err := ValidateEntityList(tx, handler.GetEnv().GetStores().Identity, "hostIds", entity.HostIds); err != nil {
@@ -68,8 +64,9 @@ func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		Name:             entity.Name,
 		DnsHostname:      entity.DnsHostname,
 		DnsPort:          entity.DnsPort,
-		Clusters:         entity.Clusters,
 		HostIds:          entity.HostIds,
+		EdgeRouterRoles:  entity.EdgeRouterRoles,
+		RoleAttributes:   entity.RoleAttributes,
 	}
 
 	return edgeService, nil
@@ -87,16 +84,19 @@ func (entity *Service) Sanitize() {
 	entity.EndpointAddress = strings.Replace(entity.EndpointAddress, "://", ":", 1)
 }
 
-func (entity *Service) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Service) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltService, ok := boltEntity.(*persistence.EdgeService)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
 	}
 	entity.fillCommon(boltService)
 	entity.Name = boltService.Name
-	entity.Clusters = boltService.Clusters
 	entity.HostIds = boltService.HostIds
 	entity.DnsHostname = boltService.DnsHostname
 	entity.DnsPort = boltService.DnsPort
+	entity.EdgeRouterRoles = boltService.EdgeRouterRoles
+	entity.EgressRouter = boltService.Egress
+	entity.EndpointAddress = boltService.EndpointAddress
+	entity.RoleAttributes = boltService.RoleAttributes
 	return nil
 }

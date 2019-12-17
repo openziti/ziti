@@ -78,11 +78,11 @@ func (store *IdentityTypeStoreImpl) GetNameIndex() boltz.ReadIndex {
 }
 
 func (store *IdentityTypeStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*IdentityType, error) {
-	identityType := &IdentityType{}
-	if found, err := store.BaseLoadOneById(tx, id, identityType); !found || err != nil {
+	entity := &IdentityType{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return identityType, nil
+	return entity, nil
 }
 
 func (store *IdentityTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*IdentityType, error) {

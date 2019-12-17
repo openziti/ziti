@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"strings"
 )
 
@@ -40,4 +41,32 @@ func ToInFilter(ids ...string) string {
 
 func Field(elements ...string) string {
 	return strings.Join(elements, ".")
+}
+
+func splitRolesAndIds(values []string) ([]string, []string) {
+	var roles []string
+	var ids []string
+	for _, entry := range values {
+		if strings.HasPrefix(entry, "@") {
+			entry = strings.TrimPrefix(entry, "@")
+			roles = append(roles, entry)
+		} else {
+			ids = append(ids, entry)
+		}
+	}
+	return roles, ids
+}
+
+func FieldValuesToIds(new []boltz.FieldTypeAndValue) []string {
+	var entityRoles []string
+	for _, fv := range new {
+		entityRoles = append(entityRoles, string(fv.Value))
+	}
+	return entityRoles
+}
+
+type UpdateTimeOnlyFieldChecker struct{}
+
+func (u UpdateTimeOnlyFieldChecker) IsUpdated(string) bool {
+	return false
 }

@@ -19,7 +19,6 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -27,8 +26,6 @@ func Test_AppWanSessionStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
-	req := require.New(t)
-	req.NoError(ctx.err)
 
 	t.Run("test create invalid appwans", ctx.testCreateInvalidAppwans)
 	//t.Run("test create appwans", ctx.testCreateAppwans)

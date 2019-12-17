@@ -17,8 +17,8 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/controller/util"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/edge/controller/util"
 	"go.etcd.io/bbolt"
 )
 
@@ -60,7 +60,7 @@ func (handler *SessionHandler) HandleReadForIdentity(id string, identityId strin
 		return nil, err
 	}
 	if len(result.Sessions) == 0 {
-		return nil, util.RecordNotFoundError{}
+		return nil, util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
 	}
 	return result.Sessions[0], nil
 }
@@ -87,7 +87,7 @@ func (handler *SessionHandler) HandleDeleteForIdentity(id, identityId string) er
 		return err
 	}
 	if session == nil {
-		return util.RecordNotFoundError{}
+		return util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
 	}
 	return handler.delete(id, nil, nil)
 }
@@ -151,16 +151,27 @@ func (handler *SessionHandler) HandleList(queryOptions *QueryOptions) (*SessionL
 	return result, nil
 }
 
+func (handler *SessionHandler) HandleListSessionForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
+	result := &SessionListResult{handler: handler}
+	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.edgeRouters) = "%v" and `+
+		`(isEmpty(service.edgeRouterRoles) = true or anyOf(service.edgeRouters) = "%v")`, edgeRouterId, edgeRouterId)
+	err := handler.list(query, result.collect)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 type SessionListResult struct {
 	handler  *SessionHandler
 	Sessions []*Session
 	QueryMetaData
 }
 
-func (result *SessionListResult) collect(tx *bbolt.Tx, ids [][]byte, queryMetaData *QueryMetaData) error {
+func (result *SessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, string(key))
+		entity, err := result.handler.handleReadInTx(tx, key)
 		if err != nil {
 			return err
 		}

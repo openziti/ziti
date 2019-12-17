@@ -113,7 +113,7 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 	ca, err := ae.Handlers.Ca.HandleRead(id)
 
 	if err != nil {
-		if _, ok := err.(*util.RecordNotFoundError); ok {
+		if util.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -223,7 +223,7 @@ func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	ca, loadErr := ae.Handlers.Ca.HandleRead(id)
 
 	if loadErr != nil {
-		if _, ok := loadErr.(*util.RecordNotFoundError); ok {
+		if util.IsErrNotFoundErr(loadErr) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}

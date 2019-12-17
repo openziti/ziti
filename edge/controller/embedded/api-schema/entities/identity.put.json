@@ -6,8 +6,7 @@
     "name",
     "type",
     "tags",
-    "isAdmin",
-    "permissions"
+    "isAdmin"
   ],
   "properties": {
     "name": {
@@ -21,20 +20,17 @@
         "Service"
       ]
     },
+    "roleAttributes" : {
+      "default" : null,
+      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    },
     "tags": {
       "default": {},
-      "$ref": "definitions.all.json#/definitions/tags"
+      "$ref": "definitions.all.json#/definitions/tags-null"
     },
     "isAdmin": {
       "type": "boolean",
       "default": false
-    },
-    "permissions": {
-      "type": "array",
-      "items": {
-        "$ref": "definitions.all.json#/definitions/name"
-      },
-      "default": []
     }
   }
 }

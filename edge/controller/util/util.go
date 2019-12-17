@@ -16,15 +16,27 @@
 
 package util
 
-type RecordNotFoundError struct{}
+import (
+	"errors"
+	"fmt"
+)
 
-func (RecordNotFoundError) Error() string {
-	return "record not found"
+func NewNotFoundError(entityType, field, id string) error {
+	return &recordNotFoundError{
+		msg: fmt.Sprintf("%v with %v %v not found", entityType, field, id),
+	}
 }
 
-func IsErrNotFoundErr(err error) bool {
-	_, ok1 := err.(*RecordNotFoundError)
-	_, ok2 := err.(RecordNotFoundError)
+type recordNotFoundError struct {
+	msg string
+}
 
-	return ok1 || ok2
+func (err *recordNotFoundError) Error() string {
+	return err.msg
+}
+
+var testError = &recordNotFoundError{}
+
+func IsErrNotFoundErr(err error) bool {
+	return errors.As(err, &testError)
 }

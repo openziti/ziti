@@ -73,11 +73,11 @@ func (store *geoRegionStoreImpl) initializeLinked() {
 }
 
 func (store *geoRegionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*GeoRegion, error) {
-	geoRegion := &GeoRegion{}
-	if found, err := store.BaseLoadOneById(tx, id, geoRegion); !found || err != nil {
+	entity := &GeoRegion{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return geoRegion, nil
+	return entity, nil
 }
 
 func (store *geoRegionStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*GeoRegion, error) {

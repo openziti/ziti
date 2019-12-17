@@ -24,32 +24,38 @@ import (
 	"reflect"
 )
 
-type Cluster struct {
+type EdgeRouterPolicy struct {
 	BaseModelEntityImpl
-	Name string `json:"name"`
+	Name            string
+	IdentityRoles   []string
+	EdgeRouterRoles []string
 }
 
-func (entity *Cluster) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return &persistence.Cluster{
+func (entity *EdgeRouterPolicy) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return &persistence.EdgeRouterPolicy{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
+		IdentityRoles:      entity.IdentityRoles,
+		EdgeRouterRoles:    entity.EdgeRouterRoles,
 	}, nil
 }
 
-func (entity *Cluster) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouterPolicy) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return entity.ToBoltEntityForCreate(tx, handler)
 }
 
-func (entity *Cluster) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouterPolicy) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return entity.ToBoltEntityForCreate(tx, handler)
 }
 
-func (entity *Cluster) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
-	boltCluster, ok := boltEntity.(*persistence.Cluster)
+func (entity *EdgeRouterPolicy) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model cluster", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltCluster)
-	entity.Name = boltCluster.Name
+	entity.fillCommon(boltEdgeRouterPolicy)
+	entity.Name = boltEdgeRouterPolicy.Name
+	entity.EdgeRouterRoles = boltEdgeRouterPolicy.EdgeRouterRoles
+	entity.IdentityRoles = boltEdgeRouterPolicy.IdentityRoles
 	return nil
 }

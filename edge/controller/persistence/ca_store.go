@@ -111,11 +111,11 @@ func (store *caStoreImpl) initializeLinked() {
 }
 
 func (store *caStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Ca, error) {
-	ca := &Ca{}
-	if found, err := store.BaseLoadOneById(tx, id, ca); !found || err != nil {
+	entity := &Ca{}
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return ca, nil
+	return entity, nil
 }
 
 func (store *caStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Ca, error) {
