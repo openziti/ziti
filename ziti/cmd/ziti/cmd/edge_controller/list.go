@@ -74,7 +74,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", runListServiceEdgeRouters, newOptions()))
 
-	cmd.AddCommand(edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, serviceListRootCmd)
+	cmd.AddCommand(edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd)
 
 	return cmd
 }
