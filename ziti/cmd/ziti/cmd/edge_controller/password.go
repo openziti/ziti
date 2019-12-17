@@ -17,8 +17,8 @@
 package edge_controller
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	"fmt"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 )
 
 const (
@@ -31,6 +31,18 @@ type session struct {
 	Host  string
 	Token string
 	Cert  string
+}
+
+func (session *session) GetBaseUrl() string {
+	return session.Host
+}
+
+func (session *session) GetCert() string {
+	return session.Cert
+}
+
+func (session *session) GetToken() string {
+	return session.Token
 }
 
 // Persist writes out the Ziti CLI session file

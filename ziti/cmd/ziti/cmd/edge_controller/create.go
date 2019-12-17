@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 )
@@ -39,8 +39,8 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	}
 
 	cmd.AddCommand(newCreateAppWanCmd(f, out, errOut))
-	cmd.AddCommand(newCreateClusterCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterCmd(f, out, errOut))
+	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceCmd(f, out, errOut))
 	cmd.AddCommand(newCreateAuthenticatorCmd(f, out, errOut))
