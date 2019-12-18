@@ -26,7 +26,6 @@ const (
 	maxFieldErrorValueLength = 64
 )
 
-
 type BodyParseTypeError struct {
 	Near            string `json:"near"`
 	ExpectedType    string `json:"expectedType"`

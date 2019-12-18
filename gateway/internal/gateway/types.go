@@ -35,5 +35,3 @@ type Sans struct {
 	UriAddresses       []string `yaml:"uri" mapstructure:"uri"`
 	UriAddressesParsed []*url.URL
 }
-
-

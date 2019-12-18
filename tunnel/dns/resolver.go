@@ -18,7 +18,7 @@ package dns
 
 import "net"
 
-type Resolver interface{
+type Resolver interface {
 	AddHostname(string, net.IP) error
 	RemoveHostname(string, net.IP) error
 	Cleanup() error

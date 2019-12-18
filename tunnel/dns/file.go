@@ -17,23 +17,23 @@
 package dns
 
 import (
-	"sync"
+	"bufio"
+	"fmt"
 	"net"
 	"os"
-	"fmt"
-	"bufio"
+	"sync"
 )
 
 const hostFormat = "%s\t%s\t# NetFoundry"
 
 type hostFile struct {
-	path string
+	path  string
 	mutex sync.Mutex
 }
 
 func NewHostFile(path string) Resolver {
 	return &hostFile{
-		path: path,
+		path:  path,
 		mutex: sync.Mutex{},
 	}
 }

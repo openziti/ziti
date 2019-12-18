@@ -17,7 +17,6 @@
 package config
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"bytes"
 	"crypto/sha1"
 	"encoding/pem"
@@ -25,6 +24,7 @@ import (
 	"fmt"
 	"github.com/gobuffalo/packr"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"

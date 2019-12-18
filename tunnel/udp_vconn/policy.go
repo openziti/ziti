@@ -64,5 +64,3 @@ func (policy defaultExpirationPolicy) IsExpired(now, lastUsed time.Time) bool {
 func (policy defaultExpirationPolicy) PollFrequency() time.Duration {
 	return time.Minute * 1
 }
-
-
