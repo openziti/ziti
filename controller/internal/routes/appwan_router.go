@@ -19,7 +19,7 @@ package routes
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
@@ -44,15 +44,15 @@ func NewAppWanRouter() *AppWanRouter {
 }
 
 func (ir *AppWanRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	serviceUrlWithSlash := fmt.Sprintf("/{%s}/services", response.IdPropertyName)
 	serviceUrlWithOutSlash := fmt.Sprintf("/{%s}/services/", response.IdPropertyName)
 
-	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions2.IsAdmin())
-	servicesAddHandler := ae.WrapHandler(ir.AddServices, permissions2.IsAdmin())
-	servicesRemoveHandler := ae.WrapHandler(ir.RemoveServicesBulk, permissions2.IsAdmin())
-	servicesSetHandler := ae.WrapHandler(ir.SetServices, permissions2.IsAdmin())
+	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions.IsAdmin())
+	servicesAddHandler := ae.WrapHandler(ir.AddServices, permissions.IsAdmin())
+	servicesRemoveHandler := ae.WrapHandler(ir.RemoveServicesBulk, permissions.IsAdmin())
+	servicesSetHandler := ae.WrapHandler(ir.SetServices, permissions.IsAdmin())
 
 	sr.HandleFunc(serviceUrlWithSlash, servicesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(serviceUrlWithOutSlash, servicesListHandler).Methods(http.MethodGet)
@@ -69,10 +69,10 @@ func (ir *AppWanRouter) Register(ae *env.AppEnv) {
 	identityUrlWithSlash := fmt.Sprintf("/{%s}/identities", response.IdPropertyName)
 	identityUrlWithOutSlash := fmt.Sprintf("/{%s}/identities/", response.IdPropertyName)
 
-	identitiesListHandler := ae.WrapHandler(ir.ListIdentities, permissions2.IsAdmin())
-	identitiesAddHandler := ae.WrapHandler(ir.AddIdentities, permissions2.IsAdmin())
-	identitiesBulkRemoveHandler := ae.WrapHandler(ir.RemoveIdentitiesBulk, permissions2.IsAdmin())
-	identitiesSetHandler := ae.WrapHandler(ir.SetIdentities, permissions2.IsAdmin())
+	identitiesListHandler := ae.WrapHandler(ir.ListIdentities, permissions.IsAdmin())
+	identitiesAddHandler := ae.WrapHandler(ir.AddIdentities, permissions.IsAdmin())
+	identitiesBulkRemoveHandler := ae.WrapHandler(ir.RemoveIdentitiesBulk, permissions.IsAdmin())
+	identitiesSetHandler := ae.WrapHandler(ir.SetIdentities, permissions.IsAdmin())
 
 	sr.HandleFunc(identityUrlWithSlash, identitiesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(identityUrlWithOutSlash, identitiesListHandler).Methods(http.MethodGet)
@@ -89,7 +89,7 @@ func (ir *AppWanRouter) Register(ae *env.AppEnv) {
 	identityUrlWithSlashWithSubId := fmt.Sprintf("/{%s}/identities/{%s}", response.IdPropertyName, response.SubIdPropertyName)
 	identityUrlWithOutSlashWithSubId := fmt.Sprintf("/{%s}/identities/{%s}/", response.IdPropertyName, response.SubIdPropertyName)
 
-	identityRemoveHandler := ae.WrapHandler(ir.RemoveIdentity, permissions2.IsAdmin())
+	identityRemoveHandler := ae.WrapHandler(ir.RemoveIdentity, permissions.IsAdmin())
 
 	sr.HandleFunc(identityUrlWithSlashWithSubId, identityRemoveHandler).Methods(http.MethodDelete)
 	sr.HandleFunc(identityUrlWithOutSlashWithSubId, identityRemoveHandler).Methods(http.MethodDelete)
@@ -97,7 +97,7 @@ func (ir *AppWanRouter) Register(ae *env.AppEnv) {
 	serviceUrlWithSlashWithSubId := fmt.Sprintf("/{%s}/services/{%s}", response.IdPropertyName, response.SubIdPropertyName)
 	serviceUrlWithOutSlashWithSubId := fmt.Sprintf("/{%s}/services/{%s}/", response.IdPropertyName, response.SubIdPropertyName)
 
-	serviceRemoveHandler := ae.WrapHandler(ir.RemoveService, permissions2.IsAdmin())
+	serviceRemoveHandler := ae.WrapHandler(ir.RemoveService, permissions.IsAdmin())
 
 	sr.HandleFunc(serviceUrlWithSlashWithSubId, serviceRemoveHandler).Methods(http.MethodDelete)
 	sr.HandleFunc(serviceUrlWithOutSlashWithSubId, serviceRemoveHandler).Methods(http.MethodDelete)

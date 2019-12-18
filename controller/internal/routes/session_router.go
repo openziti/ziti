@@ -20,7 +20,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/controller/util"
@@ -45,10 +45,10 @@ func NewSessionRouter() *SessionRouter {
 
 func (ir *SessionRouter) Register(ae *env.AppEnv) {
 	registerCreateReadDeleteRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
-		Create:  permissions2.IsAuthenticated(),
-		Read:    permissions2.IsAuthenticated(),
-		Delete:  permissions2.IsAuthenticated(),
-		Default: permissions2.IsAdmin(),
+		Create:  permissions.IsAuthenticated(),
+		Read:    permissions.IsAuthenticated(),
+		Delete:  permissions.IsAuthenticated(),
+		Default: permissions.IsAdmin(),
 	})
 }
 

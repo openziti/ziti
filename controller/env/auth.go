@@ -20,7 +20,7 @@ import (
 	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
@@ -156,7 +156,7 @@ func (r *Registry) GetRegisterers() []Registerer {
 	return r.registerers
 }
 
-func WrapByIdHandler(ae *AppEnv, f AuthHandlerFunc, idType response.IdType, prs ...permissions2.Resolver) http.HandlerFunc {
+func WrapByIdHandler(ae *AppEnv, f AuthHandlerFunc, idType response.IdType, prs ...permissions.Resolver) http.HandlerFunc {
 	return ae.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
 
 		id, err := rc.GetIdFromRequest(idType)

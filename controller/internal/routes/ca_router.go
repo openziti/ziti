@@ -24,7 +24,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
@@ -51,17 +51,17 @@ func NewCaRouter() *CaRouter {
 }
 
 func (ir *CaRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	idUrlWithoutSlash := fmt.Sprintf("/{%s}/verify", response.IdPropertyName)
 	idUrlWithSlash := fmt.Sprintf("/{%s}/verify/", response.IdPropertyName)
-	verifyHandler := ae.WrapHandler(ir.VerifyCert, permissions2.IsAdmin())
+	verifyHandler := ae.WrapHandler(ir.VerifyCert, permissions.IsAdmin())
 	sr.HandleFunc(idUrlWithoutSlash, verifyHandler).Methods(http.MethodPost)
 	sr.HandleFunc(idUrlWithSlash, verifyHandler).Methods(http.MethodPost)
 
 	getJwtWithSlash := fmt.Sprintf("/{%s}/jwt", response.IdPropertyName)
 	getJwtWithoutSlash := fmt.Sprintf("/{%s}/jwt/", response.IdPropertyName)
-	jwtHandler := ae.WrapHandler(ir.generateJwt, permissions2.IsAdmin())
+	jwtHandler := ae.WrapHandler(ir.generateJwt, permissions.IsAdmin())
 	sr.HandleFunc(getJwtWithSlash, jwtHandler).Methods(http.MethodGet)
 	sr.HandleFunc(getJwtWithoutSlash, jwtHandler).Methods(http.MethodGet)
 }

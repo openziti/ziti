@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
@@ -46,11 +46,11 @@ func NewServiceRouter() *ServiceRouter {
 
 func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
-		Create:  permissions2.IsAdmin(),
-		Read:    permissions2.IsAuthenticated(),
-		Update:  permissions2.IsAdmin(),
-		Delete:  permissions2.IsAdmin(),
-		Default: permissions2.IsAdmin(),
+		Create:  permissions.IsAdmin(),
+		Read:    permissions.IsAuthenticated(),
+		Update:  permissions.IsAdmin(),
+		Delete:  permissions.IsAdmin(),
+		Default: permissions.IsAdmin(),
 	})
 
 	ir.registerEdgeRouterHandlers(ae, sr)
@@ -59,7 +59,7 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 
 func (ir *ServiceRouter) registerEdgeRouterHandlers(ae *env.AppEnv, sr *mux.Router) {
 	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
-	edgeRouterListHandler := ae.WrapHandler(ir.ListEdgeRouters, permissions2.IsAdmin())
+	edgeRouterListHandler := ae.WrapHandler(ir.ListEdgeRouters, permissions.IsAdmin())
 	sr.HandleFunc(edgeRouterUrl, edgeRouterListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(edgeRouterUrl+"/", edgeRouterListHandler).Methods(http.MethodGet)
 }
@@ -68,10 +68,10 @@ func (ir *ServiceRouter) registerHostingIdentitiesHandlers(ae *env.AppEnv, sr *m
 	urlWithSlash := fmt.Sprintf("/{%s}/hosts", response.IdPropertyName)
 	urlWithOutSlash := fmt.Sprintf("/{%s}/hosts/", response.IdPropertyName)
 
-	listHandler := ae.WrapHandler(ir.ListHostingIdentities, permissions2.IsAdmin())
-	addHandler := ae.WrapHandler(ir.AddHostingIdentities, permissions2.IsAdmin())
-	removeBulkHandler := ae.WrapHandler(ir.RemoveHostingIdentitiesBulk, permissions2.IsAdmin())
-	setHandler := ae.WrapHandler(ir.SetHostingIdentities, permissions2.IsAdmin())
+	listHandler := ae.WrapHandler(ir.ListHostingIdentities, permissions.IsAdmin())
+	addHandler := ae.WrapHandler(ir.AddHostingIdentities, permissions.IsAdmin())
+	removeBulkHandler := ae.WrapHandler(ir.RemoveHostingIdentitiesBulk, permissions.IsAdmin())
+	setHandler := ae.WrapHandler(ir.SetHostingIdentities, permissions.IsAdmin())
 
 	sr.HandleFunc(urlWithSlash, listHandler).Methods(http.MethodGet)
 	sr.HandleFunc(urlWithOutSlash, listHandler).Methods(http.MethodGet)
@@ -88,13 +88,13 @@ func (ir *ServiceRouter) registerHostingIdentitiesHandlers(ae *env.AppEnv, sr *m
 	urlWithSlashWithSubId := fmt.Sprintf("/{%s}/hosts/{%s}", response.IdPropertyName, response.SubIdPropertyName)
 	urlWithOutSlashWithSubId := fmt.Sprintf("/{%s}/hosts/{%s}/", response.IdPropertyName, response.SubIdPropertyName)
 
-	removeHandler := ae.WrapHandler(ir.RemoveHostingIdentity, permissions2.IsAdmin())
+	removeHandler := ae.WrapHandler(ir.RemoveHostingIdentity, permissions.IsAdmin())
 
 	sr.HandleFunc(urlWithSlashWithSubId, removeHandler).Methods(http.MethodDelete)
 	sr.HandleFunc(urlWithOutSlashWithSubId, removeHandler).Methods(http.MethodDelete)
 
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions2.IsAdmin())
+	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
 
 	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)

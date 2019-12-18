@@ -19,7 +19,7 @@ package routes
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"net/http"
 )
@@ -42,13 +42,13 @@ func NewServicePolicyRouter() *ServicePolicyRouter {
 }
 
 func (ir *ServicePolicyRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	serviceUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
 	identityUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentity)
 
-	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions2.IsAdmin())
-	identitiesListHandler := ae.WrapHandler(ir.ListIdentities, permissions2.IsAdmin())
+	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions.IsAdmin())
+	identitiesListHandler := ae.WrapHandler(ir.ListIdentities, permissions.IsAdmin())
 
 	//gets
 	sr.HandleFunc(serviceUrl, servicesListHandler).Methods(http.MethodGet)

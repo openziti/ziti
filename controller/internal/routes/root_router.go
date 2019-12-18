@@ -21,7 +21,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"net/http"
 )
@@ -43,7 +43,7 @@ func NewRootRouter() *RootRouter {
 
 func (ir *RootRouter) Register(ae *env.AppEnv) {
 
-	listHandler := ae.WrapHandler(ir.List, permissions2.Always())
+	listHandler := ae.WrapHandler(ir.List, permissions.Always())
 
 	ae.RootRouter.HandleFunc("", listHandler).Methods("GET")
 	ae.RootRouter.HandleFunc("/", listHandler).Methods("GET")

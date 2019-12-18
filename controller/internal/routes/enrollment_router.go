@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
 
@@ -69,7 +69,7 @@ func NewEnrollmentRouter() *EnrollmentRouter {
 }
 
 func (ir *EnrollmentRouter) Register(ae *env.AppEnv) {
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 }
 
 func (ir *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {

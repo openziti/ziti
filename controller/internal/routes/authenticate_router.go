@@ -20,7 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"net/http"
@@ -40,7 +40,7 @@ func NewAuthRouter() *AuthRouter {
 }
 
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
-	authHandler := ae.WrapHandler(ro.authHandler, permissions2.Always())
+	authHandler := ae.WrapHandler(ro.authHandler, permissions.Always())
 
 	ae.RootRouter.HandleFunc("/authenticate", authHandler).Methods("POST")
 	ae.RootRouter.HandleFunc("/authenticate/", authHandler).Methods("POST")

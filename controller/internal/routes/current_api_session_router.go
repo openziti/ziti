@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"time"
@@ -41,8 +41,8 @@ func NewCurrentSessionRouter() *CurrentSessionRouter {
 }
 
 func (ir *CurrentSessionRouter) Register(ae *env.AppEnv) {
-	detailHandler := ae.WrapHandler(ir.Detail, permissions2.IsAuthenticated())
-	deleteHandler := ae.WrapHandler(ir.Delete, permissions2.IsAuthenticated())
+	detailHandler := ae.WrapHandler(ir.Detail, permissions.IsAuthenticated())
+	deleteHandler := ae.WrapHandler(ir.Delete, permissions.IsAuthenticated())
 
 	prefixWithOutSlash := "/" + EntityNameCurrentSession
 	prefixWithSlash := prefixWithOutSlash + "/"

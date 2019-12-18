@@ -27,8 +27,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
-	config2 "github.com/netfoundry/ziti-edge/controller/config"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	edgeconfig "github.com/netfoundry/ziti-edge/controller/config"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/middleware"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
@@ -56,7 +56,7 @@ type AppEnv struct {
 	Handlers                *model.Handlers
 	Embedded                *packr.Box
 	Schemes                 *Schemes
-	Config                  *config2.Config
+	Config                  *edgeconfig.Config
 	EnrollmentJwtGenerator  jwt.EnrollmentGenerator
 	Versions                *config.Versions
 	AuthHeaderName          string
@@ -94,7 +94,7 @@ func (ae *AppEnv) GetHandlers() *model.Handlers {
 	return ae.Handlers
 }
 
-func (ae *AppEnv) GetConfig() *config2.Config {
+func (ae *AppEnv) GetConfig() *edgeconfig.Config {
 	return ae.Config
 }
 
@@ -175,7 +175,7 @@ type AppHandler func(ae *AppEnv, rc *response.RequestContext)
 
 type AppMiddleware func(*AppEnv, http.Handler) http.Handler
 
-func NewAppEnv(c *config2.Config) *AppEnv {
+func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 
 	// See README.md in /ziti/edge/embedded for details
 	// This path is relative to source location of this file
@@ -284,7 +284,7 @@ func (ae *AppEnv) getSessionTokenFromRequest(r *http.Request) string {
 	return token
 }
 
-func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions2.Resolver) http.HandlerFunc {
+func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rid := uuid.New()
 
@@ -357,10 +357,10 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions2.Resolver) http.H
 		}
 
 		if rc.Identity != nil {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions2.AuthenticatedPermission)
+			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
 
 			if rc.Identity.IsAdmin {
-				rc.ActivePermissions = append(rc.ActivePermissions, permissions2.AdminPermission)
+				rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
 			}
 		}
 

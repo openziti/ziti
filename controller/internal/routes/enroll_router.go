@@ -24,7 +24,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"net/http"
@@ -44,11 +44,11 @@ func NewEnrollRouter() *EnrollRouter {
 }
 
 func (ro *EnrollRouter) Register(ae *env.AppEnv) {
-	enrollHandler := ae.WrapHandler(ro.enrollHandler, permissions2.Always())
+	enrollHandler := ae.WrapHandler(ro.enrollHandler, permissions.Always())
 	ae.RootRouter.HandleFunc("/enroll", enrollHandler).Methods("POST")
 	ae.RootRouter.HandleFunc("/enroll/", enrollHandler).Methods("POST")
 
-	caCertsHandler := ae.WrapHandler(ro.getCaCerts, permissions2.Always())
+	caCertsHandler := ae.WrapHandler(ro.getCaCerts, permissions.Always())
 	ae.RootRouter.HandleFunc("/.well-known/est/cacerts", caCertsHandler).Methods("GET")
 }
 

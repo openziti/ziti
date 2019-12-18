@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 )
 
@@ -42,8 +42,8 @@ func NewApiSessionRouter() *ApiSessionRouter {
 }
 
 func (ir *ApiSessionRouter) Register(ae *env.AppEnv) {
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePathLegacy, ir, permissions2.IsAdmin())
+	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePathLegacy, ir, permissions.IsAdmin())
 }
 
 func (ir *ApiSessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {

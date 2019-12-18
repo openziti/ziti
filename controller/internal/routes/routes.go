@@ -21,7 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/controller/response"
@@ -260,7 +260,7 @@ type CreateEventHandler interface {
 	BeforeStoreCreate(rc *RouteEventContext, modelEntity interface{}) error
 }
 
-func registerCrudRouter(ae *env.AppEnv, r *mux.Router, basePath string, cr CrudRouter, pr permissions2.Resolver) *mux.Router {
+func registerCrudRouter(ae *env.AppEnv, r *mux.Router, basePath string, cr CrudRouter, pr permissions.Resolver) *mux.Router {
 	rpr := pr
 	cpr := pr
 	dpr := pr
@@ -307,7 +307,7 @@ func registerCrudRouter(ae *env.AppEnv, r *mux.Router, basePath string, cr CrudR
 	return s
 }
 
-func registerReadOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string, ro ReadOnlyRouter, pr permissions2.Resolver) *mux.Router {
+func registerReadOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string, ro ReadOnlyRouter, pr permissions.Resolver) *mux.Router {
 	rpr := pr
 
 	crs, ok := pr.(*crudResolvers)
@@ -331,7 +331,7 @@ func registerReadOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string, ro R
 	return s
 }
 
-func registerReadDeleteOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string, rdr ReadDeleteRouter, pr permissions2.Resolver) *mux.Router {
+func registerReadDeleteOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string, rdr ReadDeleteRouter, pr permissions.Resolver) *mux.Router {
 	rpr := pr
 	dpr := pr
 
@@ -362,7 +362,7 @@ func registerReadDeleteOnlyRouter(ae *env.AppEnv, r *mux.Router, basePath string
 	return s
 }
 
-func registerCreateReadDeleteRouter(ae *env.AppEnv, r *mux.Router, basePath string, crd CreateReadDeleteOnlyRouter, cr permissions2.Resolver) {
+func registerCreateReadDeleteRouter(ae *env.AppEnv, r *mux.Router, basePath string, crd CreateReadDeleteOnlyRouter, cr permissions.Resolver) {
 	rpr := cr
 	cpr := cr
 	dpr := cr
@@ -399,14 +399,14 @@ func registerCreateReadDeleteRouter(ae *env.AppEnv, r *mux.Router, basePath stri
 }
 
 type crudResolvers struct {
-	Default permissions2.Resolver
-	Create  permissions2.Resolver
-	Read    permissions2.Resolver
-	Update  permissions2.Resolver
-	Delete  permissions2.Resolver
+	Default permissions.Resolver
+	Create  permissions.Resolver
+	Read    permissions.Resolver
+	Update  permissions.Resolver
+	Delete  permissions.Resolver
 }
 
-func (crs *crudResolvers) GetCreateResolver() permissions2.Resolver {
+func (crs *crudResolvers) GetCreateResolver() permissions.Resolver {
 	if crs.Create == nil {
 		return crs.Default
 	}
@@ -414,7 +414,7 @@ func (crs *crudResolvers) GetCreateResolver() permissions2.Resolver {
 	return crs.Create
 }
 
-func (crs *crudResolvers) GetReadResolver() permissions2.Resolver {
+func (crs *crudResolvers) GetReadResolver() permissions.Resolver {
 	if crs.Read == nil {
 		return crs.Default
 	}
@@ -422,7 +422,7 @@ func (crs *crudResolvers) GetReadResolver() permissions2.Resolver {
 	return crs.Read
 }
 
-func (crs *crudResolvers) GetUpdateResolver() permissions2.Resolver {
+func (crs *crudResolvers) GetUpdateResolver() permissions.Resolver {
 	if crs.Update == nil {
 		return crs.Default
 	}
@@ -430,7 +430,7 @@ func (crs *crudResolvers) GetUpdateResolver() permissions2.Resolver {
 	return crs.Update
 }
 
-func (crs *crudResolvers) GetDeleteResolver() permissions2.Resolver {
+func (crs *crudResolvers) GetDeleteResolver() permissions.Resolver {
 	if crs.Delete == nil {
 		return crs.Default
 	}

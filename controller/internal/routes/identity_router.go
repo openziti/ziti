@@ -19,7 +19,7 @@ package routes
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
 
@@ -44,20 +44,20 @@ func NewIdentityRouter() *IdentityRouter {
 }
 
 func (ir *IdentityRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	currentIdentityRouter := ae.RootRouter.PathPrefix("/current-identity").Subrouter()
-	currentIdentityRouter.HandleFunc("", ae.WrapHandler(detailCurrentUser, permissions2.IsAuthenticated())).Methods(http.MethodGet)
-	currentIdentityRouter.HandleFunc("/", ae.WrapHandler(detailCurrentUser, permissions2.IsAuthenticated())).Methods(http.MethodGet)
+	currentIdentityRouter.HandleFunc("", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
+	currentIdentityRouter.HandleFunc("/", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
 
 	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
-	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions2.IsAdmin())
+	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions.IsAdmin())
 
 	sr.HandleFunc(edgeRouterPolicyUrl, edgeRouterPoliciesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(edgeRouterPolicyUrl+"/", edgeRouterPoliciesListHandler).Methods(http.MethodGet)
 
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions2.IsAdmin())
+	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
 
 	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)

@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"go.etcd.io/bbolt"
@@ -44,7 +44,7 @@ func NewSummaryRouter() *SummaryRouter {
 
 func (ir *SummaryRouter) Register(ae *env.AppEnv) {
 
-	listHandler := ae.WrapHandler(ir.List, permissions2.Always())
+	listHandler := ae.WrapHandler(ir.List, permissions.Always())
 
 	ae.RootRouter.HandleFunc(ir.BasePath, listHandler).Methods("GET")
 	ae.RootRouter.HandleFunc(ir.BasePath+"/", listHandler).Methods("GET")

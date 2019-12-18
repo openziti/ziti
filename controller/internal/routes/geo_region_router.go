@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/env"
-	permissions2 "github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
 )
 
@@ -40,7 +40,7 @@ func NewGeoRegionRouter() *GeoRegionRouter {
 }
 
 func (ir *GeoRegionRouter) Register(ae *env.AppEnv) {
-	registerReadOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions2.IsAdmin())
+	registerReadOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 }
 
 func (ir *GeoRegionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
