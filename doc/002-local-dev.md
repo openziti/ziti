@@ -25,7 +25,7 @@ This guide can be used to run all of the Ziti applications via command line or i
 3. Build
     - `go build ./ziti-controller`
     - `go build ./ziti-router`
-    - `go build ./ziti`
+    - `go build ./ziti/cmd/ziti`
 
 
 ### Starting the Controller
