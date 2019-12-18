@@ -64,7 +64,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 
-	if _, err := data.SetP(runtime.Version(), "runtimeVersion"); err != nil {
+	if _, err := data.SetP(runtime.Version(),"runtimeVersion"); err != nil {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 

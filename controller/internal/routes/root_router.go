@@ -71,7 +71,7 @@ func (ir *RootRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		"fabrics":          newCrudLinks("./fabrics", "<fabricId>"),
 		"fabric-types":     newReadOnlyLinks("./fabric-types", "<fabricTypeId>"),
 		"event-logs":       newReadOnlyLinks("./event-logs", "<eventLogId>"),
-		"edge-routers":     newCrudLinks("./edge-routers", "<edgeRouterId>"),
+		"edge-routers":         newCrudLinks("./edge-routers", "<edgeRouterId>"),
 		"geo-regions":      newReadOnlyLinks("./geo-regions", "<geoRegionId>"),
 		"identities":       newCrudLinks("./identities", "<identityId>"),
 		"identity-types":   newReadOnlyLinks("./identity-types", "<identityTypeId>"),
