@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
-	config2 "github.com/netfoundry/ziti-edge/controller/config"
+	edgeconfig "github.com/netfoundry/ziti-edge/controller/config"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/handler_edge_ctrl"
-	policy2 "github.com/netfoundry/ziti-edge/controller/internal/policy"
+	"github.com/netfoundry/ziti-edge/controller/internal/policy"
 	_ "github.com/netfoundry/ziti-edge/controller/internal/routes"
 	"github.com/netfoundry/ziti-edge/controller/middleware"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -42,7 +42,7 @@ import (
 )
 
 type Controller struct {
-	config          *config2.Config
+	config          *edgeconfig.Config
 	apiServer       *apiServer
 	AppEnv          *env.AppEnv
 	xmgmt           *submgmt
@@ -118,7 +118,7 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 		return nil, fmt.Errorf("failed to create policy runner: %s", err)
 	}
 
-	appWanEnforcer := policy2.NewAppWanEnforcer(ae, policyAppWanFreq)
+	appWanEnforcer := policy.NewAppWanEnforcer(ae, policyAppWanFreq)
 	err = pe.AddOperation(appWanEnforcer)
 
 	if err != nil {
@@ -130,7 +130,7 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 		return nil, fmt.Errorf("could not add appWan enforcer: %s", err)
 	}
 
-	sessionEnforcer := policy2.NewSessionEnforcer(ae, policySessionFreq, c.config.SessionTimeoutDuration())
+	sessionEnforcer := policy.NewSessionEnforcer(ae, policySessionFreq, c.config.SessionTimeoutDuration())
 	err = pe.AddOperation(sessionEnforcer)
 
 	if err != nil {
@@ -190,7 +190,7 @@ func (c *Controller) LoadConfig(cfgmap map[interface{}]interface{}) error {
 		return nil
 	}
 
-	parsedConfig, err := config2.LoadFromMap(cfgmap)
+	parsedConfig, err := edgeconfig.LoadFromMap(cfgmap)
 	if err != nil {
 		return fmt.Errorf("error loading edge controller configuration: %s", err.Error())
 	}
