@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -29,10 +29,10 @@ import (
 )
 
 type sessionConnectionHandler struct {
-	stateManager fabric2.StateManager
+	stateManager fabric.StateManager
 }
 
-func newSessionConnectHandler(stateManager fabric2.StateManager) *sessionConnectionHandler {
+func newSessionConnectHandler(stateManager fabric.StateManager) *sessionConnectionHandler {
 	return &sessionConnectionHandler{stateManager: stateManager}
 }
 

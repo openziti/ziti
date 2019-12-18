@@ -20,16 +20,16 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type apiSessionAddedHandler struct {
-	sm fabric2.StateManager
+	sm fabric.StateManager
 }
 
-func NewApiSessionAddedHandler(sm fabric2.StateManager) *apiSessionAddedHandler {
+func NewApiSessionAddedHandler(sm fabric.StateManager) *apiSessionAddedHandler {
 	return &apiSessionAddedHandler{
 		sm: sm,
 	}

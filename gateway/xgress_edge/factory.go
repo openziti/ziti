@@ -18,9 +18,9 @@ package xgress_edge
 
 import (
 	"github.com/netfoundry/ziti-edge/gateway/handler_edge_ctrl"
-	apiproxy2 "github.com/netfoundry/ziti-edge/gateway/internal/apiproxy"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
-	gateway2 "github.com/netfoundry/ziti-edge/gateway/internal/gateway"
+	"github.com/netfoundry/ziti-edge/gateway/internal/apiproxy"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/gateway"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
@@ -37,9 +37,9 @@ type Factory struct {
 	id             *identity.TokenId
 	ctrl           channel2.Channel
 	enabled        bool
-	config         *gateway2.Config
+	config         *gateway.Config
 	hostedServices *hostedServiceRegistry
-	stateManager   fabric2.StateManager
+	stateManager   fabric.StateManager
 }
 
 func (factory *Factory) Channel() channel2.Channel {
@@ -78,7 +78,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := gateway2.NewConfig()
+	config := gateway.NewConfig()
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	factory.config = config
-	go apiproxy2.Start(config)
+	go apiproxy.Start(config)
 
 	return nil
 }
@@ -99,7 +99,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 func NewFactory() *Factory {
 	factory := &Factory{
 		hostedServices: &hostedServiceRegistry{},
-		stateManager:   fabric2.GetStateManager(),
+		stateManager:   fabric.GetStateManager(),
 	}
 	return factory
 }

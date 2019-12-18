@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	gateway2 "github.com/netfoundry/ziti-edge/gateway/internal/gateway"
+	"github.com/netfoundry/ziti-edge/gateway/internal/gateway"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
@@ -51,15 +51,15 @@ type Enroller interface {
 }
 
 type RestEnroller struct {
-	config *gateway2.Config
+	config *gateway.Config
 }
 
 func NewRestEnroller() Enroller {
 	return &RestEnroller{}
 }
 
-func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*gateway2.Config, error) {
-	config := gateway2.NewConfig()
+func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*gateway.Config, error) {
+	config := gateway.NewConfig()
 	if err := config.LoadConfigFromMap(cfgmap); err != nil {
 		return nil, err
 	}

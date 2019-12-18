@@ -19,7 +19,7 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -110,7 +110,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		return
 	}
 	log.Debug("validating network session")
-	sm := fabric2.GetStateManager()
+	sm := fabric.GetStateManager()
 	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
 
 	if ns == nil || ns.Hosting {
@@ -179,7 +179,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		return
 	}
 	log.Debug("validating network session")
-	sm := fabric2.GetStateManager()
+	sm := fabric.GetStateManager()
 	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
 
 	if ns == nil || !ns.Hosting {
@@ -236,7 +236,7 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
-	sm := fabric2.GetStateManager()
+	sm := fabric.GetStateManager()
 	ns := sm.GetNetworkSession(token)
 
 	if ns == nil {

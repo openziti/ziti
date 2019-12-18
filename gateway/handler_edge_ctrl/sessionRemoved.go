@@ -20,16 +20,16 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type sessionRemovedHandler struct {
-	sm fabric2.StateManager
+	sm fabric.StateManager
 }
 
-func NewSessionRemovedHandler(sm fabric2.StateManager) *sessionRemovedHandler {
+func NewSessionRemovedHandler(sm fabric.StateManager) *sessionRemovedHandler {
 	return &sessionRemovedHandler{
 		sm: sm,
 	}

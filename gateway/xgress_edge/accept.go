@@ -18,7 +18,7 @@ package xgress_edge
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	fabric2 "github.com/netfoundry/ziti-edge/gateway/internal/fabric"
+	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
@@ -77,7 +77,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 func NewAccepter(listener *listener, uListener channel2.UnderlayListener, options *channel2.Options) *Accepter {
 	edgeBindHandler := &edgeBindHandler{listener: listener}
-	sessionHandler := newSessionConnectHandler(fabric2.GetStateManager())
+	sessionHandler := newSessionConnectHandler(fabric.GetStateManager())
 
 	optionsWithBind := options
 	if optionsWithBind == nil {
