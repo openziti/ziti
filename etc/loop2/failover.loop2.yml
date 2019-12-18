@@ -1,0 +1,16 @@
+#
+# Workloads used for debugging active failover.
+#
+
+workloads:
+  - name:               failover
+    concurrency:        1
+    dialer:
+      txRequests:       20000
+      txPacing:         1000
+      rxTimeout:        5000
+      payloadMinBytes:  4096
+      payloadMaxBytes:  8192
+    listener:
+      txRequests:       0
+      rxTimeout:        5000
