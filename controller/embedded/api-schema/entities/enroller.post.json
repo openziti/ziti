@@ -1,0 +1,12 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/enroll.post.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+  ],
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name-null"
+    }
+  }
+}

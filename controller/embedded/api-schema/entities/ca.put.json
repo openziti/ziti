@@ -1,0 +1,32 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/cas.put.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "tags",
+    "isAutoCaEnrollmentEnabled",
+    "isOttCaEnrollmentEnabled",
+    "isAuthEnabled"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name"
+    },
+    "isAutoCaEnrollmentEnabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "isOttCaEnrollmentEnabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "isAuthEnabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "$ref": "definitions.all.json#/definitions/tags"
+    }
+  }
+}

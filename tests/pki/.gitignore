@@ -1,0 +1,5 @@
+ca.3rdparty/
+ca.ecc/
+cnf/*3rdparty*
+cnf/*ecc*
+fingerprints.txt

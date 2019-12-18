@@ -1,0 +1,21 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator.updb.user.update.put.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "current",
+    "new"
+  ],
+  "properties": {
+    "current": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 100
+    },
+    "new": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 100
+    }
+  }
+}

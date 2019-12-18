@@ -1,0 +1,13 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/association.patch.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ids"
+  ],
+  "properties": {
+    "ids": {
+      "$ref": "definitions.all.json#/definitions/arrayOfIds"
+    }
+  }
+}

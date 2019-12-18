@@ -1,0 +1,13 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/enroll-updb.post.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "password"
+  ],
+  "properties": {
+    "password": {
+      "$ref": "definitions.all.json#/definitions/password"
+    }
+  }
+}
