@@ -57,7 +57,14 @@ func (ir *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		for i := 0; i < v.NumField(); i++ {
-			is := v.Field(i).Interface()
+
+			field := v.Field(i)
+
+			if !field.CanInterface() {
+				continue
+			}
+
+			is := field.Interface()
 
 			if store, ok := is.(persistence.Store); ok {
 				_, count, err := store.QueryIds(tx, "true limit 1")
