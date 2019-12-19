@@ -18,7 +18,7 @@ package subcmd
 
 import (
 	"github.com/netfoundry/ziti-cmd/ziti/agent"
-	"github.com/netfoundry/ziti-edge/edge/controller/server"
+	"github.com/netfoundry/ziti-edge/controller/server"
 	"github.com/netfoundry/ziti-fabric/controller"
 	"github.com/spf13/cobra"
 )

@@ -17,7 +17,7 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/edge/gateway/xgress_edge"
+	"github.com/netfoundry/ziti-edge/gateway/xgress_edge"
 	"github.com/netfoundry/ziti-fabric/router"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/sirupsen/logrus"
