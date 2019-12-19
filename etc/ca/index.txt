@@ -1,0 +1,1 @@
+V	280515165723Z		1000	unknown	/C=US/ST=North Carolina/O=NetFoundry/OU=NetFoundry Certificate Authority/CN=NetFoundry Intermediate CA
