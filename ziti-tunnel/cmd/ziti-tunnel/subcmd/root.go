@@ -26,9 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -95,20 +93,6 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		log.Fatalf("failed to initialize Ziti SDK: %v", err)
 	}
-
-	sig := make(chan os.Signal)
-	signal.Notify(sig)
-	go func() {
-		for {
-			s := <-sig
-			log.Debugf("caught signal %v", s)
-			switch s {
-			case os.Interrupt, os.Kill, syscall.SIGTERM:
-				interceptor.Stop()
-				os.Exit(0)
-			}
-		}
-	}()
 
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
 	resolverConfig := cmd.Flag("resolver").Value.String()
