@@ -25,7 +25,7 @@ by hostname instead of IP address.
 ## Prerequisites
 
 - Complete the [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html). This guide
-  uses the Ziti Controller and Ziti Edge Router that are created in the Ziti Quickstart.
+  uses the Ziti Controller and Edge Router that are created in the Ziti Quickstart.
 - Admin-level access to a Kubernetes cluster via `kubectl`.
 
 ## Create an Identity and AppWAN
@@ -74,15 +74,22 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
       name: ziti-tunnel-sidecar-demo
     spec:
       replicas: 1
+      selector:
+        matchLabels:
+          app: ziti-tunnel-sidecar-demo
       strategy:
         type: Recreate
       template:
+        metadata:
+          labels:
+            app: ziti-tunnel-sidecar-demo
         spec:
           containers:
           - image: busybox
             name: testclient
             command: ["sh","-c","while true; do echo wget -qO - eth0.ziti.cli:80; sleep 5; done"]
           - image: netfoundry/ziti-tunnel:0.5.7-2546
+            name: ziti-tunnel
             env:
             - name: NF_REG_NAME
               value: tunnel-sidecar
@@ -96,7 +103,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           volumes:
           - name: ziti-tunnel-persistent-storage
             persistentVolumeClaim:
-              claimName: ziti-tunnel-host-pv-claim
+              claimName: tunnel-sidecar-pv-claim
           - name: tunnel-sidecar-jwt
             secret:
               secretName: tunnel-sidecar.jwt
