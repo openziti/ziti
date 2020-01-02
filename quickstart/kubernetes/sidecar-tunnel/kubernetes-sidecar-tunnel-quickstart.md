@@ -25,7 +25,7 @@ by hostname instead of IP address.
 ## Prerequisites
 
 - Complete the [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html). This guide
-  uses the Ziti Controller and Edge Router that are created in the Ziti Quickstart.
+  uses the Ziti Controller and Ziti Edge Router that are created in the Ziti Quickstart.
 - Admin-level access to a Kubernetes cluster via `kubectl`.
 
 ## Create an Identity and AppWAN
