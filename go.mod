@@ -11,7 +11,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/achanda/go-sysctl v0.0.0-20160222034550-6be7678c45d2
 	github.com/antlr/antlr4 v0.0.0-20191115170859-54daca92f7b0
-	github.com/coreos/go-iptables v0.4.3
+	github.com/coreos/go-iptables v0.4.5
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v1.13.1 // indirect

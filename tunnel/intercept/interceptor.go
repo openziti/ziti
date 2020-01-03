@@ -136,14 +136,15 @@ func (m LUT) GetByAddress(addr net.Addr) (*InterceptedService, error) {
 	return &s, nil
 }
 
-func (m LUT) GetByName(serviceName string) (*InterceptedService, error) {
+func (m LUT) GetByName(serviceName string) []InterceptedService {
+	var r []InterceptedService
 	for _, service := range m {
 		if serviceName == service.Name {
-			return &service, nil
+			r = append(r, service)
 		}
 	}
 
-	return nil, fmt.Errorf("service %s is not being intercepted", serviceName)
+	return r
 }
 
 func (m LUT) Put(addr interceptAddress, serviceName string, data interface{}) error {

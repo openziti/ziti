@@ -102,20 +102,26 @@ func (t *tunInterceptor) Intercept(service edge.Service, resolver dns.Resolver) 
 }
 
 func (t *tunInterceptor) StopIntercepting(serviceName string, removeRoute bool) error {
-	service, err := t.interceptLUT.GetByName(serviceName)
-	if err != nil {
+	services := t.interceptLUT.GetByName(serviceName)
+	if len(services) == 0 {
 		return fmt.Errorf("service %s not found in intercept LUT", serviceName)
 	}
-	defer t.interceptLUT.Remove(service.Addr)
-
+	// keep track of routes used by all intercepts. use a map to avoid duplicates
+	routes := map[string]net.IPNet{}
+	for _, service := range services {
+		defer t.interceptLUT.Remove(service.Addr)
+		ipn := service.Addr.IpNet()
+		routes[ipn.String()] = ipn
+	}
 	tcp.UnregisterService(serviceName)
 	t.udpManager.UnregisterService(serviceName)
 
 	if removeRoute {
-		ipNet := service.Addr.IpNet()
-		err = router.RemovePointToPointAddress(t.localPrefix.IP, &ipNet, t.tunIf.iFace.Name)
-		if err != nil {
-			return fmt.Errorf("failed to delete route: %v", err)
+		for _, ipNet := range routes {
+			err := router.RemovePointToPointAddress(t.localPrefix.IP, &ipNet, t.tunIf.iFace.Name)
+			if err != nil {
+				return fmt.Errorf("failed to delete route: %v", err)
+			}
 		}
 	}
 

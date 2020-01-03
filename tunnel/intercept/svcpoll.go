@@ -21,58 +21,86 @@ import (
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
 func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {
 	interceptor.Start(context)
 	knownServices := make(map[string]edge.Service)
+	log := pfxlog.Logger()
+
+	sig := make(chan os.Signal)
+	signal.Notify(sig)
 
 	if pollRate < time.Second {
 		pollRate = 15 * time.Second
 	}
 
-	for ; ; time.Sleep(pollRate) {
+	for {
 		edgeServices, err := context.GetServices()
 		if err != nil {
-			logrus.Errorf("failed to get ziti services: %v", err)
+			log.Errorf("failed to get ziti services: %v", err)
 			if err.Error() == "unauthorized" {
 				if err := context.Authenticate(); err != nil {
-					logrus.WithError(err).Error("could not re-authenticate, session lost")
-					return
+					log.WithError(err).Error("could not re-authenticate, session lost")
+					break
 				}
 			}
+		}
+		added, removed := diffServices(edgeServices, knownServices)
+		updateServices(context, interceptor, resolver, added, removed, knownServices)
 
+		select {
+		case <-time.After(pollRate):
 			continue
-		}
-
-		// find new services
-		addedServices := make(map[string]edge.Service)
-		edgeServiceIds := make(map[string]struct{})
-		for _, edgeSvc := range edgeServices {
-			// get edge service IDs for efficiently finding removed services
-			edgeServiceIds[edgeSvc.Id] = struct{}{}
-			if _, ok := knownServices[edgeSvc.Id]; !ok {
-				addedServices[edgeSvc.Id] = edgeSvc
-				knownServices[edgeSvc.Id] = edgeSvc
+		case s := <-sig:
+			log.Debugf("caught signal %v", s)
+			switch s {
+			case syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM:
+				log.Debugf("caught signal %v", s)
+				goto done
 			}
 		}
-
-		// look for removed services
-		removedServices := make(map[string]edge.Service)
-		for id, knownSvc := range knownServices {
-			if _, ok := edgeServiceIds[id]; !ok {
-				removedServices[knownSvc.Id] = knownSvc
-				delete(knownServices, id)
-			}
-		}
-
-		updateServices(context, interceptor, resolver, addedServices, removedServices, knownServices)
 	}
+
+done:
+	// use `updateServices` to stop each intercepted service one-at-a-time.
+	updateServices(context, interceptor, resolver, nil, knownServices, knownServices)
+	interceptor.Stop()
+}
+
+// compare a list of services from the edge controller against the services that we are currently
+// familiar with to determine which (if any) services have been added or removed since the last
+// time `knownServices` was updated.
+func diffServices(edgeServices []edge.Service, knownServices map[string]edge.Service) (added, removed map[string]edge.Service) {
+	// find new services
+	added = make(map[string]edge.Service)
+	edgeServiceIds := make(map[string]struct{})
+	for _, edgeSvc := range edgeServices {
+		// get edge service IDs for efficiently finding removed services
+		edgeServiceIds[edgeSvc.Id] = struct{}{}
+		if _, ok := knownServices[edgeSvc.Id]; !ok {
+			added[edgeSvc.Id] = edgeSvc
+			knownServices[edgeSvc.Id] = edgeSvc
+		}
+	}
+
+	// look for removed services
+	removed = make(map[string]edge.Service)
+	for id, knownSvc := range knownServices {
+		if _, ok := edgeServiceIds[id]; !ok {
+			removed[knownSvc.Id] = knownSvc
+			delete(knownServices, id)
+		}
+	}
+
+	return
 }
 
 func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]edge.Service) {
@@ -96,22 +124,23 @@ func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.
 		}
 	}
 
-	// build map of all in-use address strings, so we know when a route needs to be removed from the tun
-	allAddrs := make(map[string]*struct{}, len(all))
+	// build map of all in-use address strings, so we know when a route needs to be removed
+	allAddrs := make(map[string]int, len(all))
 	for _, svc := range all {
 		addr := svc.Dns.Hostname
 		if _, ok := allAddrs[addr]; !ok {
-			allAddrs[addr] = nil
+			allAddrs[addr] += 1
 		}
 	}
 
 	for _, svc := range removed {
 		log.Infof("stopping tunnel for unavailable service: %s", svc.Name)
-		_, sharedAddress := allAddrs[svc.Dns.Hostname]
-		err := interceptor.StopIntercepting(svc.Name, !sharedAddress)
+		useCnt := allAddrs[svc.Dns.Hostname]
+		err := interceptor.StopIntercepting(svc.Name, useCnt == 1)
 		if err != nil {
 			log.Errorf("failed to stop intercepting: %v", err)
 		}
+		allAddrs[svc.Dns.Hostname] -= 1
 	}
 }
 

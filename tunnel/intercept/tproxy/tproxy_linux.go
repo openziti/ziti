@@ -155,8 +155,10 @@ func (t *tProxyInterceptor) accept(context ziti.Context) {
 			}
 			log.Infof("received connection: %s --> %s", client.LocalAddr().String(), client.RemoteAddr().String())
 			service, err := t.interceptLUT.GetByAddress(client.LocalAddr())
-			if err != nil {
-				log.Debugf("received connection for %s, which does not map to an intercepted service", client.LocalAddr().String())
+			if service == nil {
+				log.Warnf("received connection for %s, which does not map to an intercepted service", client.LocalAddr().String())
+				client.Close()
+				continue
 			}
 			go tunnel.Run(context, service.Name, client)
 		}
@@ -334,22 +336,28 @@ func (t *tProxyInterceptor) intercept(service edge.Service, resolver dns.Resolve
 }
 
 func (t *tProxyInterceptor) StopIntercepting(serviceName string, removeRoute bool) error {
-	service, err := t.interceptLUT.GetByName(serviceName)
-	if err != nil {
+	services := t.interceptLUT.GetByName(serviceName)
+	if len(services) == 0 {
 		return fmt.Errorf("service %s not found in intercept LUT", serviceName)
 	}
-	defer t.interceptLUT.Remove(service.Addr)
-
-	err = t.ipt.Delete(mangleTable, dstChain, service.Data.([]string)...)
-	if err != nil {
-		return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
+	// keep track of routes used by all intercepts. use a map to avoid duplicates
+	routes := map[string]net.IPNet{}
+	for _, service := range services {
+		defer t.interceptLUT.Remove(service.Addr)
+		err := t.ipt.Delete(mangleTable, dstChain, service.Data.([]string)...)
+		if err != nil {
+			return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
+		}
+		ipn := service.Addr.IpNet()
+		routes[ipn.String()] = ipn
 	}
 
 	if removeRoute {
-		ipNet := service.Addr.IpNet()
-		err := router.RemoveLocalAddress(&ipNet, "lo")
-		if err != nil {
-			return fmt.Errorf("failed to remove route for service %s: %v", serviceName, err)
+		for _, ipNet := range routes {
+			err := router.RemoveLocalAddress(&ipNet, "lo")
+			if err != nil {
+				return fmt.Errorf("failed to remove route for service %s: %v", serviceName, err)
+			}
 		}
 	}
 
