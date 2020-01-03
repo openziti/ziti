@@ -137,6 +137,9 @@ directed to the listener by two mechanisms:
         local 5.9.243.187 dev lo proto kernel scope host src 5.9.243.187
         local 169.254.1.1 dev lo proto kernel scope host src 169.254.1.1
 
+iptables rules and local routes are removed by a signal handler when `ziti-tunnel`
+is terminated.
+
 ### tun
 
 The tun intercept mode creates an ephemeral tun interface and configures it with the
@@ -184,6 +187,10 @@ would result in the Linux networking stack receiving the packets that are routed
 the tun interface. The point-to-point addresses ensure that the packets are delivered
 "to the wire", which mean that, for a tun interface, the packets will be picked up
 by `ziti-tunnel` when it reads data from the tun interface.
+
+The tun interface and all addresses assigned to it are removed when `ziti-tunnel`
+terminates. The Linux kernel automatically removes the interface when the process that
+created it terminates.
 
 ### proxy
 
