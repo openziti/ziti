@@ -18,13 +18,14 @@ package edge_controller
 
 import (
 	"fmt"
+	"io"
+	"strconv"
+
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
-	"strconv"
 )
 
 type createServiceOptions struct {
@@ -32,7 +33,7 @@ type createServiceOptions struct {
 	hostedService   bool
 	tags            map[string]string
 	edgeRouterRoles []string
-	hostIds         []string
+	roleAttributes  []string
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -68,7 +69,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.hostedService, "hosted", false, "Indicates that this is a hosted service")
 	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new service")
-	cmd.Flags().StringSliceVarP(&options.hostIds, "host-ids", "i", nil, "Identities allowed to host this service")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 
 	return cmd
 }
@@ -80,31 +81,24 @@ func runCreateService(o *createServiceOptions) (err error) {
 		return err
 	}
 
-	serviceData := gabs.New()
-	setJSONValue(serviceData, o.Args[0], "name")
-	setJSONValue(serviceData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(serviceData, o.Args[1], "dns", "hostname")
-	setJSONValue(serviceData, port, "dns", "port")
+	entityData := gabs.New()
+	setJSONValue(entityData, o.Args[0], "name")
+	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
+	setJSONValue(entityData, o.Args[1], "dns", "hostname")
+	setJSONValue(entityData, port, "dns", "port")
+	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 
 	if o.hostedService {
-		setJSONValue(serviceData, "unclaimed", "egressRouter")
-		setJSONValue(serviceData, "hosted:unclaimed", "endpointAddress")
+		setJSONValue(entityData, "unclaimed", "egressRouter")
+		setJSONValue(entityData, "hosted:unclaimed", "endpointAddress")
 	} else {
-		setJSONValue(serviceData, o.Args[3], "egressRouter")
-		setJSONValue(serviceData, o.Args[4], "endpointAddress")
+		setJSONValue(entityData, o.Args[3], "egressRouter")
+		setJSONValue(entityData, o.Args[4], "endpointAddress")
 	}
 
-	if len(o.hostIds) > 0 {
-		hostIds, err := mapNamesToIDs("identities", o.hostIds...)
-		if err != nil {
-			return err
-		}
-		setJSONValue(serviceData, hostIds, "hostIds")
-	}
+	setJSONValue(entityData, o.tags, "tags")
 
-	setJSONValue(serviceData, o.tags, "tags")
-
-	result, err := createEntityOfType("services", serviceData.String(), &o.commonOptions)
+	result, err := createEntityOfType("services", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)

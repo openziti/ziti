@@ -18,12 +18,13 @@ package edge_controller
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/Jeffail/gabs"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // newListCmd creates a command object for the "controller list" command
@@ -43,6 +44,7 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceCmd(f, out, errOut))
+	cmd.AddCommand(newCreateServicePolicyCmd(f, out, errOut))
 	cmd.AddCommand(newCreateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newCreateCaCmd(f, out, errOut))
 

@@ -17,12 +17,13 @@
 package edge_controller
 
 import (
+	"io"
+
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // NewCmdEdge creates a command object for the "controller" command
@@ -50,7 +51,9 @@ func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 }
 
 func setJSONValue(container *gabs.Container, value interface{}, path ...string) {
-	if _, err := container.Set(value, path...); err != nil {
-		panic(err)
+	if value != nil {
+		if _, err := container.Set(value, path...); err != nil {
+			panic(err)
+		}
 	}
 }
