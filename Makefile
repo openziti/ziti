@@ -165,6 +165,28 @@ $(if $(filter $(strip $(BRANCH_NAME)),$(strip $(RELEASE_BRANCH))),$(call publish
 
 endef
 
+define make-target-64-bit-only
+$(info ============ make-target starting for: $1 ============)
+
+mv release/$1_darwin_amd64 release/amd64/darwin/$1
+cd release/amd64/darwin; chmod +x $1
+cd release/amd64/darwin; tar -zcvf $1.tar.gz $1
+cd release/amd64/darwin; rm $1
+$(if $(filter $(strip $(BRANCH_NAME)),$(strip $(RELEASE_BRANCH))),$(call publish-target-as-release,$1,amd64,darwin,$1.tar.gz),$(call publish-target-as-snapshot,$1,$(BRANCH_NAME),amd64,darwin,$1.tar.gz))
+
+mv release/$1_linux_amd64 release/amd64/linux/$1
+cd release/amd64/linux; chmod +x $1
+cd release/amd64/linux; tar -zcvf $1.tar.gz $1
+cd release/amd64/linux; rm $1
+$(if $(filter $(strip $(BRANCH_NAME)),$(strip $(RELEASE_BRANCH))),$(call publish-target-as-release,$1,amd64,linux,$1.tar.gz),$(call publish-target-as-snapshot,$1,$(BRANCH_NAME),amd64,linux,$1.tar.gz))
+
+mv release/$1_windows_amd64.exe release/amd64/windows/$1.exe
+cd release/amd64/windows; tar -zcvf $1.tar.gz $1.exe
+cd release/amd64/windows; rm $1.exe
+$(if $(filter $(strip $(BRANCH_NAME)),$(strip $(RELEASE_BRANCH))),$(call publish-target-as-release,$1,amd64,windows,$1.tar.gz),$(call publish-target-as-snapshot,$1,$(BRANCH_NAME),amd64,windows,$1.tar.gz))
+
+endef
+
 define make-target-linux-only
 $(info ============ make-target-linux-only starting for: $1 ============)
 
@@ -193,7 +215,7 @@ ziti-cli:
 	cd ziti; $(call make-target,ziti)
 
 cmd-ziti-controller:
-	cd ziti-controller; $(call make-target,ziti-controller)
+	cd ziti-controller; $(call make-target-64-bit-only,ziti-controller)
 
 cmd-ziti-enroller:
 	cd ziti-enroller; $(call make-target,ziti-enroller)
