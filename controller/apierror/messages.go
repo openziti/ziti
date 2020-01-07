@@ -33,7 +33,7 @@ const (
 
 	CouldNotParseBodyCode    string = "COULD_NOT_PARSE_BODY"
 	CouldNotParseBodyMessage string = "The body of the request could not be parsed"
-	CouldNotParseBodyStatus  int    = http.StatusInternalServerError
+	CouldNotParseBodyStatus  int    = http.StatusBadRequest
 
 	CouldNotReadBodyCode    string = "COULD_NOT_READ_BODY"
 	CouldNotReadBodyMessage string = "The body of the request could not be read"

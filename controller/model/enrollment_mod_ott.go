@@ -75,6 +75,11 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 
 	fp := module.fingerprintGenerator.FromRaw(certRaw)
 
+	certPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certRaw,
+	})
+
 	newAuthenticator := &Authenticator{
 		BaseModelEntityImpl: BaseModelEntityImpl{
 			Id: uuid.New().String(),
@@ -83,14 +88,9 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		IdentityId: enrollment.IdentityId,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fp,
+			Pem:         string(certPem),
 		},
 	}
-
-	b := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certRaw,
-	}
-	certPem := pem.EncodeToMemory(b)
 
 	err = module.env.GetHandlers().Enrollment.ReplaceWithAuthenticator(enrollment.Id, newAuthenticator)
 

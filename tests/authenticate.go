@@ -26,6 +26,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -75,6 +76,19 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 	}
 
 	return sess, nil
+}
+
+func (authenticator *certAuthenticator) TLSCertificates() []tls.Certificate {
+	return []tls.Certificate{
+		{
+			Certificate: [][]byte{authenticator.cert.Raw},
+			PrivateKey:  authenticator.key,
+		},
+	}
+}
+
+func (authenticator *certAuthenticator) Fingerprint() string {
+	return cert.NewFingerprintGenerator().FromRaw(authenticator.cert.Raw)
 }
 
 type updbAuthenticator struct {
@@ -184,7 +198,7 @@ func (request *authenticatedRequests) newAuthenticatedRequest() *resty.Request {
 	return request.session.newRequest(request.testContext)
 }
 
-func (request *authenticatedRequests) requireCreateIdentity(name string, password string, isAdmin bool, rolesAttributes ...string) string {
+func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
 	request.testContext.setJsonValue(entityData, "User", "type")
@@ -200,8 +214,27 @@ func (request *authenticatedRequests) requireCreateIdentity(name string, passwor
 	httpCode, body := request.createEntityOfType("identities", entityJson)
 	request.testContext.req.Equal(http.StatusCreated, httpCode)
 	id := request.testContext.getEntityId(body)
-	request.testContext.completeEnrollment(id, password)
+	request.testContext.completeUpdbEnrollment(id, password)
 	return id
+}
+
+func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name string, isAdmin bool, rolesAttributes ...string) (string, *certAuthenticator) {
+	entityData := gabs.New()
+	request.testContext.setJsonValue(entityData, name, "name")
+	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
+	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
+
+	enrollments := map[string]interface{}{
+		"ott": true,
+	}
+	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
+
+	entityJson := entityData.String()
+	httpCode, body := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, httpCode)
+	id := request.testContext.getEntityId(body)
+	return id, request.testContext.completeOttEnrollment(id)
 }
 
 func (request *authenticatedRequests) requireNewService(roleAttributes ...string) *testService {
@@ -411,7 +444,7 @@ func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttri
 		Username: uuid.New().String(),
 		Password: uuid.New().String(),
 	}
-	_ = request.requireCreateIdentity(userAuth.Username, userAuth.Password, isAdmin, roleAttributes...)
+	_ = request.requireCreateIdentityWithUpdbEnrollment(userAuth.Username, userAuth.Password, isAdmin, roleAttributes...)
 	session, _ := userAuth.Authenticate(request.testContext)
 
 	return session

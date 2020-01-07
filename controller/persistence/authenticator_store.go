@@ -28,6 +28,7 @@ const (
 	FieldAuthenticatorIdentity = "identity"
 
 	FieldAuthenticatorCertFingerprint = "certFingerprint"
+	FieldAuthenticatorCertPem         = "certPem"
 
 	FieldAuthenticatorUpdbUsername = "updbUsername"
 	FieldAuthenticatorUpdbPassword = "updbPassword"
@@ -44,6 +45,7 @@ type AuthenticatorSubType interface {
 type AuthenticatorCert struct {
 	Authenticator
 	Fingerprint string
+	Pem         string
 }
 
 func (entity *AuthenticatorCert) Fingerprints() []string {
@@ -77,6 +79,7 @@ func (entity *Authenticator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 	if entity.Type == MethodAuthenticatorCert {
 		authCert := &AuthenticatorCert{}
 		authCert.Fingerprint = bucket.GetStringWithDefault(FieldAuthenticatorCertFingerprint, "")
+		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
 		entity.SubType = authCert
 	} else if entity.Type == MethodAuthenticatorUpdb {
 		authUpdb := &AuthenticatorUpdb{}
@@ -97,6 +100,7 @@ func (entity *Authenticator) SetValues(ctx *boltz.PersistContext) {
 	if entity.Type == MethodAuthenticatorCert {
 		if authCert, ok := entity.SubType.(*AuthenticatorCert); ok {
 			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
+			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
 		} else {
 			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
 		}
@@ -172,6 +176,7 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 
 	store.AddSymbol(FieldAuthenticatorMethod, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)
+	store.AddSymbol(FieldAuthenticatorCertPem, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)

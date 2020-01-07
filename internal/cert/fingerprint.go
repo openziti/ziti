@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-type Fingerprints map[string]interface{}
+type Fingerprints map[string]*x509.Certificate
 
 func (fingerprints Fingerprints) Contains(fp string) bool {
 	if _, matchingFingerprints := fingerprints[fp]; matchingFingerprints {
@@ -106,7 +106,7 @@ func (fpg *defaultFingerprintGenerator) FromCerts(certs []*x509.Certificate) Fin
 
 	for _, cert := range certs {
 		fp := fpg.FromCert(cert)
-		fps[fp] = true
+		fps[fp] = cert
 	}
 	return fps
 }

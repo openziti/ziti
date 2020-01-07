@@ -18,6 +18,7 @@ package model
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
@@ -90,7 +91,16 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewCertFailedValidation()
 	}
 
+	if enrollmentCert == nil {
+		return nil, apierror.NewCertFailedValidation()
+	}
+
 	fingerprint := module.fingerprintGenerator.FromCert(enrollmentCert)
+
+	certPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: enrollmentCert.Raw,
+	})
 
 	existing, _ := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
@@ -127,6 +137,7 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		IdentityId:          identity.Id,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fingerprint,
+			Pem:         string(certPem),
 		},
 	}
 

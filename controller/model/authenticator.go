@@ -117,16 +117,19 @@ func (context *AuthContextHttp) FillFromHttpRequest(request *http.Request) error
 	case "application/json":
 		data := map[string]interface{}{}
 
-		err := json.Unmarshal(body, &data)
+		if len(body) > 0 {
 
-		if err != nil {
-			err = apierror.GetJsonParseError(err, body)
-			apiErr := apierror.NewCouldNotParseBody()
-			apiErr.Cause = err
-			apiErr.AppendCause = true
-			return apiErr
+			err := json.Unmarshal(body, &data)
+
+			if err != nil {
+				err = apierror.GetJsonParseError(err, body)
+				apiErr := apierror.NewCouldNotParseBody()
+				apiErr.Cause = err
+				apiErr.AppendCause = true
+				return apiErr
+			}
+			authData = data
 		}
-		authData = data
 	default:
 		return apierror.NewInvalidContentType(contentType[0])
 	}

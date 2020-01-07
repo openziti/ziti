@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
@@ -59,12 +60,27 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 
 	for fingerprint := range fingerprints {
 		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
+		curCert := fingerprints[fingerprint]
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
 		}
 
 		if authenticator != nil {
+			if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
+				if authCert.Pem == "" {
+					certPem := pem.EncodeToMemory(&pem.Block{
+						Type:  "CERTIFICATE",
+						Bytes: curCert.Raw,
+					})
+
+					authCert.Pem = string(certPem)
+					if err = module.env.GetHandlers().Authenticator.Update(authenticator); err != nil {
+						pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM, fingerprint: %s", fingerprint)
+					}
+				}
+			}
+
 			return authenticator.IdentityId, nil
 		}
 	}

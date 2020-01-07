@@ -265,6 +265,7 @@ func MapToIdentityAuthenticatorApiList(_ *env.AppEnv, authenticator *model.Authe
 		cert := authenticator.ToCert()
 		ret = map[string]interface{}{
 			"fingerprint": cert.Fingerprint,
+			"cert":        cert.Pem,
 		}
 	case persistence.MethodAuthenticatorUpdb:
 		updb := authenticator.ToUpdb()
