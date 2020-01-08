@@ -20,10 +20,11 @@ package tests
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/netfoundry/ziti-edge/controller/apierror"
 
 	"github.com/google/uuid"
 )
@@ -34,7 +35,8 @@ func Test_Services(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	nonAdminUser := ctx.createUserAndLogin(false)
+	identityRole := uuid.New().String()
+	nonAdminUser := ctx.createUserAndLogin(false, identityRole)
 
 	ctx.enabledJsonLogging = true
 	t.Run("create without name should fail", func(t *testing.T) {
@@ -44,75 +46,67 @@ func Test_Services(t *testing.T) {
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
 	})
 
-	t.Run("create with invalid hostId should fail", func(t *testing.T) {
-		service := ctx.newTestService()
-		service.hostIds = []string{uuid.New().String()}
-		httpCode, body := ctx.createEntity(service)
-		parsed := ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "hostIds")
-		ctx.pathEquals(parsed, toIntfSlice(service.hostIds), path("error.cause.value"))
-	})
-
-	t.Run("create with no host ids should pass", func(t *testing.T) {
+	t.Run("create should pass", func(t *testing.T) {
 		now := time.Now()
 		service := ctx.requireCreateNewService()
+		service.permissions = []string{"Dial", "Bind"}
 		entityJson := ctx.validateEntityWithQuery(service)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
-	t.Run("create with host id should pass", func(t *testing.T) {
-		service := ctx.newTestService()
-		service.hostIds = []string{nonAdminUser.identityId}
-		service.id = ctx.requireCreateEntity(service)
-		ctx.validateEntityWithQuery(service)
-	})
-
 	t.Run("list as admin should return 3 services", func(t *testing.T) {
 		service1 := ctx.requireCreateNewService()
+		service1.permissions = []string{"Dial", "Bind"}
 		service2 := ctx.requireCreateNewService()
-		service3 := ctx.newTestService()
-		service3.hostIds = []string{nonAdminUser.identityId}
-		service3.id = ctx.requireCreateEntity(service3)
+		service2.permissions = []string{"Dial", "Bind"}
+		service3 := ctx.requireCreateNewService()
+		service3.permissions = []string{"Dial", "Bind"}
 
-		jsonService := ctx.validateEntityWithQuery(service1)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-		jsonService = ctx.validateEntityWithQuery(service2)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-		jsonService = ctx.validateEntityWithQuery(service3)
-		ctx.pathEquals(jsonService, false, path("hostable"))
+		ctx.validateEntityWithLookup(service1)
+		ctx.validateEntityWithQuery(service1)
+		ctx.validateEntityWithQuery(service2)
+		ctx.validateEntityWithQuery(service3)
 	})
 
-	t.Run("list as non-admin should return 2 services", func(t *testing.T) {
-		service1 := ctx.requireCreateNewService()
-		service2 := ctx.requireCreateNewService()
-		service3 := ctx.newTestService()
-		service3.hostIds = []string{nonAdminUser.identityId}
-		service3.id = ctx.requireCreateEntity(service3)
+	t.Run("list as non-admin should return 3 services", func(t *testing.T) {
+		dialRole := uuid.New().String()
+		bindRole := uuid.New().String()
+		service1 := ctx.requireCreateNewService(dialRole)
+		service1.permissions = []string{"Dial"}
+		service2 := ctx.requireCreateNewService(bindRole)
+		service2.permissions = []string{"Bind"}
+		service3 := ctx.requireCreateNewService(dialRole, bindRole)
+		service3.permissions = []string{"Dial", "Bind"}
+		service4 := ctx.requireCreateNewService()
+		service5 := ctx.requireCreateNewService()
+		service6 := ctx.requireCreateNewService()
+		service7 := ctx.requireCreateNewService()
 
-		appWan := &testAppwan{
-			name:       uuid.New().String(),
-			identities: []string{nonAdminUser.identityId},
-			services:   []string{service2.id, service3.id},
-		}
-		ctx.requireCreateEntity(appWan)
+		ctx.requireNewServicePolicy("Dial", s("@"+dialRole), s("@"+identityRole))
+		ctx.requireNewServicePolicy("Bind", s("@"+bindRole), s("@"+identityRole))
 
-		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v"]`, service1.id, service2.id, service3.id))
+		fmt.Printf("Expecting\n%v\n%v\n%v and not\n%v to be in final list\n", service1.id, service2.id, service3.id, service4.id)
+		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
+			service1.id, service2.id, service3.id, service4.id, service5.id, service6.id, service7.id))
 		result := ctx.requireQuery(nonAdminUser.sessionId, "services?filter="+query)
 		data := ctx.requirePath(result, "data")
-		ctx.requireNoChildWith(data, "id", service1.id)
+		ctx.requireNoChildWith(data, "id", service4.id)
+		ctx.requireNoChildWith(data, "id", service5.id)
+		ctx.requireNoChildWith(data, "id", service6.id)
+		ctx.requireNoChildWith(data, "id", service7.id)
 
-		jsonService := ctx.requireChildWith(data, "id", service2.id)
+		jsonService := ctx.requireChildWith(data, "id", service1.id)
+		service1.validate(ctx, jsonService)
+		jsonService = ctx.requireChildWith(data, "id", service2.id)
 		service2.validate(ctx, jsonService)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-
 		jsonService = ctx.requireChildWith(data, "id", service3.id)
 		service3.validate(ctx, jsonService)
-		ctx.pathEquals(jsonService, true, path("hostable"))
 	})
 
 	t.Run("lookup as admin should pass", func(t *testing.T) {
 		service := ctx.requireCreateNewService()
-		jsonService := ctx.validateEntityWithLookup(service)
-		ctx.pathEquals(jsonService, false, path("hostable"))
+		service.permissions = []string{"Dial", "Bind"}
+		ctx.validateEntityWithLookup(service)
 	})
 
 	t.Run("lookup non-existent service as admin should fail", func(t *testing.T) {
@@ -120,21 +114,21 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("lookup existing service as non-admin should pass", func(t *testing.T) {
-		service := ctx.requireCreateNewService()
-		service2 := ctx.newTestService()
-		service2.hostIds = []string{nonAdminUser.identityId}
-		service2.id = ctx.requireCreateEntity(service2)
+		dialRole := uuid.New().String()
+		bindRole := uuid.New().String()
+		service1 := ctx.requireCreateNewService(dialRole)
+		service1.permissions = []string{"Dial"}
+		service2 := ctx.requireCreateNewService(bindRole)
+		service2.permissions = []string{"Bind"}
+		service3 := ctx.requireCreateNewService(dialRole, bindRole)
+		service3.permissions = []string{"Dial", "Bind"}
 
-		appwan := newTestAppwan()
-		appwan.identities = []string{nonAdminUser.identityId}
-		appwan.services = []string{service.id, service2.id}
-		ctx.requireCreateEntity(appwan)
+		ctx.requireNewServicePolicy("Dial", s("@"+dialRole), s("@"+identityRole))
+		ctx.requireNewServicePolicy("Bind", s("@"+bindRole), s("@"+identityRole))
 
-		jsonService := ctx.validateEntityWithLookupAndSession(nonAdminUser.sessionId, service)
-		ctx.pathEquals(jsonService, false, path("hostable"))
-
-		jsonService = ctx.validateEntityWithLookupAndSession(nonAdminUser.sessionId, service2)
-		ctx.pathEquals(jsonService, true, path("hostable"))
+		ctx.validateEntityWithLookupAndSession(nonAdminUser.sessionId, service1)
+		ctx.validateEntityWithLookupAndSession(nonAdminUser.sessionId, service2)
+		ctx.validateEntityWithLookupAndSession(nonAdminUser.sessionId, service3)
 	})
 
 	t.Run("lookup non-existent service as non-admin should fail", func(t *testing.T) {
@@ -149,6 +143,7 @@ func Test_Services(t *testing.T) {
 	t.Run("update service should pass", func(t *testing.T) {
 		now := time.Now()
 		service := ctx.requireCreateNewService()
+		service.permissions = []string{"Bind", "Dial"}
 		entityJson := ctx.validateEntityWithQuery(service)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
@@ -167,6 +162,7 @@ func Test_Services(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		service := ctx.newTestService()
+		service.permissions = []string{"Bind", "Dial"}
 		service.edgeRouterRoles = []string{role1, role2}
 		service.id = ctx.requireCreateEntity(service)
 		ctx.validateEntityWithQuery(service)
@@ -178,6 +174,7 @@ func Test_Services(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		service := ctx.newTestService()
+		service.permissions = []string{"Bind", "Dial"}
 		service.edgeRouterRoles = []string{role1, role2}
 		service.id = ctx.requireCreateEntity(service)
 

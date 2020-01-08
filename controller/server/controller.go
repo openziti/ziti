@@ -20,12 +20,19 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"time"
+
+	"github.com/netfoundry/ziti-edge/controller/internal/policy"
+
 	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
 	edgeconfig "github.com/netfoundry/ziti-edge/controller/config"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/handler_edge_ctrl"
-	"github.com/netfoundry/ziti-edge/controller/internal/policy"
 	_ "github.com/netfoundry/ziti-edge/controller/internal/routes"
 	"github.com/netfoundry/ziti-edge/controller/middleware"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -34,11 +41,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-foundation/config"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"net/http"
-	"os"
-	"os/signal"
-	"sync"
-	"time"
 )
 
 type Controller struct {
@@ -68,8 +70,6 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 	if !c.IsEnabled() {
 		return c, nil
 	}
-
-	log := pfxlog.Logger()
 
 	ae := env.NewAppEnv(c.config)
 
@@ -116,30 +116,6 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy runner: %s", err)
-	}
-
-	appWanEnforcer := policy.NewAppWanEnforcer(ae, policyAppWanFreq)
-	err = pe.AddOperation(appWanEnforcer)
-
-	if err != nil {
-		log.
-			WithField("cause", err).
-			WithField("enforcerName", appWanEnforcer.GetName()).
-			WithField("enforcerId", appWanEnforcer.GetId()).
-			Errorf("could not add appWan enforcer")
-		return nil, fmt.Errorf("could not add appWan enforcer: %s", err)
-	}
-
-	sessionEnforcer := policy.NewSessionEnforcer(ae, policySessionFreq, c.config.SessionTimeoutDuration())
-	err = pe.AddOperation(sessionEnforcer)
-
-	if err != nil {
-		log.
-			WithField("cause", err).
-			WithField("enforcerName", sessionEnforcer.GetName()).
-			WithField("enforcerId", sessionEnforcer.GetId()).
-			Errorf("could not add session enforcer")
-		return nil, fmt.Errorf("could not add session enforcer: %s", err)
 	}
 
 	c.apiServer = as
@@ -218,16 +194,35 @@ func (c *Controller) initializeAuthModules() {
 }
 
 func (c *Controller) Initialize() {
+	log := pfxlog.Logger()
+
 	//done before ae.InitPersistence()
 	c.initializeAuthModules()
 
 	//should be done after all modules that add migrations have been added (i.e. AuthRegistry)
 	if err := c.AppEnv.InitPersistence(); err != nil {
-		pfxlog.Logger().Fatalf("error initializing persistence: %+v", err)
+		log.Fatalf("error initializing persistence: %+v", err)
 	}
 
 	//after InitPersistence
 	c.AppEnv.Broker = env.NewBroker(c.AppEnv)
+
+	servicePolicyEnforcer := policy.NewServicePolicyEnforcer(c.AppEnv, policyAppWanFreq)
+	if err := c.policyEngine.AddOperation(servicePolicyEnforcer); err != nil {
+		log.WithField("cause", err).
+			WithField("enforcerName", servicePolicyEnforcer.GetName()).
+			WithField("enforcerId", servicePolicyEnforcer.GetId()).
+			Fatalf("could not add service policy enforcer")
+	}
+
+	sessionEnforcer := policy.NewSessionEnforcer(c.AppEnv, policySessionFreq, c.config.SessionTimeoutDuration())
+	if err := c.policyEngine.AddOperation(sessionEnforcer); err != nil {
+		log.WithField("cause", err).
+			WithField("enforcerName", sessionEnforcer.GetName()).
+			WithField("enforcerId", sessionEnforcer.GetId()).
+			Errorf("could not add session enforcer")
+
+	}
 }
 
 func (c *Controller) Run() {

@@ -17,10 +17,6 @@
 package intercept
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"io"
 	"net"
 	"os"
@@ -28,6 +24,12 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 )
 
 func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {
@@ -106,20 +108,19 @@ func diffServices(edgeServices []edge.Service, knownServices map[string]edge.Ser
 func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]edge.Service) {
 	log := pfxlog.Logger()
 	for _, svc := range added {
-		log.Infof("starting tunnel for newly available service %s", svc.Name)
-		err := interceptor.Intercept(svc, resolver)
-		if err != nil {
-			log.Errorf("failed to intercept service: %v", err)
+		if stringz.Contains(svc.Permissions, "Dial") {
+			log.Infof("starting tunnel for newly available service %s", svc.Name)
+			err := interceptor.Intercept(svc, resolver)
+			if err != nil {
+				log.Errorf("failed to intercept service: %v", err)
+			}
 		}
-
-		if dialAddr, ok := svc.Tags["tunneler.dial.addr"]; ok && svc.Hostable {
-			log.Infof("Hosting newly available service %s", svc.Name)
-			go host(context, svc, dialAddr)
-		} else {
-			if svc.Hostable {
-				log.Infof("service %v is hostable but is missing a dial address. Add a 'tunneler.dial.addr' tag to the service to fix", svc.Name)
+		if stringz.Contains(svc.Permissions, "Bind") {
+			if dialAddr, ok := svc.Tags["tunneler.dial.addr"]; ok {
+				log.Infof("Hosting newly available service %s", svc.Name)
+				go host(context, svc, dialAddr)
 			} else {
-				log.Debugf("service %v not hostable", svc.Name)
+				log.Warnf("service %v is hostable but is missing a dial address. Add a 'tunneler.dial.addr' tag to the service to fix", svc.Name)
 			}
 		}
 	}

@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -35,7 +36,6 @@ type ServiceDnsApiPost struct {
 type ServiceApiCreate struct {
 	Dns             *ServiceDnsApiPost     `json:"dns"`
 	Name            *string                `json:"name"`
-	HostIds         []string               `json:"hostIds"`
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
@@ -67,7 +67,6 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 	result.DnsHostname = i.DnsHostname()
 	result.DnsPort = i.DnsPort()
 	result.EdgeRouterRoles = i.EdgeRouterRoles
-	result.HostIds = i.HostIds
 	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
 	return result
@@ -117,9 +116,10 @@ func NewServiceEntityRef(s *model.Service) *EntityApiRef {
 	}
 
 	return &EntityApiRef{
-		Id:    s.Id,
-		Name:  &s.Name,
-		Links: links,
+		Entity: EntityNameService,
+		Id:     s.Id,
+		Name:   &s.Name,
+		Links:  links,
 	}
 }
 
@@ -133,8 +133,9 @@ type ServiceApiList struct {
 	Dns             *ServiceDnsApiPost `json:"dns"`
 	EndpointAddress *string            `json:"endpointAddress"`
 	EgressRouter    *string            `json:"egressRouter"`
-	Hostable        *bool              `json:"hostable"`
 	EdgeRouterRoles []string           `json:"edgeRouterRoles"`
+	RoleAttributes  []string           `json:"roleAttributes"`
+	Permissions     []string           `json:"permissions"`
 }
 
 func (e *ServiceApiList) GetSelfLink() *response.Link {
@@ -147,21 +148,13 @@ func (ServiceApiList) BuildSelfLink(id string) *response.Link {
 
 func (e *ServiceApiList) PopulateLinks() {
 	if e.Links == nil {
+		self := e.GetSelfLink()
 		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-			"edge-routers": e.GetEdgeRoutersLink(),
-			"hosts":        e.GetHostsLink(),
+			EntityNameSelf:          self,
+			EntityNameEdgeRouter:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
+			EntityNameServicePolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
 		}
 	}
-}
-
-func (e *ServiceApiList) GetEdgeRoutersLink() *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s/%s", EntityNameService, e.Id, EntityNameEdgeRouter))
-
-}
-
-func (e *ServiceApiList) GetHostsLink() *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s/%s", EntityNameService, e.Id, "hosts"))
 }
 
 func (e *ServiceApiList) ToEntityApiRef() *EntityApiRef {
@@ -212,15 +205,7 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 	return al, nil
 }
 
-func MapToServiceApiList(_ *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
-	var hostable bool
-	for _, hostId := range i.HostIds {
-		if hostId == rc.Identity.Id {
-			hostable = true
-			break
-		}
-	}
-
+func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
 	ret := &ServiceApiList{
 		BaseApi:         env.FromBaseModelEntity(i),
 		Name:            &i.Name,
@@ -230,11 +215,10 @@ func MapToServiceApiList(_ *env.AppEnv, rc *response.RequestContext, i *model.Se
 			Port:     &i.DnsPort,
 			Hostname: &i.DnsHostname,
 		},
-		Hostable:        &hostable,
+		RoleAttributes:  i.RoleAttributes,
+		Permissions:     i.Permissions,
 		EdgeRouterRoles: i.EdgeRouterRoles,
 	}
-
 	ret.PopulateLinks()
-
 	return ret, nil
 }

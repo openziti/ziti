@@ -18,11 +18,14 @@ package model
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 func NewServiceHandler(env Env) *ServiceHandler {
@@ -65,23 +68,58 @@ func (handler *ServiceHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Service
 }
 
 func (handler *ServiceHandler) HandleReadForIdentity(id string, identityId string) (*Service, error) {
-	identity, err := handler.GetEnv().GetHandlers().Identity.HandleRead(identityId)
+	var service *Service
+	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
+		identity, err := handler.GetEnv().GetHandlers().Identity.handleReadInTx(tx, identityId)
+		if err != nil {
+			return err
+		}
+		if identity.IsAdmin {
+			service, err = handler.handleReadInTx(tx, id)
+			if service != nil {
+				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
+			}
+		} else {
+			service, err = handler.HandleReadForIdentityInTx(tx, id, identityId)
+		}
+		return err
+	})
+	return service, err
+}
+
+func (handler *ServiceHandler) HandleReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*Service, error) {
+	query := `id = "%v" and not isEmpty(from servicePolicies where (type = %v and anyOf(identities.id) = "%v"))`
+
+	dialQuery := fmt.Sprintf(query, id, persistence.PolicyTypeDial, identityId)
+	dialResult, err := handler.queryServices(tx, dialQuery)
 	if err != nil {
 		return nil, err
-	}
-	if identity.IsAdmin {
-		return handler.HandleRead(id)
 	}
 
-	query := fmt.Sprintf(`id = "%v" and anyOf(appwans.identities.id) = "%v"`, id, identityId)
-	result, err := handler.HandleQuery(query)
+	bindQuery := fmt.Sprintf(query, id, persistence.PolicyTypeBind, identityId)
+	bindResult, err := handler.queryServices(tx, bindQuery)
 	if err != nil {
 		return nil, err
 	}
-	if len(result.Services) == 0 {
+	if len(bindResult.Services) > 1 || len(dialResult.Services) > 1 {
+		return nil, errors.Errorf("Got more than one result while checking permissions. dial: %v, bind: %v",
+			len(dialResult.Services), len(bindResult.Services))
+	}
+	var result *Service
+	if len(bindResult.Services) == 1 {
+		result = bindResult.Services[0]
+		result.Permissions = append(result.Permissions, persistence.PolicyTypeBindName)
+	}
+	if len(dialResult.Services) == 1 {
+		if result == nil {
+			result = dialResult.Services[0]
+		}
+		result.Permissions = append(result.Permissions, persistence.PolicyTypeDialName)
+	}
+	if result == nil {
 		return nil, util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
 	}
-	return result.Services[0], nil
+	return result, nil
 }
 
 func (handler *ServiceHandler) HandleDelete(id string) error {
@@ -102,50 +140,34 @@ func (handler *ServiceHandler) HandlePatch(service *Service, checker boltz.Field
 	return handler.patch(service, checker, nil)
 }
 
-type ServiceListResult struct {
-	handler  *ServiceHandler
-	Services []*Service
-	QueryMetaData
-}
-
-func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		service, err := result.handler.handleReadInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.Services = append(result.Services, service)
-	}
-	return nil
-}
-
 func (handler *ServiceHandler) HandleListForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*ServiceListResult, error) {
 	if sessionIdentity.IsAdmin {
-		return handler.HandleList(queryOptions)
+		return handler.listServices(queryOptions, nil, true)
 	}
-
 	query := queryOptions.Predicate
-	// TODO: Convert model errors to appropriate api errors
 	if query != "" {
 		query = "(" + query + ") and "
 	}
-	query += fmt.Sprintf(`anyOf(appwans.identities.id) = "%v"`, sessionIdentity.Id)
+	query += fmt.Sprintf(`not isEmpty(from servicePolicies where anyOf(identities) = "%v")`, sessionIdentity.Id)
 	queryOptions.finalQuery = query
-	return handler.HandleList(queryOptions)
+	return handler.listServices(queryOptions, &sessionIdentity.Id, false)
 }
 
-func (handler *ServiceHandler) HandleQuery(query string) (*ServiceListResult, error) {
+func (handler *ServiceHandler) queryServices(tx *bbolt.Tx, query string) (*ServiceListResult, error) {
 	result := &ServiceListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.listWithTx(tx, query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *ServiceHandler) HandleList(queryOptions *QueryOptions) (*ServiceListResult, error) {
-	result := &ServiceListResult{handler: handler}
+func (handler *ServiceHandler) listServices(queryOptions *QueryOptions, identityId *string, isAdmin bool) (*ServiceListResult, error) {
+	result := &ServiceListResult{
+		handler:    handler,
+		identityId: identityId,
+		isAdmin:    isAdmin,
+	}
 	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
 		return nil, err
@@ -157,10 +179,35 @@ func (handler *ServiceHandler) HandleCollectEdgeRouters(id string, collector fun
 	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouters, handler.env.GetHandlers().EdgeRouter, collector)
 }
 
-func (handler *ServiceHandler) HandleCollectHostIds(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.FieldServiceHostingIdentities, handler.env.GetHandlers().Identity, collector)
-}
-
 func (handler *ServiceHandler) HandleCollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
 	return handler.HandleCollectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
+}
+
+type ServiceListResult struct {
+	handler    *ServiceHandler
+	Services   []*Service
+	identityId *string
+	isAdmin    bool
+	QueryMetaData
+}
+
+func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+	result.QueryMetaData = *queryMetaData
+	var service *Service
+	var err error
+	for _, key := range ids {
+		if result.identityId != nil {
+			service, err = result.handler.HandleReadForIdentityInTx(tx, key, *result.identityId)
+		} else {
+			service, err = result.handler.handleReadInTx(tx, key)
+			if service != nil && result.isAdmin {
+				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
+			}
+		}
+		if err != nil {
+			return err
+		}
+		result.Services = append(result.Services, service)
+	}
+	return nil
 }

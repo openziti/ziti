@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+
 	"github.com/netfoundry/ziti-edge/controller/util"
 	"go.etcd.io/bbolt"
 )
@@ -154,7 +155,7 @@ func (handler *SessionHandler) HandleList(queryOptions *QueryOptions) (*SessionL
 func (handler *SessionHandler) HandleListSessionForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
 	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.edgeRouters) = "%v" and `+
-		`(isEmpty(service.edgeRouterRoles) = true or anyOf(service.edgeRouters) = "%v")`, edgeRouterId, edgeRouterId)
+		`(isEmpty(service.edgeRouterRoles) or (anyOf(service.edgeRouters) = "%v"))`, edgeRouterId, edgeRouterId)
 	err := handler.list(query, result.collect)
 	if err != nil {
 		return nil, err

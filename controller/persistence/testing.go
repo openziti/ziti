@@ -18,6 +18,12 @@ package persistence
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -27,11 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
-	"io/ioutil"
-	"math/rand"
-	"os"
-	"testing"
-	"time"
 )
 
 type TestContext struct {
@@ -114,13 +115,16 @@ func (ctx *TestContext) Cleanup() {
 	}
 }
 
-func (ctx *TestContext) requireNewCluster(name string) *Cluster {
-	cluster := &Cluster{
+func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles []string, serviceRoles []string) *ServicePolicy {
+	entity := &ServicePolicy{
 		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
+		Name:               uuid.New().String(),
+		PolicyType:         policyType,
+		IdentityRoles:      identityRoles,
+		ServiceRoles:       serviceRoles,
 	}
-	ctx.requireCreate(cluster)
-	return cluster
+	ctx.requireCreate(entity)
+	return entity
 }
 
 func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
@@ -316,4 +320,8 @@ func (ctx *TestContext) getIdentityTypeId() string {
 	})
 	ctx.NoError(err)
 	return result
+}
+
+func ss(vals ...string) []string {
+	return vals
 }

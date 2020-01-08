@@ -61,7 +61,7 @@ func createEdgeRouterPoliciesV2(mtx *MigrationContext) error {
 		if err != nil {
 			return err
 		}
-		clusterIds := mtx.Stores.EdgeService.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), serviceId, FieldServiceClusters)
+		clusterIds := mtx.Stores.EdgeService.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), serviceId, "clusters")
 		if len(clusterIds) > 0 {
 			cluster, err := mtx.Stores.Cluster.LoadOneById(mtx.Ctx.Tx(), clusterIds[0])
 			if err != nil {

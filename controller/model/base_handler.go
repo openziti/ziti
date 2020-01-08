@@ -97,32 +97,16 @@ func (result *BaseModelEntityListResult) collect(tx *bbolt.Tx, ids []string, que
 }
 
 func (handler *baseHandler) create(modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
-	if modelEntity == nil {
-		return "", errors.Errorf("can't create %v with nil value", handler.store.GetEntityType())
-	}
-	if modelEntity.GetId() == "" {
-		modelEntity.setId(uuid.New().String())
-	}
-
+	var id string
 	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := modelEntity.ToBoltEntityForCreate(tx, handler.impl)
-		if err != nil {
-			return err
-		}
-		if err := handler.GetStore().Create(ctx, boltEntity); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.store.GetEntityType())
-			return err
-		}
-		if afterCreate != nil {
-			return afterCreate()
-		}
-		return nil
+		var err error
+		id, err = handler.createInTx(boltz.NewMutateContext(tx), modelEntity, afterCreate)
+		return err
 	})
 	if err != nil {
 		return "", err
 	}
-	return modelEntity.GetId(), nil
+	return id, nil
 }
 
 func (handler *baseHandler) createInTx(ctx boltz.MutateContext, modelEntity BaseModelEntity, afterCreate func() error) (string, error) {

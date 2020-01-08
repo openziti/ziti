@@ -2126,12 +2126,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{controller-host}}/current-session",
+							"raw": "{{controller-host}}/current-api-session",
 							"host": [
 								"{{controller-host}}"
 							],
 							"path": [
-								"current-session"
+								"current-api-session"
 							]
 						}
 					},
@@ -2177,12 +2177,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{controller-host}}/current-session",
+							"raw": "{{controller-host}}/current-api-session",
 							"host": [
 								"{{controller-host}}"
 							],
 							"path": [
-								"current-session"
+								"current-api-session"
 							]
 						}
 					},
@@ -6383,12 +6383,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{controller-host}}/network-sessions",
+							"raw": "{{controller-host}}/sessions",
 							"host": [
 								"{{controller-host}}"
 							],
 							"path": [
-								"network-sessions"
+								"sessions"
 							]
 						}
 					},
@@ -6413,12 +6413,12 @@
 									"raw": "{\n\t\"serviceId\": \"5a8194e967465b4475e038ee\"\n}"
 								},
 								"url": {
-									"raw": "{{controller-host}}/network-session",
+									"raw": "{{controller-host}}/sessions",
 									"host": [
 										"{{controller-host}}"
 									],
 									"path": [
-										"network-session"
+										"sessions"
 									]
 								}
 							},
@@ -6509,12 +6509,12 @@
 							"raw": "{\n  \"serviceId\": \"67fdd354-53c6-432c-ac72-6bb29ad7a4d7\"\n}"
 						},
 						"url": {
-							"raw": "{{controller-host}}/network-sessions",
+							"raw": "{{controller-host}}/sessions",
 							"host": [
 								"{{controller-host}}"
 							],
 							"path": [
-								"network-sessions"
+								"sessions"
 							]
 						}
 					},
@@ -6539,12 +6539,12 @@
 									"raw": "{\n\t\"serviceId\": \"5a8194e967465b4475e038ee\"\n}"
 								},
 								"url": {
-									"raw": "{{controller-host}}/network-session",
+									"raw": "{{controller-host}}/session",
 									"host": [
 										"{{controller-host}}"
 									],
 									"path": [
-										"network-session"
+										"session"
 									]
 								}
 							},
@@ -6615,12 +6615,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{controller-host}}/network-sessions/2109b51036bd526b9d15e7baa4f4e0644fb466c79e00899ca9c2c3d3ae680ee8",
+							"raw": "{{controller-host}}/sessions/2109b51036bd526b9d15e7baa4f4e0644fb466c79e00899ca9c2c3d3ae680ee8",
 							"host": [
 								"{{controller-host}}"
 							],
 							"path": [
-								"network-sessions",
+								"sessions",
+								"sessions",
 								"2109b51036bd526b9d15e7baa4f4e0644fb466c79e00899ca9c2c3d3ae680ee8"
 							]
 						}

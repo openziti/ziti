@@ -26,14 +26,13 @@ import (
 )
 
 const (
-	FieldIdentityType             = "type"
-	FieldIdentityAppwans          = "appwans"
-	FieldIdentityApiSessions      = "apiSessions"
-	FieldIdentityHostableServices = "hostableServices"
-	FieldIdentityIsDefaultAdmin   = "isDefaultAdmin"
-	FieldIdentityIsAdmin          = "isAdmin"
-	FieldIdentityEnrollments      = "enrollments"
-	FieldIdentityAuthenticators   = "authenticators"
+	FieldIdentityType           = "type"
+	FieldIdentityAppwans        = "appwans"
+	FieldIdentityApiSessions    = "apiSessions"
+	FieldIdentityIsDefaultAdmin = "isDefaultAdmin"
+	FieldIdentityIsAdmin        = "isAdmin"
+	FieldIdentityEnrollments    = "enrollments"
+	FieldIdentityAuthenticators = "authenticators"
 )
 
 func NewIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -119,7 +118,6 @@ type identityStoreImpl struct {
 	symbolEdgeRouterPolicies boltz.EntitySetSymbol
 	symbolEnrollments        boltz.EntitySetSymbol
 	symbolServicePolicies    boltz.EntitySetSymbol
-	symbolHostableServices   boltz.EntitySymbol
 	symbolIdentityTypeId     boltz.EntitySymbol
 }
 
@@ -135,7 +133,6 @@ func (store *identityStoreImpl) initializeLocal() {
 	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
 	store.symbolAppwans = store.AddFkSetSymbol(FieldIdentityAppwans, store.stores.appwan)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
-	store.symbolHostableServices = store.AddFkSetSymbol(FieldIdentityHostableServices, store.stores.edgeService)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
 	store.symbolAuthenticators = store.AddFkSetSymbol(FieldIdentityAuthenticators, store.stores.authenticator)

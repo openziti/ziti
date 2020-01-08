@@ -17,13 +17,15 @@
 package model
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"time"
 )
 
 type Session struct {
@@ -56,18 +58,14 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 
-	if entity.IsHosting {
-		var found bool
-		for _, id := range service.HostIds {
-			if id == apiSession.IdentityId {
-				found = true
-				break
-			}
-		}
-		if !found {
-			// TODO: Forbidden, instead?
-			return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
-		}
+	if !entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+		// TODO: Forbidden, instead?
+		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	if entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+		// TODO: Forbidden, instead?
+		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	maxRows := 1

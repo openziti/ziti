@@ -21,6 +21,12 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"path/filepath"
+	"reflect"
+	"strings"
+
 	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/gobuffalo/packr"
 	"github.com/google/uuid"
@@ -44,11 +50,6 @@ import (
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/oleiade/reflections.v1"
-	"io/ioutil"
-	"net/http"
-	"path/filepath"
-	"reflect"
-	"strings"
 )
 
 type AppEnv struct {
@@ -133,22 +134,17 @@ type HostController interface {
 }
 
 type Schemes struct {
-	AppWan           *BasicEntitySchema
 	Association      *BasicEntitySchema
 	Ca               *BasicEntitySchema
-	Cluster          *BasicEntitySchema
-	Device           *BasicEntitySchema
 	Enroller         *BasicEntitySchema
 	EnrollEr         *BasicEntitySchema
 	EnrollUpdb       *BasicEntitySchema
 	EdgeRouter       *BasicEntitySchema
 	EdgeRouterPolicy *BasicEntitySchema
 	Identity         *BasicEntitySchema
-	NetworkSession   *BasicEntitySchema
-	Policy           *BasicEntitySchema
 	Service          *BasicEntitySchema
 	ServicePolicy    *BasicEntitySchema
-	FabricConfigs    *FabricConfigSchemas
+	Session          *BasicEntitySchema
 }
 
 func (s Schemes) GetEnrollErPost() *gojsonschema.Schema {
@@ -208,9 +204,7 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 	ae.ApiServerCsrSigner = cert.NewServerSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ControlClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 
-	ae.Schemes = &Schemes{
-		FabricConfigs: &FabricConfigSchemas{},
-	}
+	ae.Schemes = &Schemes{}
 
 	err := ae.LoadSchemas()
 

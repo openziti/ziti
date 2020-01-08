@@ -26,12 +26,13 @@ import (
 
 const (
 	FieldVersion   = "version"
-	currentVersion = 2
+	currentVersion = 3
 )
 
 type Migrations struct {
 	dbVersion     uint32
 	versionBucket *boltz.TypedBucket
+	migrations    bool
 }
 
 type MigrationContext struct {
@@ -65,10 +66,8 @@ func (m *Migrations) run(mtx *MigrationContext) error {
 		m.dbVersion = uint32(*version)
 	}
 	pfxlog.Logger().Infof("bolt storage at version %v", m.dbVersion)
-	var migrations bool
 	baseVersion := m.dbVersion
 	if m.dbVersion == 0 {
-		migrations = true
 		m.createDefaultData(mtx)
 
 		if mtx.DbStores != nil {
@@ -82,13 +81,16 @@ func (m *Migrations) run(mtx *MigrationContext) error {
 	if m.dbVersion == 1 {
 		// Only want to migrate existing database, if it's a fresh DB, leave it alone
 		if baseVersion == 1 {
-			migrations = true
 			m.upgradeToV2FromV1(mtx)
 		}
 		m.setVersion(2)
 	}
 
-	if migrations {
+	if m.dbVersion == 2 {
+		m.upgradeToV3FromV2(mtx)
+	}
+
+	if m.migrations {
 		pfxlog.Logger().Infof("bolt storage at version %v", m.dbVersion)
 	}
 
@@ -104,6 +106,7 @@ func (m *Migrations) setVersion(version uint32) {
 	if m.versionBucket.Err == nil {
 		m.dbVersion = version
 	}
+	m.migrations = true
 }
 
 func (m *Migrations) createDefaultData(mtx *MigrationContext) {
@@ -120,13 +123,14 @@ func (m *Migrations) createDefaultData(mtx *MigrationContext) {
 }
 
 func (m *Migrations) upgradeToV1FromPG(mtx *MigrationContext) {
-	if err := upgradeToV1FromPG(mtx); err != nil {
-		m.versionBucket.SetError(err)
-	}
+	m.versionBucket.SetError(upgradeToV1FromPG(mtx))
 }
 
 func (m *Migrations) upgradeToV2FromV1(mtx *MigrationContext) {
-	if err := createEdgeRouterPoliciesV2(mtx); err != nil {
-		m.versionBucket.SetError(err)
-	}
+	m.versionBucket.SetError(createEdgeRouterPoliciesV2(mtx))
+}
+
+func (m *Migrations) upgradeToV3FromV2(mtx *MigrationContext) {
+	m.versionBucket.SetError(createServicePoliciesV3(mtx))
+	m.setVersion(3)
 }

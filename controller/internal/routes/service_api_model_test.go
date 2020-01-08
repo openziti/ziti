@@ -17,9 +17,10 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/model"
 	"reflect"
 	"testing"
+
+	"github.com/netfoundry/ziti-edge/controller/model"
 )
 
 func TestServiceApiCreate_ToModelService(t *testing.T) {
@@ -27,7 +28,7 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 		EdgeRouterRoles []string
 		Dns             *ServiceDnsApiPost
 		Name            *string
-		HostIds         []string
+		RoleAttributes  []string
 		Tags            map[string]interface{}
 		EgressRouter    *string
 		EndpointAddress *string
@@ -45,7 +46,7 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 				Port:     uint16Ptr(1234),
 			},
 			Name:            strPtr("bar"),
-			HostIds:         []string{"id1", "id2"},
+			RoleAttributes:  []string{"id1", "id2"},
 			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
 			EgressRouter:    strPtr("001"),
 			EndpointAddress: strPtr("tcp:localhost:8908"),
@@ -59,7 +60,7 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 			EgressRouter:    "001",
 			EndpointAddress: "tcp:localhost:8908",
 			EdgeRouterRoles: []string{"one", "two"},
-			HostIds:         []string{"id1", "id2"},
+			RoleAttributes:  []string{"id1", "id2"},
 		}, wantErr: false},
 	}
 	for _, tt := range tests {
@@ -68,7 +69,7 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 				EdgeRouterRoles: tt.fields.EdgeRouterRoles,
 				Dns:             tt.fields.Dns,
 				Name:            tt.fields.Name,
-				HostIds:         tt.fields.HostIds,
+				RoleAttributes:  tt.fields.RoleAttributes,
 				Tags:            tt.fields.Tags,
 				EgressRouter:    tt.fields.EgressRouter,
 				EndpointAddress: tt.fields.EndpointAddress,

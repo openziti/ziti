@@ -21,8 +21,6 @@ package tests
 import (
 	cryptoTls "crypto/tls"
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"gopkg.in/resty.v1"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -31,6 +29,9 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"gopkg.in/resty.v1"
 
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
@@ -486,20 +487,20 @@ func (ctx *TestContext) isServiceVisibleToUser(info *userInfo, serviceId string)
 	return nil != ctx.childWith(data, "id", serviceId)
 }
 
-func (ctx *TestContext) newTestService() *testService {
+func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
 	return &testService{
 		name:            uuid.New().String(),
 		dnsHostname:     uuid.New().String(),
 		dnsPort:         0,
 		egressRouter:    uuid.New().String(),
 		endpointAddress: uuid.New().String(),
-		hostIds:         nil,
+		roleAttributes:  roleAttributes,
 		tags:            nil,
 	}
 }
 
-func (ctx *TestContext) requireCreateNewService() *testService {
-	service := ctx.newTestService()
+func (ctx *TestContext) requireCreateNewService(roleAttributes ...string) *testService {
+	service := ctx.newTestService(roleAttributes...)
 	service.id = ctx.requireCreateEntity(service)
 	return service
 }
@@ -511,12 +512,12 @@ type userInfo struct {
 	sessionId  string
 }
 
-func (ctx *TestContext) createUserAndLogin(isAdmin bool) *userInfo {
+func (ctx *TestContext) createUserAndLogin(isAdmin bool, roleAttributes ...string) *userInfo {
 	result := &userInfo{
 		username: uuid.New().String(),
 		password: uuid.New().String(),
 	}
-	result.identityId = ctx.requireCreateIdentity(result.username, result.password, isAdmin)
+	result.identityId = ctx.requireCreateIdentity(result.username, result.password, isAdmin, roleAttributes...)
 	result.sessionId = ctx.requireLogin(result.username, result.password)
 	return result
 }

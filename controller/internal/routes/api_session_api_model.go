@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -25,8 +26,7 @@ import (
 )
 
 const (
-	EntityNameApiSession       = "api-sessions"
-	EntityNameApiSessionLegacy = "sessions"
+	EntityNameApiSession = "api-sessions"
 )
 
 func NewApiSessionEntityRef(s *model.ApiSession) *EntityApiRef {
@@ -35,9 +35,10 @@ func NewApiSessionEntityRef(s *model.ApiSession) *EntityApiRef {
 	}
 
 	return &EntityApiRef{
-		Id:    s.Id,
-		Name:  nil,
-		Links: links,
+		Entity: EntityNameApiSession,
+		Id:     s.Id,
+		Name:   nil,
+		Links:  links,
 	}
 }
 

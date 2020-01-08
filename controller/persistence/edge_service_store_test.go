@@ -18,16 +18,17 @@ package persistence
 
 import (
 	"fmt"
+	"math/rand"
+	"sort"
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
-	"math/rand"
-	"sort"
-	"testing"
-	"time"
 )
 
 func Test_EdgeServiceStore(t *testing.T) {
@@ -92,8 +93,6 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 	apiSession := NewApiSession(identity.Id)
 	ctx.requireCreate(apiSession)
 
-	cluster := ctx.requireNewCluster(uuid.New().String())
-
 	edgeService := &EdgeService{
 		Service: network.Service{
 			Id:              uuid.New().String(),
@@ -106,18 +105,8 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 		DnsPort:     uint16(rand.Uint32()),
 	}
 
-	edgeService.HostIds = []string{"invalid-id"}
-	err := ctx.create(edgeService)
-	ctx.EqualError(err, "can't link to unknown identities with id invalid-id")
-
-	edgeService.HostIds = []string{identity.Id}
-	edgeService.Clusters = []string{"invalid-id"}
-	err = ctx.create(edgeService)
-	ctx.EqualError(err, "can't link to unknown clusters with id invalid-id")
-
-	edgeService.Clusters = []string{cluster.Id}
 	ctx.requireCreate(edgeService)
-	err = ctx.create(edgeService)
+	err := ctx.create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type services already exists with id %v", edgeService.Id))
 }
 
@@ -140,21 +129,24 @@ func (ctx *TestContext) testCreateServices(_ *testing.T) {
 }
 
 type serviceTestEntities struct {
-	cluster1    *Cluster
-	identity1   *Identity
-	apiSession1 *ApiSession
-	service1    *EdgeService
-	service2    *EdgeService
-	session1    *Session
-	session2    *Session
+	servicePolicy *ServicePolicy
+	identity1     *Identity
+	apiSession1   *ApiSession
+	service1      *EdgeService
+	service2      *EdgeService
+	session1      *Session
+	session2      *Session
 }
 
 func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
-	cluster1 := ctx.requireNewCluster(uuid.New().String())
 	identity1 := ctx.requireNewIdentity("admin1", true)
 
 	apiSession1 := NewApiSession(identity1.Id)
+
+	role := uuid.New().String()
+
 	ctx.requireCreate(apiSession1)
+	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss("@"+role))
 
 	service1 := &EdgeService{
 		Service: network.Service{
@@ -163,11 +155,10 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 			EndpointAddress: uuid.New().String(),
 			Egress:          uuid.New().String(),
 		},
-		Name:        uuid.New().String(),
-		DnsHostname: uuid.New().String(),
-		DnsPort:     uint16(rand.Uint32()),
-		Clusters:    []string{cluster1.Id},
-		HostIds:     []string{identity1.Id},
+		Name:           uuid.New().String(),
+		DnsHostname:    uuid.New().String(),
+		DnsPort:        uint16(rand.Uint32()),
+		RoleAttributes: []string{role},
 	}
 
 	ctx.requireCreate(service1)
@@ -180,13 +171,13 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 	ctx.requireCreate(session2)
 
 	return &serviceTestEntities{
-		cluster1:    cluster1,
-		identity1:   identity1,
-		apiSession1: apiSession1,
-		service1:    service1,
-		service2:    service2,
-		session1:    session1,
-		session2:    session2,
+		servicePolicy: servicePolicy,
+		identity1:     identity1,
+		apiSession1:   apiSession1,
+		service1:      service1,
+		service2:      service2,
+		session1:      session1,
+		session2:      session2,
 	}
 }
 
@@ -212,17 +203,10 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 		ctx.EqualValues(1, len(ids))
 		ctx.Equal(entities.service1.Id, string(ids[0]))
 
-		query = fmt.Sprintf(`anyOf(clusters) = "%v"`, entities.cluster1.Id)
+		query = fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, entities.servicePolicy.Id)
 		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
 		ctx.NoError(err)
-		ctx.EqualValues(1, len(ids))
-		ctx.Equal(entities.service1.Id, string(ids[0]))
-
-		query = fmt.Sprintf(`anyOf(hostingIdentities) = "%v"`, entities.identity1.Id)
-		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
-		ctx.NoError(err)
-		ctx.EqualValues(1, len(ids))
-		ctx.Equal(entities.service1.Id, string(ids[0]))
+		ctx.True(stringz.Contains(ids, entities.service1.Id))
 
 		query = fmt.Sprintf(`anyOf(sessions.apiSession) = "%v"`, entities.apiSession1.Id)
 		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)

@@ -18,13 +18,14 @@ package routes
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
+	"net/http"
+
+	"github.com/michaelquigley/pfxlog"
+
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"net/http"
 )
 
 func init() {
@@ -53,45 +54,10 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 		Default: permissions.IsAdmin(),
 	})
 
-	ir.registerEdgeRouterHandlers(ae, sr)
-	ir.registerHostingIdentitiesHandlers(ae, sr)
-}
-
-func (ir *ServiceRouter) registerEdgeRouterHandlers(ae *env.AppEnv, sr *mux.Router) {
 	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
 	edgeRouterListHandler := ae.WrapHandler(ir.ListEdgeRouters, permissions.IsAdmin())
 	sr.HandleFunc(edgeRouterUrl, edgeRouterListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(edgeRouterUrl+"/", edgeRouterListHandler).Methods(http.MethodGet)
-}
-
-func (ir *ServiceRouter) registerHostingIdentitiesHandlers(ae *env.AppEnv, sr *mux.Router) {
-	urlWithSlash := fmt.Sprintf("/{%s}/hosts", response.IdPropertyName)
-	urlWithOutSlash := fmt.Sprintf("/{%s}/hosts/", response.IdPropertyName)
-
-	listHandler := ae.WrapHandler(ir.ListHostingIdentities, permissions.IsAdmin())
-	addHandler := ae.WrapHandler(ir.AddHostingIdentities, permissions.IsAdmin())
-	removeBulkHandler := ae.WrapHandler(ir.RemoveHostingIdentitiesBulk, permissions.IsAdmin())
-	setHandler := ae.WrapHandler(ir.SetHostingIdentities, permissions.IsAdmin())
-
-	sr.HandleFunc(urlWithSlash, listHandler).Methods(http.MethodGet)
-	sr.HandleFunc(urlWithOutSlash, listHandler).Methods(http.MethodGet)
-
-	sr.HandleFunc(urlWithSlash, addHandler).Methods(http.MethodPut)
-	sr.HandleFunc(urlWithOutSlash, addHandler).Methods(http.MethodPut)
-
-	sr.HandleFunc(urlWithSlash, removeBulkHandler).Methods(http.MethodDelete)
-	sr.HandleFunc(urlWithOutSlash, removeBulkHandler).Methods(http.MethodDelete)
-
-	sr.HandleFunc(urlWithSlash, setHandler).Methods(http.MethodPost)
-	sr.HandleFunc(urlWithOutSlash, setHandler).Methods(http.MethodPost)
-
-	urlWithSlashWithSubId := fmt.Sprintf("/{%s}/hosts/{%s}", response.IdPropertyName, response.SubIdPropertyName)
-	urlWithOutSlashWithSubId := fmt.Sprintf("/{%s}/hosts/{%s}/", response.IdPropertyName, response.SubIdPropertyName)
-
-	removeHandler := ae.WrapHandler(ir.RemoveHostingIdentity, permissions.IsAdmin())
-
-	sr.HandleFunc(urlWithSlashWithSubId, removeHandler).Methods(http.MethodDelete)
-	sr.HandleFunc(urlWithOutSlashWithSubId, removeHandler).Methods(http.MethodDelete)
 
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
 	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
@@ -105,6 +71,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
 		result, err := ae.Handlers.Service.HandleListForIdentity(rc.Identity, queryOptions)
 		if err != nil {
+			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
 		}
 		services, err := MapServicesToApiEntities(ae, rc, result.Services)
@@ -154,26 +121,6 @@ func (ir *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (ir *ServiceRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.HandleCollectEdgeRouters, MapEdgeRouterToApiEntity)
-}
-
-func (ir *ServiceRouter) ListHostingIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.HandleCollectHostIds, MapIdentityToApiEntity)
-}
-
-func (ir *ServiceRouter) AddHostingIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	UpdateAssociationsFor(ae, rc, ir.IdType, ae.GetStores().EdgeService, model.AssociationsActionAdd, persistence.FieldServiceHostingIdentities)
-}
-
-func (ir *ServiceRouter) RemoveHostingIdentitiesBulk(ae *env.AppEnv, rc *response.RequestContext) {
-	UpdateAssociationsFor(ae, rc, ir.IdType, ae.GetStores().EdgeService, model.AssociationsActionRemove, persistence.FieldServiceHostingIdentities)
-}
-
-func (ir *ServiceRouter) RemoveHostingIdentity(ae *env.AppEnv, rc *response.RequestContext) {
-	RemoveAssociationFor(ae, rc, ir.IdType, ae.GetStores().EdgeService, persistence.FieldServiceHostingIdentities)
-}
-
-func (ir *ServiceRouter) SetHostingIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	UpdateAssociationsFor(ae, rc, ir.IdType, ae.GetStores().EdgeService, model.AssociationsActionSet, persistence.FieldServiceHostingIdentities)
 }
 
 func (ir *ServiceRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {

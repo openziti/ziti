@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -152,8 +153,11 @@ func (IdentityApiList) BuildSelfLink(id string) *response.Link {
 
 func (e *IdentityApiList) PopulateLinks() {
 	if e.Links == nil {
+		self := e.GetSelfLink()
 		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
+			EntityNameSelf:             self,
+			EntityNameEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
+			EntityNameServicePolicy:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
 		}
 	}
 }

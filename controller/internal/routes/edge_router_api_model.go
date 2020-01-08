@@ -18,13 +18,14 @@ package routes
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"time"
 )
 
 const (
@@ -79,8 +80,10 @@ func (e *EdgeRouterApiList) GetSelfLink() *response.Link {
 
 func (e *EdgeRouterApiList) PopulateLinks() {
 	if e.Links == nil {
+		self := e.GetSelfLink()
 		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
+			EntityNameSelf:             self,
+			EntityNameEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
 		}
 	}
 }

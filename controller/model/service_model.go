@@ -17,13 +17,14 @@
 package model
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"strings"
 )
 
 type Service struct {
@@ -33,18 +34,13 @@ type Service struct {
 	DnsPort         uint16   `json:"port"`
 	EgressRouter    string   `json:"egressRouter"`
 	EndpointAddress string   `json:"endpointAddress"`
-	HostIds         []string `json:"hostIds"`
 	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	RoleAttributes  []string `json:"roleAttributes"`
+	Permissions     []string `json:"permissions"` // used on read to indicate if an identity has dial/bind permissions
 }
 
-func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Service) ToBoltEntityForCreate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
 	entity.Sanitize()
-
-	// validate identities exist
-	if err := ValidateEntityList(tx, handler.GetEnv().GetStores().Identity, "hostIds", entity.HostIds); err != nil {
-		return nil, err
-	}
 
 	binding := "transport"
 	if strings.HasPrefix(entity.EndpointAddress, "hosted") {
@@ -64,7 +60,6 @@ func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		Name:             entity.Name,
 		DnsHostname:      entity.DnsHostname,
 		DnsPort:          entity.DnsPort,
-		HostIds:          entity.HostIds,
 		EdgeRouterRoles:  entity.EdgeRouterRoles,
 		RoleAttributes:   entity.RoleAttributes,
 	}
@@ -91,7 +86,6 @@ func (entity *Service) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	}
 	entity.fillCommon(boltService)
 	entity.Name = boltService.Name
-	entity.HostIds = boltService.HostIds
 	entity.DnsHostname = boltService.DnsHostname
 	entity.DnsPort = boltService.DnsPort
 	entity.EdgeRouterRoles = boltService.EdgeRouterRoles

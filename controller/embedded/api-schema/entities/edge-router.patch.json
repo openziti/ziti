@@ -8,9 +8,6 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name-null"
     },
-    "clusterId": {
-      "$ref": "definitions.all.json#/definitions/id-null"
-    },
     "roleAttributes" : {
       "default" : null,
       "$ref" : "definitions.all.json#/definitions/arrayOfString-null"

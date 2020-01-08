@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
@@ -25,7 +26,8 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/response"
 )
 
-const EntityNameNetworkSession = "network-sessions"
+const EntityNameSession = "sessions"
+const EntityNameSessionLegacy = "network-sessions"
 
 type SessionApiPost struct {
 	ServiceId *string                `json:"serviceId"`
@@ -45,16 +47,21 @@ func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
 	}
 }
 
+type NewSession struct {
+	*SessionApiList
+	Token string `json:"token"`
+}
+
 type SessionApiList struct {
 	*env.BaseApi
-	Hosting  bool                 `json:"hosting"`
-	Session  *EntityApiRef        `json:"session"`
-	Service  *EntityApiRef        `json:"service"`
-	Gateways []*SessionEdgeRouter `json:"edgeRouters"`
+	Hosting     bool                 `json:"hosting"`
+	ApiSession  *EntityApiRef        `json:"apiSession"`
+	Service     *EntityApiRef        `json:"service"`
+	EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
 }
 
 func (SessionApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameNetworkSession, id))
+	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameSession, id))
 }
 
 func (e *SessionApiList) GetSelfLink() *response.Link {
@@ -67,21 +74,16 @@ func (e *SessionApiList) PopulateLinks() {
 			EntityNameSelf: e.GetSelfLink(),
 		}
 	}
-
 }
 
 func (e *SessionApiList) ToEntityApiRef() *EntityApiRef {
 	e.PopulateLinks()
 	return &EntityApiRef{
-		Entity: EntityNameNetworkSession,
+		Entity: EntityNameSession,
 		Name:   nil,
 		Id:     e.Id,
 		Links:  e.Links,
 	}
-}
-
-func (e *SessionApiList) GetServicesLink(serviceId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameService, serviceId))
 }
 
 func MapSessionsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Session) ([]BaseApiEntity, error) {
@@ -101,7 +103,7 @@ func MapSessionsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []
 	return apiEntities, nil
 }
 
-func MapSessionToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
 	i, ok := e.(*model.Session)
 
 	if !ok {
@@ -128,22 +130,22 @@ func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, err
 		return nil, err
 	}
 
-	gateways, err := getSessionEdgeRouters(ae, i)
+	edgeRouters, err := getSessionEdgeRouters(ae, i)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := ae.Handlers.ApiSession.HandleRead(i.ApiSessionId)
+	apiSession, err := ae.Handlers.ApiSession.HandleRead(i.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}
 
 	ret := &SessionApiList{
-		BaseApi:  env.FromBaseModelEntity(i),
-		Hosting:  i.IsHosting,
-		Service:  NewServiceEntityRef(service),
-		Session:  NewApiSessionEntityRef(session),
-		Gateways: gateways,
+		BaseApi:     env.FromBaseModelEntity(i),
+		Hosting:     i.IsHosting,
+		Service:     NewServiceEntityRef(service),
+		ApiSession:  NewApiSessionEntityRef(apiSession),
+		EdgeRouters: edgeRouters,
 	}
 
 	ret.PopulateLinks()

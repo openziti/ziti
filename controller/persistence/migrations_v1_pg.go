@@ -18,12 +18,13 @@ package persistence
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"time"
 )
 
 var queryOptionsListAll = &migration.QueryOptions{
@@ -196,11 +197,6 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 			clusterIds = append(clusterIds, cluster.ID)
 		}
 
-		var hostedIds []string
-		for _, hostId := range pgService.HostIds {
-			hostedIds = append(hostedIds, hostId.ID)
-		}
-
 		edgeService := &EdgeService{
 			Service: network.Service{
 				Id:              pgService.ID,
@@ -214,7 +210,6 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 			DnsHostname:      stringz.OrEmpty(pgService.DnsHostname),
 			DnsPort:          *pgService.DnsPort,
 			Clusters:         clusterIds,
-			HostIds:          hostedIds,
 		}
 		err = mtx.Stores.EdgeService.Create(mtx.Ctx, edgeService)
 	}

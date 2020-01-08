@@ -17,12 +17,13 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"time"
 )
 
-const EntityNameCurrentSession = "current-session"
+const EntityNameCurrentSession = "current-api-session"
 
 type CurrentSessionApiList struct {
 	*env.BaseApi
@@ -45,7 +46,6 @@ func (e *CurrentSessionApiList) PopulateLinks() {
 			EntityNameSelf: e.GetSelfLink(),
 		}
 	}
-
 }
 
 func (e *CurrentSessionApiList) ToEntityApiRef() *EntityApiRef {

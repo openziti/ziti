@@ -17,13 +17,11 @@
 package routes
 
 import (
-	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/util"
 )
 
 func init() {
@@ -32,19 +30,28 @@ func init() {
 }
 
 type SessionRouter struct {
-	BasePath string
-	IdType   response.IdType
+	BasePath       string
+	LegacyBasePath string
+	IdType         response.IdType
 }
 
 func NewSessionRouter() *SessionRouter {
 	return &SessionRouter{
-		BasePath: "/" + EntityNameNetworkSession,
-		IdType:   response.IdTypeUuid,
+		BasePath:       "/" + EntityNameSession,
+		LegacyBasePath: "/" + EntityNameSessionLegacy,
+		IdType:         response.IdTypeUuid,
 	}
 }
 
 func (ir *SessionRouter) Register(ae *env.AppEnv) {
 	registerCreateReadDeleteRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
+		Create:  permissions.IsAuthenticated(),
+		Read:    permissions.IsAuthenticated(),
+		Delete:  permissions.IsAuthenticated(),
+		Default: permissions.IsAdmin(),
+	})
+
+	registerCreateReadDeleteRouter(ae, ae.RootRouter, ir.LegacyBasePath, ir, &crudResolvers{
 		Create:  permissions.IsAuthenticated(),
 		Read:    permissions.IsAuthenticated(),
 		Delete:  permissions.IsAuthenticated(),
@@ -97,7 +104,7 @@ func (ir *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 
 	sessionCreate := &SessionApiPost{}
 	responder := &SessionRequestResponder{ae: ae, RequestResponder: rc.RequestResponder}
-	Create(rc, responder, ae.Schemes.NetworkSession.Post, sessionCreate, (&SessionApiList{}).BuildSelfLink, func() (string, error) {
+	Create(rc, responder, ae.Schemes.Session.Post, sessionCreate, (&SessionApiList{}).BuildSelfLink, func() (string, error) {
 		return ae.Handlers.Session.HandleCreate(sessionCreate.ToModel(rc))
 	})
 }
@@ -144,39 +151,20 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*SessionEdgeRou
 }
 
 func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link *response.Link) {
-	ns, _ := nsr.ae.GetHandlers().Session.HandleRead(id)
-
-	gws, err := getSessionEdgeRouters(nsr.ae, ns)
+	modelSession, err := nsr.ae.GetHandlers().Session.HandleRead(id)
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
-			nsr.RespondWithNotFound()
-		} else {
-			nsr.RespondWithError(err)
-		}
+		nsr.RespondWithError(err)
 		return
 	}
 
-	json := gabs.New()
-
-	if _, err := json.SetP(id, "id"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("could not set value by path")
+	apiSession, err := MapSessionToApiList(nsr.ae, modelSession)
+	if err != nil {
+		nsr.RespondWithError(err)
+		return
 	}
-
-	if _, err := json.SetP(gws, "gateways"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("could not set value by path")
+	newSession := &NewSession{
+		SessionApiList: apiSession,
+		Token:          modelSession.Token,
 	}
-
-	if _, err := json.SetP(map[string]*response.Link{"self": link}, "_links"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("could not set value by path")
-	}
-
-	if _, err := json.SetP(ns.Token, "token"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("could not set value by path")
-	}
-
-	if _, err := json.SetP(ns.IsHosting, "hosting"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("could not set value by path")
-	}
-
-	nsr.RequestResponder.RespondWithCreated(json.Data(), nil, link)
+	nsr.RespondWithCreated(newSession, nil, link)
 }

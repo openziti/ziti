@@ -22,11 +22,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"net/http"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/netfoundry/ziti-edge/controller/apierror"
 
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
@@ -112,6 +113,9 @@ func (ctx *TestContext) childWith(container *gabs.Container, attribute string, v
 func (ctx *TestContext) toStringSlice(container *gabs.Container) []string {
 	var result []string
 	if container != nil {
+		if container.Data() == nil {
+			return nil
+		}
 		children, err := container.Children()
 		ctx.req.NoError(err)
 		for _, child := range children {

@@ -28,22 +28,19 @@ func init() {
 }
 
 type ApiSessionRouter struct {
-	BasePath       string
-	BasePathLegacy string
-	IdType         response.IdType
+	BasePath string
+	IdType   response.IdType
 }
 
 func NewApiSessionRouter() *ApiSessionRouter {
 	return &ApiSessionRouter{
-		BasePath:       "/" + EntityNameApiSession,
-		BasePathLegacy: "/" + EntityNameApiSessionLegacy,
-		IdType:         response.IdTypeUuid,
+		BasePath: "/" + EntityNameApiSession,
+		IdType:   response.IdTypeUuid,
 	}
 }
 
 func (ir *ApiSessionRouter) Register(ae *env.AppEnv) {
 	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePathLegacy, ir, permissions.IsAdmin())
 }
 
 func (ir *ApiSessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {

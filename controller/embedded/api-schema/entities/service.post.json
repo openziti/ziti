@@ -12,9 +12,6 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "hostIds": {
-      "$ref": "definitions.all.json#/definitions/arrayOfIds-null"
-    },
     "dns": {
       "type": "object",
       "additionalProperties": false,

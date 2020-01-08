@@ -1,16 +1,17 @@
 package persistence
 
 import (
+	"sort"
+
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
-	"sort"
 )
 
 const (
-	FieldServicePolicyType          = "policyType"
+	FieldServicePolicyType          = "type"
 	FieldServicePolicyIdentityRoles = "identityRoles"
 	FieldServicePolicyServiceRoles  = "serviceRoles"
 
@@ -103,6 +104,7 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.addBaseFields()
 
 	store.indexName = store.addUniqueNameField()
+	store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
 	store.symbolIdentityRoles = store.AddSetSymbol(FieldServicePolicyIdentityRoles, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServicePolicyServiceRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)

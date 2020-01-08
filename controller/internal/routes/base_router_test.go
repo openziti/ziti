@@ -18,9 +18,10 @@ package routes
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var test = `
@@ -46,7 +47,6 @@ func Test_getFields(t *testing.T) {
 			Port:     uint16Ptr(6433),
 		},
 		Name:            strPtr("Foo"),
-		HostIds:         nil,
 		Tags:            nil,
 		EgressRouter:    nil,
 		EndpointAddress: strPtr("tcp:foo:1234"),
@@ -84,7 +84,6 @@ func Test_getFields(t *testing.T) {
 				"Dns.Port":        true,
 				"EgressRouter":    false,
 				"EndpointAddress": true,
-				"HostIds":         false,
 				"Tags":            false,
 			},
 			wantErr: false,

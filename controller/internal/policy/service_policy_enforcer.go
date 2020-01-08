@@ -18,32 +18,31 @@ package policy
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/runner"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
-type AppWanEnforcer struct {
+type ServicePolicyEnforcer struct {
 	appEnv *env.AppEnv
 	*runner.BaseOperation
 }
 
-func NewAppWanEnforcer(appEnv *env.AppEnv, f time.Duration) *AppWanEnforcer {
-	return &AppWanEnforcer{
+func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolicyEnforcer {
+	return &ServicePolicyEnforcer{
 		appEnv:        appEnv,
-		BaseOperation: runner.NewBaseOperation("AppWanEnforcer", f)}
+		BaseOperation: runner.NewBaseOperation("ServicePolicyEnforcer", f)}
 }
 
-func (enforcer *AppWanEnforcer) Run() error {
+func (enforcer *ServicePolicyEnforcer) Run() error {
 	result, err := enforcer.appEnv.GetHandlers().Session.HandleQuery("")
 
 	if err != nil {
 		return err
 	}
-
-	service := &persistence.EdgeService{}
 
 	var sessionsToRemove []string
 	err = enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
@@ -66,12 +65,16 @@ func (enforcer *AppWanEnforcer) Run() error {
 				continue
 			}
 
-			query := fmt.Sprintf(`id = "%v" and anyOf(appwans.identities.id) = "%v"`, session.ServiceId, apiSession.IdentityId)
-			found, err := enforcer.appEnv.GetStores().EdgeService.BaseLoadOneByQuery(tx, query, service)
+			policyType := persistence.PolicyTypeDial
+			if session.IsHosting {
+				policyType = persistence.PolicyTypeBind
+			}
+			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType, session.ServiceId)
+			_, count, err := enforcer.appEnv.GetStores().Identity.QueryIds(tx, query)
 			if err != nil {
 				return err
 			}
-			if !found {
+			if count == 0 {
 				sessionsToRemove = append(sessionsToRemove, session.Id)
 			}
 		}

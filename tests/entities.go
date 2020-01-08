@@ -19,9 +19,10 @@
 package tests
 
 import (
+	"sort"
+
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"sort"
 )
 
 type testEntity interface {
@@ -32,54 +33,6 @@ type testEntity interface {
 	validate(ctx *TestContext, c *gabs.Container)
 }
 
-func newTestAppwan() *testAppwan {
-	return &testAppwan{
-		name:       uuid.New().String(),
-		identities: []string{},
-		services:   []string{},
-	}
-}
-
-type testAppwan struct {
-	id         string
-	name       string
-	identities []string
-	services   []string
-	tags       map[string]interface{}
-}
-
-func (entity *testAppwan) getId() string {
-	return entity.id
-}
-
-func (entity *testAppwan) setId(id string) {
-	entity.id = id
-}
-
-func (entity *testAppwan) getEntityType() string {
-	return "app-wans"
-}
-
-func (entity *testAppwan) toJson(_ bool, ctx *TestContext) string {
-	entityData := gabs.New()
-	ctx.setJsonValue(entityData, entity.name, "name")
-	ctx.setJsonValue(entityData, entity.identities, "identities")
-	ctx.setJsonValue(entityData, entity.services, "services")
-	if len(entity.tags) > 0 {
-		ctx.setJsonValue(entityData, entity.tags, "tags")
-	}
-	return entityData.String()
-}
-
-func (entity *testAppwan) validate(ctx *TestContext, c *gabs.Container) {
-	if entity.tags == nil {
-		entity.tags = map[string]interface{}{}
-	}
-	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.tags, path("tags"))
-
-}
-
 type testService struct {
 	id              string
 	name            string
@@ -87,9 +40,9 @@ type testService struct {
 	dnsPort         int
 	egressRouter    string
 	endpointAddress string
-	hostIds         []string
 	edgeRouterRoles []string
 	roleAttributes  []string
+	permissions     []string
 	tags            map[string]interface{}
 }
 
@@ -105,7 +58,7 @@ func (entity *testService) getEntityType() string {
 	return "services"
 }
 
-func (entity *testService) toJson(create bool, ctx *TestContext) string {
+func (entity *testService) toJson(_ bool, ctx *TestContext) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.egressRouter, "egressRouter")
@@ -114,11 +67,6 @@ func (entity *testService) toJson(create bool, ctx *TestContext) string {
 	ctx.setJsonValue(entityData, entity.dnsPort, "dns", "port")
 	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
-	if create {
-		if len(entity.hostIds) > 0 {
-			ctx.setJsonValue(entityData, entity.hostIds, "hostIds")
-		}
-	}
 
 	if len(entity.tags) > 0 {
 		ctx.setJsonValue(entityData, entity.tags, "tags")
@@ -143,6 +91,9 @@ func (entity *testService) validate(ctx *TestContext, c *gabs.Container) {
 
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
+
+	sort.Strings(entity.permissions)
+	ctx.pathEqualsStringSlice(c, entity.permissions, path("permissions"))
 }
 
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *testIdentity {

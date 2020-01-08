@@ -18,6 +18,8 @@ package proxy
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
@@ -28,7 +30,6 @@ import (
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
-	"net"
 )
 
 type Service struct {
@@ -71,7 +72,7 @@ func (p interceptor) Intercept(service edge.Service, resolver dns.Resolver) erro
 	}
 
 	// pre-fetch network session todo move this to service poller?
-	if ns, err := p.context.GetNetworkSession(service.Id); err != nil {
+	if ns, err := p.context.GetSession(service.Id); err != nil {
 		return fmt.Errorf("failed to acquire network session: %v", err)
 	} else {
 		log.WithField("id", ns.Id).Debug("acquired network session")

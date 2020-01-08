@@ -22,11 +22,6 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-const (
-	FieldAppwanServices   = "services"
-	FieldAppwanIdentities = "identities"
-)
-
 type Appwan struct {
 	BaseEdgeEntityImpl
 	Name       string
@@ -44,15 +39,15 @@ func NewAppwan(name string) *Appwan {
 func (entity *Appwan) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Identities = bucket.GetStringList(FieldAppwanIdentities)
-	entity.Services = bucket.GetStringList(FieldAppwanServices)
+	entity.Identities = bucket.GetStringList(EntityTypeIdentities)
+	entity.Services = bucket.GetStringList(EntityTypeServices)
 }
 
 func (entity *Appwan) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetLinkedIds(FieldAppwanIdentities, entity.Identities)
-	ctx.SetLinkedIds(FieldAppwanServices, entity.Services)
+	ctx.SetLinkedIds(EntityTypeIdentities, entity.Identities)
+	ctx.SetLinkedIds(EntityTypeServices, entity.Services)
 }
 
 func (entity *Appwan) GetEntityType() string {
@@ -90,8 +85,8 @@ func (store *appwanStoreImpl) initializeLocal() {
 	store.addBaseFields()
 
 	store.indexName = store.addUniqueNameField()
-	store.symbolServices = store.AddFkSetSymbol(FieldAppwanServices, store.stores.edgeService)
-	store.symbolIdentities = store.AddFkSetSymbol(FieldAppwanIdentities, store.stores.identity)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 }
 
 func (store *appwanStoreImpl) initializeLinked() {

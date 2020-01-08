@@ -17,6 +17,9 @@
 package persistence
 
 import (
+	"reflect"
+	"sort"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/network"
@@ -25,8 +28,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"sort"
 )
 
 type EdgeService struct {
@@ -37,7 +38,6 @@ type EdgeService struct {
 	DnsPort         uint16
 	AppWans         []string
 	Clusters        []string
-	HostIds         []string
 	RoleAttributes  []string
 	EdgeRouterRoles []string
 }
@@ -69,7 +69,6 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 	entity.DnsPort = uint16(bucket.GetInt32WithDefault(FieldServiceDnsPort, 0))
 	entity.AppWans = bucket.GetStringList(FieldServiceAppwans)
 	entity.Clusters = bucket.GetStringList(FieldServiceClusters)
-	entity.HostIds = bucket.GetStringList(FieldServiceHostingIdentities)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.EdgeRouterRoles = bucket.GetStringList(FieldServiceEdgeRouterRoles)
 }
@@ -84,10 +83,6 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldServiceDnsHostname, entity.DnsHostname)
 	ctx.SetInt32(FieldServiceDnsPort, int32(entity.DnsPort))
-	if ctx.IsCreate {
-		ctx.SetLinkedIds(FieldServiceClusters, entity.Clusters)
-		ctx.SetLinkedIds(FieldServiceHostingIdentities, entity.HostIds)
-	}
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	sort.Strings(entity.EdgeRouterRoles)
@@ -130,7 +125,6 @@ type edgeServiceStoreImpl struct {
 	indexRoleAttributes boltz.SetReadIndex
 	symbolAppwans       boltz.EntitySetSymbol
 	symbolClusters      boltz.EntitySetSymbol
-	symbolHostIds       boltz.EntitySetSymbol
 	symbolSessions      boltz.EntitySetSymbol
 
 	symbolEdgeRouters      boltz.EntitySetSymbol
@@ -155,7 +149,6 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldServiceDnsPort, ast.NodeTypeInt64)
 	store.symbolAppwans = store.AddFkSetSymbol(FieldServiceAppwans, store.stores.appwan)
 	store.symbolClusters = store.AddFkSetSymbol(FieldServiceClusters, store.stores.cluster)
-	store.symbolHostIds = store.AddFkSetSymbol(FieldServiceHostingIdentities, store.stores.identity)
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 	store.symbolEdgeRoutersRoles = store.AddSetSymbol(FieldServiceEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)
@@ -180,7 +173,6 @@ func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []
 func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolAppwans, store.stores.appwan.symbolServices)
 	store.AddLinkCollection(store.symbolClusters, store.stores.cluster.symbolServices)
-	store.AddLinkCollection(store.symbolHostIds, store.stores.identity.symbolHostableServices)
 	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolServices)
 
