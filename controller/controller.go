@@ -107,13 +107,13 @@ func (c *Controller) Shutdown() {
 		}
 	}
 
+	c.network.Shutdown()
+
 	if c.config.Db != nil {
 		if err := c.config.Db.Close(); err != nil {
 			pfxlog.Logger().WithError(err).Error("failed to close db")
 		}
 	}
-
-	c.network.Shutdown()
 }
 
 func (c *Controller) showOptions() error {
