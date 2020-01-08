@@ -50,6 +50,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 		}
 	}
 
+	cmd.AddCommand(newListCmdForEntityType("api-sessions", runListApiSessions, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
@@ -57,8 +58,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("sessions", runListApiSessions, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("network-sessions", runListNetworkSessions, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", runListEdgeRouterEdgeRouterPolicies, newOptions()))
@@ -336,7 +336,7 @@ func runListCAs(o *commonOptions) error {
 }
 
 func runListApiSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("sessions", o)
+	children, err := listEntitiesOfTypeWithOptionalFilter("api-sessions", o)
 	if err != nil {
 		return err
 	}
@@ -353,8 +353,8 @@ func runListApiSessions(o *commonOptions) error {
 	return err
 }
 
-func runListNetworkSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("network-sessions", o)
+func runListSessions(o *commonOptions) error {
+	children, err := listEntitiesOfTypeWithOptionalFilter("sessions", o)
 
 	if err != nil {
 		return err
@@ -362,7 +362,7 @@ func runListNetworkSessions(o *commonOptions) error {
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
-		sessionId, _ := entity.Path("session.id").Data().(string)
+		sessionId, _ := entity.Path("apiSession.id").Data().(string)
 		serviceName, _ := entity.Path("service.name").Data().(string)
 		hosting, _ := entity.Path("hosting").Data().(bool)
 		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     hosting: %v\n", id, sessionId, serviceName, hosting); err != nil {
