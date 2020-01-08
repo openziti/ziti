@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2020 Netfoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
@@ -27,29 +29,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createEdgeRouterPolicyOptions struct {
+type createServicePolicyOptions struct {
 	commonOptions
-	edgeRouterRoles []string
-	identityRoles   []string
+	serviceRoles  []string
+	identityRoles []string
 }
 
-// newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
-func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createEdgeRouterPolicyOptions{
+// newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
+func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createServicePolicyOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edge-router-policy <name>",
-		Short: "creates an edge-router-policy managed by the Ziti Edge Controller",
-		Long:  "creates an edge-router-policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(1),
+		Use:   "service-policy <name> <type>",
+		Short: "creates an service-policy managed by the Ziti Edge Controller",
+		Long:  "creates an service-policy managed by the Ziti Edge Controller",
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEdgeRouterPolicy(options)
+			err := runCreateServicePolicy(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -57,29 +59,34 @@ func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new edge router policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new edge router policy")
+	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "r", nil, "Service roles of the new service policy")
+	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
 }
 
-// runCreateEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
-func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
+// runCreateServicePolicy create a new servicePolicy on the Ziti Edge Controller
+func runCreateServicePolicy(o *createServicePolicyOptions) error {
+	policyType := o.Args[1]
+	if policyType != "Bind" && policyType != "Dial" {
+		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
+	}
 
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
+	setJSONValue(entityData, o.Args[1], "type")
+	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
 	setJSONValue(entityData, o.identityRoles, "identityRoles")
-	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	edgeRouterPolicyId := result.S("data", "id").Data()
+	servicePolicyId := result.S("data", "id").Data()
 
-	if _, err := fmt.Fprintf(o.Out, "%v\n", edgeRouterPolicyId); err != nil {
+	if _, err := fmt.Fprintf(o.Out, "%v\n", servicePolicyId); err != nil {
 		panic(err)
 	}
 
