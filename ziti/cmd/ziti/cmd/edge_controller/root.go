@@ -51,9 +51,7 @@ func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 }
 
 func setJSONValue(container *gabs.Container, value interface{}, path ...string) {
-	if value != nil {
-		if _, err := container.Set(value, path...); err != nil {
-			panic(err)
-		}
+	if _, err := container.Set(value, path...); err != nil {
+		panic(err)
 	}
 }
