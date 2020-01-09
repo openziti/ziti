@@ -35,7 +35,7 @@ type Handler interface {
 	BaseList(queryOptions *QueryOptions) (*BaseModelEntityListResult, error)
 	BaseLoad(id string) (BaseModelEntity, error)
 
-	readInTx(tx *bbolt.Tx, id string, modelEntity BaseModelEntity) error
+	readEntityInTx(tx *bbolt.Tx, id string, modelEntity BaseModelEntity) error
 }
 
 type baseHandler struct {
@@ -71,7 +71,7 @@ func (handler *baseHandler) BaseList(queryOptions *QueryOptions) (*BaseModelEnti
 
 func (handler *baseHandler) BaseLoad(id string) (BaseModelEntity, error) {
 	entity := handler.impl.NewModelEntity()
-	if err := handler.read(id, entity); err != nil {
+	if err := handler.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
@@ -87,7 +87,7 @@ func (result *BaseModelEntityListResult) collect(tx *bbolt.Tx, ids []string, que
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity := result.handler.impl.NewModelEntity()
-		err := result.handler.readInTx(tx, key, entity)
+		err := result.handler.readEntityInTx(tx, key, entity)
 		if err != nil {
 			return err
 		}
@@ -96,11 +96,11 @@ func (result *BaseModelEntityListResult) collect(tx *bbolt.Tx, ids []string, que
 	return nil
 }
 
-func (handler *baseHandler) create(modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
+func (handler *baseHandler) createEntity(modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
 	var id string
 	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		var err error
-		id, err = handler.createInTx(boltz.NewMutateContext(tx), modelEntity, afterCreate)
+		id, err = handler.createEntityInTx(boltz.NewMutateContext(tx), modelEntity, afterCreate)
 		return err
 	})
 	if err != nil {
@@ -109,7 +109,7 @@ func (handler *baseHandler) create(modelEntity BaseModelEntity, afterCreate func
 	return id, nil
 }
 
-func (handler *baseHandler) createInTx(ctx boltz.MutateContext, modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
+func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
 	if modelEntity == nil {
 		return "", errors.Errorf("can't create %v with nil value", handler.store.GetEntityType())
 	}
@@ -137,11 +137,11 @@ func (handler *baseHandler) createInTx(ctx boltz.MutateContext, modelEntity Base
 	return modelEntity.GetId(), nil
 }
 
-func (handler *baseHandler) update(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
+func (handler *baseHandler) updateEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
 	return handler.updateGeneral(modelEntity, checker, false, afterUpdate)
 }
 
-func (handler *baseHandler) patch(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
+func (handler *baseHandler) patchEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
 	return handler.updateGeneral(modelEntity, checker, true, afterUpdate)
 }
 
@@ -181,13 +181,13 @@ func (handler *baseHandler) updateGeneral(modelEntity BaseModelEntity, checker b
 	})
 }
 
-func (handler *baseHandler) read(id string, modelEntity BaseModelEntity) error {
+func (handler *baseHandler) readEntity(id string, modelEntity BaseModelEntity) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.readInTx(tx, id, modelEntity)
+		return handler.readEntityInTx(tx, id, modelEntity)
 	})
 }
 
-func (handler *baseHandler) readInTx(tx *bbolt.Tx, id string, modelEntity BaseModelEntity) error {
+func (handler *baseHandler) readEntityInTx(tx *bbolt.Tx, id string, modelEntity BaseModelEntity) error {
 	boltEntity := handler.store.NewStoreEntity()
 	found, err := handler.store.BaseLoadOneById(tx, id, boltEntity)
 	if err != nil {
@@ -200,21 +200,21 @@ func (handler *baseHandler) readInTx(tx *bbolt.Tx, id string, modelEntity BaseMo
 	return modelEntity.FillFrom(handler.impl, tx, boltEntity)
 }
 
-func (handler *baseHandler) readWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity BaseModelEntity) error {
+func (handler *baseHandler) readEntityWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity BaseModelEntity) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.readInTxWithIndex(name, tx, key, index, modelEntity)
+		return handler.readEntityInTxWithIndex(name, tx, key, index, modelEntity)
 	})
 }
 
-func (handler *baseHandler) readInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity BaseModelEntity) error {
+func (handler *baseHandler) readEntityInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity BaseModelEntity) error {
 	id := index.Read(tx, key)
 	if id == nil {
 		return util.NewNotFoundError(handler.store.GetSingularEntityType(), name, string(key))
 	}
-	return handler.readInTx(tx, string(id), modelEntity)
+	return handler.readEntityInTx(tx, string(id), modelEntity)
 }
 
-func (handler *baseHandler) readByQuery(query string) (BaseModelEntity, error) {
+func (handler *baseHandler) readEntityByQuery(query string) (BaseModelEntity, error) {
 	result, err := handler.BaseList(NewQueryOptions(query, nil, ""))
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (handler *baseHandler) readByQuery(query string) (BaseModelEntity, error) {
 	return nil, nil
 }
 
-func (handler *baseHandler) delete(id string, beforeDelete func(tx *bbolt.Tx, id string) error, afterDelete func() error) error {
+func (handler *baseHandler) deleteEntity(id string, beforeDelete func(tx *bbolt.Tx, id string) error, afterDelete func() error) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		if !handler.GetStore().IsEntityPresent(tx, id) {
@@ -296,16 +296,16 @@ func (handler *baseHandler) listWithTx(tx *bbolt.Tx, queryString string, resultH
 	return resultHandler(tx, keys, qmd)
 }
 
-func (handler *baseHandler) HandleCollectAssociated(id string, field string, relatedHandler Handler, collector func(entity BaseModelEntity)) error {
+func (handler *baseHandler) collectAssociated(id string, field string, relatedHandler Handler, collector func(entity BaseModelEntity)) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		entity := handler.impl.NewModelEntity()
-		if err := handler.readInTx(tx, id, entity); err != nil {
+		if err := handler.readEntityInTx(tx, id, entity); err != nil {
 			return err
 		}
 		relatedEntityIds := handler.store.GetRelatedEntitiesIdList(tx, id, field)
 		for _, relatedEntityId := range relatedEntityIds {
 			relatedEntity := relatedHandler.NewModelEntity()
-			if err := relatedHandler.readInTx(tx, relatedEntityId, relatedEntity); err != nil {
+			if err := relatedHandler.readEntityInTx(tx, relatedEntityId, relatedEntity); err != nil {
 				return err
 			}
 			collector(relatedEntity)

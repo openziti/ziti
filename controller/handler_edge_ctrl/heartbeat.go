@@ -43,7 +43,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, _ channel
 		req := &edge_ctrl_pb.ApiSessionHeartbeat{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			err := h.appEnv.GetHandlers().ApiSession.HandleMarkActivity(req.Tokens)
+			err := h.appEnv.GetHandlers().ApiSession.MarkActivity(req.Tokens)
 
 			if err != nil {
 				pfxlog.Logger().

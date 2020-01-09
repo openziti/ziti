@@ -75,7 +75,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
 		}
 	}
 
-	authenticator, err := handler.env.GetHandlers().Authenticator.HandleReadByUsername(username)
+	authenticator, err := handler.env.GetHandlers().Authenticator.ReadByUsername(username)
 
 	if err != nil {
 		return "", err

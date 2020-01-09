@@ -153,7 +153,7 @@ func (ctx *TestContext) startServer() {
 
 	ctx.EdgeController.Initialize()
 
-	err = ctx.EdgeController.AppEnv.Handlers.Identity.HandleInitializeDefaultAdmin(ctx.AdminUsername, ctx.AdminPassword, uuid.New().String())
+	err = ctx.EdgeController.AppEnv.Handlers.Identity.InitializeDefaultAdmin(ctx.AdminUsername, ctx.AdminPassword, uuid.New().String())
 	if err != nil {
 		log.WithError(err).Warn("error during initialize admin")
 	}

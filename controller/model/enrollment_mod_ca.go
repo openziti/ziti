@@ -47,7 +47,7 @@ func (module *EnrollModuleCa) CanHandle(method string) bool {
 
 func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentResult, error) {
 
-	caList, err := module.env.GetHandlers().Ca.HandleQuery("true limit none")
+	caList, err := module.env.GetHandlers().Ca.Query("true limit none")
 
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 
 	fingerprint := module.fingerprintGenerator.FromCert(enrollmentCert)
 
-	existing, _ := module.env.GetHandlers().Authenticator.HandleReadByFingerprint(fingerprint)
+	existing, _ := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 	if existing != nil {
 		return nil, apierror.NewCertInUse()
@@ -130,7 +130,7 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		},
 	}
 
-	_, _, err = module.env.GetHandlers().Identity.HandleCreateWithAuthenticator(identity, newAuthenticator)
+	_, _, err = module.env.GetHandlers().Identity.CreateWithAuthenticator(identity, newAuthenticator)
 
 	if err != nil {
 

@@ -89,7 +89,7 @@ func (ir *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := NewIdentityApiCreate()
 	Create(rc, rc.RequestResponder, ae.Schemes.Identity.Post, apiEntity, (&IdentityApiList{}).BuildSelfLink, func() (string, error) {
 		identity, enrollments := apiEntity.ToModel()
-		identityId, _, err := ae.Handlers.Identity.HandleCreateWithEnrollments(identity, enrollments)
+		identityId, _, err := ae.Handlers.Identity.CreateWithEnrollments(identity, enrollments)
 		return identityId, err
 	})
 }
@@ -101,21 +101,21 @@ func (ir *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &IdentityApiUpdate{}
 	Update(rc, ae.Schemes.Identity.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Identity.HandleUpdate(apiEntity.ToModel(id))
+		return ae.Handlers.Identity.Update(apiEntity.ToModel(id))
 	})
 }
 
 func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &IdentityApiUpdate{}
 	Patch(rc, ae.Schemes.Identity.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Identity.HandlePatch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.Identity.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
 	})
 }
 
 func (ir *IdentityRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.HandleCollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.CollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
 }
 
 func (ir *IdentityRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.HandleCollectServicePolicies, MapServicePolicyToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.CollectServicePolicies, MapServicePolicyToApiEntity)
 }

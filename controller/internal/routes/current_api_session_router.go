@@ -66,7 +66,7 @@ func (ir *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestConte
 }
 
 func (ir *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	err := ae.GetHandlers().ApiSession.HandleDelete(rc.Session.Id)
+	err := ae.GetHandlers().ApiSession.Delete(rc.Session.Id)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)

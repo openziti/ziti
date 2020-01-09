@@ -210,7 +210,7 @@ func MapIdentityToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.
 }
 
 func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, error) {
-	identityType, err := ae.Handlers.IdentityType.HandleRead(i.IdentityTypeId)
+	identityType, err := ae.Handlers.IdentityType.Read(i.IdentityTypeId)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		RoleAttributes: i.RoleAttributes,
 	}
 
-	err = ae.GetHandlers().Identity.HandleCollectEnrollments(ret.Id, func(entity model.BaseModelEntity) error {
+	err = ae.GetHandlers().Identity.CollectEnrollments(ret.Id, func(entity model.BaseModelEntity) error {
 		enrollmentModel, ok := entity.(*model.Enrollment)
 
 		if !ok {
@@ -251,7 +251,7 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		return nil, err
 	}
 
-	err = ae.GetHandlers().Identity.HandleCollectAuthenticators(ret.Id, func(entity model.BaseModelEntity) error {
+	err = ae.GetHandlers().Identity.CollectAuthenticators(ret.Id, func(entity model.BaseModelEntity) error {
 		authenticatorModel, ok := entity.(*model.Authenticator)
 
 		if !ok {

@@ -44,7 +44,7 @@ func (module *EnrollModuleOttCa) CanHandle(method string) bool {
 }
 
 func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResult, error) {
-	enrollment, err := module.env.GetHandlers().Enrollment.HandleReadByToken(ctx.GetToken())
+	enrollment, err := module.env.GetHandlers().Enrollment.ReadByToken(ctx.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	identity, err := module.env.GetHandlers().Identity.HandleRead(enrollment.IdentityId)
+	identity, err := module.env.GetHandlers().Identity.Read(enrollment.IdentityId)
 
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	ca, err := module.env.GetHandlers().Ca.HandleRead(*enrollment.CaId)
+	ca, err := module.env.GetHandlers().Ca.Read(*enrollment.CaId)
 
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 
 	fingerprint := module.fingerprintGenerator.FromCert(validCert)
 
-	existing, _ := module.env.GetHandlers().Authenticator.HandleReadByFingerprint(fingerprint)
+	existing, _ := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 	if existing != nil {
 		apiError := apierror.NewCertInUse()
@@ -127,7 +127,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		},
 	}
 
-	err = module.env.GetHandlers().Enrollment.HandleReplaceWithAuthenticator(enrollment.Id, newAuthenticator)
+	err = module.env.GetHandlers().Enrollment.ReplaceWithAuthenticator(enrollment.Id, newAuthenticator)
 
 	if err != nil {
 		return nil, err

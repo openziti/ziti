@@ -296,7 +296,7 @@ func (b *Broker) sendToAllEdgeRouters(msg *channel2.Message) {
 }
 
 func (b *Broker) sendToAllEdgeRoutersForSession(sessionId string, msg *channel2.Message) {
-	edgeRouterList, err := b.ae.Handlers.EdgeRouter.HandleListForSession(sessionId)
+	edgeRouterList, err := b.ae.Handlers.EdgeRouter.ListForSession(sessionId)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("could not get edge routers for session [%s]", sessionId)
 		return
@@ -447,7 +447,7 @@ func (b *Broker) sessionCreateEventHandler(args ...interface{}) {
 func (b *Broker) sendSessionCreates(session *persistence.Session) {
 	sessionAdded := &edge_ctrl_pb.SessionAdded{}
 
-	service, err := b.ae.Handlers.Service.HandleRead(session.ServiceId)
+	service, err := b.ae.Handlers.Service.Read(session.ServiceId)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("could not send network session added, could not find service")
 		return
@@ -506,7 +506,7 @@ func (b *Broker) getCurrentSessions() (*edge_ctrl_pb.ApiSessionAdded, error) {
 		IsFullState: true,
 	}
 
-	sessions, err := b.ae.GetHandlers().ApiSession.HandleQuery("true limit none")
+	sessions, err := b.ae.GetHandlers().ApiSession.Query("true limit none")
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +531,7 @@ func (b *Broker) getCurrentStateNetworkSessions(edgeRouterId string) (*edge_ctrl
 		IsFullState: true,
 	}
 
-	result, err := b.ae.Handlers.Session.HandleListSessionForEdgeRouter(edgeRouterId)
+	result, err := b.ae.Handlers.Session.ListSessionsForEdgeRouter(edgeRouterId)
 
 	if err != nil {
 		return nil, err
@@ -553,7 +553,7 @@ func (b *Broker) getCurrentStateNetworkSessions(edgeRouterId string) (*edge_ctrl
 }
 
 func (b *Broker) getActiveFingerprints(sessionId string) ([]string, error) {
-	certs, err := b.ae.Handlers.Session.HandleReadSessionCerts(sessionId)
+	certs, err := b.ae.Handlers.Session.ReadSessionCerts(sessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +572,7 @@ func (b *Broker) getActiveFingerprints(sessionId string) ([]string, error) {
 func (b *Broker) getApiSessionFingerprints(identityId string) ([]string, error) {
 	fingerprintsMap := map[string]bool{}
 
-	err := b.ae.Handlers.Identity.HandleCollectAuthenticators(identityId, func(entity model.BaseModelEntity) error {
+	err := b.ae.Handlers.Identity.CollectAuthenticators(identityId, func(entity model.BaseModelEntity) error {
 		authenticator, ok := entity.(*model.Authenticator)
 
 		if !ok {
@@ -611,12 +611,12 @@ func (b *Broker) modelApiSessionToProto(token, identityId string) (*edge_ctrl_pb
 }
 
 func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, error) {
-	service, err := b.ae.Handlers.Service.HandleRead(ns.ServiceId)
+	service, err := b.ae.Handlers.Service.Read(ns.ServiceId)
 	if err != nil {
 		return nil, fmt.Errorf("could not convert to session proto, could not find service: %s", err)
 	}
 
-	apiSession, err := b.ae.Handlers.ApiSession.HandleRead(ns.ApiSessionId)
+	apiSession, err := b.ae.Handlers.ApiSession.Read(ns.ApiSessionId)
 	if err != nil {
 		return nil, fmt.Errorf("could not convert to network session proto, could not find session: %s", err)
 	}
@@ -658,7 +658,7 @@ func (b *Broker) GetOnlineEdgeRouter(id string) *model.EdgeRouter {
 func (b *Broker) RouterConnected(r *network.Router) {
 	go func() {
 		fp := formatFingerprint(r.Fingerprint)
-		edgeRouter, _ := b.ae.Handlers.EdgeRouter.HandleReadOneByFingerprint(fp)
+		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
 
 		// not an edge router
 		if edgeRouter == nil || edgeRouter.Id == "" {
@@ -736,7 +736,7 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fing
 func (b *Broker) RouterDisconnected(r *network.Router) {
 	go func() {
 		fp := formatFingerprint(r.Fingerprint)
-		edgeRouter, _ := b.ae.Handlers.EdgeRouter.HandleReadOneByFingerprint(fp)
+		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
 
 		// not an edge router
 		if edgeRouter == nil || edgeRouter.Id == "" {

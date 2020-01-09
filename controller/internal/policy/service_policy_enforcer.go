@@ -38,7 +38,7 @@ func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolic
 }
 
 func (enforcer *ServicePolicyEnforcer) Run() error {
-	result, err := enforcer.appEnv.GetHandlers().Session.HandleQuery("")
+	result, err := enforcer.appEnv.GetHandlers().Session.Query("")
 
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	}
 
 	for _, sessionId := range sessionsToRemove {
-		_ = enforcer.appEnv.GetHandlers().Session.HandleDelete(sessionId)
+		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
 	}
 
 	return nil

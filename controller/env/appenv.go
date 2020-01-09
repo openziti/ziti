@@ -312,7 +312,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		}
 
 		if sessionToken != "" {
-			rc.Session, err = ae.GetHandlers().ApiSession.HandleReadByToken(sessionToken)
+			rc.Session, err = ae.GetHandlers().ApiSession.ReadByToken(sessionToken)
 
 			if err != nil {
 				//don't error on "not found", just an un-authed session, rely on permissions below
@@ -327,7 +327,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 
 		//updates updatedAt for session timeouts
 		if rc.Session != nil {
-			err := ae.GetHandlers().ApiSession.HandleUpdate(rc.Session)
+			err := ae.GetHandlers().ApiSession.Update(rc.Session)
 			if err != nil && !util.IsErrNotFoundErr(err) {
 				log.WithError(err).Debug("failed to update session activity")
 				rc.RequestResponder.RespondWithError(err)
@@ -336,7 +336,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		}
 
 		if rc.Session != nil {
-			rc.Identity, err = ae.GetHandlers().Identity.HandleRead(rc.Session.IdentityId)
+			rc.Identity, err = ae.GetHandlers().Identity.Read(rc.Session.IdentityId)
 			if err != nil {
 				if util.IsErrNotFoundErr(err) {
 					apiErr := apierror.NewUnauthorized()

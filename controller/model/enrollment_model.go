@@ -108,7 +108,7 @@ func (entity *Enrollment) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 			return nil, apiErr
 		}
 
-		ca, _ := handler.GetEnv().GetHandlers().Ca.HandleRead(*entity.CaId)
+		ca, _ := handler.GetEnv().GetHandlers().Ca.Read(*entity.CaId)
 
 		if ca == nil {
 			apiErr := apierror.NewNotFound()

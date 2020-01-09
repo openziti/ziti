@@ -41,65 +41,44 @@ func (handler *ServicePolicyHandler) NewModelEntity() BaseModelEntity {
 	return &ServicePolicy{}
 }
 
-func (handler *ServicePolicyHandler) HandleCreate(servicePolicy *ServicePolicy) (string, error) {
-	return handler.create(servicePolicy, nil)
+func (handler *ServicePolicyHandler) Create(servicePolicy *ServicePolicy) (string, error) {
+	return handler.createEntity(servicePolicy, nil)
 }
 
-func (handler *ServicePolicyHandler) HandleRead(id string) (*ServicePolicy, error) {
+func (handler *ServicePolicyHandler) Read(id string) (*ServicePolicy, error) {
 	modelEntity := &ServicePolicy{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *ServicePolicyHandler) handleReadInTx(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
+func (handler *ServicePolicyHandler) readInTx(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
 	modelEntity := &ServicePolicy{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *ServicePolicyHandler) HandleUpdate(servicePolicy *ServicePolicy) error {
-	return handler.update(servicePolicy, nil, nil)
+func (handler *ServicePolicyHandler) Update(servicePolicy *ServicePolicy) error {
+	return handler.updateEntity(servicePolicy, nil, nil)
 }
 
-func (handler *ServicePolicyHandler) HandlePatch(servicePolicy *ServicePolicy, checker boltz.FieldChecker) error {
-	return handler.patch(servicePolicy, checker, nil)
+func (handler *ServicePolicyHandler) Patch(servicePolicy *ServicePolicy, checker boltz.FieldChecker) error {
+	return handler.patchEntity(servicePolicy, checker, nil)
 }
 
-func (handler *ServicePolicyHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *ServicePolicyHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *ServicePolicyHandler) HandleList(queryOptions *QueryOptions) (*ServicePolicyListResult, error) {
-	result := &ServicePolicyListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+func (handler *ServicePolicyHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
 }
 
-func (handler *ServicePolicyHandler) HandleListServices(id string) ([]*Service, error) {
-	var result []*Service
-	err := handler.HandleCollectServices(id, func(entity BaseModelEntity) {
-		result = append(result, entity.(*Service))
-	})
-
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *ServicePolicyHandler) HandleCollectServices(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
-}
-
-func (handler *ServicePolicyHandler) HandleCollectIdentities(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeIdentities, handler.env.GetHandlers().Identity, collector)
+func (handler *ServicePolicyHandler) CollectIdentities(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeIdentities, handler.env.GetHandlers().Identity, collector)
 }
 
 type ServicePolicyListResult struct {
@@ -111,7 +90,7 @@ type ServicePolicyListResult struct {
 func (result *ServicePolicyListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

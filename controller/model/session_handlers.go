@@ -42,21 +42,21 @@ func (handler *SessionHandler) NewModelEntity() BaseModelEntity {
 	return &Session{}
 }
 
-func (handler *SessionHandler) HandleCreate(entity *Session) (string, error) {
-	return handler.create(entity, nil)
+func (handler *SessionHandler) Create(entity *Session) (string, error) {
+	return handler.createEntity(entity, nil)
 }
 
-func (handler *SessionHandler) HandleReadForIdentity(id string, identityId string) (*Session, error) {
-	identity, err := handler.GetEnv().GetHandlers().Identity.HandleRead(identityId)
+func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*Session, error) {
+	identity, err := handler.GetEnv().GetHandlers().Identity.Read(identityId)
 	if err != nil {
 		return nil, err
 	}
 	if identity.IsAdmin {
-		return handler.HandleRead(id)
+		return handler.Read(id)
 	}
 
 	query := fmt.Sprintf(`id = "%v" and apiSession.identity = "%v"`, id, identityId)
-	result, err := handler.HandleQuery(query)
+	result, err := handler.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -66,40 +66,40 @@ func (handler *SessionHandler) HandleReadForIdentity(id string, identityId strin
 	return result.Sessions[0], nil
 }
 
-func (handler *SessionHandler) HandleRead(id string) (*Session, error) {
+func (handler *SessionHandler) Read(id string) (*Session, error) {
 	entity := &Session{}
-	if err := handler.read(id, entity); err != nil {
+	if err := handler.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *SessionHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Session, error) {
+func (handler *SessionHandler) readInTx(tx *bbolt.Tx, id string) (*Session, error) {
 	entity := &Session{}
-	if err := handler.readInTx(tx, id, entity); err != nil {
+	if err := handler.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *SessionHandler) HandleDeleteForIdentity(id, identityId string) error {
-	session, err := handler.HandleReadForIdentity(id, identityId)
+func (handler *SessionHandler) DeleteForIdentity(id, identityId string) error {
+	session, err := handler.ReadForIdentity(id, identityId)
 	if err != nil {
 		return err
 	}
 	if session == nil {
 		return util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
 	}
-	return handler.delete(id, nil, nil)
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *SessionHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *SessionHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *SessionHandler) HandleListForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*SessionListResult, error) {
+func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*SessionListResult, error) {
 	if sessionIdentity.IsAdmin {
-		return handler.HandleList(queryOptions)
+		return handler.parseAndListSessions(queryOptions)
 	}
 	query := queryOptions.Predicate
 	// TODO: Convert model errors to appropriate api errors
@@ -108,10 +108,10 @@ func (handler *SessionHandler) HandleListForIdentity(sessionIdentity *Identity, 
 	}
 	query += fmt.Sprintf(`apiSession.identity = "%v"`, sessionIdentity.Id)
 	queryOptions.finalQuery = query
-	return handler.HandleList(queryOptions)
+	return handler.parseAndListSessions(queryOptions)
 }
 
-func (handler *SessionHandler) HandleReadSessionCerts(sessionId string) ([]*SessionCert, error) {
+func (handler *SessionHandler) ReadSessionCerts(sessionId string) ([]*SessionCert, error) {
 	var result []*SessionCert
 	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
@@ -134,7 +134,7 @@ func (handler *SessionHandler) HandleReadSessionCerts(sessionId string) ([]*Sess
 	return result, nil
 }
 
-func (handler *SessionHandler) HandleQuery(query string) (*SessionListResult, error) {
+func (handler *SessionHandler) Query(query string) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
 	err := handler.list(query, result.collect)
 	if err != nil {
@@ -143,7 +143,7 @@ func (handler *SessionHandler) HandleQuery(query string) (*SessionListResult, er
 	return result, nil
 }
 
-func (handler *SessionHandler) HandleList(queryOptions *QueryOptions) (*SessionListResult, error) {
+func (handler *SessionHandler) parseAndListSessions(queryOptions *QueryOptions) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
 	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
@@ -152,7 +152,7 @@ func (handler *SessionHandler) HandleList(queryOptions *QueryOptions) (*SessionL
 	return result, nil
 }
 
-func (handler *SessionHandler) HandleListSessionForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
+func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
 	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.edgeRouters) = "%v" and `+
 		`(isEmpty(service.edgeRouterRoles) or (anyOf(service.edgeRouters) = "%v"))`, edgeRouterId, edgeRouterId)
@@ -172,7 +172,7 @@ type SessionListResult struct {
 func (result *SessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

@@ -254,12 +254,12 @@ func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF)
 type ModelDeleteF func(rc *response.RequestContext, id string) error
 
 type DeleteHandler interface {
-	HandleDelete(id string) error
+	Delete(id string) error
 }
 
 func DeleteWithHandler(rc *response.RequestContext, idType response.IdType, deleteHandler DeleteHandler) {
 	Delete(rc, idType, func(rc *response.RequestContext, id string) error {
-		return deleteHandler.HandleDelete(id)
+		return deleteHandler.Delete(id)
 	})
 }
 

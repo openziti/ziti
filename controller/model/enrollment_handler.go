@@ -49,14 +49,14 @@ func (handler *EnrollmentHandler) NewModelEntity() BaseModelEntity {
 func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
 	method := ""
 
-	enrollment, err := handler.HandleReadByToken(ctx.GetToken())
+	enrollment, err := handler.ReadByToken(ctx.GetToken())
 
 	if err != nil {
 		return "", err
 	}
 
 	if enrollment == nil {
-		edgeRouter, err := handler.env.GetHandlers().EdgeRouter.HandleReadOneByQuery(fmt.Sprintf("enrollmentToken = \"%v\"", ctx.GetToken()))
+		edgeRouter, err := handler.env.GetHandlers().EdgeRouter.ReadOneByQuery(fmt.Sprintf("enrollmentToken = \"%v\"", ctx.GetToken()))
 
 		if err != nil {
 			return "", err
@@ -75,7 +75,7 @@ func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (st
 	return method, nil
 }
 
-func (handler *EnrollmentHandler) HandleEnroll(ctx EnrollmentContext) (*EnrollmentResult, error) {
+func (handler *EnrollmentHandler) Enroll(ctx EnrollmentContext) (*EnrollmentResult, error) {
 	method, err := handler.getEnrollmentMethod(ctx)
 
 	if err != nil {
@@ -91,7 +91,7 @@ func (handler *EnrollmentHandler) HandleEnroll(ctx EnrollmentContext) (*Enrollme
 	return enrollModule.Process(ctx)
 }
 
-func (handler *EnrollmentHandler) HandleReadByToken(token string) (*Enrollment, error) {
+func (handler *EnrollmentHandler) ReadByToken(token string) (*Enrollment, error) {
 	enrollment := &Enrollment{}
 
 	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
@@ -116,7 +116,7 @@ func (handler *EnrollmentHandler) HandleReadByToken(token string) (*Enrollment, 
 	return enrollment, nil
 }
 
-func (handler *EnrollmentHandler) HandleReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
+func (handler *EnrollmentHandler) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
 	return handler.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 
@@ -125,19 +125,19 @@ func (handler *EnrollmentHandler) HandleReplaceWithAuthenticator(enrollmentId st
 			return err
 		}
 
-		_, err = handler.env.GetHandlers().Authenticator.createInTx(ctx, authenticator, nil)
+		_, err = handler.env.GetHandlers().Authenticator.createEntityInTx(ctx, authenticator, nil)
 		return err
 	})
 }
 
-func (handler *EnrollmentHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Enrollment, error) {
+func (handler *EnrollmentHandler) readInTx(tx *bbolt.Tx, id string) (*Enrollment, error) {
 	modelEntity := &Enrollment{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EnrollmentHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *EnrollmentHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }

@@ -51,13 +51,13 @@ func (s *SessionEnforcer) Run() error {
 	oldest := time.Now().Add(s.sessionTimeout * -1)
 	query := fmt.Sprintf("updatedAt < datetime(%s)", oldest.UTC().Format(time.RFC3339))
 
-	result, err := s.appEnv.GetHandlers().ApiSession.HandleQuery(query)
+	result, err := s.appEnv.GetHandlers().ApiSession.Query(query)
 	if err != nil {
 		return err
 	}
 
 	for _, apiSession := range result.ApiSessions {
-		_ = s.appEnv.GetHandlers().ApiSession.HandleDelete(apiSession.Id)
+		_ = s.appEnv.GetHandlers().ApiSession.Delete(apiSession.Id)
 	}
 
 	return nil

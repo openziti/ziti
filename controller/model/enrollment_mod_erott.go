@@ -56,7 +56,7 @@ func (module *EnrollModuleEr) CanHandle(method string) bool {
 
 func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentResult, error) {
 	query := fmt.Sprintf(`isVerified = false and enrollmentToken = "%v"`, context.GetToken())
-	gw, err := module.env.GetHandlers().EdgeRouter.HandleReadOneByQuery(query)
+	gw, err := module.env.GetHandlers().EdgeRouter.ReadOneByQuery(query)
 
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	gw.EnrollmentJwt = nil
 	gw.EnrollmentToken = nil
 	gw.Fingerprint = &cltFp
-	if err := module.env.GetHandlers().EdgeRouter.HandleUpdate(gw, false); err != nil {
+	if err := module.env.GetHandlers().EdgeRouter.Update(gw, false); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 

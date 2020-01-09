@@ -125,7 +125,7 @@ func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.B
 }
 
 func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, error) {
-	service, err := ae.Handlers.Service.HandleRead(i.ServiceId)
+	service, err := ae.Handlers.Service.Read(i.ServiceId)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, err
 		return nil, err
 	}
 
-	apiSession, err := ae.Handlers.ApiSession.HandleRead(i.ApiSessionId)
+	apiSession, err := ae.Handlers.ApiSession.Read(i.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}

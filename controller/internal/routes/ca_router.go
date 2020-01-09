@@ -77,7 +77,7 @@ func (ir *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &CaApiCreate{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Ca.Post, apiEntity, (&CaApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Ca.HandleCreate(apiEntity.ToModel())
+		return ae.Handlers.Ca.Create(apiEntity.ToModel())
 	})
 }
 
@@ -88,14 +88,14 @@ func (ir *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &CaApiUpdate{}
 	Update(rc, ae.Schemes.Ca.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Ca.HandleUpdate(apiEntity.ToModel(id))
+		return ae.Handlers.Ca.Update(apiEntity.ToModel(id))
 	})
 }
 
 func (ir *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &CaApiUpdate{}
 	Patch(rc, ae.Schemes.Ca.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Ca.HandlePatch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.Ca.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
 	})
 }
 
@@ -110,7 +110,7 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	ca, err := ae.Handlers.Ca.HandleRead(id)
+	ca, err := ae.Handlers.Ca.Read(id)
 
 	if err != nil {
 		if util.IsErrNotFoundErr(err) {
@@ -199,7 +199,7 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	err = ae.Handlers.Ca.HandleVerified(ca)
+	err = ae.Handlers.Ca.Verified(ca)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
@@ -220,7 +220,7 @@ func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	ca, loadErr := ae.Handlers.Ca.HandleRead(id)
+	ca, loadErr := ae.Handlers.Ca.Read(id)
 
 	if loadErr != nil {
 		if util.IsErrNotFoundErr(loadErr) {

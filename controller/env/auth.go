@@ -166,7 +166,7 @@ func WrapByIdHandler(ae *AppEnv, f AuthHandlerFunc, idType response.IdType, prs 
 			return
 		}
 
-		i, err := ae.GetHandlers().Identity.HandleRead(id)
+		i, err := ae.GetHandlers().Identity.Read(id)
 
 		if err != nil {
 			rc.RequestResponder.RespondWithNotFound()

@@ -47,47 +47,47 @@ func (handler *ServiceHandler) NewModelEntity() BaseModelEntity {
 	return &Service{}
 }
 
-func (handler *ServiceHandler) HandleCreate(service *Service) (string, error) {
-	return handler.create(service, nil)
+func (handler *ServiceHandler) Create(service *Service) (string, error) {
+	return handler.createEntity(service, nil)
 }
 
-func (handler *ServiceHandler) HandleRead(id string) (*Service, error) {
+func (handler *ServiceHandler) Read(id string) (*Service, error) {
 	entity := &Service{}
-	if err := handler.read(id, entity); err != nil {
+	if err := handler.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *ServiceHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Service, error) {
+func (handler *ServiceHandler) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
 	entity := &Service{}
-	if err := handler.readInTx(tx, id, entity); err != nil {
+	if err := handler.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *ServiceHandler) HandleReadForIdentity(id string, identityId string) (*Service, error) {
+func (handler *ServiceHandler) ReadForIdentity(id string, identityId string) (*Service, error) {
 	var service *Service
 	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
-		identity, err := handler.GetEnv().GetHandlers().Identity.handleReadInTx(tx, identityId)
+		identity, err := handler.GetEnv().GetHandlers().Identity.readInTx(tx, identityId)
 		if err != nil {
 			return err
 		}
 		if identity.IsAdmin {
-			service, err = handler.handleReadInTx(tx, id)
+			service, err = handler.readInTx(tx, id)
 			if service != nil {
 				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
 			}
 		} else {
-			service, err = handler.HandleReadForIdentityInTx(tx, id, identityId)
+			service, err = handler.ReadForIdentityInTx(tx, id, identityId)
 		}
 		return err
 	})
 	return service, err
 }
 
-func (handler *ServiceHandler) HandleReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*Service, error) {
+func (handler *ServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*Service, error) {
 	query := `id = "%v" and not isEmpty(from servicePolicies where (type = %v and anyOf(identities.id) = "%v"))`
 
 	dialQuery := fmt.Sprintf(query, id, persistence.PolicyTypeDial, identityId)
@@ -122,8 +122,8 @@ func (handler *ServiceHandler) HandleReadForIdentityInTx(tx *bbolt.Tx, id string
 	return result, nil
 }
 
-func (handler *ServiceHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *ServiceHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
 func (handler *ServiceHandler) IsUpdated(field string) bool {
@@ -132,15 +132,15 @@ func (handler *ServiceHandler) IsUpdated(field string) bool {
 		!strings.EqualFold(field, "Clusters")
 }
 
-func (handler *ServiceHandler) HandleUpdate(service *Service) error {
-	return handler.update(service, nil, nil)
+func (handler *ServiceHandler) Update(service *Service) error {
+	return handler.updateEntity(service, nil, nil)
 }
 
-func (handler *ServiceHandler) HandlePatch(service *Service, checker boltz.FieldChecker) error {
-	return handler.patch(service, checker, nil)
+func (handler *ServiceHandler) Patch(service *Service, checker boltz.FieldChecker) error {
+	return handler.patchEntity(service, checker, nil)
 }
 
-func (handler *ServiceHandler) HandleListForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*ServiceListResult, error) {
+func (handler *ServiceHandler) PublicQueryForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*ServiceListResult, error) {
 	if sessionIdentity.IsAdmin {
 		return handler.listServices(queryOptions, nil, true)
 	}
@@ -175,12 +175,12 @@ func (handler *ServiceHandler) listServices(queryOptions *QueryOptions, identity
 	return result, nil
 }
 
-func (handler *ServiceHandler) HandleCollectEdgeRouters(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouters, handler.env.GetHandlers().EdgeRouter, collector)
+func (handler *ServiceHandler) CollectEdgeRouters(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouters, handler.env.GetHandlers().EdgeRouter, collector)
 }
 
-func (handler *ServiceHandler) HandleCollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
+func (handler *ServiceHandler) CollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
 }
 
 type ServiceListResult struct {
@@ -197,9 +197,9 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 	var err error
 	for _, key := range ids {
 		if result.identityId != nil {
-			service, err = result.handler.HandleReadForIdentityInTx(tx, key, *result.identityId)
+			service, err = result.handler.ReadForIdentityInTx(tx, key, *result.identityId)
 		} else {
-			service, err = result.handler.handleReadInTx(tx, key)
+			service, err = result.handler.readInTx(tx, key)
 			if service != nil && result.isAdmin {
 				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
 			}

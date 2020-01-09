@@ -55,7 +55,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	identity, err := ae.Handlers.Authenticator.HandleIsAuthorized(authContext)
+	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
@@ -74,14 +74,14 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 		Token:      token,
 	}
 
-	sessionId, err := ae.Handlers.ApiSession.HandleCreate(s)
+	sessionId, err := ae.Handlers.ApiSession.Create(s)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
 		return
 	}
 
-	session, err := ae.Handlers.ApiSession.HandleRead(sessionId)
+	session, err := ae.Handlers.ApiSession.Read(sessionId)
 
 	if err != nil {
 		pfxlog.Logger().WithField("cause", err).Error("loading session by id resulted in an error")
