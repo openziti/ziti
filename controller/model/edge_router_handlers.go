@@ -158,7 +158,7 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 
 	query := fmt.Sprintf(`anyOf(edgeRouterPolicies.identities) = "%v"`, identityId)
 
-	if len(service.RoleAttributes) > 0 && !stringz.Contains(service.RoleAttributes, "all") {
+	if len(service.EdgeRouterRoles) > 0 && !stringz.Contains(service.EdgeRouterRoles, "all") {
 		query += fmt.Sprintf(` and anyOf(services) = "%v"`, service.Id)
 	}
 
