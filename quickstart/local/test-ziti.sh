@@ -2,7 +2,7 @@ ziti edge controller create service netcat7256 localhost 7256 "${ZITI_ROUTER_BR_
 
 ziti edge controller create identity device "test_identity" -o "${ZITI_HOME}/test_identity".jwt
 
-ziti edge controller create app-wan appwan01 -s netcat7256 -i "test_identity"
+ziti edge controller create service-policy dial-all Dial --service-roles @all --identity-roles @all
 
 ziti-enroller --jwt "${ZITI_HOME}/test_identity".jwt -o "${ZITI_HOME}/test_identity".json
 
