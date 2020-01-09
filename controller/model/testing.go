@@ -17,6 +17,8 @@
 package model
 
 import (
+	jwt2 "github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/config"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/internal/cert"
@@ -27,6 +29,11 @@ import (
 type TestContext struct {
 	*persistence.TestContext
 	handlers *Handlers
+	config *config.Config
+}
+
+func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
+	return "I'm a very legitimate", nil
 }
 
 func (ctx *TestContext) GetHandlers() *Handlers {
@@ -34,11 +41,11 @@ func (ctx *TestContext) GetHandlers() *Handlers {
 }
 
 func (ctx *TestContext) GetConfig() *config.Config {
-	panic("implement me")
+	return ctx.config
 }
 
 func (ctx *TestContext) GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator {
-	panic("implement me")
+	return ctx
 }
 
 func (ctx *TestContext) GetDbProvider() persistence.DbProvider {
@@ -77,14 +84,23 @@ func (ctx *TestContext) IsEdgeRouterOnline(id string) bool {
 	panic("implement me")
 }
 
-func NewTestContext(t *testing.T) *TestContext {
-	return &TestContext{
+func newTestContext(t *testing.T) *TestContext {
+	context := &TestContext{
 		TestContext: persistence.NewTestContext(t),
 	}
+	context.Init()
+	return context
 }
 
 func (ctx *TestContext) Init() {
 	ctx.TestContext.Init()
+	ctx.config = &config.Config{
+		Enrollment:         config.Enrollment{
+			EdgeRouter:        config.EnrollmentOption{
+				DurationMinutes: 60,
+			},
+		},
+	}
 	ctx.handlers = InitHandlers(ctx)
 }
 
@@ -92,27 +108,55 @@ func (ctx *TestContext) Cleanup() {
 	ctx.TestContext.Cleanup()
 }
 
-func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
+func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
+	identityType, err := ctx.handlers.IdentityType.ReadByIdOrName("Service")
+	ctx.NoError(err)
 	identity := &Identity{
-		Name:    name,
+		Name:    uuid.New().String(),
 		IsAdmin: isAdmin,
+		IdentityTypeId: identityType.Id,
 	}
-	var err error
 	identity.Id, err = ctx.handlers.Identity.Create(identity)
 	ctx.NoError(err)
 	return identity
 }
 
-func (ctx *TestContext) requireNewService(name string) *Service {
+func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
 		EndpointAddress: "hosted:unclaimed",
 		EgressRouter:    "unclaimed",
-		Name:            name,
-		DnsHostname:     name,
+		Name:            uuid.New().String(),
+		DnsHostname:     uuid.New().String(),
 		DnsPort:         0,
 	}
 	var err error
 	service.Id, err = ctx.handlers.Service.Create(service)
 	ctx.NoError(err)
 	return service
+}
+
+func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
+	edgeRouter := &EdgeRouter{
+		Name:            uuid.New().String(),
+	}
+	var err error
+	edgeRouter.Id, err = ctx.handlers.EdgeRouter.Create(edgeRouter)
+	ctx.NoError(err)
+	return edgeRouter
+}
+
+func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
+	edgeRouterPolicy := &EdgeRouterPolicy{
+		Name:                uuid.New().String(),
+		IdentityRoles:       identityRoles,
+		EdgeRouterRoles:     edgeRouterRoles,
+	}
+	var err error
+	edgeRouterPolicy.Id, err = ctx.handlers.EdgeRouterPolicy.Create(edgeRouterPolicy)
+	ctx.NoError(err)
+	return edgeRouterPolicy
+}
+
+func ss(vals...string) []string {
+	return vals
 }
