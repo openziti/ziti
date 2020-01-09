@@ -271,7 +271,7 @@ func outputServices(o *commonOptions, children []*gabs.Container) error {
 }
 
 func runListServicePolices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("service-polices", o)
+	children, err := listEntitiesOfTypeWithOptionalFilter("service-policies", o)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ sleep 2
 
 ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
 
-ziti edge controller create cluster "${ZITI_CLUSTER_NAME}"
+ziti edge controller create edge-router-policy all --edge-router-roles @all --identity-roles @all
 
 ziti-fabric create router "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_BR_HOSTNAME}-client.cert"
 ziti-fabric create router "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_BLUE_HOSTNAME}-client.cert"
