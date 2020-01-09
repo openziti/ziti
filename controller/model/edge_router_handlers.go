@@ -51,28 +51,28 @@ func (handler *EdgeRouterHandler) NewModelEntity() BaseModelEntity {
 	return &EdgeRouter{}
 }
 
-func (handler *EdgeRouterHandler) HandleCreate(modelEntity *EdgeRouter) (string, error) {
-	return handler.create(modelEntity, nil)
+func (handler *EdgeRouterHandler) Create(modelEntity *EdgeRouter) (string, error) {
+	return handler.createEntity(modelEntity, nil)
 }
 
-func (handler *EdgeRouterHandler) HandleRead(id string) (*EdgeRouter, error) {
+func (handler *EdgeRouterHandler) Read(id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EdgeRouterHandler) handleReadInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
+func (handler *EdgeRouterHandler) readInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EdgeRouterHandler) HandleReadOneByQuery(query string) (*EdgeRouter, error) {
-	result, err := handler.readByQuery(query)
+func (handler *EdgeRouterHandler) ReadOneByQuery(query string) (*EdgeRouter, error) {
+	result, err := handler.readEntityByQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -82,20 +82,20 @@ func (handler *EdgeRouterHandler) HandleReadOneByQuery(query string) (*EdgeRoute
 	return result.(*EdgeRouter), nil
 }
 
-func (handler *EdgeRouterHandler) HandleReadOneByFingerprint(fingerprint string) (*EdgeRouter, error) {
-	return handler.HandleReadOneByQuery(fmt.Sprintf(`fingerprint = "%v"`, fingerprint))
+func (handler *EdgeRouterHandler) ReadOneByFingerprint(fingerprint string) (*EdgeRouter, error) {
+	return handler.ReadOneByQuery(fmt.Sprintf(`fingerprint = "%v"`, fingerprint))
 }
 
-func (handler *EdgeRouterHandler) HandleUpdate(modelEntity *EdgeRouter, restrictFields bool) error {
+func (handler *EdgeRouterHandler) Update(modelEntity *EdgeRouter, restrictFields bool) error {
 	if restrictFields {
-		return handler.update(modelEntity, handler.allowedFieldsChecker, nil)
+		return handler.updateEntity(modelEntity, handler.allowedFieldsChecker, nil)
 	}
-	return handler.update(modelEntity, nil, nil)
+	return handler.updateEntity(modelEntity, nil, nil)
 }
 
-func (handler *EdgeRouterHandler) HandlePatch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
+func (handler *EdgeRouterHandler) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler.allowedFieldsChecker, second: checker}
-	return handler.patch(modelEntity, combinedChecker, nil)
+	return handler.patchEntity(modelEntity, combinedChecker, nil)
 }
 
 func (handler *EdgeRouterHandler) beforeDelete(tx *bbolt.Tx, id string) error {
@@ -106,11 +106,11 @@ func (handler *EdgeRouterHandler) beforeDelete(tx *bbolt.Tx, id string) error {
 	return nil
 }
 
-func (handler *EdgeRouterHandler) HandleDelete(id string) error {
-	return handler.delete(id, handler.beforeDelete, nil)
+func (handler *EdgeRouterHandler) Delete(id string) error {
+	return handler.deleteEntity(id, handler.beforeDelete, nil)
 }
 
-func (handler *EdgeRouterHandler) HandleQuery(query string) (*EdgeRouterListResult, error) {
+func (handler *EdgeRouterHandler) Query(query string) (*EdgeRouterListResult, error) {
 	result := &EdgeRouterListResult{handler: handler}
 	err := handler.list(query, result.collect)
 	if err != nil {
@@ -119,7 +119,7 @@ func (handler *EdgeRouterHandler) HandleQuery(query string) (*EdgeRouterListResu
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) HandleList(queryOptions *QueryOptions) (*EdgeRouterListResult, error) {
+func (handler *EdgeRouterHandler) PublicQuery(queryOptions *QueryOptions) (*EdgeRouterListResult, error) {
 	result := &EdgeRouterListResult{handler: handler}
 	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
@@ -128,7 +128,7 @@ func (handler *EdgeRouterHandler) HandleList(queryOptions *QueryOptions) (*EdgeR
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) HandleListForSession(sessionId string) (*EdgeRouterListResult, error) {
+func (handler *EdgeRouterHandler) ListForSession(sessionId string) (*EdgeRouterListResult, error) {
 	var result *EdgeRouterListResult
 
 	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
@@ -141,13 +141,13 @@ func (handler *EdgeRouterHandler) HandleListForSession(sessionId string) (*EdgeR
 			return err
 		}
 
-		result, err = handler.HandleListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, nil)
+		result, err = handler.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, nil)
 		return err
 	})
 	return result, err
 }
 
-func (handler *EdgeRouterHandler) HandleListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
 	if err != nil {
 		return nil, err
@@ -173,12 +173,12 @@ func (handler *EdgeRouterHandler) HandleListForIdentityAndServiceWithTx(tx *bbol
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) HandleCollectServices(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
+func (handler *EdgeRouterHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
 }
 
-func (handler *EdgeRouterHandler) HandleCollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
+func (handler *EdgeRouterHandler) CollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
 }
 
 type EdgeRouterListResult struct {
@@ -190,7 +190,7 @@ type EdgeRouterListResult struct {
 func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

@@ -42,21 +42,21 @@ func (handler *CaHandler) NewModelEntity() BaseModelEntity {
 	return &Ca{}
 }
 
-func (handler *CaHandler) HandleCreate(caModel *Ca) (string, error) {
-	return handler.create(caModel, nil)
+func (handler *CaHandler) Create(caModel *Ca) (string, error) {
+	return handler.createEntity(caModel, nil)
 }
 
-func (handler *CaHandler) HandleRead(id string) (*Ca, error) {
+func (handler *CaHandler) Read(id string) (*Ca, error) {
 	modelEntity := &Ca{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *CaHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Ca, error) {
+func (handler *CaHandler) readInTx(tx *bbolt.Tx, id string) (*Ca, error) {
 	modelEntity := &Ca{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
@@ -70,28 +70,28 @@ func (handler *CaHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled)
 }
 
-func (handler *CaHandler) HandleUpdate(ca *Ca) error {
-	return handler.update(ca, handler, nil)
+func (handler *CaHandler) Update(ca *Ca) error {
+	return handler.updateEntity(ca, handler, nil)
 }
 
-func (handler *CaHandler) HandlePatch(ca *Ca, checker boltz.FieldChecker) error {
+func (handler *CaHandler) Patch(ca *Ca, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	return handler.patch(ca, combinedChecker, nil)
+	return handler.patchEntity(ca, combinedChecker, nil)
 }
 
-func (handler *CaHandler) HandleVerified(ca *Ca) error {
+func (handler *CaHandler) Verified(ca *Ca) error {
 	ca.IsVerified = true
 	checker := &boltz.MapFieldChecker{
 		persistence.FieldCaIsVerified: struct{}{},
 	}
-	return handler.patch(ca, checker, nil)
+	return handler.patchEntity(ca, checker, nil)
 }
 
-func (handler *CaHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *CaHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *CaHandler) HandleQuery(query string) (*CaListResult, error) {
+func (handler *CaHandler) Query(query string) (*CaListResult, error) {
 	result := &CaListResult{handler: handler}
 	if err := handler.list(query, result.collect); err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (handler *CaHandler) HandleQuery(query string) (*CaListResult, error) {
 	return result, nil
 }
 
-func (handler *CaHandler) HandleList(queryOptions *QueryOptions) (*CaListResult, error) {
+func (handler *CaHandler) PublicQuery(queryOptions *QueryOptions) (*CaListResult, error) {
 	result := &CaListResult{handler: handler}
 	if err := handler.parseAndList(queryOptions, result.collect); err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ type CaListResult struct {
 func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

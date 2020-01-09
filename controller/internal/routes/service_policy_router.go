@@ -69,7 +69,7 @@ func (ir *ServicePolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContex
 func (ir *ServicePolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ServicePolicyApi{}
 	Create(rc, rc.RequestResponder, ae.Schemes.ServicePolicy.Post, apiEntity, (&ServicePolicyApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.ServicePolicy.HandleCreate(apiEntity.ToModel(""))
+		return ae.Handlers.ServicePolicy.Create(apiEntity.ToModel(""))
 	})
 }
 
@@ -80,21 +80,21 @@ func (ir *ServicePolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContex
 func (ir *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ServicePolicyApi{}
 	Update(rc, ae.Schemes.ServicePolicy.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.ServicePolicy.HandleUpdate(apiEntity.ToModel(id))
+		return ae.Handlers.ServicePolicy.Update(apiEntity.ToModel(id))
 	})
 }
 
 func (ir *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ServicePolicyApi{}
 	Patch(rc, ae.Schemes.ServicePolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ServicePolicy.HandlePatch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.ServicePolicy.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
 	})
 }
 
 func (ir *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.HandleCollectServices, MapServiceToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.CollectServices, MapServiceToApiEntity)
 }
 
 func (ir *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.HandleCollectIdentities, MapIdentityToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.CollectIdentities, MapIdentityToApiEntity)
 }

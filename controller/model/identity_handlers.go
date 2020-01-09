@@ -56,8 +56,8 @@ func (handler IdentityHandler) NewModelEntity() BaseModelEntity {
 	return &Identity{}
 }
 
-func (handler *IdentityHandler) HandleCreate(identityModel *Identity) (string, error) {
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByIdOrName(identityModel.IdentityTypeId)
+func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) {
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		return "", err
@@ -72,11 +72,11 @@ func (handler *IdentityHandler) HandleCreate(identityModel *Identity) (string, e
 
 	identityModel.IdentityTypeId = identityType.Id
 
-	return handler.create(identityModel, nil)
+	return handler.createEntity(identityModel, nil)
 }
 
-func (handler *IdentityHandler) HandleCreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByIdOrName(identityModel.IdentityTypeId)
+func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		return "", nil, err
@@ -116,7 +116,7 @@ func (handler *IdentityHandler) HandleCreateWithEnrollments(identityModel *Ident
 				return err
 			}
 
-			enrollmentId, err := handler.env.GetHandlers().Enrollment.createInTx(ctx, enrollmentModel, nil)
+			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel, nil)
 
 			if err != nil {
 				return err
@@ -134,8 +134,8 @@ func (handler *IdentityHandler) HandleCreateWithEnrollments(identityModel *Ident
 	return identityModel.Id, enrollmentIds, nil
 }
 
-func (handler *IdentityHandler) HandleUpdate(identity *Identity) error {
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByIdOrName(identity.IdentityTypeId)
+func (handler *IdentityHandler) Update(identity *Identity) error {
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		return err
@@ -150,12 +150,12 @@ func (handler *IdentityHandler) HandleUpdate(identity *Identity) error {
 
 	identity.IdentityTypeId = identityType.Id
 
-	return handler.update(identity, handler, nil)
+	return handler.updateEntity(identity, handler, nil)
 }
 
-func (handler *IdentityHandler) HandlePatch(identity *Identity, checker boltz.FieldChecker) error {
+func (handler *IdentityHandler) Patch(identity *Identity, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByIdOrName(identity.IdentityTypeId)
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		return err
@@ -170,11 +170,11 @@ func (handler *IdentityHandler) HandlePatch(identity *Identity, checker boltz.Fi
 
 	identity.IdentityTypeId = identityType.Id
 
-	return handler.patch(identity, combinedChecker, nil)
+	return handler.patchEntity(identity, combinedChecker, nil)
 }
 
-func (handler *IdentityHandler) HandleDelete(id string) error {
-	identity, err := handler.HandleRead(id)
+func (handler *IdentityHandler) Delete(id string) error {
+	identity, err := handler.Read(id)
 
 	if err != nil {
 		return nil
@@ -184,35 +184,35 @@ func (handler *IdentityHandler) HandleDelete(id string) error {
 		return apierror.NewEntityCanNotBeDeleted()
 	}
 
-	return handler.delete(id, nil, nil)
+	return handler.deleteEntity(id, nil, nil)
 }
 
 func (handler IdentityHandler) IsUpdated(field string) bool {
 	return field != "Authenticators" && field != "Enrollments" && field != "IsDefaultAdmin"
 }
 
-func (handler *IdentityHandler) HandleRead(id string) (*Identity, error) {
+func (handler *IdentityHandler) Read(id string) (*Identity, error) {
 	entity := &Identity{}
-	if err := handler.read(id, entity); err != nil {
+	if err := handler.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *IdentityHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Identity, error) {
+func (handler *IdentityHandler) readInTx(tx *bbolt.Tx, id string) (*Identity, error) {
 	identity := &Identity{}
-	if err := handler.readInTx(tx, id, identity); err != nil {
+	if err := handler.readEntityInTx(tx, id, identity); err != nil {
 		return nil, err
 	}
 	return identity, nil
 }
 
-func (handler *IdentityHandler) HandleReadDefaultAdmin() (*Identity, error) {
-	return handler.HandleReadOneByQuery("isDefaultAdmin = true")
+func (handler *IdentityHandler) ReadDefaultAdmin() (*Identity, error) {
+	return handler.ReadOneByQuery("isDefaultAdmin = true")
 }
 
-func (handler *IdentityHandler) HandleReadOneByQuery(query string) (*Identity, error) {
-	result, err := handler.readByQuery(query)
+func (handler *IdentityHandler) ReadOneByQuery(query string) (*Identity, error) {
+	result, err := handler.readEntityByQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +222,8 @@ func (handler *IdentityHandler) HandleReadOneByQuery(query string) (*Identity, e
 	return result.(*Identity), nil
 }
 
-func (handler *IdentityHandler) HandleInitializeDefaultAdmin(username, password, name string) error {
-	identity, err := handler.HandleReadDefaultAdmin()
+func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name string) error {
+	identity, err := handler.ReadDefaultAdmin()
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		pfxlog.Logger().Panic(err)
@@ -233,7 +233,7 @@ func (handler *IdentityHandler) HandleInitializeDefaultAdmin(username, password,
 		return errors.New("already initialized: Ziti Edge default admin already defined")
 	}
 
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByName(IdentityTypeUser)
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByName(IdentityTypeUser)
 
 	if err != nil {
 		return err
@@ -269,27 +269,27 @@ func (handler *IdentityHandler) HandleInitializeDefaultAdmin(username, password,
 		},
 	}
 
-	if _, err := handler.HandleCreate(defaultAdmin); err != nil {
+	if _, err := handler.Create(defaultAdmin); err != nil {
 		return err
 	}
 
-	if _, err := handler.env.GetHandlers().Authenticator.HandleCreate(authenticator); err != nil {
+	if _, err := handler.env.GetHandlers().Authenticator.Create(authenticator); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (handler *IdentityHandler) HandleCollectAuthenticators(id string, collector func(entity BaseModelEntity) error) error {
+func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(entity BaseModelEntity) error) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		_, err := handler.handleReadInTx(tx, id)
+		_, err := handler.readInTx(tx, id)
 		if err != nil {
 			return err
 		}
 		association := handler.store.GetLinkCollection(persistence.FieldIdentityAuthenticators)
 		for _, authenticatorId := range association.GetLinks(tx, id) {
 			authenticator := &Authenticator{}
-			err := handler.env.GetHandlers().Authenticator.read(authenticatorId, authenticator)
+			err := handler.env.GetHandlers().Authenticator.readEntity(authenticatorId, authenticator)
 			if err != nil {
 				return err
 			}
@@ -301,21 +301,21 @@ func (handler *IdentityHandler) HandleCollectAuthenticators(id string, collector
 	})
 }
 
-func (handler *IdentityHandler) HandleCollectEnrollments(id string, collector func(entity BaseModelEntity) error) error {
+func (handler *IdentityHandler) CollectEnrollments(id string, collector func(entity BaseModelEntity) error) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.handleCollectEnrollmentsInTx(tx, id, collector)
+		return handler.collectEnrollmentsInTx(tx, id, collector)
 	})
 }
 
-func (handler *IdentityHandler) handleCollectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity BaseModelEntity) error) error {
-	_, err := handler.handleReadInTx(tx, id)
+func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity BaseModelEntity) error) error {
+	_, err := handler.readInTx(tx, id)
 	if err != nil {
 		return err
 	}
 
 	association := handler.store.GetLinkCollection(persistence.FieldIdentityEnrollments)
 	for _, enrollmentId := range association.GetLinks(tx, id) {
-		enrollment, err := handler.env.GetHandlers().Enrollment.handleReadInTx(tx, enrollmentId)
+		enrollment, err := handler.env.GetHandlers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func (handler *IdentityHandler) handleCollectEnrollmentsInTx(tx *bbolt.Tx, id st
 	return nil
 }
 
-func (handler *IdentityHandler) HandleCreateWithAuthenticator(identity *Identity, authenticator *Authenticator) (string, string, error) {
+func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, authenticator *Authenticator) (string, string, error) {
 	if identity.Id == "" {
 		identity.Id = uuid.New().String()
 	}
@@ -341,7 +341,7 @@ func (handler *IdentityHandler) HandleCreateWithAuthenticator(identity *Identity
 		authenticator.IdentityId = identity.Id
 	}
 
-	identityType, err := handler.env.GetHandlers().IdentityType.HandleReadByIdOrName(identity.IdentityTypeId)
+	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil && !util.IsErrNotFoundErr(err) {
 		return "", "", err
@@ -386,10 +386,10 @@ func (handler *IdentityHandler) HandleCreateWithAuthenticator(identity *Identity
 	return identity.Id, authenticator.Id, nil
 }
 
-func (handler *IdentityHandler) HandleCollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
+func (handler *IdentityHandler) CollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
 }
 
-func (handler *IdentityHandler) HandleCollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.HandleCollectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
+func (handler *IdentityHandler) CollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
 }

@@ -18,7 +18,6 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/util"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -41,21 +40,21 @@ func (handler *IdentityTypeHandler) NewModelEntity() BaseModelEntity {
 	return &IdentityType{}
 }
 
-func (handler *IdentityTypeHandler) HandleCreate(IdentityTypeModel *IdentityType) (string, error) {
-	return handler.create(IdentityTypeModel, nil)
+func (handler *IdentityTypeHandler) Create(IdentityTypeModel *IdentityType) (string, error) {
+	return handler.createEntity(IdentityTypeModel, nil)
 }
 
-func (handler *IdentityTypeHandler) HandleRead(id string) (*IdentityType, error) {
+func (handler *IdentityTypeHandler) Read(id string) (*IdentityType, error) {
 	modelEntity := &IdentityType{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) HandleReadByIdOrName(idOrName string) (*IdentityType, error) {
+func (handler *IdentityTypeHandler) ReadByIdOrName(idOrName string) (*IdentityType, error) {
 	modelEntity := &IdentityType{}
-	err := handler.read(idOrName, modelEntity)
+	err := handler.readEntity(idOrName, modelEntity)
 
 	if err == nil {
 		return modelEntity, nil
@@ -66,7 +65,7 @@ func (handler *IdentityTypeHandler) HandleReadByIdOrName(idOrName string) (*Iden
 	}
 
 	if modelEntity.Id == "" {
-		modelEntity, err = handler.HandleReadByName(idOrName)
+		modelEntity, err = handler.ReadByName(idOrName)
 	}
 
 	if err != nil {
@@ -76,27 +75,19 @@ func (handler *IdentityTypeHandler) HandleReadByIdOrName(idOrName string) (*Iden
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) handleReadInTx(tx *bbolt.Tx, id string) (*IdentityType, error) {
+func (handler *IdentityTypeHandler) readInTx(tx *bbolt.Tx, id string) (*IdentityType, error) {
 	modelEntity := &IdentityType{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) HandleUpdate(IdentityType *IdentityType) error {
-	return handler.update(IdentityType, nil, nil)
+func (handler *IdentityTypeHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *IdentityTypeHandler) HandlePatch(IdentityType *IdentityType, checker boltz.FieldChecker) error {
-	return handler.patch(IdentityType, checker, nil)
-}
-
-func (handler *IdentityTypeHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
-}
-
-func (handler *IdentityTypeHandler) HandleQuery(query string) (*IdentityTypeListResult, error) {
+func (handler *IdentityTypeHandler) Query(query string) (*IdentityTypeListResult, error) {
 	result := &IdentityTypeListResult{handler: handler}
 	err := handler.list(query, result.collect)
 	if err != nil {
@@ -105,19 +96,10 @@ func (handler *IdentityTypeHandler) HandleQuery(query string) (*IdentityTypeList
 	return result, nil
 }
 
-func (handler *IdentityTypeHandler) HandleList(queryOptions *QueryOptions) (*IdentityTypeListResult, error) {
-	result := &IdentityTypeListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *IdentityTypeHandler) HandleReadByName(name string) (*IdentityType, error) {
+func (handler *IdentityTypeHandler) ReadByName(name string) (*IdentityType, error) {
 	modelIdentityType := &IdentityType{}
 	nameIndex := handler.env.GetStores().IdentityType.GetNameIndex()
-	if err := handler.readWithIndex("name", []byte(name), nameIndex, modelIdentityType); err != nil {
+	if err := handler.readEntityWithIndex("name", []byte(name), nameIndex, modelIdentityType); err != nil {
 		return nil, err
 	}
 	return modelIdentityType, nil
@@ -132,7 +114,7 @@ type IdentityTypeListResult struct {
 func (result *IdentityTypeListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

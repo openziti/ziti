@@ -62,7 +62,7 @@ func (ir *SessionRouter) Register(ae *env.AppEnv) {
 func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Session.HandleListForIdentity(rc.Identity, queryOptions)
+		result, err := ae.Handlers.Session.PublicQueryForIdentity(rc.Identity, queryOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		service, err := ae.Handlers.Session.HandleReadForIdentity(id, rc.Session.IdentityId)
+		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.Session.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (ir *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, ir.IdType, func(rc *response.RequestContext, id string) error {
-		return ae.Handlers.Session.HandleDeleteForIdentity(id, rc.Session.IdentityId)
+		return ae.Handlers.Session.DeleteForIdentity(id, rc.Session.IdentityId)
 	})
 }
 
@@ -105,7 +105,7 @@ func (ir *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	sessionCreate := &SessionApiPost{}
 	responder := &SessionRequestResponder{ae: ae, RequestResponder: rc.RequestResponder}
 	Create(rc, responder, ae.Schemes.Session.Post, sessionCreate, (&SessionApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Session.HandleCreate(sessionCreate.ToModel(rc))
+		return ae.Handlers.Session.Create(sessionCreate.ToModel(rc))
 	})
 }
 
@@ -123,7 +123,7 @@ type SessionEdgeRouter struct {
 func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*SessionEdgeRouter, error) {
 	var edgeRouters []*SessionEdgeRouter
 
-	edgeRoutersForSession, err := ae.Handlers.EdgeRouter.HandleListForSession(ns.Id)
+	edgeRoutersForSession, err := ae.Handlers.EdgeRouter.ListForSession(ns.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*SessionEdgeRou
 }
 
 func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link *response.Link) {
-	modelSession, err := nsr.ae.GetHandlers().Session.HandleRead(id)
+	modelSession, err := nsr.ae.GetHandlers().Session.Read(id)
 	if err != nil {
 		nsr.RespondWithError(err)
 		return

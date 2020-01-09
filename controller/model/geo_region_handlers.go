@@ -40,50 +40,41 @@ func (handler *GeoRegionHandler) NewModelEntity() BaseModelEntity {
 	return &GeoRegion{}
 }
 
-func (handler *GeoRegionHandler) HandleCreate(geoRegionModel *GeoRegion) (string, error) {
-	return handler.create(geoRegionModel, nil)
+func (handler *GeoRegionHandler) Create(geoRegionModel *GeoRegion) (string, error) {
+	return handler.createEntity(geoRegionModel, nil)
 }
 
-func (handler *GeoRegionHandler) HandleRead(id string) (*GeoRegion, error) {
+func (handler *GeoRegionHandler) Read(id string) (*GeoRegion, error) {
 	modelEntity := &GeoRegion{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *GeoRegionHandler) handleReadInTx(tx *bbolt.Tx, id string) (*GeoRegion, error) {
+func (handler *GeoRegionHandler) readInTx(tx *bbolt.Tx, id string) (*GeoRegion, error) {
 	modelEntity := &GeoRegion{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *GeoRegionHandler) HandleUpdate(geoRegion *GeoRegion) error {
-	return handler.update(geoRegion, nil, nil)
+func (handler *GeoRegionHandler) Update(geoRegion *GeoRegion) error {
+	return handler.updateEntity(geoRegion, nil, nil)
 }
 
-func (handler *GeoRegionHandler) HandlePatch(geoRegion *GeoRegion, checker boltz.FieldChecker) error {
-	return handler.patch(geoRegion, checker, nil)
+func (handler *GeoRegionHandler) Patch(geoRegion *GeoRegion, checker boltz.FieldChecker) error {
+	return handler.patchEntity(geoRegion, checker, nil)
 }
 
-func (handler *GeoRegionHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *GeoRegionHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *GeoRegionHandler) HandleQuery(query string) (*GeoRegionListResult, error) {
+func (handler *GeoRegionHandler) Query(query string) (*GeoRegionListResult, error) {
 	result := &GeoRegionListResult{handler: handler}
 	err := handler.list(query, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *GeoRegionHandler) HandleList(queryOptions *QueryOptions) (*GeoRegionListResult, error) {
-	result := &GeoRegionListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +90,7 @@ type GeoRegionListResult struct {
 func (result *GeoRegionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

@@ -59,8 +59,10 @@ func (handler *AssociationsHandler) UpdateAssociations(store persistence.Store, 
 			return linkCollection.AddLinks(tx, parentId, childIds...)
 		case AssociationsActionRemove:
 			return linkCollection.RemoveLinks(tx, parentId, childIds...)
-		default:
+		case AssociationsActionSet:
 			return linkCollection.SetLinks(tx, parentId, childIds)
+		default:
+			return errors.Errorf("unsupported association action: %v", action)
 		}
 	})
 }

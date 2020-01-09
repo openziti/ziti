@@ -53,7 +53,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := handler.GetEnv().GetHandlers().Service.HandleReadForIdentity(entity.ServiceId, apiSession.IdentityId)
+	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	}
 
 	maxRows := 1
-	result, err := handler.GetEnv().GetHandlers().EdgeRouter.HandleListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, entity.ServiceId, &maxRows)
+	result, err := handler.GetEnv().GetHandlers().EdgeRouter.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, entity.ServiceId, &maxRows)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	fingerprints := map[string]bool{}
 
 	for _, authenticatorId := range identity.Authenticators {
-		authPrints, err := handler.GetEnv().GetHandlers().Authenticator.HandleReadFingerprints(authenticatorId)
+		authPrints, err := handler.GetEnv().GetHandlers().Authenticator.ReadFingerprints(authenticatorId)
 		if err != nil {
 			pfxlog.Logger().Errorf("encountered error retrieving fingerprints for authenticator [%s]", authenticatorId)
 			continue

@@ -109,7 +109,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 		return
 	}
 
-	result, err := ae.Handlers.Enrollment.HandleEnroll(enrollContext)
+	result, err := ae.Handlers.Enrollment.Enroll(enrollContext)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)

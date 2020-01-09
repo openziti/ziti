@@ -233,7 +233,7 @@ func (c *Controller) Run() {
 		rf(c.AppEnv)
 	}
 
-	admin, err := c.AppEnv.Handlers.Identity.HandleReadDefaultAdmin()
+	admin, err := c.AppEnv.Handlers.Identity.ReadDefaultAdmin()
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("could not check if a default admin exists")

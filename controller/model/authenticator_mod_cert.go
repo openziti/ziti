@@ -58,7 +58,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 	}
 
 	for fingerprint := range fingerprints {
-		authenticator, err := module.env.GetHandlers().Authenticator.HandleReadByFingerprint(fingerprint)
+		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
@@ -77,7 +77,7 @@ func (module *AuthModuleCert) isEdgeRouter(certs []*x509.Certificate) bool {
 	for _, cert := range certs {
 		fingerprint := module.fingerprintGenerator.FromCert(cert)
 
-		router, err := module.env.GetHandlers().EdgeRouter.HandleReadOneByFingerprint(fingerprint)
+		router, err := module.env.GetHandlers().EdgeRouter.ReadOneByFingerprint(fingerprint)
 
 		if router != nil {
 			return true

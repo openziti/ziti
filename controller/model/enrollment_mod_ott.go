@@ -45,7 +45,7 @@ func (module *EnrollModuleOtt) CanHandle(method string) bool {
 }
 
 func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult, error) {
-	enrollment, err := module.env.GetHandlers().Enrollment.HandleReadByToken(ctx.GetToken())
+	enrollment, err := module.env.GetHandlers().Enrollment.ReadByToken(ctx.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	identity, err := module.env.GetHandlers().Identity.HandleRead(enrollment.IdentityId)
+	identity, err := module.env.GetHandlers().Identity.Read(enrollment.IdentityId)
 
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 	}
 	certPem := pem.EncodeToMemory(b)
 
-	err = module.env.GetHandlers().Enrollment.HandleReplaceWithAuthenticator(enrollment.Id, newAuthenticator)
+	err = module.env.GetHandlers().Enrollment.ReplaceWithAuthenticator(enrollment.Id, newAuthenticator)
 
 	if err != nil {
 		return nil, err

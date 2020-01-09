@@ -101,7 +101,7 @@ func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestConte
 
 func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*EnrollmentApiList, error) {
 
-	identity, err := ae.Handlers.Identity.HandleRead(enrollment.IdentityId)
+	identity, err := ae.Handlers.Identity.Read(enrollment.IdentityId)
 
 	if err != nil {
 		return nil, err

@@ -69,7 +69,7 @@ func (ir *EdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestCon
 func (ir *EdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterPolicyApi{}
 	Create(rc, rc.RequestResponder, ae.Schemes.EdgeRouterPolicy.Post, apiEntity, (&EdgeRouterPolicyApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.EdgeRouterPolicy.HandleCreate(apiEntity.ToModel(""))
+		return ae.Handlers.EdgeRouterPolicy.Create(apiEntity.ToModel(""))
 	})
 }
 
@@ -80,21 +80,21 @@ func (ir *EdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestCon
 func (ir *EdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterPolicyApi{}
 	Update(rc, ae.Schemes.EdgeRouterPolicy.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.EdgeRouterPolicy.HandleUpdate(apiEntity.ToModel(id))
+		return ae.Handlers.EdgeRouterPolicy.Update(apiEntity.ToModel(id))
 	})
 }
 
 func (ir *EdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterPolicyApi{}
 	Patch(rc, ae.Schemes.EdgeRouterPolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeRouterPolicy.HandlePatch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.EdgeRouterPolicy.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
 	})
 }
 
 func (ir *EdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouterPolicy.HandleCollectEdgeRouters, MapEdgeRouterToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouterPolicy.CollectEdgeRouters, MapEdgeRouterToApiEntity)
 }
 
 func (ir *EdgeRouterPolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouterPolicy.HandleCollectIdentities, MapIdentityToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouterPolicy.CollectIdentities, MapIdentityToApiEntity)
 }

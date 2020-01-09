@@ -72,7 +72,7 @@ func (ir *EdgeRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext) 
 	apiEntity := &EdgeRouterApi{}
 	linkBuilder := (&EdgeRouterApiList{}).BuildSelfLink
 	Create(rc, rc.RequestResponder, ae.Schemes.EdgeRouter.Post, apiEntity, linkBuilder, func() (string, error) {
-		return ae.Handlers.EdgeRouter.HandleCreate(apiEntity.ToModel(""))
+		return ae.Handlers.EdgeRouter.Create(apiEntity.ToModel(""))
 	})
 }
 
@@ -83,21 +83,21 @@ func (ir *EdgeRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) 
 func (ir *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterApi{}
 	Update(rc, ae.Schemes.EdgeRouter.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.EdgeRouter.HandleUpdate(apiEntity.ToModel(id), true)
+		return ae.Handlers.EdgeRouter.Update(apiEntity.ToModel(id), true)
 	})
 }
 
 func (ir *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterApi{}
 	Patch(rc, ae.Schemes.EdgeRouter.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeRouter.HandlePatch(apiEntity.ToModel(id), fields)
+		return ae.Handlers.EdgeRouter.Patch(apiEntity.ToModel(id), fields)
 	})
 }
 
 func (ir *EdgeRouterRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.HandleCollectServices, MapServiceToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectServices, MapServiceToApiEntity)
 }
 
 func (ir *EdgeRouterRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.HandleCollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
 }

@@ -39,30 +39,30 @@ func (handler *ApiSessionHandler) NewModelEntity() BaseModelEntity {
 	return &ApiSession{}
 }
 
-func (handler *ApiSessionHandler) HandleCreate(ApiSessionModel *ApiSession) (string, error) {
-	return handler.create(ApiSessionModel, nil)
+func (handler *ApiSessionHandler) Create(ApiSessionModel *ApiSession) (string, error) {
+	return handler.createEntity(ApiSessionModel, nil)
 }
 
-func (handler *ApiSessionHandler) HandleRead(id string) (*ApiSession, error) {
+func (handler *ApiSessionHandler) Read(id string) (*ApiSession, error) {
 	modelApiSession := &ApiSession{}
-	if err := handler.read(id, modelApiSession); err != nil {
+	if err := handler.readEntity(id, modelApiSession); err != nil {
 		return nil, err
 	}
 	return modelApiSession, nil
 }
 
-func (handler *ApiSessionHandler) HandleReadByToken(token string) (*ApiSession, error) {
+func (handler *ApiSessionHandler) ReadByToken(token string) (*ApiSession, error) {
 	modelApiSession := &ApiSession{}
 	tokenIndex := handler.env.GetStores().ApiSession.GetTokenIndex()
-	if err := handler.readWithIndex("token", []byte(token), tokenIndex, modelApiSession); err != nil {
+	if err := handler.readEntityWithIndex("token", []byte(token), tokenIndex, modelApiSession); err != nil {
 		return nil, err
 	}
 	return modelApiSession, nil
 }
 
-func (handler *ApiSessionHandler) handleReadInTx(tx *bbolt.Tx, id string) (*ApiSession, error) {
+func (handler *ApiSessionHandler) readInTx(tx *bbolt.Tx, id string) (*ApiSession, error) {
 	modelApiSession := &ApiSession{}
-	if err := handler.readInTx(tx, id, modelApiSession); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelApiSession); err != nil {
 		return nil, err
 	}
 	return modelApiSession, nil
@@ -72,21 +72,21 @@ func (handler *ApiSessionHandler) IsUpdated(_ string) bool {
 	return false
 }
 
-func (handler *ApiSessionHandler) HandleUpdate(apiSession *ApiSession) error {
-	return handler.update(apiSession, handler, nil)
+func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
+	return handler.updateEntity(apiSession, handler, nil)
 }
 
-func (handler *ApiSessionHandler) HandleDelete(id string) error {
-	return handler.delete(id, nil, nil)
+func (handler *ApiSessionHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil, nil)
 }
 
-func (handler *ApiSessionHandler) HandleMarkActivity(tokens []string) error {
+func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		return handler.GetEnv().GetStores().ApiSession.MarkActivity(tx, tokens)
 	})
 }
 
-func (handler *ApiSessionHandler) HandleQuery(query string) (*ApiSessionListResult, error) {
+func (handler *ApiSessionHandler) Query(query string) (*ApiSessionListResult, error) {
 	result := &ApiSessionListResult{handler: handler}
 	err := handler.list(query, result.collect)
 	if err != nil {
@@ -95,7 +95,7 @@ func (handler *ApiSessionHandler) HandleQuery(query string) (*ApiSessionListResu
 	return result, nil
 }
 
-func (handler *ApiSessionHandler) HandleList(queryOptions *QueryOptions) (*ApiSessionListResult, error) {
+func (handler *ApiSessionHandler) PublicQuery(queryOptions *QueryOptions) (*ApiSessionListResult, error) {
 	result := &ApiSessionListResult{handler: handler}
 	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
@@ -113,7 +113,7 @@ type ApiSessionListResult struct {
 func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		ApiSession, err := result.handler.handleReadInTx(tx, key)
+		ApiSession, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

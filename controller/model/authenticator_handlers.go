@@ -46,7 +46,7 @@ func (handler AuthenticatorHandler) NewModelEntity() BaseModelEntity {
 	return &Authenticator{}
 }
 
-func (handler AuthenticatorHandler) HandleIsAuthorized(authContext AuthContext) (*Identity, error) {
+func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Identity, error) {
 
 	authModule := handler.env.GetAuthRegistry().GetByMethod(authContext.GetMethod())
 
@@ -64,10 +64,10 @@ func (handler AuthenticatorHandler) HandleIsAuthorized(authContext AuthContext) 
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	return handler.env.GetHandlers().Identity.HandleRead(identityId)
+	return handler.env.GetHandlers().Identity.Read(identityId)
 }
 
-func (handler AuthenticatorHandler) HandleReadFingerprints(authenticatorId string) ([]string, error) {
+func (handler AuthenticatorHandler) ReadFingerprints(authenticatorId string) ([]string, error) {
 	var authenticator *persistence.Authenticator
 
 	err := handler.env.GetStores().DbProvider.GetDb().View(func(tx *bbolt.Tx) error {
@@ -83,30 +83,30 @@ func (handler AuthenticatorHandler) HandleReadFingerprints(authenticatorId strin
 	return authenticator.ToSubType().Fingerprints(), nil
 }
 
-func (handler *AuthenticatorHandler) HandleRead(id string) (*Authenticator, error) {
+func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 	modelEntity := &Authenticator{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *AuthenticatorHandler) handleReadInTx(tx *bbolt.Tx, id string) (*Authenticator, error) {
+func (handler *AuthenticatorHandler) readInTx(tx *bbolt.Tx, id string) (*Authenticator, error) {
 	modelEntity := &Authenticator{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *AuthenticatorHandler) HandleCreate(authenticator *Authenticator) (string, error) {
-	return handler.create(authenticator, nil)
+func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
+	return handler.createEntity(authenticator, nil)
 }
 
-func (handler AuthenticatorHandler) HandleReadByUsername(username string) (*Authenticator, error) {
+func (handler AuthenticatorHandler) ReadByUsername(username string) (*Authenticator, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldAuthenticatorUpdbUsername, username)
 
-	entity, err := handler.readByQuery(query)
+	entity, err := handler.readEntityByQuery(query)
 
 	if err != nil {
 		return nil, err
@@ -121,10 +121,10 @@ func (handler AuthenticatorHandler) HandleReadByUsername(username string) (*Auth
 	return authenticator, nil
 }
 
-func (handler AuthenticatorHandler) HandleReadByFingerprint(fingerprint string) (*Authenticator, error) {
+func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Authenticator, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldAuthenticatorCertFingerprint, fingerprint)
 
-	entity, err := handler.readByQuery(query)
+	entity, err := handler.readEntityByQuery(query)
 
 	if err != nil {
 		return nil, err

@@ -39,33 +39,24 @@ func (handler *EventLogHandler) NewModelEntity() BaseModelEntity {
 	return &EventLog{}
 }
 
-func (handler *EventLogHandler) HandleCreate(entity *EventLog) (string, error) {
-	return handler.create(entity, nil)
+func (handler *EventLogHandler) Create(entity *EventLog) (string, error) {
+	return handler.createEntity(entity, nil)
 }
 
-func (handler *EventLogHandler) HandleRead(id string) (*EventLog, error) {
+func (handler *EventLogHandler) Read(id string) (*EventLog, error) {
 	modelEntity := &EventLog{}
-	if err := handler.read(id, modelEntity); err != nil {
+	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EventLogHandler) handleReadInTx(tx *bbolt.Tx, id string) (*EventLog, error) {
+func (handler *EventLogHandler) readInTx(tx *bbolt.Tx, id string) (*EventLog, error) {
 	modelEntity := &EventLog{}
-	if err := handler.readInTx(tx, id, modelEntity); err != nil {
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
-}
-
-func (handler *EventLogHandler) HandleList(queryOptions *QueryOptions) (*EventLogListResult, error) {
-	result := &EventLogListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 type EventLogListResult struct {
@@ -77,7 +68,7 @@ type EventLogListResult struct {
 func (result *EventLogListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.handleReadInTx(tx, key)
+		entity, err := result.handler.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

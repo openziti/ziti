@@ -69,7 +69,7 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Service.HandleListForIdentity(rc.Identity, queryOptions)
+		result, err := ae.Handlers.Service.PublicQueryForIdentity(rc.Identity, queryOptions)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -85,7 +85,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		service, err := ae.Handlers.Service.HandleReadForIdentity(id, rc.Session.IdentityId)
+		service, err := ae.Handlers.Service.ReadForIdentity(id, rc.Session.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceCreate := &ServiceApiCreate{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Service.Post, serviceCreate, (&ServiceApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Service.HandleCreate(serviceCreate.ToModel())
+		return ae.Handlers.Service.Create(serviceCreate.ToModel())
 	})
 }
 
@@ -107,7 +107,7 @@ func (ir *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceUpdate := &ServiceApiUpdate{}
 	Update(rc, ae.Schemes.Service.Put, ir.IdType, serviceUpdate, func(id string) error {
-		return ae.Handlers.Service.HandleUpdate(serviceUpdate.ToModel(id))
+		return ae.Handlers.Service.Update(serviceUpdate.ToModel(id))
 	})
 }
 
@@ -115,14 +115,14 @@ func (ir *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceUpdate := &ServiceApiUpdate{}
 	Patch(rc, ae.Schemes.Service.Patch, ir.IdType, serviceUpdate, func(id string, fields JsonFields) error {
 		fields.ConcatNestedNames()
-		return ae.Handlers.Service.HandlePatch(serviceUpdate.ToModel(id), fields)
+		return ae.Handlers.Service.Patch(serviceUpdate.ToModel(id), fields)
 	})
 }
 
 func (ir *ServiceRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.HandleCollectEdgeRouters, MapEdgeRouterToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectEdgeRouters, MapEdgeRouterToApiEntity)
 }
 
 func (ir *ServiceRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.HandleCollectServicePolicies, MapServicePolicyToApiEntity)
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectServicePolicies, MapServicePolicyToApiEntity)
 }

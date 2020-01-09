@@ -98,7 +98,7 @@ func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity 
 		IsAdmin: isAdmin,
 	}
 	var err error
-	identity.Id, err = ctx.handlers.Identity.HandleCreate(identity)
+	identity.Id, err = ctx.handlers.Identity.Create(identity)
 	ctx.NoError(err)
 	return identity
 }
@@ -112,7 +112,7 @@ func (ctx *TestContext) requireNewService(name string) *Service {
 		DnsPort:         0,
 	}
 	var err error
-	service.Id, err = ctx.handlers.Service.HandleCreate(service)
+	service.Id, err = ctx.handlers.Service.Create(service)
 	ctx.NoError(err)
 	return service
 }
