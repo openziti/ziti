@@ -46,7 +46,7 @@ type authUpdbTests struct {
 func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 	t.Skip("verify if test or functionality is wrong")
 	body := gabs.New()
-	_, _ = body.SetP(tests.ctx.AdminUsername, "username")
+	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 	_, _ = body.SetP("invalid_password", "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
@@ -73,7 +73,7 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 
 func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 	body := gabs.New()
-	_, _ = body.SetP(tests.ctx.AdminUsername, "username")
+	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 
 	resp, err := tests.ctx.DefaultClient().R().
 		SetHeader("Content-Type", "application/json").
@@ -99,7 +99,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 
 func (tests *authUpdbTests) testAuthenticateUPDBMissingUsername(t *testing.T) {
 	body := gabs.New()
-	_, _ = body.SetP(tests.ctx.AdminPassword, "password")
+	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
 		SetHeader("Content-Type", "application/json").
@@ -125,8 +125,8 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingUsername(t *testing.T) {
 
 func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T) {
 	body := gabs.New()
-	_, _ = body.SetP(tests.ctx.AdminUsername, "username")
-	_, _ = body.SetP(tests.ctx.AdminPassword, "password")
+	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
+	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
 		SetHeader("Content-Type", "application/json").

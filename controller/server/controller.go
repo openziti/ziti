@@ -297,6 +297,7 @@ func (c *Controller) Shutdown() {
 	defer cancel()
 
 	c.apiServer.Shutdown(ctx)
+	_ = c.policyEngine.Stop()
 
 	pfxlog.Logger().Info("edge controller shutting down")
 }

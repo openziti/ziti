@@ -19,18 +19,17 @@
 package tests
 
 import (
+	"crypto"
 	cryptoTls "crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
 	"os"
-	"sort"
 	"testing"
 	"time"
 
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"gopkg.in/resty.v1"
 
 	"github.com/Jeffail/gabs"
@@ -38,12 +37,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/server"
 	"github.com/netfoundry/ziti-fabric/controller"
-	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/netfoundry/ziti-foundation/transport/tls"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -60,24 +57,30 @@ func init() {
 
 type TestContext struct {
 	ApiHost            string
-	AdminPassword      string
-	AdminUsername      string
+	AdminAuthenticator *updbAuthenticator
+	AdminSession       *session
 	fabricController   *controller.Controller
 	EdgeController     *server.Controller
-	adminSessionId     string
 	req                *require.Assertions
 	client             *resty.Client
 	enabledJsonLogging bool
 }
 
-var defaultTestContext = &TestContext{}
+var defaultTestContext = &TestContext{
+	AdminAuthenticator: &updbAuthenticator{
+		Username: uuid.New().String(),
+		Password: uuid.New().String(),
+	},
+}
 
 func NewTestContext(t *testing.T) *TestContext {
 	return &TestContext{
-		ApiHost:       "127.0.0.1:1280",
-		AdminUsername: "admin", // make this uuid.New().String() once we're off of PG
-		AdminPassword: "admin", // make this uuid.New().String() once we're off of PG
-		req:           require.New(t),
+		ApiHost: "127.0.0.1:1280",
+		AdminAuthenticator: &updbAuthenticator{
+			Username: uuid.New().String(),
+			Password: uuid.New().String(),
+		},
+		req: require.New(t),
 	}
 }
 
@@ -153,7 +156,7 @@ func (ctx *TestContext) startServer() {
 
 	ctx.EdgeController.Initialize()
 
-	err = ctx.EdgeController.AppEnv.Handlers.Identity.InitializeDefaultAdmin(ctx.AdminUsername, ctx.AdminPassword, uuid.New().String())
+	err = ctx.EdgeController.AppEnv.Handlers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, uuid.New().String())
 	if err != nil {
 		log.WithError(err).Warn("error during initialize admin")
 	}
@@ -187,45 +190,39 @@ func (ctx *TestContext) waitForPort(duration time.Duration) error {
 	}
 }
 
+func (ctx *TestContext) unauthenticatedSession() *session {
+	return &session{
+		testContext:   ctx,
+		token:         "",
+		authenticator: nil,
+		identityId:    "",
+	}
+}
+
+func (ctx *TestContext) loginWithCert(cert *x509.Certificate, key *crypto.PrivateKey) (*session, error) {
+	return (&certAuthenticator{
+		cert: cert,
+		key:  key,
+	}).Authenticate(ctx)
+}
+
 func (ctx *TestContext) requireAdminLogin() {
-	ctx.adminSessionId = ctx.requireLogin(ctx.AdminUsername, ctx.AdminPassword)
-}
-
-func (ctx *TestContext) requireLogin(username, password string) string {
-	sessionId, err := ctx.login(username, password)
+	var err error
+	ctx.AdminSession, err = ctx.AdminAuthenticator.Authenticate(ctx)
 	ctx.req.NoError(err)
-	return sessionId
 }
 
-func (ctx *TestContext) login(username, password string) (string, error) {
-	client := ctx.DefaultClient()
+func (ctx *TestContext) requireLogin(username, password string) *session {
+	session, err := ctx.login(username, password)
+	ctx.req.NoError(err)
+	return session
+}
 
-	body := gabs.New()
-	if _, err := body.SetP(username, "username"); err != nil {
-		return "", errors.WithStack(err)
-	}
-	if _, err := body.SetP(password, "password"); err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(body.String()).
-		Post("/authenticate?method=password")
-
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		return "", errors.Errorf("expected status code %d got %d", http.StatusOK, resp.StatusCode())
-	}
-
-	sessionId := resp.Header().Get("zt-session")
-	if sessionId == "" {
-		return "", errors.New("expected header zt-session to not be empty")
-	}
-	return sessionId, nil
+func (ctx *TestContext) login(username, password string) (*session, error) {
+	return (&updbAuthenticator{
+		Username: username,
+		Password: password,
+	}).Authenticate(ctx)
 }
 
 func (ctx *TestContext) teardown() {
@@ -234,135 +231,13 @@ func (ctx *TestContext) teardown() {
 	ctx.fabricController.Shutdown()
 }
 
-func (ctx *TestContext) requireCreateCluster(name string) string {
-	entityJson := ctx.newNamedEntityJson(name).String()
-	httpCode, body := ctx.createEntityOfType("clusters", entityJson)
-	ctx.req.Equal(http.StatusCreated, httpCode)
-	return ctx.getEntityId(body)
-}
-
-func (ctx *TestContext) requireCreateIdentity(name string, password string, isAdmin bool, rolesAttributes ...string) string {
-	entityData := gabs.New()
-	ctx.setJsonValue(entityData, name, "name")
-	ctx.setJsonValue(entityData, "User", "type")
-	ctx.setJsonValue(entityData, isAdmin, "isAdmin")
-	ctx.setJsonValue(entityData, rolesAttributes, "roleAttributes")
-
-	enrollments := map[string]interface{}{
-		"updb": name,
-	}
-	ctx.setJsonValue(entityData, enrollments, "enrollment")
-
-	entityJson := entityData.String()
-	httpCode, body := ctx.createEntityOfType("identities", entityJson)
-	ctx.req.Equal(http.StatusCreated, httpCode)
-	id := ctx.getEntityId(body)
-	ctx.completeEnrollment(id, password)
-	return id
-}
-
-func (ctx *TestContext) requireNewService(roleAttributes ...string) *testService {
-	service := ctx.newTestService()
-	service.roleAttributes = roleAttributes
-	ctx.requireCreateEntity(service)
-	return service
-}
-
-func (ctx *TestContext) requireNewEdgeRouter(roleAttributes ...string) *testEdgeRouter {
-	edgeRouter := newTestEdgeRouter(roleAttributes...)
-	ctx.requireCreateEntity(edgeRouter)
-	return edgeRouter
-}
-
-func (ctx *TestContext) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *testServicePolicy {
-	servicePolicy := newTestServicePolicy(policyType, serviceRoles, identityRoles)
-	ctx.requireCreateEntity(servicePolicy)
-	return servicePolicy
-}
-
-func (ctx *TestContext) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *testEdgeRouterPolicy {
-	edgeRouterPolicy := newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles)
-	ctx.requireCreateEntity(edgeRouterPolicy)
-	return edgeRouterPolicy
-}
-
-func (ctx *TestContext) requireNewIdentity(isAdmin bool, roleAttributes ...string) *testIdentity {
-	identity := newTestIdentity(isAdmin, roleAttributes...)
-	ctx.requireCreateEntity(identity)
-	return identity
-}
-
-func (ctx *TestContext) requireCreateEntity(entity testEntity) string {
-	httpStatus, body := ctx.createEntity(entity)
-	ctx.req.Equal(http.StatusCreated, httpStatus)
-	id := ctx.getEntityId(body)
-	entity.setId(id)
-	return id
-}
-
-func (ctx *TestContext) requireDeleteEntity(entity testEntity) {
-	httpStatus, _ := ctx.deleteEntityOfType(entity.getEntityType(), entity.getId())
-	ctx.req.Equal(http.StatusOK, httpStatus)
-}
-
-func (ctx *TestContext) createEntity(entity testEntity) (int, []byte) {
-	return ctx.createEntityOfType(entity.getEntityType(), entity.toJson(true, ctx))
-}
-
-func (ctx *TestContext) createEntityOfType(entityType string, body string) (int, []byte) {
-	client := ctx.DefaultClient()
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		SetBody(body).
-		Post("/" + entityType)
-
-	ctx.req.NoError(err)
-	ctx.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
-}
-
-func (ctx *TestContext) deleteEntityOfType(entityType string, id string) (int, []byte) {
-	client := ctx.DefaultClient()
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		Delete("/" + entityType + "/" + id)
-
-	ctx.req.NoError(err)
-	ctx.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
-}
-
-func (ctx *TestContext) requireUpdateEntity(entity testEntity) {
-	httpStatus, _ := ctx.updateEntity(entity)
-	ctx.req.Equal(http.StatusOK, httpStatus)
-}
-
-func (ctx *TestContext) updateEntity(entity testEntity) (int, []byte) {
-	return ctx.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, ctx))
-}
-
-func (ctx *TestContext) updateEntityOfType(id string, entityType string, body string) (int, []byte) {
-	client := ctx.DefaultClient()
-	urlPath := fmt.Sprintf("/%v/%v", entityType, id)
-	pfxlog.Logger().Infof("url path: %v", urlPath)
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		SetBody(body).
-		Put(urlPath)
-
-	ctx.req.NoError(err)
-	ctx.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
+func (ctx *TestContext) newRequest() *resty.Request {
+	return ctx.DefaultClient().R().
+		SetHeader("Content-Type", "application/json")
 }
 
 func (ctx *TestContext) completeEnrollment(identityId string, password string) {
-	result := ctx.requireQuery(ctx.adminSessionId, fmt.Sprintf("identities/%v", identityId))
+	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 	path := result.Search(path("data.enrollment.updb.token")...)
 	ctx.req.NotNil(path)
 	str, ok := path.Data().(string)
@@ -371,10 +246,7 @@ func (ctx *TestContext) completeEnrollment(identityId string, password string) {
 	enrollBody := gabs.New()
 	ctx.setJsonValue(enrollBody, password, "password")
 
-	resp, err := ctx.DefaultClient().
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
+	resp, err := ctx.newRequest().
 		SetBody(enrollBody.String()).
 		Post("enroll?token=" + str)
 	ctx.req.NoError(err)
@@ -382,109 +254,15 @@ func (ctx *TestContext) completeEnrollment(identityId string, password string) {
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
 }
 
-func (ctx *TestContext) requireQuery(token, url string) *gabs.Container {
-	httpStatus, body := ctx.query(token, url)
-	ctx.logJson(body)
-	ctx.req.Equal(http.StatusOK, httpStatus)
-	return ctx.parseJson(body)
-}
+func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {
+	now := time.Now()
+	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
+	ctx.req.Equal(createdAt, updatedAt)
 
-func (ctx *TestContext) query(token, url string) (int, []byte) {
-	client := ctx.DefaultClient()
-	pfxlog.Logger().Infof("using session id: %v", token)
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token).
-		Get("/" + url)
-	ctx.req.NoError(err)
-	return resp.StatusCode(), resp.Body()
-}
+	ctx.req.True(start.Before(createdAt) || start.Equal(createdAt))
+	ctx.req.True(now.After(createdAt) || now.Equal(createdAt))
 
-func (ctx *TestContext) requireAddAssociation(url string, ids ...string) {
-	httpStatus, _ := ctx.addAssociation(url, ids...)
-	ctx.req.Equal(http.StatusOK, httpStatus)
-}
-
-func (ctx *TestContext) validateAssociations(entity testEntity, childType string, children ...testEntity) {
-	var ids []string
-	for _, child := range children {
-		ids = append(ids, child.getId())
-	}
-	ctx.validateAssociationsAt(fmt.Sprintf("%v/%v/%v", entity.getEntityType(), entity.getId(), childType), ids...)
-}
-
-func (ctx *TestContext) validateAssociationContains(entity testEntity, childType string, children ...testEntity) {
-	var ids []string
-	for _, child := range children {
-		ids = append(ids, child.getId())
-	}
-	ctx.validateAssociationsAtContains(fmt.Sprintf("%v/%v/%v", entity.getEntityType(), entity.getId(), childType), ids...)
-}
-
-func (ctx *TestContext) validateAssociationsAt(url string, ids ...string) {
-	result := ctx.requireQuery(ctx.adminSessionId, url)
-	data := ctx.requirePath(result, "data")
-	children, err := data.Children()
-
-	var actualIds []string
-	ctx.req.NoError(err)
-	for _, child := range children {
-		actualIds = append(actualIds, child.S("id").Data().(string))
-	}
-
-	sort.Strings(ids)
-	sort.Strings(actualIds)
-	ctx.req.Equal(ids, actualIds)
-}
-
-func (ctx *TestContext) validateAssociationsAtContains(url string, ids ...string) {
-	result := ctx.requireQuery(ctx.adminSessionId, url)
-	data := ctx.requirePath(result, "data")
-	children, err := data.Children()
-
-	var actualIds []string
-	ctx.req.NoError(err)
-	for _, child := range children {
-		actualIds = append(actualIds, child.S("id").Data().(string))
-	}
-
-	for _, id := range ids {
-		ctx.req.True(stringz.Contains(actualIds, id), "%+v should contain %v", actualIds, id)
-	}
-}
-
-func (ctx *TestContext) addAssociation(url string, ids ...string) (int, []byte) {
-	return ctx.updateAssociation(http.MethodPut, url, ids...)
-}
-
-func (ctx *TestContext) requireRemoveAssociation(url string, ids ...string) {
-	httpStatus, _ := ctx.removeAssociation(url, ids...)
-	ctx.req.Equal(http.StatusOK, httpStatus)
-}
-
-func (ctx *TestContext) removeAssociation(url string, ids ...string) (int, []byte) {
-	return ctx.updateAssociation(http.MethodDelete, url, ids...)
-}
-
-func (ctx *TestContext) updateAssociation(method, url string, ids ...string) (int, []byte) {
-	client := ctx.DefaultClient()
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		SetBody(ctx.idsJson(ids...).String()).
-		Execute(method, "/"+url)
-	ctx.req.NoError(err)
-	ctx.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
-}
-
-func (ctx *TestContext) isServiceVisibleToUser(info *userInfo, serviceId string) bool {
-	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, serviceId))
-	result := ctx.requireQuery(info.sessionId, "services?filter="+query)
-	data := ctx.requirePath(result, "data")
-	return nil != ctx.childWith(data, "id", serviceId)
+	return createdAt
 }
 
 func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
@@ -497,33 +275,6 @@ func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
 		roleAttributes:  roleAttributes,
 		tags:            nil,
 	}
-}
-
-func (ctx *TestContext) requireCreateNewService(roleAttributes ...string) *testService {
-	service := ctx.newTestService(roleAttributes...)
-	service.id = ctx.requireCreateEntity(service)
-	return service
-}
-
-type userInfo struct {
-	username   string
-	password   string
-	identityId string
-	sessionId  string
-}
-
-func (ctx *TestContext) createUserAndLogin(isAdmin bool, roleAttributes ...string) *userInfo {
-	result := &userInfo{
-		username: uuid.New().String(),
-		password: uuid.New().String(),
-	}
-	result.identityId = ctx.requireCreateIdentity(result.username, result.password, isAdmin, roleAttributes...)
-	result.sessionId = ctx.requireLogin(result.username, result.password)
-	return result
-}
-
-func (ctx *TestContext) validateEntityWithQuery(entity testEntity) *gabs.Container {
-	return ctx.validateEntityWithQueryAndSession(ctx.adminSessionId, entity)
 }
 
 func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, time.Time) {
@@ -540,17 +291,6 @@ func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, t
 	return createdAt, updatedAt
 }
 
-func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {
-	now := time.Now()
-	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
-	ctx.req.Equal(createdAt, updatedAt)
-
-	ctx.req.True(start.Before(createdAt) || start.Equal(createdAt))
-	ctx.req.True(now.After(createdAt) || now.Equal(createdAt))
-
-	return createdAt
-}
-
 func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreatedAt time.Time, jsonEntity *gabs.Container) time.Time {
 	now := time.Now()
 	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
@@ -563,33 +303,7 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 	return createdAt
 }
 
-func (ctx *TestContext) validateEntityWithQueryAndSession(sessionId string, entity testEntity) *gabs.Container {
-	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, entity.getId()))
-	result := ctx.requireQuery(sessionId, entity.getEntityType()+"?filter="+query)
-	data := ctx.requirePath(result, "data")
-	jsonEntity := ctx.requireChildWith(data, "id", entity.getId())
-	return ctx.validateEntity(entity, jsonEntity)
-}
-
-func (ctx *TestContext) validateEntityWithLookup(entity testEntity) *gabs.Container {
-	return ctx.validateEntityWithLookupAndSession(ctx.adminSessionId, entity)
-}
-
-func (ctx *TestContext) validateEntityWithLookupAndSession(sessionId string, entity testEntity) *gabs.Container {
-	result := ctx.requireQuery(sessionId, entity.getEntityType()+"/"+entity.getId())
-	jsonEntity := ctx.requirePath(result, "data")
-	return ctx.validateEntity(entity, jsonEntity)
-}
-
 func (ctx *TestContext) validateEntity(entity testEntity, jsonEntity *gabs.Container) *gabs.Container {
 	entity.validate(ctx, jsonEntity)
 	return jsonEntity
-}
-
-func toIntfSlice(in []string) []interface{} {
-	var result []interface{}
-	for _, i := range in {
-		result = append(result, i)
-	}
-	return result
 }
