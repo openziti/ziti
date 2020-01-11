@@ -17,6 +17,7 @@
 package edge_controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -52,6 +53,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 
 	cmd.AddCommand(newListCmdForEntityType("api-sessions", runListApiSessions, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
@@ -328,6 +330,28 @@ func runListCAs(o *commonOptions) error {
 		name, _ := entity.Path("name").Data().(string)
 		cluster, _ := entity.Path("cluster.id").Data().(string)
 		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    cluster-id: %v\n", id, name, cluster); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runListConfigs(o *commonOptions) error {
+	children, err := listEntitiesOfTypeWithOptionalFilter("configs", o)
+	if err != nil {
+		return err
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		data, _ := entity.Path("data").Data().(map[string]interface{})
+		formattedData, err := json.MarshalIndent(data, "      ", "    ")
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(o.Out, "id:   %v\nname: %v\ndata: %v\n\n", id, name, string(formattedData)); err != nil {
 			return err
 		}
 	}

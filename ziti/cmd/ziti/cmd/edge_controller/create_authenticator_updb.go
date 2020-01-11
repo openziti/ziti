@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-foundation/util/term"
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/netfoundry/ziti-foundation/util/term"
 	"github.com/spf13/cobra"
 )
 
@@ -74,7 +74,6 @@ func newCreateAuthenticatorUpdb(idType string, options commonOptions) *cobra.Com
 }
 
 func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) error {
-
 	if options.idOrName == "" {
 		return errors.New("an identity must be specified")
 	}
@@ -86,18 +85,17 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 	}
 
 	if options.password == "" {
-		options.password, err = term.PromptPassword("Enter password: ", false)
+		if options.password, err = term.PromptPassword("Enter password: ", false); err != nil {
+			return err
+		}
 	}
 
 	passwordData := gabs.New()
 	setJSONValue(passwordData, options.password, "password")
 	setJSONValue(passwordData, options.username, "username")
 
-	_, err = createEntityOfType(fmt.Sprintf("identities/%s/updb", id), passwordData.String(), &options.commonOptions)
-
-	if err != nil {
+	if _, err = createEntityOfType(fmt.Sprintf("identities/%s/updb", id), passwordData.String(), &options.commonOptions); err != nil {
 		return err
 	}
-
 	return nil
 }
