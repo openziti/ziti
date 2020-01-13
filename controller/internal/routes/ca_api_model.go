@@ -22,7 +22,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"net/http"
 )
@@ -30,7 +29,7 @@ import (
 const EntityNameCa = "cas"
 
 type CaApiUpdate struct {
-	Tags                      *migration.PropertyMap `json:"tags"`
+	Tags                      map[string]interface{} `json:"tags"`
 	Name                      *string                `json:"name"`
 	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
 	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
@@ -42,7 +41,7 @@ func (i *CaApiUpdate) ToModel(id string) *model.Ca {
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
 	if i.Tags != nil {
-		result.Tags = *i.Tags
+		result.Tags = i.Tags
 	}
 	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
@@ -51,7 +50,7 @@ func (i *CaApiUpdate) ToModel(id string) *model.Ca {
 }
 
 type CaApiCreate struct {
-	Tags                      *migration.PropertyMap `json:"tags"`
+	Tags                      map[string]interface{} `json:"tags"`
 	Name                      *string                `json:"name"`
 	CertPem                   *string                `json:"certPem"`
 	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
@@ -62,9 +61,7 @@ type CaApiCreate struct {
 func (i *CaApiCreate) ToModel() *model.Ca {
 	result := &model.Ca{}
 	result.Name = stringz.OrEmpty(i.Name)
-	if i.Tags != nil {
-		result.Tags = *i.Tags
-	}
+	result.Tags = i.Tags
 	result.CertPem = stringz.OrEmpty(i.CertPem)
 	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled

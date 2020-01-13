@@ -29,7 +29,7 @@ type testEntity interface {
 	getId() string
 	setId(string)
 	getEntityType() string
-	toJson(create bool, ctx *TestContext) string
+	toJson(create bool, ctx *TestContext, fields ...string) string
 	validate(ctx *TestContext, c *gabs.Container)
 }
 
@@ -58,7 +58,7 @@ func (entity *testService) getEntityType() string {
 	return "services"
 }
 
-func (entity *testService) toJson(_ bool, ctx *TestContext) string {
+func (entity *testService) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.egressRouter, "egressRouter")
@@ -126,7 +126,7 @@ func (entity *testIdentity) getEntityType() string {
 	return "identities"
 }
 
-func (entity *testIdentity) toJson(_ bool, ctx *TestContext) string {
+func (entity *testIdentity) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.identityType, "type")
@@ -180,7 +180,7 @@ func (entity *testEdgeRouter) getEntityType() string {
 	return "edge-routers"
 }
 
-func (entity *testEdgeRouter) toJson(_ bool, ctx *TestContext) string {
+func (entity *testEdgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
@@ -229,7 +229,7 @@ func (entity *testEdgeRouterPolicy) getEntityType() string {
 	return "edge-router-policies"
 }
 
-func (entity *testEdgeRouterPolicy) toJson(_ bool, ctx *TestContext) string {
+func (entity *testEdgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
@@ -283,7 +283,7 @@ func (entity *testServicePolicy) getEntityType() string {
 	return "service-policies"
 }
 
-func (entity *testServicePolicy) toJson(_ bool, ctx *TestContext) string {
+func (entity *testServicePolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.policyType, "type")
@@ -306,5 +306,41 @@ func (entity *testServicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
 	sort.Strings(entity.serviceRoles)
 	ctx.pathEqualsStringSlice(c, entity.serviceRoles, path("serviceRoles"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+type testConfig struct {
+	id   string
+	name string
+	data map[string]interface{}
+	tags map[string]interface{}
+}
+
+func (entity *testConfig) getId() string {
+	return entity.id
+}
+
+func (entity *testConfig) setId(id string) {
+	entity.id = id
+}
+
+func (entity *testConfig) getEntityType() string {
+	return "configs"
+}
+
+func (entity *testConfig) toJson(_ bool, ctx *TestContext, fields ...string) string {
+	entityData := gabs.New()
+	ctx.setValue(entityData, entity.name, fields, "name")
+	ctx.setValue(entityData, entity.data, fields, "data")
+	ctx.setValue(entityData, entity.tags, fields, "tags")
+	return entityData.String()
+}
+
+func (entity *testConfig) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.data, path("data"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }

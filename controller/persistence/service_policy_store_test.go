@@ -24,8 +24,7 @@ func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
 	ctx.requireCreate(policy)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		load := &ServicePolicy{}
-		ctx.validateBaseline(policy, load)
+		ctx.validateBaseline(policy)
 		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
 		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeIdentities)))
 

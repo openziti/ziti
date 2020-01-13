@@ -91,14 +91,6 @@ func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 	return modelEntity, nil
 }
 
-func (handler *AuthenticatorHandler) readInTx(tx *bbolt.Tx, id string) (*Authenticator, error) {
-	modelEntity := &Authenticator{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
 func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
 	return handler.createEntity(authenticator, nil)
 }

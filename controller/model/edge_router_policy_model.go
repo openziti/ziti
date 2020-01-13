@@ -51,7 +51,7 @@ func (entity *EdgeRouterPolicy) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handl
 func (entity *EdgeRouterPolicy) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model cluster", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))
 	}
 	entity.fillCommon(boltEdgeRouterPolicy)
 	entity.Name = boltEdgeRouterPolicy.Name

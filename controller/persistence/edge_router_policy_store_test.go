@@ -22,10 +22,9 @@ func (ctx *TestContext) testCreateEdgeRouterPolicy(_ *testing.T) {
 
 	policy := NewEdgeRouterPolicy(uuid.New().String())
 	ctx.requireCreate(policy)
+	ctx.validateBaseline(policy)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		load := &EdgeRouterPolicy{}
-		ctx.validateBaseline(policy, load)
 		ctx.Equal(0, len(ctx.stores.EdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeEdgeRouters)))
 		ctx.Equal(0, len(ctx.stores.EdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeIdentities)))
 

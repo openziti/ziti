@@ -234,13 +234,6 @@ func (ctx *TestContext) teardown() {
 	ctx.fabricController.Shutdown()
 }
 
-func (ctx *TestContext) requireCreateCluster(name string) string {
-	entityJson := ctx.newNamedEntityJson(name).String()
-	httpCode, body := ctx.createEntityOfType("clusters", entityJson)
-	ctx.req.Equal(http.StatusCreated, httpCode)
-	return ctx.getEntityId(body)
-}
-
 func (ctx *TestContext) requireCreateIdentity(name string, password string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, name, "name")
@@ -310,6 +303,9 @@ func (ctx *TestContext) createEntity(entity testEntity) (int, []byte) {
 }
 
 func (ctx *TestContext) createEntityOfType(entityType string, body string) (int, []byte) {
+	if ctx.enabledJsonLogging {
+		fmt.Printf("Create body:\n%v\n", body)
+	}
 	client := ctx.DefaultClient()
 	resp, err := client.
 		R().
@@ -341,20 +337,39 @@ func (ctx *TestContext) requireUpdateEntity(entity testEntity) {
 	ctx.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (ctx *TestContext) updateEntity(entity testEntity) (int, []byte) {
-	return ctx.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, ctx))
+func (ctx *TestContext) requirePatchEntity(entity testEntity, fields ...string) {
+	httpStatus, _ := ctx.patchEntity(entity, fields...)
+	ctx.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (ctx *TestContext) updateEntityOfType(id string, entityType string, body string) (int, []byte) {
+func (ctx *TestContext) updateEntity(entity testEntity) (int, []byte) {
+	return ctx.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, ctx), false)
+}
+
+func (ctx *TestContext) patchEntity(entity testEntity, fields ...string) (int, []byte) {
+	return ctx.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, ctx, fields...), true)
+}
+
+func (ctx *TestContext) updateEntityOfType(id string, entityType string, body string, patch bool) (int, []byte) {
+	if ctx.enabledJsonLogging {
+		fmt.Printf("update body:\n%v\n", body)
+	}
 	client := ctx.DefaultClient()
 	urlPath := fmt.Sprintf("/%v/%v", entityType, id)
 	pfxlog.Logger().Infof("url path: %v", urlPath)
-	resp, err := client.
+	var err error
+	var resp *resty.Response
+	request := client.
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		SetBody(body).
-		Put(urlPath)
+		SetBody(body)
+
+	if patch {
+		resp, err = request.Patch(urlPath)
+	} else {
+		resp, err = request.Put(urlPath)
+	}
 
 	ctx.req.NoError(err)
 	ctx.logJson(resp.Body())
@@ -382,6 +397,13 @@ func (ctx *TestContext) completeEnrollment(identityId string, password string) {
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
 }
 
+func (ctx *TestContext) validateUpdate(entity testEntity) *gabs.Container {
+	result := ctx.requireQuery(ctx.adminSessionId, entity.getEntityType()+"/"+entity.getId())
+	jsonConfig := ctx.requirePath(result, "data")
+	entity.validate(ctx, jsonConfig)
+	return jsonConfig
+}
+
 func (ctx *TestContext) requireQuery(token, url string) *gabs.Container {
 	httpStatus, body := ctx.query(token, url)
 	ctx.logJson(body)
@@ -399,11 +421,6 @@ func (ctx *TestContext) query(token, url string) (int, []byte) {
 		Get("/" + url)
 	ctx.req.NoError(err)
 	return resp.StatusCode(), resp.Body()
-}
-
-func (ctx *TestContext) requireAddAssociation(url string, ids ...string) {
-	httpStatus, _ := ctx.addAssociation(url, ids...)
-	ctx.req.Equal(http.StatusOK, httpStatus)
 }
 
 func (ctx *TestContext) validateAssociations(entity testEntity, childType string, children ...testEntity) {
@@ -454,37 +471,18 @@ func (ctx *TestContext) validateAssociationsAtContains(url string, ids ...string
 	}
 }
 
-func (ctx *TestContext) addAssociation(url string, ids ...string) (int, []byte) {
-	return ctx.updateAssociation(http.MethodPut, url, ids...)
+func (ctx *TestContext) newTestConfig(data map[string]interface{}) *testConfig {
+	return &testConfig{
+		name: uuid.New().String(),
+		data: data,
+		tags: nil,
+	}
 }
 
-func (ctx *TestContext) requireRemoveAssociation(url string, ids ...string) {
-	httpStatus, _ := ctx.removeAssociation(url, ids...)
-	ctx.req.Equal(http.StatusOK, httpStatus)
-}
-
-func (ctx *TestContext) removeAssociation(url string, ids ...string) (int, []byte) {
-	return ctx.updateAssociation(http.MethodDelete, url, ids...)
-}
-
-func (ctx *TestContext) updateAssociation(method, url string, ids ...string) (int, []byte) {
-	client := ctx.DefaultClient()
-	resp, err := client.
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, ctx.adminSessionId).
-		SetBody(ctx.idsJson(ids...).String()).
-		Execute(method, "/"+url)
-	ctx.req.NoError(err)
-	ctx.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
-}
-
-func (ctx *TestContext) isServiceVisibleToUser(info *userInfo, serviceId string) bool {
-	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, serviceId))
-	result := ctx.requireQuery(info.sessionId, "services?filter="+query)
-	data := ctx.requirePath(result, "data")
-	return nil != ctx.childWith(data, "id", serviceId)
+func (ctx *TestContext) requireCreateNewConfig(data map[string]interface{}) *testConfig {
+	config := ctx.newTestConfig(data)
+	config.id = ctx.requireCreateEntity(config)
+	return config
 }
 
 func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
@@ -586,10 +584,39 @@ func (ctx *TestContext) validateEntity(entity testEntity, jsonEntity *gabs.Conta
 	return jsonEntity
 }
 
-func toIntfSlice(in []string) []interface{} {
-	var result []interface{}
-	for _, i := range in {
-		result = append(result, i)
-	}
-	return result
-}
+//func (ctx *TestContext) requireAddAssociation(url string, ids ...string) {
+//	httpStatus, _ := ctx.addAssociation(url, ids...)
+//	ctx.req.Equal(http.StatusOK, httpStatus)
+//}
+//
+//func (ctx *TestContext) addAssociation(url string, ids ...string) (int, []byte) {
+//	return ctx.updateAssociation(http.MethodPut, url, ids...)
+//}
+//
+//func (ctx *TestContext) requireRemoveAssociation(url string, ids ...string) {
+//	httpStatus, _ := ctx.removeAssociation(url, ids...)
+//	ctx.req.Equal(http.StatusOK, httpStatus)
+//}
+//
+//func (ctx *TestContext) removeAssociation(url string, ids ...string) (int, []byte) {
+//	return ctx.updateAssociation(http.MethodDelete, url, ids...)
+//}
+//
+//func (ctx *TestContext) updateAssociation(method, url string, ids ...string) (int, []byte) {
+//	client := ctx.DefaultClient()
+//	resp, err := client.
+//		R().
+//		SetHeader("Content-Type", "application/json").
+//		SetHeader(constants.ZitiSession, ctx.adminSessionId).
+//		SetBody(ctx.idsJson(ids...).String()).
+//		Execute(method, "/"+url)
+//	ctx.req.NoError(err)
+//	ctx.logJson(resp.Body())
+//	return resp.StatusCode(), resp.Body()
+//}
+//
+//func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
+//	entityData := gabs.New()
+//	ctx.setJsonValue(entityData, ids, "ids")
+//	return entityData
+//}

@@ -22,14 +22,11 @@ import (
 )
 
 const (
-	EntityTypeApiSessions = "apiSessions"
-	EntityTypeAppwans     = "appwans"
-	EntityTypeCas         = "cas"
-	EntityTypeClusters    = "clusters"
-
-	EntityTypeServiceConfigs = "serviceConfigs"
-	EntityTypeConfigs        = "configs"
-
+	EntityTypeApiSessions        = "apiSessions"
+	EntityTypeAppwans            = "appwans"
+	EntityTypeCas                = "cas"
+	EntityTypeClusters           = "clusters"
+	EntityTypeConfigs            = "configs"
 	EntityTypeEdgeRouters        = "edgeRouters"
 	EntityTypeEdgeRouterPolicies = "edgeRouterPolicies"
 	EntityTypeEventLogs          = "eventLogs"

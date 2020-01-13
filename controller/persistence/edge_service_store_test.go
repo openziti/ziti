@@ -125,7 +125,7 @@ func (ctx *TestContext) testCreateServices(_ *testing.T) {
 		DnsPort:     uint16(rand.Uint32()),
 	}
 	ctx.requireCreate(edgeService)
-	ctx.validateBaseline(edgeService, &EdgeService{})
+	ctx.validateBaseline(edgeService)
 }
 
 type serviceTestEntities struct {

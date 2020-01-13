@@ -114,8 +114,7 @@ func (ir *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceUpdate := &ServiceApiUpdate{}
 	Patch(rc, ae.Schemes.Service.Patch, ir.IdType, serviceUpdate, func(id string, fields JsonFields) error {
-		fields.ConcatNestedNames()
-		return ae.Handlers.Service.Patch(serviceUpdate.ToModel(id), fields)
+		return ae.Handlers.Service.Patch(serviceUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 

@@ -46,8 +46,13 @@ func Test_getFields(t *testing.T) {
 			Hostname: strPtr("google.com"),
 			Port:     uint16Ptr(6433),
 		},
-		Name:            strPtr("Foo"),
-		Tags:            nil,
+		Name: strPtr("Foo"),
+		Tags: map[string]interface{}{
+			"foo": "bar",
+			"nested": map[string]interface{}{
+				"go": true,
+			},
+		},
 		EgressRouter:    nil,
 		EndpointAddress: strPtr("tcp:foo:1234"),
 	}
@@ -65,11 +70,11 @@ func Test_getFields(t *testing.T) {
 			name: "test",
 			body: []byte(test),
 			want: JsonFields{
-				"Name":            true,
-				"Dns.Hostname":    true,
-				"Dns.Port":        true,
-				"EgressRouter":    true,
-				"EndpointAddress": false,
+				"name":            true,
+				"dns.hostname":    true,
+				"dns.port":        true,
+				"egressRouter":    true,
+				"endpointAddress": false,
 			},
 			wantErr: false,
 		},
@@ -77,14 +82,14 @@ func Test_getFields(t *testing.T) {
 			name: "test2",
 			body: test2Bytes,
 			want: JsonFields{
-				"Name":            true,
-				"EdgeRouterRoles": true,
-				"RoleAttributes":  true,
-				"Dns.Hostname":    true,
-				"Dns.Port":        true,
-				"EgressRouter":    false,
-				"EndpointAddress": true,
-				"Tags":            false,
+				"name":            true,
+				"edgeRouterRoles": true,
+				"roleAttributes":  true,
+				"dns.hostname":    true,
+				"dns.port":        true,
+				"egressRouter":    false,
+				"endpointAddress": true,
+				"tags":            true,
 			},
 			wantErr: false,
 		},
@@ -92,6 +97,7 @@ func Test_getFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := getFields(tt.body)
+			got.FilterMaps("tags")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getFields() error = %v, wantErr %v", err, tt.wantErr)
 				return

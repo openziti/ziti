@@ -87,7 +87,7 @@ func (ir *EdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestCon
 func (ir *EdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &EdgeRouterPolicyApi{}
 	Patch(rc, ae.Schemes.EdgeRouterPolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeRouterPolicy.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.EdgeRouterPolicy.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
 	})
 }
 

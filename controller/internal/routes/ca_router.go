@@ -95,7 +95,7 @@ func (ir *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &CaApiUpdate{}
 	Patch(rc, ae.Schemes.Ca.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Ca.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.Ca.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
 	})
 }
 

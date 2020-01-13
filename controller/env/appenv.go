@@ -136,6 +136,7 @@ type HostController interface {
 type Schemes struct {
 	Association      *BasicEntitySchema
 	Ca               *BasicEntitySchema
+	Config           *BasicEntitySchema
 	Enroller         *BasicEntitySchema
 	EnrollEr         *BasicEntitySchema
 	EnrollUpdb       *BasicEntitySchema

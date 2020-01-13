@@ -80,11 +80,11 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 
 	password := ""
 
-	if val, ok := data["password"]; !ok {
+	val, ok := data["password"]
+	if !ok {
 		return nil, apierror.NewUnhandled()
-	} else {
-		password = val.(string)
 	}
+	password = val.(string)
 
 	hash := crypto.Hash(password)
 

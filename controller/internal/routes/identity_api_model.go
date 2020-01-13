@@ -24,7 +24,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -51,7 +50,7 @@ type IdentityApiList struct {
 }
 
 type IdentityApiUpdate struct {
-	Tags           *migration.PropertyMap `json:"tags"`
+	Tags           map[string]interface{} `json:"tags"`
 	Name           *string                `json:"name"`
 	Type           *string                `json:"type"`
 	IsAdmin        *bool                  `json:"isAdmin"`
@@ -66,9 +65,7 @@ func (i IdentityApiUpdate) ToModel(id string) *model.Identity {
 	result.IsDefaultAdmin = false
 	result.IdentityTypeId = stringz.OrEmpty(i.Type)
 	result.RoleAttributes = i.RoleAttributes
-	if i.Tags != nil {
-		result.Tags = *i.Tags
-	}
+	result.Tags = i.Tags
 	return result
 }
 
@@ -230,20 +227,12 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		RoleAttributes: i.RoleAttributes,
 	}
 
-	err = ae.GetHandlers().Identity.CollectEnrollments(ret.Id, func(entity model.BaseModelEntity) error {
-		enrollmentModel, ok := entity.(*model.Enrollment)
-
-		if !ok {
-			return fmt.Errorf("entity is not an enrollment \"%s\"", entity.GetId())
-		}
-
+	err = ae.GetHandlers().Identity.CollectEnrollments(ret.Id, func(enrollmentModel *model.Enrollment) error {
 		var err error
 		ret.Enrollments[enrollmentModel.Method], err = MapToIdentityEnrollmentApiList(ae, enrollmentModel)
-
 		if err != nil {
 			return err
 		}
-
 		return nil
 	})
 
@@ -251,20 +240,12 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		return nil, err
 	}
 
-	err = ae.GetHandlers().Identity.CollectAuthenticators(ret.Id, func(entity model.BaseModelEntity) error {
-		authenticatorModel, ok := entity.(*model.Authenticator)
-
-		if !ok {
-			return fmt.Errorf("entity is not an enrollment \"%s\"", entity.GetId())
-		}
-
+	err = ae.GetHandlers().Identity.CollectAuthenticators(ret.Id, func(authenticator *model.Authenticator) error {
 		var err error
-		ret.Authenticators[authenticatorModel.Method], err = MapToIdentityAuthenticatorApiList(ae, authenticatorModel)
-
+		ret.Authenticators[authenticator.Method], err = MapToIdentityAuthenticatorApiList(ae, authenticator)
 		if err != nil {
 			return err
 		}
-
 		return nil
 	})
 

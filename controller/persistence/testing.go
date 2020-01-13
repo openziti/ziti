@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -228,13 +229,14 @@ func (ctx *TestContext) getStoreForEntity(entity boltz.BaseEntity) (boltz.CrudSt
 	return nil, errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
 }
 
-func (ctx *TestContext) validateBaseline(entity BaseEdgeEntity, loaded BaseEdgeEntity) {
-	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		store := ctx.stores.getStoreForEntity(entity)
-		if store == nil {
-			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
-		}
+func (ctx *TestContext) validateBaseline(entity BaseEdgeEntity) {
+	store := ctx.stores.getStoreForEntity(entity)
+	ctx.NotNil(store, "no store for entity of type '%v'", entity.GetEntityType())
 
+	loaded, ok := store.NewStoreEntity().(BaseEdgeEntity)
+	ctx.True(ok, "store entity type does not implement BaseEntity: %v", reflect.TypeOf(store.NewStoreEntity()))
+
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		found, err := store.BaseLoadOneById(tx, entity.GetId(), loaded)
 		ctx.NoError(err)
 		ctx.Equal(true, found)
@@ -245,6 +247,38 @@ func (ctx *TestContext) validateBaseline(entity BaseEdgeEntity, loaded BaseEdgeE
 		ctx.True(loaded.GetCreatedAt().Equal(loaded.GetUpdatedAt()))
 		ctx.True(loaded.GetCreatedAt().Equal(ctx.ReferenceTime) || loaded.GetCreatedAt().After(ctx.ReferenceTime))
 		ctx.True(loaded.GetCreatedAt().Equal(now) || loaded.GetCreatedAt().Before(now))
+
+		return nil
+	})
+	ctx.NoError(err)
+
+	entity.setCreateAt(loaded.GetCreatedAt())
+	entity.setUpdatedAt(loaded.GetUpdatedAt())
+	if entity.GetTags() == nil {
+		entity.setTags(map[string]interface{}{})
+	}
+
+	ctx.True(cmp.Equal(entity, loaded), cmp.Diff(entity, loaded))
+}
+
+func (ctx *TestContext) validateUpdated(entity BaseEdgeEntity) {
+	store := ctx.stores.getStoreForEntity(entity)
+	ctx.NotNil(store, "no store for entity of type '%v'", entity.GetEntityType())
+
+	loaded, ok := store.NewStoreEntity().(BaseEdgeEntity)
+	ctx.True(ok, "store entity type does not implement BaseEntity: %v", reflect.TypeOf(store.NewStoreEntity()))
+
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		found, err := store.BaseLoadOneById(tx, entity.GetId(), loaded)
+		ctx.NoError(err)
+		ctx.Equal(true, found)
+
+		now := time.Now()
+		ctx.Equal(entity.GetId(), loaded.GetId())
+		ctx.Equal(entity.GetEntityType(), loaded.GetEntityType())
+		ctx.Equal(entity.GetCreatedAt(), loaded.GetCreatedAt())
+		ctx.True(loaded.GetCreatedAt().Before(loaded.GetUpdatedAt()))
+		ctx.True(loaded.GetUpdatedAt().Equal(now) || loaded.GetUpdatedAt().Before(now))
 
 		return nil
 	})
@@ -295,6 +329,7 @@ func (ctx *TestContext) cleanupAll() {
 		ctx.stores.Identity,
 		ctx.stores.EdgeRouter,
 		ctx.stores.Cluster,
+		ctx.stores.Config,
 	}
 	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		mutateContext := boltz.NewMutateContext(tx)

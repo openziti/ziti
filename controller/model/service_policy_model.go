@@ -67,7 +67,7 @@ func (entity *ServicePolicy) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler)
 func (entity *ServicePolicy) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model cluster", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model service policy", reflect.TypeOf(boltEntity))
 	}
 
 	policyType := "Invalid"

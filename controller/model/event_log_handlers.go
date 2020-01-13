@@ -16,10 +16,6 @@
 
 package model
 
-import (
-	"go.etcd.io/bbolt"
-)
-
 func NewEventLogHandler(env Env) *EventLogHandler {
 	handler := &EventLogHandler{
 		baseHandler: baseHandler{
@@ -49,30 +45,4 @@ func (handler *EventLogHandler) Read(id string) (*EventLog, error) {
 		return nil, err
 	}
 	return modelEntity, nil
-}
-
-func (handler *EventLogHandler) readInTx(tx *bbolt.Tx, id string) (*EventLog, error) {
-	modelEntity := &EventLog{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-type EventLogListResult struct {
-	handler   *EventLogHandler
-	EventLogs []*EventLog
-	QueryMetaData
-}
-
-func (result *EventLogListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.EventLogs = append(result.EventLogs, entity)
-	}
-	return nil
 }

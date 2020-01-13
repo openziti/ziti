@@ -82,9 +82,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	service := ctx.requireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
 	ctx.requireCreate(session)
-
-	loadedSession := &Session{}
-	ctx.validateBaseline(session, loadedSession)
+	ctx.validateBaseline(session)
 
 	sessionIds := ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
@@ -97,9 +95,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	session2 := NewSession(apiSession.Id, service.Id)
 	session2.Tags = ctx.createTags()
 	ctx.requireCreate(session2)
-
-	loadedSession2 := &Session{}
-	ctx.validateBaseline(session2, loadedSession2)
+	ctx.validateBaseline(session2)
 
 	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(2, len(sessionIds))

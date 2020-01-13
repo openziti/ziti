@@ -85,17 +85,13 @@ func ValidateEntityList(tx *bbolt.Tx, store boltz.ListStore, field string, ids [
 	}
 
 	query := persistence.ToInFilter(ids...) + " limit none"
-	foundKeys, _, err := store.QueryIds(tx, query)
+	foundIds, _, err := store.QueryIds(tx, query)
 
 	if err != nil {
 		return err
 	}
 
-	if len(ids) != len(foundKeys) {
-		var foundIds []string
-		for _, key := range foundKeys {
-			foundIds = append(foundIds, string(key))
-		}
+	if len(ids) != len(foundIds) {
 		invalidIds := stringz.Difference(ids, foundIds)
 		return NewFieldError(fmt.Sprintf("%v(s) not found", store.GetEntityType()), field, invalidIds)
 	}

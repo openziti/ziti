@@ -68,6 +68,23 @@ func (j JsonFields) ConcatNestedNames() JsonFields {
 	return j
 }
 
+func (j JsonFields) FilterMaps(mapNames ...string) JsonFields {
+	nameMap := map[string]string{}
+	for _, name := range mapNames {
+		nameMap[name] = name + "."
+	}
+	for key := range j {
+		for name, dotName := range nameMap {
+			if strings.HasPrefix(key, dotName) {
+				delete(j, key)
+				j[name] = true
+				break
+			}
+		}
+	}
+	return j
+}
+
 func getFields(body []byte) (JsonFields, error) {
 	jsonMap := map[string]interface{}{}
 	err := json.Unmarshal(body, &jsonMap)
@@ -83,7 +100,7 @@ func getFields(body []byte) (JsonFields, error) {
 
 func getJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
 	for k, v := range m {
-		name := strings.Title(k)
+		name := k
 		if subMap, ok := v.(map[string]interface{}); ok {
 			getJsonFields(prefix+name+".", subMap, result)
 		} else {

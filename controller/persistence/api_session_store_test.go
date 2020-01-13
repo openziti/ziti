@@ -72,8 +72,7 @@ func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
 	apiSession := NewApiSession(identity.Id)
 	ctx.requireCreate(apiSession)
 
-	loadedApiSession := &ApiSession{}
-	ctx.validateBaseline(apiSession, loadedApiSession)
+	ctx.validateBaseline(apiSession)
 
 	apiSessionIds := ctx.getRelatedIds(identity, FieldIdentityApiSessions)
 	ctx.EqualValues(1, len(apiSessionIds))
@@ -83,8 +82,7 @@ func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
 	apiSession2.Tags = ctx.createTags()
 	ctx.requireCreate(apiSession2)
 
-	loadedApiSession2 := &ApiSession{}
-	ctx.validateBaseline(apiSession2, loadedApiSession2)
+	ctx.validateBaseline(apiSession2)
 
 	apiSessionIds = ctx.getRelatedIds(identity, FieldIdentityApiSessions)
 	ctx.EqualValues(2, len(apiSessionIds))

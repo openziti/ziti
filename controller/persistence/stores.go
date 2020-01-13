@@ -29,6 +29,7 @@ type Stores struct {
 	Appwan           AppwanStore
 	Ca               CaStore
 	Cluster          ClusterStore
+	Config           ConfigStore
 	EdgeRouter       EdgeRouterStore
 	EdgeRouterPolicy EdgeRouterPolicyStore
 	EdgeService      EdgeServiceStore
@@ -37,7 +38,6 @@ type Stores struct {
 	Identity         IdentityStore
 	IdentityType     IdentityTypeStore
 	Session          SessionStore
-	ServiceConfig    ServiceConfigsStore
 	ServicePolicy    ServicePolicyStore
 	Enrollment       EnrollmentStore
 	Authenticator    AuthenticatorStore
@@ -61,6 +61,7 @@ type stores struct {
 	appwan           *appwanStoreImpl
 	ca               *caStoreImpl
 	cluster          *clusterStoreImpl
+	config          *configStoreImpl
 	edgeRouter       *edgeRouterStoreImpl
 	edgeRouterPolicy *edgeRouterPolicyStoreImpl
 	edgeService      *edgeServiceStoreImpl
@@ -68,7 +69,6 @@ type stores struct {
 	geoRegion        *geoRegionStoreImpl
 	identity         *identityStoreImpl
 	identityType     *IdentityTypeStoreImpl
-	serviceConfig    *serviceConfigsStoreImpl
 	servicePolicy    *servicePolicyStoreImpl
 	session          *sessionStoreImpl
 	enrollment       *enrollmentStoreImpl
@@ -86,6 +86,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.appwan = newAppwanStore(internalStores)
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.cluster = newClusterStore(internalStores)
+	internalStores.config = newConfigsStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetServiceStore())
@@ -95,7 +96,6 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.identityType = newIdentityTypeStore(internalStores)
 	internalStores.enrollment = newEnrollmentStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
-	internalStores.serviceConfig = newServiceConfigsStore(internalStores)
 	internalStores.servicePolicy = newServicePolicyStore(internalStores)
 	internalStores.session = newSessionStore(internalStores)
 
@@ -106,6 +106,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Appwan:           internalStores.appwan,
 		Ca:               internalStores.ca,
 		Cluster:          internalStores.cluster,
+		Config:           internalStores.config,
 		EdgeRouter:       internalStores.edgeRouter,
 		EdgeRouterPolicy: internalStores.edgeRouterPolicy,
 		EdgeService:      internalStores.edgeService,
@@ -113,7 +114,6 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		GeoRegion:        internalStores.geoRegion,
 		Identity:         internalStores.identity,
 		IdentityType:     internalStores.identityType,
-		ServiceConfig:    internalStores.serviceConfig,
 		ServicePolicy:    internalStores.servicePolicy,
 		Session:          internalStores.session,
 		Authenticator:    internalStores.authenticator,
@@ -126,6 +126,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		internalStores.appwan,
 		internalStores.ca,
 		internalStores.cluster,
+		internalStores.config,
 		internalStores.edgeRouter,
 		internalStores.edgeRouterPolicy,
 		internalStores.edgeService,
@@ -134,7 +135,6 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		internalStores.identity,
 		internalStores.identityType,
 		internalStores.session,
-		internalStores.serviceConfig,
 		internalStores.servicePolicy,
 	}
 

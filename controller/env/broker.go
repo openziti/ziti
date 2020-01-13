@@ -24,15 +24,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/common/version"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -189,19 +185,6 @@ func (b *Broker) AddEdgeRouter(ch channel2.Channel, edgeRouter *model.EdgeRouter
 	pfxlog.Logger().Infof("edge router connection finalized and synchronized [%s] [%s]", edgeRouter.Id, edgeRouter.Name)
 }
 
-func (b *Broker) getEventDetails(args []interface{}) *migration.CrudEventDetails {
-	if args != nil && args[0] != nil {
-		if ed, ok := args[0].(*migration.CrudEventDetails); ok {
-			return ed
-		}
-	} else {
-		log := pfxlog.Logger()
-		log.Warn("event fired without the expected CrudEventDetails pointer as args[0]")
-	}
-
-	return nil
-}
-
 func (b *Broker) apiSessionCreateEventHandler(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {
@@ -341,65 +324,6 @@ func (b *Broker) sendApiSessionDeletes(apiSession *persistence.ApiSession) {
 	channelMsg := channel2.NewMessage(ApiSessionRemovedType, byteMsg)
 
 	b.sendToAllEdgeRouters(channelMsg)
-}
-
-func (b *Broker) syncIdentitiesEventHandler(eventName events.EventName, args ...interface{}) {
-	ed := b.getEventDetails(args)
-
-	if ed == nil {
-		log := pfxlog.Logger()
-		log.Error("could not cast event args to event details")
-		return
-	}
-
-	log := pfxlog.Logger()
-
-	err := b.ae.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		for _, e := range ed.Entities {
-			if eventName == migration.EventCreate || eventName == migration.EventUpdate {
-				log.Debugf("creating bolt identity to mirror gorm identity: %v", e.GetId())
-				gormIdentity, ok := e.(*migration.Identity)
-				if !ok {
-					return errors.Errorf("unable to cast event entity to Identity. id: %v, type: %v", e.GetId(), reflect.TypeOf(e))
-				}
-				identity := &persistence.Identity{
-					BaseEdgeEntityImpl: persistence.BaseEdgeEntityImpl{
-						Id: gormIdentity.ID,
-						EdgeEntityFields: persistence.EdgeEntityFields{
-							CreatedAt: *gormIdentity.CreatedAt,
-							UpdatedAt: *gormIdentity.UpdatedAt,
-							Tags:      *gormIdentity.Tags,
-							Migrate:   true,
-						},
-					},
-					Name:           *gormIdentity.Name,
-					IsDefaultAdmin: *gormIdentity.IsDefaultAdmin,
-					IsAdmin:        *gormIdentity.IsAdmin,
-				}
-				if eventName == migration.EventCreate {
-					if err := b.ae.GetStores().Identity.Create(ctx, identity); err != nil {
-						return err
-					}
-				} else {
-					if err := b.ae.GetStores().Identity.Update(ctx, identity, nil); err != nil {
-						return err
-					}
-				}
-			}
-			if eventName == migration.EventDelete {
-				log.Debugf("deleting bolt identity to mirror gorm identity: %v", e.GetId())
-				if err := b.ae.GetStores().Identity.DeleteById(ctx, e.GetId()); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Errorf("Failure while syncing identities from gorm to bolt: %+v", err)
-	}
 }
 
 func (b *Broker) sessionDeleteEventHandler(args ...interface{}) {
@@ -570,19 +494,12 @@ func (b *Broker) getActiveFingerprints(sessionId string) ([]string, error) {
 }
 
 func (b *Broker) getApiSessionFingerprints(identityId string) ([]string, error) {
-	fingerprintsMap := map[string]bool{}
+	fingerprintsMap := map[string]struct{}{}
 
-	err := b.ae.Handlers.Identity.CollectAuthenticators(identityId, func(entity model.BaseModelEntity) error {
-		authenticator, ok := entity.(*model.Authenticator)
-
-		if !ok {
-			return fmt.Errorf("unexpected type %v when converting base model entity to authenticator", reflect.TypeOf(entity))
-		}
-
+	err := b.ae.Handlers.Identity.CollectAuthenticators(identityId, func(authenticator *model.Authenticator) error {
 		for _, authPrint := range authenticator.Fingerprints() {
-			fingerprintsMap[authPrint] = true
+			fingerprintsMap[authPrint] = struct{}{}
 		}
-
 		return nil
 	})
 
@@ -591,7 +508,7 @@ func (b *Broker) getApiSessionFingerprints(identityId string) ([]string, error) 
 	}
 
 	var fingerprints []string
-	for fingerprint, _ := range fingerprintsMap {
+	for fingerprint := range fingerprintsMap {
 		fingerprints = append(fingerprints, fingerprint)
 	}
 
@@ -715,11 +632,9 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fing
 						pfxlog.Logger().WithField("cause", respErr.Cause).WithField("code", respErr.Code).WithField("message", respErr.Message).
 							Error("client responded with error after serverHello")
 						return
-					} else {
-						pfxlog.Logger().WithError(err).Error("could not unmarshal error from client after serverHello")
-						return
 					}
-
+					pfxlog.Logger().WithError(err).Error("could not unmarshal error from client after serverHello")
+					return
 				}
 
 			case <-time.After(5 * time.Second):
@@ -756,11 +671,11 @@ func formatFingerprint(fp string) string {
 func insertNth(s string, n int, i string) string {
 	rs := []rune(i)
 	var buffer bytes.Buffer
-	var n_1 = n - 1
-	var l_1 = len(s) - 1
+	var nMinus1 = n - 1
+	var lenMinus1 = len(s) - 1
 	for i, cr := range s {
 		buffer.WriteRune(cr)
-		if i%n == n_1 && i != l_1 {
+		if i%n == nMinus1 && i != lenMinus1 {
 			for _, r := range rs {
 				buffer.WriteRune(r)
 			}
