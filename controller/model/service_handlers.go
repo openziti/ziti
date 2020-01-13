@@ -18,8 +18,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/pkg/errors"
 
 	"github.com/netfoundry/ziti-edge/controller/persistence"
@@ -48,7 +46,7 @@ func (handler *ServiceHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *ServiceHandler) Create(service *Service) (string, error) {
-	return handler.createEntity(service, nil)
+	return handler.createEntity(service)
 }
 
 func (handler *ServiceHandler) Read(id string) (*Service, error) {
@@ -76,7 +74,7 @@ func (handler *ServiceHandler) ReadForIdentity(id string, identityId string) (*S
 		}
 		if identity.IsAdmin {
 			service, err = handler.readInTx(tx, id)
-			if service != nil {
+			if err == nil && service != nil {
 				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
 			}
 		} else {
@@ -123,21 +121,43 @@ func (handler *ServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, iden
 }
 
 func (handler *ServiceHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
-}
-
-func (handler *ServiceHandler) IsUpdated(field string) bool {
-	return !strings.EqualFold(field, "appwans") &&
-		!strings.EqualFold(field, "HostIds") &&
-		!strings.EqualFold(field, "Clusters")
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *ServiceHandler) Update(service *Service) error {
-	return handler.updateEntity(service, nil, nil)
+	return handler.updateEntity(service, nil)
 }
 
 func (handler *ServiceHandler) Patch(service *Service, checker boltz.FieldChecker) error {
-	return handler.patchEntity(service, checker, nil)
+	return handler.patchEntity(service, checker)
+}
+
+func (handler *ServiceHandler) GetConfigMap(configTypes map[string]struct{}, service *Service) (map[string]map[string]interface{}, error) {
+	configMap := map[string]map[string]interface{}{}
+	if len(configTypes) > 0 && len(service.Configs) > 0 {
+		configStore := handler.env.GetStores().Config
+		configTypeStore := handler.env.GetStores().ConfigType
+		err := handler.GetDb().View(func(tx *bbolt.Tx) error {
+			_, wantsAll := configTypes["all"]
+			for _, configId := range service.Configs {
+				config, _ := configStore.LoadOneById(tx, configId)
+				if config != nil {
+					_, wantsConfig := configTypes[config.Type]
+					if wantsAll || wantsConfig {
+						configType, _ := configTypeStore.LoadOneById(tx, config.Type)
+						if configType != nil {
+							configMap[configType.Name] = config.Data
+						}
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return configMap, nil
 }
 
 func (handler *ServiceHandler) PublicQueryForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*ServiceListResult, error) {

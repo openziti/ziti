@@ -167,7 +167,7 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 		ids, _, err = ctx.stores.ApiSession.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(1, len(ids))
-		ctx.EqualValues(entities.apiSession2.Id, string(ids[0]))
+		ctx.EqualValues(entities.apiSession2.Id, ids[0])
 		return nil
 	})
 	ctx.NoError(err)

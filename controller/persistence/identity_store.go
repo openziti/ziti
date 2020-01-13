@@ -27,7 +27,6 @@ import (
 
 const (
 	FieldIdentityType           = "type"
-	FieldIdentityAppwans        = "appwans"
 	FieldIdentityApiSessions    = "apiSessions"
 	FieldIdentityIsDefaultAdmin = "isDefaultAdmin"
 	FieldIdentityIsAdmin        = "isAdmin"
@@ -80,7 +79,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetLinkedIds(FieldIdentityAuthenticators, entity.Authenticators)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any @all roles
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store := ctx.Store.(*identityStoreImpl)
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
@@ -89,6 +88,10 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 
 func (entity *Identity) GetEntityType() string {
 	return EntityTypeIdentities
+}
+
+func (entity *Identity) GetName() string {
+	return entity.Name
 }
 
 type IdentityStore interface {
@@ -131,7 +134,7 @@ func (store *identityStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
-	store.symbolAppwans = store.AddFkSetSymbol(FieldIdentityAppwans, store.stores.appwan)
+	store.symbolAppwans = store.AddFkSetSymbol(EntityTypeAppwans, store.stores.appwan)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
@@ -148,11 +151,11 @@ func (store *identityStoreImpl) initializeLocal() {
 func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolIdentityRoles
 	linkCollection := store.stores.edgeRouterPolicy.identityCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 
 	rolesSymbol = store.stores.servicePolicy.symbolIdentityRoles
 	linkCollection = store.stores.servicePolicy.identityCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 }
 
 func (store *identityStoreImpl) initializeLinked() {
@@ -161,6 +164,10 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentityId)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
+}
+
+func (store *identityStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *identityStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Identity, error) {

@@ -43,10 +43,10 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 	identity2 := ctx.AdminSession.requireNewIdentity(false, identityRole1, identityRole2)
 	identity3 := ctx.AdminSession.requireNewIdentity(false, identityRole2)
 
-	policy1 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("@"+edgeRouterRole1), s("@"+identityRole1))
-	policy2 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("@"+edgeRouterRole1, edgeRouter3.id), s("@"+identityRole1, identity3.id))
-	policy3 := ctx.AdminSession.requireNewEdgeRouterPolicy(s(edgeRouter2.id, edgeRouter3.id), s(identity2.id, identity3.id))
-	policy4 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("@all"), s("@all"))
+	policy1 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("#"+edgeRouterRole1), s("#"+identityRole1))
+	policy2 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("#"+edgeRouterRole1, "@"+edgeRouter3.id), s("#"+identityRole1, "@"+identity3.id))
+	policy3 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("@"+edgeRouter2.id, "@"+edgeRouter3.id), s("@"+identity2.id, "@"+identity3.id))
+	policy4 := ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
 
 	ctx.AdminSession.validateEntityWithQuery(policy1)
 	ctx.AdminSession.validateEntityWithLookup(policy2)
@@ -71,8 +71,8 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 	ctx.AdminSession.validateAssociations(identity2, "edge-router-policies", policy1, policy2, policy3, policy4)
 	ctx.AdminSession.validateAssociations(identity3, "edge-router-policies", policy2, policy3, policy4)
 
-	policy1.edgeRouterRoles = append(policy1.edgeRouterRoles, "@"+edgeRouterRole2)
-	policy1.identityRoles = s("@" + identityRole2)
+	policy1.edgeRouterRoles = append(policy1.edgeRouterRoles, "#"+edgeRouterRole2)
+	policy1.identityRoles = s("#" + identityRole2)
 	ctx.AdminSession.requireUpdateEntity(policy1)
 
 	ctx.AdminSession.validateAssociations(policy1, "edge-routers", edgeRouter2)
@@ -95,5 +95,4 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 	ctx.AdminSession.validateAssociations(identity1, "edge-router-policies", policy4)
 	ctx.AdminSession.validateAssociations(identity2, "edge-router-policies", policy1, policy3, policy4)
 	ctx.AdminSession.validateAssociations(identity3, "edge-router-policies", policy1, policy3, policy4)
-
 }

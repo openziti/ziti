@@ -16,7 +16,9 @@
 
 package apierror
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type ApiError struct {
 	Code        string `json:"code"`

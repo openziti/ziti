@@ -33,7 +33,7 @@ type Identity struct {
 	RoleAttributes []string
 }
 
-func (entity *Identity) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	edgeService := &persistence.Identity{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
@@ -46,7 +46,7 @@ func (entity *Identity) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (pe
 	return edgeService, nil
 }
 
-func (entity *Identity) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) ToBoltEntityForUpdate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.Identity{
 		Name:               entity.Name,
 		IdentityTypeId:     entity.IdentityTypeId,
@@ -59,7 +59,7 @@ func (entity *Identity) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (per
 	return entity.ToBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Identity) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Identity) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
@@ -72,5 +72,4 @@ func (entity *Identity) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.RoleAttributes = boltIdentity.RoleAttributes
 
 	return nil
-
 }

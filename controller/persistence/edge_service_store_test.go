@@ -80,7 +80,7 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 			return err
 		}
 		ctx.Equal(1, len(ids))
-		ctx.Equal(fabricService.Id, string(ids[0]))
+		ctx.Equal(fabricService.Id, ids[0])
 		return nil
 	})
 	ctx.NoError(err)
@@ -146,7 +146,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 	role := uuid.New().String()
 
 	ctx.requireCreate(apiSession1)
-	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss("@"+role))
+	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss("#"+role))
 
 	service1 := &EdgeService{
 		Service: network.Service{
@@ -201,7 +201,7 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 		ids, _, err := ctx.stores.EdgeService.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(1, len(ids))
-		ctx.Equal(entities.service1.Id, string(ids[0]))
+		ctx.Equal(entities.service1.Id, ids[0])
 
 		query = fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, entities.servicePolicy.Id)
 		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
@@ -288,7 +288,7 @@ func (ctx *TestContext) testServiceEdgeRouterRoleEvaluation(_ *testing.T) {
 	edgeRouterRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
 	var edgeRouterRoles []string
 	for _, role := range edgeRouterRoleAttrs {
-		edgeRouterRoles = append(edgeRouterRoles, "@"+role)
+		edgeRouterRoles = append(edgeRouterRoles, "#"+role)
 	}
 
 	multipleEdgeRouterList := []string{edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
@@ -385,25 +385,25 @@ func (ctx *TestContext) createServiceWithEdgeRouterLimits(edgeRouterRoles []stri
 			service.EdgeRouterRoles = []string{edgeRouterRoles[1], edgeRouterRoles[2], edgeRouterRoles[3]}
 		}
 		if i == 3 {
-			service.EdgeRouterRoles = []string{edgeRouters[0].Id}
+			service.EdgeRouterRoles = []string{"@" + edgeRouters[0].Id}
 		}
 		if i == 4 {
-			service.EdgeRouterRoles = []string{edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+			service.EdgeRouterRoles = []string{"@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
 		}
 		if i == 5 {
-			service.EdgeRouterRoles = []string{edgeRouterRoles[4], edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+			service.EdgeRouterRoles = []string{edgeRouterRoles[4], "@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
 		}
 		if i == 6 {
-			service.EdgeRouterRoles = []string{uuid.New().String()}
+			service.EdgeRouterRoles = []string{"@" + uuid.New().String()}
 		}
 		if i == 7 {
-			service.EdgeRouterRoles = []string{uuid.New().String(), edgeRouters[4].Id}
+			service.EdgeRouterRoles = []string{"@" + uuid.New().String(), "@" + edgeRouters[4].Id}
 		}
 		if i == 8 {
-			service.EdgeRouterRoles = []string{uuid.New().String(), edgeRouterRoles[5]}
+			service.EdgeRouterRoles = []string{"@" + uuid.New().String(), edgeRouterRoles[5]}
 		}
 		if i == 9 {
-			service.EdgeRouterRoles = []string{"@all"}
+			service.EdgeRouterRoles = []string{"#all"}
 		}
 
 		services = append(services, service)
@@ -422,7 +422,7 @@ func (ctx *TestContext) validateServiceEdgeRouters(edgeRouters []*EdgeRouter, se
 		relatedEdgeRouters := ctx.getRelatedIds(service, EntityTypeEdgeRouters)
 		for _, edgeRouter := range edgeRouters {
 			relatedServices := ctx.getRelatedIds(edgeRouter, EntityTypeServices)
-			shouldContain := ctx.policyShouldMatch(service.EdgeRouterRoles, edgeRouter.Id, edgeRouter.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(service.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
 			policyContains := stringz.Contains(relatedEdgeRouters, edgeRouter.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. service roles: %v, service edge routers %+v, edge router services: %+v",
 				edgeRouter.RoleAttributes, service.EdgeRouterRoles, relatedEdgeRouters, relatedServices)

@@ -52,7 +52,7 @@ func (handler *EdgeRouterHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *EdgeRouterHandler) Create(modelEntity *EdgeRouter) (string, error) {
-	return handler.createEntity(modelEntity, nil)
+	return handler.createEntity(modelEntity)
 }
 
 func (handler *EdgeRouterHandler) Read(id string) (*EdgeRouter, error) {
@@ -88,14 +88,14 @@ func (handler *EdgeRouterHandler) ReadOneByFingerprint(fingerprint string) (*Edg
 
 func (handler *EdgeRouterHandler) Update(modelEntity *EdgeRouter, restrictFields bool) error {
 	if restrictFields {
-		return handler.updateEntity(modelEntity, handler.allowedFieldsChecker, nil)
+		return handler.updateEntity(modelEntity, handler.allowedFieldsChecker)
 	}
-	return handler.updateEntity(modelEntity, nil, nil)
+	return handler.updateEntity(modelEntity, nil)
 }
 
 func (handler *EdgeRouterHandler) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler.allowedFieldsChecker, second: checker}
-	return handler.patchEntity(modelEntity, combinedChecker, nil)
+	return handler.patchEntity(modelEntity, combinedChecker)
 }
 
 func (handler *EdgeRouterHandler) beforeDelete(tx *bbolt.Tx, id string) error {
@@ -107,7 +107,7 @@ func (handler *EdgeRouterHandler) beforeDelete(tx *bbolt.Tx, id string) error {
 }
 
 func (handler *EdgeRouterHandler) Delete(id string) error {
-	return handler.deleteEntity(id, handler.beforeDelete, nil)
+	return handler.deleteEntity(id, handler.beforeDelete)
 }
 
 func (handler *EdgeRouterHandler) Query(query string) (*EdgeRouterListResult, error) {

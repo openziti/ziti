@@ -91,6 +91,22 @@ func (context *AuthContextHttp) GetDataAsMap() map[string]interface{} {
 	return data
 }
 
+func (context *AuthContextHttp) GetDataStringSlice(name string) []string {
+	var result []string
+	if data := context.GetDataAsMap(); data != nil {
+		if val, ok := data[name]; ok {
+			if slice, ok := val.([]interface{}); ok {
+				for _, elem := range slice {
+					if str, ok := elem.(string); ok {
+						result = append(result, str)
+					}
+				}
+			}
+		}
+	}
+	return result
+}
+
 func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
 	return context.Certs
 }

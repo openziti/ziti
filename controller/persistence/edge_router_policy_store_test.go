@@ -69,13 +69,13 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
 	identityRolesAttrs := []string{"foo", "bar", uuid.New().String(), "baz", uuid.New().String(), "quux"}
 	var identityRoles []string
 	for _, role := range identityRolesAttrs {
-		identityRoles = append(identityRoles, "@"+role)
+		identityRoles = append(identityRoles, "#"+role)
 	}
 
 	edgeRouterRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
 	var edgeRouterRoles []string
 	for _, role := range edgeRouterRoleAttrs {
-		edgeRouterRoles = append(edgeRouterRoles, "@"+role)
+		edgeRouterRoles = append(edgeRouterRoles, "#"+role)
 	}
 
 	multipleIdentityList := []string{identities[1].Id, identities[2].Id, identities[3].Id}
@@ -226,32 +226,32 @@ func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles 
 			policy.EdgeRouterRoles = []string{edgeRouterRoles[1], edgeRouterRoles[2], edgeRouterRoles[3]}
 		}
 		if i == 3 {
-			policy.IdentityRoles = []string{identities[0].Id}
-			policy.EdgeRouterRoles = []string{edgeRouters[0].Id}
+			policy.IdentityRoles = []string{"@" + identities[0].Id}
+			policy.EdgeRouterRoles = []string{"@" + edgeRouters[0].Id}
 		}
 		if i == 4 {
-			policy.IdentityRoles = []string{identities[1].Id, identities[2].Id, identities[3].Id}
-			policy.EdgeRouterRoles = []string{edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+			policy.IdentityRoles = []string{"@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Id}
+			policy.EdgeRouterRoles = []string{"@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
 		}
 		if i == 5 {
-			policy.IdentityRoles = []string{identityRoles[4], identities[1].Id, identities[2].Id, identities[3].Id}
-			policy.EdgeRouterRoles = []string{edgeRouterRoles[4], edgeRouters[1].Id, edgeRouters[2].Id, edgeRouters[3].Id}
+			policy.IdentityRoles = []string{identityRoles[4], "@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Id}
+			policy.EdgeRouterRoles = []string{edgeRouterRoles[4], "@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
 		}
 		if i == 6 {
-			policy.IdentityRoles = []string{uuid.New().String()}
-			policy.EdgeRouterRoles = []string{uuid.New().String()}
+			policy.IdentityRoles = []string{"@" + uuid.New().String()}
+			policy.EdgeRouterRoles = []string{"@" + uuid.New().String()}
 		}
 		if i == 7 {
-			policy.IdentityRoles = []string{uuid.New().String(), identities[4].Id}
-			policy.EdgeRouterRoles = []string{uuid.New().String(), edgeRouters[4].Id}
+			policy.IdentityRoles = []string{"@" + uuid.New().String(), "@" + identities[4].Id}
+			policy.EdgeRouterRoles = []string{"@" + uuid.New().String(), "@" + edgeRouters[4].Id}
 		}
 		if i == 8 {
-			policy.IdentityRoles = []string{uuid.New().String(), identityRoles[5]}
-			policy.EdgeRouterRoles = []string{uuid.New().String(), edgeRouterRoles[5]}
+			policy.IdentityRoles = []string{"@" + uuid.New().String(), identityRoles[5]}
+			policy.EdgeRouterRoles = []string{"@" + uuid.New().String(), edgeRouterRoles[5]}
 		}
 		if i == 9 {
-			policy.IdentityRoles = []string{"@all"}
-			policy.EdgeRouterRoles = []string{"@all"}
+			policy.IdentityRoles = []string{"#all"}
+			policy.EdgeRouterRoles = []string{"#all"}
 		}
 
 		policies = append(policies, policy)
@@ -270,7 +270,7 @@ func (ctx *TestContext) validateEdgeRouterPolicyIdentities(identities []*Identit
 		relatedIdentities := ctx.getRelatedIds(policy, EntityTypeIdentities)
 		for _, identity := range identities {
 			relatedPolicies := ctx.getRelatedIds(identity, EntityTypeEdgeRouterPolicies)
-			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity.Id, identity.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity, identity.RoleAttributes)
 
 			policyContains := stringz.Contains(relatedIdentities, identity.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", identity.RoleAttributes, policy.IdentityRoles)
@@ -292,7 +292,7 @@ func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeR
 		relatedEdgeRouters := ctx.getRelatedIds(policy, EntityTypeEdgeRouters)
 		for _, edgeRouter := range edgeRouters {
 			relatedPolicies := ctx.getRelatedIds(edgeRouter, EntityTypeEdgeRouterPolicies)
-			shouldContain := ctx.policyShouldMatch(policy.EdgeRouterRoles, edgeRouter.Id, edgeRouter.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
 			policyContains := stringz.Contains(relatedEdgeRouters, edgeRouter.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", edgeRouter.RoleAttributes, policy.EdgeRouterRoles)
 			if shouldContain {
@@ -307,10 +307,12 @@ func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeR
 	}
 }
 
-func (ctx *TestContext) policyShouldMatch(roleSet []string, entityId string, roleAttribute []string) bool {
-	roles, ids := splitRolesAndIds(roleSet)
-	isIdMatch := stringz.Contains(ids, entityId)
+func (ctx *TestContext) policyShouldMatch(roleSet []string, entity NamedEdgeEntity, roleAttribute []string) bool {
+	roles, ids, err := splitRolesAndIds(roleSet)
+	ctx.NoError(err)
+	isIdMatch := stringz.Contains(ids, entity.GetId())
+	isNameMatch := stringz.Contains(ids, entity.GetName())
 	isAllMatch := stringz.Contains(roles, "all")
 	IsRoleMatch := len(roles) > 0 && stringz.ContainsAll(roleAttribute, roles...)
-	return isIdMatch || isAllMatch || IsRoleMatch
+	return isIdMatch || isNameMatch || isAllMatch || IsRoleMatch
 }

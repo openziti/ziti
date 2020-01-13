@@ -30,6 +30,7 @@ type Stores struct {
 	Ca               CaStore
 	Cluster          ClusterStore
 	Config           ConfigStore
+	ConfigType       ConfigTypeStore
 	EdgeRouter       EdgeRouterStore
 	EdgeRouterPolicy EdgeRouterPolicyStore
 	EdgeService      EdgeServiceStore
@@ -61,7 +62,8 @@ type stores struct {
 	appwan           *appwanStoreImpl
 	ca               *caStoreImpl
 	cluster          *clusterStoreImpl
-	config          *configStoreImpl
+	config           *configStoreImpl
+	configType       *configTypeStoreImpl
 	edgeRouter       *edgeRouterStoreImpl
 	edgeRouterPolicy *edgeRouterPolicyStoreImpl
 	edgeService      *edgeServiceStoreImpl
@@ -87,6 +89,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.cluster = newClusterStore(internalStores)
 	internalStores.config = newConfigsStore(internalStores)
+	internalStores.configType = newConfigTypesStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetServiceStore())
@@ -107,6 +110,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Ca:               internalStores.ca,
 		Cluster:          internalStores.cluster,
 		Config:           internalStores.config,
+		ConfigType:       internalStores.configType,
 		EdgeRouter:       internalStores.edgeRouter,
 		EdgeRouterPolicy: internalStores.edgeRouterPolicy,
 		EdgeService:      internalStores.edgeService,
@@ -127,6 +131,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		internalStores.ca,
 		internalStores.cluster,
 		internalStores.config,
+		internalStores.configType,
 		internalStores.edgeRouter,
 		internalStores.edgeRouterPolicy,
 		internalStores.edgeService,

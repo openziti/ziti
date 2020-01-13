@@ -128,14 +128,14 @@ Optimizations
 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
 func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(ctx *boltz.PersistContext, policy *EdgeRouterPolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), policy.EdgeRouterRoles, store.stores.edgeRouter.indexRoleAttributes)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), policy.EdgeRouterRoles, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.edgeRouterCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
 	}
 }
 
 func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(ctx *boltz.PersistContext, policy *EdgeRouterPolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), policy.IdentityRoles, store.stores.identity.indexRoleAttributes)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), policy.IdentityRoles, store.stores.identity.indexRoleAttributes, store.stores.identity)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.identityCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
 	}

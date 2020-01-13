@@ -25,12 +25,14 @@ import (
 
 const (
 	FieldConfigData = "data"
+	FieldConfigType = "type"
 )
 
-func newConfig(name string, data map[string]interface{}) *Config {
+func newConfig(name string, configType string, data map[string]interface{}) *Config {
 	return &Config{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id:uuid.New().String()},
+		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
 		Name:               name,
+		Type:               configType,
 		Data:               data,
 	}
 }
@@ -38,18 +40,21 @@ func newConfig(name string, data map[string]interface{}) *Config {
 type Config struct {
 	BaseEdgeEntityImpl
 	Name string
+	Type string
 	Data map[string]interface{}
 }
 
 func (entity *Config) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Type = bucket.GetStringOrError(FieldConfigType)
 	entity.Data = bucket.GetMap(FieldConfigData)
 }
 
 func (entity *Config) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
+	ctx.SetString(FieldConfigType, entity.Type)
 	ctx.SetMap(FieldConfigData, entity.Data)
 }
 
@@ -75,7 +80,9 @@ func newConfigsStore(stores *stores) *configStoreImpl {
 type configStoreImpl struct {
 	*baseStore
 
-	indexName boltz.ReadIndex
+	indexName      boltz.ReadIndex
+	symbolType     boltz.EntitySymbol
+	symbolServices boltz.EntitySetSymbol
 }
 
 func (store *configStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -85,10 +92,13 @@ func (store *configStoreImpl) GetNameIndex() boltz.ReadIndex {
 func (store *configStoreImpl) initializeLocal() {
 	store.addBaseFields()
 	store.indexName = store.addUniqueNameField()
+	store.symbolType = store.AddFkSymbol(FieldConfigType, store.stores.configType)
 	store.AddMapSymbol(FieldConfigData, ast.NodeTypeAnyType, FieldConfigData)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
 }
 
 func (store *configStoreImpl) initializeLinked() {
+	store.AddFkIndex(store.symbolType, store.stores.configType.symbolConfigs)
 }
 
 func (store *configStoreImpl) NewStoreEntity() boltz.BaseEntity {

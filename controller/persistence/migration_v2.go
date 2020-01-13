@@ -22,8 +22,8 @@ func createEdgeRouterPoliciesV2(mtx *MigrationContext) error {
 	allPolicy := &EdgeRouterPolicy{
 		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
 		Name:               "migration policy allowing access to all edge routers and all identities",
-		IdentityRoles:      []string{"@all"},
-		EdgeRouterRoles:    []string{"@all"},
+		IdentityRoles:      []string{"#all"},
+		EdgeRouterRoles:    []string{"#all"},
 	}
 	err := mtx.Stores.EdgeRouterPolicy.Create(mtx.Ctx, allPolicy)
 	if err != nil {
@@ -67,13 +67,13 @@ func createEdgeRouterPoliciesV2(mtx *MigrationContext) error {
 			if err != nil {
 				return err
 			}
-			service.EdgeRouterRoles = append(service.EdgeRouterRoles, "@cluster-"+cluster.Name)
+			service.EdgeRouterRoles = append(service.EdgeRouterRoles, "#cluster-"+cluster.Name)
 			if err = mtx.Stores.EdgeService.Update(mtx.Ctx, service, nil); err != nil {
 				return err
 			}
 		} else if len(clusterIds) > 1 {
 			for _, clusterId := range clusterIds[1:] {
-				edgeRouterIds := mtx.Stores.Cluster.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), clusterId, FieldClusterEdgeRouters)
+				edgeRouterIds := mtx.Stores.Cluster.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), clusterId, EntityTypeEdgeRouters)
 				service.EdgeRouterRoles = append(service.EdgeRouterRoles, edgeRouterIds...)
 				if err = mtx.Stores.EdgeService.Update(mtx.Ctx, service, nil); err != nil {
 					return err

@@ -125,7 +125,7 @@ func (handler *EnrollmentHandler) ReplaceWithAuthenticator(enrollmentId string, 
 			return err
 		}
 
-		_, err = handler.env.GetHandlers().Authenticator.createEntityInTx(ctx, authenticator, nil)
+		_, err = handler.env.GetHandlers().Authenticator.createEntityInTx(ctx, authenticator)
 		return err
 	})
 }
@@ -139,5 +139,5 @@ func (handler *EnrollmentHandler) readInTx(tx *bbolt.Tx, id string) (*Enrollment
 }
 
 func (handler *EnrollmentHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }

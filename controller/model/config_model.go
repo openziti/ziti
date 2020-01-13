@@ -27,23 +27,43 @@ import (
 type Config struct {
 	BaseModelEntityImpl
 	Name string
+	Type string
 	Data map[string]interface{}
 }
 
-func (entity *Config) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Config) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	if entity.Type == "" {
+		return nil, NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
+	}
+	return entity.ToBoltEntityForUpdate(tx, handler)
+}
+
+func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	if entity.Type != "" {
+		providedType := entity.Type
+		configTypeStore := handler.GetEnv().GetStores().ConfigType
+		if !configTypeStore.IsEntityPresent(tx, entity.Type) {
+			id := configTypeStore.GetNameIndex().Read(tx, []byte(entity.Type))
+			if id != nil {
+				entity.Type = string(id)
+			}
+
+			if !configTypeStore.IsEntityPresent(tx, entity.Type) {
+				return nil, NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
+			}
+		}
+	}
+
 	return &persistence.Config{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
+		Type:               entity.Type,
 		Data:               entity.Data,
 	}, nil
 }
 
-func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
-}
-
 func (entity *Config) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+	return entity.ToBoltEntityForUpdate(tx, handler)
 }
 
 func (entity *Config) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
@@ -54,6 +74,7 @@ func (entity *Config) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnti
 
 	entity.fillCommon(boltConfig)
 	entity.Name = boltConfig.Name
+	entity.Type = boltConfig.Type
 	entity.Data = boltConfig.Data
 	return nil
 }

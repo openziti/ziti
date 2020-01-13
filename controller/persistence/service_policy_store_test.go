@@ -69,13 +69,13 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	identityRolesAttrs := []string{"foo", "bar", uuid.New().String(), "baz", uuid.New().String(), "quux"}
 	var identityRoles []string
 	for _, role := range identityRolesAttrs {
-		identityRoles = append(identityRoles, "@"+role)
+		identityRoles = append(identityRoles, "#"+role)
 	}
 
 	serviceRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
 	var serviceRoles []string
 	for _, role := range serviceRoleAttrs {
-		serviceRoles = append(serviceRoles, "@"+role)
+		serviceRoles = append(serviceRoles, "#"+role)
 	}
 
 	multipleIdentityList := []string{identities[1].Id, identities[2].Id, identities[3].Id}
@@ -226,32 +226,32 @@ func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []stri
 			policy.ServiceRoles = []string{serviceRoles[1], serviceRoles[2], serviceRoles[3]}
 		}
 		if i == 3 {
-			policy.IdentityRoles = []string{identities[0].Id}
-			policy.ServiceRoles = []string{services[0].Id}
+			policy.IdentityRoles = []string{"@" + identities[0].Id}
+			policy.ServiceRoles = []string{"@" + services[0].Id}
 		}
 		if i == 4 {
-			policy.IdentityRoles = []string{identities[1].Id, identities[2].Id, identities[3].Id}
-			policy.ServiceRoles = []string{services[1].Id, services[2].Id, services[3].Id}
+			policy.IdentityRoles = []string{"@" + identities[1].Id, "@" + identities[2].Name, "@" + identities[3].Id}
+			policy.ServiceRoles = []string{"@" + services[1].Id, "@" + services[2].Name, "@" + services[3].Id}
 		}
 		if i == 5 {
-			policy.IdentityRoles = []string{identityRoles[4], identities[1].Id, identities[2].Id, identities[3].Id}
-			policy.ServiceRoles = []string{serviceRoles[4], services[1].Id, services[2].Id, services[3].Id}
+			policy.IdentityRoles = []string{identityRoles[4], "@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Name}
+			policy.ServiceRoles = []string{serviceRoles[4], "@" + services[1].Id, "@" + services[2].Id, "@" + services[3].Name}
 		}
 		if i == 6 {
-			policy.IdentityRoles = []string{uuid.New().String()}
-			policy.ServiceRoles = []string{uuid.New().String()}
+			policy.IdentityRoles = []string{"@" + uuid.New().String()}
+			policy.ServiceRoles = []string{"@" + uuid.New().String()}
 		}
 		if i == 7 {
-			policy.IdentityRoles = []string{uuid.New().String(), identities[4].Id}
-			policy.ServiceRoles = []string{uuid.New().String(), services[4].Id}
+			policy.IdentityRoles = []string{"@" + uuid.New().String(), "@" + identities[4].Id}
+			policy.ServiceRoles = []string{"@" + uuid.New().String(), "@" + services[4].Id}
 		}
 		if i == 8 {
-			policy.IdentityRoles = []string{uuid.New().String(), identityRoles[5]}
-			policy.ServiceRoles = []string{uuid.New().String(), serviceRoles[5]}
+			policy.IdentityRoles = []string{"@" + uuid.New().String(), identityRoles[5]}
+			policy.ServiceRoles = []string{"@" + uuid.New().String(), serviceRoles[5]}
 		}
 		if i == 9 {
-			policy.IdentityRoles = []string{"@all"}
-			policy.ServiceRoles = []string{"@all"}
+			policy.IdentityRoles = []string{"#all"}
+			policy.ServiceRoles = []string{"#all"}
 		}
 
 		policies = append(policies, policy)
@@ -270,7 +270,7 @@ func (ctx *TestContext) validateServicePolicyIdentities(identities []*Identity, 
 		relatedIdentities := ctx.getRelatedIds(policy, EntityTypeIdentities)
 		for _, identity := range identities {
 			relatedPolicies := ctx.getRelatedIds(identity, EntityTypeServicePolicies)
-			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity.Id, identity.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity, identity.RoleAttributes)
 
 			policyContains := stringz.Contains(relatedIdentities, identity.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", identity.RoleAttributes, policy.IdentityRoles)
@@ -292,7 +292,7 @@ func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, p
 		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)
 		for _, service := range services {
 			relatedPolicies := ctx.getRelatedIds(service, EntityTypeServicePolicies)
-			shouldContain := ctx.policyShouldMatch(policy.ServiceRoles, service.Id, service.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.ServiceRoles, service, service.RoleAttributes)
 			policyContains := stringz.Contains(relatedServices, service.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", service.RoleAttributes, policy.ServiceRoles)
 			if shouldContain {

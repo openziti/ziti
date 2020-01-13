@@ -17,6 +17,7 @@
 package model
 
 import (
+	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"reflect"
 	"time"
 
@@ -59,12 +60,10 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	}
 
 	if !entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
-		// TODO: Forbidden, instead?
 		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	if entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
-		// TODO: Forbidden, instead?
 		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
@@ -74,13 +73,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 	if result.Count < 1 {
-		return nil, errors.New("no edge routers available")
-		// TODO: translate to model error
-		//return nil, &response.ApiError{
-		//	Code:           response.NoEdgeRoutersAvailableCode,
-		//	Message:        response.NoEdgeRoutersAvailableMessage,
-		//	HttpStatusCode: http.StatusConflict,
-		//}
+		return nil, apierror.NewNoEdgeRoutersAvailable()
 	}
 
 	boltEntity := &persistence.Session{

@@ -41,6 +41,7 @@ type ServiceApiCreate struct {
 	EndpointAddress *string                `json:"endpointAddress"`
 	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
+	Configs         []string               `json:"configs"`
 }
 
 // DnsHostname is used by deepcopy to copy the dnsHostname value into the target struct
@@ -69,6 +70,7 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
+	result.Configs = i.Configs
 	return result
 }
 
@@ -80,6 +82,7 @@ type ServiceApiUpdate struct {
 	EndpointAddress *string                `json:"endpointAddress"`
 	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
+	Configs         []string               `json:"configs"`
 }
 
 func (i *ServiceApiUpdate) DnsHostname() string {
@@ -107,6 +110,7 @@ func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
 	result.Tags = i.Tags
 	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
+	result.Configs = i.Configs
 	return result
 }
 
@@ -129,13 +133,14 @@ func NewServiceLink(sessionId string) *response.Link {
 
 type ServiceApiList struct {
 	*env.BaseApi
-	Name            *string            `json:"name"`
-	Dns             *ServiceDnsApiPost `json:"dns"`
-	EndpointAddress *string            `json:"endpointAddress"`
-	EgressRouter    *string            `json:"egressRouter"`
-	EdgeRouterRoles []string           `json:"edgeRouterRoles"`
-	RoleAttributes  []string           `json:"roleAttributes"`
-	Permissions     []string           `json:"permissions"`
+	Name            *string                           `json:"name"`
+	Dns             *ServiceDnsApiPost                `json:"dns"`
+	EndpointAddress *string                           `json:"endpointAddress"`
+	EgressRouter    *string                           `json:"egressRouter"`
+	EdgeRouterRoles []string                          `json:"edgeRouterRoles"`
+	RoleAttributes  []string                          `json:"roleAttributes"`
+	Permissions     []string                          `json:"permissions"`
+	Config          map[string]map[string]interface{} `json:"config"`
 }
 
 func (e *ServiceApiList) GetSelfLink() *response.Link {
@@ -205,7 +210,12 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 	return al, nil
 }
 
-func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
+func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
+	configMap, err := ae.Handlers.Service.GetConfigMap(rc.ApiSession.ConfigTypes, i)
+	if err != nil {
+		return nil, err
+	}
+
 	ret := &ServiceApiList{
 		BaseApi:         env.FromBaseModelEntity(i),
 		Name:            &i.Name,
@@ -218,6 +228,7 @@ func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Ser
 		RoleAttributes:  i.RoleAttributes,
 		Permissions:     i.Permissions,
 		EdgeRouterRoles: i.EdgeRouterRoles,
+		Config:          configMap,
 	}
 	ret.PopulateLinks()
 	return ret, nil

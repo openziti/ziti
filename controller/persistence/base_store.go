@@ -106,9 +106,13 @@ func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.Ba
 	return nil
 }
 
-func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, roleSet []string, index boltz.SetReadIndex) ([]string, error) {
+func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, roleSet []string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
 	entityStore := index.GetSymbol().GetStore()
-	roles, ids := splitRolesAndIds(roleSet)
+	roles, ids, err := splitRolesAndIds(roleSet)
+	if err != nil {
+		return nil, err
+	}
+	ConvertNamesToIds(targetStore, tx, ids)
 	if stringz.Contains(roles, "all") {
 		ids, _, err := entityStore.QueryIds(tx, "true")
 		if err != nil {
@@ -125,7 +129,17 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, roleSet []string, i
 	return roleIds, nil
 }
 
-func (store *baseStore) UpdateRelatedRoles(tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol, linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func ConvertNamesToIds(store NameIndexedStore, tx *bbolt.Tx, ids []string) {
+	nameIndex := store.GetNameIndex()
+	for idx, val := range ids {
+		id := nameIndex.Read(tx, []byte(val))
+		if id != nil {
+			ids[idx] = string(id)
+		}
+	}
+}
+
+func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol, linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ids, _, err := roleSymbol.GetStore().QueryIds(tx, "true")
 	holder.SetError(err)
 
@@ -133,8 +147,12 @@ func (store *baseStore) UpdateRelatedRoles(tx *bbolt.Tx, entityId string, roleSy
 
 	for _, id := range ids {
 		roleSet := roleSymbol.EvalStringList(tx, []byte(id))
-		roles, ids := splitRolesAndIds(roleSet)
-
+		roles, ids, err := splitRolesAndIds(roleSet)
+		if err != nil {
+			holder.SetError(err)
+			return
+		}
+		ConvertNamesToIds(store, tx, ids)
 		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") || (len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...)) {
 			err = linkCollection.AddLinks(tx, id, entityId)
 		} else {
@@ -152,4 +170,9 @@ func getSingularEntityType(entityType string) string {
 		return strings.TrimSuffix(entityType, "ies") + "y"
 	}
 	return strings.TrimSuffix(entityType, "s")
+}
+
+type NameIndexedStore interface {
+	Store
+	GetNameIndex() boltz.ReadIndex
 }

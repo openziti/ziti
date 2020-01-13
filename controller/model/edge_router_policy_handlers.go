@@ -42,7 +42,7 @@ func (handler *EdgeRouterPolicyHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *EdgeRouterPolicyHandler) Create(edgeRouterPolicy *EdgeRouterPolicy) (string, error) {
-	return handler.createEntity(edgeRouterPolicy, nil)
+	return handler.createEntity(edgeRouterPolicy)
 }
 
 func (handler *EdgeRouterPolicyHandler) Read(id string) (*EdgeRouterPolicy, error) {
@@ -62,15 +62,15 @@ func (handler *EdgeRouterPolicyHandler) readInTx(tx *bbolt.Tx, id string) (*Edge
 }
 
 func (handler *EdgeRouterPolicyHandler) Update(edgeRouterPolicy *EdgeRouterPolicy) error {
-	return handler.updateEntity(edgeRouterPolicy, nil, nil)
+	return handler.updateEntity(edgeRouterPolicy, nil)
 }
 
 func (handler *EdgeRouterPolicyHandler) Patch(edgeRouterPolicy *EdgeRouterPolicy, checker boltz.FieldChecker) error {
-	return handler.patchEntity(edgeRouterPolicy, checker, nil)
+	return handler.patchEntity(edgeRouterPolicy, checker)
 }
 
 func (handler *EdgeRouterPolicyHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *EdgeRouterPolicyHandler) List(queryOptions *QueryOptions) (*EdgeRouterPolicyListResult, error) {

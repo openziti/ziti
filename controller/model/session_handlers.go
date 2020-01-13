@@ -43,11 +43,12 @@ func (handler *SessionHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *SessionHandler) Create(entity *Session) (string, error) {
-	return handler.createEntity(entity, nil)
+	return handler.createEntity(entity)
 }
 
 func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*Session, error) {
 	identity, err := handler.GetEnv().GetHandlers().Identity.Read(identityId)
+
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +91,11 @@ func (handler *SessionHandler) DeleteForIdentity(id, identityId string) error {
 	if session == nil {
 		return util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
 	}
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *SessionHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*SessionListResult, error) {
@@ -102,7 +103,6 @@ func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity,
 		return handler.parseAndListSessions(queryOptions)
 	}
 	query := queryOptions.Predicate
-	// TODO: Convert model errors to appropriate api errors
 	if query != "" {
 		query = "(" + query + ") and "
 	}

@@ -17,27 +17,14 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
-const (
-	FieldClusterEdgeRouters = "edgeRouters"
-	FieldClusterServices    = "services"
-)
-
 type Cluster struct {
 	BaseEdgeEntityImpl
 	Name string
-}
-
-func NewCluster(name string) *Cluster {
-	return &Cluster{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
-	}
 }
 
 func (entity *Cluster) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -59,8 +46,6 @@ func (entity *Cluster) GetEntityType() string {
 type ClusterStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*Cluster, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Cluster, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Cluster, error)
 }
 
 func newClusterStore(stores *stores) *clusterStoreImpl {
@@ -87,8 +72,8 @@ func (store *clusterStoreImpl) initializeLocal() {
 	store.addBaseFields()
 
 	store.indexName = store.addUniqueNameField()
-	store.symbolEdgeRouters = store.AddFkSetSymbol(FieldClusterEdgeRouters, store.stores.edgeRouter)
-	store.symbolServices = store.AddFkSetSymbol(FieldClusterServices, store.stores.edgeService)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)
+	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
 }
 
 func (store *clusterStoreImpl) initializeLinked() {
@@ -103,29 +88,13 @@ func (store *clusterStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Cluster, e
 	return entity, nil
 }
 
-func (store *clusterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Cluster, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *clusterStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Cluster, error) {
-	entity := &Cluster{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
 func (store *clusterStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	if bucket := store.GetEntityBucket(ctx.Tx(), []byte(id)); bucket != nil {
-		if !bucket.IsStringListEmpty(FieldClusterEdgeRouters) {
+		if !bucket.IsStringListEmpty(EntityTypeEdgeRouters) {
 			return errors.Errorf("cannot delete cluster %v, which has edge routers assigned to it", id)
 		}
 
-		if !bucket.IsStringListEmpty(FieldClusterServices) {
+		if !bucket.IsStringListEmpty(EntityTypeServices) {
 			return errors.Errorf("cannot delete cluster %v, which has services assigned to it", id)
 		}
 	}

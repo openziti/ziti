@@ -37,7 +37,7 @@ const (
 
 type RequestContext struct {
 	Id                uuid.UUID
-	Session           *model.ApiSession
+	ApiSession        *model.ApiSession
 	Identity          *model.Identity
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter

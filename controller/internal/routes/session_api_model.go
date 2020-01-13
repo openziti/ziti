@@ -42,7 +42,7 @@ func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
 		},
 		Token:        uuid.New().String(),
 		ServiceId:    *i.ServiceId,
-		ApiSessionId: rc.Session.Id,
+		ApiSessionId: rc.ApiSession.Id,
 		IsHosting:    i.Hosting,
 	}
 }

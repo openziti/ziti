@@ -72,7 +72,7 @@ func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) 
 
 	identityModel.IdentityTypeId = identityType.Id
 
-	return handler.createEntity(identityModel, nil)
+	return handler.createEntity(identityModel)
 }
 
 func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
@@ -116,7 +116,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 				return err
 			}
 
-			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel, nil)
+			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel)
 
 			if err != nil {
 				return err
@@ -150,27 +150,28 @@ func (handler *IdentityHandler) Update(identity *Identity) error {
 
 	identity.IdentityTypeId = identityType.Id
 
-	return handler.updateEntity(identity, handler, nil)
+	return handler.updateEntity(identity, handler)
 }
 
 func (handler *IdentityHandler) Patch(identity *Identity, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+	if checker.IsUpdated("type") {
+		identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+		if err != nil && !util.IsErrNotFoundErr(err) {
+			return err
+		}
 
-	if err != nil && !util.IsErrNotFoundErr(err) {
-		return err
+		if identityType == nil {
+			apiErr := apierror.NewNotFound()
+			apiErr.Cause = NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
+			apiErr.AppendCause = true
+			return apiErr
+		}
+
+		identity.IdentityTypeId = identityType.Id
 	}
 
-	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
-		apiErr.AppendCause = true
-		return apiErr
-	}
-
-	identity.IdentityTypeId = identityType.Id
-
-	return handler.patchEntity(identity, combinedChecker, nil)
+	return handler.patchEntity(identity, combinedChecker)
 }
 
 func (handler *IdentityHandler) Delete(id string) error {
@@ -184,7 +185,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 		return apierror.NewEntityCanNotBeDeleted()
 	}
 
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler IdentityHandler) IsUpdated(field string) bool {

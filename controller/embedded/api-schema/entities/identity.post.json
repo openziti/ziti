@@ -40,9 +40,9 @@
       "type": "boolean",
       "default": false
     },
-    "roleAttributes" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "roleAttributes": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

@@ -27,6 +27,7 @@ const (
 	EntityTypeCas                = "cas"
 	EntityTypeClusters           = "clusters"
 	EntityTypeConfigs            = "configs"
+	EntityTypeConfigTypes        = "configTypes"
 	EntityTypeEdgeRouters        = "edgeRouters"
 	EntityTypeEdgeRouterPolicies = "edgeRouterPolicies"
 	EntityTypeEventLogs          = "eventLogs"
@@ -58,6 +59,11 @@ type BaseEdgeEntity interface {
 	setCreateAt(createdAt time.Time)
 	setUpdatedAt(updatedAt time.Time)
 	setTags(tags map[string]interface{})
+}
+
+type NamedEdgeEntity interface {
+	BaseEdgeEntity
+	GetName() string
 }
 
 func NewBaseEdgeEntity(id string, tags map[string]interface{}) *BaseEdgeEntityImpl {

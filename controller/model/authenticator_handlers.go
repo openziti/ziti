@@ -96,7 +96,7 @@ func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 }
 
 func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
-	return handler.createEntity(authenticator, nil)
+	return handler.createEntity(authenticator)
 }
 
 func (handler AuthenticatorHandler) ReadByUsername(username string) (*Authenticator, error) {
@@ -136,5 +136,5 @@ func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Auth
 }
 
 func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
-	return handler.updateEntity(authenticator, handler, nil)
+	return handler.updateEntity(authenticator, handler)
 }

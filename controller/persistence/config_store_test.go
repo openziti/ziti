@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"go.etcd.io/bbolt"
 	"testing"
@@ -35,14 +36,32 @@ func Test_ConfigStore(t *testing.T) {
 func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.cleanupAll()
 
-	config := newConfig(uuid.New().String(), map[string]interface{}{
-		"dnsHostname" : "ssh.yourcompany.com",
-		"port" : int64(22),
+	configType := newConfigType(uuid.New().String())
+	ctx.requireCreate(configType)
+
+	config := newConfig(uuid.New().String(), "", map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
+	})
+	err := ctx.create(config)
+	ctx.EqualError(err, "index on configs.type does not allow null or empty values")
+
+	invalidId := uuid.New().String()
+	config = newConfig(uuid.New().String(), invalidId, map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
+	})
+	err = ctx.create(config)
+	ctx.EqualError(err, fmt.Sprintf("no entity of type configTypes with id %v", invalidId))
+
+	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
 	})
 	ctx.requireCreate(config)
 	ctx.validateBaseline(config)
 
-	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		testConfig, err := ctx.stores.Config.LoadOneByName(tx, config.Name)
 		ctx.NoError(err)
 		ctx.NotNil(testConfig)
@@ -52,11 +71,11 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	config = newConfig(uuid.New().String(), map[string]interface{}{
-		"dnsHostname" : "ssh.yourcompany.com",
-		"port" : int64(22),
-		"enabled" : true,
-		"nested" : map[string]interface{}{
+	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
+		"enabled":     true,
+		"nested": map[string]interface{}{
 			"hello":    "hi",
 			"fromage?": "that's cheese",
 			"count":    1000.32,
@@ -65,19 +84,19 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.requireCreate(config)
 	ctx.validateBaseline(config)
 
-	config = newConfig(uuid.New().String(), map[string]interface{}{
-		"dnsHostname" : "ssh.yourcompany.com",
-		"port" : int64(22),
-		"enabled" : true,
-		"nested" : map[string]interface{}{
+	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
+		"enabled":     true,
+		"nested": map[string]interface{}{
 			"hello":    "hi",
 			"fromage?": "that's cheese",
 			"count":    1000.32,
-			"how" : map[string]interface{}{
-				"nested" : map[string]interface{}{
-					"can" : "it be?",
-					"beep" : int64(2),
-					"bop" : false,
+			"how": map[string]interface{}{
+				"nested": map[string]interface{}{
+					"can":  "it be?",
+					"beep": int64(2),
+					"bop":  false,
 				},
 			},
 		},
@@ -87,7 +106,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 
 	config.Data = map[string]interface{}{
 		"dnsHostname": "ssh.mycompany.com",
-		"support":        int64(22),
+		"support":     int64(22),
 	}
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
@@ -100,19 +119,22 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 func (ctx *TestContext) testConfigQuery(*testing.T) {
 	ctx.cleanupAll()
 
-	config := newConfig(uuid.New().String(), map[string]interface{}{
-		"dnsHostname" : "ssh.yourcompany.com",
-		"port" : int64(22),
-		"enabled" : true,
-		"nested" : map[string]interface{}{
+	configType := newConfigType(uuid.New().String())
+	ctx.requireCreate(configType)
+
+	config := newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
+		"dnsHostname": "ssh.yourcompany.com",
+		"port":        int64(22),
+		"enabled":     true,
+		"nested": map[string]interface{}{
 			"hello":    "hi",
 			"fromage?": "that's cheese",
 			"count":    1000.32,
-			"how" : map[string]interface{}{
-				"nested" : map[string]interface{}{
-					"can" : "it be?",
-					"beep" : int64(2),
-					"bop" : false,
+			"how": map[string]interface{}{
+				"nested": map[string]interface{}{
+					"can":  "it be?",
+					"beep": int64(2),
+					"bop":  false,
 				},
 			},
 		},

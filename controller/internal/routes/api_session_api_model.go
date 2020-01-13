@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
@@ -48,8 +49,9 @@ func NewApiSessionLink(sessionId string) *response.Link {
 
 type ApiSessionApiList struct {
 	*env.BaseApi
-	Token    *string       `json:"token"`
-	Identity *EntityApiRef `json:"identity"`
+	Token       *string       `json:"token"`
+	Identity    *EntityApiRef `json:"identity"`
+	ConfigTypes []string      `json:"configTypes"`
 }
 
 func (ApiSessionApiList) BuildSelfLink(id string) *response.Link {
@@ -101,9 +103,10 @@ func MapApiSessionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model
 
 func MapApiSessionToApiList(i *model.ApiSession) (*ApiSessionApiList, error) {
 	ret := &ApiSessionApiList{
-		BaseApi:  env.FromBaseModelEntity(i),
-		Token:    &i.Token,
-		Identity: NewIdentityEntityRef(i.Identity),
+		BaseApi:     env.FromBaseModelEntity(i),
+		Token:       &i.Token,
+		Identity:    NewIdentityEntityRef(i.Identity),
+		ConfigTypes: stringz.SetToSlice(i.ConfigTypes),
 	}
 
 	ret.PopulateLinks()

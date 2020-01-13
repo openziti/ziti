@@ -35,18 +35,18 @@ func Test_ServicePolicy(t *testing.T) {
 	identityRole1 := uuid.New().String()
 	identityRole2 := uuid.New().String()
 
-	service1 := ctx.AdminSession.requireNewService(serviceRole1)
-	service2 := ctx.AdminSession.requireNewService(serviceRole1, serviceRole2)
-	service3 := ctx.AdminSession.requireNewService()
+	service1 := ctx.AdminSession.requireNewService(s(serviceRole1), nil)
+	service2 := ctx.AdminSession.requireNewService(s(serviceRole1, serviceRole2), nil)
+	service3 := ctx.AdminSession.requireNewService(nil, nil)
 
 	identity1 := ctx.AdminSession.requireNewIdentity(false, identityRole1)
 	identity2 := ctx.AdminSession.requireNewIdentity(false, identityRole1, identityRole2)
 	identity3 := ctx.AdminSession.requireNewIdentity(false, identityRole2)
 
-	policy1 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+serviceRole1), s("@"+identityRole1))
-	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+serviceRole1, service3.id), s("@"+identityRole1, identity3.id))
-	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s(service2.id, service3.id), s(identity2.id, identity3.id))
-	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@all"), s("@all"))
+	policy1 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1))
+	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.id), s("#"+identityRole1, "@"+identity3.id))
+	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.id, "@"+service3.id), s("@"+identity2.id, "@"+identity3.id))
+	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"))
 
 	ctx.enabledJsonLogging = true
 	ctx.AdminSession.validateEntityWithQuery(policy1)
@@ -72,8 +72,8 @@ func Test_ServicePolicy(t *testing.T) {
 	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4)
 	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy2, policy3, policy4)
 
-	policy1.serviceRoles = append(policy1.serviceRoles, "@"+serviceRole2)
-	policy1.identityRoles = s("@" + identityRole2)
+	policy1.serviceRoles = append(policy1.serviceRoles, "#"+serviceRole2)
+	policy1.identityRoles = s("#" + identityRole2)
 	ctx.AdminSession.requireUpdateEntity(policy1)
 
 	ctx.AdminSession.validateAssociations(policy1, "services", service2)

@@ -1,0 +1,16 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/config-type.patch.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+  ],
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name-null"
+    },
+    "tags": {
+      "default": {},
+      "$ref": "definitions.all.json#/definitions/tags-null"
+    }
+  }
+}

@@ -96,11 +96,11 @@ func (result *BaseModelEntityListResult) collect(tx *bbolt.Tx, ids []string, que
 	return nil
 }
 
-func (handler *baseHandler) createEntity(modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
+func (handler *baseHandler) createEntity(modelEntity BaseModelEntity) (string, error) {
 	var id string
 	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		var err error
-		id, err = handler.createEntityInTx(boltz.NewMutateContext(tx), modelEntity, afterCreate)
+		id, err = handler.createEntityInTx(boltz.NewMutateContext(tx), modelEntity)
 		return err
 	})
 	if err != nil {
@@ -109,7 +109,7 @@ func (handler *baseHandler) createEntity(modelEntity BaseModelEntity, afterCreat
 	return id, nil
 }
 
-func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntity BaseModelEntity, afterCreate func() error) (string, error) {
+func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntity BaseModelEntity) (string, error) {
 	if modelEntity == nil {
 		return "", errors.Errorf("can't create %v with nil value", handler.store.GetEntityType())
 	}
@@ -127,25 +127,18 @@ func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntit
 		return "", err
 	}
 
-	if afterCreate != nil {
-		err := afterCreate()
-		if err != nil {
-			return "", err
-		}
-	}
-
 	return modelEntity.GetId(), nil
 }
 
-func (handler *baseHandler) updateEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
-	return handler.updateGeneral(modelEntity, checker, false, afterUpdate)
+func (handler *baseHandler) updateEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker) error {
+	return handler.updateGeneral(modelEntity, checker, false)
 }
 
-func (handler *baseHandler) patchEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker, afterUpdate func() error) error {
-	return handler.updateGeneral(modelEntity, checker, true, afterUpdate)
+func (handler *baseHandler) patchEntity(modelEntity BaseModelEntity, checker boltz.FieldChecker) error {
+	return handler.updateGeneral(modelEntity, checker, true)
 }
 
-func (handler *baseHandler) updateGeneral(modelEntity BaseModelEntity, checker boltz.FieldChecker, patch bool, afterUpdate func() error) error {
+func (handler *baseHandler) updateGeneral(modelEntity BaseModelEntity, checker boltz.FieldChecker, patch bool) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		existing := handler.store.NewStoreEntity()
@@ -172,10 +165,6 @@ func (handler *baseHandler) updateGeneral(modelEntity BaseModelEntity, checker b
 				pfxlog.Logger().WithError(err).Errorf("could not update %v entity", handler.store.GetEntityType())
 			}
 			return err
-		}
-
-		if afterUpdate != nil {
-			return afterUpdate()
 		}
 		return nil
 	})
@@ -225,7 +214,7 @@ func (handler *baseHandler) readEntityByQuery(query string) (BaseModelEntity, er
 	return nil, nil
 }
 
-func (handler *baseHandler) deleteEntity(id string, beforeDelete func(tx *bbolt.Tx, id string) error, afterDelete func() error) error {
+func (handler *baseHandler) deleteEntity(id string, beforeDelete func(tx *bbolt.Tx, id string) error) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		if !handler.GetStore().IsEntityPresent(tx, id) {
@@ -244,11 +233,6 @@ func (handler *baseHandler) deleteEntity(id string, beforeDelete func(tx *bbolt.
 			pfxlog.Logger().WithField("id", id).WithError(err).Error("could not delete by id")
 			return err
 		}
-
-		if afterDelete != nil {
-			return afterDelete()
-		}
-
 		return nil
 	})
 }

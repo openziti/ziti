@@ -99,7 +99,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any @all roles
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store := ctx.Store.(*edgeRouterStoreImpl)
 		store.RolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
@@ -108,6 +108,10 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 
 func (entity *EdgeRouter) GetEntityType() string {
 	return EntityTypeEdgeRouters
+}
+
+func (entity *EdgeRouter) GetName() string {
+	return entity.Name
 }
 
 type EdgeRouterStore interface {
@@ -162,18 +166,22 @@ func (store *edgeRouterStoreImpl) RolesChanged(tx *bbolt.Tx, rowId []byte, _ []b
 	// Calculate edge router policy links
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolEdgeRouterRoles
 	linkCollection := store.stores.edgeRouterPolicy.edgeRouterCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 
 	// Calculate service roles
 	rolesSymbol = store.stores.edgeService.symbolEdgeRoutersRoles
 	linkCollection = store.stores.edgeService.edgeRouterCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 }
 
 func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.AddNullableFkIndex(store.symbolClusterId, store.stores.cluster.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
+}
+
+func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *edgeRouterStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error) {

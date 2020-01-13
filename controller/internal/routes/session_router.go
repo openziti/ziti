@@ -77,7 +77,7 @@ func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.Session.IdentityId)
+		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (ir *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, ir.IdType, func(rc *response.RequestContext, id string) error {
-		return ae.Handlers.Session.DeleteForIdentity(id, rc.Session.IdentityId)
+		return ae.Handlers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId)
 	})
 }
 

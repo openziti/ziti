@@ -17,6 +17,7 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -37,10 +38,14 @@ type Service struct {
 	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	RoleAttributes  []string `json:"roleAttributes"`
 	Permissions     []string `json:"permissions"` // used on read to indicate if an identity has dial/bind permissions
+	Configs         []string `json:"configs"`
 }
 
-func (entity *Service) ToBoltEntityForCreate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	entity.Sanitize()
+	if err := entity.mapConfigTypeNamesToIds(tx, handler); err != nil {
+		return nil, err
+	}
 
 	binding := "transport"
 	if strings.HasPrefix(entity.EndpointAddress, "hosted") {
@@ -62,9 +67,40 @@ func (entity *Service) ToBoltEntityForCreate(*bbolt.Tx, Handler) (persistence.Ba
 		DnsPort:          entity.DnsPort,
 		EdgeRouterRoles:  entity.EdgeRouterRoles,
 		RoleAttributes:   entity.RoleAttributes,
+		Configs:          entity.Configs,
 	}
 
 	return edgeService, nil
+}
+
+func (entity *Service) mapConfigTypeNamesToIds(tx *bbolt.Tx, handler Handler) error {
+	typeMap := map[string]*persistence.Config{}
+	configStore := handler.GetEnv().GetStores().Config
+	for idx, val := range entity.Configs {
+		if !configStore.IsEntityPresent(tx, val) {
+			id := configStore.GetNameIndex().Read(tx, []byte(val))
+			if id == nil || !configStore.IsEntityPresent(tx, string(id)) {
+				return NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
+			}
+			entity.Configs[idx] = string(id)
+		}
+		config, _ := configStore.LoadOneById(tx, entity.Configs[idx])
+		if config == nil {
+			return NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
+		}
+		conflictConfig, found := typeMap[config.Type]
+		if found {
+			configTypeName := "<not found>"
+			if configType, _ := handler.GetEnv().GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
+				configTypeName = configType.Name
+			}
+			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
+				conflictConfig.Name, config.Name, configTypeName)
+			return NewFieldError(msg, "configs", entity.Configs)
+		}
+		typeMap[config.Type] = config
+	}
+	return nil
 }
 
 func (entity *Service) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
@@ -92,5 +128,6 @@ func (entity *Service) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	entity.EgressRouter = boltService.Egress
 	entity.EndpointAddress = boltService.EndpointAddress
 	entity.RoleAttributes = boltService.RoleAttributes
+	entity.Configs = boltService.Configs
 	return nil
 }

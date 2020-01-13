@@ -40,7 +40,7 @@ var test = `
 func Test_getFields(t *testing.T) {
 	assert := require.New(t)
 	test2 := ServiceApiCreate{
-		EdgeRouterRoles: []string{"@foo", "2"},
+		EdgeRouterRoles: []string{"#foo", "@2"},
 		RoleAttributes:  []string{"foo", "bar"},
 		Dns: &ServiceDnsApiPost{
 			Hostname: strPtr("google.com"),
@@ -90,6 +90,7 @@ func Test_getFields(t *testing.T) {
 				"egressRouter":    false,
 				"endpointAddress": true,
 				"tags":            true,
+				"configs":         false,
 			},
 			wantErr: false,
 		},

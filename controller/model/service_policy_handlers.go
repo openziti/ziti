@@ -41,7 +41,7 @@ func (handler *ServicePolicyHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *ServicePolicyHandler) Create(servicePolicy *ServicePolicy) (string, error) {
-	return handler.createEntity(servicePolicy, nil)
+	return handler.createEntity(servicePolicy)
 }
 
 func (handler *ServicePolicyHandler) Read(id string) (*ServicePolicy, error) {
@@ -53,15 +53,15 @@ func (handler *ServicePolicyHandler) Read(id string) (*ServicePolicy, error) {
 }
 
 func (handler *ServicePolicyHandler) Update(servicePolicy *ServicePolicy) error {
-	return handler.updateEntity(servicePolicy, nil, nil)
+	return handler.updateEntity(servicePolicy, nil)
 }
 
 func (handler *ServicePolicyHandler) Patch(servicePolicy *ServicePolicy, checker boltz.FieldChecker) error {
-	return handler.patchEntity(servicePolicy, checker, nil)
+	return handler.patchEntity(servicePolicy, checker)
 }
 
 func (handler *ServicePolicyHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *ServicePolicyHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {

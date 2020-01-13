@@ -27,9 +27,10 @@ const EntityNameCurrentSession = "current-api-session"
 
 type CurrentSessionApiList struct {
 	*env.BaseApi
-	Token     *string       `json:"token"`
-	Identity  *EntityApiRef `json:"identity"`
-	ExpiresAt *time.Time    `json:"expiresAt"`
+	Token       *string       `json:"token"`
+	Identity    *EntityApiRef `json:"identity"`
+	ExpiresAt   *time.Time    `json:"expiresAt"`
+	ConfigTypes []string      `json:"configTypes"`
 }
 
 func (CurrentSessionApiList) BuildSelfLink(_ string) *response.Link {

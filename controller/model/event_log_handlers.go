@@ -36,13 +36,5 @@ func (handler *EventLogHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *EventLogHandler) Create(entity *EventLog) (string, error) {
-	return handler.createEntity(entity, nil)
-}
-
-func (handler *EventLogHandler) Read(id string) (*EventLog, error) {
-	modelEntity := &EventLog{}
-	if err := handler.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
+	return handler.createEntity(entity)
 }

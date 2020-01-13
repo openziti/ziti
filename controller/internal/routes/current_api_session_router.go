@@ -21,6 +21,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"time"
 
 	"net/http"
@@ -53,7 +54,7 @@ func (ir *CurrentSessionRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	apiSession, err := RenderCurrentSessionApiListEntity(rc.Session, ae.Config.SessionTimeoutDuration())
+	apiSession, err := RenderCurrentSessionApiListEntity(rc.ApiSession, ae.Config.SessionTimeoutDuration())
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
 		return
@@ -64,7 +65,7 @@ func (ir *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestConte
 }
 
 func (ir *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	err := ae.GetHandlers().ApiSession.Delete(rc.Session.Id)
+	err := ae.GetHandlers().ApiSession.Delete(rc.ApiSession.Id)
 
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
@@ -80,10 +81,11 @@ func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.
 	expiresAt := s.UpdatedAt.Add(sessionTimeout)
 
 	ret := &CurrentSessionApiList{
-		BaseApi:   baseApi,
-		Token:     &s.Token,
-		ExpiresAt: &expiresAt,
-		Identity:  NewIdentityEntityRef(s.Identity),
+		BaseApi:     baseApi,
+		Token:       &s.Token,
+		ExpiresAt:   &expiresAt,
+		Identity:    NewIdentityEntityRef(s.Identity),
+		ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
 	}
 
 	ret.PopulateLinks()

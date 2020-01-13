@@ -17,7 +17,6 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -27,13 +26,6 @@ type Appwan struct {
 	Name       string
 	Identities []string
 	Services   []string
-}
-
-func NewAppwan(name string) *Appwan {
-	return &Appwan{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
-	}
 }
 
 func (entity *Appwan) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -57,8 +49,6 @@ func (entity *Appwan) GetEntityType() string {
 type AppwanStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*Appwan, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Appwan, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Appwan, error)
 }
 
 func newAppwanStore(stores *stores) *appwanStoreImpl {
@@ -97,22 +87,6 @@ func (store *appwanStoreImpl) initializeLinked() {
 func (store *appwanStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Appwan, error) {
 	entity := &Appwan{}
 	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *appwanStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Appwan, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *appwanStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Appwan, error) {
-	entity := &Appwan{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
 		return nil, err
 	}
 	return entity, nil
