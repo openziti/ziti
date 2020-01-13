@@ -346,12 +346,13 @@ func runListConfigs(o *commonOptions) error {
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
+		configType, _ := entity.Path("type").Data().(string)
 		data, _ := entity.Path("data").Data().(map[string]interface{})
 		formattedData, err := json.MarshalIndent(data, "      ", "    ")
 		if err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(o.Out, "id:   %v\nname: %v\ndata: %v\n\n", id, name, string(formattedData)); err != nil {
+		if _, err := fmt.Fprintf(o.Out, "id:   %v\nname: %v\ntype: %v\ndata: %v\n\n", id, name, configType, string(formattedData)); err != nil {
 			return err
 		}
 	}

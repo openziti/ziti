@@ -17,7 +17,6 @@
 package edge_controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -30,27 +29,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createConfigOptions struct {
+type updateIdentityOptions struct {
 	commonOptions
+	name        string
+	configTypes []string
 }
 
-// newCreateConfigCmd creates the 'edge controller create service-policy' command
-func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createConfigOptions{
+// newUpdateIdentityCmd updates the 'edge controller update service-policy' command
+func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &updateIdentityOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "config <name> <type> <JSON configuration data>",
-		Short: "creates a config managed by the Ziti Edge Controller",
-		Long:  "creates a config managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(3),
+		Use:   "identity <idOrName>",
+		Short: "updates a identity managed by the Ziti Edge Controller",
+		Long:  "updates a identity managed by the Ziti Edge Controller",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateConfig(options)
+			err := runUpdateIdentity(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -58,33 +59,39 @@ func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringSliceVarP(&options.configTypes, "config-types", "c", nil, "Configuration types used by the new identity")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
 }
 
-// runCreateConfig create a new config on the Ziti Edge Controller
-func runCreateConfig(o *createConfigOptions) error {
-	dataMap := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(o.Args[2]), &dataMap); err != nil {
-		fmt.Printf("Attempted to parse: %v\n", o.Args[1])
-		fmt.Printf("Failing parsing JSON: %+v\n", err)
-		return errors.Errorf("unable to parse data as json: %v", err)
+// runUpdateIdentity update a new identity on the Ziti Edge Controller
+func runUpdateIdentity(o *updateIdentityOptions) error {
+	id, err := mapNameToID("identities", o.Args[0])
+	if err != nil {
+		return err
+	}
+	entityData := gabs.New()
+	change := false
+
+	if len(o.name) > 0 {
+		setJSONValue(entityData, o.name, "name")
+		change = true
 	}
 
-	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.Args[1], "type")
-	setJSONValue(entityData, dataMap, "data")
-	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
+	if o.Cmd.Flags().Changed("config-types") {
+		setJSONValue(entityData, o.configTypes, "configTypes")
+		change = true
+	}
+
+	if !change {
+		return errors.New("no change specified. must specify at least one attribute to change")
+	}
+
+	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.commonOptions)
 
 	if err != nil {
-		panic(err)
-	}
-
-	configId := result.S("data", "id").Data()
-
-	if _, err := fmt.Fprintf(o.Out, "%v\n", configId); err != nil {
 		panic(err)
 	}
 
