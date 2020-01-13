@@ -42,6 +42,7 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newUpdateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateConfigCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCaCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateIdentityCmd(f, out, errOut))
 
 	return cmd
 }
