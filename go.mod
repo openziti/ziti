@@ -2,9 +2,9 @@ module github.com/netfoundry/ziti-edge
 
 go 1.13
 
-// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
-// replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
-// replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
+//replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+//replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+//replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
 
 require (
 	github.com/Jeffail/gabs v1.4.0

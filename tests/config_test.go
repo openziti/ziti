@@ -34,28 +34,28 @@ func Test_Configs(t *testing.T) {
 	ctx.requireAdminLogin()
 
 	identityRole := uuid.New().String()
-	nonAdminUser := ctx.createUserAndLogin(false, identityRole)
+	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, identityRole)
 
 	t.Run("create without name should fail", func(t *testing.T) {
 		config := ctx.newTestConfig(map[string]interface{}{"port": 22})
 		config.name = ""
-		httpCode, body := ctx.createEntity(config)
+		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create without data should fail", func(t *testing.T) {
 		config := ctx.newTestConfig(nil)
-		httpCode, body := ctx.createEntity(config)
+		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "data")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
 		now := time.Now()
-		config := ctx.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
-		entityJson := ctx.validateEntityWithQuery(config)
+		config := ctx.AdminSession.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		entityJson = ctx.validateEntityWithLookup(config)
+		entityJson = ctx.AdminSession.validateEntityWithLookup(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
@@ -77,42 +77,42 @@ func Test_Configs(t *testing.T) {
 			},
 		})
 		config.tags = map[string]interface{}{"org": "na", "deprecated": false}
-		config.id = ctx.requireCreateEntity(config)
-		entityJson := ctx.validateEntityWithQuery(config)
+		config.id = ctx.AdminSession.requireCreateEntity(config)
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		entityJson = ctx.validateEntityWithLookup(config)
+		entityJson = ctx.AdminSession.validateEntityWithLookup(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
 	t.Run("lookup non-existent config as admin should fail", func(t *testing.T) {
-		ctx.requireNotFoundError(ctx.query(ctx.adminSessionId, "configs/"+uuid.New().String()))
+		ctx.requireNotFoundError(ctx.AdminSession.query("configs/"+uuid.New().String()))
 	})
 
 	t.Run("lookup config as non-admin should fail", func(t *testing.T) {
-		config := ctx.requireCreateNewConfig(map[string]interface{}{"port": 22})
-		ctx.requireUnauthorizedError(ctx.query(nonAdminUser.sessionId, "configs/"+config.id))
+		config := ctx.AdminSession.requireCreateNewConfig(map[string]interface{}{"port": 22})
+		ctx.requireUnauthorizedError(nonAdminUser.query("configs/"+config.id))
 	})
 
 	t.Run("update config should pass", func(t *testing.T) {
 		now := time.Now()
-		config := ctx.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
-		entityJson := ctx.validateEntityWithQuery(config)
+		config := ctx.AdminSession.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
 		config.data = map[string]interface{}{"snafu": false}
-		ctx.requireUpdateEntity(config)
-		jsonConfig := ctx.validateUpdate(config)
+		ctx.AdminSession.requireUpdateEntity(config)
+		jsonConfig := ctx.AdminSession.validateUpdate(config)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 	})
 
 	ctx.enabledJsonLogging = true
 	t.Run("patch config should pass", func(t *testing.T) {
 		now := time.Now()
-		config := ctx.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
-		entityJson := ctx.validateEntityWithQuery(config)
+		config := ctx.AdminSession.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
@@ -121,11 +121,11 @@ func Test_Configs(t *testing.T) {
 		config.name = newName
 		config.data = map[string]interface{}{"foo": "bar"}
 		config.tags = map[string]interface{}{"baz": "bam"}
-		ctx.requirePatchEntity(config, "name")
+		ctx.AdminSession.requirePatchEntity(config, "name")
 
 		config.data = map[string]interface{}{"port": float64(22)} // data should not have gotten updated
 		config.tags = nil                                         // tags should not be updated
-		jsonConfig := ctx.validateUpdate(config)
+		jsonConfig := ctx.AdminSession.validateUpdate(config)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 
 		time.Sleep(time.Millisecond * 10)
@@ -133,39 +133,39 @@ func Test_Configs(t *testing.T) {
 		config.name = uuid.New().String()
 		config.data = map[string]interface{}{"foo": "bar"}
 		config.tags = map[string]interface{}{"baz": "bam"}
-		ctx.requirePatchEntity(config, "data")
+		ctx.AdminSession.requirePatchEntity(config, "data")
 
 		config.name = newName // name should not be updated
 		config.tags = nil     // tags should not be updated
-		ctx.validateUpdate(config)
+		ctx.AdminSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
 		config.name = uuid.New().String()
 		config.data = map[string]interface{}{"bim": "bam"}
 		config.tags = map[string]interface{}{"enlightened": false}
-		ctx.requirePatchEntity(config, "tags")
+		ctx.AdminSession.requirePatchEntity(config, "tags")
 
 		config.name = newName                              // name should not be updated
 		config.data = map[string]interface{}{"foo": "bar"} // data should not have gotten updated
-		ctx.validateUpdate(config)
+		ctx.AdminSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
 		config.name = uuid.New().String()
 		config.data = map[string]interface{}{"bim": "bom"}
 		config.tags = map[string]interface{}{"enlightened": true}
-		ctx.requirePatchEntity(config, "name", "data", "tags")
-		ctx.validateUpdate(config)
+		ctx.AdminSession.requirePatchEntity(config, "name", "data", "tags")
+		ctx.AdminSession.validateUpdate(config)
 	})
 
 	t.Run("delete should pass", func(t *testing.T) {
 		now := time.Now()
-		config := ctx.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
-		entityJson := ctx.validateEntityWithQuery(config)
+		config := ctx.AdminSession.requireCreateNewConfig(map[string]interface{}{"port": float64(22)})
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		ctx.requireDeleteEntity(config)
-		ctx.requireNotFoundError(ctx.query(ctx.adminSessionId, "configs/"+uuid.New().String()))
+		ctx.AdminSession.requireDeleteEntity(config)
+		ctx.requireNotFoundError(ctx.AdminSession.query("configs/"+uuid.New().String()))
 	})
 }

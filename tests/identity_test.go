@@ -34,9 +34,9 @@ func Test_Identity(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		identity := newTestIdentity(false, role1, role2)
-		identity.id = ctx.requireCreateEntity(identity)
-		ctx.validateEntityWithQuery(identity)
-		ctx.validateEntityWithLookup(identity)
+		identity.id = ctx.AdminSession.requireCreateEntity(identity)
+		ctx.AdminSession.validateEntityWithQuery(identity)
+		ctx.AdminSession.validateEntityWithLookup(identity)
 	})
 
 	ctx.enabledJsonLogging = true
@@ -44,11 +44,11 @@ func Test_Identity(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		identity := newTestIdentity(false, role1, role2)
-		identity.id = ctx.requireCreateEntity(identity)
+		identity.id = ctx.AdminSession.requireCreateEntity(identity)
 
 		role3 := uuid.New().String()
 		identity.roleAttributes = []string{role2, role3}
-		ctx.requireUpdateEntity(identity)
-		ctx.validateEntityWithLookup(identity)
+		ctx.AdminSession.requireUpdateEntity(identity)
+		ctx.AdminSession.validateEntityWithLookup(identity)
 	})
 }

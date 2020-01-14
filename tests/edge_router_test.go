@@ -35,9 +35,9 @@ func Test_EdgeRouter(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		edgeRouter := newTestEdgeRouter(role1, role2)
-		edgeRouter.id = ctx.requireCreateEntity(edgeRouter)
-		ctx.validateEntityWithQuery(edgeRouter)
-		ctx.validateEntityWithLookup(edgeRouter)
+		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
+		ctx.AdminSession.validateEntityWithQuery(edgeRouter)
+		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
 	})
 
 	ctx.enabledJsonLogging = true
@@ -45,11 +45,11 @@ func Test_EdgeRouter(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		edgeRouter := newTestEdgeRouter(role1, role2)
-		edgeRouter.id = ctx.requireCreateEntity(edgeRouter)
+		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
 
 		role3 := uuid.New().String()
 		edgeRouter.roleAttributes = []string{role2, role3}
-		ctx.requireUpdateEntity(edgeRouter)
-		ctx.validateEntityWithLookup(edgeRouter)
+		ctx.AdminSession.requireUpdateEntity(edgeRouter)
+		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
 	})
 }
