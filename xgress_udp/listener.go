@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2019 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -58,13 +58,13 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	listener.address = address
 	listener.bindHandler = bindHandler
 
-	pfxlog.Logger().Infof("Parsing xgress address: %v", address)
+	pfxlog.Logger().Infof("parsing xgress address: %v", address)
 	packetAddress, err := parseAddress(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)
 	}
 
-	pfxlog.Logger().Infof("Dialing packet address %v", packetAddress)
+	pfxlog.Logger().Infof("dialing packet address %v", packetAddress)
 	conn, err := net.ListenPacket(packetAddress.Network(), packetAddress.Address())
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (listener *listener) rx() {
 	for {
 		select {
 		case data := <-listener.dataChan:
-			logger.Debugf("Handling data. Bytes %v from source %v", len(data.buffer), data.source)
+			logger.Debugf("handling data. bytes %v from source %v", len(data.buffer), data.source)
 			sessionId := data.source.String()
 			session, present := listener.sessions[sessionId]
 			if !present {
@@ -133,16 +133,19 @@ func (listener *listener) rx() {
 				}
 				session.MarkActivity()
 				listener.sessions[sessionId] = session
-				logger.Debugf("No session present. Authenticating session for %v", data.source)
+				logger.Debugf("no session present. authenticating session for %v", data.source)
 				go listener.handleConnect(data.buffer, session)
+
 			} else if session.sessionState == sessionStateEstablished {
-				logger.Debugf("Session established for %v, forwarding data", data.source)
+				logger.Debugf("session established for %v, forwarding data", data.source)
 				session.MarkActivity()
 				session.readC <- data.buffer
-				logger.Debugf("Session established for %v. Data forwarded", data.source)
+				logger.Debugf("session established for %v. Data forwarded", data.source)
 			}
+
 		case event := <-listener.eventChan:
 			event.handle(listener)
+
 		case tick := <-sessionScanTimer:
 			nowNanos := tick.UnixNano()
 			for _, session := range listener.sessions {

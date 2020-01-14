@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2019 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/xmgmt"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
+	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -43,6 +44,8 @@ type Controller struct {
 }
 
 func NewController(cfg *Config) (*Controller, error) {
+	logrus.Infof("hello")
+
 	c := &Controller{
 		config: cfg,
 	}
