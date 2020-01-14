@@ -77,6 +77,7 @@ func (l *listener) rx() {
 			sessionId := data.source.String()
 			session, found := l.sessions[sessionId]
 			if !found {
+				logrus.Infof("session not found for [%s]", sessionId)
 				session = &packetSession{
 					listener:             l,
 					readC:                make(chan []byte, 10),
@@ -86,16 +87,20 @@ func (l *listener) rx() {
 				}
 				session.MarkActivity()
 				l.sessions[sessionId] = session
+				l.handleConnect(session)
 
-				go l.handleConnect(session)
-
-				if !session.closed {
-					session.readC <- data.buffer
+				if session.sessionState == sessionStateEstablished {
+					logrus.Infof("created session [%s] => [%s]", sessionId, session.sessionId)
+				} else {
+					logrus.Infof("session creation failed [%s]", sessionId)
 				}
+			}
 
-			} else if session.sessionState == sessionStateEstablished {
+			if session.sessionState == sessionStateEstablished {
 				session.MarkActivity()
 				session.readC <- data.buffer
+			} else {
+				logrus.Warnf("dropping")
 			}
 
 		case event := <-l.eventChan:
@@ -115,7 +120,10 @@ func (l *listener) rx() {
 func (l *listener) handleConnect(session *packetSession) {
 	request := &xgress.Request{ServiceId: l.service}
 	response := xgress.CreateSession(l.ctrl, session, request, l.bindHandler, l.options)
-	if !response.Success{
+	if response.Success {
+		session.sessionState = sessionStateEstablished
+		session.sessionId = response.SessionId
+	} else {
 		logrus.Errorf("error creating session (%s)", response.Message)
 		_ = session.Close()
 	}
@@ -201,6 +209,7 @@ type packetSession struct {
 	listener             *listener
 	readC                chan []byte
 	addr                 net.Addr
+	sessionId            string
 	sessionState         sessionState
 	timeoutIntervalNanos int64
 	timeoutNanos         int64

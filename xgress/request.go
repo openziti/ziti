@@ -53,8 +53,9 @@ func (r *Request) ToJSON() ([]byte, error) {
 }
 
 type Response struct {
-	Success bool   `json:"scc"`
-	Message string `json:"msg"`
+	Success   bool   `json:"scc"`
+	Message   string `json:"msg"`
+	SessionId string `json:"sessionId"`
 }
 
 func ResponseFromJSON(payload []byte) (*Response, error) {
@@ -193,7 +194,7 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	if err = sessionInfo.SendStartEgress(); err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}
-	return &Response{Success: true}
+	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
 func BindService(ctrl CtrlChannel, token string, serviceId string) error {
