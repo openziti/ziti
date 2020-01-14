@@ -23,8 +23,8 @@ import (
 )
 
 type closeHandler struct {
-	r          *network.Router
-	network    *network.Network
+	r       *network.Router
+	network *network.Network
 }
 
 func newCloseHandler(r *network.Router, network *network.Network) *closeHandler {
