@@ -334,6 +334,8 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 				rc.RequestResponder.RespondWithError(err)
 				return
 			}
+			//re-read session to get new updatedAt
+			rc.Session, _ = ae.GetHandlers().ApiSession.Read(rc.Session.Id)
 		}
 
 		if rc.Session != nil {

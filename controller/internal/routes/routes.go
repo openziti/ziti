@@ -61,20 +61,7 @@ type ReadOnlyRouter interface {
 	Detail(ae *env.AppEnv, rc *response.RequestContext)
 }
 
-type ModelToDetailApiConverter interface {
-	ToApiDetailEntity(*env.AppEnv, *response.RequestContext, migration.BaseDbModel) (BaseApiEntity, error)
-}
-
-type ModelToListApiConverter interface {
-	ToApiListEntity(*env.AppEnv, *response.RequestContext, migration.BaseDbModel) (BaseApiEntity, error)
-}
-
 type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, model.BaseModelEntity) (BaseApiEntity, error)
-
-type ModelToApiConverter interface {
-	ModelToDetailApiConverter
-	ModelToListApiConverter
-}
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*model.QueryOptions, error) {
 	filter := r.URL.Query().Get("filter")

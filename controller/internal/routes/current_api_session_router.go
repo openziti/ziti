@@ -23,8 +23,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"time"
 
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"net/http"
 )
 
@@ -55,7 +53,7 @@ func (ir *CurrentSessionRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	apiSession, err := ir.ToApiDetailEntity(ae, rc, rc.Session)
+	apiSession, err := RenderCurrentSessionApiListEntity(rc.Session, ae.Config.SessionTimeoutDuration())
 	if err != nil {
 		rc.RequestResponder.RespondWithError(err)
 		return
@@ -76,21 +74,7 @@ func (ir *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestConte
 	rc.RequestResponder.RespondWithOk(nil, nil)
 }
 
-func (ir *CurrentSessionRouter) ToApiDetailEntity(ae *env.AppEnv, rc *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
-	s, ok := e.(*model.ApiSession)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an api session \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.WithField("id", e.GetId()).
-			Error(err)
-		return nil, err
-	}
-
-	return RenderCurrentSessionApiListEntity(s, ae.Config.SessionTimeoutDuration())
-}
-
-func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.Duration) (BaseApiEntity, error) {
+func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.Duration) (*CurrentSessionApiList, error) {
 	baseApi := env.FromBaseModelEntity(s)
 
 	expiresAt := s.UpdatedAt.Add(sessionTimeout)
@@ -105,12 +89,4 @@ func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.
 	ret.PopulateLinks()
 
 	return ret, nil
-}
-
-func (ir *CurrentSessionRouter) GetIdFromRequest(r *http.Request, rctx *response.RequestContext) (string, error) {
-	return rctx.Session.Id, nil
-}
-
-func (ir *CurrentSessionRouter) GetIdPropertyName() string {
-	return "requestContextSessionId"
 }
