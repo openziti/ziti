@@ -29,6 +29,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/xctrl"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-fabric/xgress_proxy"
+	"github.com/netfoundry/ziti-fabric/xgress_proxy_udp"
 	"github.com/netfoundry/ziti-fabric/xgress_transport"
 	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -128,6 +129,7 @@ func (router *Router) startProfiling() {
 
 func (router *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(router.config.Id, router))
+	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(router))
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(router.config.Id, router))
 	xgress.GlobalRegistry().Register("udp", xgress_udp.NewFactory(router.config.Id, router))
 

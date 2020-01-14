@@ -28,7 +28,6 @@ import (
 	"github.com/netfoundry/ziti-fabric/xmgmt"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
-	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -44,8 +43,6 @@ type Controller struct {
 }
 
 func NewController(cfg *Config) (*Controller, error) {
-	logrus.Infof("hello")
-
 	c := &Controller{
 		config: cfg,
 	}

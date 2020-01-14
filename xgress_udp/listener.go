@@ -43,7 +43,7 @@ type listener struct {
 	sessions    map[string]*packetSession
 }
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) *listener {
+func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.XgressListener {
 	return &listener{
 		id:        id,
 		ctrl:      ctrl,
