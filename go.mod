@@ -23,7 +23,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/netfoundry/ziti-edge v0.0.0-20200114142905-3c2695a7b64a
 	github.com/netfoundry/ziti-fabric v0.0.0-20200108200335-8a3b0b19d2e6
-	github.com/netfoundry/ziti-foundation v0.0.0-20200110170009-41bb4fd29b11
+	github.com/netfoundry/ziti-foundation v0.0.0-20200114140226-eb1da62e386b // indirect
 	github.com/netfoundry/ziti-sdk-golang v0.0.0-20200108160734-8bc089148c01
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.8.1

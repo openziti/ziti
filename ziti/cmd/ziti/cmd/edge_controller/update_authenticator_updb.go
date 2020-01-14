@@ -17,10 +17,10 @@
 package edge_controller
 
 import (
-	"github.com/netfoundry/ziti-foundation/util/term"
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/netfoundry/ziti-foundation/util/term"
 	"github.com/spf13/cobra"
 )
 import cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
@@ -99,7 +99,7 @@ func updateSelfPassword(current string, new string, options commonOptions) error
 	setJSONValue(passwordData, current, "current")
 	setJSONValue(passwordData, new, "new")
 
-	_, err = updateEntityOfType("current-identity/updb/password", passwordData.String(), &options)
+	_, err = putEntityOfType("current-identity/updb/password", passwordData.String(), &options)
 
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func setIdentityPassword(identity, password string, options commonOptions) error
 	passwordData := gabs.New()
 	setJSONValue(passwordData, password, "password")
 
-	_, err = updateEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), passwordData.String(), &options)
+	_, err = putEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), passwordData.String(), &options)
 
 	if err != nil {
 		return err

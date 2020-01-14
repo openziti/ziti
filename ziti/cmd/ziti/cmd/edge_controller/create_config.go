@@ -17,6 +17,7 @@
 package edge_controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -29,29 +30,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createServicePolicyOptions struct {
+type createConfigOptions struct {
 	commonOptions
-	serviceRoles  []string
-	identityRoles []string
 }
 
-// newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
-func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createServicePolicyOptions{
+// newCreateConfigCmd creates the 'edge controller create service-policy' command
+func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createConfigOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service-policy <name> <type>",
-		Short: "creates a service-policy managed by the Ziti Edge Controller",
-		Long:  "creates a service-policy managed by the Ziti Edge Controller",
+		Use:   "config <name> <JSON configuration data>",
+		Short: "creates a config managed by the Ziti Edge Controller",
+		Long:  "creates a config managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateServicePolicy(options)
+			err := runCreateConfig(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -59,34 +58,32 @@ func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "r", nil, "Service roles of the new service policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
 }
 
-// runCreateServicePolicy create a new servicePolicy on the Ziti Edge Controller
-func runCreateServicePolicy(o *createServicePolicyOptions) error {
-	policyType := o.Args[1]
-	if policyType != "Bind" && policyType != "Dial" {
-		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
+// runCreateConfig create a new config on the Ziti Edge Controller
+func runCreateConfig(o *createConfigOptions) error {
+	dataMap := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(o.Args[1]), &dataMap); err != nil {
+		fmt.Printf("Attempted to parse: %v\n", o.Args[1])
+		fmt.Printf("Failing parsing JSON: %+v\n", err)
+		return errors.Errorf("unable to parse data as json: %v", err)
 	}
 
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.Args[1], "type")
-	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
-	setJSONValue(entityData, o.identityRoles, "identityRoles")
-	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
+	setJSONValue(entityData, dataMap, "data")
+	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	servicePolicyId := result.S("data", "id").Data()
+	configId := result.S("data", "id").Data()
 
-	if _, err := fmt.Fprintf(o.Out, "%v\n", servicePolicyId); err != nil {
+	if _, err := fmt.Fprintf(o.Out, "%v\n", configId); err != nil {
 		panic(err)
 	}
 
