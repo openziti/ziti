@@ -22,22 +22,21 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
 )
 
 const EntityNameEventLog = "event-logs"
 
 type EventLogApiList struct {
 	*env.BaseApi
-	Type             string                `json:"type"`
-	ActorType        string                `json:"actorType"`
-	ActorId          string                `json:"actorId"`
-	EntityType       string                `json:"entityType"`
-	EntityId         string                `json:"entityId"`
-	FormattedMessage string                `json:"formattedMessage"`
-	FormatString     string                `json:"formatString"`
-	FormatData       string                `json:"formatData"`
-	Data             migration.PropertyMap `json:"data"`
+	Type             string                 `json:"type"`
+	ActorType        string                 `json:"actorType"`
+	ActorId          string                 `json:"actorId"`
+	EntityType       string                 `json:"entityType"`
+	EntityId         string                 `json:"entityId"`
+	FormattedMessage string                 `json:"formattedMessage"`
+	FormatString     string                 `json:"formatString"`
+	FormatData       string                 `json:"formatData"`
+	Data             map[string]interface{} `json:"data"`
 }
 
 func (EventLogApiList) BuildSelfLink(id string) *response.Link {

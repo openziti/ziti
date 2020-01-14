@@ -22,14 +22,13 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
 const EntityNameServicePolicy = "service-policies"
 
 type ServicePolicyApi struct {
-	Tags          *migration.PropertyMap `json:"tags"`
+	Tags          map[string]interface{} `json:"tags"`
 	Name          *string                `json:"name"`
 	PolicyType    *string                `json:"type"`
 	ServiceRoles  []string               `json:"serviceRoles"`
@@ -43,9 +42,7 @@ func (i *ServicePolicyApi) ToModel(id string) *model.ServicePolicy {
 	result.PolicyType = stringz.OrEmpty(i.PolicyType)
 	result.ServiceRoles = i.ServiceRoles
 	result.IdentityRoles = i.IdentityRoles
-	if i.Tags != nil {
-		result.Tags = *i.Tags
-	}
+	result.Tags = i.Tags
 	return result
 }
 

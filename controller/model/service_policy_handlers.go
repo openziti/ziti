@@ -19,7 +19,6 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 func NewServicePolicyHandler(env Env) *ServicePolicyHandler {
@@ -53,14 +52,6 @@ func (handler *ServicePolicyHandler) Read(id string) (*ServicePolicy, error) {
 	return modelEntity, nil
 }
 
-func (handler *ServicePolicyHandler) readInTx(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
-	modelEntity := &ServicePolicy{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
 func (handler *ServicePolicyHandler) Update(servicePolicy *ServicePolicy) error {
 	return handler.updateEntity(servicePolicy, nil, nil)
 }
@@ -79,22 +70,4 @@ func (handler *ServicePolicyHandler) CollectServices(id string, collector func(e
 
 func (handler *ServicePolicyHandler) CollectIdentities(id string, collector func(entity BaseModelEntity)) error {
 	return handler.collectAssociated(id, persistence.EntityTypeIdentities, handler.env.GetHandlers().Identity, collector)
-}
-
-type ServicePolicyListResult struct {
-	handler         *ServicePolicyHandler
-	ServicePolicies []*ServicePolicy
-	QueryMetaData
-}
-
-func (result *ServicePolicyListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.ServicePolicies = append(result.ServicePolicies, entity)
-	}
-	return nil
 }

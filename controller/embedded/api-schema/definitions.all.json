@@ -28,7 +28,10 @@
       }
     },
     "tags-null": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "patternProperties": {
         "^.{1,50}$": {
@@ -53,13 +56,77 @@
         }
       }
     },
+    "config-data": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.{1,50}$": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "number",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "definitions.all.json#/definitions/config-data"
+            }
+          ]
+        }
+      }
+    },
+    "config-data-null": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.{1,50}$": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "number",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "definitions.all.json#/definitions/config-data"
+            }
+          ]
+        }
+      }
+    },
     "name": {
       "type": "string",
       "minLength": 2,
       "maxLength": 256
     },
     "name-null": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 2,
       "maxLength": 256
     },
@@ -70,7 +137,10 @@
       "maxLength": 256
     },
     "id-null": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uuid",
       "minLength": 1,
       "maxLength": 256
@@ -81,7 +151,10 @@
       "maxLength": 256
     },
     "id-str-null": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1,
       "maxLength": 256
     },
@@ -93,7 +166,10 @@
       }
     },
     "arrayOfIds-null": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "default": [],
       "items": {
         "$ref": "#/definitions/id"
@@ -107,10 +183,13 @@
       }
     },
     "arrayOfString-null": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "default": [],
       "items": {
-        "type" : "string"
+        "type": "string"
       }
     },
     "password": {

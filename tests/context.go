@@ -277,6 +277,14 @@ func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
 	}
 }
 
+func (ctx *TestContext) newTestConfig(data map[string]interface{}) *testConfig {
+	return &testConfig{
+		name: uuid.New().String(),
+		data: data,
+		tags: nil,
+	}
+}
+
 func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, time.Time) {
 	createdAtStr := jsonEntity.S("createdAt").Data().(string)
 	updatedAtStr := jsonEntity.S("updatedAt").Data().(string)
@@ -306,4 +314,10 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 func (ctx *TestContext) validateEntity(entity testEntity, jsonEntity *gabs.Container) *gabs.Container {
 	entity.validate(ctx, jsonEntity)
 	return jsonEntity
+}
+
+func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, ids, "ids")
+	return entityData
 }

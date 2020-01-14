@@ -180,7 +180,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 		return nil
 	}
 
-	if identity.IsDefaultAdmin == true {
+	if identity.IsDefaultAdmin {
 		return apierror.NewEntityCanNotBeDeleted()
 	}
 
@@ -280,7 +280,7 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 	return nil
 }
 
-func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(entity BaseModelEntity) error) error {
+func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(entity *Authenticator) error) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		_, err := handler.readInTx(tx, id)
 		if err != nil {
@@ -301,13 +301,13 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 	})
 }
 
-func (handler *IdentityHandler) CollectEnrollments(id string, collector func(entity BaseModelEntity) error) error {
+func (handler *IdentityHandler) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		return handler.collectEnrollmentsInTx(tx, id, collector)
 	})
 }
 
-func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity BaseModelEntity) error) error {
+func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity *Enrollment) error) error {
 	_, err := handler.readInTx(tx, id)
 	if err != nil {
 		return err

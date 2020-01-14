@@ -108,7 +108,7 @@ func (ir *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &IdentityApiUpdate{}
 	Patch(rc, ae.Schemes.Identity.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Identity.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.Identity.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
 	})
 }
 

@@ -100,7 +100,7 @@ func (entity *Ca) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 		return nil, err
 	}
 	if len(queryResults) > 0 {
-		return nil, NewFieldError(fmt.Sprintf("certificate already used as CA %s", string(queryResults[0])), "certPem", entity.CertPem)
+		return nil, NewFieldError(fmt.Sprintf("certificate already used as CA %s", queryResults[0]), "certPem", entity.CertPem)
 	}
 
 	boltEntity := &persistence.Ca{

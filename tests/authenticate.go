@@ -184,13 +184,6 @@ func (request *authenticatedRequests) newAuthenticatedRequest() *resty.Request {
 	return request.session.newRequest(request.testContext)
 }
 
-func (request *authenticatedRequests) requireCreateCluster(name string) string {
-	entityJson := request.testContext.newNamedEntityJson(name).String()
-	httpCode, body := request.createEntityOfType("clusters", entityJson)
-	request.testContext.req.Equal(http.StatusCreated, httpCode)
-	return request.testContext.getEntityId(body)
-}
-
 func (request *authenticatedRequests) requireCreateIdentity(name string, password string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
@@ -307,16 +300,27 @@ func (request *authenticatedRequests) deleteEntityOfType(entityType string, id s
 }
 
 func (request *authenticatedRequests) updateEntity(entity testEntity) (int, []byte) {
-	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext))
+	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext), false)
 }
 
-func (request *authenticatedRequests) updateEntityOfType(id string, entityType string, body string) (int, []byte) {
+func (request *authenticatedRequests) updateEntityOfType(id string, entityType string, body string, patch bool) (int, []byte) {
+	if request.testContext.enabledJsonLogging {
+		fmt.Printf("update body:\n%v\n", body)
+	}
+
 	urlPath := fmt.Sprintf("/%v/%v", entityType, id)
 	pfxlog.Logger().Infof("url path: %v", urlPath)
 
-	resp, err := request.newAuthenticatedRequest().
-		SetBody(body).
-		Put(urlPath)
+	updateRequest := request.newAuthenticatedRequest().SetBody(body)
+
+	var err error
+	var resp *resty.Response
+
+	if patch {
+		resp, err = updateRequest.Patch(urlPath)
+	} else {
+		resp, err = updateRequest.Put(urlPath)
+	}
 
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -425,4 +429,26 @@ func (request *authenticatedRequests) validateEntityWithLookup(entity testEntity
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
 	jsonEntity := request.testContext.requirePath(result, "data")
 	return request.testContext.validateEntity(entity, jsonEntity)
+}
+
+func (request *authenticatedRequests) validateUpdate(entity testEntity) *gabs.Container {
+	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
+	jsonConfig := request.testContext.requirePath(result, "data")
+	entity.validate(request.testContext, jsonConfig)
+	return jsonConfig
+}
+
+func (request *authenticatedRequests) requireCreateNewConfig(data map[string]interface{}) *testConfig {
+	config := request.testContext.newTestConfig(data)
+	config.id = request.requireCreateEntity(config)
+	return config
+}
+
+func (request *authenticatedRequests) requirePatchEntity(entity testEntity, fields ...string) {
+	httpStatus, _ := request.patchEntity(entity, fields...)
+	request.testContext.req.Equal(http.StatusOK, httpStatus)
+}
+
+func (request *authenticatedRequests) patchEntity(entity testEntity, fields ...string) (int, []byte) {
+	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext, fields...), true)
 }

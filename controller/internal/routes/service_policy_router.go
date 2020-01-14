@@ -87,7 +87,7 @@ func (ir *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContex
 func (ir *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ServicePolicyApi{}
 	Patch(rc, ae.Schemes.ServicePolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ServicePolicy.Patch(apiEntity.ToModel(id), fields.ConcatNestedNames())
+		return ae.Handlers.ServicePolicy.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
 	})
 }
 

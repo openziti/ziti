@@ -19,6 +19,7 @@ package model
 type Handlers struct {
 	ApiSession       *ApiSessionHandler
 	Ca               *CaHandler
+	Config           *ConfigHandler
 	EdgeRouter       *EdgeRouterHandler
 	EdgeRouterPolicy *EdgeRouterPolicyHandler
 	EventLog         *EventLogHandler
@@ -40,6 +41,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.ApiSession = NewApiSessionHandler(env)
 	handlers.Authenticator = NewAuthenticatorHandler(env)
 	handlers.Ca = NewCaHandler(env)
+	handlers.Config = NewConfigHandler(env)
 	handlers.EdgeRouter = NewEdgeRouterHandler(env)
 	handlers.EdgeRouterPolicy = NewEdgeRouterPolicyHandler(env)
 	handlers.Enrollment = NewEnrollmentHandler(env)

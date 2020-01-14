@@ -29,7 +29,7 @@ import (
 type TestContext struct {
 	*persistence.TestContext
 	handlers *Handlers
-	config *config.Config
+	config   *config.Config
 }
 
 func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
@@ -80,7 +80,7 @@ func (ctx *TestContext) GetSchemas() Schemas {
 	panic("implement me")
 }
 
-func (ctx *TestContext) IsEdgeRouterOnline(id string) bool {
+func (ctx *TestContext) IsEdgeRouterOnline(string) bool {
 	panic("implement me")
 }
 
@@ -95,8 +95,8 @@ func newTestContext(t *testing.T) *TestContext {
 func (ctx *TestContext) Init() {
 	ctx.TestContext.Init()
 	ctx.config = &config.Config{
-		Enrollment:         config.Enrollment{
-			EdgeRouter:        config.EnrollmentOption{
+		Enrollment: config.Enrollment{
+			EdgeRouter: config.EnrollmentOption{
 				DurationMinutes: 60,
 			},
 		},
@@ -112,8 +112,8 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 	identityType, err := ctx.handlers.IdentityType.ReadByIdOrName("Service")
 	ctx.NoError(err)
 	identity := &Identity{
-		Name:    uuid.New().String(),
-		IsAdmin: isAdmin,
+		Name:           uuid.New().String(),
+		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
 	identity.Id, err = ctx.handlers.Identity.Create(identity)
@@ -137,7 +137,7 @@ func (ctx *TestContext) requireNewService() *Service {
 
 func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	edgeRouter := &EdgeRouter{
-		Name:            uuid.New().String(),
+		Name: uuid.New().String(),
 	}
 	var err error
 	edgeRouter.Id, err = ctx.handlers.EdgeRouter.Create(edgeRouter)
@@ -147,9 +147,9 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
 	edgeRouterPolicy := &EdgeRouterPolicy{
-		Name:                uuid.New().String(),
-		IdentityRoles:       identityRoles,
-		EdgeRouterRoles:     edgeRouterRoles,
+		Name:            uuid.New().String(),
+		IdentityRoles:   identityRoles,
+		EdgeRouterRoles: edgeRouterRoles,
 	}
 	var err error
 	edgeRouterPolicy.Id, err = ctx.handlers.EdgeRouterPolicy.Create(edgeRouterPolicy)
@@ -157,6 +157,6 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 	return edgeRouterPolicy
 }
 
-func ss(vals...string) []string {
+func ss(vals ...string) []string {
 	return vals
 }
