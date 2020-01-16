@@ -14,12 +14,13 @@
 	limitations under the License.
 */
 
-package xgress_udp
+package xgress_transport_udp
 
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"net"
 )
@@ -41,7 +42,7 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 
 func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
 	pfxlog.Logger().Infof("Parsing %v for xgress address: %v", destination, address)
-	packetAddress, err := parseAddress(destination)
+	packetAddress, err := xgress_udp.Parse(destination)
 	if err != nil {
 		return fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
 	}

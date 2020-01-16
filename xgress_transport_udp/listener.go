@@ -14,12 +14,13 @@
 	limitations under the License.
 */
 
-package xgress_udp
+package xgress_transport_udp
 
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"io"
@@ -59,7 +60,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	listener.bindHandler = bindHandler
 
 	pfxlog.Logger().Infof("parsing xgress address: %v", address)
-	packetAddress, err := parseAddress(address)
+	packetAddress, err := xgress_udp.Parse(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)
 	}

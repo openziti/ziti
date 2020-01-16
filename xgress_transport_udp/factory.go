@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xgress_udp
+package xgress_transport_udp
 
 import (
 	"github.com/netfoundry/ziti-fabric/xgress"

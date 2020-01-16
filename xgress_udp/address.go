@@ -17,7 +17,6 @@
 package xgress_udp
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -29,27 +28,10 @@ var supportedNetworks = map[string]string{
 	"unixgram": "",
 }
 
-type packetAddress struct {
-	network string
-	address string
-}
-
-func (pa *packetAddress) String() string {
-	return fmt.Sprintf("packetAddress{network=%v, addr=%v}", pa.network, pa.address)
-}
-
-func (pa *packetAddress) Network() string {
-	return pa.network
-}
-
-func (pa *packetAddress) Address() string {
-	return pa.address
-}
-
-func parseAddress(s string) (*packetAddress, error) {
+func Parse(s string) (*PacketAddress, error) {
 	tokens := strings.Split(s, ":")
 	if len(tokens) < 2 {
-		return nil, errors.New("invalid format")
+		return nil, fmt.Errorf("invalid format")
 	}
 
 	network := tokens[0]
@@ -60,5 +42,22 @@ func parseAddress(s string) (*packetAddress, error) {
 
 	address := strings.Join(tokens[1:], ":")
 
-	return &packetAddress{network, address}, nil
+	return &PacketAddress{network, address}, nil
+}
+
+func (pa *PacketAddress) String() string {
+	return fmt.Sprintf("PacketAddress{network=[%v], addr=[%v]}", pa.network, pa.address)
+}
+
+func (pa *PacketAddress) Network() string {
+	return pa.network
+}
+
+func (pa *PacketAddress) Address() string {
+	return pa.address
+}
+
+type PacketAddress struct {
+	network string
+	address string
 }
