@@ -14,30 +14,35 @@
 	limitations under the License.
 */
 
-package xgress_udp
+package xgress_transport_udp
 
 import (
+	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"net"
 )
 
-type xgressPacketConn struct {
-	net.Conn
+func (p *packetConn) LogContext() string {
+	return p.RemoteAddr().String()
 }
 
-func (xpc *xgressPacketConn) LogContext() string {
-	return xpc.RemoteAddr().String()
-}
-
-func (xpc *xgressPacketConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
+func (p *packetConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	buffer := make([]byte, udp.MaxPacketSize)
-	n, err := xpc.Read(buffer)
+	n, err := p.Read(buffer)
 	if err != nil {
 		return nil, nil, err
 	}
 	return buffer[:n], nil, nil
 }
 
-func (xpc *xgressPacketConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
-	return xpc.Write(p)
+func (p *packetConn) WritePayload(data []byte, headers map[uint8][]byte) (n int, err error) {
+	return p.Write(data)
+}
+
+func newPacketConn(conn net.Conn) xgress.Connection {
+	return &packetConn{conn}
+}
+
+type packetConn struct {
+	net.Conn
 }

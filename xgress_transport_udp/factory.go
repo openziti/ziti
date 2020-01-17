@@ -14,32 +14,29 @@
 	limitations under the License.
 */
 
-package xgress_udp
+package xgress_transport_udp
 
 import (
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-type factory struct {
-	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
-	options *xgress.Options
-}
-
-// NewFactory construct a new UDP Xgress factory instance
 func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.XgressFactory {
 	return &factory{id: id, ctrl: ctrl}
 }
 
-// CreateListener creates a new UDP Xgress listener
 func (factory *factory) CreateListener(optionsData xgress.XgressOptionsData) (xgress.XgressListener, error) {
 	options := xgress.LoadOptions(optionsData)
 	return newListener(factory.id, factory.ctrl, options), nil
 }
 
-// CreateDialer creates a new UDP Xgress dialer
 func (factory *factory) CreateDialer(optionsData xgress.XgressOptionsData) (xgress.XgressDialer, error) {
 	options := xgress.LoadOptions(optionsData)
 	return newDialer(factory.id, factory.ctrl, options)
+}
+
+type factory struct {
+	id      *identity.TokenId
+	ctrl    xgress.CtrlChannel
+	options *xgress.Options
 }

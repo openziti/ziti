@@ -124,7 +124,9 @@ $ bin/ziti-fabric create router etc/ca/intermediate/certs/004-client.cert.pem
 
 With your controller running, you can now start routers to begin building your mesh:
 
-`$ ziti-router run etc/001.yml`
+```
+$ ziti-router run etc/001.yml
+```
 
 There are 4 router configurations provided (`001`, `002`, `003`, `004`).
 
@@ -136,13 +138,17 @@ The configuration provided in the tree assembles a "diamond" shaped mesh, where 
 
 Create a service to access `google.com`:
 
-`$ ziti-fabric create service google tcp:google.com:80 003`
+```
+$ ziti-fabric create service google tcp:google.com:80 003
+```
 
 ### Access the Google Service
 
 Access the google service using `ziti-fabric`:
 
-`$ ziti-fabric-test http http://google --host www.google.com`
+```
+$ ziti-fabric-test http http://google --host www.google.com
+```
 
 You should see HTTP output from the google website.
 
@@ -152,14 +158,20 @@ In order to create interesting metrics, you'll need to create some network load.
 
 Create the `loop` service in the fabric (if it's not already there):
 
-`$ ziti-fabric create service loop tcp:127.0.0.1:8171 003`
+```
+$ ziti-fabric create service loop tcp:127.0.0.1:8171 003
+```
 
 Launch a `loop2` listener (in $GOPATH):
 
-`$ ziti-fabric-test loop2 listener`
+```
+$ ziti-fabric-test loop2 listener
+```
     
 Launch a `loop2` dialer (begin generating load):
 
-`$ ziti-fabric-test loop2 dialer src/github.com/netfoundry/ziti-fabric/fabric/etc/loop2/10-ambient.loop2.yml`
+```
+$ ziti-fabric-test loop2 dialer src/github.com/netfoundry/ziti-fabric/fabric/etc/loop2/10-ambient.loop2.yml
+```
     
 Take a look at the various `loop2` scenario configurations in `etc/loop2` for examples illustrating different workloads.

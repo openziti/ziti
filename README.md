@@ -10,6 +10,6 @@ If you're new to Ziti, or want to get started with the entire Ziti ecosystem, pl
 
 ## Getting Started with Ziti Fabric Development
 
-If you're looking for information on getting a local development environment configured for the Ziti Fabric, visit the [local development overview](doc/local_development.md).
+If you're looking for information on getting a local development environment configured for the Ziti Fabric, visit the [local development overview](docs/local_development.md).
 
-See the [documentation](doc/) for topic-specific guides and details.
+See the [documentation](docs/) for topic-specific guides and details.
