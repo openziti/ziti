@@ -94,19 +94,6 @@ func GetTestContext() *TestContext {
 	return defaultTestContext
 }
 
-func (ctx *TestContext) NewSubContext(t *testing.T) *TestContext {
-	return &TestContext{
-		ApiHost:            ctx.ApiHost,
-		AdminAuthenticator: ctx.AdminAuthenticator,
-		AdminSession:       ctx.AdminSession,
-		fabricController:   ctx.fabricController,
-		EdgeController:     ctx.EdgeController,
-		req:                require.New(t),
-		client:             ctx.client,
-		enabledJsonLogging: ctx.enabledJsonLogging,
-	}
-}
-
 func (ctx *TestContext) Transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
