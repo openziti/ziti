@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -34,7 +35,7 @@ type ConfigType struct {
 
 func (entity *ConfigType) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Name == CONFIG_TYPE_ALL {
-		return nil, NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
+		return nil, validation.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
 	return &persistence.ConfigType{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),

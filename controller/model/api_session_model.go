@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ type ApiSession struct {
 
 func (entity *ApiSession) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
-		return nil, NewFieldError("identity not found", "IdentityId", entity.IdentityId)
+		return nil, validation.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
 	boltEntity := &persistence.ApiSession{

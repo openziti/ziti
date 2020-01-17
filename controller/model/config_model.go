@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -33,7 +34,7 @@ type Config struct {
 
 func (entity *Config) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Type == "" {
-		return nil, NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
+		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
 	}
 	return entity.ToBoltEntityForUpdate(tx, handler)
 }
@@ -49,7 +50,7 @@ func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (pers
 			}
 
 			if !configTypeStore.IsEntityPresent(tx, entity.Type) {
-				return nil, NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
+				return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 			}
 		}
 	}

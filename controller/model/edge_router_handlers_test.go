@@ -28,10 +28,10 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
-	service.EdgeRouterRoles = []string{"@" + uuid.New().String()}
+	service.EdgeRouterRoles = []string{"#" + uuid.New().String()}
 	ctx.NoError(ctx.handlers.Service.Update(service))
 
-	// should not be accessible if we limit to a non-existent router
+	// should not be accessible if we limit to a role no one has
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 

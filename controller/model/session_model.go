@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"reflect"
 	"time"
 
@@ -51,7 +52,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 	if apiSession == nil {
-		return nil, NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
+		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
 	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId)
@@ -60,11 +61,11 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	}
 
 	if !entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
-		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
+		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	if entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
-		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
+		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	maxRows := 1

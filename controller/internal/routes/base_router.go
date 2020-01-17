@@ -27,6 +27,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"strings"
@@ -219,7 +220,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 			return
 		}
 
-		if fe, ok := err.(*model.FieldError); ok {
+		if fe, ok := err.(*validation.FieldError); ok {
 			rr.RespondWithFieldError(fe)
 			return
 		}
@@ -352,7 +353,7 @@ func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType respons
 			return
 		}
 
-		if fe, ok := err.(*model.FieldError); ok {
+		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
 			return
 		}
@@ -419,7 +420,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 			return
 		}
 
-		if fe, ok := err.(*model.FieldError); ok {
+		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
 			return
 		}
@@ -553,7 +554,7 @@ func UpdateAssociations(ae *env.AppEnv, rc *response.RequestContext, idType resp
 			return
 		}
 
-		if fe, ok := err.(*model.FieldError); ok {
+		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
 			return
 		}
@@ -602,7 +603,7 @@ func RemoveAssociationForModel(rc *response.RequestContext, idType response.IdTy
 			return
 		}
 
-		if fe, ok := err.(*model.FieldError); ok {
+		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
 			return
 		}

@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"reflect"
 	"strings"
 
@@ -80,13 +81,13 @@ func (entity *Service) mapConfigTypeNamesToIds(tx *bbolt.Tx, handler Handler) er
 		if !configStore.IsEntityPresent(tx, val) {
 			id := configStore.GetNameIndex().Read(tx, []byte(val))
 			if id == nil || !configStore.IsEntityPresent(tx, string(id)) {
-				return NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
+				return validation.NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
 			}
 			entity.Configs[idx] = string(id)
 		}
 		config, _ := configStore.LoadOneById(tx, entity.Configs[idx])
 		if config == nil {
-			return NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
+			return validation.NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
 		}
 		conflictConfig, found := typeMap[config.Type]
 		if found {
@@ -96,7 +97,7 @@ func (entity *Service) mapConfigTypeNamesToIds(tx *bbolt.Tx, handler Handler) er
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
 				conflictConfig.Name, config.Name, configTypeName)
-			return NewFieldError(msg, "configs", entity.Configs)
+			return validation.NewFieldError(msg, "configs", entity.Configs)
 		}
 		typeMap[config.Type] = config
 	}

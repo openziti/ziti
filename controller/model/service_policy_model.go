@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -37,7 +38,7 @@ type ServicePolicy struct {
 func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
-		return nil, NewFieldError(msg, "policyType", entity.PolicyType)
+		return nil, validation.NewFieldError(msg, "policyType", entity.PolicyType)
 	}
 
 	policyType := persistence.PolicyTypeInvalid

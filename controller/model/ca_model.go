@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -63,17 +64,17 @@ func (entity *Ca) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 		blocks, err := cert.PemChain2Blocks(entity.CertPem)
 
 		if err != nil {
-			return nil, NewFieldError(err.Error(), "certPem", entity.CertPem)
+			return nil, validation.NewFieldError(err.Error(), "certPem", entity.CertPem)
 		}
 
 		if len(blocks) == 0 {
-			return nil, NewFieldError("at least one leaf certificate must be supplied", "certPem", entity.CertPem)
+			return nil, validation.NewFieldError("at least one leaf certificate must be supplied", "certPem", entity.CertPem)
 		}
 
 		certs, err := cert.Blocks2Certs(blocks)
 
 		if err != nil {
-			return nil, NewFieldError(err.Error(), "certPem", entity.CertPem)
+			return nil, validation.NewFieldError(err.Error(), "certPem", entity.CertPem)
 		}
 
 		leaf := certs[0]
@@ -100,7 +101,7 @@ func (entity *Ca) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 		return nil, err
 	}
 	if len(queryResults) > 0 {
-		return nil, NewFieldError(fmt.Sprintf("certificate already used as CA %s", queryResults[0]), "certPem", entity.CertPem)
+		return nil, validation.NewFieldError(fmt.Sprintf("certificate already used as CA %s", queryResults[0]), "certPem", entity.CertPem)
 	}
 
 	boltEntity := &persistence.Ca{

@@ -164,7 +164,7 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 }
 
 func (store *edgeServiceStoreImpl) edgeRouterRolesChanged(ctx *boltz.PersistContext, entityId string, roles []string) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), roles, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "edgeRouterRoles", roles, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.edgeRouterCollection.SetLinks(ctx.Bucket.Tx(), entityId, roleIds))
 	}

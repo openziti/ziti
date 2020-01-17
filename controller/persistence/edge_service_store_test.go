@@ -42,6 +42,7 @@ func Test_EdgeServiceStore(t *testing.T) {
 	t.Run("test load/query services", ctx.testLoadQueryServices)
 	t.Run("test update services", ctx.testUpdateServices)
 	t.Run("test delete services", ctx.testDeleteServices)
+	t.Run("test edge router role with invalid @ refs", ctx.testServiceEdgeRouterRolesInvalidValues)
 	t.Run("test edge router role evaluation", ctx.testServiceEdgeRouterRoleEvaluation)
 }
 
@@ -266,6 +267,37 @@ func (ctx *TestContext) testDeleteServices(_ *testing.T) {
 	ctx.requireDelete(entities.service2)
 }
 
+func (ctx *TestContext) testServiceEdgeRouterRolesInvalidValues(_ *testing.T) {
+	ctx.cleanupAll()
+
+	service := newEdgeService(uuid.New().String())
+	invalidId := uuid.New().String()
+	service.EdgeRouterRoles = []string{"@" + invalidId}
+	err := ctx.create(service)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+
+	edgeRouter := newEdgeRouter(uuid.New().String())
+	ctx.requireCreate(edgeRouter)
+
+	service.EdgeRouterRoles = []string{"@" + edgeRouter.Id, "@" + invalidId}
+	err = ctx.create(service)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+
+	service.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
+	ctx.requireCreate(service)
+	ctx.validateServiceEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeService{service})
+	ctx.requireDelete(service)
+
+	service.EdgeRouterRoles = []string{"@" + edgeRouter.Name}
+	ctx.requireCreate(service)
+	ctx.validateServiceEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeService{service})
+
+	service.EdgeRouterRoles = append(service.EdgeRouterRoles, "@"+invalidId)
+	err = ctx.update(service)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+	ctx.requireDelete(service)
+}
+
 func (ctx *TestContext) testServiceEdgeRouterRoleEvaluation(_ *testing.T) {
 	ctx.cleanupAll()
 
@@ -295,17 +327,15 @@ func (ctx *TestContext) testServiceEdgeRouterRoleEvaluation(_ *testing.T) {
 
 	services := ctx.createServiceWithEdgeRouterLimits(edgeRouterRoles, edgeRouters, true)
 
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 7; i++ {
 		relatedEdgeRouters := ctx.getRelatedIds(services[i], EntityTypeEdgeRouters)
 		if i == 3 {
 			ctx.Equal([]string{edgeRouters[0].Id}, relatedEdgeRouters)
 		} else if i == 4 || i == 5 {
 			sort.Strings(multipleEdgeRouterList)
 			ctx.Equal(multipleEdgeRouterList, relatedEdgeRouters)
-		} else if i == 7 {
-			ctx.Equal([]string{edgeRouters[4].Id}, relatedEdgeRouters)
-		} else if i == 9 {
-			ctx.Equal(6, len(relatedEdgeRouters))
+		} else if i == 6 {
+			ctx.Equal(5, len(relatedEdgeRouters))
 		} else {
 			ctx.Equal(0, len(relatedEdgeRouters))
 		}
@@ -373,7 +403,7 @@ func (ctx *TestContext) testServiceEdgeRouterRoleEvaluation(_ *testing.T) {
 
 func (ctx *TestContext) createServiceWithEdgeRouterLimits(edgeRouterRoles []string, edgeRouters []*EdgeRouter, oncreate bool) []*EdgeService {
 	var services []*EdgeService
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 7; i++ {
 		service := newEdgeService(uuid.New().String())
 		if !oncreate {
 			ctx.requireCreate(service)
@@ -394,15 +424,6 @@ func (ctx *TestContext) createServiceWithEdgeRouterLimits(edgeRouterRoles []stri
 			service.EdgeRouterRoles = []string{edgeRouterRoles[4], "@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
 		}
 		if i == 6 {
-			service.EdgeRouterRoles = []string{"@" + uuid.New().String()}
-		}
-		if i == 7 {
-			service.EdgeRouterRoles = []string{"@" + uuid.New().String(), "@" + edgeRouters[4].Id}
-		}
-		if i == 8 {
-			service.EdgeRouterRoles = []string{"@" + uuid.New().String(), edgeRouterRoles[5]}
-		}
-		if i == 9 {
 			service.EdgeRouterRoles = []string{"#all"}
 		}
 

@@ -17,7 +17,9 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -106,13 +108,15 @@ func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.Ba
 	return nil
 }
 
-func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, roleSet []string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
+func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleSet []string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
 	entityStore := index.GetSymbol().GetStore()
 	roles, ids, err := splitRolesAndIds(roleSet)
 	if err != nil {
 		return nil, err
 	}
-	ConvertNamesToIds(targetStore, tx, ids)
+	if err := validateAndConvertNamesToIds(tx, targetStore, field, ids); err != nil {
+		return nil, err
+	}
 	if stringz.Contains(roles, "all") {
 		ids, _, err := entityStore.QueryIds(tx, "true")
 		if err != nil {
@@ -129,14 +133,23 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, roleSet []string, i
 	return roleIds, nil
 }
 
-func ConvertNamesToIds(store NameIndexedStore, tx *bbolt.Tx, ids []string) {
+func validateAndConvertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, field string, ids []string) error {
 	nameIndex := store.GetNameIndex()
+	var invalid []string
 	for idx, val := range ids {
-		id := nameIndex.Read(tx, []byte(val))
-		if id != nil {
-			ids[idx] = string(id)
+		if !store.IsEntityPresent(tx, val) {
+			id := nameIndex.Read(tx, []byte(val))
+			if id != nil {
+				ids[idx] = string(id)
+			} else {
+				invalid = append(invalid, val)
+			}
 		}
 	}
+	if len(invalid) > 0 {
+		return validation.NewFieldError(fmt.Sprintf("no %v found with the given names/ids", store.GetEntityType()), field, invalid)
+	}
+	return nil
 }
 
 func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol, linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
@@ -152,7 +165,7 @@ func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, r
 			holder.SetError(err)
 			return
 		}
-		ConvertNamesToIds(store, tx, ids)
+		convertNamesToIds(tx, store, ids)
 		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") || (len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...)) {
 			err = linkCollection.AddLinks(tx, id, entityId)
 		} else {
@@ -161,6 +174,16 @@ func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, r
 		holder.SetError(err)
 		if holder.HasError() {
 			return
+		}
+	}
+}
+
+func convertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, ids []string) {
+	nameIndex := store.GetNameIndex()
+	for idx, val := range ids {
+		id := nameIndex.Read(tx, []byte(val))
+		if id != nil {
+			ids[idx] = string(id)
 		}
 	}
 }
