@@ -85,10 +85,10 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
             app: ziti-tunnel-sidecar-demo
         spec:
           containers:
-          - image: busybox
+          - image: debian:stable-slim
             name: testclient
-            command: ["sh","-c","while true; do echo wget -qO - eth0.ziti.cli:80; sleep 5; done"]
-          - image: netfoundry/ziti-tunnel:0.5.7-2546
+            command: ["sh","+x","-c","apt update; apt -y install wget; while true; do wget -qO - ethzero.ziti.ui 2>&1; sleep 5; done"]
+          - image: netfoundry/ziti-tunnel:0.5.8-2554
             name: ziti-tunnel
             env:
             - name: NF_REG_NAME
@@ -99,6 +99,15 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               readOnly: true
             - name: ziti-tunnel-persistent-storage
               mountPath: /netfoundry
+            securityContext:
+              capabilities:
+              add:
+                - NET_ADMIN
+          dnsPolicy: "None"
+          dnsConfig:
+            nameservers:
+              - 127.0.0.1
+              - 8.8.8.8
           restartPolicy: Always
           volumes:
           - name: ziti-tunnel-persistent-storage
@@ -107,6 +116,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           - name: tunnel-sidecar-jwt
             secret:
               secretName: tunnel-sidecar.jwt
+
 
 You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 
