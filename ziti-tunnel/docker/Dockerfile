@@ -6,7 +6,7 @@ FROM debian:stable-slim as fetch-ziti-artifacts
 ARG ARTIFACTORY_USERNAME
 ARG ARTIFACTORY_TOKEN
 
-ARG ZITI_VERSION="0.5.7-2546"
+ARG ZITI_VERSION="0.5.8-2554"
 
 # to fetch snapshots from the "feature-0.5" branch, set ZITI_REPO="ziti-snapshot/feature-0.5"
 ARG ARTIFACTORY_REPO="ziti-release"
