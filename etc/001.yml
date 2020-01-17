@@ -36,7 +36,7 @@ listeners:
   # for iperf_tcp (iperf3)
   - binding:            proxy
     address:            tcp:0.0.0.0:7001
-    service:            iperf_tcp
+    service:            iperf
 
   # for iperf_udp (iperf3)
   - binding:            proxy_udp
