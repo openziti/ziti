@@ -169,8 +169,8 @@ github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrk
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/netfoundry/ziti-fabric v0.0.0-20200108200335-8a3b0b19d2e6 h1:zR95MZtLIbuUqr/5LNj1unXuw0gz5WBTlWTv9pJ7+Ow=
-github.com/netfoundry/ziti-fabric v0.0.0-20200108200335-8a3b0b19d2e6/go.mod h1:pj5sWlqvzI6uY8x/qsJB9tgqjXqDfZa2HomPxKMurVc=
+github.com/netfoundry/ziti-fabric v0.9.1 h1:SH9Cp6+ErrsLOjVaxCo00BPve1q5im+TztJq9KWfnHE=
+github.com/netfoundry/ziti-fabric v0.9.1/go.mod h1:pj5sWlqvzI6uY8x/qsJB9tgqjXqDfZa2HomPxKMurVc=
 github.com/netfoundry/ziti-foundation v0.0.0-20200107143132-d54269e96d45/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
 github.com/netfoundry/ziti-foundation v0.0.0-20200110170009-41bb4fd29b11 h1:4MmXiSx63DVhx9/y29qNZqHrJXG32HL9NYanmits9HY=
 github.com/netfoundry/ziti-foundation v0.0.0-20200110170009-41bb4fd29b11/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
