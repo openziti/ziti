@@ -33,7 +33,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.22
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/netfoundry/ziti-fabric v0.0.0-20200108200335-8a3b0b19d2e6
+	github.com/netfoundry/ziti-fabric v0.9.1
 	github.com/netfoundry/ziti-foundation v0.0.0-20200110170009-41bb4fd29b11
 	github.com/netfoundry/ziti-sdk-golang v0.0.0-20200108160734-8bc089148c01
 	github.com/oleiade/reflections v1.0.0 // indirect
