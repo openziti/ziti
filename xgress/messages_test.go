@@ -92,7 +92,7 @@ func TestAcknowledgement_marshallSequence(t *testing.T) {
 			ack := &Acknowledgement{
 				Sequence: tt.sequence,
 			}
-			got := ack.marshallSequence();
+			got := ack.marshallSequence()
 			ack2 := &Acknowledgement{}
 			err := ack2.unmarshallSequence(got)
 			assert.NoError(t, err)

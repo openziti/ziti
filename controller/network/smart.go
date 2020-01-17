@@ -86,4 +86,3 @@ func (network *Network) smart() {
 	}
 	/* */
 }
-

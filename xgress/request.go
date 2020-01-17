@@ -285,4 +285,3 @@ func UnbindService(ctrl CtrlChannel, token string, serviceId string) error {
 		return errors.New("timeout while unbinding")
 	}
 }
-
