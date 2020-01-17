@@ -85,9 +85,9 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
             app: ziti-tunnel-sidecar-demo
         spec:
           containers:
-          - image: debian:stable-slim
+          - image: centos
             name: testclient
-            command: ["sh","+x","-c","apt update; apt -y install wget; while true; do wget -qO - ethzero.ziti.ui 2>&1; sleep 5; done"]
+            command: ["sh","-c","while true; set -x; do curl -sSLf ethzero.ziti.ui 2>&1; set +x; sleep 5; done"]
           - image: netfoundry/ziti-tunnel:0.5.8-2554
             name: ziti-tunnel
             env:
