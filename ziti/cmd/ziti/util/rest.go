@@ -576,19 +576,26 @@ func EdgeControllerDelete(baseUrl string, cert string, token string, entityType 
 }
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
-func EdgeControllerUpdate(url string, cert string, token string, entityType string, body string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerUpdate(url string, cert string, token string, entityType string, body string, out io.Writer, put bool, logJSON bool) (*gabs.Container, error) {
 	client := newClient()
 
 	if cert != "" {
 		client.SetRootCertificate(cert)
 	}
 
-	resp, err := client.
+	request := client.
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, token).
-		SetBody(body).
-		Put(url + "/" + entityType)
+		SetBody(body)
+
+	var err error
+	var resp *resty.Response
+	if put {
+		resp, err = request.Put(url + "/" + entityType)
+	} else {
+		resp, err = request.Patch(url + "/" + entityType)
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, url, err)

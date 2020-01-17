@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2020 Netfoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
 package edge_controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
@@ -27,29 +30,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createEdgeRouterPolicyOptions struct {
+type createConfigOptions struct {
 	commonOptions
-	edgeRouterRoles []string
-	identityRoles   []string
 }
 
-// newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
-func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createEdgeRouterPolicyOptions{
+// newCreateConfigCmd creates the 'edge controller create service-policy' command
+func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createConfigOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edge-router-policy <name>",
-		Short: "creates an edge-router-policy managed by the Ziti Edge Controller",
-		Long:  "creates an edge-router-policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(1),
+		Use:   "config <name> <JSON configuration data>",
+		Short: "creates a config managed by the Ziti Edge Controller",
+		Long:  "creates a config managed by the Ziti Edge Controller",
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEdgeRouterPolicy(options)
+			err := runCreateConfig(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -57,29 +58,32 @@ func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new edge router policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new edge router policy")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
 }
 
-// runCreateEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
-func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
+// runCreateConfig create a new config on the Ziti Edge Controller
+func runCreateConfig(o *createConfigOptions) error {
+	dataMap := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(o.Args[1]), &dataMap); err != nil {
+		fmt.Printf("Attempted to parse: %v\n", o.Args[1])
+		fmt.Printf("Failing parsing JSON: %+v\n", err)
+		return errors.Errorf("unable to parse data as json: %v", err)
+	}
 
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, o.identityRoles, "identityRoles")
-	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.commonOptions)
+	setJSONValue(entityData, dataMap, "data")
+	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	edgeRouterPolicyId := result.S("data", "id").Data()
+	configId := result.S("data", "id").Data()
 
-	if _, err := fmt.Fprintf(o.Out, "%v\n", edgeRouterPolicyId); err != nil {
+	if _, err := fmt.Fprintf(o.Out, "%v\n", configId); err != nil {
 		panic(err)
 	}
 

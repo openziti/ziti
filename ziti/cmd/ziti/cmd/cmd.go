@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/edge_controller"
 	goflag "flag"
 	"fmt"
 	"io"
@@ -25,13 +24,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/edge_controller"
+
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
 	"github.com/netfoundry/ziti-cmd/common/version"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -52,8 +53,6 @@ type RootCmd struct {
 
 	cobraCommand *cobra.Command
 }
-
-var cliAgentEnabled bool
 
 var rootCommand = RootCmd{
 	cobraCommand: &cobra.Command{
@@ -123,8 +122,6 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 
 	// defaultClusterName := os.Getenv("ZITI_CLUSTER_NAME")
 	// cmd.PersistentFlags().StringVarP(&rootCommand.clusterName, "name", "", defaultClusterName, "Name of cluster. Overrides ZITI_CLUSTER_NAME environment variable")
-
-	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", false, "Enable CLI Agent (use in dev only)")
 
 	initCommands := NewCmdInit(f, out, err)
 	createCommands := NewCmdCreate(f, out, err)

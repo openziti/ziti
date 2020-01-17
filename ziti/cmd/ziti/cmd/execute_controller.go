@@ -17,9 +17,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"io"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
@@ -73,6 +74,8 @@ func NewCmdExecuteController(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 			cmdhelper.CheckErr(err)
 		},
 	}
+
+	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", false, "Enable CLI Agent (use in dev only)")
 
 	options.addCommonFlags(cmd)
 

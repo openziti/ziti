@@ -18,15 +18,16 @@ package edge_controller
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"reflect"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
-	"io/ioutil"
-	"reflect"
-	"strings"
 )
 
 type createIdentityOptions struct {
@@ -79,7 +80,7 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "r", nil, "Role attributes of the new identity")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 
 	return cmd
