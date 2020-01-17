@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -122,7 +122,7 @@ func runUpdateCa(options updateCaOptions) error {
 	setJSONValue(data, options.authEnabled, "isAuthEnabled")
 	setJSONValue(data, tags, "tags")
 
-	_, err = updateEntityOfType("cas/"+id, data.String(), &options.commonOptions)
+	_, err = putEntityOfType("cas/"+id, data.String(), &options.commonOptions)
 
 	if err != nil {
 		return err

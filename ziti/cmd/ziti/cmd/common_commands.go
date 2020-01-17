@@ -17,14 +17,17 @@
 package cmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 )
+
+var cliAgentEnabled bool
 
 func (o *CommonOptions) startCommandFromDir(dir, name string, args ...string) error {
 	if cliAgentEnabled {

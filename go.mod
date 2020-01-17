@@ -21,10 +21,10 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/netfoundry/ziti-edge v0.0.0-20191219210717-6e019a1ba9a6
-	github.com/netfoundry/ziti-fabric v0.0.0-20191213215600-dcc209b66c31
-	github.com/netfoundry/ziti-foundation v0.0.0-20191213201903-e68267fe89e6
-	github.com/netfoundry/ziti-sdk-golang v0.0.0-20191217143926-85a9668710ec
+	github.com/netfoundry/ziti-edge v0.0.0-20200114142905-3c2695a7b64a
+	github.com/netfoundry/ziti-fabric v0.0.0-20200108200335-8a3b0b19d2e6
+	github.com/netfoundry/ziti-foundation v0.0.0-20200114140226-eb1da62e386b // indirect
+	github.com/netfoundry/ziti-sdk-golang v0.0.0-20200108160734-8bc089148c01
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563

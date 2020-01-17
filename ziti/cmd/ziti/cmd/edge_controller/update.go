@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -40,14 +40,22 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	}
 
 	cmd.AddCommand(newUpdateAuthenticatorCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateConfigCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCaCmd(f, out, errOut))
 
 	return cmd
 }
 
-// updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
-func updateEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func putEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, true)
+}
 
+func patchEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, false)
+}
+
+// updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
+func updateEntityOfType(entityType string, body string, options *commonOptions, put bool) (*gabs.Container, error) {
 	session := &session{}
 	err := session.Load()
 
@@ -59,7 +67,7 @@ func updateEntityOfType(entityType string, body string, options *commonOptions) 
 		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
 	}
 
-	jsonParsed, err := util.EdgeControllerUpdate(session.Host, session.Cert, session.Token, entityType, body, options.Out, options.OutputJSONResponse)
+	jsonParsed, err := util.EdgeControllerUpdate(session.Host, session.Cert, session.Token, entityType, body, options.Out, put, options.OutputJSONResponse)
 
 	if err != nil {
 		panic(err)

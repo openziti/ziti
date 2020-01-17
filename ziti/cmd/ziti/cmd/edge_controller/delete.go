@@ -18,14 +18,15 @@ package edge_controller
 
 import (
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
-	"strings"
 )
 
 // newDeleteCmd creates a command object for the "edge controller delete" command
@@ -50,14 +51,14 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		}
 	}
 
-	cmd.AddCommand(newDeleteCmdForEntityType("app-wan", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("api-session", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("ca", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("config", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", runDeleteEntityOfType, newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("gateway", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("identity", runDeleteEntityOfType, newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("network-session", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("service", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("session", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteAuthenticatorCmd("authenticator", newOptions()))
 

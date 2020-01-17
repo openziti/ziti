@@ -17,12 +17,13 @@
 package edge_controller
 
 import (
+	"io"
+
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // NewCmdEdge creates a command object for the "controller" command
