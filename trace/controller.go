@@ -17,8 +17,8 @@
 package trace
 
 import (
-	"github.com/netfoundry/ziti-foundation/trace/pb"
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/trace/pb"
 	"regexp"
 	"strings"
 )

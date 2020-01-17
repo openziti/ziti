@@ -17,8 +17,8 @@
 package handler_mgmt
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type xmgmtCloseHandler struct {

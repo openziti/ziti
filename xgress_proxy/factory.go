@@ -46,4 +46,3 @@ type factory struct {
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
 }
-

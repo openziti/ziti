@@ -27,7 +27,7 @@ type Config struct {
 }
 
 func LoadConfig(srcmap map[interface{}]interface{}) (*Config, error) {
-	cfg :=  &Config{handlers: make(map[Handler]Handler)}
+	cfg := &Config{handlers: make(map[Handler]Handler)}
 
 	for k, v := range srcmap {
 		if name, ok := k.(string); ok {

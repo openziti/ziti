@@ -34,7 +34,7 @@ func (circuit *Circuit) String() string {
 	if len(circuit.Path) < 1 {
 		return "{}"
 	}
-	if len(circuit.Links) != len(circuit.Path) - 1 {
+	if len(circuit.Links) != len(circuit.Path)-1 {
 		return "{malformed}"
 	}
 	out := fmt.Sprintf("[r/%s]", circuit.Path[0].Id)

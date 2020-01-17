@@ -57,8 +57,8 @@ func (h *inspectHandler) HandleReceive(request *channel2.Message, ch channel2.Ch
 	h.respond(ch, request, response)
 }
 
-func (h *inspectHandler) respondWithError(ch channel2.Channel, request *channel2.Message, errs...string) {
-	response := &ctrl_pb.InspectResponse{Success: false, Errors: errs }
+func (h *inspectHandler) respondWithError(ch channel2.Channel, request *channel2.Message, errs ...string) {
+	response := &ctrl_pb.InspectResponse{Success: false, Errors: errs}
 	h.respond(ch, request, response)
 }
 

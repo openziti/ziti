@@ -146,21 +146,21 @@ func TestTrackerNonDuplicate(t *testing.T) {
 
 	// interval N-3
 	interval = intervals[0]
-	assert.Equal(currentMinute.Add(time.Minute * - 3).UTC().Unix(), interval.intervalStartUTC)
-	assert.Equal(currentMinute.Add(time.Minute * - 2).UTC().Unix(), interval.intervalEndUTC)
+	assert.Equal(currentMinute.Add(time.Minute*-3).UTC().Unix(), interval.intervalStartUTC)
+	assert.Equal(currentMinute.Add(time.Minute*-2).UTC().Unix(), interval.intervalEndUTC)
 	assert.Equal(1, len(interval.values))
 	assert.Equal(uint64(567), interval.values[intervalID2])
 
 	// interval N-2
 	interval = intervals[1]
-	assert.Equal(currentMinute.Add(time.Minute * - 2).UTC().Unix(), interval.intervalStartUTC)
-	assert.Equal(currentMinute.Add(time.Minute * - 1).UTC().Unix(), interval.intervalEndUTC)
+	assert.Equal(currentMinute.Add(time.Minute*-2).UTC().Unix(), interval.intervalStartUTC)
+	assert.Equal(currentMinute.Add(time.Minute*-1).UTC().Unix(), interval.intervalEndUTC)
 	assert.Equal(1, len(interval.values))
 	assert.Equal(uint64(234), interval.values[intervalID1])
 
 	// interval N-1
 	interval = intervals[2]
-	assert.Equal(currentMinute.Add(time.Minute * - 1).UTC().Unix(), interval.intervalStartUTC)
+	assert.Equal(currentMinute.Add(time.Minute*-1).UTC().Unix(), interval.intervalStartUTC)
 	assert.Equal(currentMinute.UTC().Unix(), interval.intervalEndUTC)
 	assert.Equal(2, len(interval.values))
 	assert.Equal(uint64(200), interval.values[intervalID1])
