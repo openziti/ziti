@@ -131,7 +131,7 @@ func (router *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(router.config.Id, router))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(router))
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(router.config.Id, router))
-	xgress.GlobalRegistry().Register("udp", xgress_transport_udp.NewFactory(router.config.Id, router))
+	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(router.config.Id, router))
 
 	return nil
 }

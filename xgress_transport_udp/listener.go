@@ -23,7 +23,6 @@ import (
 	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
-	"io"
 	"net"
 	"time"
 )
@@ -93,11 +92,7 @@ func (l *listener) relayIncomingPackets() {
 		logger.Debugf("Packet read complete: %v bytes read", bytesRead)
 
 		if bytesRead > 0 {
-			pd := &packetData{
-				buffer: buf[:bytesRead],
-				source: addr,
-			}
-			l.dataChan <- pd
+			l.dataChan <- xgress_udp.NewPacketData(buf[:bytesRead], addr)
 		}
 
 		if err != nil {
@@ -115,27 +110,21 @@ func (l *listener) rx() {
 	for {
 		select {
 		case data := <-l.dataChan:
-			logger.Debugf("handling data. bytes %v from source %v", len(data.buffer), data.source)
-			sessionId := data.source.String()
+			logger.Debugf("handling data. bytes [%v] from source [%v]", len(data.Buffer), data.Source)
+			sessionId := data.Source.String()
 			session, present := l.sessions[sessionId]
 			if !present {
-				session = &packetSession{
-					listener:             l,
-					readC:                make(chan []byte, 10),
-					addr:                 data.source,
-					state:                xgress_udp.SessionStateNew,
-					timeoutIntervalNanos: defaultTimeoutInterval.Nanoseconds(),
-				}
+				session = xgress_udp.NewPacketSesssion(l, data.Source, time.Minute.Nanoseconds())
 				session.MarkActivity()
 				l.sessions[sessionId] = session
-				logger.Debugf("no session present. authenticating session for %v", data.source)
-				go l.handleConnect(data.buffer, session)
+				logger.Debugf("no session present. authenticating session for %v", data.Source)
+				go l.handleConnect(data.Buffer, session)
 
 			} else if session.State() == xgress_udp.SessionStateEstablished {
-				logger.Debugf("session established for %v, forwarding data", data.source)
+				logger.Debugf("session established for %v, forwarding data", data.Source)
 				session.MarkActivity()
-				session.QueueRead(data.buffer)
-				logger.Debugf("session established for %v. Data forwarded", data.source)
+				session.QueueRead(data.Buffer)
+				logger.Debugf("session established for %v. Data forwarded", data.Source)
 			}
 
 		case event := <-l.eventChan:
@@ -150,72 +139,6 @@ func (l *listener) rx() {
 			}
 		}
 	}
-}
-
-func (session *packetSession) State() xgress_udp.SessionState {
-	return session.state
-}
-
-func (session *packetSession) SetState(state xgress_udp.SessionState) {
-	session.state = state
-}
-
-func (session *packetSession) Address() net.Addr {
-	return session.addr
-}
-
-func (session *packetSession) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	select {
-	case buffer, chanOpen := <-session.readC:
-		if !chanOpen {
-			return buffer, nil, io.EOF
-		}
-		return buffer, nil, nil
-	}
-}
-
-func (session *packetSession) Write(p []byte) (n int, err error) {
-	session.listener.QueueEvent((*sessionUpdateEvent)(session)) // queues session timeout to be updated
-	return session.listener.WriteTo(p, session.addr)
-}
-
-func (session *packetSession) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
-	return session.Write(p)
-}
-
-func (session *packetSession) QueueRead(data []byte) {
-	session.readC <- data
-}
-
-func (session *packetSession) Close() error {
-	session.listener.QueueEvent((*sessionCloseEvent)(session)) // queues session to be removed
-	return nil
-}
-
-func (session *packetSession) LogContext() string {
-	return session.addr.String()
-}
-
-func (session *packetSession) TimeoutNanos() int64 {
-	return session.timeoutNanos
-}
-
-func (session *packetSession) MarkActivity() {
-	session.timeoutNanos = time.Now().UnixNano() + session.timeoutIntervalNanos
-}
-
-func (session *packetSession) SessionId() string {
-	return session.addr.String()
-}
-
-type packetSession struct {
-	listener             xgress_udp.Listener
-	readC                chan []byte
-	addr                 net.Addr
-	state                xgress_udp.SessionState
-	timeoutIntervalNanos int64
-	timeoutNanos         int64
-	closed               bool
 }
 
 func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Session) {
@@ -239,7 +162,7 @@ func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.
 		id:        id,
 		ctrl:      ctrl,
 		options:   options,
-		dataChan:  make(chan *packetData, 10),
+		dataChan:  make(chan *xgress_udp.PacketData, 10),
 		eventChan: make(chan xgress_udp.EventHandler, 10),
 		sessions:  make(map[string]xgress_udp.Session),
 	}
@@ -252,7 +175,7 @@ type listener struct {
 	address     string
 	bindHandler xgress.BindHandler
 	conn        net.PacketConn
-	dataChan    chan *packetData
+	dataChan    chan *xgress_udp.PacketData
 	eventChan   chan xgress_udp.EventHandler
 	sessions    map[string]xgress_udp.Session
 }
@@ -266,20 +189,23 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 	if !present {
 		// session timed out or some other unexpected failure
 		respMsg = &xgress.Response{Success: false, Message: "timeout"}
-		session = &packetSession{listener: listener, addr: response.addr}
-		logger.Debugf("Session %v not found for response", sessionId)
+		session = xgress_udp.NewPacketSesssion(listener, response.addr, time.Minute.Nanoseconds())
+		logger.Debugf("session [%v] not found for response", sessionId)
+
 	} else if response.response.Success {
 		session.SetState(xgress_udp.SessionStateEstablished)
-		logger.Debugf("Session %v found for success response. Marking established", sessionId)
+		logger.Debugf("session [%v] found for success response. marked established", sessionId)
+
 	} else {
-		logger.Debugf("Session %v found for failure response. Removing session", sessionId)
+		logger.Debugf("session [%v] found for failure response. removing session", sessionId)
 		_ = session.Close() // always returns nil
 	}
-	logger.Debugf("Sending response to client for %v", sessionId)
+
+	logger.Debugf("sending response to client for [%v]", sessionId)
 	err := xgress.SendResponse(respMsg, session)
-	logger.Debugf("Response to client for %v sent", sessionId)
+
 	if err != nil {
-		logger.Errorf("failure sending response (%v)", err)
+		logger.Errorf("failure sending response (%w)", err)
 	}
 }
 
@@ -287,42 +213,3 @@ type sessionResponse struct {
 	addr     net.Addr
 	response *xgress.Response
 }
-
-type packetData struct {
-	buffer []byte
-	source net.Addr
-}
-
-type sessionUpdateEvent packetSession
-
-func (session *sessionUpdateEvent) Handle(listener xgress_udp.Listener) {
-	(*packetSession)(session).MarkActivity()
-}
-
-type sessionCloseEvent packetSession
-
-func (closeEvent *sessionCloseEvent) Handle(listener xgress_udp.Listener) {
-	// Note: The Xgress will close when EOF is returned from a read. That will also cause the session to be closed
-	//       The session packet will return EOF from a read when the session.readC is closed
-	session := (*packetSession)(closeEvent)
-	if !session.closed {
-		close(session.readC)
-		listener.DeleteSession(session.SessionId())
-		session.closed = true
-	}
-}
-
-type sessionState uint8
-
-const (
-	sessionStateNew sessionState = iota
-	sessionStateEstablished
-)
-
-type packetEvent interface {
-	handle(listener *listener)
-}
-
-const (
-	defaultTimeoutInterval = time.Minute
-)

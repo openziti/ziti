@@ -22,7 +22,6 @@ import (
 	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"github.com/sirupsen/logrus"
-	"io"
 	"net"
 	"time"
 )
@@ -81,11 +80,7 @@ func (l *listener) relay() {
 		}
 
 		if read > 0 {
-			pd := &packetData{
-				buffer: buf[:read],
-				source: addr,
-			}
-			l.dataChan <- pd
+			l.dataChan <- xgress_udp.NewPacketData(buf[:read], addr)
 		}
 	}
 }
@@ -96,17 +91,11 @@ func (l *listener) rx() {
 	for {
 		select {
 		case data := <-l.dataChan:
-			sessionId := data.source.String()
+			sessionId := data.Source.String()
 			session, found := l.sessions[sessionId]
 			if !found {
 				logrus.Infof("session not found for [%s]", sessionId)
-				session = &packetSession{
-					listener:             l,
-					readC:                make(chan []byte, 10),
-					addr:                 data.source,
-					state:                xgress_udp.SessionStateNew,
-					timeoutIntervalNanos: time.Minute.Nanoseconds(),
-				}
+				session = xgress_udp.NewPacketSesssion(l, data.Source, time.Minute.Nanoseconds())
 				session.MarkActivity()
 				l.sessions[sessionId] = session
 				l.handleConnect(session)
@@ -120,7 +109,7 @@ func (l *listener) rx() {
 
 			if session.State() == xgress_udp.SessionStateEstablished {
 				session.MarkActivity()
-				session.QueueRead(data.buffer)
+				session.QueueRead(data.Buffer)
 			} else {
 				logrus.Warnf("dropping")
 			}
@@ -163,7 +152,7 @@ func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Option
 		service:   service,
 		ctrl:      ctrl,
 		options:   options,
-		dataChan:  make(chan *packetData, 10),
+		dataChan:  make(chan *xgress_udp.PacketData, 10),
 		eventChan: make(chan xgress_udp.EventHandler, 10),
 		sessions:  make(map[string]xgress_udp.Session),
 	}
@@ -176,95 +165,7 @@ type listener struct {
 	address     string
 	bindHandler xgress.BindHandler
 	conn        net.PacketConn
-	dataChan    chan *packetData
+	dataChan    chan *xgress_udp.PacketData
 	eventChan   chan xgress_udp.EventHandler
 	sessions    map[string]xgress_udp.Session
-}
-
-type packetData struct {
-	buffer []byte
-	source net.Addr
-}
-
-func (s *packetSession) State() xgress_udp.SessionState {
-	return s.state
-}
-
-func (s *packetSession) SetState(state xgress_udp.SessionState) {
-	s.state = state
-}
-
-func (s *packetSession) Address() net.Addr {
-	return s.addr
-}
-
-func (s *packetSession) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	select {
-	case buffer, chanOpen := <-s.readC:
-		if !chanOpen {
-			return buffer, nil, io.EOF
-		}
-		return buffer, nil, nil
-	}
-}
-
-func (s *packetSession) Write(p []byte) (n int, err error) {
-	s.listener.QueueEvent((*sessionUpdateEvent)(s))
-	return s.listener.WriteTo(p, s.addr)
-}
-
-func (s *packetSession) WritePayload(p []byte, _ map[uint8][]byte) (n int, err error) {
-	return s.Write(p)
-}
-
-func (s *packetSession) QueueRead(data []byte) {
-	s.readC <- data
-}
-
-func (s *packetSession) Close() error {
-	s.listener.QueueEvent((*sessionCloseEvent)(s))
-	return nil
-}
-
-func (s *packetSession) LogContext() string {
-	return s.addr.String()
-}
-
-func (s *packetSession) TimeoutNanos() int64 {
-	return s.timeoutNanos
-}
-
-func (s *packetSession) MarkActivity() {
-	s.timeoutNanos = time.Now().UnixNano() + s.timeoutIntervalNanos
-}
-
-func (s *packetSession) SessionId() string {
-	return s.addr.String()
-}
-
-type packetSession struct {
-	listener             xgress_udp.Listener
-	readC                chan []byte
-	addr                 net.Addr
-	state                xgress_udp.SessionState
-	timeoutIntervalNanos int64
-	timeoutNanos         int64
-	closed               bool
-}
-
-type sessionUpdateEvent packetSession
-
-func (s *sessionUpdateEvent) Handle(_ xgress_udp.Listener) {
-	(*packetSession)(s).MarkActivity()
-}
-
-type sessionCloseEvent packetSession
-
-func (e *sessionCloseEvent) Handle(l xgress_udp.Listener) {
-	session := (*packetSession)(e)
-	if !session.closed {
-		close(session.readC)
-		l.DeleteSession(session.SessionId())
-		session.closed = true
-	}
 }
