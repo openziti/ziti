@@ -71,12 +71,4 @@ edge:
       # (optional, defaults to 5) The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       durationMinutes: 14400
-  persistence:
-    # See  documentation:
-    # - https://godoc.org/github.com/lib/pq
-    # - https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
-    # (required) A Postgres connection string used to connect to a database
-    connectionUrl: "postgres://postgres:ztpassword@${ZITI_POSTGRES_HOST}/postgres?sslmode=disable"
-    # (required) The Postgres database name to use
-    dbName: postgres
 HereDocForEdgeConfiguration
