@@ -18,17 +18,32 @@ package xgress_transport_udp
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-fabric/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/sirupsen/logrus"
 	"net"
 )
 
-type dialer struct {
-	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
-	options *xgress.Options
+func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
+	logrus.Infof("parsing %v for xgress address: %v", destination, address)
+	packetAddress, err := xgress_udp.Parse(destination)
+	if err != nil {
+		return fmt.Errorf("cannot dial on invalid address [%s] (%w)", destination, err)
+	}
+
+	logrus.Infof("dialing packet address [%v]", packetAddress)
+	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("bound on [%v]", conn.LocalAddr())
+
+	x := xgress.NewXgress(sessionId, address, newPacketConn(conn), xgress.Terminator, txd.options)
+	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
+
+	return nil
 }
 
 func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (*dialer, error) {
@@ -40,24 +55,8 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
-	pfxlog.Logger().Infof("Parsing %v for xgress address: %v", destination, address)
-	packetAddress, err := xgress_udp.Parse(destination)
-	if err != nil {
-		return fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
-	}
-
-	pfxlog.Logger().Infof("Dialing packet address %v", packetAddress)
-	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
-	if err != nil {
-		return err
-	}
-
-	pfxlog.Logger().Infof("Bound on '%v'", conn.LocalAddr())
-
-	xgConn := &xgressPacketConn{conn}
-	x := xgress.NewXgress(sessionId, address, xgConn, xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
-
-	return nil
+type dialer struct {
+	id      *identity.TokenId
+	ctrl    xgress.CtrlChannel
+	options *xgress.Options
 }
