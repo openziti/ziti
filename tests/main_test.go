@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	testContext := GetTestContext()
 	root.Flags().StringVarP(&testContext.AdminAuthenticator.Username, "username", "u", "admin", "The default admin username")
 	root.Flags().StringVarP(&testContext.AdminAuthenticator.Password, "password", "p", "admin", "The default admin password")
-	root.Flags().StringVarP(&testContext.ApiHost, "api", "a", "127.0.0.1:1280", "The Edge API host:port to connect to")
+	root.Flags().StringVarP(&testContext.ApiHost, "api", "a", "127.0.0.1:1281", "The Edge API host:port to connect to")
 
 	if err := root.Execute(); err != nil {
 		panic(err)

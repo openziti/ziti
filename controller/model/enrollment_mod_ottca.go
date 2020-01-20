@@ -18,6 +18,7 @@ package model
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/internal/cert"
@@ -106,6 +107,11 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 
 	fingerprint := module.fingerprintGenerator.FromCert(validCert)
 
+	certPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: validCert.Raw,
+	})
+
 	existing, _ := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 	if existing != nil {
@@ -124,6 +130,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 		IdentityId:          identity.Id,
 		SubType: &AuthenticatorCert{
 			Fingerprint: fingerprint,
+			Pem:         string(certPem),
 		},
 	}
 

@@ -19,7 +19,10 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/netfoundry/ziti-foundation/common/constants"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
 )
@@ -44,7 +47,6 @@ type authUpdbTests struct {
 }
 
 func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
-	t.Skip("verify if test or functionality is wrong")
 	body := gabs.New()
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 	_, _ = body.SetP("invalid_password", "password")
@@ -54,20 +56,14 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
-	if err != nil {
-		t.Errorf("failed to authenticate via updb as default admin: %s", err)
-	}
-
-	t.Run("ReturnsForbidden", func(t *testing.T) {
-		if resp.StatusCode() != http.StatusForbidden {
-			t.Errorf("expected status code %d got %d", http.StatusForbidden, resp.StatusCode())
-		}
+	t.Run("should not have returned an error", func(t *testing.T) {
+		require.New(t).NoError(err)
 	})
 
-	t.Run("HasNoSessionHeader", func(t *testing.T) {
-		if resp.Header().Get("zt-session") != "" {
-			t.Errorf("expected header zt-session to not be empty, got %s", resp.Header().Get("zt-session"))
-		}
+	standardErrorJsonResponseTests(resp, "INVALID_AUTH", http.StatusUnauthorized, t)
+
+	t.Run("does not have a session token", func(t *testing.T) {
+		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
 	})
 }
 
@@ -80,20 +76,14 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
-	if err != nil {
-		t.Errorf("failed to authenticate via UPDB as default admin: %s", err)
-	}
-
-	t.Run("ReturnsBadRequest", func(t *testing.T) {
-		if resp.StatusCode() != http.StatusBadRequest {
-			t.Errorf("expected status code %d got %d", http.StatusBadRequest, resp.StatusCode())
-		}
+	t.Run("should not have returned an error", func(t *testing.T) {
+		require.New(t).NoError(err)
 	})
 
-	t.Run("HasNoSessionHeader", func(t *testing.T) {
-		if resp.Header().Get("zt-session") != "" {
-			t.Errorf("expected header zt-session to not be empty, got %s", resp.Header().Get("zt-session"))
-		}
+	standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+
+	t.Run("does not have a session token", func(t *testing.T) {
+		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
 	})
 }
 
@@ -110,16 +100,14 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingUsername(t *testing.T) {
 		t.Errorf("failed to authenticate via UPDB as default admin: %s", err)
 	}
 
-	t.Run("ReturnsBadRequest", func(t *testing.T) {
-		if resp.StatusCode() != http.StatusBadRequest {
-			t.Errorf("expected status code %d got %d", http.StatusBadRequest, resp.StatusCode())
-		}
+	t.Run("should not have returned an error", func(t *testing.T) {
+		require.New(t).NoError(err)
 	})
 
-	t.Run("HasNoSessionHeader", func(t *testing.T) {
-		if resp.Header().Get("zt-session") != "" {
-			t.Errorf("expected header zt-session to not be empty, got %s", resp.Header().Get("zt-session"))
-		}
+	standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+
+	t.Run("does not have a session token", func(t *testing.T) {
+		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
 	})
 }
 
@@ -133,19 +121,46 @@ func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
-	if err != nil {
-		t.Errorf("failed to authenticate via UPDB as default admin: %s", err)
-	}
-
-	t.Run("ReturnsOk", func(t *testing.T) {
-		if resp.StatusCode() != http.StatusOK {
-			t.Errorf("expected status code %d got %d", http.StatusOK, resp.StatusCode())
-		}
+	t.Run("should not have returned an error", func(t *testing.T) {
+		require.New(t).NoError(err)
 	})
 
-	t.Run("HasSessionHeader", func(t *testing.T) {
-		if resp.Header().Get("zt-session") == "" {
-			t.Error("expected header zt-session to not be empty")
-		}
+	standardJsonResponseTests(resp, http.StatusOK, t)
+
+	t.Run("returns a session token HTTP headers", func(t *testing.T) {
+		require.New(t).NotEmpty(resp.Header().Get(constants.ZitiSession), fmt.Sprintf("HTTP header %s is empty", constants.ZitiSession))
+	})
+
+	t.Run("returns a session token in body", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		r.True(data.ExistsP("data.token"), "session token property in 'data.token' as not found")
+		r.NotEmpty(data.Path("data.token").String(), "session token property in 'data.token' is empty")
+	})
+
+	t.Run("body session token matches HTTP header token", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		bodyToken := data.Path("data.token").Data().(string)
+		headerToken := resp.Header().Get(constants.ZitiSession)
+		r.Equal(bodyToken, headerToken)
+	})
+
+	t.Run("returns an identity", func(t *testing.T) {
+		r := require.New(t)
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		r.True(data.ExistsP("data.identity"), "session token property in 'data.token' as not found")
+
+		_, err = data.ObjectP("data.identity")
+		r.NoError(err, "session token property in 'data.token' is empty")
 	})
 }

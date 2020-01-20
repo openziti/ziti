@@ -20,9 +20,15 @@ package tests
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	cryptoTls "crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -75,7 +81,7 @@ var defaultTestContext = &TestContext{
 
 func NewTestContext(t *testing.T) *TestContext {
 	return &TestContext{
-		ApiHost: "127.0.0.1:1280",
+		ApiHost: "127.0.0.1:1281",
 		AdminAuthenticator: &updbAuthenticator{
 			Username: uuid.New().String(),
 			Password: uuid.New().String(),
@@ -129,10 +135,20 @@ func (ctx *TestContext) NewClient() *resty.Client {
 
 func (ctx *TestContext) DefaultClient() *resty.Client {
 	if ctx.client == nil {
-		ctx.client = ctx.Client(ctx.HttpClient(ctx.Transport()))
-		ctx.client.SetHostURL("https://" + ctx.ApiHost)
+		ctx.client, _, _ = ctx.NewClientComponents()
 	}
 	return ctx.client
+}
+
+func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *http.Transport) {
+	transport := ctx.Transport()
+	httpClient := ctx.HttpClient(transport)
+	client := ctx.Client(httpClient)
+
+	client.SetHostURL("https://" + ctx.ApiHost)
+
+	return client, httpClient, transport
+
 }
 
 func (ctx *TestContext) startServer() {
@@ -236,7 +252,7 @@ func (ctx *TestContext) newRequest() *resty.Request {
 		SetHeader("Content-Type", "application/json")
 }
 
-func (ctx *TestContext) completeEnrollment(identityId string, password string) {
+func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
 	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 	path := result.Search(path("data.enrollment.updb.token")...)
 	ctx.req.NotNil(path)
@@ -252,6 +268,45 @@ func (ctx *TestContext) completeEnrollment(identityId string, password string) {
 	ctx.req.NoError(err)
 	ctx.logJson(resp.Body())
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+}
+
+func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthenticator {
+	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
+
+	tokenValue := result.Path("data.enrollment.ott.token")
+
+	ctx.req.NotNil(tokenValue)
+	token, ok := tokenValue.Data().(string)
+	ctx.req.True(ok)
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	ctx.req.NoError(err)
+
+	request, err := certtools.NewCertRequest(map[string]string{
+		"C": "US", "O": "Netfoundry-APi-Test", "CN": identityId,
+	}, nil)
+
+	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
+	ctx.req.NoError(err)
+
+	csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+
+	resp, err := ctx.newRequest().
+		SetBody(csrPem).
+		SetHeader("content-type", "application/x-pem-file").
+		Post("enroll?token=" + token)
+	ctx.req.NoError(err)
+	ctx.logJson(resp.Body())
+	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+
+	certs := nfpem.PemToX509(string(resp.Body()))
+
+	ctx.req.NotEmpty(certs)
+
+	return &certAuthenticator{
+		cert: certs[0],
+		key:  privateKey,
+	}
 }
 
 func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {

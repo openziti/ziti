@@ -152,6 +152,8 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 		enrollData = body
 	case "application/pkcs7-mime":
 		enrollData = body
+	case "application/x-pem-file":
+		enrollData = body
 	default:
 		return apierror.NewInvalidContentType(contentType[0])
 	}

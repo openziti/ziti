@@ -29,6 +29,10 @@ type AuthenticatorHandler struct {
 	authStore persistence.AuthenticatorStore
 }
 
+func (handler AuthenticatorHandler) IsUpdated(_ string) bool {
+	return true
+}
+
 func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
 	handler := &AuthenticatorHandler{
 		baseHandler: baseHandler{
@@ -129,4 +133,8 @@ func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Auth
 	}
 
 	return authenticator, nil
+}
+
+func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
+	return handler.updateEntity(authenticator, handler, nil)
 }

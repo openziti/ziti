@@ -64,7 +64,8 @@ func (entity *Authenticator) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity 
 	case *persistence.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
 			Authenticator: entity,
-			Fingerprint:   bothAuth.Fingerprint}
+			Fingerprint:   bothAuth.Fingerprint,
+			Pem:           bothAuth.Pem}
 	default:
 		pfxlog.Logger().Panicf("unexpected type %v when filling model %s", reflect.TypeOf(boltSubType), "authenticator")
 	}
@@ -105,6 +106,7 @@ func (entity *Authenticator) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler
 		subType = &persistence.AuthenticatorCert{
 			Authenticator: *boltEntity,
 			Fingerprint:   certModel.Fingerprint,
+			Pem:           certModel.Pem,
 		}
 
 	default:
@@ -150,6 +152,7 @@ func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 type AuthenticatorCert struct {
 	*Authenticator
 	Fingerprint string
+	Pem         string
 }
 
 type AuthenticatorUpdb struct {
