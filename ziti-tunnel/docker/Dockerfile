@@ -1,16 +1,13 @@
-# syntax = docker/dockerfile:experimental
 FROM debian:stable-slim as fetch-ziti-artifacts
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
-ARG ARTIFACTORY_USERNAME
-ARG ARTIFACTORY_TOKEN
-
 ARG ZITI_VERSION="0.5.8-2554"
 
+ARG ARTIFACTORY_TOKEN
+ARG ARTIFACTORY_BASE_URL="https://netfoundry.jfrog.io/netfoundry"
 # to fetch snapshots from the "feature-0.5" branch, set ZITI_REPO="ziti-snapshot/feature-0.5"
 ARG ARTIFACTORY_REPO="ziti-release"
-ARG ARTIFACTORY_BASE_URL="https://netfoundry.jfrog.io/netfoundry"
 
 WORKDIR /tmp
 
