@@ -15,7 +15,8 @@
       ],
       "enum": [
         "Dial",
-        "Bind"
+        "Bind",
+        null
       ]
     },
     "semantic": {

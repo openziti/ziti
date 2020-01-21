@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
@@ -113,7 +114,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	sm := fabric.GetStateManager()
 	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
 
-	if ns == nil || ns.Hosting {
+	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Dial {
 		log.WithField("token", token).Error("session not found")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return
@@ -182,7 +183,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	sm := fabric.GetStateManager()
 	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
 
-	if ns == nil || !ns.Hosting {
+	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Bind {
 		log.WithField("token", token).Error("session not found")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return

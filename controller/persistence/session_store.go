@@ -17,6 +17,8 @@
 package persistence
 
 import (
+	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,20 +32,25 @@ const (
 	FieldSessionToken      = "token"
 	FieldSessionApiSession = "apiSession"
 	FieldSessionService    = "service"
-	FieldSessionIsHosting  = "isHosting"
+	FieldSessionType       = "type"
 
 	FieldSessionCertCert        = "cert"
 	FieldSessionCertFingerprint = "fingerprint"
 	FieldSessionCertValidFrom   = "validFrom"
 	FieldSessionCertValidTo     = "validTo"
+
+	SessionTypeDial = "Dial"
+	SessionTypeBind = "Bind"
 )
+
+var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 
 type Session struct {
 	BaseEdgeEntityImpl
 	Token        string
 	ApiSessionId string
 	ServiceId    string
-	IsHosting    bool
+	Type         string
 	Certs        []*SessionCert
 }
 
@@ -52,15 +59,24 @@ func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) 
 	entity.Token = bucket.GetStringOrError(FieldSessionToken)
 	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
 	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
-	entity.IsHosting = bucket.GetBoolWithDefault(FieldSessionIsHosting, false)
+	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
 }
 
 func (entity *Session) SetValues(ctx *boltz.PersistContext) {
+	if entity.Type == "" {
+		entity.Type = SessionTypeDial
+	}
+
+	if !stringz.Contains(validSessionTypes, entity.Type) {
+		ctx.Bucket.SetError(validation.NewFieldError("invalid session type", FieldSessionType, entity.Type))
+		return
+	}
+
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldSessionToken, entity.Token)
 	ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
 	ctx.SetString(FieldSessionService, entity.ServiceId)
-	ctx.SetBool(FieldSessionIsHosting, entity.IsHosting)
+	ctx.SetString(FieldSessionType, entity.Type)
 
 	if ctx.FieldChecker == nil || ctx.FieldChecker.IsUpdated("sessionCerts") {
 		mutateCtx := boltz.NewMutateContext(ctx.Bucket.Tx())
@@ -88,7 +104,7 @@ func NewSession(apiSessionId, serviceId string) *Session {
 		Token:              uuid.New().String(),
 		ApiSessionId:       apiSessionId,
 		ServiceId:          serviceId,
-		IsHosting:          false,
+		Type:               SessionTypeDial,
 		Certs:              nil,
 	}
 }
@@ -155,7 +171,7 @@ func (store *sessionStoreImpl) initializeLocal() {
 
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
 	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
-	store.AddSymbol(FieldSessionIsHosting, ast.NodeTypeBool)
+	store.AddSymbol(FieldSessionType, ast.NodeTypeBool)
 }
 
 func (store *sessionStoreImpl) initializeLinked() {

@@ -175,8 +175,8 @@ github.com/netfoundry/ziti-foundation v0.0.0-20200107143132-d54269e96d45/go.mod 
 github.com/netfoundry/ziti-foundation v0.0.0-20200121171818-46787a62eb05/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
 github.com/netfoundry/ziti-foundation v0.0.0-20200121212340-8b47eb800ec9 h1:0TwCczxrmT5qs3hnrc8E62ijwiZoKsPms7JjvPVLhiU=
 github.com/netfoundry/ziti-foundation v0.0.0-20200121212340-8b47eb800ec9/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
-github.com/netfoundry/ziti-sdk-golang v0.0.0-20200122013501-86070664c15a h1:fr04tsM4JVeo6GajzAvSnqa0l9GJPLtKQvvbWvhA0x4=
-github.com/netfoundry/ziti-sdk-golang v0.0.0-20200122013501-86070664c15a/go.mod h1:19tn5RA/1Tnm1oIMhHXvU1YShYuHFTbt/a0Iw2fFVT4=
+github.com/netfoundry/ziti-sdk-golang v0.0.0-20200122141846-6c7bdc8eaafb h1:WfakxXXc8Xl4Ju0Hvbd2z3mKVJHyto19JWdoQK+0ZM4=
+github.com/netfoundry/ziti-sdk-golang v0.0.0-20200122141846-6c7bdc8eaafb/go.mod h1:19tn5RA/1Tnm1oIMhHXvU1YShYuHFTbt/a0Iw2fFVT4=
 github.com/oleiade/reflections v1.0.0 h1:0ir4pc6v8/PJ0yw5AEtMddfXpWBXg9cnG7SgSoJuCgY=
 github.com/oleiade/reflections v1.0.0/go.mod h1:RbATFBbKYkVdqmSFtx13Bb/tVhR0lgOBXunWTZKeL4w=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=

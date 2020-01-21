@@ -31,11 +31,15 @@ const EntityNameSessionLegacy = "network-sessions"
 
 type SessionApiPost struct {
 	ServiceId *string                `json:"serviceId"`
-	Hosting   bool                   `json:"hosting"`
+	Type      *string                `json:"type"`
 	Tags      map[string]interface{} `json:"tags"`
 }
 
 func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
+	sessionType := "Dial"
+	if i.Type != nil {
+		sessionType = *i.Type
+	}
 	return &model.Session{
 		BaseModelEntityImpl: model.BaseModelEntityImpl{
 			Tags: i.Tags,
@@ -43,7 +47,7 @@ func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
 		Token:        uuid.New().String(),
 		ServiceId:    *i.ServiceId,
 		ApiSessionId: rc.ApiSession.Id,
-		IsHosting:    i.Hosting,
+		Type:         sessionType,
 	}
 }
 
@@ -54,7 +58,7 @@ type NewSession struct {
 
 type SessionApiList struct {
 	*env.BaseApi
-	Hosting     bool                 `json:"hosting"`
+	Type        string               `json:"type"`
 	ApiSession  *EntityApiRef        `json:"apiSession"`
 	Service     *EntityApiRef        `json:"service"`
 	EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
@@ -142,7 +146,7 @@ func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, err
 
 	ret := &SessionApiList{
 		BaseApi:     env.FromBaseModelEntity(i),
-		Hosting:     i.IsHosting,
+		Type:        i.Type,
 		Service:     NewServiceEntityRef(service),
 		ApiSession:  NewApiSessionEntityRef(apiSession),
 		EdgeRouters: edgeRouters,

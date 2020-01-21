@@ -66,7 +66,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 			}
 
 			policyType := persistence.PolicyTypeDial
-			if session.IsHosting {
+			if session.Type == persistence.SessionTypeBind {
 				policyType = persistence.PolicyTypeBind
 			}
 			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType, session.ServiceId)

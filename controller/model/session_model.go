@@ -35,7 +35,7 @@ type Session struct {
 	Token        string
 	ApiSessionId string
 	ServiceId    string
-	IsHosting    bool
+	Type         string
 	SessionCerts []*SessionCert
 }
 
@@ -60,11 +60,11 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 
-	if !entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
 		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	if entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
 		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
@@ -82,7 +82,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		Token:              entity.Token,
 		ApiSessionId:       entity.ApiSessionId,
 		ServiceId:          entity.ServiceId,
-		IsHosting:          entity.IsHosting,
+		Type:               entity.Type,
 	}
 
 	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
@@ -125,7 +125,7 @@ func (entity *Session) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistenc
 		Token:              entity.Token,
 		ApiSessionId:       entity.ApiSessionId,
 		ServiceId:          entity.ServiceId,
-		IsHosting:          entity.IsHosting,
+		Type:               entity.Type,
 	}, nil
 }
 
@@ -142,7 +142,7 @@ func (entity *Session) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	entity.Token = boltSession.Token
 	entity.ApiSessionId = boltSession.ApiSessionId
 	entity.ServiceId = boltSession.ServiceId
-	entity.IsHosting = boltSession.IsHosting
+	entity.Type = boltSession.Type
 	return nil
 }
 

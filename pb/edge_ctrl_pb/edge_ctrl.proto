@@ -18,6 +18,11 @@ enum ContentType {
     EnrollCertsType = 20301;
 }
 
+enum SessionType {
+    Dial = 0;
+    Bind = 1;
+}
+
 message ServerHello {
     string version = 1;
     map<string, string> data = 2;
@@ -49,12 +54,11 @@ message Service {
     string egressRouter = 5;
     string endpointAddress = 6;
     Dns dns = 8;
-
 }
 
 message Session {
     string token = 1;
-    bool hosting = 2;
+    SessionType type = 2;
     repeated string certFingerprints = 3;
     repeated string urls = 4;
     Service service = 5;
