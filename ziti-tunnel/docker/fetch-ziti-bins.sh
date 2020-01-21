@@ -14,7 +14,7 @@ if [ -n "${ARTIFACTORY_TOKEN}" ]; then
 
     # map host architecture/os to directories that we use in netfoundry.jfrog.io.
     # (our artifact directories seem to align with Docker's TARGETARCH and TARGETOS
-    #  build arguments, which we could rely on if we used buildkit - see
+    #  build arguments, which we could rely on if we fully committed to "docker buildx" - see
     #  https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope)
     host_arch=$(uname -m)
     case "${host_arch}" in
@@ -35,9 +35,9 @@ if [ -n "${ARTIFACTORY_TOKEN}" ]; then
       url="${ARTIFACTORY_BASE_URL}/${ARTIFACTORY_REPO}/${exe}/${artifact_arch}/${artifact_os}/${ZITI_VERSION}/${exe}.tar.gz"
       echo "Fetching ${exe} from ${url}"
       rm -f "${exe}" "${exe}.tar.gz" "${exe}.exe"
-      if which curl 2>&1 >/dev/null; then
+      if { command -v curl > /dev/null; } 2>&1; then
         curl -H "X-JFrog-Art-Api:${ARTIFACTORY_TOKEN}" -fLsS -O "${url}"
-      elif which wget 2>&1 >/dev/null; then
+      elif { command -v wget > /dev/null; } 2>&1; then
         wget --header "X-JFrog-Art-Api:${ARTIFACTORY_TOKEN}" "${url}"
       else
         echo "ERROR: need one of curl or wget to fetch the artifact." >&2
