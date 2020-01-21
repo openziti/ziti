@@ -15,8 +15,9 @@ func Test_EdgeRouterPolicyStore(t *testing.T) {
 	ctx.Init()
 
 	t.Run("test create edge router policies", ctx.testCreateEdgeRouterPolicy)
-	t.Run("test create/update edge router policies with invalid @refs", ctx.testEdgeRouterPolicyInvalidValues)
+	t.Run("test create/update edge router policies with invalid entity refs", ctx.testEdgeRouterPolicyInvalidValues)
 	t.Run("test edge router policy evaluation", ctx.testEdgeRouterPolicyRoleEvaluation)
+	t.Run("test update/delete referenced entities", ctx.testEdgeRouterPolicyUpdateDeleteRefs)
 }
 
 func (ctx *TestContext) testCreateEdgeRouterPolicy(_ *testing.T) {
@@ -46,7 +47,7 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	// test identity roles
 	policy := newEdgeRouterPolicy(uuid.New().String())
 	invalidId := uuid.New().String()
-	policy.IdentityRoles = []string{"@" + invalidId}
+	policy.IdentityRoles = []string{entityRef(invalidId)}
 	err := ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
@@ -54,50 +55,112 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	identity := NewIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 
-	policy.IdentityRoles = []string{"@" + identity.Id, "@" + invalidId}
+	policy.IdentityRoles = []string{entityRef(identity.Id), entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
-	policy.IdentityRoles = []string{"@" + identity.Id}
+	policy.IdentityRoles = []string{entityRef(identity.Id)}
 	ctx.requireCreate(policy)
 	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
 	ctx.requireDelete(policy)
 
-	policy.IdentityRoles = []string{"@" + identity.Name}
+	policy.IdentityRoles = []string{entityRef(identity.Name)}
 	ctx.requireCreate(policy)
 	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
 
-	policy.IdentityRoles = append(policy.IdentityRoles, "@"+invalidId)
+	policy.IdentityRoles = append(policy.IdentityRoles, entityRef(invalidId))
 	err = ctx.update(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 	ctx.requireDelete(policy)
 
 	// test edgeRouter roles
 	policy.IdentityRoles = nil
-	policy.EdgeRouterRoles = []string{"@" + invalidId}
+	policy.EdgeRouterRoles = []string{entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
 
 	edgeRouter := newEdgeRouter(uuid.New().String())
 	ctx.requireCreate(edgeRouter)
 
-	policy.EdgeRouterRoles = []string{"@" + edgeRouter.Id, "@" + invalidId}
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id), entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
 
-	policy.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
 	ctx.requireCreate(policy)
 	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
 	ctx.requireDelete(policy)
 
-	policy.EdgeRouterRoles = []string{"@" + edgeRouter.Name}
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Name)}
 	ctx.requireCreate(policy)
 	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
 
-	policy.EdgeRouterRoles = append(policy.EdgeRouterRoles, "@"+invalidId)
+	policy.EdgeRouterRoles = append(policy.EdgeRouterRoles, entityRef(invalidId))
 	err = ctx.update(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
 	ctx.requireDelete(policy)
+}
+
+func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T) {
+	ctx.cleanupAll()
+
+	// test identity roles
+	policy := newEdgeRouterPolicy(uuid.New().String())
+	identityTypeId := ctx.getIdentityTypeId()
+	identity := NewIdentity(uuid.New().String(), identityTypeId)
+	ctx.requireCreate(identity)
+
+	policy.IdentityRoles = []string{entityRef(identity.Id)}
+	ctx.requireCreate(policy)
+	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
+	ctx.requireDelete(identity)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.IdentityRoles), "identity id should have been removed from identity roles")
+
+	identity = NewIdentity(uuid.New().String(), identityTypeId)
+	ctx.requireCreate(identity)
+
+	policy.IdentityRoles = []string{entityRef(identity.Name)}
+	ctx.requireUpdate(policy)
+	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
+
+	identity.Name = uuid.New().String()
+	ctx.requireUpdate(identity)
+	ctx.requireReload(policy)
+	ctx.True(stringz.Contains(policy.IdentityRoles, entityRef(identity.Name)))
+	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
+
+	ctx.requireDelete(identity)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.IdentityRoles), "identity name should have been removed from identity roles")
+
+	// test edgeRouter roles
+	edgeRouter := newEdgeRouter(uuid.New().String())
+	ctx.requireCreate(edgeRouter)
+
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
+	ctx.requireUpdate(policy)
+	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
+	ctx.requireDelete(edgeRouter)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.EdgeRouterRoles), "edgeRouter id should have been removed from edgeRouter roles")
+
+	edgeRouter = newEdgeRouter(uuid.New().String())
+	ctx.requireCreate(edgeRouter)
+
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Name)}
+	ctx.requireUpdate(policy)
+	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
+
+	edgeRouter.Name = uuid.New().String()
+	ctx.requireUpdate(edgeRouter)
+	ctx.requireReload(policy)
+	ctx.True(stringz.Contains(policy.EdgeRouterRoles, entityRef(edgeRouter.Name)))
+	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
+
+	ctx.requireDelete(edgeRouter)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.EdgeRouterRoles), "edgeRouter name should have been removed from edgeRouter roles")
 }
 
 func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
@@ -131,13 +194,13 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
 	identityRolesAttrs := []string{"foo", "bar", uuid.New().String(), "baz", uuid.New().String(), "quux"}
 	var identityRoles []string
 	for _, role := range identityRolesAttrs {
-		identityRoles = append(identityRoles, "#"+role)
+		identityRoles = append(identityRoles, roleRef(role))
 	}
 
 	edgeRouterRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
 	var edgeRouterRoles []string
 	for _, role := range edgeRouterRoleAttrs {
-		edgeRouterRoles = append(edgeRouterRoles, "#"+role)
+		edgeRouterRoles = append(edgeRouterRoles, roleRef(role))
 	}
 
 	multipleIdentityList := []string{identities[1].Id, identities[2].Id, identities[3].Id}
@@ -285,20 +348,20 @@ func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles 
 			policy.EdgeRouterRoles = []string{edgeRouterRoles[1], edgeRouterRoles[2], edgeRouterRoles[3]}
 		}
 		if i == 3 {
-			policy.IdentityRoles = []string{"@" + identities[0].Id}
-			policy.EdgeRouterRoles = []string{"@" + edgeRouters[0].Id}
+			policy.IdentityRoles = []string{entityRef(identities[0].Id)}
+			policy.EdgeRouterRoles = []string{entityRef(edgeRouters[0].Id)}
 		}
 		if i == 4 {
-			policy.IdentityRoles = []string{"@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Id}
-			policy.EdgeRouterRoles = []string{"@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
+			policy.IdentityRoles = []string{entityRef(identities[1].Id), entityRef(identities[2].Id), entityRef(identities[3].Id)}
+			policy.EdgeRouterRoles = []string{entityRef(edgeRouters[1].Id), entityRef(edgeRouters[2].Id), entityRef(edgeRouters[3].Id)}
 		}
 		if i == 5 {
-			policy.IdentityRoles = []string{identityRoles[4], "@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Id}
-			policy.EdgeRouterRoles = []string{edgeRouterRoles[4], "@" + edgeRouters[1].Id, "@" + edgeRouters[2].Id, "@" + edgeRouters[3].Id}
+			policy.IdentityRoles = []string{identityRoles[4], entityRef(identities[1].Id), entityRef(identities[2].Id), entityRef(identities[3].Id)}
+			policy.EdgeRouterRoles = []string{edgeRouterRoles[4], entityRef(edgeRouters[1].Id), entityRef(edgeRouters[2].Id), entityRef(edgeRouters[3].Id)}
 		}
 		if i == 6 {
-			policy.IdentityRoles = []string{"#all"}
-			policy.EdgeRouterRoles = []string{"#all"}
+			policy.IdentityRoles = []string{AllRole}
+			policy.EdgeRouterRoles = []string{AllRole}
 		}
 
 		policies = append(policies, policy)

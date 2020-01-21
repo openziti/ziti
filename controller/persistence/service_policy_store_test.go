@@ -15,8 +15,9 @@ func Test_ServicePolicyStore(t *testing.T) {
 	ctx.Init()
 
 	t.Run("test create service policies", ctx.testCreateServicePolicy)
-	t.Run("test create/update service policies with invalid @refs", ctx.testServicePolicyInvalidValues)
+	t.Run("test create/update service policies with invalid entity refs", ctx.testServicePolicyInvalidValues)
 	t.Run("test service policy evaluation", ctx.testServicePolicyRoleEvaluation)
+	t.Run("test update/delete referenced entities", ctx.testServicePolicyUpdateDeleteRefs)
 }
 
 func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
@@ -46,7 +47,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	// test identity roles
 	policy := newServicePolicy(uuid.New().String())
 	invalidId := uuid.New().String()
-	policy.IdentityRoles = []string{"@" + invalidId}
+	policy.IdentityRoles = []string{entityRef(invalidId)}
 	err := ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
@@ -54,50 +55,112 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	identity := NewIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 
-	policy.IdentityRoles = []string{"@" + identity.Id, "@" + invalidId}
+	policy.IdentityRoles = []string{entityRef(identity.Id), entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
-	policy.IdentityRoles = []string{"@" + identity.Id}
+	policy.IdentityRoles = []string{entityRef(identity.Id)}
 	ctx.requireCreate(policy)
 	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
 	ctx.requireDelete(policy)
 
-	policy.IdentityRoles = []string{"@" + identity.Name}
+	policy.IdentityRoles = []string{entityRef(identity.Name)}
 	ctx.requireCreate(policy)
 	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
 
-	policy.IdentityRoles = append(policy.IdentityRoles, "@"+invalidId)
+	policy.IdentityRoles = append(policy.IdentityRoles, entityRef(invalidId))
 	err = ctx.update(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 	ctx.requireDelete(policy)
 
 	// test service roles
 	policy.IdentityRoles = nil
-	policy.ServiceRoles = []string{"@" + invalidId}
+	policy.ServiceRoles = []string{entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'serviceRoles' is invalid: no services found with the given names/ids", invalidId))
 
 	service := newEdgeService(uuid.New().String())
 	ctx.requireCreate(service)
 
-	policy.ServiceRoles = []string{"@" + service.Id, "@" + invalidId}
+	policy.ServiceRoles = []string{entityRef(service.Id), entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'serviceRoles' is invalid: no services found with the given names/ids", invalidId))
 
-	policy.ServiceRoles = []string{"@" + service.Id}
+	policy.ServiceRoles = []string{entityRef(service.Id)}
 	ctx.requireCreate(policy)
 	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
 	ctx.requireDelete(policy)
 
-	policy.ServiceRoles = []string{"@" + service.Name}
+	policy.ServiceRoles = []string{entityRef(service.Name)}
 	ctx.requireCreate(policy)
 	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
 
-	policy.ServiceRoles = append(policy.ServiceRoles, "@"+invalidId)
+	policy.ServiceRoles = append(policy.ServiceRoles, entityRef(invalidId))
 	err = ctx.update(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'serviceRoles' is invalid: no services found with the given names/ids", invalidId))
 	ctx.requireDelete(policy)
+}
+
+func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
+	ctx.cleanupAll()
+
+	// test identity roles
+	policy := newServicePolicy(uuid.New().String())
+	identityTypeId := ctx.getIdentityTypeId()
+	identity := NewIdentity(uuid.New().String(), identityTypeId)
+	ctx.requireCreate(identity)
+
+	policy.IdentityRoles = []string{entityRef(identity.Id)}
+	ctx.requireCreate(policy)
+	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
+	ctx.requireDelete(identity)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.IdentityRoles), "identity id should have been removed from identity roles")
+
+	identity = NewIdentity(uuid.New().String(), identityTypeId)
+	ctx.requireCreate(identity)
+
+	policy.IdentityRoles = []string{entityRef(identity.Name)}
+	ctx.requireUpdate(policy)
+	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
+
+	identity.Name = uuid.New().String()
+	ctx.requireUpdate(identity)
+	ctx.requireReload(policy)
+	ctx.True(stringz.Contains(policy.IdentityRoles, entityRef(identity.Name)))
+	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
+
+	ctx.requireDelete(identity)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.IdentityRoles), "identity name should have been removed from identity roles")
+
+	// test service roles
+	service := newEdgeService(uuid.New().String())
+	ctx.requireCreate(service)
+
+	policy.ServiceRoles = []string{entityRef(service.Id)}
+	ctx.requireUpdate(policy)
+	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+	ctx.requireDelete(service)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.ServiceRoles), "service id should have been removed from service roles")
+
+	service = newEdgeService(uuid.New().String())
+	ctx.requireCreate(service)
+
+	policy.ServiceRoles = []string{entityRef(service.Name)}
+	ctx.requireUpdate(policy)
+	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+
+	service.Name = uuid.New().String()
+	ctx.requireUpdate(service)
+	ctx.requireReload(policy)
+	ctx.True(stringz.Contains(policy.ServiceRoles, entityRef(service.Name)))
+	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
+
+	ctx.requireDelete(service)
+	ctx.requireReload(policy)
+	ctx.Equal(0, len(policy.ServiceRoles), "service name should have been removed from service roles")
 }
 
 func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
@@ -131,13 +194,13 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	identityRolesAttrs := []string{"foo", "bar", uuid.New().String(), "baz", uuid.New().String(), "quux"}
 	var identityRoles []string
 	for _, role := range identityRolesAttrs {
-		identityRoles = append(identityRoles, "#"+role)
+		identityRoles = append(identityRoles, roleRef(role))
 	}
 
 	serviceRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
 	var serviceRoles []string
 	for _, role := range serviceRoleAttrs {
-		serviceRoles = append(serviceRoles, "#"+role)
+		serviceRoles = append(serviceRoles, roleRef(role))
 	}
 
 	multipleIdentityList := []string{identities[1].Id, identities[2].Id, identities[3].Id}
@@ -285,20 +348,20 @@ func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []stri
 			policy.ServiceRoles = []string{serviceRoles[1], serviceRoles[2], serviceRoles[3]}
 		}
 		if i == 3 {
-			policy.IdentityRoles = []string{"@" + identities[0].Id}
-			policy.ServiceRoles = []string{"@" + services[0].Id}
+			policy.IdentityRoles = []string{entityRef(identities[0].Id)}
+			policy.ServiceRoles = []string{entityRef(services[0].Id)}
 		}
 		if i == 4 {
-			policy.IdentityRoles = []string{"@" + identities[1].Id, "@" + identities[2].Name, "@" + identities[3].Id}
-			policy.ServiceRoles = []string{"@" + services[1].Id, "@" + services[2].Name, "@" + services[3].Id}
+			policy.IdentityRoles = []string{entityRef(identities[1].Id), entityRef(identities[2].Name), entityRef(identities[3].Id)}
+			policy.ServiceRoles = []string{entityRef(services[1].Id), entityRef(services[2].Name), entityRef(services[3].Id)}
 		}
 		if i == 5 {
-			policy.IdentityRoles = []string{identityRoles[4], "@" + identities[1].Id, "@" + identities[2].Id, "@" + identities[3].Name}
-			policy.ServiceRoles = []string{serviceRoles[4], "@" + services[1].Id, "@" + services[2].Id, "@" + services[3].Name}
+			policy.IdentityRoles = []string{identityRoles[4], entityRef(identities[1].Id), entityRef(identities[2].Id), entityRef(identities[3].Name)}
+			policy.ServiceRoles = []string{serviceRoles[4], entityRef(services[1].Id), entityRef(services[2].Id), entityRef(services[3].Name)}
 		}
 		if i == 6 {
-			policy.IdentityRoles = []string{"#all"}
-			policy.ServiceRoles = []string{"#all"}
+			policy.IdentityRoles = []string{AllRole}
+			policy.ServiceRoles = []string{AllRole}
 		}
 
 		policies = append(policies, policy)

@@ -44,12 +44,12 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 	sort.Strings(entity.EdgeRouterRoles)
 	sort.Strings(entity.IdentityRoles)
 
-	oldIdentityRoles := ctx.GetAndSetStringList(FieldEdgeRouterPolicyIdentityRoles, entity.IdentityRoles)
-	if !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
+	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterPolicyIdentityRoles, entity.IdentityRoles)
+	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
 		edgeRouterPolicyStore.identityRolesUpdated(ctx, entity)
 	}
-	oldEdgeRouterRoles := ctx.GetAndSetStringList(FieldEdgeRouterPolicyEdgeRouterRoles, entity.EdgeRouterRoles)
-	if !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
+	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterPolicyEdgeRouterRoles, entity.EdgeRouterRoles)
+	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
 		edgeRouterPolicyStore.edgeRouterRolesUpdated(ctx, entity)
 	}
 }

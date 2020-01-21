@@ -44,12 +44,11 @@ type EdgeService struct {
 }
 
 const (
-	FieldServiceDnsHostname       = "dnsHostname"
-	FieldServiceDnsPort           = "dnsPort"
-	FieldServiceAppwans           = "appwans"
-	FieldServiceClusters          = "clusters"
-	FieldServiceHostingIdentities = "hostingIdentities"
-	FieldServiceEdgeRouterRoles   = "edgeRouterRoles"
+	FieldServiceDnsHostname     = "dnsHostname"
+	FieldServiceDnsPort         = "dnsPort"
+	FieldServiceAppwans         = "appwans"
+	FieldServiceClusters        = "clusters"
+	FieldServiceEdgeRouterRoles = "edgeRouterRoles"
 )
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
@@ -79,20 +78,25 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	entity.Service.SetValues(ctx.GetParentContext())
 
 	entity.SetBaseValues(ctx)
+	store := ctx.Store.(*edgeServiceStoreImpl)
+	if ctx.IsCreate {
+		ctx.SetString(FieldName, entity.Name)
+	} else if oldValue, changed := ctx.GetAndSetString(FieldName, entity.Name); changed {
+		store.nameChanged(ctx.Bucket, entity, *oldValue)
+	}
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldServiceDnsHostname, entity.DnsHostname)
 	ctx.SetInt32(FieldServiceDnsPort, int32(entity.DnsPort))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	sort.Strings(entity.EdgeRouterRoles)
-	oldRoles := ctx.GetAndSetStringList(FieldServiceEdgeRouterRoles, entity.EdgeRouterRoles)
+	oldRoles, valueSet := ctx.GetAndSetStringList(FieldServiceEdgeRouterRoles, entity.EdgeRouterRoles)
 
-	store := ctx.Store.(*edgeServiceStoreImpl)
-	if !stringz.EqualSlices(oldRoles, entity.EdgeRouterRoles) {
+	if valueSet && !stringz.EqualSlices(oldRoles, entity.EdgeRouterRoles) {
 		store.edgeRouterRolesChanged(ctx, entity.Id, entity.EdgeRouterRoles)
 	}
 
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any @all roles
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
@@ -176,6 +180,10 @@ func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 }
 
+func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
+	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolServiceRoles, entity, oldName)
+}
+
 func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolAppwans, store.stores.appwan.symbolServices)
 	store.AddLinkCollection(store.symbolClusters, store.stores.cluster.symbolServices)
@@ -232,18 +240,10 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 		}
 	}
 
-	// Remove entity from ServiceRoles in service policies
-	for _, servicePolicyId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeServicePolicies) {
-		policy, err := store.stores.servicePolicy.LoadOneById(ctx.Tx(), servicePolicyId)
-		if err != nil {
+	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		// Remove entity from ServiceRoles in service policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolServiceRoles); err != nil {
 			return err
-		}
-		if stringz.Contains(policy.ServiceRoles, id) {
-			policy.ServiceRoles = stringz.Remove(policy.ServiceRoles, id)
-			err = store.stores.servicePolicy.Update(ctx, policy, nil)
-			if err != nil {
-				return err
-			}
 		}
 	}
 

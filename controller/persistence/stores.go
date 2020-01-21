@@ -46,7 +46,7 @@ type Stores struct {
 	storeList []Store
 }
 
-func (stores *Stores) getStoreForEntity(entity boltz.BaseEntity) boltz.CrudStore {
+func (stores *Stores) getStoreForEntity(entity boltz.BaseEntity) Store {
 	for _, store := range stores.storeList {
 		if store.GetEntityType() == entity.GetEntityType() {
 			return store

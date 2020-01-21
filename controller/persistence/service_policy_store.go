@@ -55,12 +55,12 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	sort.Strings(entity.ServiceRoles)
 	sort.Strings(entity.IdentityRoles)
 
-	oldIdentityRoles := ctx.GetAndSetStringList(FieldServicePolicyIdentityRoles, entity.IdentityRoles)
-	if !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
+	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldServicePolicyIdentityRoles, entity.IdentityRoles)
+	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
 		servicePolicyStore.identityRolesUpdated(ctx, entity)
 	}
-	oldServiceRoles := ctx.GetAndSetStringList(FieldServicePolicyServiceRoles, entity.ServiceRoles)
-	if !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
+	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServicePolicyServiceRoles, entity.ServiceRoles)
+	if valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
 		servicePolicyStore.serviceRolesUpdated(ctx, entity)
 	}
 }

@@ -22,6 +22,12 @@ import (
 	"strings"
 )
 
+const (
+	RolePrefix   = "#"
+	EntityPrefix = "@"
+	AllRole      = "#all"
+)
+
 func ToInFilter(ids ...string) string {
 	builder := strings.Builder{}
 	builder.WriteString("id in [")
@@ -48,14 +54,15 @@ func splitRolesAndIds(values []string) ([]string, []string, error) {
 	var roles []string
 	var ids []string
 	for _, entry := range values {
-		if strings.HasPrefix(entry, "#") {
-			entry = strings.TrimPrefix(entry, "#")
+		if strings.HasPrefix(entry, RolePrefix) {
+			entry = strings.TrimPrefix(entry, RolePrefix)
 			roles = append(roles, entry)
-		} else if strings.HasPrefix(entry, "@") {
-			entry = strings.TrimPrefix(entry, "@")
+		} else if strings.HasPrefix(entry, EntityPrefix) {
+			entry = strings.TrimPrefix(entry, EntityPrefix)
 			ids = append(ids, entry)
 		} else {
-			return nil, nil, errors.Errorf("'%v' is neither role attribute (prefixed with #) or an entity id or name (prefixed with @)", entry)
+			return nil, nil, errors.Errorf("'%v' is neither role attribute (prefixed with %v) or an entity id or name (prefixed with %v)",
+				entry, RolePrefix, EntityPrefix)
 		}
 	}
 	return roles, ids, nil
@@ -73,4 +80,12 @@ type UpdateTimeOnlyFieldChecker struct{}
 
 func (u UpdateTimeOnlyFieldChecker) IsUpdated(string) bool {
 	return false
+}
+
+func roleRef(val string) string {
+	return RolePrefix + val
+}
+
+func entityRef(val string) string {
+	return EntityPrefix + val
 }

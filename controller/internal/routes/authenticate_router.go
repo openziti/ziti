@@ -69,7 +69,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	}
 
 	token := uuid.New().String()
-	configTypes := ro.mapConfigTypeNamesToIds(ae, authContext.GetDataStringSlice("configTypes"))
+	configTypes := ro.mapConfigTypeNamesToIds(ae, authContext.GetDataStringSlice("configTypes"), identity.Id)
 
 	s := &model.ApiSession{
 		IdentityId:  identity.Id,
@@ -106,16 +106,18 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	rc.RequestResponder.RespondWithOk(currentSession, nil)
 }
 
-func (ro *AuthRouter) mapConfigTypeNamesToIds(ae *env.AppEnv, values []string) []string {
+func (ro *AuthRouter) mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) []string {
 	var result []string
 	if stringz.Contains(values, "all") {
 		return []string{"all"}
 	}
 	for _, val := range values {
-		if configType, err := ae.GetHandlers().ConfigType.Read(val); err == nil && configType != nil {
+		if configType, _ := ae.GetHandlers().ConfigType.Read(val); configType != nil {
 			result = append(result, val)
-		} else if configType, err := ae.GetHandlers().ConfigType.ReadByName(val); err == nil && configType != nil {
+		} else if configType, _ := ae.GetHandlers().ConfigType.ReadByName(val); configType != nil {
 			result = append(result, configType.Id)
+		} else {
+			pfxlog.Logger().Debugf("user %v submitted %v as a config type of interest, but no matching records found", identityId, val)
 		}
 	}
 	return result

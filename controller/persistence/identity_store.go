@@ -21,7 +21,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
 )
 
@@ -71,7 +70,13 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.WithFieldOverrides(identityFieldMappings)
 
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
+
+	store := ctx.Store.(*identityStoreImpl)
+	if ctx.IsCreate {
+		ctx.SetString(FieldName, entity.Name)
+	} else if oldValue, changed := ctx.GetAndSetString(FieldName, entity.Name); changed {
+		store.nameChanged(ctx.Bucket, entity, *oldValue)
+	}
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
@@ -81,7 +86,6 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store := ctx.Store.(*identityStoreImpl)
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
@@ -158,6 +162,11 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
 }
 
+func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
+	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolIdentityRoles, entity, oldName)
+	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolIdentityRoles, entity, oldName)
+}
+
 func (store *identityStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolAppwans, store.stores.appwan.symbolIdentities)
 	store.AddLinkCollection(store.symbolAuthenticators, store.stores.authenticator.symbolIdentityId)
@@ -213,33 +222,14 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 	}
 
-	// Remove entity from IdentityRoles in edge router policies
-	for _, edgeRouterPolicyId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeEdgeRouterPolicies) {
-		policy, err := store.stores.edgeRouterPolicy.LoadOneById(ctx.Tx(), edgeRouterPolicyId)
-		if err != nil {
+	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		// Remove entity from IdentityRoles in edge router policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolIdentityRoles); err != nil {
 			return err
 		}
-		if stringz.Contains(policy.IdentityRoles, id) {
-			policy.IdentityRoles = stringz.Remove(policy.IdentityRoles, id)
-			err = store.stores.edgeRouterPolicy.Update(ctx, policy, nil)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Remove entity from IdentityRoles in service policies
-	for _, servicePolicyId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeServicePolicies) {
-		policy, err := store.stores.servicePolicy.LoadOneById(ctx.Tx(), servicePolicyId)
-		if err != nil {
+		// Remove entity from IdentityRoles in service policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolIdentityRoles); err != nil {
 			return err
-		}
-		if stringz.Contains(policy.IdentityRoles, id) {
-			policy.IdentityRoles = stringz.Remove(policy.IdentityRoles, id)
-			err = store.stores.servicePolicy.Update(ctx, policy, nil)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
