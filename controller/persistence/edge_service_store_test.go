@@ -277,6 +277,10 @@ func (ctx *TestContext) testServiceEdgeRouterRolesInvalidValues(_ *testing.T) {
 	err := ctx.create(service)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
 
+	service.EdgeRouterRoles = []string{AllRole, roleRef("other")}
+	err = ctx.create(service)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'edgeRouterRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
+
 	edgeRouter := newEdgeRouter(uuid.New().String())
 	ctx.requireCreate(edgeRouter)
 
@@ -479,7 +483,7 @@ func (ctx *TestContext) validateServiceEdgeRouters(edgeRouters []*EdgeRouter, se
 		relatedEdgeRouters := ctx.getRelatedIds(service, EntityTypeEdgeRouters)
 		for _, edgeRouter := range edgeRouters {
 			relatedServices := ctx.getRelatedIds(edgeRouter, EntityTypeServices)
-			shouldContain := ctx.policyShouldMatch(service.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(SemanticAllOf, service.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
 			policyContains := stringz.Contains(relatedEdgeRouters, edgeRouter.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. service roles: %v, service edge routers %+v, edge router services: %+v",
 				edgeRouter.RoleAttributes, service.EdgeRouterRoles, relatedEdgeRouters, relatedServices)

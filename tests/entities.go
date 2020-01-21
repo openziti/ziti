@@ -204,9 +204,10 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+func newTestEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
 	return &edgeRouterPolicy{
 		name:            uuid.New().String(),
+		semantic:        semantic,
 		edgeRouterRoles: edgeRouterRoles,
 		identityRoles:   identityRoles,
 	}
@@ -215,6 +216,7 @@ func newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *edgeRoute
 type edgeRouterPolicy struct {
 	id              string
 	name            string
+	semantic        *string
 	edgeRouterRoles []string
 	identityRoles   []string
 	tags            map[string]interface{}
@@ -235,6 +237,9 @@ func (entity *edgeRouterPolicy) getEntityType() string {
 func (entity *edgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
+	if entity.semantic != nil {
+		ctx.setJsonValue(entityData, *entity.semantic, "semantic")
+	}
 	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
 	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
 
@@ -248,7 +253,12 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
+	if entity.semantic == nil {
+		t := "AllOf"
+		entity.semantic = &t
+	}
 	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, *entity.semantic, path("semantic"))
 	sort.Strings(entity.edgeRouterRoles)
 	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
 	sort.Strings(entity.identityRoles)
@@ -256,10 +266,11 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newTestServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
+func newTestServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles []string) *servicePolicy {
 	return &servicePolicy{
 		name:          uuid.New().String(),
 		policyType:    policyType,
+		semantic:      semantic,
 		serviceRoles:  serviceRoles,
 		identityRoles: identityRoles,
 	}
@@ -269,6 +280,7 @@ type servicePolicy struct {
 	id            string
 	name          string
 	policyType    string
+	semantic      *string
 	identityRoles []string
 	serviceRoles  []string
 	tags          map[string]interface{}
@@ -290,6 +302,9 @@ func (entity *servicePolicy) toJson(_ bool, ctx *TestContext, _ ...string) strin
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.policyType, "type")
+	if entity.semantic != nil {
+		ctx.setJsonValue(entityData, entity.semantic, "semantic")
+	}
 	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
 	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
 
@@ -303,8 +318,13 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
+	if entity.semantic == nil {
+		t := "AllOf"
+		entity.semantic = &t
+	}
 	ctx.pathEquals(c, entity.name, path("name"))
 	ctx.pathEquals(c, entity.policyType, path("type"))
+	ctx.pathEquals(c, *entity.semantic, path("semantic"))
 	sort.Strings(entity.identityRoles)
 	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
 	sort.Strings(entity.serviceRoles)

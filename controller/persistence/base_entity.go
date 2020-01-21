@@ -44,11 +44,17 @@ const (
 
 	FieldId             = "id"
 	FieldName           = "name"
+	FieldSemantic       = "semantic"
 	FieldRoleAttributes = "roleAttributes"
 	FieldCreatedAt      = "createdAt"
 	FieldUpdatedAt      = "updatedAt"
 	FieldTags           = "tags"
+
+	SemanticAllOf = "AllOf"
+	SemanticAnyOf = "AnyOf"
 )
+
+var validSemantics = []string{SemanticAllOf, SemanticAnyOf}
 
 type BaseEdgeEntity interface {
 	boltz.BaseEntity

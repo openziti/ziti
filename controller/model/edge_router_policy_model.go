@@ -27,6 +27,7 @@ import (
 type EdgeRouterPolicy struct {
 	BaseModelEntityImpl
 	Name            string
+	Semantic        string
 	IdentityRoles   []string
 	EdgeRouterRoles []string
 }
@@ -35,6 +36,7 @@ func (entity *EdgeRouterPolicy) ToBoltEntityForCreate(tx *bbolt.Tx, handler Hand
 	return &persistence.EdgeRouterPolicy{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
+		Semantic:           entity.Semantic,
 		IdentityRoles:      entity.IdentityRoles,
 		EdgeRouterRoles:    entity.EdgeRouterRoles,
 	}, nil
@@ -55,6 +57,7 @@ func (entity *EdgeRouterPolicy) FillFrom(handler Handler, tx *bbolt.Tx, boltEnti
 	}
 	entity.fillCommon(boltEdgeRouterPolicy)
 	entity.Name = boltEdgeRouterPolicy.Name
+	entity.Semantic = boltEdgeRouterPolicy.Semantic
 	entity.EdgeRouterRoles = boltEdgeRouterPolicy.EdgeRouterRoles
 	entity.IdentityRoles = boltEdgeRouterPolicy.IdentityRoles
 	return nil

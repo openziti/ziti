@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"fmt"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"sort"
 
 	"github.com/google/uuid"
@@ -34,6 +36,7 @@ type ServicePolicy struct {
 	BaseEdgeEntityImpl
 	PolicyType    int32
 	Name          string
+	Semantic      string
 	IdentityRoles []string
 	ServiceRoles  []string
 }
@@ -42,14 +45,37 @@ func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.PolicyType = bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeInvalid)
+	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
 	entity.IdentityRoles = bucket.GetStringList(FieldServicePolicyIdentityRoles)
 	entity.ServiceRoles = bucket.GetStringList(FieldServicePolicyServiceRoles)
 }
 
 func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
+	if entity.Semantic == "" {
+		entity.Semantic = SemanticAllOf
+	}
+
+	if !stringz.Contains(validSemantics, entity.Semantic) {
+		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
+		return
+	}
+
+	if len(entity.IdentityRoles) > 1 && stringz.Contains(entity.IdentityRoles, AllRole) {
+		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
+			FieldServicePolicyIdentityRoles, entity.IdentityRoles))
+		return
+	}
+
+	if len(entity.ServiceRoles) > 1 && stringz.Contains(entity.ServiceRoles, AllRole) {
+		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
+			FieldServicePolicyServiceRoles, entity.ServiceRoles))
+		return
+	}
+
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetInt32(FieldServicePolicyType, entity.PolicyType)
+	ctx.SetString(FieldSemantic, entity.Semantic)
 	servicePolicyStore := ctx.Store.(*servicePolicyStoreImpl)
 
 	sort.Strings(entity.ServiceRoles)
@@ -87,6 +113,7 @@ type servicePolicyStoreImpl struct {
 	*baseStore
 
 	indexName           boltz.ReadIndex
+	symbolSemantic      boltz.EntitySymbol
 	symbolIdentityRoles boltz.EntitySetSymbol
 	symbolServiceRoles  boltz.EntitySetSymbol
 	symbolIdentities    boltz.EntitySymbol
@@ -105,6 +132,7 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
+	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 	store.symbolIdentityRoles = store.AddSetSymbol(FieldServicePolicyIdentityRoles, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServicePolicyServiceRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
@@ -140,14 +168,14 @@ Optimizations
 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
 func (store *servicePolicyStoreImpl) serviceRolesUpdated(ctx *boltz.PersistContext, policy *ServicePolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "serviceRoles", policy.ServiceRoles, store.stores.edgeService.indexRoleAttributes, store.stores.edgeService)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "serviceRoles", policy.ServiceRoles, policy.Semantic, store.stores.edgeService.indexRoleAttributes, store.stores.edgeService)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.serviceCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
 	}
 }
 
 func (store *servicePolicyStoreImpl) identityRolesUpdated(ctx *boltz.PersistContext, policy *ServicePolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "identityRoles", policy.IdentityRoles, store.stores.identity.indexRoleAttributes, store.stores.identity)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "identityRoles", policy.IdentityRoles, policy.Semantic, store.stores.identity.indexRoleAttributes, store.stores.identity)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.identityCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
 	}

@@ -30,6 +30,7 @@ const EntityNameEdgeRouterPolicy = "edge-router-policies"
 type EdgeRouterPolicyApi struct {
 	Tags            map[string]interface{} `json:"tags"`
 	Name            *string                `json:"name"`
+	Semantic        *string                `json:"semantic"`
 	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	IdentityRoles   []string               `json:"identityRoles"`
 }
@@ -38,6 +39,7 @@ func (i *EdgeRouterPolicyApi) ToModel(id string) *model.EdgeRouterPolicy {
 	result := &model.EdgeRouterPolicy{}
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
+	result.Semantic = stringz.OrEmpty(i.Semantic)
 	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.IdentityRoles = i.IdentityRoles
 	result.Tags = i.Tags
@@ -46,7 +48,8 @@ func (i *EdgeRouterPolicyApi) ToModel(id string) *model.EdgeRouterPolicy {
 
 type EdgeRouterPolicyApiList struct {
 	*env.BaseApi
-	Name            *string  `json:"name"`
+	Name            string   `json:"name"`
+	Semantic        string   `json:"semantic"`
 	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	IdentityRoles   []string `json:"identityRoles"`
 }
@@ -74,7 +77,7 @@ func (c *EdgeRouterPolicyApiList) ToEntityApiRef() *EntityApiRef {
 	c.PopulateLinks()
 	return &EntityApiRef{
 		Entity: EntityNameEdgeRouterPolicy,
-		Name:   c.Name,
+		Name:   &c.Name,
 		Id:     c.Id,
 		Links:  c.Links,
 	}
@@ -104,7 +107,8 @@ func MapEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e
 func MapEdgeRouterPolicyToApiList(i *model.EdgeRouterPolicy) (*EdgeRouterPolicyApiList, error) {
 	ret := &EdgeRouterPolicyApiList{
 		BaseApi:         env.FromBaseModelEntity(i),
-		Name:            &i.Name,
+		Name:            i.Name,
+		Semantic:        i.Semantic,
 		EdgeRouterRoles: i.EdgeRouterRoles,
 		IdentityRoles:   i.IdentityRoles,
 	}

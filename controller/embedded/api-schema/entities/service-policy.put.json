@@ -17,13 +17,17 @@
         "Bind"
       ]
     },
-    "identityRoles" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "semantic": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/semantic"
     },
-    "serviceRoles" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "identityRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
+    },
+    "serviceRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

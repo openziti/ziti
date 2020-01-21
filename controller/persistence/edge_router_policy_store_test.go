@@ -51,6 +51,10 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	err := ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
+	policy.IdentityRoles = []string{AllRole, roleRef("other")}
+	err = ctx.create(policy)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'identityRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
+
 	identityTypeId := ctx.getIdentityTypeId()
 	identity := NewIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
@@ -78,6 +82,10 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	policy.EdgeRouterRoles = []string{entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+
+	policy.EdgeRouterRoles = []string{AllRole, roleRef("other")}
+	err = ctx.create(policy)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'edgeRouterRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
 	edgeRouter := newEdgeRouter(uuid.New().String())
 	ctx.requireCreate(edgeRouter)
@@ -208,7 +216,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
 
 	policies := ctx.createEdgeRouterPolicies(identityRoles, edgeRouterRoles, identities, edgeRouters, true)
 
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 9; i++ {
 		relatedEdgeRouters := ctx.getRelatedIds(policies[i], EntityTypeEdgeRouters)
 		relatedIdentities := ctx.getRelatedIds(policies[i], EntityTypeIdentities)
 		if i == 3 {
@@ -334,8 +342,10 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
 
 func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles []string, identities []*Identity, edgeRouters []*EdgeRouter, oncreate bool) []*EdgeRouterPolicy {
 	var policies []*EdgeRouterPolicy
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 9; i++ {
 		policy := newEdgeRouterPolicy(uuid.New().String())
+		policy.Semantic = SemanticAllOf
+
 		if !oncreate {
 			ctx.requireCreate(policy)
 		}
@@ -363,6 +373,16 @@ func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles 
 			policy.IdentityRoles = []string{AllRole}
 			policy.EdgeRouterRoles = []string{AllRole}
 		}
+		if i == 7 {
+			policy.Semantic = SemanticAnyOf
+			policy.IdentityRoles = []string{identityRoles[0]}
+			policy.EdgeRouterRoles = []string{edgeRouterRoles[0]}
+		}
+		if i == 8 {
+			policy.Semantic = SemanticAnyOf
+			policy.IdentityRoles = []string{identityRoles[1], identityRoles[2], identityRoles[3]}
+			policy.EdgeRouterRoles = []string{edgeRouterRoles[1], edgeRouterRoles[2], edgeRouterRoles[3]}
+		}
 
 		policies = append(policies, policy)
 		if oncreate {
@@ -380,7 +400,7 @@ func (ctx *TestContext) validateEdgeRouterPolicyIdentities(identities []*Identit
 		relatedIdentities := ctx.getRelatedIds(policy, EntityTypeIdentities)
 		for _, identity := range identities {
 			relatedPolicies := ctx.getRelatedIds(identity, EntityTypeEdgeRouterPolicies)
-			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity, identity.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.IdentityRoles, identity, identity.RoleAttributes)
 
 			policyContains := stringz.Contains(relatedIdentities, identity.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", identity.RoleAttributes, policy.IdentityRoles)
@@ -402,7 +422,7 @@ func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeR
 		relatedEdgeRouters := ctx.getRelatedIds(policy, EntityTypeEdgeRouters)
 		for _, edgeRouter := range edgeRouters {
 			relatedPolicies := ctx.getRelatedIds(edgeRouter, EntityTypeEdgeRouterPolicies)
-			shouldContain := ctx.policyShouldMatch(policy.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)
 			policyContains := stringz.Contains(relatedEdgeRouters, edgeRouter.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", edgeRouter.RoleAttributes, policy.EdgeRouterRoles)
 			if shouldContain {
@@ -417,12 +437,17 @@ func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeR
 	}
 }
 
-func (ctx *TestContext) policyShouldMatch(roleSet []string, entity NamedEdgeEntity, roleAttribute []string) bool {
+func (ctx *TestContext) policyShouldMatch(semantic string, roleSet []string, entity NamedEdgeEntity, roleAttribute []string) bool {
 	roles, ids, err := splitRolesAndIds(roleSet)
 	ctx.NoError(err)
 	isIdMatch := stringz.Contains(ids, entity.GetId())
 	isNameMatch := stringz.Contains(ids, entity.GetName())
 	isAllMatch := stringz.Contains(roles, "all")
-	IsRoleMatch := len(roles) > 0 && stringz.ContainsAll(roleAttribute, roles...)
-	return isIdMatch || isNameMatch || isAllMatch || IsRoleMatch
+	isRoleMatch := false
+	if semantic == SemanticAllOf {
+		isRoleMatch = len(roles) > 0 && stringz.ContainsAll(roleAttribute, roles...)
+	} else if semantic == SemanticAnyOf {
+		isRoleMatch = stringz.ContainsAny(roleAttribute, roles...)
+	}
+	return isIdMatch || isNameMatch || isAllMatch || isRoleMatch
 }

@@ -51,6 +51,10 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	err := ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
 
+	policy.IdentityRoles = []string{AllRole, roleRef("other")}
+	err = ctx.create(policy)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'identityRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
+
 	identityTypeId := ctx.getIdentityTypeId()
 	identity := NewIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
@@ -78,6 +82,10 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	policy.ServiceRoles = []string{entityRef(invalidId)}
 	err = ctx.create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'serviceRoles' is invalid: no services found with the given names/ids", invalidId))
+
+	policy.ServiceRoles = []string{AllRole, roleRef("other")}
+	err = ctx.create(policy)
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'serviceRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
 	service := newEdgeService(uuid.New().String())
 	ctx.requireCreate(service)
@@ -208,7 +216,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 
 	policies := ctx.createServicePolicies(identityRoles, serviceRoles, identities, services, true)
 
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 9; i++ {
 		relatedServices := ctx.getRelatedIds(policies[i], EntityTypeServices)
 		relatedIdentities := ctx.getRelatedIds(policies[i], EntityTypeIdentities)
 		if i == 3 {
@@ -334,7 +342,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 
 func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []string, identities []*Identity, services []*EdgeService, oncreate bool) []*ServicePolicy {
 	var policies []*ServicePolicy
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 9; i++ {
 		policy := newServicePolicy(uuid.New().String())
 		if !oncreate {
 			ctx.requireCreate(policy)
@@ -363,6 +371,16 @@ func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []stri
 			policy.IdentityRoles = []string{AllRole}
 			policy.ServiceRoles = []string{AllRole}
 		}
+		if i == 7 {
+			policy.Semantic = SemanticAnyOf
+			policy.IdentityRoles = []string{identityRoles[0]}
+			policy.ServiceRoles = []string{serviceRoles[0]}
+		}
+		if i == 8 {
+			policy.Semantic = SemanticAnyOf
+			policy.IdentityRoles = []string{identityRoles[1], identityRoles[2], identityRoles[3]}
+			policy.ServiceRoles = []string{serviceRoles[1], serviceRoles[2], serviceRoles[3]}
+		}
 
 		policies = append(policies, policy)
 		if oncreate {
@@ -380,7 +398,7 @@ func (ctx *TestContext) validateServicePolicyIdentities(identities []*Identity, 
 		relatedIdentities := ctx.getRelatedIds(policy, EntityTypeIdentities)
 		for _, identity := range identities {
 			relatedPolicies := ctx.getRelatedIds(identity, EntityTypeServicePolicies)
-			shouldContain := ctx.policyShouldMatch(policy.IdentityRoles, identity, identity.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.IdentityRoles, identity, identity.RoleAttributes)
 
 			policyContains := stringz.Contains(relatedIdentities, identity.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", identity.RoleAttributes, policy.IdentityRoles)
@@ -402,7 +420,7 @@ func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, p
 		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)
 		for _, service := range services {
 			relatedPolicies := ctx.getRelatedIds(service, EntityTypeServicePolicies)
-			shouldContain := ctx.policyShouldMatch(policy.ServiceRoles, service, service.RoleAttributes)
+			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.ServiceRoles, service, service.RoleAttributes)
 			policyContains := stringz.Contains(relatedServices, service.Id)
 			ctx.Equal(shouldContain, policyContains, "entity roles attr: %v. policy roles: %v", service.RoleAttributes, policy.ServiceRoles)
 			if shouldContain {

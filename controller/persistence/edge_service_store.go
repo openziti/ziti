@@ -17,6 +17,8 @@
 package persistence
 
 import (
+	"fmt"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"reflect"
 	"sort"
 
@@ -75,6 +77,12 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 }
 
 func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
+	if len(entity.EdgeRouterRoles) > 1 && stringz.Contains(entity.EdgeRouterRoles, AllRole) {
+		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
+			FieldServiceEdgeRouterRoles, entity.EdgeRouterRoles))
+		return
+	}
+
 	entity.Service.SetValues(ctx.GetParentContext())
 
 	entity.SetBaseValues(ctx)
@@ -168,16 +176,18 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 }
 
 func (store *edgeServiceStoreImpl) edgeRouterRolesChanged(ctx *boltz.PersistContext, entityId string, roles []string) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "edgeRouterRoles", roles, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
+	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "edgeRouterRoles", roles, SemanticAllOf, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
 	if !ctx.Bucket.SetError(err) {
 		ctx.Bucket.SetError(store.edgeRouterCollection.SetLinks(ctx.Bucket.Tx(), entityId, roleIds))
 	}
 }
 
 func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	rolesSymbol := store.stores.servicePolicy.symbolServiceRoles
-	linkCollection := store.stores.servicePolicy.serviceCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	policyStore := store.stores.servicePolicy
+	rolesSymbol := policyStore.symbolServiceRoles
+	linkCollection := policyStore.serviceCollection
+	semanticSymbol := policyStore.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {

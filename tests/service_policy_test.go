@@ -47,30 +47,38 @@ func Test_ServicePolicy(t *testing.T) {
 	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.id), s("#"+identityRole1, "@"+identity3.id))
 	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.id, "@"+service3.id), s("@"+identity2.id, "@"+identity3.id))
 	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"))
+	policy5 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
+	policy6 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
 
 	ctx.enabledJsonLogging = true
 	ctx.AdminSession.validateEntityWithQuery(policy1)
 	ctx.AdminSession.validateEntityWithLookup(policy2)
 	ctx.AdminSession.validateEntityWithLookup(policy3)
 	ctx.AdminSession.validateEntityWithLookup(policy4)
+	ctx.AdminSession.validateEntityWithLookup(policy5)
+	ctx.AdminSession.validateEntityWithLookup(policy6)
 
 	ctx.AdminSession.validateAssociations(policy1, "services", service1, service2)
 	ctx.AdminSession.validateAssociations(policy2, "services", service1, service2, service3)
 	ctx.AdminSession.validateAssociations(policy3, "services", service2, service3)
 	ctx.AdminSession.validateAssociationContains(policy4, "services", service1, service2, service3)
+	ctx.AdminSession.validateAssociationContains(policy5, "services", service2)
+	ctx.AdminSession.validateAssociationContains(policy6, "services", service1, service2)
 
 	ctx.AdminSession.validateAssociations(policy1, "identities", identity1, identity2)
 	ctx.AdminSession.validateAssociations(policy2, "identities", identity1, identity2, identity3)
 	ctx.AdminSession.validateAssociations(policy3, "identities", identity2, identity3)
 	ctx.AdminSession.validateAssociationContains(policy4, "identities", identity1, identity2, identity3)
+	ctx.AdminSession.validateAssociations(policy5, "identities", identity2)
+	ctx.AdminSession.validateAssociations(policy6, "identities", identity1, identity2, identity3)
 
-	ctx.AdminSession.validateAssociations(service1, "service-policies", policy1, policy2, policy4)
-	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy2, policy3, policy4)
+	ctx.AdminSession.validateAssociations(service1, "service-policies", policy1, policy2, policy4, policy6)
+	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
 	ctx.AdminSession.validateAssociations(service3, "service-policies", policy2, policy3, policy4)
 
-	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy1, policy2, policy4)
-	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4)
-	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy2, policy3, policy4)
+	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy1, policy2, policy4, policy6)
+	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
+	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy2, policy3, policy4, policy6)
 
 	policy1.serviceRoles = append(policy1.serviceRoles, "#"+serviceRole2)
 	policy1.identityRoles = s("#" + identityRole2)
@@ -79,21 +87,21 @@ func Test_ServicePolicy(t *testing.T) {
 	ctx.AdminSession.validateAssociations(policy1, "services", service2)
 	ctx.AdminSession.validateAssociations(policy1, "identities", identity2, identity3)
 
-	ctx.AdminSession.validateAssociations(service1, "service-policies", policy2, policy4)
-	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy2, policy3, policy4)
+	ctx.AdminSession.validateAssociations(service1, "service-policies", policy2, policy4, policy6)
+	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
 	ctx.AdminSession.validateAssociations(service3, "service-policies", policy2, policy3, policy4)
 
-	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy2, policy4)
-	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4)
-	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy1, policy2, policy3, policy4)
+	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy2, policy4, policy6)
+	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy2, policy3, policy4, policy5, policy6)
+	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy1, policy2, policy3, policy4, policy6)
 
 	ctx.AdminSession.requireDeleteEntity(policy2)
 
-	ctx.AdminSession.validateAssociations(service1, "service-policies", policy4)
-	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy3, policy4)
+	ctx.AdminSession.validateAssociations(service1, "service-policies", policy4, policy6)
+	ctx.AdminSession.validateAssociations(service2, "service-policies", policy1, policy3, policy4, policy5, policy6)
 	ctx.AdminSession.validateAssociations(service3, "service-policies", policy3, policy4)
 
-	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy4)
-	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy3, policy4)
-	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy1, policy3, policy4)
+	ctx.AdminSession.validateAssociations(identity1, "service-policies", policy4, policy6)
+	ctx.AdminSession.validateAssociations(identity2, "service-policies", policy1, policy3, policy4, policy5, policy6)
+	ctx.AdminSession.validateAssociations(identity3, "service-policies", policy1, policy3, policy4, policy6)
 }

@@ -155,11 +155,13 @@ func (store *identityStoreImpl) initializeLocal() {
 func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolIdentityRoles
 	linkCollection := store.stores.edgeRouterPolicy.identityCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
 	rolesSymbol = store.stores.servicePolicy.symbolIdentityRoles
 	linkCollection = store.stores.servicePolicy.identityCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	semanticSymbol = store.stores.servicePolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {

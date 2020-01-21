@@ -26,6 +26,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -40,6 +41,7 @@ type DbProvider interface {
 type Store interface {
 	boltz.CrudStore
 	GetSingularEntityType() string
+	FindMatchingAnyOf(tx *bbolt.Tx, readIndex boltz.SetReadIndex, values []string) []string
 	initializeLocal()
 	initializeLinked()
 	initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder)
@@ -155,8 +157,16 @@ func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity NamedEdgeEnt
 	return nil
 }
 
-func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleSet []string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
+func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleSet []string, semantic string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
 	entityStore := index.GetSymbol().GetStore()
+	if stringz.Contains(roleSet, AllRole) {
+		ids, _, err := entityStore.QueryIds(tx, "true")
+		if err != nil {
+			return nil, err
+		}
+		return ids, nil
+	}
+
 	roles, ids, err := splitRolesAndIds(roleSet)
 	if err != nil {
 		return nil, err
@@ -164,14 +174,15 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleS
 	if err := validateAndConvertNamesToIds(tx, targetStore, field, ids); err != nil {
 		return nil, err
 	}
-	if stringz.Contains(roles, "all") {
-		ids, _, err := entityStore.QueryIds(tx, "true")
-		if err != nil {
-			return nil, err
-		}
-		return ids, nil
+	var roleIds []string
+	if semantic == SemanticAllOf {
+		roleIds = store.FindMatching(tx, index, roles)
+	} else if semantic == SemanticAnyOf {
+		roleIds = store.FindMatchingAnyOf(tx, index, roles)
+	} else {
+		return nil, errors.Errorf("unsupported policy semantic %v", semantic)
 	}
-	roleIds := entityStore.FindMatching(tx, index, roles)
+
 	for _, id := range ids {
 		if entityStore.IsEntityPresent(tx, id) {
 			roleIds = append(roleIds, id)
@@ -199,7 +210,8 @@ func validateAndConvertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, field st
 	return nil
 }
 
-func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol, linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol,
+	linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder, semanticSymbol boltz.EntitySymbol) {
 	ids, _, err := roleSymbol.GetStore().QueryIds(tx, "true")
 	holder.SetError(err)
 
@@ -213,11 +225,23 @@ func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, r
 			return
 		}
 		convertNamesToIds(tx, store, ids)
-		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") || (len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...)) {
+		semantic := SemanticAllOf
+		if semanticSymbol != nil {
+			if _, semanticValue := semanticSymbol.Eval(tx, []byte(id)); semanticValue != nil {
+				semantic = string(semanticValue)
+			}
+		}
+
+		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") {
+			err = linkCollection.AddLinks(tx, id, entityId)
+		} else if semantic == SemanticAllOf && len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...) {
+			err = linkCollection.AddLinks(tx, id, entityId)
+		} else if semantic == SemanticAnyOf && len(roles) > 0 && stringz.ContainsAny(entityRoles, roles...) {
 			err = linkCollection.AddLinks(tx, id, entityId)
 		} else {
 			err = linkCollection.RemoveLinks(tx, id, entityId)
 		}
+
 		holder.SetError(err)
 		if holder.HasError() {
 			return
@@ -245,4 +269,31 @@ func getSingularEntityType(entityType string) string {
 type NameIndexedStore interface {
 	Store
 	GetNameIndex() boltz.ReadIndex
+}
+
+func (*baseStore) FindMatchingAnyOf(tx *bbolt.Tx, readIndex boltz.SetReadIndex, values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	var result []string
+	if len(values) == 1 {
+		readIndex.Read(tx, []byte(values[0]), func(val []byte) {
+			result = append(result, string(val))
+		})
+		return result
+	}
+
+	// If there are multiple roles, we want to avoid duplicates
+	set := map[string]struct{}{}
+	for _, role := range values {
+		readIndex.Read(tx, []byte(role), func(val []byte) {
+			set[string(val)] = struct{}{}
+		})
+	}
+
+	for key := range set {
+		result = append(result, key)
+	}
+
+	return result
 }

@@ -265,13 +265,25 @@ func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...str
 }
 
 func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
-	servicePolicy := newTestServicePolicy(policyType, serviceRoles, identityRoles)
+	servicePolicy := newTestServicePolicy(policyType, nil, serviceRoles, identityRoles)
+	request.requireCreateEntity(servicePolicy)
+	return servicePolicy
+}
+
+func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles []string) *servicePolicy {
+	servicePolicy := newTestServicePolicy(policyType, &semantic, serviceRoles, identityRoles)
 	request.requireCreateEntity(servicePolicy)
 	return servicePolicy
 }
 
 func (request *authenticatedRequests) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
-	edgeRouterPolicy := newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles)
+	edgeRouterPolicy := newTestEdgeRouterPolicy(nil, edgeRouterRoles, identityRoles)
+	request.requireCreateEntity(edgeRouterPolicy)
+	return edgeRouterPolicy
+}
+
+func (request *authenticatedRequests) requireNewEdgeRouterPolicyWithSemantic(semantic string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+	edgeRouterPolicy := newTestEdgeRouterPolicy(&semantic, edgeRouterRoles, identityRoles)
 	request.requireCreateEntity(edgeRouterPolicy)
 	return edgeRouterPolicy
 }

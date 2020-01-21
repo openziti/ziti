@@ -9,13 +9,17 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "edgeRouterRoles" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "semantic": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/semantic"
     },
-    "identityRoles" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "edgeRouterRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
+    },
+    "identityRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

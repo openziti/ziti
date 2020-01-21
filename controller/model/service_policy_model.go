@@ -31,6 +31,7 @@ type ServicePolicy struct {
 	BaseModelEntityImpl
 	Name          string
 	PolicyType    string
+	Semantic      string
 	IdentityRoles []string
 	ServiceRoles  []string
 }
@@ -52,6 +53,7 @@ func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (pers
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
 		PolicyType:         policyType,
+		Semantic:           entity.Semantic,
 		IdentityRoles:      entity.IdentityRoles,
 		ServiceRoles:       entity.ServiceRoles,
 	}, nil
@@ -81,6 +83,7 @@ func (entity *ServicePolicy) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.B
 	entity.fillCommon(boltServicePolicy)
 	entity.Name = boltServicePolicy.Name
 	entity.PolicyType = policyType
+	entity.Semantic = boltServicePolicy.Semantic
 	entity.ServiceRoles = boltServicePolicy.ServiceRoles
 	entity.IdentityRoles = boltServicePolicy.IdentityRoles
 	return nil

@@ -169,12 +169,13 @@ func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []b
 	// Calculate edge router policy links
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolEdgeRouterRoles
 	linkCollection := store.stores.edgeRouterPolicy.edgeRouterCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
 	// Calculate service roles
 	rolesSymbol = store.stores.edgeService.symbolEdgeRoutersRoles
 	linkCollection = store.stores.edgeService.edgeRouterCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, nil)
 }
 
 func (store *edgeRouterStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
