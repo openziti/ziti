@@ -2,8 +2,7 @@
 
 Run the ziti-tunnel NetFoundry client. ziti-tunnel captures network traffic that
 is destined for Ziti services and proxes the packet payloads to the associated
-Ziti service. See https://netfoundry.github.io/ziti-doc/ziti/clients/linux.html
-for more details.
+Ziti service. See the [ziti-tunnel README](../README.md) for more details.
 
 This image requires access to a Ziti enrollment token (JWT), and a persistent
 volume mounted at "/netfoundry" to save the configuration file that is created
