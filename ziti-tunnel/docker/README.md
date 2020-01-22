@@ -137,59 +137,59 @@ This image can be used to run a module on an Azure IoT runtime.
 
     $ cat module.json
     {
-      "modulesContent": {
-          "$edgeAgent": {
-              "properties.desired": {
-                  "modules": {
-                      "ziti-tunnel": {
-                          "settings": {
-                              "image": "netfoundry/ziti-tunnel:0.5.8-2554",
-                              "createOptions": "{\"HostConfig\":{\"CapAdd\":[\"NET_ADMIN\"],\"Mounts\":[{\"Type\":\"bind\",\"Source\":\"/opt/netfoundry\",\"Target\":\"/netfoundry\"}],\"NetworkMode\":\"host\"},\"NetworkingConfig\":{\"EndpointsConfig\":{\"host\":{}}}}"
-                          },
-                          "type": "docker",
-                          "version": "1.0",
-                          "status": "running",
-                          "restartPolicy": "always"
-                      }
-                  },
-                  "runtime": {     
-                      "settings": {
-                          "minDockerVersion": "v1.25"
-                      },
-                      "type": "docker"
-                  },
-                  "schemaVersion": "1.0",
-                  "systemModules": {
-                      "edgeAgent": {
-                          "settings": {
-                              "image": "mcr.microsoft.com/azureiotedge-agent:1.0",
-                              "createOptions": ""
-                          },
-                          "type": "docker"
-                      },
-                      "edgeHub": {
-                          "settings": {
-                              "image": "mcr.microsoft.com/azureiotedge-hub:1.0",
-                              "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"443/tcp\":[{\"HostPort\":\"443\"}],\"5671/tcp\":[{\"HostPort\":\"5671\"}],\"8883/tcp\":[{\"HostPort\":\"8883\"}]}}}"
-                          },
-                          "type": "docker",
-                          "status": "running",
-                          "restartPolicy": "always"
-                      }
-                  }
-              }
-          },
-          "$edgeHub": {
-              "properties.desired": {
-                  "routes": {},
-                  "schemaVersion": "1.0",
-                  "storeAndForwardConfiguration": {
-                      "timeToLiveSecs": 7200
-                  }
-              }
-          },
-          "ziti-tunnel": {
-              "properties.desired": {}
-          }
-      }
+        "modulesContent": {
+            "$edgeAgent": {
+                "properties.desired": {
+                    "modules": {
+                        "ziti-tunnel": {
+                            "settings": {
+                                "image": "netfoundry/ziti-tunnel:0.5.8-2554",
+                                "createOptions": "{\"HostConfig\":{\"CapAdd\":[\"NET_ADMIN\"],\"Mounts\":[{\"Type\":\"bind\",\"Source\":\"/opt/netfoundry\",\"Target\":\"/netfoundry\"}],\"NetworkMode\":\"host\"},\"NetworkingConfig\":{\"EndpointsConfig\":{\"host\":{}}}}"
+                            },
+                            "type": "docker",
+                            "version": "1.0",
+                            "status": "running",
+                            "restartPolicy": "always"
+                        }
+                    },
+                    "runtime": {     
+                        "settings": {
+                            "minDockerVersion": "v1.25"
+                        },
+                        "type": "docker"
+                    },
+                    "schemaVersion": "1.0",
+                    "systemModules": {
+                        "edgeAgent": {
+                            "settings": {
+                                "image": "mcr.microsoft.com/azureiotedge-agent:1.0",
+                                "createOptions": ""
+                            },
+                            "type": "docker"
+                        },
+                        "edgeHub": {
+                            "settings": {
+                                "image": "mcr.microsoft.com/azureiotedge-hub:1.0",
+                                "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"443/tcp\":[{\"HostPort\":\"443\"}],\"5671/tcp\":[{\"HostPort\":\"5671\"}],\"8883/tcp\":[{\"HostPort\":\"8883\"}]}}}"
+                            },
+                            "type": "docker",
+                            "status": "running",
+                            "restartPolicy": "always"
+                        }
+                    }
+                }
+            },
+            "$edgeHub": {
+                "properties.desired": {
+                    "routes": {},
+                    "schemaVersion": "1.0",
+                    "storeAndForwardConfiguration": {
+                        "timeToLiveSecs": 7200
+                    }
+                }
+            },
+            "ziti-tunnel": {
+                "properties.desired": {}
+            }
+        }
     }
