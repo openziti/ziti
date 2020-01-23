@@ -53,6 +53,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 
 	cmd.AddCommand(newListCmdForEntityType("api-sessions", runListApiSessions, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
@@ -61,6 +62,9 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
+
+	configTypeListRootCmd := newEntityListRootCmd("config-type")
+	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", runListConfigTypeConfigs, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", runListEdgeRouterEdgeRouterPolicies, newOptions()))
@@ -75,6 +79,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", runListIdentityServicePolicies, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", runListServiceConfigs, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", runListServiceEdgeRouters, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", runListServiceServicePolicies, newOptions()))
 
@@ -82,7 +87,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", runListServicePolicyServices, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", runListServicePolicyIdentities, newOptions()))
 
-	cmd.AddCommand(edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd, servicePolicyListRootCmd)
+	cmd.AddCommand(configTypeListRootCmd, edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd, servicePolicyListRootCmd)
 
 	return cmd
 }
@@ -337,12 +342,32 @@ func runListCAs(o *commonOptions) error {
 	return nil
 }
 
+func runListConfigTypes(o *commonOptions) error {
+	children, err := listEntitiesOfTypeWithOptionalFilter("config-types", o)
+	if err != nil {
+		return err
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id:   %v    name: %v\n", id, name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func runListConfigs(o *commonOptions) error {
 	children, err := listEntitiesOfTypeWithOptionalFilter("configs", o)
 	if err != nil {
 		return err
 	}
+	return outputConfigs(o, children)
+}
 
+func outputConfigs(o *commonOptions, children []*gabs.Container) error {
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -396,6 +421,14 @@ func runListSessions(o *commonOptions) error {
 	}
 
 	return err
+}
+
+func runListConfigTypeConfigs(o *commonOptions) error {
+	return runListChilden("config-types", "configs", o, outputConfigs)
+}
+
+func runListServiceConfigs(o *commonOptions) error {
+	return runListChilden("services", "configs", o, outputConfigs)
 }
 
 func runListServiceEdgeRouters(o *commonOptions) error {

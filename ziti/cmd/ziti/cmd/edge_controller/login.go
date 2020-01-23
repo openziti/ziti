@@ -17,13 +17,13 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	"github.com/netfoundry/ziti-foundation/util/term"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 	"path/filepath"
@@ -32,7 +32,7 @@ import (
 
 // loginOptions are the flags for login commands
 type loginOptions struct {
-	common.CommonOptions
+	commonOptions
 	Username string
 	Password string
 	Cert     string
@@ -41,10 +41,8 @@ type loginOptions struct {
 // newLoginCmd creates the command
 func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &loginOptions{
-		CommonOptions: common.CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+		commonOptions: commonOptions{
+			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
@@ -71,15 +69,14 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 	}
 
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
-
 	cmd.Flags().StringVarP(&options.Cert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
 }
 
 // Run implements this command
 func (o *loginOptions) Run() error {
-
 	host := o.Args[0]
 
 	if !strings.HasPrefix(host, "http") {
@@ -98,7 +95,7 @@ func (o *loginOptions) Run() error {
 
 	body := container.String()
 
-	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body)
+	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse)
 
 	if err != nil {
 		return err

@@ -18,14 +18,13 @@ package edge_controller
 
 import (
 	"fmt"
-	"io"
-	"strconv"
-
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"io"
 )
 
 type createServiceOptions struct {
@@ -51,10 +50,10 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service <name> <dns host> <dns port> [egress node]? [egress endpoint uri]?",
+		Use:   "service <name> [egress node]? [egress endpoint uri]?",
 		Short: "creates a service managed by the Ziti Edge Controller",
 		Long:  "creates a service managed by the Ziti Edge Controller",
-		Args:  cobra.MinimumNArgs(3),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -78,30 +77,21 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateNativeService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	var port int
-	if port, err = strconv.Atoi(o.Args[2]); err != nil {
-		return err
-	}
-
-	configIds, err := mapNamesToIDs("configs", o.configs...)
-	if err != nil {
-		return err
-	}
-
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, o.Args[1], "dns", "hostname")
-	setJSONValue(entityData, port, "dns", "port")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, configIds, "configIds")
+	setJSONValue(entityData, o.configs, "configs")
 
-	if o.hostedService {
+	if o.hostedService || len(o.Args) == 1 {
 		setJSONValue(entityData, "unclaimed", "egressRouter")
 		setJSONValue(entityData, "hosted:unclaimed", "endpointAddress")
 	} else {
-		setJSONValue(entityData, o.Args[3], "egressRouter")
-		setJSONValue(entityData, o.Args[4], "endpointAddress")
+		if len(o.Args) < 3 {
+			return errors.Errorf("if --hosted is not set, you must provide egress router and endpoint address")
+		}
+		setJSONValue(entityData, o.Args[1], "egressRouter")
+		setJSONValue(entityData, o.Args[2], "endpointAddress")
 	}
 
 	setJSONValue(entityData, o.tags, "tags")
