@@ -22,7 +22,15 @@ There is a new endpoint for managing config types.
         * List associated configs GET `/config-types/<config-id>/configs`
      * Properties
          * Config types support the standard properties (id, createdAt, updatedAt, tags)
-         * name - type: string, constraints: unique
+         * name - type: string, constraints: required, must be unique. If provided must be a valid JSON schema.
+         * schema - type: object. Optional.
+
+If a schema is set on a type, that schema will be used to validate config data on configurations of that type. Validation
+will happen if a configuration is created or updated. If a config type schema changes, the system does not re-validate
+configurations of that type. 
+
+It is generally assumed that if there are backwards incompatible changes being made to a schema that a new config type
+will be created and interested applications can support multiple configuration types. 
 
 The ziti CLI supports the following operations on config types: 
 
