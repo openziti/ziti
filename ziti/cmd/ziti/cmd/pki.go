@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2019 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ func (options *PKIOptions) addPKIFlags(cmd *cobra.Command) {
 	cmd.MarkFlagRequired("pki-root")
 	viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
 
-	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganization, "pki-organization", "", "Netfoundry", "Organization")
+	cmd.PersistentFlags().StringVarP(&options.Flags.PKIOrganization, "pki-organization", "", "NetFoundry", "Organization")
 	cmd.MarkFlagRequired("pki-organization")
 	viper.BindPFlag("pki-organization", cmd.PersistentFlags().Lookup("pki-organization"))
 
