@@ -3,10 +3,10 @@ The Dockerfile and scripts in this directory build a ziti-tunnel Docker image.
 Ziti binaries are downloaded from https://netfoundry.artifactory.io/netfoundry/ziti-release
 by default. The following build arguments are supported:
 
-  | Build Argument       | Description                                                                 |
+  | Build Argument       | Description                                                       |
   | -------------------- | ----------------------------------------------------------------- |
   | ZITI_VERSION         | The version of the ziti binaries to fetch from artifactory.       |
-  | ARTIFACTORY_TOKEN    | An Artifactory token with read access to the artifact repository. |
+  | ARTIFACTORY_TOKEN    | An Artifactory token with read access to the artifact repository. This is not needed if using the default ARTIFACTORY_BASE_URL / ARTIFACTORY_REPO. |
   | ARTIFACTORY_BASE_URL | Defaults to "https://netfoundry.jfrog.io/netfoundry".             |
   | ARTIFACTORY_REPO     | Defaults to "ziti-release".                                       |
 
@@ -57,7 +57,6 @@ Run `docker buildx` like this:
     $ docker buildx build \
         --platform linux/amd64,linux/arm/v7 \
         --build-arg ZITI_VERSION="${ziti_version}" \
-        --build-arg ARTIFACTORY_TOKEN="AKCp5d..." \
         -t "netfoundry/ziti-tunnel:${ziti_version}" .
 
 Note that you'll need to append "--push" to this command to be able to use
@@ -87,5 +86,4 @@ cache.
     $ ziti_version="0.5.8-2554" \
     $ docker build \
         --build-arg ZITI_VERSION="${ziti_version}" \
-        --build-arg ARTIFACTORY_TOKEN="AKCp5d..." \
         -t "netfoundry/ziti-tunnel:${ziti_version}" .

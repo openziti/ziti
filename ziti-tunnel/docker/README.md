@@ -65,6 +65,8 @@ The ziti-tunnel image can be used in Kubernetes either as a sidecar, which would
 intercept packets only from other containers in the pod definition or as a dedicated
 pod that sets `hostNetwork` to true.
 
+The following example manifest shows how to run ziti-tunnel as a sidecar:
+
     $ cat app-with-ziti-tunnel-sidecar.yaml
     apiVersion: v1
     kind: PersistentVolumeClaim
