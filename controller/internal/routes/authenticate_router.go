@@ -70,7 +70,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 
 	token := uuid.New().String()
 	configTypes := ro.mapConfigTypeNamesToIds(ae, authContext.GetDataStringSlice("configTypes"), identity.Id)
-
+	pfxlog.Logger().Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	s := &model.ApiSession{
 		IdentityId:  identity.Id,
 		Token:       token,

@@ -34,7 +34,7 @@ type ConfigType struct {
 }
 
 func (entity *ConfigType) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
-	if entity.Name == CONFIG_TYPE_ALL {
+	if entity.Name == ConfigTypeAll {
 		return nil, validation.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
 	return &persistence.ConfigType{

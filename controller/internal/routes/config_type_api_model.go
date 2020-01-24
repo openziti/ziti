@@ -25,7 +25,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
-const EntityNameConfigType = "configTypes"
+const EntityNameConfigType = "config-types"
 
 type ConfigTypeApi struct {
 	Name *string                `json:"name"`

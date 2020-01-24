@@ -71,6 +71,10 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	})
 	ctx.NoError(err)
 
+	config.Id = uuid.New().String()
+	err = ctx.create(config)
+	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on configs store", config.Name))
+
 	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),

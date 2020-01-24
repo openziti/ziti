@@ -27,12 +27,9 @@ import (
 var test = `
 {
 	"name" : "Foo",
-	"dns" : {
-		"hostname" : "google.com",
-		"port" : 6433
-	},
 	"egressRouter" : "001",
-	"endpointAddress" : null
+	"endpointAddress" : null,
+	"configs" : [ "ssh-config", "ssh-server-config" ]
 }
       
 `
@@ -42,11 +39,8 @@ func Test_getFields(t *testing.T) {
 	test2 := ServiceApiCreate{
 		EdgeRouterRoles: []string{"#foo", "@2"},
 		RoleAttributes:  []string{"foo", "bar"},
-		Dns: &ServiceDnsApiPost{
-			Hostname: strPtr("google.com"),
-			Port:     uint16Ptr(6433),
-		},
-		Name: strPtr("Foo"),
+		Name:            strPtr("Foo"),
+		Configs:         []string{"ssh-config", "ssh-server-config"},
 		Tags: map[string]interface{}{
 			"foo": "bar",
 			"nested": map[string]interface{}{
@@ -71,8 +65,7 @@ func Test_getFields(t *testing.T) {
 			body: []byte(test),
 			want: JsonFields{
 				"name":            true,
-				"dns.hostname":    true,
-				"dns.port":        true,
+				"configs":         true,
 				"egressRouter":    true,
 				"endpointAddress": false,
 			},
@@ -85,12 +78,10 @@ func Test_getFields(t *testing.T) {
 				"name":            true,
 				"edgeRouterRoles": true,
 				"roleAttributes":  true,
-				"dns.hostname":    true,
-				"dns.port":        true,
 				"egressRouter":    false,
 				"endpointAddress": true,
 				"tags":            true,
-				"configs":         false,
+				"configs":         true,
 			},
 			wantErr: false,
 		},
@@ -118,18 +109,16 @@ func TestJsonFields_ConcatNestedNames(t *testing.T) {
 	}{
 		{"test",
 			JsonFields{
-				"Name":            true,
-				"Dns.Hostname":    true,
-				"Dns.Port":        true,
-				"EgressRouter":    true,
-				"EndpointAddress": false,
+				"Name":                  true,
+				"This.Is.A.Longer.Name": true,
+				"EgressRouter":          true,
+				"EndpointAddress":       false,
 			},
 			JsonFields{
-				"Name":            true,
-				"DnsHostname":     true,
-				"DnsPort":         true,
-				"EgressRouter":    true,
-				"EndpointAddress": false,
+				"Name":              true,
+				"ThisIsALongerName": true,
+				"EgressRouter":      true,
+				"EndpointAddress":   false,
 			},
 		},
 	}

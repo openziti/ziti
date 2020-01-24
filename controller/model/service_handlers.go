@@ -203,6 +203,10 @@ func (handler *ServiceHandler) CollectServicePolicies(id string, collector func(
 	return handler.collectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
 }
 
+func (handler *ServiceHandler) CollectConfigs(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeConfigs, handler.env.GetHandlers().Config, collector)
+}
+
 type ServiceListResult struct {
 	handler    *ServiceHandler
 	Services   []*Service

@@ -32,8 +32,6 @@ import (
 type Service struct {
 	BaseModelEntityImpl
 	Name            string   `json:"name"`
-	DnsHostname     string   `json:"hostname"`
-	DnsPort         uint16   `json:"port"`
 	EgressRouter    string   `json:"egressRouter"`
 	EndpointAddress string   `json:"endpointAddress"`
 	EdgeRouterRoles []string `json:"edgeRouterRoles"`
@@ -64,8 +62,6 @@ func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		},
 		EdgeEntityFields: persistence.EdgeEntityFields{Tags: entity.Tags},
 		Name:             entity.Name,
-		DnsHostname:      entity.DnsHostname,
-		DnsPort:          entity.DnsPort,
 		EdgeRouterRoles:  entity.EdgeRouterRoles,
 		RoleAttributes:   entity.RoleAttributes,
 		Configs:          entity.Configs,
@@ -123,8 +119,6 @@ func (entity *Service) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	}
 	entity.fillCommon(boltService)
 	entity.Name = boltService.Name
-	entity.DnsHostname = boltService.DnsHostname
-	entity.DnsPort = boltService.DnsPort
 	entity.EdgeRouterRoles = boltService.EdgeRouterRoles
 	entity.EgressRouter = boltService.Egress
 	entity.EndpointAddress = boltService.EndpointAddress

@@ -37,8 +37,6 @@ type entity interface {
 type service struct {
 	id              string
 	name            string
-	dnsHostname     string
-	dnsPort         int
 	egressRouter    string
 	endpointAddress string
 	edgeRouterRoles []string
@@ -65,8 +63,6 @@ func (entity *service) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.egressRouter, "egressRouter")
 	ctx.setJsonValue(entityData, entity.endpointAddress, "endpointAddress")
-	ctx.setJsonValue(entityData, entity.dnsHostname, "dns", "hostname")
-	ctx.setJsonValue(entityData, entity.dnsPort, "dns", "port")
 	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.configs, "configs")
@@ -85,8 +81,6 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.name, path("name"))
 	ctx.pathEquals(c, entity.egressRouter, path("egressRouter"))
 	ctx.pathEquals(c, entity.endpointAddress, path("endpointAddress"))
-	ctx.pathEquals(c, entity.dnsHostname, path("dns.hostname"))
-	ctx.pathEquals(c, float64(entity.dnsPort), path("dns.port"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 
 	sort.Strings(entity.edgeRouterRoles)
@@ -389,7 +383,7 @@ func (entity *configType) setId(id string) {
 }
 
 func (entity *configType) getEntityType() string {
-	return "configTypes"
+	return "config-types"
 }
 
 func (entity *configType) toJson(isCreate bool, ctx *TestContext, fields ...string) string {

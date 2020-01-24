@@ -17,11 +17,12 @@
 package model
 
 import (
+	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 )
 
 const (
-	CONFIG_TYPE_ALL = "all"
+	ConfigTypeAll = "all"
 )
 
 func NewConfigTypeHandler(env Env) *ConfigTypeHandler {
@@ -74,4 +75,8 @@ func (handler *ConfigTypeHandler) Patch(configType *ConfigType, checker boltz.Fi
 
 func (handler *ConfigTypeHandler) Delete(id string) error {
 	return handler.deleteEntity(id, nil)
+}
+
+func (handler *ConfigTypeHandler) CollectConfigs(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeConfigs, handler.env.GetHandlers().Config, collector)
 }

@@ -93,8 +93,6 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 		store.nameChanged(ctx.Bucket, entity, *oldValue)
 	}
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldServiceDnsHostname, entity.DnsHostname)
-	ctx.SetInt32(FieldServiceDnsPort, int32(entity.DnsPort))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	sort.Strings(entity.EdgeRouterRoles)

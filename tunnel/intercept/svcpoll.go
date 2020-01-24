@@ -17,11 +17,12 @@
 package intercept
 
 import (
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"io"
 	"net"
 	"os"
 	"os/signal"
-	"strings"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -29,12 +30,11 @@ import (
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 )
 
 func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {
 	interceptor.Start(context)
-	knownServices := make(map[string]edge.Service)
+	knownServices := make(map[string]*entities.Service)
 	log := pfxlog.Logger()
 
 	sig := make(chan os.Signal)
@@ -55,7 +55,11 @@ func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.R
 				}
 			}
 		}
-		added, removed := diffServices(edgeServices, knownServices)
+		var tunnelServices []*entities.Service
+		for _, edgeService := range edgeServices {
+			tunnelServices = append(tunnelServices, &entities.Service{Service: edgeService})
+		}
+		added, removed := diffServices(tunnelServices, knownServices)
 		updateServices(context, interceptor, resolver, added, removed, knownServices)
 
 		select {
@@ -80,9 +84,9 @@ done:
 // compare a list of services from the edge controller against the services that we are currently
 // familiar with to determine which (if any) services have been added or removed since the last
 // time `knownServices` was updated.
-func diffServices(edgeServices []edge.Service, knownServices map[string]edge.Service) (added, removed map[string]edge.Service) {
+func diffServices(edgeServices []*entities.Service, knownServices map[string]*entities.Service) (added, removed map[string]*entities.Service) {
 	// find new services
-	added = make(map[string]edge.Service)
+	added = make(map[string]*entities.Service)
 	edgeServiceIds := make(map[string]struct{})
 	for _, edgeSvc := range edgeServices {
 		// get edge service IDs for efficiently finding removed services
@@ -94,7 +98,7 @@ func diffServices(edgeServices []edge.Service, knownServices map[string]edge.Ser
 	}
 
 	// look for removed services
-	removed = make(map[string]edge.Service)
+	removed = make(map[string]*entities.Service)
 	for id, knownSvc := range knownServices {
 		if _, ok := edgeServiceIds[id]; !ok {
 			removed[knownSvc.Id] = knownSvc
@@ -105,22 +109,41 @@ func diffServices(edgeServices []edge.Service, knownServices map[string]edge.Ser
 	return
 }
 
-func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]edge.Service) {
+func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]*entities.Service) {
 	log := pfxlog.Logger()
 	for _, svc := range added {
 		if stringz.Contains(svc.Permissions, "Dial") {
-			log.Infof("starting tunnel for newly available service %s", svc.Name)
-			err := interceptor.Intercept(svc, resolver)
-			if err != nil {
-				log.Errorf("failed to intercept service: %v", err)
+			clientConfig := &entities.ServiceConfig{}
+			found, err := svc.GetConfigOfType(entities.ClientConfigV1, clientConfig)
+
+			if found && err == nil {
+				svc.ClientConfig = clientConfig
+			} else if !found {
+				pfxlog.Logger().Debugf("no service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+			} else if err != nil {
+				pfxlog.Logger().WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+			}
+
+			if err == nil {
+				log.Infof("starting tunnel for newly available service %s", svc.Name)
+				err := interceptor.Intercept(svc, resolver)
+				if err != nil {
+					log.Errorf("failed to intercept service: %v", err)
+				}
 			}
 		}
 		if stringz.Contains(svc.Permissions, "Bind") {
-			if dialAddr, ok := svc.Tags["tunneler.dial.addr"]; ok {
+			serverConfig := &entities.ServiceConfig{}
+			found, err := svc.GetConfigOfType(entities.ServerConfigV1, serverConfig)
+
+			if found && err == nil {
+				svc.ServerConfig = serverConfig
 				log.Infof("Hosting newly available service %s", svc.Name)
-				go host(context, svc, dialAddr)
-			} else {
-				log.Warnf("service %v is hostable but is missing a dial address. Add a 'tunneler.dial.addr' tag to the service to fix", svc.Name)
+				go host(context, svc)
+			} else if !found {
+				log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
+			} else if err != nil {
+				log.WithError(err).Errorf("service %v is hostable but unable to decode server config of type %v", svc.Name, entities.ServerConfigV1)
 			}
 		}
 	}
@@ -128,24 +151,28 @@ func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.
 	// build map of all in-use address strings, so we know when a route needs to be removed
 	allAddrs := make(map[string]int, len(all))
 	for _, svc := range all {
-		addr := svc.Dns.Hostname
-		if _, ok := allAddrs[addr]; !ok {
-			allAddrs[addr] += 1
+		if svc.ClientConfig != nil {
+			addr := svc.ClientConfig.Hostname
+			if _, ok := allAddrs[addr]; !ok {
+				allAddrs[addr] += 1
+			}
 		}
 	}
 
 	for _, svc := range removed {
-		log.Infof("stopping tunnel for unavailable service: %s", svc.Name)
-		useCnt := allAddrs[svc.Dns.Hostname]
-		err := interceptor.StopIntercepting(svc.Name, useCnt == 1)
-		if err != nil {
-			log.Errorf("failed to stop intercepting: %v", err)
+		if svc.ClientConfig != nil {
+			log.Infof("stopping tunnel for unavailable service: %s", svc.Name)
+			useCnt := allAddrs[svc.ClientConfig.Hostname]
+			err := interceptor.StopIntercepting(svc.Name, useCnt == 1)
+			if err != nil {
+				log.Errorf("failed to stop intercepting: %v", err)
+			}
+			allAddrs[svc.ClientConfig.Hostname] -= 1
 		}
-		allAddrs[svc.Dns.Hostname] -= 1
 	}
 }
 
-func host(context ziti.Context, svc edge.Service, addr string) {
+func host(context ziti.Context, svc *entities.Service) {
 	log := pfxlog.Logger()
 	listener, err := context.Listen(svc.Name)
 	if err != nil {
@@ -159,30 +186,23 @@ func host(context ziti.Context, svc edge.Service, addr string) {
 			log.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
 			return
 		}
-		addrParts := strings.SplitAfterN(addr, ":", 2)
-		if len(addrParts) != 2 {
-			log.WithError(err).
-				WithField("service", svc.Name).
-				WithField("dialAddr", addr).
-				Error("unsupported external address")
-			continue
-		}
-		externalConn, err := net.Dial(strings.TrimSuffix(addrParts[0], ":"), addrParts[1])
+		config := svc.ServerConfig
+		externalConn, err := net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
 		if err != nil {
 			log.WithError(err).
 				WithField("service", svc.Name).
-				WithField("dialAddr", addr).
+				WithField("dialAddr", config.String()).
 				Error("dial failed")
 			continue
 		}
 		log.WithField("service", svc.Name).
-			WithField("dialAddr", addr).
+			WithField("dialAddr", config.String()).
 			Error("hosting service, waiting for connections")
-		pipe(svc, addr, conn, externalConn)
+		pipe(svc, config.String(), conn, externalConn)
 	}
 }
 
-func pipe(svc edge.Service, addr string, zitiConn net.Conn, externalConn net.Conn) {
+func pipe(svc *entities.Service, addr string, zitiConn net.Conn, externalConn net.Conn) {
 	log := pfxlog.Logger()
 	closeReadC := make(chan struct{})
 	closeWriteC := make(chan struct{})

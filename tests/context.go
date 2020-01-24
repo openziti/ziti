@@ -94,6 +94,10 @@ func GetTestContext() *TestContext {
 	return defaultTestContext
 }
 
+func (ctx *TestContext) testContextChanged(t *testing.T) {
+	ctx.req = require.New(t)
+}
+
 func (ctx *TestContext) Transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -323,8 +327,6 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 func (ctx *TestContext) newTestService(roleAttributes, configs []string) *service {
 	return &service{
 		name:            uuid.New().String(),
-		dnsHostname:     uuid.New().String(),
-		dnsPort:         0,
 		egressRouter:    uuid.New().String(),
 		endpointAddress: uuid.New().String(),
 		roleAttributes:  roleAttributes,

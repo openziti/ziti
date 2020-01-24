@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"net/http"
 )
 
 func init() {
@@ -40,7 +42,12 @@ func NewConfigTypeRouter() *ConfigTypeRouter {
 }
 
 func (ir *ConfigTypeRouter) Register(ae *env.AppEnv) {
-	registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+
+	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
+	configsListHandler := ae.WrapHandler(ir.ListConfigs, permissions.IsAdmin())
+	sr.HandleFunc(configsUrl, configsListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(configsUrl+"/", configsListHandler).Methods(http.MethodGet)
 }
 
 func (ir *ConfigTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -74,4 +81,8 @@ func (ir *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	Patch(rc, ae.Schemes.ConfigType.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
 		return ae.Handlers.ConfigType.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags", "data"))
 	})
+}
+
+func (ir *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ConfigType.CollectConfigs, MapConfigToApiEntity)
 }

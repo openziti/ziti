@@ -122,9 +122,7 @@ func (ctx *TestContext) testCreateServices(_ *testing.T) {
 			EndpointAddress: uuid.New().String(),
 			Egress:          uuid.New().String(),
 		},
-		Name:        uuid.New().String(),
-		DnsHostname: uuid.New().String(),
-		DnsPort:     uint16(rand.Uint32()),
+		Name: uuid.New().String(),
 	}
 	ctx.requireCreate(edgeService)
 	ctx.validateBaseline(edgeService)

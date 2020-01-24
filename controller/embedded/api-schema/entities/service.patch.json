@@ -8,29 +8,6 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name-null"
     },
-    "dns": {
-      "type": [
-        "object",
-        "null"
-      ],
-      "additionalProperties": false,
-      "required": [
-      ],
-      "properties": {
-        "hostname": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "port": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    },
     "egressRouter": {
       "type": [
         "string",

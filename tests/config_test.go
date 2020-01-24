@@ -37,6 +37,7 @@ func Test_Configs(t *testing.T) {
 	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
 	t.Run("create without name should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.newTestConfig(configType.id, map[string]interface{}{"port": 22})
 		config.name = ""
@@ -45,6 +46,7 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("create without data should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.newTestConfig(configType.id, nil)
 		httpCode, body := ctx.AdminSession.createEntity(config)
@@ -52,18 +54,21 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("create without type should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		config := ctx.newTestConfig("", map[string]interface{}{"port": 22})
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create with invalid config type should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		config := ctx.newTestConfig(uuid.New().String(), map[string]interface{}{"port": 22})
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "type")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 
 		now := time.Now()
@@ -76,6 +81,7 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("create using config name should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 
 		now := time.Now()
@@ -89,6 +95,7 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("create with nested values should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
 		config := ctx.newTestConfig(configType.id, map[string]interface{}{
@@ -116,17 +123,19 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("lookup non-existent config as admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + uuid.New().String()))
 	})
 
 	t.Run("lookup config as non-admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": 22})
 		ctx.requireUnauthorizedError(nonAdminUser.query("configs/" + config.id))
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("update config should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 
 		now := time.Now()
@@ -143,6 +152,7 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("patch config should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
 		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
@@ -214,6 +224,7 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("delete should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
 		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})

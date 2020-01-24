@@ -26,7 +26,6 @@ import (
 func TestServiceApiCreate_ToModelService(t *testing.T) {
 	type fields struct {
 		EdgeRouterRoles []string
-		Dns             *ServiceDnsApiPost
 		Name            *string
 		RoleAttributes  []string
 		Tags            map[string]interface{}
@@ -41,10 +40,6 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 	}{
 		{name: "test all fields", fields: fields{
 			EdgeRouterRoles: []string{"one", "two"},
-			Dns: &ServiceDnsApiPost{
-				Hostname: strPtr("foo"),
-				Port:     uint16Ptr(1234),
-			},
 			Name:            strPtr("bar"),
 			RoleAttributes:  []string{"id1", "id2"},
 			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
@@ -55,8 +50,6 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 				Tags: map[string]interface{}{"hello": 1, "thing": "hi"},
 			},
 			Name:            "bar",
-			DnsHostname:     "foo",
-			DnsPort:         1234,
 			EgressRouter:    "001",
 			EndpointAddress: "tcp:localhost:8908",
 			EdgeRouterRoles: []string{"one", "two"},
@@ -67,7 +60,6 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiCreate{
 				EdgeRouterRoles: tt.fields.EdgeRouterRoles,
-				Dns:             tt.fields.Dns,
 				Name:            tt.fields.Name,
 				RoleAttributes:  tt.fields.RoleAttributes,
 				Tags:            tt.fields.Tags,
@@ -84,7 +76,6 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 
 func TestServiceApiUpdate_ToModelService(t *testing.T) {
 	type fields struct {
-		Dns             *ServiceDnsApiPost
 		Name            *string
 		HostIds         []string
 		Tags            map[string]interface{}
@@ -98,10 +89,6 @@ func TestServiceApiUpdate_ToModelService(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "test all fields", fields: fields{
-			Dns: &ServiceDnsApiPost{
-				Hostname: strPtr("foo"),
-				Port:     uint16Ptr(1234),
-			},
 			Name:            strPtr("bar"),
 			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
 			EgressRouter:    strPtr("001"),
@@ -111,8 +98,6 @@ func TestServiceApiUpdate_ToModelService(t *testing.T) {
 				Tags: map[string]interface{}{"hello": 1, "thing": "hi"},
 			},
 			Name:            "bar",
-			DnsHostname:     "foo",
-			DnsPort:         1234,
 			EgressRouter:    "001",
 			EndpointAddress: "tcp:localhost:8908",
 		}, wantErr: false},
@@ -120,7 +105,6 @@ func TestServiceApiUpdate_ToModelService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiUpdate{
-				Dns:             tt.fields.Dns,
 				Name:            tt.fields.Name,
 				Tags:            tt.fields.Tags,
 				EgressRouter:    tt.fields.EgressRouter,

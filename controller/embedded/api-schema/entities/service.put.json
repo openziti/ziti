@@ -4,29 +4,12 @@
   "additionalProperties": false,
   "required": [
     "name",
-    "dns",
     "endpointAddress",
     "egressRouter"
   ],
   "properties": {
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
-    },
-    "dns": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hostname",
-        "port"
-      ],
-      "properties": {
-        "hostname": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      }
     },
     "egressRouter": {
       "type": "string"

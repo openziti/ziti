@@ -19,8 +19,8 @@ package tcp
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/tunnel"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -46,8 +46,8 @@ func key(ip net.IP, port int) string {
 	return fmt.Sprintf("%s:%d", ip.String(), port)
 }
 
-func RegisterService(service edge.Service, interceptIP net.IP) {
-	key := key(interceptIP, service.Dns.Port)
+func RegisterService(service *entities.Service, interceptIP net.IP) {
+	key := key(interceptIP, service.ClientConfig.Port)
 	servicesMtx.Lock()
 	defer servicesMtx.Unlock()
 	_, exists := services[key]

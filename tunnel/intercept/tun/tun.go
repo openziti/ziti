@@ -21,6 +21,7 @@ package tun
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/tcp"
@@ -28,7 +29,6 @@ import (
 	"github.com/netfoundry/ziti-edge/tunnel/router"
 	"github.com/netfoundry/ziti-edge/tunnel/utils"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"net"
 )
 
@@ -76,7 +76,7 @@ func (t *tunInterceptor) Stop() {
 	}
 }
 
-func (t *tunInterceptor) Intercept(service edge.Service, resolver dns.Resolver) error {
+func (t *tunInterceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
 	interceptAddr, err := intercept.NewInterceptAddress(service, "any", resolver)
 	if err != nil {
 		return fmt.Errorf("unable to intercept %s: %v", service.Name, err)

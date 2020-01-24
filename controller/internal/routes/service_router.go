@@ -64,6 +64,11 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 
 	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)
+
+	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
+	configsListHandler := ae.WrapHandler(ir.ListConfigs, permissions.IsAdmin())
+	sr.HandleFunc(configsUrl, configsListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(configsUrl+"/", configsListHandler).Methods(http.MethodGet)
 }
 
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -124,4 +129,8 @@ func (ir *ServiceRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestCon
 
 func (ir *ServiceRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectServicePolicies, MapServicePolicyToApiEntity)
+}
+
+func (ir *ServiceRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectConfigs, MapConfigToApiEntity)
 }

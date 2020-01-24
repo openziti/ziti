@@ -40,6 +40,7 @@ func Test_Services(t *testing.T) {
 
 	ctx.enabledJsonLogging = true
 	t.Run("create without name should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		service := ctx.newTestService(nil, nil)
 		service.name = ""
 		httpCode, body := ctx.AdminSession.createEntity(service)
@@ -47,6 +48,7 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		now := time.Now()
 		service := ctx.AdminSession.requireNewService(nil, nil)
 		service.permissions = []string{"Dial", "Bind"}
@@ -55,6 +57,7 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("list as admin should return 3 services", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		service1 := ctx.AdminSession.requireNewService(nil, nil)
 		service1.permissions = []string{"Dial", "Bind"}
 		service2 := ctx.AdminSession.requireNewService(nil, nil)
@@ -69,6 +72,7 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("list as non-admin should return 3 services", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		dialRole := uuid.New().String()
 		bindRole := uuid.New().String()
 		service1 := ctx.AdminSession.requireNewService(s(dialRole), nil)
@@ -104,16 +108,19 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("lookup as admin should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
 		service.permissions = []string{"Dial", "Bind"}
 		ctx.AdminSession.validateEntityWithLookup(service)
 	})
 
 	t.Run("lookup non-existent service as admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		ctx.requireNotFoundError(ctx.AdminSession.query("services/" + uuid.New().String()))
 	})
 
 	t.Run("lookup existing service as non-admin should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		dialRole := uuid.New().String()
 		bindRole := uuid.New().String()
 		service1 := ctx.AdminSession.requireNewService(s(dialRole), nil)
@@ -132,15 +139,18 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("lookup non-existent service as non-admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		ctx.requireNotFoundError(nonAdminuserSession.query("services/" + uuid.New().String()))
 	})
 
 	t.Run("lookup non-visible service as non-admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
 		ctx.requireNotFoundError(nonAdminuserSession.query("services/" + service.id))
 	})
 
 	t.Run("update service should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		now := time.Now()
 		service := ctx.AdminSession.requireNewService(nil, nil)
 		service.permissions = []string{"Bind", "Dial"}
@@ -159,6 +169,7 @@ func Test_Services(t *testing.T) {
 	})
 
 	t.Run("role attributes should be created", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		service := ctx.newTestService(nil, nil)
@@ -169,8 +180,8 @@ func Test_Services(t *testing.T) {
 		ctx.AdminSession.validateEntityWithLookup(service)
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("role attributes should be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		service := ctx.newTestService(nil, nil)
@@ -190,7 +201,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	defer ctx.teardown()
 	ctx.startServer()
 	ctx.requireAdminLogin()
-
+	ctx.enabledJsonLogging = true
 	configType1 := ctx.AdminSession.requireCreateNewConfigType()
 	configType2 := ctx.AdminSession.requireCreateNewConfigType()
 
@@ -208,7 +219,6 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		"port":     float64(80),
 	})
 
-	ctx.enabledJsonLogging = true
 	service1 := ctx.AdminSession.requireNewService(nil, nil)
 	service2 := ctx.AdminSession.requireNewService(nil, s(config1.id))
 	service3 := ctx.AdminSession.requireNewService(nil, s(config2.name))

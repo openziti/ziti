@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
+	"math"
 	"net"
 )
 
@@ -35,7 +37,7 @@ const (
 type Interceptor interface {
 	Start(context ziti.Context)
 	Stop()
-	Intercept(service edge.Service, resolver dns.Resolver) error
+	Intercept(service *entities.Service, resolver dns.Resolver) error
 	StopIntercepting(serviceName string, removeRoute bool) error
 }
 
@@ -88,15 +90,27 @@ func addrBits(ip net.IP) int {
 	return 0
 }
 
-func NewInterceptAddress(service edge.Service, protocol string, resolver dns.Resolver) (*interceptAddress, error) {
-	ip, err := getInterceptIP(service.Dns.Hostname, resolver)
+func NewInterceptAddress(service *entities.Service, protocol string, resolver dns.Resolver) (*interceptAddress, error) {
+	if service.ClientConfig == nil {
+		return nil, errors.Errorf("no client configuration for service %v", service.Name)
+	}
+
+	if service.ClientConfig.Hostname == "" {
+		return nil, errors.Errorf("client configuration missing hostname for service %v", service.Name)
+	}
+
+	if service.ClientConfig.Port < 1 || service.ClientConfig.Port > math.MaxUint16 {
+		return nil, errors.Errorf("client configuration has invalid port %v for service %v", service.ClientConfig.Port, service.Name)
+	}
+
+	ip, err := getInterceptIP(service.ClientConfig.Hostname, resolver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get intercept IP address: %v", err)
 	}
 
 	prefixLen := addrBits(ip)
 	ipNet := net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
-	addr := interceptAddress{cidr: ipNet.String(), port: service.Dns.Port, protocol: protocol}
+	addr := interceptAddress{cidr: ipNet.String(), port: service.ClientConfig.Port, protocol: protocol}
 	return &addr, nil
 }
 

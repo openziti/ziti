@@ -99,6 +99,7 @@ func (store *configStoreImpl) initializeLocal() {
 
 func (store *configStoreImpl) initializeLinked() {
 	store.AddFkIndex(store.symbolType, store.stores.configType.symbolConfigs)
+	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolConfigs)
 }
 
 func (store *configStoreImpl) NewStoreEntity() boltz.BaseEntity {
