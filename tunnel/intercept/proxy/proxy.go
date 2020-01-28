@@ -67,7 +67,7 @@ func (p interceptor) Intercept(service edge.Service, resolver dns.Resolver) erro
 
 	proxiedService, ok := p.services[service.Name]
 	if !ok {
-		log.Debug("service was not specified at initialization. not intercepting")
+		log.Debugf("service %v was not specified at initialization. not intercepting", service.Name)
 		return nil
 	}
 
