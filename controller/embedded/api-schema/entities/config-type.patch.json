@@ -8,6 +8,13 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name-null"
     },
+    "schema": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "default": null
+    },
     "tags": {
       "default": {},
       "$ref": "definitions.all.json#/definitions/tags-null"

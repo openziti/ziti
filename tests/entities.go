@@ -369,9 +369,10 @@ func (entity *config) validate(ctx *TestContext, c *gabs.Container) {
 }
 
 type configType struct {
-	id   string
-	name string
-	tags map[string]interface{}
+	id     string
+	name   string
+	schema map[string]interface{}
+	tags   map[string]interface{}
 }
 
 func (entity *configType) getId() string {
@@ -389,6 +390,7 @@ func (entity *configType) getEntityType() string {
 func (entity *configType) toJson(isCreate bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
 	ctx.setValue(entityData, entity.name, fields, "name")
+	ctx.setValue(entityData, entity.schema, fields, "schema")
 	ctx.setValue(entityData, entity.tags, fields, "tags")
 	return entityData.String()
 }
@@ -398,6 +400,7 @@ func (entity *configType) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.schema, path("schema"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 

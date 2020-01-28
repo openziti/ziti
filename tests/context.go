@@ -335,7 +335,7 @@ func (ctx *TestContext) newTestService(roleAttributes, configs []string) *servic
 	}
 }
 
-func (ctx *TestContext) newTestConfig(configType string, data map[string]interface{}) *config {
+func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *config {
 	return &config{
 		name:       uuid.New().String(),
 		configType: configType,
@@ -344,7 +344,7 @@ func (ctx *TestContext) newTestConfig(configType string, data map[string]interfa
 	}
 }
 
-func (ctx *TestContext) newTestConfigType() *configType {
+func (ctx *TestContext) newConfigType() *configType {
 	return &configType{
 		name: uuid.New().String(),
 		tags: nil,

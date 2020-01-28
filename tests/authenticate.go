@@ -493,13 +493,13 @@ func (request *authenticatedRequests) validateUpdate(entity entity) *gabs.Contai
 }
 
 func (request *authenticatedRequests) requireCreateNewConfig(configType string, data map[string]interface{}) *config {
-	config := request.testContext.newTestConfig(configType, data)
+	config := request.testContext.newConfig(configType, data)
 	config.id = request.requireCreateEntity(config)
 	return config
 }
 
 func (request *authenticatedRequests) requireCreateNewConfigType() *configType {
-	entity := request.testContext.newTestConfigType()
+	entity := request.testContext.newConfigType()
 	entity.id = request.requireCreateEntity(entity)
 	return entity
 }

@@ -38,7 +38,6 @@ func Test_Services(t *testing.T) {
 	identityRole := uuid.New().String()
 	nonAdminuserSession := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
-	ctx.enabledJsonLogging = true
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.newTestService(nil, nil)
@@ -201,7 +200,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	defer ctx.teardown()
 	ctx.startServer()
 	ctx.requireAdminLogin()
-	ctx.enabledJsonLogging = true
+
 	configType1 := ctx.AdminSession.requireCreateNewConfigType()
 	configType2 := ctx.AdminSession.requireCreateNewConfigType()
 

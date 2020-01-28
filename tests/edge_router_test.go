@@ -30,7 +30,6 @@ func Test_EdgeRouter(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	ctx.enabledJsonLogging = true
 	t.Run("role attributes should be created", func(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
@@ -40,7 +39,6 @@ func Test_EdgeRouter(t *testing.T) {
 		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()

@@ -28,23 +28,24 @@ import (
 const EntityNameConfigType = "config-types"
 
 type ConfigTypeApi struct {
-	Name *string                `json:"name"`
-	Tags map[string]interface{} `json:"tags"`
+	Name   *string                `json:"name"`
+	Schema map[string]interface{} `json:"schema"`
+	Tags   map[string]interface{} `json:"tags"`
 }
 
 func (i *ConfigTypeApi) ToModel(id string) *model.ConfigType {
 	result := &model.ConfigType{}
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
+	result.Schema = i.Schema
 	result.Tags = i.Tags
-
-	narrowJsonTypes(result.Data)
 	return result
 }
 
 type ConfigTypeApiList struct {
 	*env.BaseApi
-	Name string `json:"name"`
+	Name   string                 `json:"name"`
+	Schema map[string]interface{} `json:"schema"`
 }
 
 func (c *ConfigTypeApiList) GetSelfLink() *response.Link {
@@ -99,6 +100,7 @@ func MapConfigTypeToApiList(i *model.ConfigType) (*ConfigTypeApiList, error) {
 	ret := &ConfigTypeApiList{
 		BaseApi: env.FromBaseModelEntity(i),
 		Name:    i.Name,
+		Schema:  i.Schema,
 	}
 
 	ret.PopulateLinks()

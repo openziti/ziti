@@ -79,7 +79,7 @@ func (ir *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext) 
 func (ir *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ConfigTypeApi{}
 	Patch(rc, ae.Schemes.ConfigType.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ConfigType.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags", "data"))
+		return ae.Handlers.ConfigType.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags", "schema"))
 	})
 }
 

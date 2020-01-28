@@ -35,7 +35,7 @@ type RequestResponder interface {
 	RespondWithNotFound()
 	RespondWithOk(data interface{}, meta *Meta)
 	RespondWithUnauthorizedError(rc *RequestContext)
-	RespondWithValidationErrors(ves []*apierror.ValidationError)
+	RespondWithValidationErrors(ves *validation.SchemaValidationErrors)
 }
 
 type RequestResponderFactory func(rc *RequestContext) RequestResponder
@@ -156,11 +156,11 @@ func (rr *RequestResponderImpl) RespondWithUnauthorizedError(rc *RequestContext)
 	rr.RespondWithApiError(apierror.NewUnauthorized())
 }
 
-func (rr *RequestResponderImpl) RespondWithValidationErrors(ves []*apierror.ValidationError) {
+func (rr *RequestResponderImpl) RespondWithValidationErrors(e *validation.SchemaValidationErrors) {
 	rr.RespondWithApiError(&apierror.ApiError{
 		Code:    apierror.CouldNotValidateCode,
 		Message: apierror.CouldNotValidateMessage,
-		Cause:   ves[0],
+		Cause:   e.Errors[0],
 		Status:  http.StatusBadRequest,
 	})
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
+	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 	"reflect"
 )
@@ -52,6 +53,29 @@ func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (pers
 			if !configTypeStore.IsEntityPresent(tx, entity.Type) {
 				return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 			}
+		}
+	}
+
+	if entity.Type == "" {
+		currentConfig, err := handler.GetEnv().GetHandlers().Config.readInTx(tx, entity.Id)
+		if err != nil {
+			return nil, err
+		}
+		entity.Type = currentConfig.Type
+	}
+
+	if configType, _ := handler.GetEnv().GetHandlers().ConfigType.readInTx(tx, entity.Type); configType != nil && len(configType.Schema) > 0 {
+		schema, err := configType.GetCompiledSchema()
+		if err != nil {
+			return nil, err
+		}
+		jsonLoader := gojsonschema.NewGoLoader(entity.Data)
+		result, err := schema.Validate(jsonLoader)
+		if err != nil {
+			return nil, err
+		}
+		if !result.Valid() {
+			return nil, validation.NewSchemaValidationErrors(result)
 		}
 	}
 

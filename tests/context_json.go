@@ -64,7 +64,7 @@ func (ctx *TestContext) getEntityId(body []byte) string {
 
 func (ctx *TestContext) pathEquals(container *gabs.Container, val interface{}, path []string) {
 	pathValue := container.Search(path...)
-	if val == nil {
+	if val == nil || (reflect.TypeOf(val).Kind() == reflect.Map && reflect.ValueOf(val).IsNil()) {
 		ctx.req.True(pathValue == nil || pathValue.Data() == nil)
 	} else {
 		ctx.req.Equal(val, pathValue.Data())

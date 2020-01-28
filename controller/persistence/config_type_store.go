@@ -17,10 +17,16 @@
 package persistence
 
 import (
+	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+)
+
+const (
+	FieldConfigTypeSchema = "schema"
 )
 
 func newConfigType(name string) *ConfigType {
@@ -32,17 +38,34 @@ func newConfigType(name string) *ConfigType {
 
 type ConfigType struct {
 	BaseEdgeEntityImpl
-	Name string
+	Name   string
+	Schema map[string]interface{}
 }
 
 func (entity *ConfigType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
+	marshalledSchema := bucket.GetString(FieldConfigTypeSchema)
+	if marshalledSchema != nil {
+		entity.Schema = map[string]interface{}{}
+		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
+	}
 }
 
 func (entity *ConfigType) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
+
+	if len(entity.Schema) > 0 {
+		marshalled, err := json.Marshal(entity.Schema)
+		if err != nil {
+			ctx.Bucket.SetError(err)
+			return
+		}
+		ctx.SetString(FieldConfigTypeSchema, string(marshalled))
+	} else {
+		ctx.SetStringP(FieldConfigTypeSchema, nil)
+	}
 }
 
 func (entity *ConfigType) GetEntityType() string {
@@ -79,6 +102,7 @@ func (store *configTypeStoreImpl) initializeLocal() {
 	store.addBaseFields()
 	store.indexName = store.addUniqueNameField()
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
+	store.AddSymbol(FieldConfigTypeSchema, ast.NodeTypeString)
 }
 
 func (store *configTypeStoreImpl) initializeLinked() {

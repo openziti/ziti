@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"go.etcd.io/bbolt"
 )
 
 const (
@@ -51,6 +52,14 @@ func (handler *ConfigTypeHandler) Create(configType *ConfigType) (string, error)
 func (handler *ConfigTypeHandler) Read(id string) (*ConfigType, error) {
 	modelEntity := &ConfigType{}
 	if err := handler.readEntity(id, modelEntity); err != nil {
+		return nil, err
+	}
+	return modelEntity, nil
+}
+
+func (handler *ConfigTypeHandler) readInTx(tx *bbolt.Tx, id string) (*ConfigType, error) {
+	modelEntity := &ConfigType{}
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil

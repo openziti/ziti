@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ func Test_Configs(t *testing.T) {
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.newTestConfig(configType.id, map[string]interface{}{"port": 22})
+		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
 		config.name = ""
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
@@ -48,21 +49,21 @@ func Test_Configs(t *testing.T) {
 	t.Run("create without data should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.newTestConfig(configType.id, nil)
+		config := ctx.newConfig(configType.id, nil)
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "data")
 	})
 
 	t.Run("create without type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		config := ctx.newTestConfig("", map[string]interface{}{"port": 22})
+		config := ctx.newConfig("", map[string]interface{}{"port": 22})
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create with invalid config type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		config := ctx.newTestConfig(uuid.New().String(), map[string]interface{}{"port": 22})
+		config := ctx.newConfig(uuid.New().String(), map[string]interface{}{"port": 22})
 		httpCode, body := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "type")
 	})
@@ -98,7 +99,7 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
-		config := ctx.newTestConfig(configType.id, map[string]interface{}{
+		config := ctx.newConfig(configType.id, map[string]interface{}{
 			"port":     float64(22),
 			"hostname": "ssh.globotech.bizniz",
 			"enabled":  true,
@@ -232,6 +233,45 @@ func Test_Configs(t *testing.T) {
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
 		ctx.AdminSession.requireDeleteEntity(config)
-		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + uuid.New().String()))
+		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + config.id))
+	})
+
+	ctx.enabledJsonLogging = true
+	t.Run("create with schema should pass", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configType := ctx.newConfigType()
+		configType.schema = map[string]interface{}{
+			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
+			"type":                 "object",
+			"additionalProperties": false,
+			"required": []interface{}{
+				"hostname",
+				"port",
+			},
+			"properties": map[string]interface{}{
+				"hostname": map[string]interface{}{
+					"type": "string",
+				},
+				"port": map[string]interface{}{
+					"type":    "integer",
+					"minimum": float64(0),
+					"maximum": float64(math.MaxUint16),
+				},
+			},
+		}
+		configType.id = ctx.AdminSession.requireCreateEntity(configType)
+
+		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
+		httpCode, body := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "(root)")
+
+		now := time.Now()
+		config = ctx.newConfig(configType.id, map[string]interface{}{
+			"hostname": "ssh.globotech.bizniz",
+			"port":     float64(22),
+		})
+		config.id = ctx.AdminSession.requireCreateEntity(config)
+		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
+		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 }

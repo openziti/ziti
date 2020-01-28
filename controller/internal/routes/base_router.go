@@ -204,12 +204,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 	}
 
 	if !result.Valid() {
-		var errs []*apierror.ValidationError
-		for _, re := range result.Errors() {
-			errs = append(errs, apierror.NewValidationError(re))
-		}
-
-		rr.RespondWithValidationErrors(errs)
+		rr.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
 		return
 	}
 
@@ -222,6 +217,11 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 
 		if fe, ok := err.(*validation.FieldError); ok {
 			rr.RespondWithFieldError(fe)
+			return
+		}
+
+		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+			rr.RespondWithValidationErrors(sve)
 			return
 		}
 
@@ -339,11 +339,7 @@ func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType respons
 	}
 
 	if !result.Valid() {
-		var errs []*apierror.ValidationError
-		for _, re := range result.Errors() {
-			errs = append(errs, apierror.NewValidationError(re))
-		}
-		rc.RequestResponder.RespondWithValidationErrors(errs)
+		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
 		return
 	}
 
@@ -355,6 +351,11 @@ func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType respons
 
 		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
+			return
+		}
+
+		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+			rc.RequestResponder.RespondWithValidationErrors(sve)
 			return
 		}
 
@@ -404,12 +405,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 	}
 
 	if !result.Valid() {
-		var errs []*apierror.ValidationError
-		for _, re := range result.Errors() {
-			errs = append(errs, apierror.NewValidationError(re))
-		}
-
-		rc.RequestResponder.RespondWithValidationErrors(errs)
+		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
 		return
 	}
 
@@ -422,6 +418,11 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 
 		if fe, ok := err.(*validation.FieldError); ok {
 			rc.RequestResponder.RespondWithFieldError(fe)
+			return
+		}
+
+		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+			rc.RequestResponder.RespondWithValidationErrors(sve)
 			return
 		}
 
@@ -521,11 +522,7 @@ func UpdateAssociations(ae *env.AppEnv, rc *response.RequestContext, idType resp
 	}
 
 	if !result.Valid() {
-		var errs []*apierror.ValidationError
-		for _, re := range result.Errors() {
-			errs = append(errs, apierror.NewValidationError(re))
-		}
-		rc.RequestResponder.RespondWithValidationErrors(errs)
+		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
 		return
 	}
 

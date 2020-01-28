@@ -50,7 +50,6 @@ func Test_ServicePolicy(t *testing.T) {
 	policy5 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
 	policy6 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
 
-	ctx.enabledJsonLogging = true
 	ctx.AdminSession.validateEntityWithQuery(policy1)
 	ctx.AdminSession.validateEntityWithLookup(policy2)
 	ctx.AdminSession.validateEntityWithLookup(policy3)

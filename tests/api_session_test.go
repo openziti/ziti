@@ -31,7 +31,6 @@ func Test_ApiSession(t *testing.T) {
 
 	ctx.requireAdminLogin()
 
-	ctx.enabledJsonLogging = true
 	t.Run("config types should be set and viewable", func(t *testing.T) {
 		configType1 := ctx.AdminSession.requireCreateNewConfigType()
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
