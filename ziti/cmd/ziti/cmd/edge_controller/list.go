@@ -138,7 +138,7 @@ func newSubListCmdForEntityType(entityType string, subType string, command listC
 		Use:   fmt.Sprintf("%v <id or name>", subType),
 		Short: desc,
 		Long:  desc,
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
