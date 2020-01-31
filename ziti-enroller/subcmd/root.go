@@ -134,7 +134,10 @@ func processEnrollment() error {
 		return fmt.Errorf("failed to open file '%s': %s", outpath, err.Error())
 	}
 
-	encErr := json.NewEncoder(output).Encode(&conf)
+	enc := json.NewEncoder(output)
+	enc.SetEscapeHTML(false)
+	encErr := enc.Encode(&conf)
+
 	if encErr == nil {
 		fmt.Printf("enrolled successfully. identity file written to: %s", outpath)
 		return nil
