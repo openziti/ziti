@@ -169,8 +169,8 @@ func (handler *ServiceHandler) listServices(queryOptions *QueryOptions, identity
 	return result, nil
 }
 
-func (handler *ServiceHandler) CollectEdgeRouters(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouters, handler.env.GetHandlers().EdgeRouter, collector)
+func (handler *ServiceHandler) CollectServiceEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServiceEdgeRouterPolicies, handler.env.GetHandlers().ServiceEdgeRouterPolicy, collector)
 }
 
 func (handler *ServiceHandler) CollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {

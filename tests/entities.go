@@ -38,7 +38,6 @@ type service struct {
 	name            string
 	egressRouter    string
 	endpointAddress string
-	edgeRouterRoles []string
 	roleAttributes  []string
 	configs         []string
 	permissions     []string
@@ -62,7 +61,6 @@ func (entity *service) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.egressRouter, "egressRouter")
 	ctx.setJsonValue(entityData, entity.endpointAddress, "endpointAddress")
-	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.configs, "configs")
 
@@ -81,9 +79,6 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.egressRouter, path("egressRouter"))
 	ctx.pathEquals(c, entity.endpointAddress, path("endpointAddress"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
-
-	sort.Strings(entity.edgeRouterRoles)
-	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
 
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
@@ -197,7 +192,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newTestEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+func newEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
 	return &edgeRouterPolicy{
 		name:            uuid.New().String(),
 		semantic:        semantic,
@@ -259,7 +254,69 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newTestServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles []string) *servicePolicy {
+func newServiceEdgeRouterPolicy(semantic *string, edgeRouterRoles, serviceRoles []string) *serviceEdgeRouterPolicy {
+	return &serviceEdgeRouterPolicy{
+		name:            uuid.New().String(),
+		semantic:        semantic,
+		edgeRouterRoles: edgeRouterRoles,
+		serviceRoles:    serviceRoles,
+	}
+}
+
+type serviceEdgeRouterPolicy struct {
+	id              string
+	name            string
+	semantic        *string
+	edgeRouterRoles []string
+	serviceRoles    []string
+	tags            map[string]interface{}
+}
+
+func (entity *serviceEdgeRouterPolicy) getId() string {
+	return entity.id
+}
+
+func (entity *serviceEdgeRouterPolicy) setId(id string) {
+	entity.id = id
+}
+
+func (entity *serviceEdgeRouterPolicy) getEntityType() string {
+	return "service-edge-router-policies"
+}
+
+func (entity *serviceEdgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	if entity.semantic != nil {
+		ctx.setJsonValue(entityData, *entity.semantic, "semantic")
+	}
+	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
+	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+	return entityData.String()
+}
+
+func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	if entity.semantic == nil {
+		t := "AllOf"
+		entity.semantic = &t
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, *entity.semantic, path("semantic"))
+	sort.Strings(entity.edgeRouterRoles)
+	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
+	sort.Strings(entity.serviceRoles)
+	ctx.pathEqualsStringSlice(c, entity.serviceRoles, path("serviceRoles"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func newServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles []string) *servicePolicy {
 	return &servicePolicy{
 		name:          uuid.New().String(),
 		policyType:    policyType,

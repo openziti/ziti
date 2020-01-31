@@ -136,19 +136,20 @@ type HostController interface {
 }
 
 type Schemes struct {
-	Association      *BasicEntitySchema
-	Ca               *BasicEntitySchema
-	Config           *BasicEntitySchema
-	ConfigType       *BasicEntitySchema
-	Enroller         *BasicEntitySchema
-	EnrollEr         *BasicEntitySchema
-	EnrollUpdb       *BasicEntitySchema
-	EdgeRouter       *BasicEntitySchema
-	EdgeRouterPolicy *BasicEntitySchema
-	Identity         *IdentityEntitySchema
-	Service          *BasicEntitySchema
-	ServicePolicy    *BasicEntitySchema
-	Session          *BasicEntitySchema
+	Association             *BasicEntitySchema
+	Ca                      *BasicEntitySchema
+	Config                  *BasicEntitySchema
+	ConfigType              *BasicEntitySchema
+	Enroller                *BasicEntitySchema
+	EnrollEr                *BasicEntitySchema
+	EnrollUpdb              *BasicEntitySchema
+	EdgeRouter              *BasicEntitySchema
+	EdgeRouterPolicy        *BasicEntitySchema
+	Identity                *IdentityEntitySchema
+	Service                 *BasicEntitySchema
+	ServiceEdgeRouterPolicy *BasicEntitySchema
+	ServicePolicy           *BasicEntitySchema
+	Session                 *BasicEntitySchema
 }
 
 func (s Schemes) GetEnrollErPost() *gojsonschema.Schema {

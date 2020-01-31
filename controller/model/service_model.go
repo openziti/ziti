@@ -34,7 +34,6 @@ type Service struct {
 	Name            string   `json:"name"`
 	EgressRouter    string   `json:"egressRouter"`
 	EndpointAddress string   `json:"endpointAddress"`
-	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	RoleAttributes  []string `json:"roleAttributes"`
 	Configs         []string `json:"configs"`
 }
@@ -61,7 +60,6 @@ func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		},
 		EdgeEntityFields: persistence.EdgeEntityFields{Tags: entity.Tags},
 		Name:             entity.Name,
-		EdgeRouterRoles:  entity.EdgeRouterRoles,
 		RoleAttributes:   entity.RoleAttributes,
 		Configs:          entity.Configs,
 	}
@@ -118,7 +116,6 @@ func (entity *Service) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	}
 	entity.fillCommon(boltService)
 	entity.Name = boltService.Name
-	entity.EdgeRouterRoles = boltService.EdgeRouterRoles
 	entity.EgressRouter = boltService.Egress
 	entity.EndpointAddress = boltService.EndpointAddress
 	entity.RoleAttributes = boltService.RoleAttributes
@@ -131,7 +128,6 @@ type ServiceDetail struct {
 	Name            string                            `json:"name"`
 	EgressRouter    string                            `json:"egressRouter"`
 	EndpointAddress string                            `json:"endpointAddress"`
-	EdgeRouterRoles []string                          `json:"edgeRouterRoles"`
 	RoleAttributes  []string                          `json:"roleAttributes"`
 	Permissions     []string                          `json:"permissions"`
 	Configs         []string                          `json:"configs"`
@@ -145,7 +141,6 @@ func (entity *ServiceDetail) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.B
 	}
 	entity.fillCommon(boltService)
 	entity.Name = boltService.Name
-	entity.EdgeRouterRoles = boltService.EdgeRouterRoles
 	entity.EgressRouter = boltService.Egress
 	entity.EndpointAddress = boltService.EndpointAddress
 	entity.RoleAttributes = boltService.RoleAttributes

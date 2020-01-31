@@ -52,33 +52,25 @@ func createEdgeRouterPoliciesV2(mtx *MigrationContext) error {
 		}
 	}
 
-	serviceIds, _, err := mtx.Stores.EdgeService.QueryIds(mtx.Ctx.Tx(), "true")
+	clusterIds, _, err := mtx.Stores.Cluster.QueryIds(mtx.Ctx.Tx(), "true")
 	if err != nil {
 		return err
 	}
-	for _, serviceId := range serviceIds {
-		service, err := mtx.Stores.EdgeService.LoadOneById(mtx.Ctx.Tx(), serviceId)
-		if err != nil {
-			return err
+	for _, clusterId := range clusterIds {
+		name := string(mtx.Stores.Cluster.GetNameIndex().Read(mtx.Ctx.Tx(), []byte(clusterId)))
+		serviceIds := mtx.Stores.Cluster.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), clusterId, EntityTypeServices)
+		edgeRouterIds := mtx.Stores.Cluster.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), clusterId, EntityTypeEdgeRouters)
+
+		serviceEdgeRouterPolicy := newServiceEdgeRouterPolicy(name)
+		for _, serviceId := range serviceIds {
+			serviceEdgeRouterPolicy.ServiceRoles = append(serviceEdgeRouterPolicy.ServiceRoles, "@"+serviceId)
 		}
-		clusterIds := mtx.Stores.EdgeService.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), serviceId, EntityTypeClusters)
-		if len(clusterIds) > 0 {
-			cluster, err := mtx.Stores.Cluster.LoadOneById(mtx.Ctx.Tx(), clusterIds[0])
-			if err != nil {
-				return err
-			}
-			service.EdgeRouterRoles = append(service.EdgeRouterRoles, roleRef("cluster-"+cluster.Name))
-			if err = mtx.Stores.EdgeService.Update(mtx.Ctx, service, nil); err != nil {
-				return err
-			}
-		} else if len(clusterIds) > 1 {
-			for _, clusterId := range clusterIds[1:] {
-				edgeRouterIds := mtx.Stores.Cluster.GetRelatedEntitiesIdList(mtx.Ctx.Tx(), clusterId, EntityTypeEdgeRouters)
-				service.EdgeRouterRoles = append(service.EdgeRouterRoles, edgeRouterIds...)
-				if err = mtx.Stores.EdgeService.Update(mtx.Ctx, service, nil); err != nil {
-					return err
-				}
-			}
+
+		for _, edgeRouterId := range edgeRouterIds {
+			serviceEdgeRouterPolicy.EdgeRouterRoles = append(serviceEdgeRouterPolicy.ServiceRoles, "@"+edgeRouterId)
+		}
+		if err := mtx.Stores.ServiceEdgeRouterPolicy.Create(mtx.Ctx, serviceEdgeRouterPolicy); err != nil {
+			return err
 		}
 	}
 

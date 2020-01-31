@@ -41,7 +41,7 @@ func Test_Services(t *testing.T) {
 
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		service := ctx.newTestService(nil, nil)
+		service := ctx.newService(nil, nil)
 		service.name = ""
 		httpCode, body := ctx.AdminSession.createEntity(service)
 		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
@@ -179,33 +179,6 @@ func Test_Services(t *testing.T) {
 		jsonService := ctx.requirePath(result, "data")
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
-	})
-
-	t.Run("role attributes should be created", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
-		service := ctx.newTestService(nil, nil)
-		service.permissions = []string{"Bind", "Dial"}
-		service.edgeRouterRoles = []string{"#" + role1, "#" + role2}
-		service.id = ctx.AdminSession.requireCreateEntity(service)
-		ctx.AdminSession.validateEntityWithQuery(service)
-		ctx.AdminSession.validateEntityWithLookup(service)
-	})
-
-	t.Run("role attributes should be updated", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
-		service := ctx.newTestService(nil, nil)
-		service.permissions = []string{"Bind", "Dial"}
-		service.edgeRouterRoles = []string{"#" + role1, "#" + role2}
-		service.id = ctx.AdminSession.requireCreateEntity(service)
-
-		role3 := uuid.New().String()
-		service.edgeRouterRoles = []string{"#" + role2, "#" + role3}
-		ctx.AdminSession.requireUpdateEntity(service)
-		ctx.AdminSession.validateEntityWithLookup(service)
 	})
 }
 
@@ -376,7 +349,7 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 		"port":     float64(80),
 	})
 
-	service := ctx.newTestService(nil, s(config1.name, config2.name))
+	service := ctx.newService(nil, s(config1.name, config2.name))
 	httpCode, body := ctx.AdminSession.createEntity(service)
 	ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "configs")
 }

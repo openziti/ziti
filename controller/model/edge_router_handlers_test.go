@@ -25,18 +25,17 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 
 	// test default case, with no limits on service
-	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
-	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
+	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
+	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
-	service.EdgeRouterRoles = []string{"#" + uuid.New().String()}
-	ctx.NoError(ctx.handlers.Service.Update(service))
+	serp := ctx.requireNewServiceNewEdgeRouterPolicy(ss("@"+service.Id), ss("#"+uuid.New().String()))
 
 	// should not be accessible if we limit to a role no one has
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
-	service.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
-	ctx.NoError(ctx.handlers.Service.Update(service))
+	serp.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
+	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Update(serp))
 
 	// should be accessible if we limit to our specific router
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))

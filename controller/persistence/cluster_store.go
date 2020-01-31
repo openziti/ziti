@@ -46,6 +46,7 @@ func (entity *Cluster) GetEntityType() string {
 type ClusterStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*Cluster, error)
+	GetNameIndex() boltz.ReadIndex
 }
 
 func newClusterStore(stores *stores) *clusterStoreImpl {
@@ -66,6 +67,10 @@ type clusterStoreImpl struct {
 
 func (store *clusterStoreImpl) NewStoreEntity() boltz.BaseEntity {
 	return &Cluster{}
+}
+
+func (store *clusterStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *clusterStoreImpl) initializeLocal() {

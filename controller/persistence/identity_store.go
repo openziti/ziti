@@ -37,7 +37,7 @@ const (
 	FieldIdentityServiceConfigs = "serviceConfigs"
 )
 
-func NewIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
+func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
 	return &Identity{
 		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
 		Name:               name,

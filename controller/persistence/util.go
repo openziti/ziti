@@ -17,7 +17,10 @@
 package persistence
 
 import (
+	"fmt"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -48,6 +51,23 @@ func ToInFilter(ids ...string) string {
 
 func Field(elements ...string) string {
 	return strings.Join(elements, ".")
+}
+
+func validateRolesAndIds(field string, values []string) error {
+	if len(values) > 1 && stringz.Contains(values, AllRole) {
+		return validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole), field, values)
+	}
+
+	var invalidKeys []string
+	for _, entry := range values {
+		if !strings.HasPrefix(entry, RolePrefix) && ! strings.HasPrefix(entry, EntityPrefix) {
+			invalidKeys = append(invalidKeys, entry)
+		}
+	}
+	if len(invalidKeys) > 0 {
+		return validation.NewFieldError("role entries must prefixed with # (to indicate role attributes) or @ (to indicate a name or id)", field, invalidKeys)
+	}
+	return nil
 }
 
 func splitRolesAndIds(values []string) ([]string, []string, error) {

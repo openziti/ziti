@@ -138,9 +138,8 @@ type edgeRouterStoreImpl struct {
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
 
-	symbolClusterId          boltz.EntitySymbol
-	symbolEdgeRouterPolicies boltz.EntitySetSymbol
-	symbolServices           boltz.EntitySetSymbol
+	symbolEdgeRouterPolicies        boltz.EntitySetSymbol
+	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
 }
 
 func (store *edgeRouterStoreImpl) NewStoreEntity() boltz.BaseEntity {
@@ -153,39 +152,39 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
-	store.symbolClusterId = store.AddFkSymbol(FieldEdgeRouterCluster, store.stores.cluster)
 	store.AddSymbol(FieldEdgeRouterFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
 	store.AddSymbol(FieldEdgeRouterEnrollmentToken, ast.NodeTypeString)
 	store.AddSymbol(FieldEdgeRouterEnrollmentCreatedAt, ast.NodeTypeString)
 	store.AddSymbol(FieldEdgeRouterEnrollmentExpiresAt, ast.NodeTypeString)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
+
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
 
 func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	// Calculate edge router policy links
+	// Recalculate edge router policy links
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolEdgeRouterRoles
 	linkCollection := store.stores.edgeRouterPolicy.edgeRouterCollection
 	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
-	// Calculate service roles
-	rolesSymbol = store.stores.edgeService.symbolEdgeRoutersRoles
-	linkCollection = store.stores.edgeService.edgeRouterCollection
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, nil)
+	// Recalculate service edge router policy links
+	rolesSymbol = store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles
+	linkCollection = store.stores.serviceEdgeRouterPolicy.edgeRouterCollection
+	semanticSymbol = store.stores.serviceEdgeRouterPolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeRouterStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
 	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles, entity, oldName)
-	store.updateEntityNameReferences(bucket, store.stores.edgeService.symbolEdgeRoutersRoles, entity, oldName)
+	store.updateEntityNameReferences(bucket, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles, entity, oldName)
 }
 
 func (store *edgeRouterStoreImpl) initializeLinked() {
-	store.AddNullableFkIndex(store.symbolClusterId, store.stores.cluster.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolEdgeRouters)
-	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
+	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouters)
 }
 
 func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -222,8 +221,8 @@ func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
 		}
-		// Remove entity from EdgeRouterRoles in service policies
-		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeService.symbolEdgeRoutersRoles); err != nil {
+		// Remove entity from EdgeRouterRoles in service edge router policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
 		}
 	}
