@@ -60,32 +60,36 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
 
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
-	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", runListConfigTypeConfigs, newOptions()))
+	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", runListEdgeRouterEdgeRouterPolicies, newOptions()))
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "services", runListEdgeRouterServices, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "service-edge-router-polices", outputServiceEdgeRouterPolicies, newOptions()))
 
 	edgeRouterPolicyListRootCmd := newEntityListRootCmd("edge-router-policy")
-	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "edge-routers", runListEdgeRouterPolicyEdgeRouters, newOptions()))
-	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "identities", runListEdgeRouterPolicyIdentities, newOptions()))
+	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
+	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "identities", outputIdentities, newOptions()))
 
 	identityListRootCmd := newEntityListRootCmd("identity")
-	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-router-policies", runListIdentityEdgeRouterPolicies, newOptions()))
-	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", runListIdentityServicePolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", outputServicePolicies, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
-	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", runListServiceConfigs, newOptions()))
-	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", runListServiceEdgeRouters, newOptions()))
-	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", runListServiceServicePolicies, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", outputServicePolicies, newOptions()))
+
+	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy")
+	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "services", outputServices, newOptions()))
+	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
 
 	servicePolicyListRootCmd := newEntityListRootCmd("service-policy")
-	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", runListServicePolicyServices, newOptions()))
-	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", runListServicePolicyIdentities, newOptions()))
+	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", outputServices, newOptions()))
+	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
 
 	cmd.AddCommand(configTypeListRootCmd, edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd, servicePolicyListRootCmd)
 
@@ -93,6 +97,8 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 }
 
 type listCommandRunner func(*commonOptions) error
+
+type outputFunction func(o *commonOptions, children []*gabs.Container) error
 
 func newEntityListRootCmd(entityType string) *cobra.Command {
 	desc := fmt.Sprintf("list entities related to a %v instance managed by the Ziti Edge Controller", entityType)
@@ -132,7 +138,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 }
 
 // newSubListCmdForEntityType creates the list command for the given entity type
-func newSubListCmdForEntityType(entityType string, subType string, command listCommandRunner, options *commonOptions) *cobra.Command {
+func newSubListCmdForEntityType(entityType string, subType string, outputF outputFunction, options *commonOptions) *cobra.Command {
 	desc := fmt.Sprintf("lists %v related to a %v instanced managed by the Ziti Edge Controller", subType, entityType)
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%v <id or name>", subType),
@@ -142,7 +148,7 @@ func newSubListCmdForEntityType(entityType string, subType string, command listC
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := command(options)
+			err := runListChilden(entityType, subType, options, outputF)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -274,6 +280,28 @@ func outputServices(o *commonOptions, children []*gabs.Container) error {
 		}
 	}
 
+	return nil
+}
+
+func runListServiceEdgeRouterPolices(o *commonOptions) error {
+	children, err := listEntitiesOfTypeWithOptionalFilter("service-edge-router-policies", o)
+	if err != nil {
+		return err
+	}
+	return outputServiceEdgeRouterPolicies(o, children)
+}
+
+func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) error {
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
+		serviceRoles := entity.Path("serviceRoles").String()
+		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -423,55 +451,7 @@ func runListSessions(o *commonOptions) error {
 	return err
 }
 
-func runListConfigTypeConfigs(o *commonOptions) error {
-	return runListChilden("config-types", "configs", o, outputConfigs)
-}
-
-func runListServiceConfigs(o *commonOptions) error {
-	return runListChilden("services", "configs", o, outputConfigs)
-}
-
-func runListServiceEdgeRouters(o *commonOptions) error {
-	return runListChilden("services", "edge-routers", o, outputEdgeRouters)
-}
-
-func runListServiceServicePolicies(o *commonOptions) error {
-	return runListChilden("services", "service-polices", o, outputServicePolicies)
-}
-
-func runListEdgeRouterEdgeRouterPolicies(o *commonOptions) error {
-	return runListChilden("edge-routers", "edge-router-policies", o, outputEdgeRouterPolicies)
-}
-
-func runListEdgeRouterServices(o *commonOptions) error {
-	return runListChilden("edge-routers", "services", o, outputServices)
-}
-
-func runListEdgeRouterPolicyEdgeRouters(o *commonOptions) error {
-	return runListChilden("edge-router-policies", "edge-routers", o, outputEdgeRouters)
-}
-
-func runListEdgeRouterPolicyIdentities(o *commonOptions) error {
-	return runListChilden("edge-router-policies", "identities", o, outputIdentities)
-}
-
-func runListIdentityEdgeRouterPolicies(o *commonOptions) error {
-	return runListChilden("identities", "edge-router-policies", o, outputEdgeRouterPolicies)
-}
-
-func runListIdentityServicePolicies(o *commonOptions) error {
-	return runListChilden("identities", "service-policies", o, outputServicePolicies)
-}
-
-func runListServicePolicyServices(o *commonOptions) error {
-	return runListChilden("service-polices", "services", o, outputServices)
-}
-
-func runListServicePolicyIdentities(o *commonOptions) error {
-	return runListChilden("service-polices", "identities", o, outputIdentities)
-}
-
-func runListChilden(parentType, childType string, o *commonOptions, outputFunc func(*commonOptions, []*gabs.Container) error) error {
+func runListChilden(parentType, childType string, o *commonOptions, outputF outputFunction) error {
 	idOrName := o.Args[0]
 	serviceId, err := mapNameToID(parentType, idOrName)
 	if err != nil {
@@ -482,5 +462,5 @@ func runListChilden(parentType, childType string, o *commonOptions, outputFunc f
 	if err != nil {
 		return err
 	}
-	return outputFunc(o, children)
+	return outputF(o, children)
 }

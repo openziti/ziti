@@ -29,11 +29,10 @@ import (
 
 type createServiceOptions struct {
 	commonOptions
-	hostedService   bool
-	tags            map[string]string
-	edgeRouterRoles []string
-	roleAttributes  []string
-	configs         []string
+	hostedService  bool
+	tags           map[string]string
+	roleAttributes []string
+	configs        []string
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -68,7 +67,6 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.hostedService, "hosted", false, "Indicates that this is a hosted service")
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new service")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 
@@ -79,7 +77,6 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 func runCreateService(o *createServiceOptions) (err error) {
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	setJSONValue(entityData, o.configs, "configs")
 

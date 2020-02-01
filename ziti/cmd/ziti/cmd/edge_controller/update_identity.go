@@ -31,8 +31,7 @@ import (
 
 type updateIdentityOptions struct {
 	commonOptions
-	name        string
-	configTypes []string
+	name string
 }
 
 // newUpdateIdentityCmd updates the 'edge controller update service-policy' command
@@ -60,7 +59,6 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
-	cmd.Flags().StringSliceVarP(&options.configTypes, "config-types", "c", nil, "Configuration types used by the new identity")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
@@ -77,11 +75,6 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 
 	if len(o.name) > 0 {
 		setJSONValue(entityData, o.name, "name")
-		change = true
-	}
-
-	if o.Cmd.Flags().Changed("config-types") {
-		setJSONValue(entityData, o.configTypes, "configTypes")
 		change = true
 	}
 

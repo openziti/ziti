@@ -1,8 +1,12 @@
 This page discusses the changes that you need to be aware of when migrating your Ziti deployment from version 0.8.x to version 0.9.x
 
-# Theme 
- * Ziti 0.9.0 adds a generic service configuration facility, useful for configuring service centric edge configuration data
- * Ziti 0.9.0 make several tweaks to policy syntax and semantics
+# Theme
+Ziti 0.9 includes the following 
+ 
+ * a generic service configuration facility, useful for configuring service centric edge configuration data
+ * several changes to policy syntax and semantics
+ * service edge router policies are now a separate entity, instead of just a field on service
+ 
 
 # Service Configuration
 Configurations are named JSON style objects that can be associated with services. Configurations have a type. 
@@ -182,6 +186,23 @@ includes that service might look as follows:
 }
 ```
  
+## Identity Service Configuration
+Configuration for a service can also be specified for a given identity. If a configuration is specified for a service,
+it will replace any configuration of that type on that service.
+
+    * Endpoint /identities/<identityId/service-configs
+    * Supported operations
+        * GET returns the array of  
+        * POST will add or update service configurations for the identity
+            * If a configuration has the same type as another configuration on the same service, it will replace it
+        * DELETE 
+            * if given an array of service configs, will delete any matching entries
+            * If given an empty body or empty array, all service configurations will be removed from the identity
+    * Data Format all operations take or return an array of objects with service and config parameters
+        * service may be a service name or id. If there are id and name collisions, id will take precedence
+        * config may be a config name or id. If there are id and name collisions, id will take precedence
+        * Ex: [{"service": "ssh", "config"  : "my-custom-ssh-config" }]
+ 
 # Policy Changes
 ## Syntax Changes
    1. Roles are now prefixed with `#` instead of `@`
@@ -210,6 +231,39 @@ Because service edgeRouterRoles are not broken out into a separate policy entity
 ## `#All` limitations
 Because having #all grouped with other roles or entity references doesn't make any sense, `#all` policies must now be
 created with no other roles or entity references. 
+
+## Service Edge Router Policy
+Previously services could be confgured with edge router roles, which limited which edge routers could be used to dial
+or bind the service. 
+
+In 0.9 that is replaced with a new standalone type: service edge router policies. A service edge router policy has three attributes:
+
+  * Name
+  * Service Roles
+  * Edge Router Roles
+  
+An service can be a member of multiple policies and will have access to the union of all edge routers linked to from those policies.
+
+There is a new `/service-edge-router-policies` endpoint which can be used for creating/updating/deleting/querying service edge router policies. Service edge router policies PUT/POST/PATCH all take the following properties:
+
+  * name
+  * edgeRouterRoles
+  * serviceRoles
+  * tags
+ 
+### IMPORTANT NOTES
+    1. Previously edge router roles on service could be left blank, and the service would be allowed access to all edge routers. Now, a service must be included in at least one service edge router policy or it cannot be dialed or bound.
+    1. The set of edge routers an identity can use to dial/bind a service is the intersection of the edge routers that the identity has access to via edge router policies and the edge routers that the service has access to via service edge router policies 
+
+### CLI Updates
+The CLI now has 
+    # create service-edge-router-policy 
+    # list service-edge-router-policies
+    # list service-edge-router-policy services
+    # list service-edge-router-policy edge-routers
+    # list services service-edge-router-policies
+    # list edge-router service-edge-router-policies
+    # delete service-edge-router-policy
 
 # Session Types
 Previously when creating a session a flag named `hosting` was provided to indicate if this was a Dial or Bind session.
