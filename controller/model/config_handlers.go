@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
+	"strings"
 )
 
 func NewConfigHandler(env Env) *ConfigHandler {
@@ -41,7 +42,7 @@ func (handler *ConfigHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *ConfigHandler) Create(config *Config) (string, error) {
-	return handler.createEntity(config, nil)
+	return handler.createEntity(config)
 }
 
 func (handler *ConfigHandler) Read(id string) (*Config, error) {
@@ -60,16 +61,21 @@ func (handler *ConfigHandler) readInTx(tx *bbolt.Tx, id string) (*Config, error)
 	return modelEntity, nil
 }
 
+func (handler *ConfigHandler) IsUpdated(field string) bool {
+	return !strings.EqualFold(field, "type")
+}
+
 func (handler *ConfigHandler) Update(config *Config) error {
-	return handler.updateEntity(config, nil, nil)
+	return handler.updateEntity(config, handler)
 }
 
 func (handler *ConfigHandler) Patch(config *Config, checker boltz.FieldChecker) error {
-	return handler.patchEntity(config, checker, nil)
+	combinedChecker := &AndFieldChecker{first: handler, second: checker}
+	return handler.patchEntity(config, combinedChecker)
 }
 
 func (handler *ConfigHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *ConfigHandler) PublicQuery(queryOptions *QueryOptions) (*ConfigListResult, error) {

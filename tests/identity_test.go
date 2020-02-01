@@ -39,7 +39,6 @@ func Test_Identity(t *testing.T) {
 		ctx.AdminSession.validateEntityWithLookup(identity)
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()

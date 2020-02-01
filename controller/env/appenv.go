@@ -137,6 +137,7 @@ type Schemes struct {
 	Association      *BasicEntitySchema
 	Ca               *BasicEntitySchema
 	Config           *BasicEntitySchema
+	ConfigType       *BasicEntitySchema
 	Enroller         *BasicEntitySchema
 	EnrollEr         *BasicEntitySchema
 	EnrollUpdb       *BasicEntitySchema
@@ -292,7 +293,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		rc := &response.RequestContext{
 			Id:                rid,
 			Identity:          nil,
-			Session:           nil,
+			ApiSession:        nil,
 			ActivePermissions: []string{},
 			ResponseWriter:    w,
 			Request:           r,
@@ -313,7 +314,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		}
 
 		if sessionToken != "" {
-			rc.Session, err = ae.GetHandlers().ApiSession.ReadByToken(sessionToken)
+			rc.ApiSession, err = ae.GetHandlers().ApiSession.ReadByToken(sessionToken)
 
 			if err != nil {
 				//don't error on "not found", just an un-authed session, rely on permissions below
@@ -327,23 +328,23 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		}
 
 		//updates updatedAt for session timeouts
-		if rc.Session != nil {
-			err := ae.GetHandlers().ApiSession.Update(rc.Session)
+		if rc.ApiSession != nil {
+			err := ae.GetHandlers().ApiSession.Update(rc.ApiSession)
 			if err != nil && !util.IsErrNotFoundErr(err) {
 				log.WithError(err).Debug("failed to update session activity")
 				rc.RequestResponder.RespondWithError(err)
 				return
 			}
 			//re-read session to get new updatedAt
-			rc.Session, _ = ae.GetHandlers().ApiSession.Read(rc.Session.Id)
+			rc.ApiSession, _ = ae.GetHandlers().ApiSession.Read(rc.ApiSession.Id)
 		}
 
-		if rc.Session != nil {
-			rc.Identity, err = ae.GetHandlers().Identity.Read(rc.Session.IdentityId)
+		if rc.ApiSession != nil {
+			rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
 			if err != nil {
 				if util.IsErrNotFoundErr(err) {
 					apiErr := apierror.NewUnauthorized()
-					apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.Session.IdentityId)
+					apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
 					apiErr.AppendCause = true
 					rc.RequestResponder.RespondWithApiError(apiErr)
 				} else {

@@ -48,17 +48,17 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 	log.Debug("peer fingerprints ", proxy.fingerprints)
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
+	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeConnect,
 		Handler: proxy.processConnect,
 	})
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
+	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeBind,
 		Handler: proxy.processBind,
 	})
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
+	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeUnbind,
 		Handler: proxy.processUnbind,
 	})

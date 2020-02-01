@@ -71,7 +71,7 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 		return nil, errors.Errorf("failed to authenticate via CERT: invalid response code encountered, got %d, expected %d", resp.StatusCode(), http.StatusOK)
 	}
 
-	if err = sess.parseSessionInfoFromResponse(resp); err != nil {
+	if err = sess.parseSessionInfoFromResponse(ctx, resp); err != nil {
 		return nil, err
 	}
 
@@ -92,8 +92,9 @@ func (authenticator *certAuthenticator) Fingerprint() string {
 }
 
 type updbAuthenticator struct {
-	Username string
-	Password string
+	Username    string
+	Password    string
+	ConfigTypes []string
 }
 
 func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session, error) {
@@ -110,6 +111,9 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 	body := gabs.New()
 	_, _ = body.SetP(authenticator.Username, "username")
 	_, _ = body.SetP(authenticator.Password, "password")
+	if len(authenticator.ConfigTypes) > 0 {
+		_, _ = body.SetP(authenticator.ConfigTypes, "configTypes")
+	}
 
 	resp, err := ctx.DefaultClient().R().
 		SetHeader("Content-Type", "application/json").
@@ -124,7 +128,7 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 		return nil, errors.Errorf("failed to authenticate via UPDB as %v: invalid response code encountered, got %d, expected %d", authenticator, resp.StatusCode(), http.StatusOK)
 	}
 
-	if err = sess.parseSessionInfoFromResponse(resp); err != nil {
+	if err = sess.parseSessionInfoFromResponse(ctx, resp); err != nil {
 		return nil, err
 	}
 
@@ -133,8 +137,10 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 
 type session struct {
 	authenticator authenticator
+	id            string
 	token         string
 	identityId    string
+	configTypes   []string
 	testContext   *TestContext
 	authenticatedRequests
 }
@@ -147,17 +153,25 @@ func (sess *session) newRequest(ctx *TestContext) *resty.Request {
 	return req
 }
 
-func (sess *session) parseSessionInfoFromResponse(response *resty.Response) error {
+func (sess *session) parseSessionInfoFromResponse(ctx *TestContext, response *resty.Response) error {
 	respBody := response.Body()
 
 	if len(respBody) == 0 {
 		return errors.Errorf("failed to authenticate via UPDB %v: encountered zero length body", sess.authenticator)
 	}
 
+	ctx.logJson(respBody)
+
 	bodyContainer, err := gabs.ParseJSON(respBody)
 
 	if err != nil {
 		return errors.Errorf("failed to authenticate via UPDB as %v: failed to parse response: %s", sess.authenticator, err)
+	}
+
+	if sessionId, ok := bodyContainer.Path("data.id").Data().(string); ok {
+		sess.id = sessionId
+	} else {
+		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find session id", sess.authenticator)
 	}
 
 	if sessionToken, ok := bodyContainer.Path("data.token").Data().(string); ok {
@@ -172,6 +186,7 @@ func (sess *session) parseSessionInfoFromResponse(response *resty.Response) erro
 		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find identity id", sess.authenticator)
 	}
 
+	sess.configTypes = ctx.toStringSlice(bodyContainer.Path("data.configTypes"))
 	return nil
 }
 
@@ -237,38 +252,49 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name st
 	return id, request.testContext.completeOttEnrollment(id)
 }
 
-func (request *authenticatedRequests) requireNewService(roleAttributes ...string) *testService {
-	service := request.testContext.newTestService()
-	service.roleAttributes = roleAttributes
+func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
+	service := request.testContext.newTestService(roleAttributes, configs)
 	request.requireCreateEntity(service)
 	return service
 }
 
-func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...string) *testEdgeRouter {
+func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...string) *edgeRouter {
 	edgeRouter := newTestEdgeRouter(roleAttributes...)
 	request.requireCreateEntity(edgeRouter)
 	return edgeRouter
 }
 
-func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *testServicePolicy {
-	servicePolicy := newTestServicePolicy(policyType, serviceRoles, identityRoles)
+func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
+	servicePolicy := newTestServicePolicy(policyType, nil, serviceRoles, identityRoles)
 	request.requireCreateEntity(servicePolicy)
 	return servicePolicy
 }
 
-func (request *authenticatedRequests) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *testEdgeRouterPolicy {
-	edgeRouterPolicy := newTestEdgeRouterPolicy(edgeRouterRoles, identityRoles)
+func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles []string) *servicePolicy {
+	servicePolicy := newTestServicePolicy(policyType, &semantic, serviceRoles, identityRoles)
+	request.requireCreateEntity(servicePolicy)
+	return servicePolicy
+}
+
+func (request *authenticatedRequests) requireNewEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+	edgeRouterPolicy := newTestEdgeRouterPolicy(nil, edgeRouterRoles, identityRoles)
 	request.requireCreateEntity(edgeRouterPolicy)
 	return edgeRouterPolicy
 }
 
-func (request *authenticatedRequests) requireNewIdentity(isAdmin bool, roleAttributes ...string) *testIdentity {
+func (request *authenticatedRequests) requireNewEdgeRouterPolicyWithSemantic(semantic string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+	edgeRouterPolicy := newTestEdgeRouterPolicy(&semantic, edgeRouterRoles, identityRoles)
+	request.requireCreateEntity(edgeRouterPolicy)
+	return edgeRouterPolicy
+}
+
+func (request *authenticatedRequests) requireNewIdentity(isAdmin bool, roleAttributes ...string) *identity {
 	identity := newTestIdentity(isAdmin, roleAttributes...)
 	request.requireCreateEntity(identity)
 	return identity
 }
 
-func (request *authenticatedRequests) requireCreateEntity(entity testEntity) string {
+func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	httpStatus, body := request.createEntity(entity)
 	request.testContext.req.Equal(http.StatusCreated, httpStatus)
 	id := request.testContext.getEntityId(body)
@@ -276,12 +302,12 @@ func (request *authenticatedRequests) requireCreateEntity(entity testEntity) str
 	return id
 }
 
-func (request *authenticatedRequests) requireDeleteEntity(entity testEntity) {
+func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
 	httpStatus, _ := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (request *authenticatedRequests) requireUpdateEntity(entity testEntity) {
+func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
 	httpStatus, _ := request.updateEntity(entity)
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
@@ -303,12 +329,6 @@ func (request *authenticatedRequests) requireRemoveAssociation(url string, ids .
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (request *authenticatedRequests) requireCreateNewService(roleAttributes ...string) *testService {
-	service := request.testContext.newTestService(roleAttributes...)
-	service.id = request.requireCreateEntity(service)
-	return service
-}
-
 func (request *authenticatedRequests) createEntityOfType(entityType string, body string) (int, []byte) {
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(body).
@@ -319,7 +339,7 @@ func (request *authenticatedRequests) createEntityOfType(entityType string, body
 	return resp.StatusCode(), resp.Body()
 }
 
-func (request *authenticatedRequests) createEntity(entity testEntity) (int, []byte) {
+func (request *authenticatedRequests) createEntity(entity entity) (int, []byte) {
 	return request.createEntityOfType(entity.getEntityType(), entity.toJson(true, request.testContext))
 }
 
@@ -332,7 +352,7 @@ func (request *authenticatedRequests) deleteEntityOfType(entityType string, id s
 	return resp.StatusCode(), resp.Body()
 }
 
-func (request *authenticatedRequests) updateEntity(entity testEntity) (int, []byte) {
+func (request *authenticatedRequests) updateEntity(entity entity) (int, []byte) {
 	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext), false)
 }
 
@@ -374,7 +394,7 @@ func (request *authenticatedRequests) removeAssociation(url string, ids ...strin
 	return request.updateAssociation(http.MethodDelete, url, ids...)
 }
 
-func (request *authenticatedRequests) validateAssociations(entity testEntity, childType string, children ...testEntity) {
+func (request *authenticatedRequests) validateAssociations(entity entity, childType string, children ...entity) {
 	var ids []string
 	for _, child := range children {
 		ids = append(ids, child.getId())
@@ -382,7 +402,7 @@ func (request *authenticatedRequests) validateAssociations(entity testEntity, ch
 	request.validateAssociationsAt(fmt.Sprintf("%v/%v/%v", entity.getEntityType(), entity.getId(), childType), ids...)
 }
 
-func (request *authenticatedRequests) validateAssociationContains(entity testEntity, childType string, children ...testEntity) {
+func (request *authenticatedRequests) validateAssociationContains(entity entity, childType string, children ...entity) {
 	var ids []string
 	for _, child := range children {
 		ids = append(ids, child.getId())
@@ -439,10 +459,11 @@ func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) b
 	return nil != request.testContext.childWith(data, "id", serviceId)
 }
 
-func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttributes ...string) *session {
+func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttributes, configTypes []string) *session {
 	userAuth := &updbAuthenticator{
-		Username: uuid.New().String(),
-		Password: uuid.New().String(),
+		Username:    uuid.New().String(),
+		Password:    uuid.New().String(),
+		ConfigTypes: configTypes,
 	}
 	_ = request.requireCreateIdentityWithUpdbEnrollment(userAuth.Username, userAuth.Password, isAdmin, roleAttributes...)
 	session, _ := userAuth.Authenticate(request.testContext)
@@ -450,7 +471,7 @@ func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttri
 	return session
 }
 
-func (request *authenticatedRequests) validateEntityWithQuery(entity testEntity) *gabs.Container {
+func (request *authenticatedRequests) validateEntityWithQuery(entity entity) *gabs.Container {
 	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, entity.getId()))
 	result := request.requireQuery(entity.getEntityType() + "?filter=" + query)
 	data := request.testContext.requirePath(result, "data")
@@ -458,30 +479,36 @@ func (request *authenticatedRequests) validateEntityWithQuery(entity testEntity)
 	return request.testContext.validateEntity(entity, jsonEntity)
 }
 
-func (request *authenticatedRequests) validateEntityWithLookup(entity testEntity) *gabs.Container {
+func (request *authenticatedRequests) validateEntityWithLookup(entity entity) *gabs.Container {
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
 	jsonEntity := request.testContext.requirePath(result, "data")
 	return request.testContext.validateEntity(entity, jsonEntity)
 }
 
-func (request *authenticatedRequests) validateUpdate(entity testEntity) *gabs.Container {
+func (request *authenticatedRequests) validateUpdate(entity entity) *gabs.Container {
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
 	jsonConfig := request.testContext.requirePath(result, "data")
 	entity.validate(request.testContext, jsonConfig)
 	return jsonConfig
 }
 
-func (request *authenticatedRequests) requireCreateNewConfig(data map[string]interface{}) *testConfig {
-	config := request.testContext.newTestConfig(data)
+func (request *authenticatedRequests) requireCreateNewConfig(configType string, data map[string]interface{}) *config {
+	config := request.testContext.newConfig(configType, data)
 	config.id = request.requireCreateEntity(config)
 	return config
 }
 
-func (request *authenticatedRequests) requirePatchEntity(entity testEntity, fields ...string) {
+func (request *authenticatedRequests) requireCreateNewConfigType() *configType {
+	entity := request.testContext.newConfigType()
+	entity.id = request.requireCreateEntity(entity)
+	return entity
+}
+
+func (request *authenticatedRequests) requirePatchEntity(entity entity, fields ...string) {
 	httpStatus, _ := request.patchEntity(entity, fields...)
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (request *authenticatedRequests) patchEntity(entity testEntity, fields ...string) (int, []byte) {
+func (request *authenticatedRequests) patchEntity(entity entity, fields ...string) (int, []byte) {
 	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext, fields...), true)
 }

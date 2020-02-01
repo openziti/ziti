@@ -18,7 +18,6 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/util"
-	"go.etcd.io/bbolt"
 )
 
 func NewIdentityTypeHandler(env Env) *IdentityTypeHandler {
@@ -41,7 +40,7 @@ func (handler *IdentityTypeHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *IdentityTypeHandler) Create(IdentityTypeModel *IdentityType) (string, error) {
-	return handler.createEntity(IdentityTypeModel, nil)
+	return handler.createEntity(IdentityTypeModel)
 }
 
 func (handler *IdentityTypeHandler) Read(id string) (*IdentityType, error) {
@@ -75,25 +74,8 @@ func (handler *IdentityTypeHandler) ReadByIdOrName(idOrName string) (*IdentityTy
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) readInTx(tx *bbolt.Tx, id string) (*IdentityType, error) {
-	modelEntity := &IdentityType{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
 func (handler *IdentityTypeHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
-}
-
-func (handler *IdentityTypeHandler) Query(query string) (*IdentityTypeListResult, error) {
-	result := &IdentityTypeListResult{handler: handler}
-	err := handler.list(query, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *IdentityTypeHandler) ReadByName(name string) (*IdentityType, error) {
@@ -103,22 +85,4 @@ func (handler *IdentityTypeHandler) ReadByName(name string) (*IdentityType, erro
 		return nil, err
 	}
 	return modelIdentityType, nil
-}
-
-type IdentityTypeListResult struct {
-	handler       *IdentityTypeHandler
-	IdentityTypes []*IdentityType
-	QueryMetaData
-}
-
-func (result *IdentityTypeListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.IdentityTypes = append(result.IdentityTypes, entity)
-	}
-	return nil
 }

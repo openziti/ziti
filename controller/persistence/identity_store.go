@@ -21,13 +21,11 @@ import (
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
 )
 
 const (
 	FieldIdentityType           = "type"
-	FieldIdentityAppwans        = "appwans"
 	FieldIdentityApiSessions    = "apiSessions"
 	FieldIdentityIsDefaultAdmin = "isDefaultAdmin"
 	FieldIdentityIsAdmin        = "isAdmin"
@@ -72,7 +70,13 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.WithFieldOverrides(identityFieldMappings)
 
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
+
+	store := ctx.Store.(*identityStoreImpl)
+	if ctx.IsCreate {
+		ctx.SetString(FieldName, entity.Name)
+	} else if oldValue, changed := ctx.GetAndSetString(FieldName, entity.Name); changed {
+		store.nameChanged(ctx.Bucket, entity, *oldValue)
+	}
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
@@ -80,15 +84,18 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetLinkedIds(FieldIdentityAuthenticators, entity.Authenticators)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any @all roles
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store := ctx.Store.(*identityStoreImpl)
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
 func (entity *Identity) GetEntityType() string {
 	return EntityTypeIdentities
+}
+
+func (entity *Identity) GetName() string {
+	return entity.Name
 }
 
 type IdentityStore interface {
@@ -131,7 +138,7 @@ func (store *identityStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
-	store.symbolAppwans = store.AddFkSetSymbol(FieldIdentityAppwans, store.stores.appwan)
+	store.symbolAppwans = store.AddFkSetSymbol(EntityTypeAppwans, store.stores.appwan)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
@@ -148,11 +155,18 @@ func (store *identityStoreImpl) initializeLocal() {
 func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolIdentityRoles
 	linkCollection := store.stores.edgeRouterPolicy.identityCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
 	rolesSymbol = store.stores.servicePolicy.symbolIdentityRoles
 	linkCollection = store.stores.servicePolicy.identityCollection
-	store.UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder)
+	semanticSymbol = store.stores.servicePolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
+}
+
+func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
+	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolIdentityRoles, entity, oldName)
+	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolIdentityRoles, entity, oldName)
 }
 
 func (store *identityStoreImpl) initializeLinked() {
@@ -161,6 +175,10 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentityId)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
+}
+
+func (store *identityStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *identityStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Identity, error) {
@@ -206,33 +224,14 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 	}
 
-	// Remove entity from IdentityRoles in edge router policies
-	for _, edgeRouterPolicyId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeEdgeRouterPolicies) {
-		policy, err := store.stores.edgeRouterPolicy.LoadOneById(ctx.Tx(), edgeRouterPolicyId)
-		if err != nil {
+	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		// Remove entity from IdentityRoles in edge router policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolIdentityRoles); err != nil {
 			return err
 		}
-		if stringz.Contains(policy.IdentityRoles, id) {
-			policy.IdentityRoles = stringz.Remove(policy.IdentityRoles, id)
-			err = store.stores.edgeRouterPolicy.Update(ctx, policy, nil)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Remove entity from IdentityRoles in service policies
-	for _, servicePolicyId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeServicePolicies) {
-		policy, err := store.stores.servicePolicy.LoadOneById(ctx.Tx(), servicePolicyId)
-		if err != nil {
+		// Remove entity from IdentityRoles in service policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolIdentityRoles); err != nil {
 			return err
-		}
-		if stringz.Contains(policy.IdentityRoles, id) {
-			policy.IdentityRoles = stringz.Remove(policy.IdentityRoles, id)
-			err = store.stores.servicePolicy.Update(ctx, policy, nil)
-			if err != nil {
-				return err
-			}
 		}
 	}
 

@@ -14,9 +14,12 @@
 	limitations under the License.
 */
 
-package model
+package validation
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/xeipuuv/gojsonschema"
+)
 
 const (
 	maxFieldErrorValueLength = 20
@@ -46,3 +49,40 @@ func NewFieldError(reason, name string, value interface{}) *FieldError {
 	}
 }
 
+type SchemaValidationErrors struct {
+	Errors []*SchemaValidationError
+}
+
+func (e SchemaValidationErrors) Error() string {
+	return fmt.Sprintf("schema validation failed")
+}
+
+type SchemaValidationError struct {
+	Field   string                 `json:"field"`
+	Type    string                 `json:"type"`
+	Value   interface{}            `json:"value"`
+	Message string                 `json:"message"`
+	Details map[string]interface{} `json:"details"`
+}
+
+func (e SchemaValidationError) Error() string {
+	return fmt.Sprintf("%s is invalid: %s", e.Field, e.Message)
+}
+
+func NewValidationError(err gojsonschema.ResultError) *SchemaValidationError {
+	return &SchemaValidationError{
+		Field:   err.Field(),
+		Type:    err.Type(),
+		Value:   err.Value(),
+		Message: err.String(),
+		Details: err.Details(),
+	}
+}
+
+func NewSchemaValidationErrors(result *gojsonschema.Result) *SchemaValidationErrors {
+	var errs []*SchemaValidationError
+	for _, re := range result.Errors() {
+		errs = append(errs, NewValidationError(re))
+	}
+	return &SchemaValidationErrors{Errors: errs}
+}

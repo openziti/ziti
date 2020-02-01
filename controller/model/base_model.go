@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
@@ -93,7 +94,7 @@ func ValidateEntityList(tx *bbolt.Tx, store boltz.ListStore, field string, ids [
 
 	if len(ids) != len(foundIds) {
 		invalidIds := stringz.Difference(ids, foundIds)
-		return NewFieldError(fmt.Sprintf("%v(s) not found", store.GetEntityType()), field, invalidIds)
+		return validation.NewFieldError(fmt.Sprintf("%v(s) not found", store.GetEntityType()), field, invalidIds)
 	}
 	return nil
 }

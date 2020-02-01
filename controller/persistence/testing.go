@@ -160,6 +160,10 @@ func (ctx *TestContext) requireDelete(entity boltz.BaseEntity) {
 	ctx.validateDeleted(entity.GetId())
 }
 
+func (ctx *TestContext) requireReload(entity boltz.BaseEntity) {
+	ctx.NoError(ctx.reload(entity))
+}
+
 func (ctx *TestContext) delete(entity boltz.BaseEntity) error {
 	return ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		mutateContext := boltz.NewMutateContext(tx)
@@ -168,6 +172,20 @@ func (ctx *TestContext) delete(entity boltz.BaseEntity) error {
 			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
 		}
 		return store.DeleteById(mutateContext, entity.GetId())
+	})
+}
+
+func (ctx *TestContext) reload(entity boltz.BaseEntity) error {
+	return ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		store := ctx.stores.getStoreForEntity(entity)
+		if store == nil {
+			return errors.Errorf("no store for entity of type '%v'", entity.GetEntityType())
+		}
+		found, err := store.BaseLoadOneById(tx, entity.GetId(), entity)
+		if !found {
+			return errors.Errorf("Could not reload %v with id %v", store.GetSingularEntityType(), entity.GetId())
+		}
+		return err
 	})
 }
 

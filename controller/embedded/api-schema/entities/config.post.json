@@ -4,10 +4,14 @@
   "additionalProperties": false,
   "required": [
     "name",
+    "type",
     "data"
   ],
   "properties": {
     "name": {
+      "$ref": "definitions.all.json#/definitions/name"
+    },
+    "type": {
       "$ref": "definitions.all.json#/definitions/name"
     },
     "data": {

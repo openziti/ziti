@@ -52,7 +52,7 @@ func (ir *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (ir *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigApi{}
+	apiEntity := &ConfigCreateApi{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Config.Post, apiEntity, (&ConfigApiList{}).BuildSelfLink, func() (string, error) {
 		return ae.Handlers.Config.Create(apiEntity.ToModel(""))
 	})
@@ -63,14 +63,14 @@ func (ir *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (ir *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigApi{}
+	apiEntity := &ConfigUpdateApi{}
 	Update(rc, ae.Schemes.Config.Put, ir.IdType, apiEntity, func(id string) error {
 		return ae.Handlers.Config.Update(apiEntity.ToModel(id))
 	})
 }
 
 func (ir *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigApi{}
+	apiEntity := &ConfigUpdateApi{}
 	Patch(rc, ae.Schemes.Config.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
 		return ae.Handlers.Config.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags", "data"))
 	})

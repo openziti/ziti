@@ -31,6 +31,7 @@ type ServicePolicyApi struct {
 	Tags          map[string]interface{} `json:"tags"`
 	Name          *string                `json:"name"`
 	PolicyType    *string                `json:"type"`
+	Semantic      *string                `json:"semantic"`
 	ServiceRoles  []string               `json:"serviceRoles"`
 	IdentityRoles []string               `json:"identityRoles"`
 }
@@ -40,6 +41,7 @@ func (i *ServicePolicyApi) ToModel(id string) *model.ServicePolicy {
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
 	result.PolicyType = stringz.OrEmpty(i.PolicyType)
+	result.Semantic = stringz.OrEmpty(i.Semantic)
 	result.ServiceRoles = i.ServiceRoles
 	result.IdentityRoles = i.IdentityRoles
 	result.Tags = i.Tags
@@ -48,8 +50,9 @@ func (i *ServicePolicyApi) ToModel(id string) *model.ServicePolicy {
 
 type ServicePolicyApiList struct {
 	*env.BaseApi
-	Name          *string  `json:"name"`
-	PolicyType    *string  `json:"type"`
+	Name          string   `json:"name"`
+	PolicyType    string   `json:"type"`
+	Semantic      string   `json:"semantic"`
 	ServiceRoles  []string `json:"serviceRoles"`
 	IdentityRoles []string `json:"identityRoles"`
 }
@@ -77,7 +80,7 @@ func (c *ServicePolicyApiList) ToEntityApiRef() *EntityApiRef {
 	c.PopulateLinks()
 	return &EntityApiRef{
 		Entity: EntityNameServicePolicy,
-		Name:   c.Name,
+		Name:   &c.Name,
 		Id:     c.Id,
 		Links:  c.Links,
 	}
@@ -107,8 +110,9 @@ func MapServicePolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 func MapServicePolicyToApiList(i *model.ServicePolicy) (*ServicePolicyApiList, error) {
 	ret := &ServicePolicyApiList{
 		BaseApi:       env.FromBaseModelEntity(i),
-		Name:          &i.Name,
-		PolicyType:    &i.PolicyType,
+		Name:          i.Name,
+		PolicyType:    i.PolicyType,
+		Semantic:      i.Semantic,
 		ServiceRoles:  i.ServiceRoles,
 		IdentityRoles: i.IdentityRoles,
 	}

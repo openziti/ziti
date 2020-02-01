@@ -18,9 +18,9 @@ package udp
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -58,8 +58,8 @@ type TunUDPManager struct {
 	servicesMtx sync.Mutex
 }
 
-func (manager *TunUDPManager) RegisterService(service edge.Service, interceptIP net.IP) {
-	addr := &net.UDPAddr{IP: interceptIP, Port: service.Dns.Port}
+func (manager *TunUDPManager) RegisterService(service *entities.Service, interceptIP net.IP) {
+	addr := &net.UDPAddr{IP: interceptIP, Port: service.ClientConfig.Port}
 	key := addr.String()
 	log.Infof("registered udp service %s", key)
 	manager.servicesMtx.Lock()
@@ -89,7 +89,7 @@ func (manager *TunUDPManager) UnregisterService(service string) {
 	delete(manager.services, key)
 }
 
-func (manager *TunUDPManager) CreateEvent(context ziti.Context, srcIP, dstIP net.IP, pdu []byte, dev io.ReadWriter, release func()) udp_vconn.Event {
+func (manager *TunUDPManager) CreateEvent(_ ziti.Context, srcIP, dstIP net.IP, pdu []byte, _ io.ReadWriter, release func()) udp_vconn.Event {
 	udpQItem := &udpQItem{
 		segment:    UDP(pdu),
 		srcIP:      srcIP,

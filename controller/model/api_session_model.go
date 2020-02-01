@@ -18,7 +18,9 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -26,20 +28,22 @@ import (
 
 type ApiSession struct {
 	BaseModelEntityImpl
-	Token      string
-	IdentityId string
-	Identity   *Identity
+	Token       string
+	IdentityId  string
+	Identity    *Identity
+	ConfigTypes map[string]struct{}
 }
 
 func (entity *ApiSession) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
-		return nil, NewFieldError("identity not found", "IdentityId", entity.IdentityId)
+		return nil, validation.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
 	boltEntity := &persistence.ApiSession{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Token:              entity.Token,
 		IdentityId:         entity.IdentityId,
+		ConfigTypes:        stringz.SetToSlice(entity.ConfigTypes),
 	}
 
 	return boltEntity, nil
@@ -61,6 +65,7 @@ func (entity *ApiSession) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.fillCommon(boltApiSession)
 	entity.Token = boltApiSession.Token
 	entity.IdentityId = boltApiSession.IdentityId
+	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)
 	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err

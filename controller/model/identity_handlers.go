@@ -24,6 +24,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/crypto"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -65,14 +66,14 @@ func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) 
 
 	if identityType == nil {
 		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("typeId not found", "typeId", identityModel.IdentityTypeId)
+		apiErr.Cause = validation.NewFieldError("typeId not found", "typeId", identityModel.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", apiErr
 	}
 
 	identityModel.IdentityTypeId = identityType.Id
 
-	return handler.createEntity(identityModel, nil)
+	return handler.createEntity(identityModel)
 }
 
 func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
@@ -84,7 +85,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 
 	if identityType == nil {
 		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("identityTypeId not found", "identityTypeId", identityModel.IdentityTypeId)
+		apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identityModel.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", nil, apiErr
 	}
@@ -116,7 +117,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 				return err
 			}
 
-			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel, nil)
+			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel)
 
 			if err != nil {
 				return err
@@ -143,34 +144,35 @@ func (handler *IdentityHandler) Update(identity *Identity) error {
 
 	if identityType == nil {
 		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
+		apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
 		apiErr.AppendCause = true
 		return apiErr
 	}
 
 	identity.IdentityTypeId = identityType.Id
 
-	return handler.updateEntity(identity, handler, nil)
+	return handler.updateEntity(identity, handler)
 }
 
 func (handler *IdentityHandler) Patch(identity *Identity, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+	if checker.IsUpdated("type") {
+		identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+		if err != nil && !util.IsErrNotFoundErr(err) {
+			return err
+		}
 
-	if err != nil && !util.IsErrNotFoundErr(err) {
-		return err
+		if identityType == nil {
+			apiErr := apierror.NewNotFound()
+			apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
+			apiErr.AppendCause = true
+			return apiErr
+		}
+
+		identity.IdentityTypeId = identityType.Id
 	}
 
-	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
-		apiErr.AppendCause = true
-		return apiErr
-	}
-
-	identity.IdentityTypeId = identityType.Id
-
-	return handler.patchEntity(identity, combinedChecker, nil)
+	return handler.patchEntity(identity, combinedChecker)
 }
 
 func (handler *IdentityHandler) Delete(id string) error {
@@ -184,7 +186,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 		return apierror.NewEntityCanNotBeDeleted()
 	}
 
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler IdentityHandler) IsUpdated(field string) bool {
@@ -349,7 +351,7 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 
 	if identityType == nil {
 		apiErr := apierror.NewNotFound()
-		apiErr.Cause = NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
+		apiErr.Cause = validation.NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", "", apiErr
 	}

@@ -18,6 +18,7 @@ package proxy
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"net"
 
 	"github.com/michaelquigley/pfxlog"
@@ -28,7 +29,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 )
 
@@ -62,7 +62,7 @@ func (p *interceptor) Start(context ziti.Context) {
 	p.context = context
 }
 
-func (p interceptor) Intercept(service edge.Service, resolver dns.Resolver) error {
+func (p interceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	proxiedService, ok := p.services[service.Name]

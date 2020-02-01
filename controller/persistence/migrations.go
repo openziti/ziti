@@ -26,7 +26,7 @@ import (
 
 const (
 	FieldVersion   = "version"
-	currentVersion = 3
+	currentVersion = 4
 )
 
 type Migrations struct {
@@ -90,6 +90,10 @@ func (m *Migrations) run(mtx *MigrationContext) error {
 		m.upgradeToV3FromV2(mtx)
 	}
 
+	if m.dbVersion == 3 {
+		m.upgradeToV4FromV3(mtx)
+	}
+
 	if m.migrations {
 		pfxlog.Logger().Infof("bolt storage at version %v", m.dbVersion)
 	}
@@ -133,4 +137,9 @@ func (m *Migrations) upgradeToV2FromV1(mtx *MigrationContext) {
 func (m *Migrations) upgradeToV3FromV2(mtx *MigrationContext) {
 	m.versionBucket.SetError(createServicePoliciesV3(mtx))
 	m.setVersion(3)
+}
+
+func (m *Migrations) upgradeToV4FromV3(mtx *MigrationContext) {
+	m.versionBucket.SetError(createInitialTunnelerConfigTypes(mtx))
+	m.setVersion(4)
 }

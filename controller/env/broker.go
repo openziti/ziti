@@ -391,11 +391,16 @@ func (b *Broker) sendSessionCreates(session *persistence.Session) {
 		return
 	}
 
+	sessionType := edge_ctrl_pb.SessionType_Dial
+	if session.Type == persistence.SessionTypeBind {
+		sessionType = edge_ctrl_pb.SessionType_Bind
+	}
+
 	sessionAdded.Sessions = append(sessionAdded.Sessions, &edge_ctrl_pb.Session{
 		Token:            session.Token,
 		Service:          svc,
 		CertFingerprints: fps,
-		Hosting:          session.IsHosting,
+		Type:             sessionType,
 	})
 
 	if buf, err := proto.Marshal(sessionAdded); err == nil {
@@ -550,12 +555,17 @@ func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, 
 		return nil, fmt.Errorf("could not convert service [%s] to proto: %s", service.Id, err)
 	}
 
+	sessionType := edge_ctrl_pb.SessionType_Dial
+	if ns.Type == persistence.SessionTypeBind {
+		sessionType = edge_ctrl_pb.SessionType_Bind
+	}
+
 	return &edge_ctrl_pb.Session{
 		Token:            ns.Token,
 		SessionToken:     apiSession.Token,
 		Service:          svc,
 		CertFingerprints: fps,
-		Hosting:          ns.IsHosting,
+		Type:             sessionType,
 	}, nil
 }
 

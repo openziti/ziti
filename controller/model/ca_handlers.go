@@ -43,7 +43,7 @@ func (handler *CaHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *CaHandler) Create(caModel *Ca) (string, error) {
-	return handler.createEntity(caModel, nil)
+	return handler.createEntity(caModel)
 }
 
 func (handler *CaHandler) Read(id string) (*Ca, error) {
@@ -71,12 +71,12 @@ func (handler *CaHandler) IsUpdated(field string) bool {
 }
 
 func (handler *CaHandler) Update(ca *Ca) error {
-	return handler.updateEntity(ca, handler, nil)
+	return handler.updateEntity(ca, handler)
 }
 
 func (handler *CaHandler) Patch(ca *Ca, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	return handler.patchEntity(ca, combinedChecker, nil)
+	return handler.patchEntity(ca, combinedChecker)
 }
 
 func (handler *CaHandler) Verified(ca *Ca) error {
@@ -84,11 +84,11 @@ func (handler *CaHandler) Verified(ca *Ca) error {
 	checker := &boltz.MapFieldChecker{
 		persistence.FieldCaIsVerified: struct{}{},
 	}
-	return handler.patchEntity(ca, checker, nil)
+	return handler.patchEntity(ca, checker)
 }
 
 func (handler *CaHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *CaHandler) Query(query string) (*CaListResult, error) {

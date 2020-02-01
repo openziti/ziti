@@ -4,7 +4,6 @@
   "additionalProperties": false,
   "required": [
     "name",
-    "dns",
     "egressRouter",
     "endpointAddress"
   ],
@@ -12,35 +11,23 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "dns": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hostname",
-        "port"
-      ],
-      "properties": {
-        "hostname": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      }
-    },
     "egressRouter": {
       "type": "string"
     },
     "endpointAddress": {
       "type": "string"
     },
-    "edgeRouterRoles" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "edgeRouterRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
-    "roleAttributes" : {
-      "default" : null,
-      "$ref" : "definitions.all.json#/definitions/arrayOfString-null"
+    "roleAttributes": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
+    },
+    "configs": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
     "tags": {
       "default": {},

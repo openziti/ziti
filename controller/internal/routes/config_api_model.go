@@ -28,13 +28,32 @@ import (
 
 const EntityNameConfig = "configs"
 
-type ConfigApi struct {
+type ConfigCreateApi struct {
+	Name *string                `json:"name"`
+	Type *string                `json:"type"`
+	Data map[string]interface{} `json:"data"`
+	Tags map[string]interface{} `json:"tags"`
+}
+
+func (i *ConfigCreateApi) ToModel(id string) *model.Config {
+	result := &model.Config{}
+	result.Id = id
+	result.Name = stringz.OrEmpty(i.Name)
+	result.Type = stringz.OrEmpty(i.Type)
+	result.Data = i.Data
+	result.Tags = i.Tags
+
+	narrowJsonTypes(result.Data)
+	return result
+}
+
+type ConfigUpdateApi struct {
 	Name *string                `json:"name"`
 	Data map[string]interface{} `json:"data"`
 	Tags map[string]interface{} `json:"tags"`
 }
 
-func (i *ConfigApi) ToModel(id string) *model.Config {
+func (i *ConfigUpdateApi) ToModel(id string) *model.Config {
 	result := &model.Config{}
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
@@ -47,7 +66,8 @@ func (i *ConfigApi) ToModel(id string) *model.Config {
 
 type ConfigApiList struct {
 	*env.BaseApi
-	Name *string                `json:"name"`
+	Name string                 `json:"name"`
+	Type string                 `json:"type"`
 	Data map[string]interface{} `json:"data"`
 }
 
@@ -72,7 +92,7 @@ func (c *ConfigApiList) ToEntityApiRef() *EntityApiRef {
 	c.PopulateLinks()
 	return &EntityApiRef{
 		Entity: EntityNameConfig,
-		Name:   c.Name,
+		Name:   &c.Name,
 		Id:     c.Id,
 		Links:  c.Links,
 	}
@@ -102,7 +122,8 @@ func MapConfigToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.Bas
 func MapConfigToApiList(i *model.Config) (*ConfigApiList, error) {
 	ret := &ConfigApiList{
 		BaseApi: env.FromBaseModelEntity(i),
-		Name:    &i.Name,
+		Name:    i.Name,
+		Type:    i.Type,
 		Data:    i.Data,
 	}
 

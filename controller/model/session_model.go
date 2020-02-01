@@ -17,6 +17,8 @@
 package model
 
 import (
+	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"reflect"
 	"time"
 
@@ -33,7 +35,7 @@ type Session struct {
 	Token        string
 	ApiSessionId string
 	ServiceId    string
-	IsHosting    bool
+	Type         string
 	SessionCerts []*SessionCert
 }
 
@@ -50,7 +52,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 	if apiSession == nil {
-		return nil, NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
+		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
 	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId)
@@ -58,14 +60,12 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 
-	if !entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
-		// TODO: Forbidden, instead?
-		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	if entity.IsHosting && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
-		// TODO: Forbidden, instead?
-		return nil, NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	maxRows := 1
@@ -74,13 +74,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, err
 	}
 	if result.Count < 1 {
-		return nil, errors.New("no edge routers available")
-		// TODO: translate to model error
-		//return nil, &response.ApiError{
-		//	Code:           response.NoEdgeRoutersAvailableCode,
-		//	Message:        response.NoEdgeRoutersAvailableMessage,
-		//	HttpStatusCode: http.StatusConflict,
-		//}
+		return nil, apierror.NewNoEdgeRoutersAvailable()
 	}
 
 	boltEntity := &persistence.Session{
@@ -88,7 +82,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		Token:              entity.Token,
 		ApiSessionId:       entity.ApiSessionId,
 		ServiceId:          entity.ServiceId,
-		IsHosting:          entity.IsHosting,
+		Type:               entity.Type,
 	}
 
 	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
@@ -131,7 +125,7 @@ func (entity *Session) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistenc
 		Token:              entity.Token,
 		ApiSessionId:       entity.ApiSessionId,
 		ServiceId:          entity.ServiceId,
-		IsHosting:          entity.IsHosting,
+		Type:               entity.Type,
 	}, nil
 }
 
@@ -148,7 +142,7 @@ func (entity *Session) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	entity.Token = boltSession.Token
 	entity.ApiSessionId = boltSession.ApiSessionId
 	entity.ServiceId = boltSession.ServiceId
-	entity.IsHosting = boltSession.IsHosting
+	entity.Type = boltSession.Type
 	return nil
 }
 

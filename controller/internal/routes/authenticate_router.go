@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"net/http"
 	"time"
 )
@@ -68,10 +69,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	}
 
 	token := uuid.New().String()
-
+	configTypes := ro.mapConfigTypeNamesToIds(ae, authContext.GetDataStringSlice("configTypes"), identity.Id)
+	pfxlog.Logger().Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	s := &model.ApiSession{
-		IdentityId: identity.Id,
-		Token:      token,
+		IdentityId:  identity.Id,
+		Token:       token,
+		ConfigTypes: stringz.SliceToSet(configTypes),
 	}
 
 	sessionId, err := ae.Handlers.ApiSession.Create(s)
@@ -101,4 +104,21 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	http.SetCookie(rc.ResponseWriter, &cookie)
 
 	rc.RequestResponder.RespondWithOk(currentSession, nil)
+}
+
+func (ro *AuthRouter) mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) []string {
+	var result []string
+	if stringz.Contains(values, "all") {
+		return []string{"all"}
+	}
+	for _, val := range values {
+		if configType, _ := ae.GetHandlers().ConfigType.Read(val); configType != nil {
+			result = append(result, val)
+		} else if configType, _ := ae.GetHandlers().ConfigType.ReadByName(val); configType != nil {
+			result = append(result, configType.Id)
+		} else {
+			pfxlog.Logger().Debugf("user %v submitted %v as a config type of interest, but no matching records found", identityId, val)
+		}
+	}
+	return result
 }

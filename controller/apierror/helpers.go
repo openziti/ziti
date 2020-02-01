@@ -17,7 +17,6 @@
 package apierror
 
 import (
-	"github.com/xeipuuv/gojsonschema"
 	"net/http"
 )
 
@@ -246,16 +245,6 @@ func NewCertificateIsNotCa() *ApiError {
 		Code:    CertificateIsNotCaCode,
 		Message: CertificateIsNotCaMessage,
 		Status:  CertificateIsNotCaStatus,
-	}
-}
-
-func NewValidationError(err gojsonschema.ResultError) *ValidationError {
-	return &ValidationError{
-		Field:   err.Field(),
-		Type:    err.Type(),
-		Value:   err.Value(),
-		Message: err.String(),
-		Details: err.Details(),
 	}
 }
 

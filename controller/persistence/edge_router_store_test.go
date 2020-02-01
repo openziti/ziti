@@ -68,7 +68,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 		testCluster, err := clusterStore.LoadOneById(tx, cluster1Id)
 		req.NoError(err)
 		req.NotNil(testCluster)
-		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, FieldClusterEdgeRouters)
+		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, EntityTypeEdgeRouters)
 		req.Equal(0, len(erIds))
 		return nil
 	})
@@ -92,7 +92,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 		testCluster, err := ctx.stores.Cluster.LoadOneById(tx, cluster1Id)
 		req.NoError(err)
 		req.NotNil(testCluster)
-		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, FieldClusterEdgeRouters)
+		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, EntityTypeEdgeRouters)
 		req.Equal(1, len(erIds))
 		req.Equal(edgeRouterId, erIds[0])
 		return nil
@@ -110,7 +110,7 @@ func Test_EdgeRouterStore(t *testing.T) {
 		testCluster, err := ctx.stores.Cluster.LoadOneById(tx, cluster1Id)
 		req.NoError(err)
 		req.NotNil(testCluster)
-		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, FieldClusterEdgeRouters)
+		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, EntityTypeEdgeRouters)
 		req.Equal(1, len(erIds))
 		req.Equal(edgeRouterId, erIds[0])
 		return nil
@@ -124,13 +124,13 @@ func Test_EdgeRouterStore(t *testing.T) {
 		testCluster, err := ctx.stores.Cluster.LoadOneById(tx, cluster1Id)
 		req.NoError(err)
 		req.NotNil(testCluster)
-		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, FieldClusterEdgeRouters)
+		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, EntityTypeEdgeRouters)
 		req.Equal(0, len(erIds))
 
 		testCluster2, err := ctx.stores.Cluster.LoadOneById(tx, cluster2Id)
 		req.NoError(err)
 		req.NotNil(testCluster2)
-		erIds = clusterStore.GetRelatedEntitiesIdList(tx, testCluster2.Id, FieldClusterEdgeRouters)
+		erIds = clusterStore.GetRelatedEntitiesIdList(tx, testCluster2.Id, EntityTypeEdgeRouters)
 		req.Equal(1, len(erIds))
 		req.Equal(edgeRouterId, erIds[0])
 

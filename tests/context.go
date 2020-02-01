@@ -94,6 +94,10 @@ func GetTestContext() *TestContext {
 	return defaultTestContext
 }
 
+func (ctx *TestContext) testContextChanged(t *testing.T) {
+	ctx.req = require.New(t)
+}
+
 func (ctx *TestContext) Transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -320,22 +324,29 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	return createdAt
 }
 
-func (ctx *TestContext) newTestService(roleAttributes ...string) *testService {
-	return &testService{
+func (ctx *TestContext) newTestService(roleAttributes, configs []string) *service {
+	return &service{
 		name:            uuid.New().String(),
-		dnsHostname:     uuid.New().String(),
-		dnsPort:         0,
 		egressRouter:    uuid.New().String(),
 		endpointAddress: uuid.New().String(),
 		roleAttributes:  roleAttributes,
+		configs:         configs,
 		tags:            nil,
 	}
 }
 
-func (ctx *TestContext) newTestConfig(data map[string]interface{}) *testConfig {
-	return &testConfig{
+func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *config {
+	return &config{
+		name:       uuid.New().String(),
+		configType: configType,
+		data:       data,
+		tags:       nil,
+	}
+}
+
+func (ctx *TestContext) newConfigType() *configType {
+	return &configType{
 		name: uuid.New().String(),
-		data: data,
 		tags: nil,
 	}
 }
@@ -366,7 +377,7 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 	return createdAt
 }
 
-func (ctx *TestContext) validateEntity(entity testEntity, jsonEntity *gabs.Container) *gabs.Container {
+func (ctx *TestContext) validateEntity(entity entity, jsonEntity *gabs.Container) *gabs.Container {
 	entity.validate(ctx, jsonEntity)
 	return jsonEntity
 }

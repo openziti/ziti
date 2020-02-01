@@ -28,35 +28,14 @@ import (
 
 const EntityNameService = "services"
 
-type ServiceDnsApiPost struct {
-	Hostname *string `json:"hostname"`
-	Port     *uint16 `json:"port"`
-}
-
 type ServiceApiCreate struct {
-	Dns             *ServiceDnsApiPost     `json:"dns"`
 	Name            *string                `json:"name"`
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
 	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
-}
-
-// DnsHostname is used by deepcopy to copy the dnsHostname value into the target struct
-func (i *ServiceApiCreate) DnsHostname() string {
-	if i.Dns != nil && i.Dns.Hostname != nil {
-		return *i.Dns.Hostname
-	}
-	return ""
-}
-
-// DnsPort is used by deepcopy to copy the dnsPort value into the target struct
-func (i *ServiceApiCreate) DnsPort() uint16 {
-	if i.Dns != nil && i.Dns.Port != nil {
-		return *i.Dns.Port
-	}
-	return 0
+	Configs         []string               `json:"configs"`
 }
 
 func (i *ServiceApiCreate) ToModel() *model.Service {
@@ -64,36 +43,21 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 	result.Name = stringz.OrEmpty(i.Name)
 	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
 	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
-	result.DnsHostname = i.DnsHostname()
-	result.DnsPort = i.DnsPort()
 	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
+	result.Configs = i.Configs
 	return result
 }
 
 type ServiceApiUpdate struct {
-	Dns             *ServiceDnsApiPost     `json:"dns"`
 	Name            *string                `json:"name"`
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
 	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
-}
-
-func (i *ServiceApiUpdate) DnsHostname() string {
-	if i.Dns != nil && i.Dns.Hostname != nil {
-		return *i.Dns.Hostname
-	}
-	return ""
-}
-
-func (i *ServiceApiUpdate) DnsPort() uint16 {
-	if i.Dns != nil && i.Dns.Port != nil {
-		return *i.Dns.Port
-	}
-	return 0
+	Configs         []string               `json:"configs"`
 }
 
 func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
@@ -102,11 +66,10 @@ func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
 	result.Name = stringz.OrEmpty(i.Name)
 	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
 	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
-	result.DnsHostname = i.DnsHostname()
-	result.DnsPort = i.DnsPort()
 	result.Tags = i.Tags
 	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
+	result.Configs = i.Configs
 	return result
 }
 
@@ -129,13 +92,13 @@ func NewServiceLink(sessionId string) *response.Link {
 
 type ServiceApiList struct {
 	*env.BaseApi
-	Name            *string            `json:"name"`
-	Dns             *ServiceDnsApiPost `json:"dns"`
-	EndpointAddress *string            `json:"endpointAddress"`
-	EgressRouter    *string            `json:"egressRouter"`
-	EdgeRouterRoles []string           `json:"edgeRouterRoles"`
-	RoleAttributes  []string           `json:"roleAttributes"`
-	Permissions     []string           `json:"permissions"`
+	Name            *string                           `json:"name"`
+	EndpointAddress *string                           `json:"endpointAddress"`
+	EgressRouter    *string                           `json:"egressRouter"`
+	EdgeRouterRoles []string                          `json:"edgeRouterRoles"`
+	RoleAttributes  []string                          `json:"roleAttributes"`
+	Permissions     []string                          `json:"permissions"`
+	Config          map[string]map[string]interface{} `json:"config"`
 }
 
 func (e *ServiceApiList) GetSelfLink() *response.Link {
@@ -205,19 +168,21 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 	return al, nil
 }
 
-func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
+func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
+	configMap, err := ae.Handlers.Service.GetConfigMap(rc.ApiSession.ConfigTypes, i)
+	if err != nil {
+		return nil, err
+	}
+
 	ret := &ServiceApiList{
 		BaseApi:         env.FromBaseModelEntity(i),
 		Name:            &i.Name,
 		EndpointAddress: &i.EndpointAddress,
 		EgressRouter:    &i.EgressRouter,
-		Dns: &ServiceDnsApiPost{
-			Port:     &i.DnsPort,
-			Hostname: &i.DnsHostname,
-		},
 		RoleAttributes:  i.RoleAttributes,
 		Permissions:     i.Permissions,
 		EdgeRouterRoles: i.EdgeRouterRoles,
+		Config:          configMap,
 	}
 	ret.PopulateLinks()
 	return ret, nil

@@ -5,9 +5,16 @@
     "serviceId": {
       "type": "string"
     },
-    "hosting": {
-      "type": "boolean",
-      "default": false
+    "type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "Dial",
+        "Bind",
+        null
+      ]
     }
   },
   "required": [

@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -30,6 +31,7 @@ type ServicePolicy struct {
 	BaseModelEntityImpl
 	Name          string
 	PolicyType    string
+	Semantic      string
 	IdentityRoles []string
 	ServiceRoles  []string
 }
@@ -37,7 +39,7 @@ type ServicePolicy struct {
 func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
-		return nil, NewFieldError(msg, "policyType", entity.PolicyType)
+		return nil, validation.NewFieldError(msg, "policyType", entity.PolicyType)
 	}
 
 	policyType := persistence.PolicyTypeInvalid
@@ -51,6 +53,7 @@ func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (pers
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
 		PolicyType:         policyType,
+		Semantic:           entity.Semantic,
 		IdentityRoles:      entity.IdentityRoles,
 		ServiceRoles:       entity.ServiceRoles,
 	}, nil
@@ -80,6 +83,7 @@ func (entity *ServicePolicy) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.B
 	entity.fillCommon(boltServicePolicy)
 	entity.Name = boltServicePolicy.Name
 	entity.PolicyType = policyType
+	entity.Semantic = boltServicePolicy.Semantic
 	entity.ServiceRoles = boltServicePolicy.ServiceRoles
 	entity.IdentityRoles = boltServicePolicy.IdentityRoles
 	return nil

@@ -40,7 +40,7 @@ func (handler *ApiSessionHandler) NewModelEntity() BaseModelEntity {
 }
 
 func (handler *ApiSessionHandler) Create(ApiSessionModel *ApiSession) (string, error) {
-	return handler.createEntity(ApiSessionModel, nil)
+	return handler.createEntity(ApiSessionModel)
 }
 
 func (handler *ApiSessionHandler) Read(id string) (*ApiSession, error) {
@@ -73,11 +73,11 @@ func (handler *ApiSessionHandler) IsUpdated(_ string) bool {
 }
 
 func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
-	return handler.updateEntity(apiSession, handler, nil)
+	return handler.updateEntity(apiSession, handler)
 }
 
 func (handler *ApiSessionHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil, nil)
+	return handler.deleteEntity(id, nil)
 }
 
 func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {

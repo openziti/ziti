@@ -126,8 +126,6 @@ func (ctx *TestContext) requireNewService() *Service {
 		EndpointAddress: "hosted:unclaimed",
 		EgressRouter:    "unclaimed",
 		Name:            uuid.New().String(),
-		DnsHostname:     uuid.New().String(),
-		DnsPort:         0,
 	}
 	var err error
 	service.Id, err = ctx.handlers.Service.Create(service)

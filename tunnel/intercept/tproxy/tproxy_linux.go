@@ -23,13 +23,13 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-edge/tunnel/router"
 	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"golang.org/x/sys/unix"
 	"net"
 	"strconv"
@@ -289,7 +289,7 @@ func (t *tProxyInterceptor) Stop() {
 	}
 }
 
-func (t *tProxyInterceptor) Intercept(service edge.Service, resolver dns.Resolver) error {
+func (t *tProxyInterceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
 	err := t.intercept(service, resolver, (*TCPIPPortAddr)(t.tcpLn.Addr().(*net.TCPAddr)))
 	if err != nil {
 		return err
@@ -297,7 +297,7 @@ func (t *tProxyInterceptor) Intercept(service edge.Service, resolver dns.Resolve
 	return t.intercept(service, resolver, (*UDPIPPortAddr)(t.udpLn.LocalAddr().(*net.UDPAddr)))
 }
 
-func (t *tProxyInterceptor) intercept(service edge.Service, resolver dns.Resolver, port IPPortAddr) error {
+func (t *tProxyInterceptor) intercept(service *entities.Service, resolver dns.Resolver, port IPPortAddr) error {
 	interceptAddr, err := intercept.NewInterceptAddress(service, port.GetProtocol(), resolver)
 	if err != nil {
 		return fmt.Errorf("unable to intercept %s: %v", service.Name, err)
