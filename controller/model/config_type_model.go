@@ -42,7 +42,7 @@ func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
 	return schemaLoader.Compile(entitySchemaLoader)
 }
 
-func (entity *ConfigType) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ConfigType) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Name == ConfigTypeAll {
 		return nil, validation.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
@@ -59,15 +59,15 @@ func (entity *ConfigType) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	}, nil
 }
 
-func (entity *ConfigType) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *ConfigType) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *ConfigType) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *ConfigType) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *ConfigType) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ConfigType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltConfigType, ok := boltEntity.(*persistence.ConfigType)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model configType", reflect.TypeOf(boltEntity))

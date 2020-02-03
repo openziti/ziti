@@ -105,8 +105,8 @@ type edgeRouterPolicyStoreImpl struct {
 	symbolSemantic        boltz.EntitySymbol
 	symbolIdentityRoles   boltz.EntitySetSymbol
 	symbolEdgeRouterRoles boltz.EntitySetSymbol
-	symbolIdentities      boltz.EntitySymbol
-	symbolEdgeRouters     boltz.EntitySymbol
+	symbolIdentities      boltz.EntitySetSymbol
+	symbolEdgeRouters     boltz.EntitySetSymbol
 
 	identityCollection   boltz.LinkCollection
 	edgeRouterCollection boltz.LinkCollection

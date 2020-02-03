@@ -38,7 +38,7 @@ type SessionHandler struct {
 	baseHandler
 }
 
-func (handler *SessionHandler) NewModelEntity() BaseModelEntity {
+func (handler *SessionHandler) newModelEntity() boltEntitySink {
 	return &Session{}
 }
 

@@ -122,7 +122,6 @@ type EdgeRouterStore interface {
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouter, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*EdgeRouter, error)
-	UpdateCluster(ctx boltz.MutateContext, id string, clusterId string) error
 }
 
 func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
@@ -217,15 +216,6 @@ func (store *edgeRouterStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*E
 	return entity, nil
 }
 
-func (store *edgeRouterStoreImpl) UpdateCluster(ctx boltz.MutateContext, id string, clusterId string) error {
-	entity, err := store.LoadOneById(ctx.Tx(), id)
-	if err != nil {
-		return err
-	}
-	entity.ClusterId = &clusterId
-	return store.Update(ctx, entity, clusterIdFieldChecker{})
-}
-
 func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from EdgeRouterRoles in edge router policies
@@ -239,10 +229,4 @@ func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
-}
-
-type clusterIdFieldChecker struct{}
-
-func (checker clusterIdFieldChecker) IsUpdated(field string) bool {
-	return "clusterId" == field
 }

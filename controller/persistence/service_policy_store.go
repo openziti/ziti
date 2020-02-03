@@ -116,8 +116,8 @@ type servicePolicyStoreImpl struct {
 	symbolSemantic      boltz.EntitySymbol
 	symbolIdentityRoles boltz.EntitySetSymbol
 	symbolServiceRoles  boltz.EntitySetSymbol
-	symbolIdentities    boltz.EntitySymbol
-	symbolServices      boltz.EntitySymbol
+	symbolIdentities    boltz.EntitySetSymbol
+	symbolServices      boltz.EntitySetSymbol
 
 	identityCollection boltz.LinkCollection
 	serviceCollection  boltz.LinkCollection

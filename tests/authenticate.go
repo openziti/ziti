@@ -22,6 +22,7 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
@@ -339,6 +340,77 @@ func (request *authenticatedRequests) createEntityOfType(entityType string, body
 	return resp.StatusCode(), resp.Body()
 }
 
+type serviceConfig struct {
+	Service string `json:"service"`
+	Config  string `json:"config"`
+}
+
+type sortableServiceConfigSlice []serviceConfig
+
+func (s sortableServiceConfigSlice) Len() int {
+	return len(s)
+}
+
+func (s sortableServiceConfigSlice) Less(i, j int) bool {
+	return s[i].Service < s[j].Service || (s[i].Service == s[j].Service && s[i].Config < s[j].Config)
+}
+
+func (s sortableServiceConfigSlice) Swap(i, j int) {
+	val := s[i]
+	s[i] = s[j]
+	s[j] = val
+}
+
+func (request *authenticatedRequests) requireAssignIdentityServiceConfigs(identityId string, serviceConfigs ...serviceConfig) {
+	httpStatus, _ := request.updateIdentityServiceConfigs(resty.MethodPost, identityId, serviceConfigs)
+	request.testContext.req.Equal(http.StatusOK, httpStatus)
+}
+
+func (request *authenticatedRequests) requireRemoveIdentityServiceConfigs(identityId string, serviceConfigs ...serviceConfig) {
+	httpStatus, _ := request.updateIdentityServiceConfigs(resty.MethodDelete, identityId, serviceConfigs)
+	request.testContext.req.Equal(http.StatusOK, httpStatus)
+}
+
+func (request *authenticatedRequests) listIdentityServiceConfigs(identityId string) []serviceConfig {
+	jsonBody := request.requireQuery("identities/" + identityId + "/service-configs")
+	data := request.testContext.requirePath(jsonBody, "data")
+	var children []*gabs.Container
+	if data.Data() != nil {
+		var err error
+		children, err = data.Children()
+		request.testContext.req.NoError(err)
+	}
+	var result []serviceConfig
+	for _, child := range children {
+		service := request.testContext.requireString(child, "service")
+		config := request.testContext.requireString(child, "config")
+		result = append(result, serviceConfig{
+			Service: service,
+			Config:  config,
+		})
+	}
+	sort.Sort(sortableServiceConfigSlice(result))
+	return result
+}
+
+func (request *authenticatedRequests) updateIdentityServiceConfigs(method string, identityId string, serviceConfigs []serviceConfig) (int, []byte) {
+	req := request.newAuthenticatedRequest()
+	if len(serviceConfigs) > 0 {
+		body, err := json.MarshalIndent(serviceConfigs, "", "   ")
+		request.testContext.req.NoError(err)
+		if request.testContext.enabledJsonLogging {
+			fmt.Println(string(body))
+		}
+		req.SetBody(body)
+	}
+
+	resp, err := req.Execute(method, "/identities/"+identityId+"/service-configs")
+
+	request.testContext.req.NoError(err)
+	request.testContext.logJson(resp.Body())
+	return resp.StatusCode(), resp.Body()
+}
+
 func (request *authenticatedRequests) createEntity(entity entity) (int, []byte) {
 	return request.createEntityOfType(entity.getEntityType(), entity.toJson(true, request.testContext))
 }
@@ -496,6 +568,13 @@ func (request *authenticatedRequests) requireCreateNewConfig(configType string, 
 	config := request.testContext.newConfig(configType, data)
 	config.id = request.requireCreateEntity(config)
 	return config
+}
+
+func (request *authenticatedRequests) requireCreateNewConfigTypeWithPrefix(prefix string) *configType {
+	entity := request.testContext.newConfigType()
+	entity.name = prefix + "-" + entity.name
+	entity.id = request.requireCreateEntity(entity)
+	return entity
 }
 
 func (request *authenticatedRequests) requireCreateNewConfigType() *configType {

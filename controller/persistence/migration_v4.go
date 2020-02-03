@@ -18,7 +18,14 @@ package persistence
 
 import (
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"math"
+)
+
+const (
+	FieldServiceDnsHostname = "dnsHostname"
+	FieldServiceDnsPort     = "dnsPort"
 )
 
 var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
@@ -86,38 +93,63 @@ func createInitialTunnelerConfigTypes(mtx *MigrationContext) error {
 			},
 		},
 	}
-	if err := mtx.Stores.ConfigType.Create(mtx.Ctx, serverConfigTypeV1); err != nil {
-		return err
-	}
+	return mtx.Stores.ConfigType.Create(mtx.Ctx, serverConfigTypeV1)
+}
 
+func createInitialTunnelerConfigs(mtx *MigrationContext) error {
 	ids, _, err := mtx.Stores.EdgeService.QueryIds(mtx.Ctx.Tx(), "true")
 	if err != nil {
 		return err
 	}
+
+	hostnameSymbol := mtx.Stores.EdgeService.NewEntitySymbol(FieldServiceDnsHostname, ast.NodeTypeString)
+	portSymbol := mtx.Stores.EdgeService.NewEntitySymbol(FieldServiceDnsHostname, ast.NodeTypeInt64)
 
 	for _, id := range ids {
 		service, err := mtx.Stores.EdgeService.LoadOneById(mtx.Ctx.Tx(), id)
 		if err != nil {
 			return err
 		}
-		clientConfigData := map[string]interface{}{
-			"hostname": service.DnsHostname,
-			"port":     int(service.DnsPort),
+
+		fieldType, val := hostnameSymbol.Eval(mtx.Ctx.Tx(), []byte(id))
+		hostname := boltz.FieldToString(fieldType, val)
+
+		fieldType, val = portSymbol.Eval(mtx.Ctx.Tx(), []byte(id))
+		port := boltz.FieldToInt64(fieldType, val)
+		finalPort := 0
+		if port != nil {
+			finalPort = int(*port)
 		}
-		config := &Config{
-			BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-			Name:               service.Name + "-tunneler-client-config",
-			Type:               clientConfigV1TypeId,
-			Data:               clientConfigData,
-		}
-		if err := mtx.Stores.Config.Create(mtx.Ctx, config); err != nil {
-			return err
-		}
-		service.Configs = append(service.Configs, config.Id)
-		if err := mtx.Stores.EdgeService.Update(mtx.Ctx, service, nil); err != nil {
+		if err := createServiceConfigs(mtx, service, hostname, finalPort); err != nil {
 			return err
 		}
 	}
-
 	return nil
+}
+
+type migrationConfigUpdateFieldChecker struct{}
+
+func (m migrationConfigUpdateFieldChecker) IsUpdated(field string) bool {
+	return field == EntityTypeConfigs
+}
+
+func createServiceConfigs(mtx *MigrationContext, service *EdgeService, hostname *string, port int) error {
+	if hostname == nil {
+		return nil
+	}
+	clientConfigData := map[string]interface{}{
+		"hostname": *hostname,
+		"port":     port,
+	}
+	config := &Config{
+		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
+		Name:               service.Name + "-tunneler-client-config",
+		Type:               clientConfigV1TypeId,
+		Data:               clientConfigData,
+	}
+	if err := mtx.Stores.Config.Create(mtx.Ctx, config); err != nil {
+		return err
+	}
+	service.Configs = append(service.Configs, config.Id)
+	return mtx.Stores.EdgeService.Update(mtx.Ctx, service, &migrationConfigUpdateFieldChecker{})
 }

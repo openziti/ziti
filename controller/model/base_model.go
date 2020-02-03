@@ -32,11 +32,18 @@ type BaseModelEntity interface {
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
 	GetTags() map[string]interface{}
-	FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error
+}
 
-	ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
-	ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
-	ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
+type boltEntitySink interface {
+	BaseModelEntity
+	fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error
+}
+
+type boltEntitySource interface {
+	BaseModelEntity
+	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
 }
 
 type BaseModelEntityImpl struct {

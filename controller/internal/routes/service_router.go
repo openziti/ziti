@@ -74,7 +74,7 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Service.PublicQueryForIdentity(rc.Identity, queryOptions)
+		result, err := ae.Handlers.Service.PublicQueryForIdentity(rc.Identity, rc.ApiSession.ConfigTypes, queryOptions)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -90,7 +90,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		service, err := ae.Handlers.Service.ReadForIdentity(id, rc.ApiSession.IdentityId)
+		service, err := ae.Handlers.Service.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
 		if err != nil {
 			return nil, err
 		}

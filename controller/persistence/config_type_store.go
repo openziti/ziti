@@ -77,6 +77,7 @@ type ConfigTypeStore interface {
 	LoadOneById(tx *bbolt.Tx, id string) (*ConfigType, error)
 	LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error)
 	GetNameIndex() boltz.ReadIndex
+	GetName(tx *bbolt.Tx, id string) *string
 }
 
 func newConfigTypesStore(stores *stores) *configTypeStoreImpl {

@@ -37,7 +37,7 @@ type EventLog struct {
 	Data             map[string]interface{}
 }
 
-func (entity *EventLog) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EventLog) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.EventLog{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Type:               entity.Type,
@@ -52,15 +52,15 @@ func (entity *EventLog) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (pe
 	}, nil
 }
 
-func (entity *EventLog) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *EventLog) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EventLog) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *EventLog) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EventLog) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EventLog) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltEventLog, ok := boltEntity.(*persistence.EventLog)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model event log", reflect.TypeOf(boltEntity))

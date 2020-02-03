@@ -1,0 +1,22 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/association.post.json",
+  "type": "array",
+  "items": {
+    "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service",
+        "config"
+      ],
+      "properties": {
+        "service": {
+          "$ref": "definitions.all.json#/definitions/name"
+        },
+        "config": {
+          "$ref": "definitions.all.json#/definitions/name"
+        }
+      }
+    }
+  }
+}

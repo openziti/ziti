@@ -36,7 +36,7 @@ type ServicePolicy struct {
 	ServiceRoles  []string
 }
 
-func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ServicePolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
 		return nil, validation.NewFieldError(msg, "policyType", entity.PolicyType)
@@ -59,15 +59,15 @@ func (entity *ServicePolicy) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (pers
 	}, nil
 }
 
-func (entity *ServicePolicy) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *ServicePolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *ServicePolicy) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *ServicePolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *ServicePolicy) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service policy", reflect.TypeOf(boltEntity))

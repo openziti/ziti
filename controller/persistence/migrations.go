@@ -141,5 +141,6 @@ func (m *Migrations) upgradeToV3FromV2(mtx *MigrationContext) {
 
 func (m *Migrations) upgradeToV4FromV3(mtx *MigrationContext) {
 	m.versionBucket.SetError(createInitialTunnelerConfigTypes(mtx))
+	m.versionBucket.SetError(createInitialTunnelerConfigs(mtx))
 	m.setVersion(4)
 }

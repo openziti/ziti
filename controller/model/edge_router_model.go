@@ -44,7 +44,7 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 }
 
-func (entity *EdgeRouter) ToBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	et := uuid.New().String()
 
 	boltEntity := &persistence.EdgeRouter{
@@ -91,7 +91,7 @@ func (entity *EdgeRouter) ToBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (p
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.EdgeRouter{
 		BaseEdgeEntityImpl:  *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:                entity.Name,
@@ -108,11 +108,11 @@ func (entity *EdgeRouter) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persist
 	}, nil
 }
 
-func (entity *EdgeRouter) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *EdgeRouter) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router", reflect.TypeOf(boltEntity))

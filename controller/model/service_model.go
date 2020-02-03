@@ -36,11 +36,10 @@ type Service struct {
 	EndpointAddress string   `json:"endpointAddress"`
 	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	RoleAttributes  []string `json:"roleAttributes"`
-	Permissions     []string `json:"permissions"` // used on read to indicate if an identity has dial/bind permissions
 	Configs         []string `json:"configs"`
 }
 
-func (entity *Service) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	entity.Sanitize()
 	if err := entity.mapConfigTypeNamesToIds(tx, handler); err != nil {
 		return nil, err
@@ -100,19 +99,46 @@ func (entity *Service) mapConfigTypeNamesToIds(tx *bbolt.Tx, handler Handler) er
 	return nil
 }
 
-func (entity *Service) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *Service) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
 func (entity *Service) Sanitize() {
 	entity.EndpointAddress = strings.Replace(entity.EndpointAddress, "://", ":", 1)
 }
 
-func (entity *Service) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Service) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+	boltService, ok := boltEntity.(*persistence.EdgeService)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
+	}
+	entity.fillCommon(boltService)
+	entity.Name = boltService.Name
+	entity.EdgeRouterRoles = boltService.EdgeRouterRoles
+	entity.EgressRouter = boltService.Egress
+	entity.EndpointAddress = boltService.EndpointAddress
+	entity.RoleAttributes = boltService.RoleAttributes
+	entity.Configs = boltService.Configs
+	return nil
+}
+
+type ServiceDetail struct {
+	BaseModelEntityImpl
+	Name            string                            `json:"name"`
+	EgressRouter    string                            `json:"egressRouter"`
+	EndpointAddress string                            `json:"endpointAddress"`
+	EdgeRouterRoles []string                          `json:"edgeRouterRoles"`
+	RoleAttributes  []string                          `json:"roleAttributes"`
+	Permissions     []string                          `json:"permissions"`
+	Configs         []string                          `json:"configs"`
+	Config          map[string]map[string]interface{} `json:"config"`
+}
+
+func (entity *ServiceDetail) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltService, ok := boltEntity.(*persistence.EdgeService)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))

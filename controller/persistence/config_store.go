@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	FieldConfigData = "data"
-	FieldConfigType = "type"
+	FieldConfigData            = "data"
+	FieldConfigType            = "type"
+	FieldConfigIdentityService = "identityServices"
 )
 
 func newConfig(name string, configType string, data map[string]interface{}) *Config {
@@ -80,9 +81,11 @@ func newConfigsStore(stores *stores) *configStoreImpl {
 type configStoreImpl struct {
 	*baseStore
 
-	indexName      boltz.ReadIndex
-	symbolType     boltz.EntitySymbol
-	symbolServices boltz.EntitySetSymbol
+	indexName              boltz.ReadIndex
+	symbolType             boltz.EntitySymbol
+	symbolServices         boltz.EntitySetSymbol
+	symbolIdentityServices boltz.EntitySetSymbol
+	identityServicesLinks  *boltz.LinkedSetSymbol
 }
 
 func (store *configStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -95,6 +98,8 @@ func (store *configStoreImpl) initializeLocal() {
 	store.symbolType = store.AddFkSymbol(FieldConfigType, store.stores.configType)
 	store.AddMapSymbol(FieldConfigData, ast.NodeTypeAnyType, FieldConfigData)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolIdentityServices = store.AddSetSymbol(FieldConfigIdentityService, ast.NodeTypeOther)
+	store.identityServicesLinks = &boltz.LinkedSetSymbol{EntitySymbol: store.symbolIdentityServices}
 }
 
 func (store *configStoreImpl) initializeLinked() {
@@ -120,4 +125,27 @@ func (store *configStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Config,
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, nil
+}
+
+func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	err := store.symbolIdentityServices.Map(ctx.Tx(), []byte(id), func(mapCtx *boltz.MapContext) {
+		keys, err := boltz.DecodeStringSlice(mapCtx.Value())
+		if err != nil {
+			mapCtx.SetError(err)
+			return
+		}
+		identityId := keys[0]
+		serviceId := keys[1]
+		err = store.stores.identity.removeServiceConfigs(ctx.Tx(), identityId, func(identityServiceId, _, configId string) bool {
+			return identityServiceId == serviceId && configId == id
+		})
+		if err != nil {
+			mapCtx.SetError(err)
+			return
+		}
+	})
+	if err != nil {
+		return err
+	}
+	return store.baseStore.DeleteById(ctx, id)
 }

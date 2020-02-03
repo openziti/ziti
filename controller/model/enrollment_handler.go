@@ -42,7 +42,7 @@ func NewEnrollmentHandler(env Env) *EnrollmentHandler {
 	return handler
 }
 
-func (handler *EnrollmentHandler) NewModelEntity() BaseModelEntity {
+func (handler *EnrollmentHandler) newModelEntity() boltEntitySink {
 	return &Enrollment{}
 }
 
@@ -106,7 +106,7 @@ func (handler *EnrollmentHandler) ReadByToken(token string) (*Enrollment, error)
 			return nil
 		}
 
-		return enrollment.FillFrom(handler, tx, boltEntity)
+		return enrollment.fillFrom(handler, tx, boltEntity)
 	})
 
 	if err != nil {

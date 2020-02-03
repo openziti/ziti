@@ -40,7 +40,7 @@ type Ca struct {
 	IsAuthEnabled             bool
 }
 
-func (entity *Ca) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltCa, ok := boltEntity.(*persistence.Ca)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
@@ -57,7 +57,7 @@ func (entity *Ca) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) 
 	return nil
 }
 
-func (entity *Ca) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	var fp string
 
 	if entity.CertPem != "" {
@@ -119,7 +119,7 @@ func (entity *Ca) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 	return boltEntity, nil
 }
 
-func (entity *Ca) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	boltEntity := &persistence.Ca{
 		BaseEdgeEntityImpl:        *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
@@ -132,6 +132,6 @@ func (entity *Ca) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.Bas
 	return boltEntity, nil
 }
 
-func (entity *Ca) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }

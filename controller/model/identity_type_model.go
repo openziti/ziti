@@ -33,22 +33,22 @@ type IdentityType struct {
 	Name string `json:"name"`
 }
 
-func (entity *IdentityType) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *IdentityType) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.IdentityType{
 		Name:               entity.Name,
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *IdentityType) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *IdentityType) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *IdentityType) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *IdentityType) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *IdentityType) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *IdentityType) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltIdentityType, ok := boltEntity.(*persistence.IdentityType)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model IdentityType", reflect.TypeOf(boltEntity))

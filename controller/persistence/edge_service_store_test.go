@@ -18,7 +18,6 @@ package persistence
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 	"testing"
 	"time"
@@ -67,10 +66,8 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 	ctx.NoError(err)
 
 	edgeService := &EdgeService{
-		Service:     *fabricService,
-		Name:        uuid.New().String(),
-		DnsHostname: uuid.New().String(),
-		DnsPort:     0,
+		Service: *fabricService,
+		Name:    uuid.New().String(),
 	}
 
 	ctx.requireCreate(edgeService)
@@ -102,9 +99,7 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 			EndpointAddress: uuid.New().String(),
 			Egress:          uuid.New().String(),
 		},
-		Name:        uuid.New().String(),
-		DnsHostname: uuid.New().String(),
-		DnsPort:     uint16(rand.Uint32()),
+		Name: uuid.New().String(),
 	}
 
 	ctx.requireCreate(edgeService)
@@ -156,8 +151,6 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 			Egress:          uuid.New().String(),
 		},
 		Name:           uuid.New().String(),
-		DnsHostname:    uuid.New().String(),
-		DnsPort:        uint16(rand.Uint32()),
 		RoleAttributes: []string{role},
 	}
 

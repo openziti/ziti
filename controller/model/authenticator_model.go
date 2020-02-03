@@ -42,7 +42,7 @@ func (entity *Authenticator) Fingerprints() []string {
 	}
 }
 
-func (entity *Authenticator) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Authenticator) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltAuthenticator, ok := boltEntity.(*persistence.Authenticator)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
@@ -73,7 +73,7 @@ func (entity *Authenticator) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity 
 	return nil
 }
 
-func (entity *Authenticator) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Authenticator) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	boltEntity := &persistence.Authenticator{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Type:               entity.Method,
@@ -118,13 +118,13 @@ func (entity *Authenticator) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler
 	return boltEntity, nil
 }
 
-func (entity *Authenticator) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *Authenticator) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 
 }
 
-func (entity *Authenticator) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Authenticator) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
 func (entity *Authenticator) ToCert() *AuthenticatorCert {

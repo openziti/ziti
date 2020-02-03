@@ -29,22 +29,22 @@ type GeoRegion struct {
 	Name string `json:"name"`
 }
 
-func (entity *GeoRegion) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *GeoRegion) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.GeoRegion{
 		Name:               entity.Name,
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *GeoRegion) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *GeoRegion) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *GeoRegion) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *GeoRegion) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *GeoRegion) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *GeoRegion) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltGeoRegion, ok := boltEntity.(*persistence.GeoRegion)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model geoRegion", reflect.TypeOf(boltEntity))

@@ -130,12 +130,12 @@ func (e *ServiceApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Service) ([]BaseApiEntity, error) {
+func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]BaseApiEntity, error) {
 	// can't use modelToApi b/c it require list of BaseModelEntity
 	apiEntities := make([]BaseApiEntity, 0)
 
 	for _, e := range es {
-		al, err := MapServiceToApiEntity(ae, rc, e)
+		al, err := MapToServiceApiList(ae, rc, e)
 
 		if err != nil {
 			return nil, err
@@ -148,7 +148,7 @@ func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []
 }
 
 func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
-	i, ok := e.(*model.Service)
+	i, ok := e.(*model.ServiceDetail)
 
 	if !ok {
 		err := fmt.Errorf("entity is not a service \"%s\"", e.GetId())
@@ -168,12 +168,7 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 	return al, nil
 }
 
-func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.Service) (*ServiceApiList, error) {
-	configMap, err := ae.Handlers.Service.GetConfigMap(rc.ApiSession.ConfigTypes, i)
-	if err != nil {
-		return nil, err
-	}
-
+func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.ServiceDetail) (*ServiceApiList, error) {
 	ret := &ServiceApiList{
 		BaseApi:         env.FromBaseModelEntity(i),
 		Name:            &i.Name,
@@ -182,7 +177,7 @@ func MapToServiceApiList(ae *env.AppEnv, rc *response.RequestContext, i *model.S
 		RoleAttributes:  i.RoleAttributes,
 		Permissions:     i.Permissions,
 		EdgeRouterRoles: i.EdgeRouterRoles,
-		Config:          configMap,
+		Config:          i.Config,
 	}
 	ret.PopulateLinks()
 	return ret, nil

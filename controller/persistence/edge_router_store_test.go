@@ -116,30 +116,4 @@ func Test_EdgeRouterStore(t *testing.T) {
 		return nil
 	})
 	req.NoError(err)
-
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		err = ctx.stores.EdgeRouter.UpdateCluster(boltz.NewMutateContext(tx), edgeRouterId, cluster2Id)
-		req.NoError(err)
-
-		testCluster, err := ctx.stores.Cluster.LoadOneById(tx, cluster1Id)
-		req.NoError(err)
-		req.NotNil(testCluster)
-		erIds := clusterStore.GetRelatedEntitiesIdList(tx, testCluster.Id, EntityTypeEdgeRouters)
-		req.Equal(0, len(erIds))
-
-		testCluster2, err := ctx.stores.Cluster.LoadOneById(tx, cluster2Id)
-		req.NoError(err)
-		req.NotNil(testCluster2)
-		erIds = clusterStore.GetRelatedEntitiesIdList(tx, testCluster2.Id, EntityTypeEdgeRouters)
-		req.Equal(1, len(erIds))
-		req.Equal(edgeRouterId, erIds[0])
-
-		testGw, err := ctx.stores.EdgeRouter.LoadOneById(tx, edgeRouterId)
-		req.NoError(err)
-		req.NotNil(testGw)
-		req.Equal(cluster2Id, *testGw.ClusterId)
-
-		return nil
-	})
-	req.NoError(err)
 }

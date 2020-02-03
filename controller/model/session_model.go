@@ -46,7 +46,7 @@ type SessionCert struct {
 	ValidTo     time.Time
 }
 
-func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	apiSession, err := handler.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId)
+	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (entity *Session) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	return boltEntity, nil
 }
 
-func (entity *Session) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Session) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.Session{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Token:              entity.Token,
@@ -129,11 +129,11 @@ func (entity *Session) ToBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistenc
 	}, nil
 }
 
-func (entity *Session) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Session) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltSession, ok := boltEntity.(*persistence.Session)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model Session", reflect.TypeOf(boltEntity))

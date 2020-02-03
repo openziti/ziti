@@ -121,11 +121,10 @@ func (store *baseStore) updateEntityNameReferences(bucket *boltz.TypedBucket, ro
 	oldNameRef := entityRef(oldName)
 	newNameRef := entityRef(entity.GetName())
 	for _, policyHolderId := range store.GetRelatedEntitiesIdList(bucket.Tx(), entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
-		err := rolesSymbol.Map(bucket.Tx(), []byte(policyHolderId), func(rolesElem string) (s *string, b bool, b2 bool) {
-			if rolesElem == oldNameRef {
-				return &newNameRef, true, true
+		err := rolesSymbol.Map(bucket.Tx(), []byte(policyHolderId), func(ctx *boltz.MapContext) {
+			if ctx.ValueS() == oldNameRef {
+				ctx.ReplaceS(newNameRef)
 			}
-			return nil, false, true
 		})
 		if err != nil {
 			bucket.SetError(err)
@@ -144,11 +143,10 @@ func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity NamedEdgeEnt
 	nameRef := entityRef(entity.GetName())
 
 	for _, policyHolderId := range store.GetRelatedEntitiesIdList(tx, entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
-		err := rolesSymbol.Map(tx, []byte(policyHolderId), func(rolesElem string) (s *string, b bool, b2 bool) {
-			if rolesElem == idRef || (checkName && rolesElem == nameRef) {
-				return nil, true, true
+		err := rolesSymbol.Map(tx, []byte(policyHolderId), func(ctx *boltz.MapContext) {
+			if ctx.ValueS() == idRef || (checkName && ctx.ValueS() == nameRef) {
+				ctx.Delete()
 			}
-			return nil, false, true
 		})
 		if err != nil {
 			return err
@@ -192,20 +190,27 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleS
 }
 
 func validateAndConvertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, field string, ids []string) error {
-	nameIndex := store.GetNameIndex()
 	var invalid []string
 	for idx, val := range ids {
-		if !store.IsEntityPresent(tx, val) {
-			id := nameIndex.Read(tx, []byte(val))
-			if id != nil {
-				ids[idx] = string(id)
-			} else {
-				invalid = append(invalid, val)
-			}
+		if result := ValidateAndConvertNameToId(tx, store, val); result != nil {
+			ids[idx] = *result
+		} else {
+			invalid = append(invalid, val)
 		}
 	}
 	if len(invalid) > 0 {
 		return validation.NewFieldError(fmt.Sprintf("no %v found with the given names/ids", store.GetEntityType()), field, invalid)
+	}
+	return nil
+}
+
+func ValidateAndConvertNameToId(tx *bbolt.Tx, store NameIndexedStore, val string) *string {
+	if store.IsEntityPresent(tx, val) {
+		return &val
+	}
+	id := string(store.GetNameIndex().Read(tx, []byte(val)))
+	if id != "" && store.IsEntityPresent(tx, id) {
+		return &id
 	}
 	return nil
 }
@@ -296,4 +301,17 @@ func (*baseStore) FindMatchingAnyOf(tx *bbolt.Tx, readIndex boltz.SetReadIndex, 
 	}
 
 	return result
+}
+
+func (store *baseStore) GetName(tx *bbolt.Tx, id string) *string {
+	symbol := store.GetSymbol(FieldName)
+	if symbol == nil {
+		return nil
+	}
+	_, val := symbol.Eval(tx, []byte(id))
+	if val != nil {
+		result := string(val)
+		return &result
+	}
+	return nil
 }

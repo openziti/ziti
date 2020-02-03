@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -33,7 +34,7 @@ type Identity struct {
 	RoleAttributes []string
 }
 
-func (entity *Identity) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
 	edgeService := &persistence.Identity{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
@@ -46,7 +47,7 @@ func (entity *Identity) ToBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persisten
 	return edgeService, nil
 }
 
-func (entity *Identity) ToBoltEntityForUpdate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.Identity{
 		Name:               entity.Name,
 		IdentityTypeId:     entity.IdentityTypeId,
@@ -55,11 +56,11 @@ func (entity *Identity) ToBoltEntityForUpdate(*bbolt.Tx, Handler) (persistence.B
 	}, nil
 }
 
-func (entity *Identity) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Identity) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
@@ -72,4 +73,33 @@ func (entity *Identity) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEn
 	entity.RoleAttributes = boltIdentity.RoleAttributes
 
 	return nil
+}
+
+type ServiceConfig struct {
+	Service string
+	Config  string
+}
+
+func toBoltServiceConfigs(tx *bbolt.Tx, handler Handler, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
+	serviceStore := handler.GetEnv().GetStores().EdgeService
+	configStore := handler.GetEnv().GetStores().Config
+
+	var boltServiceConfigs []persistence.ServiceConfig
+	for _, serviceConfig := range serviceConfigs {
+		service := persistence.ValidateAndConvertNameToId(tx, serviceStore, serviceConfig.Service)
+		if service == nil {
+			return nil, util.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
+		}
+
+		config := persistence.ValidateAndConvertNameToId(tx, configStore, serviceConfig.Config)
+		if config == nil {
+			return nil, util.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
+		}
+
+		boltServiceConfigs = append(boltServiceConfigs, persistence.ServiceConfig{
+			ServiceId: *service,
+			ConfigId:  *config,
+		})
+	}
+	return boltServiceConfigs, nil
 }

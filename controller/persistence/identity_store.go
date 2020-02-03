@@ -18,9 +18,12 @@ package persistence
 
 import (
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -31,6 +34,7 @@ const (
 	FieldIdentityIsAdmin        = "isAdmin"
 	FieldIdentityEnrollments    = "enrollments"
 	FieldIdentityAuthenticators = "authenticators"
+	FieldIdentityServiceConfigs = "serviceConfigs"
 )
 
 func NewIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -51,6 +55,11 @@ type Identity struct {
 	Enrollments    []string
 	Authenticators []string
 	RoleAttributes []string
+}
+
+type ServiceConfig struct {
+	ServiceId string
+	ConfigId  string
 }
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
@@ -103,6 +112,10 @@ type IdentityStore interface {
 	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*Identity, error)
+	AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
+	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
+	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
+	LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{}
 }
 
 func newIdentityStore(stores *stores) *identityStoreImpl {
@@ -120,7 +133,6 @@ type identityStoreImpl struct {
 	indexRoleAttributes boltz.SetReadIndex
 
 	symbolApiSessions        boltz.EntitySetSymbol
-	symbolAppwans            boltz.EntitySymbol
 	symbolAuthenticators     boltz.EntitySetSymbol
 	symbolEdgeRouterPolicies boltz.EntitySetSymbol
 	symbolEnrollments        boltz.EntitySetSymbol
@@ -138,7 +150,6 @@ func (store *identityStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
-	store.symbolAppwans = store.AddFkSetSymbol(EntityTypeAppwans, store.stores.appwan)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
@@ -170,7 +181,6 @@ func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity Na
 }
 
 func (store *identityStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolAppwans, store.stores.appwan.symbolIdentities)
 	store.AddLinkCollection(store.symbolAuthenticators, store.stores.authenticator.symbolIdentityId)
 	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentityId)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
@@ -235,5 +245,188 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 	}
 
+	if err := store.removeServiceConfigs(ctx.Tx(), id, func(_, _, _ string) bool { return true }); err != nil {
+		return err
+	}
+
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *identityStoreImpl) AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error {
+	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
+	if entityBucket == nil {
+		return util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+	}
+	configsBucket := entityBucket.GetOrCreateBucket(FieldIdentityServiceConfigs)
+	if configsBucket.HasError() {
+		return configsBucket.GetError()
+	}
+	configTypes := map[string]struct{}{}
+	for _, serviceConfig := range serviceConfigs {
+		config, err := store.stores.config.LoadOneById(tx, serviceConfig.ConfigId)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := configTypes[config.Type]; ok {
+			return errors.Errorf("multiple service configs provided for identity %v of config type %v", identityId, config.Type)
+		}
+		configTypes[config.Type] = struct{}{}
+
+		serviceBucket := configsBucket.GetOrCreateBucket(serviceConfig.ServiceId)
+		if serviceBucket.HasError() {
+			return serviceBucket.GetError()
+		}
+
+		// un-index old value
+		if currentConfigId := serviceBucket.GetString(config.Type); currentConfigId != nil {
+			if err := store.stores.config.identityServicesLinks.RemoveCompoundLink(tx, *currentConfigId, ss(identityId, serviceConfig.ServiceId)); err != nil {
+				return err
+			}
+		}
+		// set new value
+		if serviceBucket.SetString(config.Type, config.Id, nil).HasError() {
+			return serviceBucket.GetError()
+		}
+
+		// index new value
+		if err := store.stores.config.identityServicesLinks.AddCompoundLink(tx, config.Id, ss(identityId, serviceConfig.ServiceId)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error {
+	// could make this more efficient with maps, but only necessary if we have large number of overrides, which seems unlikely
+	// optimize later, if necessary
+	return store.removeServiceConfigs(tx, identityId, func(serviceId, _, configId string) bool {
+		if len(serviceConfigs) == 0 {
+			return true
+		}
+		for _, config := range serviceConfigs {
+			if config.ServiceId == serviceId && config.ConfigId == configId {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeFilter func(serviceId, configTypeId, configId string) bool) error {
+	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
+	if entityBucket == nil {
+		return util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+	}
+	configsBucket := entityBucket.GetBucket(FieldIdentityServiceConfigs)
+	if configsBucket == nil {
+		// no service configs found, nothing to do, bail out
+		return nil
+	}
+
+	servicesCursor := configsBucket.Cursor()
+	for sKey, _ := servicesCursor.First(); sKey != nil; sKey, _ = servicesCursor.Next() {
+		serviceId := string(sKey)
+		serviceBucket := configsBucket.GetBucket(serviceId)
+		if serviceBucket == nil {
+			// doesn't exist, nothing to do, continue
+			continue
+		}
+		cursor := serviceBucket.Cursor()
+		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+			configTypeId := string(k)
+			configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
+			if removeFilter(serviceId, configTypeId, configId) {
+				if err := cursor.Delete(); err != nil {
+					return err
+				}
+				if err := store.stores.config.identityServicesLinks.RemoveCompoundLink(tx, configId, ss(identityId, serviceId)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (store *identityStoreImpl) GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error) {
+	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
+	if entityBucket == nil {
+		return nil, util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+	}
+	var result []ServiceConfig
+	configsBucket := entityBucket.GetBucket(FieldIdentityServiceConfigs)
+	if configsBucket == nil {
+		// no service configs found, nothing to do, bail out
+		return result, nil
+	}
+
+	servicesCursor := configsBucket.Cursor()
+	for sKey, _ := servicesCursor.First(); sKey != nil; sKey, _ = servicesCursor.Next() {
+		serviceId := string(sKey)
+		serviceBucket := configsBucket.GetBucket(serviceId)
+		if serviceBucket == nil {
+			// doesn't exist, nothing to do, continue
+			continue
+		}
+		cursor := serviceBucket.Cursor()
+		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+			configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
+			result = append(result, ServiceConfig{ServiceId: serviceId, ConfigId: configId})
+		}
+	}
+	return result, nil
+}
+
+func (store *identityStoreImpl) LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{} {
+	if len(configTypes) == 0 {
+		return nil
+	}
+	result := map[string]map[string]map[string]interface{}{}
+
+	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
+	if entityBucket == nil {
+		return result
+	}
+	configsBucket := entityBucket.GetBucket(FieldIdentityServiceConfigs)
+	if configsBucket == nil {
+		return result
+	}
+
+	servicesCursor := configsBucket.Cursor()
+	for sKey, _ := servicesCursor.First(); sKey != nil; sKey, _ = servicesCursor.Next() {
+		serviceId := string(sKey)
+		serviceBucket := configsBucket.GetBucket(serviceId)
+		if serviceBucket == nil {
+			// doesn't exist, nothing to do, continue
+			continue
+		}
+
+		_, wantAll := configTypes["all"]
+		cursor := serviceBucket.Cursor()
+		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+			configTypeId := string(k)
+			configId := *boltz.FieldToString(boltz.GetTypeAndValue(v))
+
+			wantsType := wantAll
+			if !wantsType {
+				_, wantsType = configTypes[configTypeId]
+			}
+			if wantsType {
+				if config, _ := store.stores.config.LoadOneById(tx, configId); config != nil {
+					serviceMap, ok := result[serviceId]
+					if !ok {
+						serviceMap = map[string]map[string]interface{}{}
+						result[serviceId] = serviceMap
+					}
+					serviceMap[configTypeId] = config.Data
+				} else {
+					pfxlog.Logger().Errorf("config id %v was referenced by identity %v, but no longer exists", configId, identityId)
+					_ = cursor.Delete()
+				}
+			}
+		}
+	}
+
+	return result
 }

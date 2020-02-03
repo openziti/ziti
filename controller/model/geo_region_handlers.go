@@ -31,7 +31,7 @@ type GeoRegionHandler struct {
 	baseHandler
 }
 
-func (handler *GeoRegionHandler) NewModelEntity() BaseModelEntity {
+func (handler *GeoRegionHandler) newModelEntity() boltEntitySink {
 	return &GeoRegion{}
 }
 

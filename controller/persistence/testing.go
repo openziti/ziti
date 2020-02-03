@@ -146,9 +146,7 @@ func (ctx *TestContext) requireNewService(name string) *EdgeService {
 			EndpointAddress: "hosted:unclaimed",
 			Egress:          "unclaimed",
 		},
-		Name:        name,
-		DnsHostname: name,
-		DnsPort:     0,
+		Name: name,
 	}
 	ctx.requireCreate(edgeService)
 	return edgeService

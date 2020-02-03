@@ -33,14 +33,14 @@ type Config struct {
 	Data map[string]interface{}
 }
 
-func (entity *Config) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Type == "" {
 		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
 	}
-	return entity.ToBoltEntityForUpdate(tx, handler)
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Type != "" {
 		providedType := entity.Type
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
@@ -87,11 +87,11 @@ func (entity *Config) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (pers
 	}, nil
 }
 
-func (entity *Config) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Config) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Config) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Config) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltConfig, ok := boltEntity.(*persistence.Config)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model config", reflect.TypeOf(boltEntity))

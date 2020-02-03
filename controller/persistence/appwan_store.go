@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"errors"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -36,10 +37,7 @@ func (entity *Appwan) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 }
 
 func (entity *Appwan) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetLinkedIds(EntityTypeIdentities, entity.Identities)
-	ctx.SetLinkedIds(EntityTypeServices, entity.Services)
+	ctx.Bucket.SetError(errors.New("the appwan entity type is deprecated. it may be read, but not written"))
 }
 
 func (entity *Appwan) GetEntityType() string {
@@ -63,8 +61,8 @@ type appwanStoreImpl struct {
 	*baseStore
 
 	indexName        boltz.ReadIndex
-	symbolIdentities boltz.EntitySymbol
-	symbolServices   boltz.EntitySymbol
+	symbolIdentities boltz.EntitySetSymbol
+	symbolServices   boltz.EntitySetSymbol
 }
 
 func (store *appwanStoreImpl) NewStoreEntity() boltz.BaseEntity {
@@ -80,8 +78,6 @@ func (store *appwanStoreImpl) initializeLocal() {
 }
 
 func (store *appwanStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolAppwans)
-	store.AddLinkCollection(store.symbolIdentities, store.stores.identity.symbolAppwans)
 }
 
 func (store *appwanStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Appwan, error) {

@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	EntityNameIdentity = "identities"
+	EntityNameIdentity              = "identities"
+	EntityNameIdentityServiceConfig = "service-configs"
 )
 
 type PermissionsApi []string
@@ -309,4 +310,13 @@ func MapToIdentityEnrollmentApiList(_ *env.AppEnv, enrollment *model.Enrollment)
 	}
 
 	return ret, nil
+}
+
+type IdentityServiceConfig struct {
+	Service string `json:"service"`
+	Config  string `json:"config"`
+}
+
+func (entity IdentityServiceConfig) toModel() model.ServiceConfig {
+	return model.ServiceConfig{Config: entity.Config, Service: entity.Service,}
 }

@@ -53,7 +53,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 	return handler
 }
 
-func (handler IdentityHandler) NewModelEntity() BaseModelEntity {
+func (handler IdentityHandler) newModelEntity() boltEntitySink {
 	return &Identity{}
 }
 
@@ -99,7 +99,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 
 	err = handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := identityModel.ToBoltEntityForCreate(tx, handler.impl)
+		boltEntity, err := identityModel.toBoltEntityForCreate(tx, handler.impl)
 		if err != nil {
 			return err
 		}
@@ -288,8 +288,8 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 		if err != nil {
 			return err
 		}
-		association := handler.store.GetLinkCollection(persistence.FieldIdentityAuthenticators)
-		for _, authenticatorId := range association.GetLinks(tx, id) {
+		authenticatorIds := handler.store.GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
+		for _, authenticatorId := range authenticatorIds {
 			authenticator := &Authenticator{}
 			err := handler.env.GetHandlers().Authenticator.readEntity(authenticatorId, authenticator)
 			if err != nil {
@@ -315,8 +315,8 @@ func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, 
 		return err
 	}
 
-	association := handler.store.GetLinkCollection(persistence.FieldIdentityEnrollments)
-	for _, enrollmentId := range association.GetLinks(tx, id) {
+	associationIds := handler.store.GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityEnrollments)
+	for _, enrollmentId := range associationIds {
 		enrollment, err := handler.env.GetHandlers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
@@ -358,7 +358,7 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 
 	err = handler.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		boltIdentity, err := identity.ToBoltEntityForCreate(tx, handler)
+		boltIdentity, err := identity.toBoltEntityForCreate(tx, handler)
 
 		if err != nil {
 			return err
@@ -368,7 +368,7 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 			return err
 		}
 
-		boltAuthenticator, err := authenticator.ToBoltEntityForCreate(tx, handler.env.GetHandlers().Authenticator)
+		boltAuthenticator, err := authenticator.toBoltEntityForCreate(tx, handler.env.GetHandlers().Authenticator)
 
 		if err != nil {
 			return err
@@ -394,4 +394,42 @@ func (handler *IdentityHandler) CollectEdgeRouterPolicies(id string, collector f
 
 func (handler *IdentityHandler) CollectServicePolicies(id string, collector func(entity BaseModelEntity)) error {
 	return handler.collectAssociated(id, persistence.EntityTypeServicePolicies, handler.env.GetHandlers().ServicePolicy, collector)
+}
+
+func (handler *IdentityHandler) GetServiceConfigs(id string) ([]ServiceConfig, error) {
+	var result []ServiceConfig
+	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		configs, err := handler.env.GetStores().Identity.GetServiceConfigs(tx, id)
+		if err != nil {
+			return err
+		}
+		for _, config := range configs {
+			result = append(result, ServiceConfig{Service: config.ServiceId, Config: config.ConfigId})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (handler *IdentityHandler) AssignServiceConfigs(id string, serviceConfigs []ServiceConfig) error {
+	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		boltServiceConfigs, err := toBoltServiceConfigs(tx, handler, serviceConfigs)
+		if err != nil {
+			return err
+		}
+		return handler.env.GetStores().Identity.AssignServiceConfigs(tx, id, boltServiceConfigs...)
+	})
+}
+
+func (handler *IdentityHandler) RemoveServiceConfigs(id string, serviceConfigs []ServiceConfig) error {
+	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		boltServiceConfigs, err := toBoltServiceConfigs(tx, handler, serviceConfigs)
+		if err != nil {
+			return err
+		}
+		return handler.env.GetStores().Identity.RemoveServiceConfigs(tx, id, boltServiceConfigs...)
+	})
 }

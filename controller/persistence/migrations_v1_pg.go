@@ -189,9 +189,6 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 	}
 
 	for _, pgService := range services {
-		if err != nil {
-			return err
-		}
 		var clusterIds []string
 		for _, cluster := range pgService.Clusters {
 			clusterIds = append(clusterIds, cluster.ID)
@@ -204,14 +201,25 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 				EndpointAddress: stringz.OrEmpty(pgService.EndpointAddress),
 				Egress:          stringz.OrEmpty(pgService.EgressRouter),
 			},
-
 			EdgeEntityFields: toBaseBoltEntity(&pgService.BaseDbEntity).EdgeEntityFields,
 			Name:             *pgService.Name,
-			DnsHostname:      stringz.OrEmpty(pgService.DnsHostname),
-			DnsPort:          *pgService.DnsPort,
-			Clusters:         clusterIds,
 		}
-		err = mtx.Stores.EdgeService.Create(mtx.Ctx, edgeService)
+		if err = mtx.Stores.EdgeService.Create(mtx.Ctx, edgeService); err != nil {
+			return err
+		}
+
+		linkCollection := mtx.Stores.EdgeService.GetLinkCollection(EntityTypeClusters)
+		if err = linkCollection.SetLinks(mtx.Ctx.Tx(), pgService.ID, clusterIds); err != nil {
+			return err
+		}
+
+		finalPort := 0
+		if pgService.DnsPort != nil {
+			finalPort = int(*pgService.DnsPort)
+		}
+		if err = createServiceConfigs(mtx, edgeService, pgService.DnsHostname, finalPort); err != nil {
+			return err
+		}
 	}
 	pfxlog.Logger().Infof("migrated %v services from pg to bolt", len(services))
 

@@ -21,6 +21,8 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/util/mirror"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -143,7 +145,7 @@ type Schemes struct {
 	EnrollUpdb       *BasicEntitySchema
 	EdgeRouter       *BasicEntitySchema
 	EdgeRouterPolicy *BasicEntitySchema
-	Identity         *BasicEntitySchema
+	Identity         *IdentityEntitySchema
 	Service          *BasicEntitySchema
 	ServicePolicy    *BasicEntitySchema
 	Session          *BasicEntitySchema
@@ -157,10 +159,11 @@ func (s Schemes) GetEnrollUpdbPost() *gojsonschema.Schema {
 	return s.EnrollUpdb.Post
 }
 
-type FabricConfigSchemas struct {
-	Native      *gojsonschema.Schema
-	Passthrough *gojsonschema.Schema
-	Local       *gojsonschema.Schema
+type IdentityEntitySchema struct {
+	Post           *gojsonschema.Schema
+	Patch          *gojsonschema.Schema
+	Put            *gojsonschema.Schema
+	ServiceConfigs *gojsonschema.Schema
 }
 
 type BasicEntitySchema struct {
@@ -449,12 +452,10 @@ func (ae *AppEnv) LoadSchemas() error {
 		entitySchema, err := reflections.GetField(ae.Schemes, entityPropertyName)
 
 		if entitySchema == nil || reflect.ValueOf(entitySchema).IsNil() {
-			entitySchema = &BasicEntitySchema{}
-			err = reflections.SetField(ae.Schemes, entityPropertyName, entitySchema)
-
-			if err != nil {
-				return fmt.Errorf("found schema with property name '%s', could not set basic schema", entityPropertyName)
+			if err := mirror.InitializeStructField(ae.Schemes, entityPropertyName); err != nil {
+				return errors.Errorf("found schema with property name '%s', unable to initialized: %w", entityPropertyName, err)
 			}
+			entitySchema, err = reflections.GetField(ae.Schemes, entityPropertyName)
 		}
 
 		if err != nil {

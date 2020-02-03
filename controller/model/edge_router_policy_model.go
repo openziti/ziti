@@ -32,7 +32,7 @@ type EdgeRouterPolicy struct {
 	EdgeRouterRoles []string
 }
 
-func (entity *EdgeRouterPolicy) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return &persistence.EdgeRouterPolicy{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
@@ -42,15 +42,15 @@ func (entity *EdgeRouterPolicy) ToBoltEntityForCreate(tx *bbolt.Tx, handler Hand
 	}, nil
 }
 
-func (entity *EdgeRouterPolicy) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EdgeRouterPolicy) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *EdgeRouterPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EdgeRouterPolicy) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EdgeRouterPolicy) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))

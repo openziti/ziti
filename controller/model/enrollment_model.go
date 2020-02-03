@@ -81,7 +81,7 @@ func (entity *Enrollment) FillJwtInfo(env Env) error {
 	return nil
 }
 
-func (entity *Enrollment) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Enrollment) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltEnrollment, ok := boltEntity.(*persistence.Enrollment)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
@@ -99,7 +99,7 @@ func (entity *Enrollment) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	return nil
 }
 
-func (entity *Enrollment) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Enrollment) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if entity.Method == persistence.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
 			apiErr := apierror.NewNotFound()
@@ -133,11 +133,11 @@ func (entity *Enrollment) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	return boltEntity, nil
 }
 
-func (entity *Enrollment) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *Enrollment) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 
 }
 
-func (entity *Enrollment) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *Enrollment) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }

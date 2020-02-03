@@ -37,7 +37,7 @@ type ConfigHandler struct {
 	baseHandler
 }
 
-func (handler *ConfigHandler) NewModelEntity() BaseModelEntity {
+func (handler *ConfigHandler) newModelEntity() boltEntitySink {
 	return &Config{}
 }
 

@@ -36,19 +36,12 @@ type EdgeService struct {
 	network.Service
 	EdgeEntityFields
 	Name            string
-	DnsHostname     string
-	DnsPort         uint16
-	AppWans         []string
-	Clusters        []string
 	RoleAttributes  []string
 	EdgeRouterRoles []string
 	Configs         []string
 }
 
 const (
-	FieldServiceDnsHostname     = "dnsHostname"
-	FieldServiceDnsPort         = "dnsPort"
-	FieldServiceAppwans         = "appwans"
 	FieldServiceClusters        = "clusters"
 	FieldServiceEdgeRouterRoles = "edgeRouterRoles"
 )
@@ -67,10 +60,6 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.DnsHostname = bucket.GetStringWithDefault(FieldServiceDnsHostname, "")
-	entity.DnsPort = uint16(bucket.GetInt32WithDefault(FieldServiceDnsPort, 0))
-	entity.AppWans = bucket.GetStringList(FieldServiceAppwans)
-	entity.Clusters = bucket.GetStringList(FieldServiceClusters)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.EdgeRouterRoles = bucket.GetStringList(FieldServiceEdgeRouterRoles)
 	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
@@ -122,6 +111,7 @@ type EdgeServiceStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
+	GetNameIndex() boltz.ReadIndex
 }
 
 func newEdgeServiceStore(stores *stores, serviceStore network.ServiceStore) *edgeServiceStoreImpl {
@@ -137,7 +127,6 @@ type edgeServiceStoreImpl struct {
 
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
-	symbolAppwans       boltz.EntitySetSymbol
 	symbolClusters      boltz.EntitySetSymbol
 	symbolSessions      boltz.EntitySetSymbol
 
@@ -160,9 +149,6 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
-	store.AddSymbol(FieldServiceDnsHostname, ast.NodeTypeString)
-	store.AddSymbol(FieldServiceDnsPort, ast.NodeTypeInt64)
-	store.symbolAppwans = store.AddFkSetSymbol(FieldServiceAppwans, store.stores.appwan)
 	store.symbolClusters = store.AddFkSetSymbol(FieldServiceClusters, store.stores.cluster)
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 	store.symbolEdgeRoutersRoles = store.AddSetSymbol(FieldServiceEdgeRouterRoles, ast.NodeTypeString)
@@ -193,7 +179,6 @@ func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity
 }
 
 func (store *edgeServiceStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolAppwans, store.stores.appwan.symbolServices)
 	store.AddLinkCollection(store.symbolClusters, store.stores.cluster.symbolServices)
 	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolServices)

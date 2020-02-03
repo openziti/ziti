@@ -71,6 +71,14 @@ func (ctx *TestContext) pathEquals(container *gabs.Container, val interface{}, p
 	}
 }
 
+func (ctx *TestContext) requireString(container *gabs.Container, path ...string) string {
+	pathValue := container.Search(path...)
+	ctx.req.NotNil(pathValue)
+	result, ok := pathValue.Data().(string)
+	ctx.req.True(ok, "%+v must be a string", path)
+	return result
+}
+
 func (ctx *TestContext) pathEqualsStringSlice(container *gabs.Container, val interface{}, path []string) {
 	pathValue := container.Search(path...)
 	if val == nil || reflect.ValueOf(val).IsNil() {

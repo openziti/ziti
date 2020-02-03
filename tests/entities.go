@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/Jeffail/gabs"
@@ -454,7 +453,6 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	ctx.req.NoError(err)
 	ctx.req.Equal(len(entity.configs), len(children))
 	for configType, config := range entity.configs {
-		fmt.Printf("checking if config with config type name %v is present.\n", configType)
 		ctx.pathEquals(configs, config.data, path(configType))
 	}
 }

@@ -308,6 +308,10 @@ func Delete(rc *response.RequestContext, idType response.IdType, deleteF ModelDe
 type ModelUpdateF func(id string) error
 
 func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType response.IdType, in interface{}, updateF ModelUpdateF) {
+	UpdateAllowEmptyBody(rc, sc, idType, in, false, updateF)
+}
+
+func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, idType response.IdType, in interface{}, emptyBodyAllowed bool, updateF ModelUpdateF) {
 	id, err := rc.GetIdFromRequest(idType)
 
 	if err != nil {
@@ -324,23 +328,25 @@ func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType respons
 		return
 	}
 
-	if err = unmarshal(body, in); err != nil {
-		rc.RequestResponder.RespondWithCouldNotParseBody(err)
-		return
-	}
+	if len(body) > 0 || !emptyBodyAllowed {
+		if err = unmarshal(body, in); err != nil {
+			rc.RequestResponder.RespondWithCouldNotParseBody(err)
+			return
+		}
 
-	il := gojsonschema.NewGoLoader(in)
+		il := gojsonschema.NewGoLoader(in)
 
-	result, err := sc.Validate(il)
+		result, err := sc.Validate(il)
 
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
+		if err != nil {
+			rc.RequestResponder.RespondWithError(err)
+			return
+		}
 
-	if !result.Valid() {
-		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
-		return
+		if !result.Valid() {
+			rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
+			return
+		}
 	}
 
 	if err = updateF(id); err != nil {
@@ -431,6 +437,45 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 	}
 
 	rc.RequestResponder.RespondWithOk(nil, nil)
+}
+
+func listWithId(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, f func(id string) ([]interface{}, error)) {
+	id, err := rc.GetIdFromRequest(idType)
+
+	if err != nil {
+		log := pfxlog.Logger()
+		logErr := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
+		log.WithField("property", response.IdPropertyName).Error(logErr)
+		rc.RequestResponder.RespondWithError(err)
+		return
+	}
+
+	results, err := f(id)
+
+	if err != nil {
+		if util.IsErrNotFoundErr(err) {
+			rc.RequestResponder.RespondWithNotFound()
+			return
+		}
+
+		log := pfxlog.Logger()
+		log.WithField("id", id).WithError(err).Error("could not load associations by id")
+		rc.RequestResponder.RespondWithError(err)
+		return
+	}
+
+	count := len(results)
+
+	meta := &response.Meta{
+		"pagination": map[string]interface{}{
+			"limit":      count,
+			"offset":     0,
+			"totalCount": count,
+		},
+		"filterableFields": []string{},
+	}
+
+	rc.RequestResponder.RespondWithOk(results, meta)
 }
 
 type ListAssocF func(string, func(model.BaseModelEntity)) error

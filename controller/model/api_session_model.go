@@ -34,7 +34,7 @@ type ApiSession struct {
 	ConfigTypes map[string]struct{}
 }
 
-func (entity *ApiSession) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, validation.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
@@ -49,15 +49,15 @@ func (entity *ApiSession) ToBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) ToBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForCreate(tx, handler)
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *ApiSession) ToBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.ToBoltEntityForUpdate(tx, handler)
+func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *ApiSession) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
 	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSession", reflect.TypeOf(boltEntity))
@@ -71,7 +71,7 @@ func (entity *ApiSession) FillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 		return err
 	}
 	modelIdentity := &Identity{}
-	if err := modelIdentity.FillFrom(handler, tx, boltIdentity); err != nil {
+	if err := modelIdentity.fillFrom(handler, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity

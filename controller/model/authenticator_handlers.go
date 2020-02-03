@@ -46,7 +46,7 @@ func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
 	return handler
 }
 
-func (handler AuthenticatorHandler) NewModelEntity() BaseModelEntity {
+func (handler AuthenticatorHandler) newModelEntity() boltEntitySink {
 	return &Authenticator{}
 }
 

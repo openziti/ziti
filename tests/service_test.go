@@ -21,6 +21,7 @@ package tests
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"testing"
 	"time"
 
@@ -142,10 +143,23 @@ func Test_Services(t *testing.T) {
 		ctx.requireNotFoundError(nonAdminuserSession.query("services/" + uuid.New().String()))
 	})
 
+	t.Run("query non-visible service as non-admin should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		service := ctx.AdminSession.requireNewService(nil, nil)
+		query := url.QueryEscape(fmt.Sprintf(`id in ["%v"]`, service.id))
+		body := nonAdminuserSession.requireQuery("services?filter=" + query)
+		data := body.S("data")
+		children, err := data.Children()
+		ctx.req.True(data == nil || data.Data() == nil || (err == nil && len(children) == 0))
+	})
+
+	ctx.enabledJsonLogging = true
 	t.Run("lookup non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
-		ctx.requireNotFoundError(nonAdminuserSession.query("services/" + service.id))
+		httpStatus, body := nonAdminuserSession.query("services/" + service.id)
+		ctx.logJson(body)
+		ctx.requireNotFoundError(httpStatus, body)
 	})
 
 	t.Run("update service should pass", func(t *testing.T) {
@@ -201,8 +215,9 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	configType1 := ctx.AdminSession.requireCreateNewConfigType()
-	configType2 := ctx.AdminSession.requireCreateNewConfigType()
+	configType1 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("ONE")
+	configType2 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("TWO")
+	configType3 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("THREE")
 
 	config1 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
 		"hostname": "foo",
@@ -216,6 +231,14 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	config3 := ctx.AdminSession.requireCreateNewConfig(configType1.name, map[string]interface{}{
 		"hostname": "bar",
 		"port":     float64(80),
+	})
+
+	config4 := ctx.AdminSession.requireCreateNewConfig(configType2.name, map[string]interface{}{
+		"dialAddress": "udp:external:5432",
+	})
+
+	config5 := ctx.AdminSession.requireCreateNewConfig(configType3.name, map[string]interface{}{
+		"froboz": "schnapplecakes",
 	})
 
 	service1 := ctx.AdminSession.requireNewService(nil, nil)
@@ -270,7 +293,68 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	service4V.configs[configType2.name] = config2
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
+	}
+
+	configs1 := []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.name, Config: config5.name}}
+	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs1...)
+	configs1 = []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.id, Config: config5.id}}
+	sort.Sort(sortableServiceConfigSlice(configs1))
+	currentConfigs := ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
+	ctx.req.Equal(configs1, currentConfigs)
+
+	configs2 := []serviceConfig{{Service: service1.id, Config: config5.id}, {Service: service3.id, Config: config1.id}, {Service: service3.name, Config: config4.name}}
+	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs2...)
+	checkConfigs := []serviceConfig{
+		{Service: service4.id, Config: config1.id},
+		{Service: service4.id, Config: config5.id},
+		{Service: service1.id, Config: config5.id},
+		{Service: service3.id, Config: config1.id},
+		{Service: service3.id, Config: config4.id},
+	}
+	sort.Sort(sortableServiceConfigSlice(checkConfigs))
+	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
+	ctx.req.Equal(checkConfigs, currentConfigs)
+
+	service1V.configs[configType3.name] = config5
+	service3V.configs[configType1.name] = config1
+	service3V.configs[configType2.name] = config4
+	service4V.configs[configType1.name] = config1
+	service4V.configs[configType3.name] = config5
+	for _, service := range services {
+		session.validateEntityWithQuery(service)
 		service.configs = map[string]*config{}
+	}
+
+	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{Service: service1.id, Config: config5.id}, serviceConfig{Service: service3.id, Config: config1.id}, )
+	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
+	checkConfigs = []serviceConfig{
+		{Service: service4.id, Config: config1.id},
+		{Service: service4.id, Config: config5.id},
+		{Service: service3.id, Config: config4.id},
+	}
+	sort.Sort(sortableServiceConfigSlice(checkConfigs))
+	ctx.req.Equal(checkConfigs, currentConfigs)
+
+	service2V.configs[configType1.name] = config1
+	service3V.configs[configType2.name] = config4
+	service4V.configs[configType1.name] = config1
+	service4V.configs[configType2.name] = config2
+	service4V.configs[configType3.name] = config5
+	for _, service := range services {
+		session.validateEntityWithQuery(service)
+		service.configs = map[string]*config{}
+	}
+
+	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId)
+	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
+	ctx.req.Equal(0, len(currentConfigs))
+
+	service2V.configs[configType1.name] = config1
+	service3V.configs[configType2.name] = config2
+	service4V.configs[configType1.name] = config3
+	service4V.configs[configType2.name] = config2
+	for _, service := range services {
+		session.validateEntityWithQuery(service)
 	}
 }
 

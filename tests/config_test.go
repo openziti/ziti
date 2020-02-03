@@ -236,7 +236,6 @@ func Test_Configs(t *testing.T) {
 		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + config.id))
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("create with schema should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
