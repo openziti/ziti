@@ -105,7 +105,7 @@ func NewFactory() *Factory {
 }
 
 // CreateListener creates a new Edge Xgress listener
-func (factory *Factory) CreateListener(optionsData xgress.XgressOptionsData) (xgress.XgressListener, error) {
+func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	if !factory.enabled {
 		return nil, errors.New("edge listener enabled but required configuration section [edge] is missing")
 	}
@@ -119,7 +119,7 @@ func (factory *Factory) CreateListener(optionsData xgress.XgressOptionsData) (xg
 }
 
 // CreateDialer creates a new Edge Xgress dialer
-func (factory *Factory) CreateDialer(optionsData xgress.XgressOptionsData) (xgress.XgressDialer, error) {
+func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	if !factory.enabled {
 		return nil, errors.New("edge listener enabled but required configuration section [edge] is missing")
 	}
@@ -137,7 +137,7 @@ type Options struct {
 	MaxOutOfOrderMsgs uint32
 }
 
-func (options *Options) load(data xgress.XgressOptionsData) error {
+func (options *Options) load(data xgress.OptionsData) error {
 	options.Options = *xgress.LoadOptions(data)
 	options.MaxOutOfOrderMsgs = DefaultMaxOutOfOrderMsgs
 
