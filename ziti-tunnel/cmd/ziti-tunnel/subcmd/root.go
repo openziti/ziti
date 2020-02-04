@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel/dns"
+	"github.com/netfoundry/ziti-edge/tunnel/entities"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
@@ -88,6 +89,10 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	zitiCfg, err := config.NewFromFile(identityJson)
 	if err != nil {
 		log.Fatalf("failed to load ziti configuration from %s: %v", identityJson, err)
+	}
+	zitiCfg.ConfigTypes = []string{
+		entities.ClientConfigV1,
+		entities.ServerConfigV1,
 	}
 	rootPrivateContext := ziti.NewContextWithConfig(zitiCfg)
 	if err != nil {

@@ -18,22 +18,21 @@ package edge_controller
 
 import (
 	"fmt"
-	"io"
-	"strconv"
-
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"io"
 )
 
 type createServiceOptions struct {
 	commonOptions
-	hostedService   bool
-	tags            map[string]string
-	edgeRouterRoles []string
-	roleAttributes  []string
+	hostedService  bool
+	tags           map[string]string
+	roleAttributes []string
+	configs        []string
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -50,10 +49,10 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service <name> <dns host> <dns port> [egress node]? [egress endpoint uri]?",
+		Use:   "service <name> [egress node]? [egress endpoint uri]?",
 		Short: "creates a service managed by the Ziti Edge Controller",
 		Long:  "creates a service managed by the Ziti Edge Controller",
-		Args:  cobra.MinimumNArgs(3),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -68,32 +67,28 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.hostedService, "hosted", false, "Indicates that this is a hosted service")
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new service")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
+	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 
 	return cmd
 }
 
 // runCreateNativeService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	var port int
-	if port, err = strconv.Atoi(o.Args[2]); err != nil {
-		return err
-	}
-
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, o.Args[1], "dns", "hostname")
-	setJSONValue(entityData, port, "dns", "port")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	setJSONValue(entityData, o.configs, "configs")
 
-	if o.hostedService {
+	if o.hostedService || len(o.Args) == 1 {
 		setJSONValue(entityData, "unclaimed", "egressRouter")
 		setJSONValue(entityData, "hosted:unclaimed", "endpointAddress")
 	} else {
-		setJSONValue(entityData, o.Args[3], "egressRouter")
-		setJSONValue(entityData, o.Args[4], "endpointAddress")
+		if len(o.Args) < 3 {
+			return errors.Errorf("if --hosted is not set, you must provide egress router and endpoint address")
+		}
+		setJSONValue(entityData, o.Args[1], "egressRouter")
+		setJSONValue(entityData, o.Args[2], "endpointAddress")
 	}
 
 	setJSONValue(entityData, o.tags, "tags")

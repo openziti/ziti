@@ -389,7 +389,7 @@ func UnTargz(tarball, target string, onlyFiles []string) error {
 }
 
 // EdgeControllerLogin will authenticate to the given Edge Controller
-func EdgeControllerLogin(url string, cert string, authentication string) (*gabs.Container, error) {
+func EdgeControllerLogin(url string, cert string, authentication string, out io.Writer, logJSON bool) (*gabs.Container, error) {
 	client := newClient()
 
 	if cert != "" {
@@ -409,6 +409,19 @@ func EdgeControllerLogin(url string, cert string, authentication string) (*gabs.
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), resp.String())
+	}
+
+	if logJSON {
+		var prettyJSON bytes.Buffer
+		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
+			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
+				panic(err)
+			}
+		} else {
+			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())

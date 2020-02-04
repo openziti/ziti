@@ -1,5 +1,3 @@
- 
-
 This page discusses the changes that you need to be aware of when migrating your Ziti deployment from version 0.7.x to version 0.8.x
 
 # Theme 

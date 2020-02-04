@@ -17,11 +17,11 @@
 package edge_controller
 
 import (
+	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"fmt"
-	"github.com/Jeffail/gabs"
 	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
