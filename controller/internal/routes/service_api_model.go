@@ -33,7 +33,6 @@ type ServiceApiCreate struct {
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
-	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
 	Configs         []string               `json:"configs"`
 }
@@ -43,7 +42,6 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 	result.Name = stringz.OrEmpty(i.Name)
 	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
 	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
-	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
 	result.Configs = i.Configs
@@ -55,7 +53,6 @@ type ServiceApiUpdate struct {
 	Tags            map[string]interface{} `json:"tags"`
 	EgressRouter    *string                `json:"egressRouter"`
 	EndpointAddress *string                `json:"endpointAddress"`
-	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
 	RoleAttributes  []string               `json:"roleAttributes"`
 	Configs         []string               `json:"configs"`
 }
@@ -67,7 +64,6 @@ func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
 	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
 	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
 	result.Tags = i.Tags
-	result.EdgeRouterRoles = i.EdgeRouterRoles
 	result.RoleAttributes = i.RoleAttributes
 	result.Configs = i.Configs
 	return result
@@ -95,7 +91,6 @@ type ServiceApiList struct {
 	Name            *string                           `json:"name"`
 	EndpointAddress *string                           `json:"endpointAddress"`
 	EgressRouter    *string                           `json:"egressRouter"`
-	EdgeRouterRoles []string                          `json:"edgeRouterRoles"`
 	RoleAttributes  []string                          `json:"roleAttributes"`
 	Permissions     []string                          `json:"permissions"`
 	Config          map[string]map[string]interface{} `json:"config"`
@@ -176,7 +171,6 @@ func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Ser
 		EgressRouter:    &i.EgressRouter,
 		RoleAttributes:  i.RoleAttributes,
 		Permissions:     i.Permissions,
-		EdgeRouterRoles: i.EdgeRouterRoles,
 		Config:          i.Config,
 	}
 	ret.PopulateLinks()

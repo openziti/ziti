@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"sort"
 
@@ -13,9 +12,7 @@ import (
 )
 
 const (
-	FieldServicePolicyType          = "type"
-	FieldServicePolicyIdentityRoles = "identityRoles"
-	FieldServicePolicyServiceRoles  = "serviceRoles"
+	FieldServicePolicyType = "type"
 
 	PolicyTypeDialName = "Dial"
 	PolicyTypeBindName = "Bind"
@@ -46,8 +43,8 @@ func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.PolicyType = bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeInvalid)
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
-	entity.IdentityRoles = bucket.GetStringList(FieldServicePolicyIdentityRoles)
-	entity.ServiceRoles = bucket.GetStringList(FieldServicePolicyServiceRoles)
+	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
+	entity.ServiceRoles = bucket.GetStringList(FieldServiceRoles)
 }
 
 func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
@@ -55,20 +52,16 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 		entity.Semantic = SemanticAllOf
 	}
 
+	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
+	if err := validateRolesAndIds(FieldServiceRoles, entity.ServiceRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
 	if !stringz.Contains(validSemantics, entity.Semantic) {
 		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
-		return
-	}
-
-	if len(entity.IdentityRoles) > 1 && stringz.Contains(entity.IdentityRoles, AllRole) {
-		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
-			FieldServicePolicyIdentityRoles, entity.IdentityRoles))
-		return
-	}
-
-	if len(entity.ServiceRoles) > 1 && stringz.Contains(entity.ServiceRoles, AllRole) {
-		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
-			FieldServicePolicyServiceRoles, entity.ServiceRoles))
 		return
 	}
 
@@ -81,11 +74,11 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	sort.Strings(entity.ServiceRoles)
 	sort.Strings(entity.IdentityRoles)
 
-	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldServicePolicyIdentityRoles, entity.IdentityRoles)
+	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
 	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
 		servicePolicyStore.identityRolesUpdated(ctx, entity)
 	}
-	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServicePolicyServiceRoles, entity.ServiceRoles)
+	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
 	if valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
 		servicePolicyStore.serviceRolesUpdated(ctx, entity)
 	}
@@ -133,8 +126,8 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
-	store.symbolIdentityRoles = store.AddSetSymbol(FieldServicePolicyIdentityRoles, ast.NodeTypeString)
-	store.symbolServiceRoles = store.AddSetSymbol(FieldServicePolicyServiceRoles, ast.NodeTypeString)
+	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
+	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
 }

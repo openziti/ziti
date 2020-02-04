@@ -144,15 +144,27 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 }
 
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
-	edgeRouterPolicy := &EdgeRouterPolicy{
+	policy := &EdgeRouterPolicy{
 		Name:            uuid.New().String(),
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
 	var err error
-	edgeRouterPolicy.Id, err = ctx.handlers.EdgeRouterPolicy.Create(edgeRouterPolicy)
+	policy.Id, err = ctx.handlers.EdgeRouterPolicy.Create(policy)
 	ctx.NoError(err)
-	return edgeRouterPolicy
+	return policy
+}
+
+func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeRouterRoles []string) *ServiceEdgeRouterPolicy {
+	policy := &ServiceEdgeRouterPolicy{
+		Name:            uuid.New().String(),
+		ServiceRoles:    serviceRoles,
+		EdgeRouterRoles: edgeRouterRoles,
+	}
+	var err error
+	policy.Id, err = ctx.handlers.ServiceEdgeRouterPolicy.Create(policy)
+	ctx.NoError(err)
+	return policy
 }
 
 func ss(vals ...string) []string {

@@ -17,33 +17,25 @@
 package persistence
 
 import (
-	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/validation"
-	"reflect"
-	"sort"
-
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
 type EdgeService struct {
 	network.Service
 	EdgeEntityFields
-	Name            string
-	RoleAttributes  []string
-	EdgeRouterRoles []string
-	Configs         []string
+	Name           string
+	RoleAttributes []string
+	Configs        []string
 }
 
 const (
-	FieldServiceClusters        = "clusters"
-	FieldServiceEdgeRouterRoles = "edgeRouterRoles"
+	FieldServiceClusters = "clusters"
 )
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
@@ -61,17 +53,10 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
-	entity.EdgeRouterRoles = bucket.GetStringList(FieldServiceEdgeRouterRoles)
 	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
 }
 
 func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
-	if len(entity.EdgeRouterRoles) > 1 && stringz.Contains(entity.EdgeRouterRoles, AllRole) {
-		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
-			FieldServiceEdgeRouterRoles, entity.EdgeRouterRoles))
-		return
-	}
-
 	entity.Service.SetValues(ctx.GetParentContext())
 
 	entity.SetBaseValues(ctx)
@@ -83,20 +68,12 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	}
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
 
-	sort.Strings(entity.EdgeRouterRoles)
-	oldRoles, valueSet := ctx.GetAndSetStringList(FieldServiceEdgeRouterRoles, entity.EdgeRouterRoles)
-
-	if valueSet && !stringz.EqualSlices(oldRoles, entity.EdgeRouterRoles) {
-		store.edgeRouterRolesChanged(ctx, entity.Id, entity.EdgeRouterRoles)
-	}
-
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any all roles
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
-
-	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
 }
 
 func (entity *EdgeService) GetEntityType() string {
@@ -130,12 +107,9 @@ type edgeServiceStoreImpl struct {
 	symbolClusters      boltz.EntitySetSymbol
 	symbolSessions      boltz.EntitySetSymbol
 
-	symbolEdgeRouters      boltz.EntitySetSymbol
-	symbolEdgeRoutersRoles boltz.EntitySetSymbol
-	symbolServicePolicies  boltz.EntitySetSymbol
-	symbolConfigs          boltz.EntitySetSymbol
-
-	edgeRouterCollection boltz.LinkCollection
+	symbolServicePolicies           boltz.EntitySetSymbol
+	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
+	symbolConfigs                   boltz.EntitySetSymbol
 }
 
 func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.BaseEntity {
@@ -151,36 +125,35 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 
 	store.symbolClusters = store.AddFkSetSymbol(FieldServiceClusters, store.stores.cluster)
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
-	store.symbolEdgeRoutersRoles = store.AddSetSymbol(FieldServiceEdgeRouterRoles, ast.NodeTypeString)
-	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)
+	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
 
-func (store *edgeServiceStoreImpl) edgeRouterRolesChanged(ctx *boltz.PersistContext, entityId string, roles []string) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "edgeRouterRoles", roles, SemanticAllOf, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
-	if !ctx.Bucket.SetError(err) {
-		ctx.Bucket.SetError(store.edgeRouterCollection.SetLinks(ctx.Bucket.Tx(), entityId, roleIds))
-	}
-}
-
 func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	policyStore := store.stores.servicePolicy
-	rolesSymbol := policyStore.symbolServiceRoles
-	linkCollection := policyStore.serviceCollection
-	semanticSymbol := policyStore.symbolSemantic
+	// Recalculate service policy links
+	rolesSymbol := store.stores.servicePolicy.symbolServiceRoles
+	linkCollection := store.stores.servicePolicy.serviceCollection
+	semanticSymbol := store.stores.servicePolicy.symbolSemantic
+	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
+
+	// Recalculate service edge router policy links
+	rolesSymbol = store.stores.serviceEdgeRouterPolicy.symbolServiceRoles
+	linkCollection = store.stores.serviceEdgeRouterPolicy.serviceCollection
+	semanticSymbol = store.stores.serviceEdgeRouterPolicy.symbolSemantic
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
 	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolServiceRoles, entity, oldName)
+	store.updateEntityNameReferences(bucket, store.stores.serviceEdgeRouterPolicy.symbolServiceRoles, entity, oldName)
 }
 
 func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolClusters, store.stores.cluster.symbolServices)
-	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
+	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolServices)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolServices)
 	store.AddLinkCollection(store.symbolConfigs, store.stores.config.symbolServices)
 
@@ -236,6 +209,11 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from ServiceRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolServiceRoles); err != nil {
+			return err
+		}
+
+		// Remove entity from ServiceRoles in service edge router policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolServiceRoles); err != nil {
 			return err
 		}
 	}

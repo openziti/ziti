@@ -37,10 +37,9 @@ var test = `
 func Test_getFields(t *testing.T) {
 	assert := require.New(t)
 	test2 := ServiceApiCreate{
-		EdgeRouterRoles: []string{"#foo", "@2"},
-		RoleAttributes:  []string{"foo", "bar"},
-		Name:            strPtr("Foo"),
-		Configs:         []string{"ssh-config", "ssh-server-config"},
+		RoleAttributes: []string{"foo", "bar"},
+		Name:           strPtr("Foo"),
+		Configs:        []string{"ssh-config", "ssh-server-config"},
 		Tags: map[string]interface{}{
 			"foo": "bar",
 			"nested": map[string]interface{}{
@@ -76,7 +75,6 @@ func Test_getFields(t *testing.T) {
 			body: test2Bytes,
 			want: JsonFields{
 				"name":            true,
-				"edgeRouterRoles": true,
 				"roleAttributes":  true,
 				"egressRouter":    false,
 				"endpointAddress": true,

@@ -324,7 +324,7 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	return createdAt
 }
 
-func (ctx *TestContext) newTestService(roleAttributes, configs []string) *service {
+func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 	return &service{
 		name:            uuid.New().String(),
 		egressRouter:    uuid.New().String(),

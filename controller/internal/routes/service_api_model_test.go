@@ -25,7 +25,6 @@ import (
 
 func TestServiceApiCreate_ToModelService(t *testing.T) {
 	type fields struct {
-		EdgeRouterRoles []string
 		Name            *string
 		RoleAttributes  []string
 		Tags            map[string]interface{}
@@ -39,7 +38,6 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "test all fields", fields: fields{
-			EdgeRouterRoles: []string{"one", "two"},
 			Name:            strPtr("bar"),
 			RoleAttributes:  []string{"id1", "id2"},
 			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
@@ -52,14 +50,12 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 			Name:            "bar",
 			EgressRouter:    "001",
 			EndpointAddress: "tcp:localhost:8908",
-			EdgeRouterRoles: []string{"one", "two"},
 			RoleAttributes:  []string{"id1", "id2"},
 		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiCreate{
-				EdgeRouterRoles: tt.fields.EdgeRouterRoles,
 				Name:            tt.fields.Name,
 				RoleAttributes:  tt.fields.RoleAttributes,
 				Tags:            tt.fields.Tags,
@@ -119,9 +115,5 @@ func TestServiceApiUpdate_ToModelService(t *testing.T) {
 }
 
 func strPtr(val string) *string {
-	return &val
-}
-
-func uint16Ptr(val uint16) *uint16 {
 	return &val
 }

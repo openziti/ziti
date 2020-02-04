@@ -56,7 +56,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'identityRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
 	identityTypeId := ctx.getIdentityTypeId()
-	identity := NewIdentity(uuid.New().String(), identityTypeId)
+	identity := newIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Id), entityRef(invalidId)}
@@ -115,7 +115,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	// test identity roles
 	policy := newServicePolicy(uuid.New().String())
 	identityTypeId := ctx.getIdentityTypeId()
-	identity := NewIdentity(uuid.New().String(), identityTypeId)
+	identity := newIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Id)}
@@ -125,7 +125,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	ctx.requireReload(policy)
 	ctx.Equal(0, len(policy.IdentityRoles), "identity id should have been removed from identity roles")
 
-	identity = NewIdentity(uuid.New().String(), identityTypeId)
+	identity = newIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Name)}
@@ -187,7 +187,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 
 	var identities []*Identity
 	for i := 0; i < 5; i++ {
-		identity := NewIdentity(uuid.New().String(), identityTypeId)
+		identity := newIdentity(uuid.New().String(), identityTypeId)
 		ctx.requireCreate(identity)
 		identities = append(identities, identity)
 	}
@@ -237,12 +237,12 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	}
 
 	// no roles
-	identity := NewIdentity(uuid.New().String(), identityTypeId)
+	identity := newIdentity(uuid.New().String(), identityTypeId)
 	ctx.requireCreate(identity)
 	identities = append(identities, identity)
 
 	stringz.Permutations(identityRolesAttrs, func(roles []string) {
-		identity := NewIdentity(uuid.New().String(), identityTypeId, roles...)
+		identity := newIdentity(uuid.New().String(), identityTypeId, roles...)
 		ctx.requireCreate(identity)
 		identities = append(identities, identity)
 	})
@@ -273,7 +273,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	services = nil
 
 	stringz.Permutations(identityRolesAttrs, func(roles []string) {
-		identity := NewIdentity(uuid.New().String(), identityTypeId)
+		identity := newIdentity(uuid.New().String(), identityTypeId)
 		ctx.requireCreate(identity)
 		identity.RoleAttributes = roles
 		ctx.requireUpdate(identity)

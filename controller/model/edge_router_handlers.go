@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strconv"
@@ -156,11 +155,7 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 		return nil, errors.Errorf("no service with id %v found", serviceId)
 	}
 
-	query := fmt.Sprintf(`anyOf(edgeRouterPolicies.identities) = "%v"`, identityId)
-
-	if len(service.EdgeRouterRoles) > 0 && !stringz.Contains(service.EdgeRouterRoles, "all") {
-		query += fmt.Sprintf(` and anyOf(services) = "%v"`, service.Id)
-	}
+	query := fmt.Sprintf(`anyOf(edgeRouterPolicies.identities) = "%v" and anyOf(serviceEdgeRouterPolicies.services) = "%v"`, identityId, service.Id)
 
 	if limit != nil {
 		query += " limit " + strconv.Itoa(*limit)
@@ -173,8 +168,8 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
+func (handler *EdgeRouterHandler) CollectServiceEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
+	return handler.collectAssociated(id, persistence.EntityTypeServiceEdgeRouterPolicies, handler.env.GetHandlers().ServiceEdgeRouterPolicy, collector)
 }
 
 func (handler *EdgeRouterHandler) CollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {

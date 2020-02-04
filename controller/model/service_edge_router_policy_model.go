@@ -24,41 +24,41 @@ import (
 	"reflect"
 )
 
-type EdgeRouterPolicy struct {
+type ServiceEdgeRouterPolicy struct {
 	BaseModelEntityImpl
 	Name            string
 	Semantic        string
-	IdentityRoles   []string
+	ServiceRoles    []string
 	EdgeRouterRoles []string
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
-	return &persistence.EdgeRouterPolicy{
+func (entity *ServiceEdgeRouterPolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+	return &persistence.ServiceEdgeRouterPolicy{
 		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
 		Semantic:           entity.Semantic,
-		IdentityRoles:      entity.IdentityRoles,
+		ServiceRoles:       entity.ServiceRoles,
 		EdgeRouterRoles:    entity.EdgeRouterRoles,
 	}, nil
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ServiceEdgeRouterPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ServiceEdgeRouterPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *EdgeRouterPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
-	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
+func (entity *ServiceEdgeRouterPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+	boltServiceEdgeRouterPolicy, ok := boltEntity.(*persistence.ServiceEdgeRouterPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltEdgeRouterPolicy)
-	entity.Name = boltEdgeRouterPolicy.Name
-	entity.Semantic = boltEdgeRouterPolicy.Semantic
-	entity.EdgeRouterRoles = boltEdgeRouterPolicy.EdgeRouterRoles
-	entity.IdentityRoles = boltEdgeRouterPolicy.IdentityRoles
+	entity.fillCommon(boltServiceEdgeRouterPolicy)
+	entity.Name = boltServiceEdgeRouterPolicy.Name
+	entity.Semantic = boltServiceEdgeRouterPolicy.Semantic
+	entity.EdgeRouterRoles = boltServiceEdgeRouterPolicy.EdgeRouterRoles
+	entity.ServiceRoles = boltServiceEdgeRouterPolicy.ServiceRoles
 	return nil
 }

@@ -47,11 +47,11 @@ func (ir *EdgeRouterRouter) Register(ae *env.AppEnv) {
 	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 	registerCrudRouter(ae, ae.RootRouter, ir.BasePathLegacy, ir, permissions.IsAdmin())
 
-	servicesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
-	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions.IsAdmin())
+	serviceEdgeRouterPoliciesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
+	serviceEdgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListServiceEdgeRouterPolicies, permissions.IsAdmin())
 
-	sr.HandleFunc(servicesUrl, servicesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(servicesUrl+"/", servicesListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(serviceEdgeRouterPoliciesUrl, serviceEdgeRouterPoliciesListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(serviceEdgeRouterPoliciesUrl+"/", serviceEdgeRouterPoliciesListHandler).Methods(http.MethodGet)
 
 	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
 	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions.IsAdmin())
@@ -94,8 +94,8 @@ func (ir *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (ir *EdgeRouterRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectServices, MapServiceToApiEntity)
+func (ir *EdgeRouterRouter) ListServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectServiceEdgeRouterPolicies, MapServiceEdgeRouterPolicyToApiEntity)
 }
 
 func (ir *EdgeRouterRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {

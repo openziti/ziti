@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
@@ -9,11 +8,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
-)
-
-const (
-	FieldEdgeRouterPolicyEdgeRouterRoles = "edgeRouterRoles"
-	FieldEdgeRouterPolicyIdentityRoles   = "identityRoles"
 )
 
 func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
@@ -35,8 +29,8 @@ func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.Type
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
-	entity.IdentityRoles = bucket.GetStringList(FieldEdgeRouterPolicyIdentityRoles)
-	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterPolicyEdgeRouterRoles)
+	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
+	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterRoles)
 }
 
 func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
@@ -44,20 +38,16 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 		entity.Semantic = SemanticAllOf
 	}
 
+	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
+	if err := validateRolesAndIds(FieldEdgeRouterRoles, entity.EdgeRouterRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
 	if !stringz.Contains(validSemantics, entity.Semantic) {
 		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
-		return
-	}
-
-	if len(entity.IdentityRoles) > 1 && stringz.Contains(entity.IdentityRoles, AllRole) {
-		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
-			FieldEdgeRouterPolicyIdentityRoles, entity.IdentityRoles))
-		return
-	}
-
-	if len(entity.EdgeRouterRoles) > 1 && stringz.Contains(entity.EdgeRouterRoles, AllRole) {
-		ctx.Bucket.SetError(validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole),
-			FieldEdgeRouterPolicyEdgeRouterRoles, entity.EdgeRouterRoles))
 		return
 	}
 
@@ -70,11 +60,11 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 	sort.Strings(entity.EdgeRouterRoles)
 	sort.Strings(entity.IdentityRoles)
 
-	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterPolicyIdentityRoles, entity.IdentityRoles)
+	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
 	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
 		edgeRouterPolicyStore.identityRolesUpdated(ctx, entity)
 	}
-	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterPolicyEdgeRouterRoles, entity.EdgeRouterRoles)
+	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterRoles, entity.EdgeRouterRoles)
 	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
 		edgeRouterPolicyStore.edgeRouterRolesUpdated(ctx, entity)
 	}
@@ -121,8 +111,8 @@ func (store *edgeRouterPolicyStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
-	store.symbolIdentityRoles = store.AddSetSymbol(FieldEdgeRouterPolicyIdentityRoles, ast.NodeTypeString)
-	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterPolicyEdgeRouterRoles, ast.NodeTypeString)
+	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
+	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeService)
 }
