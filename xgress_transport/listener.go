@@ -30,7 +30,7 @@ type listener struct {
 	options *xgress.Options
 }
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.XgressListener {
+func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {
 	return &listener{
 		id:      id,
 		ctrl:    ctrl,

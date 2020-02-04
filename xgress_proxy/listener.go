@@ -24,7 +24,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/transport"
 )
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, service string) xgress.XgressListener {
+func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, service string) xgress.Listener {
 	return &listener{
 		id:      id,
 		ctrl:    ctrl,

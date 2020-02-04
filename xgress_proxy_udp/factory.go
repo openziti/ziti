@@ -21,11 +21,11 @@ import (
 	"github.com/netfoundry/ziti-fabric/xgress"
 )
 
-func NewFactory(ctrl xgress.CtrlChannel) xgress.XgressFactory {
+func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
 	return &factory{ctrl: ctrl}
 }
 
-func (f *factory) CreateListener(optionsData xgress.XgressOptionsData) (xgress.XgressListener, error) {
+func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options := xgress.LoadOptions(optionsData)
 	service := ""
 	if value, found := optionsData["service"]; found {
@@ -36,7 +36,7 @@ func (f *factory) CreateListener(optionsData xgress.XgressOptionsData) (xgress.X
 	return newListener(service, f.ctrl, options), nil
 }
 
-func (f *factory) CreateDialer(_ xgress.XgressOptionsData) (xgress.XgressDialer, error) {
+func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

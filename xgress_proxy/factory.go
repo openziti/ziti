@@ -22,11 +22,11 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.XgressFactory {
+func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
 	return &factory{id: id, ctrl: ctrl}
 }
 
-func (factory *factory) CreateListener(optionsData xgress.XgressOptionsData) (xgress.XgressListener, error) {
+func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options := xgress.LoadOptions(optionsData)
 	service := ""
 	if value, found := optionsData["service"]; found {
@@ -37,7 +37,7 @@ func (factory *factory) CreateListener(optionsData xgress.XgressOptionsData) (xg
 	return newListener(factory.id, factory.ctrl, options, service), nil
 }
 
-func (factory *factory) CreateDialer(optionsData xgress.XgressOptionsData) (xgress.XgressDialer, error) {
+func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

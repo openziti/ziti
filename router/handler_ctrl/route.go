@@ -31,11 +31,11 @@ import (
 type routeHandler struct {
 	id        *identity.TokenId
 	ctrl      xgress.CtrlChannel
-	dialerCfg map[string]xgress.XgressOptionsData
+	dialerCfg map[string]xgress.OptionsData
 	forwarder *forwarder.Forwarder
 }
 
-func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.XgressOptionsData, forwarder *forwarder.Forwarder) *routeHandler {
+func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder) *routeHandler {
 	return &routeHandler{
 		id:        id,
 		ctrl:      ctrl,

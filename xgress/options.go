@@ -27,7 +27,7 @@ type Options struct {
 	Drop1InN       int32
 }
 
-func LoadOptions(data XgressOptionsData) *Options {
+func LoadOptions(data OptionsData) *Options {
 	options := DefaultOptions()
 
 	if value, found := data["options"]; found {
