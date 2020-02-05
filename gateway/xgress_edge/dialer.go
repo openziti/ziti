@@ -31,7 +31,7 @@ type dialer struct {
 	options *Options
 }
 
-func newDialer(factory *Factory, options *Options) xgress.XgressDialer {
+func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	txd := &dialer{
 		factory: factory,
 		options: options,

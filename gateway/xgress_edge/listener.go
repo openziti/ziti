@@ -39,7 +39,7 @@ type listener struct {
 }
 
 // newListener creates a new xgress edge listener
-func newListener(id *identity.TokenId, factory *Factory, options *Options) xgress.XgressListener {
+func newListener(id *identity.TokenId, factory *Factory, options *Options) xgress.Listener {
 	return &listener{
 		id:      id,
 		factory: factory,
