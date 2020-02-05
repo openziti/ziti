@@ -1,40 +1,99 @@
+# Config Format Version
+#
+# Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+# expected by the controller will be incremented. When the controller tries to load a configuration file with
+# an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+# documentation.
+#
 v: 3
 
-
-#trace:
-#  path:                 ctrl.trace
-
-#profile:
-#  memory:
-#    path: ctrl.memprof
-
-db:                     /tmp/devctrl.db
-
+# Identity
+#
+# Define all of the paths to the certificates and key required to establish the controller's identity.
+#
 identity:
   cert:                 etc/ca/intermediate/certs/ctrl-client.cert.pem
   server_cert:          etc/ca/intermediate/certs/ctrl-server.cert.pem
   key:                  etc/ca/intermediate/private/ctrl.key.pem
   ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
+
+# Network Configuration
+#
+# Configure how the controller will establish and manage the overlay network, and routing operations on top of
+# the network.
+#
+# `cycleSeconds` defines the period that the controller re-evaluates the performance of all of the sessions
+# running on the network.
+#
+# `smart.rerouteFraction` defines the fractional upper limit of underperforming sessions that are candidates
+# to be re-routed. If smart routing detects 100 sessions that are underperforming, and `smart.rerouteFraction`
+# is set to `0.02`, then the upper limit of sessions that will be re-routed in this `cycleSeconds` period will
+# be limited to 2 (2% of 100).
+#
+# `smart.rerouteCap` defines the hard upper limit of underperforming sessions that are candidates to be re-routed.
+# If smart routing detects 100 sessions that are underperforming, and `smart.rerouteCap` is set to `1`, and
+# `smart.rerouteFraction` is set to `0.02`, then the upper limit of sessions that will be re-routed in this 
+# `cycleSeconds` period will be limited to 1.
+#
 #network:
 #  cycleSeconds:         15
 #  smart:
 #    rerouteFraction:    0.02
 #    rerouteCap:         4
 
+# Database Location
+#
+# Define the path to where the controller's database will be stored.
+#
+db:                     /tmp/devctrl.db
+
+# Overlay Tracing
+#
+# Record message traces of all messages captured on any channel (`ctrl` or `mgmt`) in "dump" format to the
+# specified path. The `ziti-fabric trace dump` utility will convert this binary dump file into a human-readable
+# explanation of the messages that were sent and received by the controller.
+#
+#trace:
+#  path:                 ctrl.trace
+
+# Profiling
+#
+# Enable and configure memory and CPU profiling for the controller. See `go tool pprof` for information on how 
+# to work with this profile data.
+#
+# `profile.memory.intervalMs` defines the interval at which memory profiling snapshots will be recorded.
+#
+#profile:
+#  memory:
+#    path:                ctrl.memprof
+#    intervalMs:          15 
+#  cpu:
+#    path:                ctrl.cpuprof
+
+# Control Channel Configuration
+#
+# Define the listener for the control (`ctrl`) channel.
+# 
 ctrl:
   listener:             tls:127.0.0.1:6262
 
+# Management Channel Configuration
+#
+# Define the listener for the management (`mgmt`) channel.
+#
 mgmt:
   listener:             tls:127.0.0.1:10000
 
+# Metrics Configuration
+#
+# Configure any additional handlers for metrics data in the controller. In the current configuration, there is only
+# an `influxdb` handler, which will store metrics data as InfluxDB series.
+#
+# See `github.com/netfoundry/ziti-fabric/metrics` for more information on extending the controller with additional
+# metrics handlers.
+#
 #metrics:
 #  influxdb:
 #    url:                http://localhost:8086
 #    database:           ziti
-
-# xctrl_example
-#
-#example:
-#  delay:                5
-
