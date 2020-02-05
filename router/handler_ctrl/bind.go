@@ -28,7 +28,7 @@ import (
 
 type bindHandler struct {
 	id               *identity.TokenId
-	dialerCfg        map[string]xgress.XgressOptionsData
+	dialerCfg        map[string]xgress.OptionsData
 	linkOptions      *channel2.Options
 	forwarderOptions *forwarder.Options
 	ctrl             xgress.CtrlChannel
@@ -38,7 +38,7 @@ type bindHandler struct {
 }
 
 func NewBindHandler(id *identity.TokenId,
-	dialerCfg map[string]xgress.XgressOptionsData,
+	dialerCfg map[string]xgress.OptionsData,
 	linkOptions *channel2.Options,
 	forwarderOptions *forwarder.Options,
 	ctrl xgress.CtrlChannel,

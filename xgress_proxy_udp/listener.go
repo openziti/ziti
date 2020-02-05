@@ -147,7 +147,7 @@ func (l *listener) close() {
 	}
 }
 
-func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.XgressListener {
+func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {
 	return &listener{
 		service:   service,
 		ctrl:      ctrl,

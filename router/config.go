@@ -81,7 +81,7 @@ type Config struct {
 		Advertise transport.Address
 		Options   *channel2.Options
 	}
-	Dialers   map[string]xgress.XgressOptionsData
+	Dialers   map[string]xgress.OptionsData
 	Listeners []listenerBinding
 	src       map[interface{}]interface{}
 }
@@ -263,7 +263,7 @@ func LoadConfig(path string) (*Config, error) {
 					if value, found := submap["binding"]; found {
 						binding := value.(string)
 						if cfg.Dialers == nil {
-							cfg.Dialers = make(map[string]xgress.XgressOptionsData)
+							cfg.Dialers = make(map[string]xgress.OptionsData)
 						}
 						cfg.Dialers[binding] = submap
 					} else {
@@ -279,5 +279,5 @@ func LoadConfig(path string) (*Config, error) {
 
 type listenerBinding struct {
 	name    string
-	options xgress.XgressOptionsData
+	options xgress.OptionsData
 }

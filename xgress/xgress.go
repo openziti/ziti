@@ -34,20 +34,20 @@ const (
 
 type Address string
 
-type XgressListener interface {
+type Listener interface {
 	Listen(address string, bindHandler BindHandler) error
 }
 
-type XgressDialer interface {
+type Dialer interface {
 	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) error
 }
 
-type XgressFactory interface {
-	CreateListener(optionsData XgressOptionsData) (XgressListener, error)
-	CreateDialer(optionsData XgressOptionsData) (XgressDialer, error)
+type Factory interface {
+	CreateListener(optionsData OptionsData) (Listener, error)
+	CreateDialer(optionsData OptionsData) (Dialer, error)
 }
 
-type XgressOptionsData map[interface{}]interface{}
+type OptionsData map[interface{}]interface{}
 
 // The BindHandlers are invoked to install the appropriate handlers.
 //

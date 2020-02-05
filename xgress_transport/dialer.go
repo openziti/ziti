@@ -29,7 +29,7 @@ type dialer struct {
 	options *xgress.Options
 }
 
-func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.XgressDialer, error) {
+func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.Dialer, error) {
 	txd := &dialer{
 		id:      id,
 		ctrl:    ctrl,

@@ -21,20 +21,20 @@ import (
 )
 
 type registry struct {
-	factories map[string]XgressFactory
+	factories map[string]Factory
 }
 
-func NewXgressRegistry() *registry {
+func NewRegistry() *registry {
 	return &registry{
-		factories: make(map[string]XgressFactory),
+		factories: make(map[string]Factory),
 	}
 }
 
-func (registry *registry) Register(name string, factory XgressFactory) {
+func (registry *registry) Register(name string, factory Factory) {
 	registry.factories[name] = factory
 }
 
-func (registry *registry) Factory(name string) (XgressFactory, error) {
+func (registry *registry) Factory(name string) (Factory, error) {
 	if factory, found := registry.factories[name]; found {
 		return factory, nil
 	} else {
@@ -63,7 +63,7 @@ var globalRegistry *registry
 
 func GlobalRegistry() *registry {
 	if globalRegistry == nil {
-		globalRegistry = NewXgressRegistry()
+		globalRegistry = NewRegistry()
 	}
 	return globalRegistry
 }

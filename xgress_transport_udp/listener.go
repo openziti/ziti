@@ -157,7 +157,7 @@ func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Sessi
 	l.eventChan <- &sessionResponse{addr: session.Address(), response: response}
 }
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.XgressListener {
+func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {
 	return &listener{
 		id:        id,
 		ctrl:      ctrl,
