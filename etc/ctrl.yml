@@ -23,24 +23,28 @@ identity:
 # Configure how the controller will establish and manage the overlay network, and routing operations on top of
 # the network.
 #
-# `cycleSeconds` defines the period that the controller re-evaluates the performance of all of the sessions
-# running on the network.
-#
-# `smart.rerouteFraction` defines the fractional upper limit of underperforming sessions that are candidates
-# to be re-routed. If smart routing detects 100 sessions that are underperforming, and `smart.rerouteFraction`
-# is set to `0.02`, then the upper limit of sessions that will be re-routed in this `cycleSeconds` period will
-# be limited to 2 (2% of 100).
-#
-# `smart.rerouteCap` defines the hard upper limit of underperforming sessions that are candidates to be re-routed.
-# If smart routing detects 100 sessions that are underperforming, and `smart.rerouteCap` is set to `1`, and
-# `smart.rerouteFraction` is set to `0.02`, then the upper limit of sessions that will be re-routed in this 
-# `cycleSeconds` period will be limited to 1.
-#
 #network:
-#  cycleSeconds:         15
-#  smart:
-#    rerouteFraction:    0.02
-#    rerouteCap:         4
+  #
+  # Defines the period that the controller re-evaluates the performance of all of the sessions
+  # running on the network.
+  #
+  cycleSeconds:         15
+  #
+  #smart:
+    #
+    # Defines the fractional upper limit of underperforming sessions that are candidates to be re-routed. If 
+    # smart routing detects 100 sessions that are underperforming, and `smart.rerouteFraction` is set to `0.02`,
+    # then the upper limit of sessions that will be re-routed in this `cycleSeconds` period will be limited to 
+    # 2 (2% of 100). 
+    #
+    #rerouteFraction:    0.02
+    # 
+    # Defines the hard upper limit of underperforming sessions that are candidates to be re-routed. If smart 
+    # routing detects 100 sessions that are underperforming, and `smart.rerouteCap` is set to `1`, and 
+    # `smart.rerouteFraction` is set to `0.02`, then the upper limit of sessions that will be re-routed in this 
+    # `cycleSeconds` period will be limited to 1.
+    #
+    #rerouteCap:         4
 
 # Database Location
 #
@@ -62,14 +66,15 @@ db:                     /tmp/devctrl.db
 # Enable and configure memory and CPU profiling for the controller. See `go tool pprof` for information on how 
 # to work with this profile data.
 #
-# `profile.memory.intervalMs` defines the interval at which memory profiling snapshots will be recorded.
-#
 #profile:
-#  memory:
-#    path:                ctrl.memprof
-#    intervalMs:          15 
-#  cpu:
-#    path:                ctrl.cpuprof
+  #memory:
+    #path:                ctrl.memprof
+    #
+    # Defines the interval at which memory profiling snapshots will be recorded.
+    #
+    #intervalMs:          15 
+  #cpu:
+    #path:                ctrl.cpuprof
 
 # Control Channel Configuration
 #
@@ -94,6 +99,6 @@ mgmt:
 # metrics handlers.
 #
 #metrics:
-#  influxdb:
-#    url:                http://localhost:8086
-#    database:           ziti
+  #influxdb:
+    #url:                http://localhost:8086
+    #database:           ziti
