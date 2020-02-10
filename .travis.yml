@@ -1,0 +1,20 @@
+version: "~> 1.0"
+
+import:
+  - source: netfoundry/ziti-ci:go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:git-setup.yml@v1
+  - source: netfoundry/ziti-ci:versioning.yml@v1
+    if: type != pull_request
+
+matrix:
+  include:
+    - os: linux
+      arch: amd64
+    - os: linux
+      arch: arm64
+    - os: mac
+    - os: windows
+
+script:
+  - go get github.com/mitchellh/gox
+  - CGO_ENABLED=true gox -os="$TRAVIS_OS_NAME" -arch=$TRAVIS_CPU_ARCH -output="release/{{.Arch}}/{{.OS}}/{{.Dir}}" ./...
