@@ -34,7 +34,7 @@ require (
 	github.com/miekg/dns v1.1.22
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/netfoundry/ziti-fabric v0.9.2
-	github.com/netfoundry/ziti-foundation v0.0.0-20200131162746-62af0d0834c4
+	github.com/netfoundry/ziti-foundation v0.6.2-0.20200211140849-799ad8a0e0c3
 	github.com/netfoundry/ziti-sdk-golang v0.0.0-20200131174433-3436a14ede15
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
