@@ -17,51 +17,27 @@
 package version
 
 import (
-	"github.com/blang/semver"
-	"log"
-	"strings"
+	"github.com/netfoundry/ziti-edge/build"
+	"runtime"
 )
 
-// Build information. Populated at build-time.
-var (
-	Verbose   bool
-	Version   string
-	Revision  string
-	Branch    string
-	BuildUser string
-	BuildDate string
-	GoVersion string
-	OS        string
-	Arch      string
-)
+type cmdBuildInfo struct{}
 
-// Map provides the iterable version information.
-var Map = map[string]string{
-	"version":   Version,
-	"revision":  Revision,
-	"branch":    Branch,
-	"buildUser": BuildUser,
-	"buildDate": BuildDate,
-	"goVersion": GoVersion,
-	"os":        OS,
-	"arch":      Arch,
+func (c cmdBuildInfo) GetVersion() string {
+	return Version
 }
 
-const (
-	VersionPrefix = ""
+func (c cmdBuildInfo) GetRevision() string {
+	return Revision
+}
 
-	// TestVersion used in test cases for the current version if no
-	// version can be found - such as if the version property is not properly
-	// included in the go test flags
-	TestVersion = "0.0.0"
+func (c cmdBuildInfo) GetBuildDate() string {
+	return BuildDate
+}
 
-	TestRevision  = "unknown"
-	TestBranch    = "unknown"
-	TestBuildDate = "unknown"
-	TestGoVersion = "unknown"
-	TestOs        = "unknown"
-	TestArch      = "unknown"
-)
+func GetCmdBuildInfo() build.Info {
+	return cmdBuildInfo{}
+}
 
 func GetBuildMetadata(verbose bool) string {
 	if !verbose {
@@ -81,72 +57,29 @@ func GetBuildMetadata(verbose bool) string {
 }
 
 func GetVersion() string {
-	v := Map["version"]
-	if v == "" {
-		v = TestVersion
-	}
-	return v
+	return Version
 }
 
 func GetRevision() string {
-	r := Map["revision"]
-	if r == "" {
-		r = TestRevision
-	}
-	return r
+	return Revision
 }
 
 func GetBranch() string {
-	b := Map["branch"]
-	if b == "" {
-		b = TestBranch
-	}
-	return b
+	return Branch
 }
 
 func GetBuildDate() string {
-	d := Map["buildDate"]
-	if d == "" {
-		d = TestBuildDate
-	}
-	return d
+	return BuildDate
 }
 
 func GetGoVersion() string {
-	g := Map["goVersion"]
-	if g == "" {
-		g = TestRevision
-	}
-	return g
+	return runtime.Version()
 }
 
 func GetOS() string {
-	o := Map["os"]
-	if o == "" {
-		o = TestRevision
-	}
-	return o
+	return runtime.GOOS
 }
 
 func GetArchitecture() string {
-	a := Map["arch"]
-	if a == "" {
-		a = TestRevision
-	}
-	return a
-}
-
-func GetSemverVersion() (semver.Version, error) {
-	return semver.Make(strings.TrimPrefix(GetVersion(), VersionPrefix))
-}
-
-// VersionStringDefault returns the current version string or returns a dummy
-// default value if there is an error
-func VersionStringDefault(defaultValue string) string {
-	v, err := GetSemverVersion()
-	if err == nil {
-		return v.String()
-	}
-	log.Printf("Warning failed to load version: %s\n", err)
-	return defaultValue
+	return runtime.GOARCH
 }

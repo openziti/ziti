@@ -11,6 +11,9 @@ env:
   global:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
 
+before_script:
+  - ziti-ci generate-build-info common/version/info_generated.go version
+
 matrix:
   include:
     - os: linux
