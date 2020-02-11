@@ -1,6 +1,17 @@
 #!/bin/bash
 commands_to_test=(ziti ziti-router ziti-controller bash tee jq curl cat dos2unix)
 
+if [[ "" == "$1" ]]
+then
+    echo " "
+    echo "USAGE: $0 <path to ziti binaries> <network name>"
+    echo " "
+    echo "    Please provide the path to the ziti binaries"
+    exit 1
+else
+    export PATH="$PATH:$1"
+fi
+
 # verify all the commands required in the automation exist before trying to run the full suite
 for cmd in "${commands_to_test[@]}"
 do
@@ -26,13 +37,14 @@ echo "${missing_requirements}"
 export curdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # if no network name is supplied, use the current user name as the network name
-if [[ "" == "$1" ]]
+if [[ "" == "$2" ]]
 then
     export network_name="${USER}"
 else
-    export network_name="$1"
+    export network_name="$2"
 fi
 echo "Network name set to: ${network_name}"
+
 
 . ${curdir}/env.sh
 
