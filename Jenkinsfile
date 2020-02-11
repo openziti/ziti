@@ -21,16 +21,12 @@ pipeline {
     }
 
     environment {
-
         BRANCH_NAME             = "${BRANCH_NAME}"
         BUILD_NUMBER            = "${BUILD_NUMBER}"
         GOCACHE                 = "${env.WORKSPACE}/.build"
         HOME                    = "${env.WORKSPACE}"
         JFROG_API_KEY           = credentials('ad-tf-var-jfrog-api-key')
         JFROG_CLI_OFFER_CONFIG  = "false"
-        AWS_ACCESS_KEY_ID       = credentials('ad-aws-secret-key-id')
-        AWS_SECRET_ACCESS_KEY   = credentials('ad-aws-secret-access-key')
-
     }
 
     stages {
