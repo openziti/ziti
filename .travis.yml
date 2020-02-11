@@ -1,4 +1,8 @@
-language: go
+version: "~> 1.0"
 
-go:
-  - "1.13"
+import:
+  - source: netfoundry/ziti-ci:go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:ziti-ci.yml@v1
+  - source: netfoundry/ziti-ci:git-setup.yml@v1
+  - source: netfoundry/ziti-ci:versioning.yml@v1
+    if: type != pull_request
