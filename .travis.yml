@@ -11,11 +11,15 @@ matrix:
   include:
     - os: linux
       arch: amd64
+      env: GOX_OS=linux
     - os: linux
       arch: arm64
+      env: GOX_OS=linux
     - os: mac
+      env: GOX_OS=darwin
     - os: windows
+      env: GOX_OS=windows
 
 script:
   - go get github.com/mitchellh/gox
-  - CGO_ENABLED=true gox -os="$TRAVIS_OS_NAME" -arch=$TRAVIS_CPU_ARCH -output="release/{{.Arch}}/{{.OS}}/{{.Dir}}" ./...
+  - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output="release/{{.Arch}}/{{.OS}}/{{.Dir}}" ./...
