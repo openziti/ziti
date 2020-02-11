@@ -26,7 +26,6 @@ const (
 	maxFieldErrorValueLength = 64
 )
 
-
 type BodyParseTypeError struct {
 	Near            string `json:"near"`
 	ExpectedType    string `json:"expectedType"`
@@ -44,7 +43,7 @@ func NewBodyParseTypeError(e *json.UnmarshalTypeError, body string) *BodyParseTy
 	nearEnd := e.Offset
 
 	if nearStart < 0 {
-		nearEnd = 5
+		nearStart = 0
 	}
 
 	near := body[nearStart:nearEnd]

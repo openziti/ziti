@@ -93,6 +93,7 @@ type ServiceApiList struct {
 	EgressRouter    *string                           `json:"egressRouter"`
 	RoleAttributes  []string                          `json:"roleAttributes"`
 	Permissions     []string                          `json:"permissions"`
+	Configs         []string                          `json:"configs"`
 	Config          map[string]map[string]interface{} `json:"config"`
 }
 
@@ -108,9 +109,9 @@ func (e *ServiceApiList) PopulateLinks() {
 	if e.Links == nil {
 		self := e.GetSelfLink()
 		e.Links = &response.Links{
-			EntityNameSelf:          self,
-			EntityNameEdgeRouter:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
-			EntityNameServicePolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
+			EntityNameSelf:                    self,
+			EntityNameServiceEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServiceEdgeRouterPolicy)),
+			EntityNameServicePolicy:           response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
 		}
 	}
 }
@@ -171,6 +172,7 @@ func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.Ser
 		EgressRouter:    &i.EgressRouter,
 		RoleAttributes:  i.RoleAttributes,
 		Permissions:     i.Permissions,
+		Configs:         i.Configs,
 		Config:          i.Config,
 	}
 	ret.PopulateLinks()

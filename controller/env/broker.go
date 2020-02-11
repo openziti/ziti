@@ -22,12 +22,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/build"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/common/version"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"strings"
 	"sync"
@@ -597,8 +597,9 @@ func (b *Broker) RouterConnected(r *network.Router) {
 }
 
 func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fingerprint string) {
+	serverVersion := build.GetBuildInfo().GetVersion()
 	serverHello := &edge_ctrl_pb.ServerHello{
-		Version: version.GetVersion(),
+		Version: serverVersion,
 	}
 
 	if buf, err := proto.Marshal(serverHello); err == nil {
@@ -627,7 +628,7 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fing
 						edgeRouter.EdgeRouterProtocols = protocols
 
 						//todo: restrict version?
-						pfxlog.Logger().Infof("edge router connecting with version [%s] to controller with version [%s]", respHello.Version, version.GetVersion())
+						pfxlog.Logger().Infof("edge router connecting with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
 
 						b.AddEdgeRouter(r.Control, edgeRouter)
 					} else {

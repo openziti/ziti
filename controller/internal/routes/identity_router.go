@@ -138,7 +138,7 @@ func (ir *IdentityRouter) ListServiceConfigs(ae *env.AppEnv, rc *response.Reques
 		if err != nil {
 			return nil, err
 		}
-		var result []interface{}
+		result := make([]interface{}, 0)
 		for _, config := range configs {
 			result = append(result, IdentityServiceConfig{Service: config.Service, Config: config.Config})
 		}

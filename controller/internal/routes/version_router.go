@@ -19,10 +19,10 @@ package routes
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/build"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-foundation/common/version"
 	"runtime"
 )
 
@@ -51,20 +51,20 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 
 func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	data := gabs.New()
-
-	if _, err := data.SetP(version.GetVersion(), "version"); err != nil {
+	buildInfo := build.GetBuildInfo()
+	if _, err := data.SetP(buildInfo.GetVersion(), "version"); err != nil {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 
-	if _, err := data.SetP(version.GetRevision(), "revision"); err != nil {
+	if _, err := data.SetP(buildInfo.GetRevision(), "revision"); err != nil {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 
-	if _, err := data.SetP(version.GetBuildDate(), "buildDate"); err != nil {
+	if _, err := data.SetP(buildInfo.GetBuildDate(), "buildDate"); err != nil {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 
-	if _, err := data.SetP(runtime.Version(),"runtimeVersion"); err != nil {
+	if _, err := data.SetP(runtime.Version(), "runtimeVersion"); err != nil {
 		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
 	}
 

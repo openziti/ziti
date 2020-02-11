@@ -18,11 +18,12 @@ package response
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-edge/build"
 	version3 "github.com/netfoundry/ziti-edge/internal/version"
-	"github.com/netfoundry/ziti-foundation/common/version"
 	"net/http"
 )
 
 func AddVersionHeader(rw http.ResponseWriter) {
-	rw.Header().Set(ZitiControllerVersionHeader, fmt.Sprintf("%s/%s/%s", version.GetVersion(), version.GetRevision(), version3.GetApiVersion()))
+	buildInfo := build.GetBuildInfo()
+	rw.Header().Set(ZitiControllerVersionHeader, fmt.Sprintf("%s/%s/%s", buildInfo.GetVersion(), buildInfo.GetRevision(), version3.GetApiVersion()))
 }

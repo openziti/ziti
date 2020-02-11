@@ -19,11 +19,11 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/build"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/common/version"
 )
 
 type helloHandler struct {
@@ -50,7 +50,7 @@ func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			pfxlog.Logger().Info("received server hello, replying")
 
 			clientHello := &edge_ctrl_pb.ClientHello{
-				Version:   version.GetVersion(),
+				Version:   build.GetBuildInfo().GetVersion(),
 				Hostname:  h.hostname,
 				Protocols: h.supportedProtocols,
 			}
