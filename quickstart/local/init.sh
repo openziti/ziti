@@ -12,8 +12,6 @@ else
     export PATH="$PATH:$1"
 fi
 
-echo "PATH: $PATH"
-
 # verify all the commands required in the automation exist before trying to run the full suite
 for cmd in "${commands_to_test[@]}"
 do
