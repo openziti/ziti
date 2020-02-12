@@ -103,7 +103,7 @@ func createInitialTunnelerConfigs(mtx *MigrationContext) error {
 	}
 
 	hostnameSymbol := mtx.Stores.EdgeService.NewEntitySymbol(FieldServiceDnsHostname, ast.NodeTypeString)
-	portSymbol := mtx.Stores.EdgeService.NewEntitySymbol(FieldServiceDnsHostname, ast.NodeTypeInt64)
+	portSymbol := mtx.Stores.EdgeService.NewEntitySymbol(FieldServiceDnsPort, ast.NodeTypeInt64)
 
 	for _, id := range ids {
 		service, err := mtx.Stores.EdgeService.LoadOneById(mtx.Ctx.Tx(), id)
