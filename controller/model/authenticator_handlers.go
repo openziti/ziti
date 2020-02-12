@@ -108,6 +108,10 @@ func (handler AuthenticatorHandler) ReadByUsername(username string) (*Authentica
 		return nil, err
 	}
 
+	if entity == nil {
+		return nil, nil
+	}
+
 	authenticator, ok := entity.(*Authenticator)
 
 	if !ok {
