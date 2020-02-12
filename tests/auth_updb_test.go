@@ -37,6 +37,7 @@ func Test_Authenticate_Updb(t *testing.T) {
 	}
 
 	t.Run("login with invalid password should fail", tests.testAuthenticateUpdbInvalidPassword)
+	t.Run("login with invalid username should fail", tests.testAuthenticateUpdbInvalidUsername)
 	t.Run("login with missing password should fail", tests.testAuthenticateUPDBMissingPassword)
 	t.Run("login with missing username should fail", tests.testAuthenticateUPDBMissingUsername)
 	t.Run("admin login should pass", tests.testAuthenticateUPDBDefaultAdminSuccess)
@@ -66,6 +67,28 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
 	})
 }
+
+func (tests *authUpdbTests) testAuthenticateUpdbInvalidUsername(t *testing.T) {
+	body := gabs.New()
+	_, _ = body.SetP("weeewoooweeewooo123", "username")
+	_, _ = body.SetP("admin", "password")
+
+	resp, err := tests.ctx.DefaultClient().R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(body.String()).
+		Post("/authenticate?method=password")
+
+	t.Run("should not have returned an error", func(t *testing.T) {
+		require.New(t).NoError(err)
+	})
+
+	standardErrorJsonResponseTests(resp, "INVALID_AUTH", http.StatusUnauthorized, t)
+
+	t.Run("does not have a session token", func(t *testing.T) {
+		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
+	})
+}
+
 
 func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 	body := gabs.New()
