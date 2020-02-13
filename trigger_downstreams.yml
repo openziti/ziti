@@ -1,0 +1,2 @@
+after_script:
+  - ziti-ci trigger-travis-build netfoundry/ziti-edge update-dependency
