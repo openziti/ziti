@@ -1,0 +1,2 @@
+before_script:
+  - ziti-ci generate-build-info common/version/info_generated.go version
