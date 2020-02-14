@@ -438,18 +438,17 @@ type Session interface {
 	GetToken() string
 }
 
-// EdgeControllerListEntities will list entities of the given type in the given Edge Controller
-func EdgeControllerListEntities(session Session, entityType string, filter string, logJSON bool) (*gabs.Container, error) {
-	return EdgeControllerList(session, entityType, filter, logJSON)
-}
-
 // EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
 func EdgeControllerListSubEntities(session Session, entityType, subType, entityId string, filter string, logJSON bool) (*gabs.Container, error) {
-	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, filter, logJSON)
+	params := url.Values{}
+	if filter != "" {
+		params.Add("filter", filter)
+	}
+	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, params, logJSON)
 }
 
 // EdgeControllerList will list entities of the given type in the given Edge Controller
-func EdgeControllerList(session Session, path, filter string, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerList(session Session, path string, params url.Values, logJSON bool) (*gabs.Container, error) {
 	client := newClient()
 
 	if session.GetCert() != "" {
@@ -458,9 +457,7 @@ func EdgeControllerList(session Session, path, filter string, logJSON bool) (*ga
 
 	queryUrl := session.GetBaseUrl() + "/" + path
 
-	if filter != "" {
-		params := url.Values{}
-		params.Add("filter", filter)
+	if len(params) > 0 {
 		queryUrl += "?" + params.Encode()
 	}
 

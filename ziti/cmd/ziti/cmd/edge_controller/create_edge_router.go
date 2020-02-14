@@ -91,7 +91,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	list, err := listEntitiesOfType("edge-routers", &o.commonOptions)
+	list, err := listEntitiesOfType("edge-routers", nil, o.OutputJSONResponse)
 	if err != nil {
 		return err
 	}
