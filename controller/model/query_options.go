@@ -94,7 +94,7 @@ func (qo *QueryOptions) getFullQuery(predicate string) string {
 	qo.ValidateAndCorrect()
 	pfxlog.Logger().Debugf("query: %v", qo)
 	queryBuilder := strings.Builder{}
-	if qo.Predicate == "" {
+	if predicate == "" {
 		queryBuilder.WriteString("true")
 	} else {
 		queryBuilder.WriteString(predicate)
