@@ -27,13 +27,7 @@ func NewNotFound() *ApiError {
 		Status:  NotFoundStatus,
 	}
 }
-func NewForbidden() *ApiError {
-	return &ApiError{
-		Code:    ForbiddenCode,
-		Message: ForbiddenMessage,
-		Status:  ForbiddenStatus,
-	}
-}
+
 func NewUnhandled() *ApiError {
 	return &ApiError{
 		Code:    UnhandledCode,
@@ -269,5 +263,29 @@ func NewInvalidUuid(val string) *ApiError {
 				"uuid": val,
 			},
 		},
+	}
+}
+
+func NewInvalidAuthenticatorProperties() *ApiError {
+	return &ApiError{
+		Code:    InvalidAuthenticatorPropertiesCode,
+		Message: InvalidAuthenticatorPropertiesMessage,
+		Status:  InvalidAuthenticatorPropertiesStatus,
+	}
+}
+
+func NewAuthenticatorCannotBeUpdated() *ApiError {
+	return &ApiError{
+		Code:    AuthenticatorCannotBeUpdatedCode,
+		Message: AuthenticatorCannotBeUpdatedMessage,
+		Status:  AuthenticatorCannotBeUpdatedStatus,
+	}
+}
+
+func NewAuthenticatorMethodMax() *ApiError {
+	return &ApiError{
+		Code:    AuthenticatorMethodMaxCode,
+		Message: AuthenticatorMethodMaxMessage,
+		Status:  AuthenticatorMethodMaxStatus,
 	}
 }

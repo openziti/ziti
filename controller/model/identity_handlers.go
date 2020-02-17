@@ -17,7 +17,6 @@
 package model
 
 import (
-	"encoding/base64"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -25,7 +24,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/controller/validation"
-	"github.com/netfoundry/ziti-edge/crypto"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -254,10 +252,6 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 		IsAdmin:        true,
 	}
 
-	newResult := crypto.Hash(password)
-	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
-	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
-
 	authenticator := &Authenticator{
 		BaseModelEntityImpl: BaseModelEntityImpl{
 			Id: authenticatorId,
@@ -266,8 +260,7 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 		IdentityId: identityId,
 		SubType: &AuthenticatorUpdb{
 			Username: username,
-			Password: b64Password,
-			Salt:     b64Salt,
+			Password: password,
 		},
 	}
 

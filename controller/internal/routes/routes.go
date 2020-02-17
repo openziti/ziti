@@ -61,6 +61,12 @@ type ReadOnlyRouter interface {
 	Detail(ae *env.AppEnv, rc *response.RequestContext)
 }
 
+type ReadUpdateRouter interface {
+	ReadOnlyRouter
+	Update(ae *env.AppEnv, rc *response.RequestContext)
+	Patch(ae *env.AppEnv, rc *response.RequestContext)
+}
+
 type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, model.BaseModelEntity) (BaseApiEntity, error)
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*model.QueryOptions, error) {
@@ -290,6 +296,41 @@ func registerCrudRouter(ae *env.AppEnv, r *mux.Router, basePath string, cr CrudR
 
 	s.HandleFunc(idUrlWithoutSlash, deleteHandler).Methods(http.MethodDelete)
 	s.HandleFunc(idUrlWithSlash, deleteHandler).Methods(http.MethodDelete)
+
+	return s
+}
+
+func registerReadUpdateRouter(ae *env.AppEnv, r *mux.Router, basePath string, cr ReadUpdateRouter, pr permissions.Resolver) *mux.Router {
+	rpr := pr
+	upr := pr
+
+	crs, ok := pr.(*crudResolvers)
+
+	if ok {
+		rpr = crs.GetReadResolver()
+		upr = crs.GetUpdateResolver()
+	}
+
+	listHandler := ae.WrapHandler(cr.List, rpr)
+	detailHandler := ae.WrapHandler(cr.Detail, rpr)
+	updateHandler := ae.WrapHandler(cr.Update, upr)
+	patchHandler := ae.WrapHandler(cr.Patch, upr)
+
+	s := r.PathPrefix(basePath).Subrouter()
+	s.HandleFunc("", listHandler).Methods(http.MethodGet)
+	s.HandleFunc("/", listHandler).Methods(http.MethodGet)
+
+	idUrlWithoutSlash := fmt.Sprintf("/{%s}", response.IdPropertyName)
+	idUrlWithSlash := fmt.Sprintf("/{%s}/", response.IdPropertyName)
+
+	s.HandleFunc(idUrlWithoutSlash, detailHandler).Methods(http.MethodGet)
+	s.HandleFunc(idUrlWithSlash, detailHandler).Methods(http.MethodGet)
+
+	s.HandleFunc(idUrlWithoutSlash, patchHandler).Methods(http.MethodPatch)
+	s.HandleFunc(idUrlWithSlash, patchHandler).Methods(http.MethodPatch)
+
+	s.HandleFunc(idUrlWithoutSlash, updateHandler).Methods(http.MethodPut)
+	s.HandleFunc(idUrlWithSlash, updateHandler).Methods(http.MethodPut)
 
 	return s
 }

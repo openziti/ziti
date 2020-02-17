@@ -23,9 +23,9 @@ const (
 	NotFoundMessage string = "The resource requested was not found or is no longer available"
 	NotFoundStatus  int    = http.StatusNotFound
 
-	ForbiddenCode    string = "FORBIDDEN"
-	ForbiddenMessage string = "The resource requested"
-	ForbiddenStatus  int    = http.StatusForbidden
+	MethodNotAllowedCode    string = "METHOD_NOT_ALLOWED"
+	MethodNotAllowedMessage string = "The resource requested does not support this HTTP verb"
+	MethodNotAllowedStatus  int    = http.StatusMethodNotAllowed
 
 	UnhandledCode    string = "UNHANDLED"
 	UnhandledMessage string = "An unhandled error occurred"
@@ -157,4 +157,16 @@ const (
 	CertificateIsNotCaCode    string = "CERTIFICATE_IS_NOT_CA"
 	CertificateIsNotCaMessage string = "Leading certificate is not a CA"
 	CertificateIsNotCaStatus  int    = http.StatusBadRequest
+
+	InvalidAuthenticatorPropertiesCode    string = "INVALID_AUTHENTICATOR_PROPERTIES"
+	InvalidAuthenticatorPropertiesMessage string = "The properties supplied did not match the authenticator method"
+	InvalidAuthenticatorPropertiesStatus  int    = http.StatusBadRequest
+
+	AuthenticatorCannotBeUpdatedCode    string = "CANNOT_UPDATE_AUTHENTICATOR"
+	AuthenticatorCannotBeUpdatedMessage string = "The authenticator cannot be updated in this fashion"
+	AuthenticatorCannotBeUpdatedStatus  int    = http.StatusConflict
+
+	AuthenticatorMethodMaxCode    string = "MAX_AUTHENTICATOR_METHODS_REACHED"
+	AuthenticatorMethodMaxMessage string = "The identity already has the maximum authenticators of the specified method"
+	AuthenticatorMethodMaxStatus  int    = http.StatusConflict
 )

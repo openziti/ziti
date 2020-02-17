@@ -1,7 +1,7 @@
 // +build apitests
 
 /*
-	Copyright 2020 Netfoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -35,13 +35,10 @@ func Test_ApiSession(t *testing.T) {
 		configType1 := ctx.AdminSession.requireCreateNewConfigType()
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
 
-		auth := &updbAuthenticator{
-			Username:    uuid.New().String(),
-			Password:    uuid.New().String(),
-			ConfigTypes: s(configType1.id, configType2.name),
-		}
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
 
-		_ = ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(auth.Username, auth.Password, false)
+		auth.ConfigTypes = s(configType1.id, configType2.name)
+
 		session, err := auth.Authenticate(ctx)
 		ctx.req.NoError(err)
 

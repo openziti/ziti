@@ -17,11 +17,15 @@
 package model
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/crypto"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"strings"
 )
 
 type AuthenticatorHandler struct {
@@ -29,8 +33,12 @@ type AuthenticatorHandler struct {
 	authStore persistence.AuthenticatorStore
 }
 
-func (handler AuthenticatorHandler) IsUpdated(_ string) bool {
-	return true
+func (handler AuthenticatorHandler) Delete(id string) error {
+	return handler.deleteEntity(id, nil)
+}
+
+func (handler AuthenticatorHandler) IsUpdated(field string) bool {
+	return !strings.EqualFold(field, "method") && !strings.EqualFold(field, "identityId")
 }
 
 func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
@@ -96,6 +104,28 @@ func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 }
 
 func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
+	result, err := handler.ListForIdentity(authenticator.IdentityId, &QueryOptions{
+		Predicate:  fmt.Sprintf(`method = "%s"`, authenticator.Method),
+		Sort:       "",
+		Paging:     nil,
+		finalQuery: "",
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if result.Count > 0 {
+		return "", apierror.NewAuthenticatorMethodMax()
+	}
+
+	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
+		if updb, ok := authenticator.SubType.(*AuthenticatorUpdb); ok {
+			hashResult := handler.HashPassword(updb.Password)
+			updb.Password = hashResult.Password
+			updb.Salt = hashResult.Salt
+		}
+	}
 	return handler.createEntity(authenticator)
 }
 
@@ -140,5 +170,91 @@ func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Auth
 }
 
 func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
+	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
+		if updb, ok := authenticator.SubType.(*AuthenticatorUpdb); ok {
+			hashResult := handler.HashPassword(updb.Password)
+			updb.Password = hashResult.Password
+			updb.Salt = hashResult.Salt
+		}
+	}
+
 	return handler.updateEntity(authenticator, handler)
+}
+
+func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker boltz.FieldChecker) error {
+	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
+		if updb, ok := authenticator.SubType.(*AuthenticatorUpdb); ok {
+			if checker.IsUpdated("password") {
+				hashResult := handler.HashPassword(updb.Password)
+				updb.Password = hashResult.Password
+				updb.Salt = hashResult.Salt
+			}
+		}
+	}
+	combinedChecker := &AndFieldChecker{first: handler, second: checker}
+	return handler.patchEntity(authenticator, combinedChecker)
+}
+
+func (handler AuthenticatorHandler) HashPassword(password string) *HashedPassword {
+	newResult := crypto.Hash(password)
+	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
+	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
+
+	return &HashedPassword{
+		RawResult: newResult,
+		Salt:      b64Salt,
+		Password:  b64Password,
+	}
+}
+
+func (handler AuthenticatorHandler) ListForIdentity(identityId string, options *QueryOptions) (*AuthenticatorListQueryResult, error) {
+	query := options.Predicate
+	if query != "" {
+		query = "(" + query + ") and "
+	}
+	query += fmt.Sprintf(`(identity = "%s")`, identityId)
+	options.Predicate = query
+	result, err := handler.BaseList(options)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var authenticators []*Authenticator
+
+	for _, entity := range result.Entities {
+		if auth, ok := entity.(*Authenticator); ok {
+			authenticators = append(authenticators, auth)
+		}
+	}
+
+	return &AuthenticatorListQueryResult{
+		BaseModelEntityListResult: result,
+		Authenticators:            authenticators,
+	}, nil
+}
+
+func (handler AuthenticatorHandler) ReadForIdentity(identity *Identity, authenticatorId string) (*Authenticator, error) {
+	authenticator, err := handler.Read(authenticatorId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if authenticator.IdentityId == identity.Id {
+		return authenticator, err
+	}
+
+	return nil, nil
+}
+
+type HashedPassword struct {
+	RawResult *crypto.HashResult //raw byte hash results
+	Salt      string             //base64 encoded hash
+	Password  string             //base64 encoded hash
+}
+
+type AuthenticatorListQueryResult struct {
+	*BaseModelEntityListResult
+	Authenticators []*Authenticator
 }

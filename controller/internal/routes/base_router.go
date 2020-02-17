@@ -58,6 +58,10 @@ func (j JsonFields) IsUpdated(key string) bool {
 	return ok
 }
 
+func (j JsonFields) AddField(key string) {
+	j[key] = true
+}
+
 func (j JsonFields) ConcatNestedNames() JsonFields {
 	for key, val := range j {
 		if strings.Contains(key, ".") {

@@ -70,7 +70,11 @@ type Authenticator struct {
 	SubType    AuthenticatorSubType
 }
 
-var authenticatorFieldMappings = map[string]string{FieldAuthenticatorIdentity: "identityId"}
+var authenticatorFieldMappings = map[string]string{
+	FieldAuthenticatorIdentity:     "identityId",
+	FieldAuthenticatorUpdbPassword: "password",
+	FieldAuthenticatorUpdbUsername: "username",
+	FieldAuthenticatorUpdbSalt:     "salt"}
 
 func (entity *Authenticator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Type = bucket.GetStringOrError(FieldAuthenticatorMethod)
