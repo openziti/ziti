@@ -51,6 +51,13 @@ func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		binding = "udp"
 	}
 
+	edgeRouterStore := handler.GetEnv().GetStores().EdgeRouter
+	if !edgeRouterStore.IsEntityPresent(tx, entity.EgressRouter) {
+		if edgeRouterId := edgeRouterStore.GetNameIndex().Read(tx, []byte(entity.EgressRouter)); edgeRouterId != nil {
+			entity.EgressRouter = string(edgeRouterId)
+		}
+	}
+
 	edgeService := &persistence.EdgeService{
 		Service: network.Service{
 			Id:              entity.Id,

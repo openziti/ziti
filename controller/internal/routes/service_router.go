@@ -18,7 +18,9 @@ package routes
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-edge/controller/util"
 	"net/http"
+	"strings"
 
 	"github.com/michaelquigley/pfxlog"
 
@@ -74,7 +76,27 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Service.PublicQueryForIdentity(rc.Identity, rc.ApiSession.ConfigTypes, queryOptions)
+		identity := rc.Identity
+		if rc.Identity.IsAdmin {
+			if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
+				var err error
+				identity, err = ae.Handlers.Identity.ReadOneByQuery(fmt.Sprintf(`id = "%v" or name = "%v"`, asId, asId))
+				if err != nil {
+					return nil, err
+				}
+				if identity == nil {
+					return nil, util.NewNotFoundError("identity", "id or name", asId)
+				}
+			}
+		}
+
+		// allow overriding config types
+		configTypes := rc.ApiSession.ConfigTypes
+		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
+			configTypes = mapConfigTypeNamesToIds(ae, strings.Split(requestedConfigTypes, ","), identity.Id)
+		}
+
+		result, err := ae.Handlers.Service.PublicQueryForIdentity(identity, configTypes, queryOptions)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
