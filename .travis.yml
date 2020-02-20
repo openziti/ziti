@@ -8,20 +8,10 @@ import:
 env:
   global:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
-
-matrix:
-  include:
-    - os: linux
-      arch: amd64
-      env: GOX_OS=linux
-    - os: linux
-      arch: arm64
-      env: GOX_OS=linux
-    - os: mac
-      env: GOX_OS=darwin
-    - os: windows
-      env: GOX_OS=windows
-
 script:
   - go get github.com/mitchellh/gox
-  - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+  - CGO_ENABLED=true gox -os="linux" -arch="amd64" -output=$GOX_OUTPUT ./...
+  - CGO_ENABLED=true gox -os="linux" -arch="arm64" -output=$GOX_OUTPUT ./...
+  - CGO_ENABLED=true gox -os="darwin" -arch="amd64" -output=$GOX_OUTPUT ./...
+  - CGO_ENABLED=true gox -os="windows" -arch="amd64" -output=$GOX_OUTPUT ./...
+  - find release
