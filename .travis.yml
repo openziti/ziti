@@ -41,7 +41,7 @@ jobs:
         - ziti-ci configure-git
         - ziti-ci generate-build-info common/version/info_generated.go version
         - go get github.com/mitchellh/gox
-        - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - CGO_ENABLED=true gox -os="linux" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
         - ziti-ci tag --only-for-branch master -v -f "$VERSION_FILE"
 
 script:
