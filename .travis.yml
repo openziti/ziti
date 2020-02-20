@@ -1,17 +1,49 @@
 version: "~> 1.0"
 
 import:
-  - source: netfoundry/ziti-ci:ziti-go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:ziti-ci.yml@v1
+
+  - source: netfoundry/ziti-ci:update-dependency.yml@v1
+    if: branch = update-dependency
+
   - source: buildinfo.yml
     if: type != pull_request and branch != update-dependency
 
 env:
   global:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+
+stages:
+  - test
+  - name: "Tag and Publish"
+    if: branch != update-dependency
+
+jobs:
+  include:
+    - os: linux
+      arch: amd64
+      env: GOX_OS=linux
+    - os: linux
+      arch: arm64
+      env: GOX_OS=linux
+      if: branch != update-dependency
+    - os: mac
+      env: GOX_OS=darwin
+      if: branch != update-dependency
+    - os: windows
+      env: GOX_OS=windows
+      if: branch != update-dependency
+    - stage: "Tag and Publish"
+      os: linux
+      arch: amd64
+      script:
+        - ziti-ci configure-git
+        - ziti-ci generate-build-info common/version/info_generated.go version
+        - go get github.com/mitchellh/gox
+        - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - ziti-ci tag --only-for-branch master -v -f "$VERSION_FILE"
+
 script:
   - go get github.com/mitchellh/gox
-  - CGO_ENABLED=true gox -os="linux" -arch="amd64" -output=$GOX_OUTPUT ./...
-  - CGO_ENABLED=true gox -os="linux" -arch="arm64" -output=$GOX_OUTPUT ./...
-  - CGO_ENABLED=true gox -os="darwin" -arch="amd64" -output=$GOX_OUTPUT ./...
-  - CGO_ENABLED=true gox -os="windows" -arch="amd64" -output=$GOX_OUTPUT ./...
-  - find release
+  - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
