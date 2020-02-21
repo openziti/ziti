@@ -15,35 +15,55 @@ env:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
 
 stages:
-  - test
+  - name: "Build and Test"
+    if: branch != update-dependency
+  - name: "Update Dependency"
+    if: branch = update-dependency
   - name: "Tag and Publish"
     if: branch != update-dependency
 
+
 jobs:
   include:
-    - os: linux
+    - stage: "Update Dependency"
+      os: linux
       arch: amd64
       env: GOX_OS=linux
-    - os: linux
+      script:
+        - set -e
+        - ziti-ci configure-git
+        - ziti-ci update-go-dependency
+        - go test ./...
+        - ziti-ci complete-update-go-dependency
+
+    - stage: "Build and Test"
+      os: linux
       arch: arm64
       env: GOX_OS=linux
-      if: branch != update-dependency
-    - os: mac
+    - stage: "Build and Test"
+      os: mac
       env: GOX_OS=darwin
-      if: branch != update-dependency
-    - os: windows
+    - stage: "Build and Test"
+      os: windows
       env: GOX_OS=windows
-      if: branch != update-dependency
+
     - stage: "Tag and Publish"
       os: linux
       arch: amd64
       script:
+        - pip install -U pip
+        - pip install awscli
         - ziti-ci configure-git
         - ziti-ci generate-build-info common/version/info_generated.go version
         - go get github.com/mitchellh/gox
         - CGO_ENABLED=true gox -os="linux" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
         - ziti-ci tag --only-for-branch master -v -f "$VERSION_FILE"
+        - aws s3 sync s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID release/
+        - find release/
 
 script:
+  - pip install -U pip
+  - pip install awscli
   - go get github.com/mitchellh/gox
   - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+  - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
