@@ -40,18 +40,30 @@ jobs:
       os: linux
       arch: arm64
       env: GOX_OS=linux
+      before_install:
+        - pip install --upgrade --user pip
+        - pip install --user awscli
+
     - stage: "Build and Test"
       os: mac
       env: GOX_OS=darwin
+      before_install:
+        - pip install --upgrade pip
+        - pip install awscli
+
     - stage: "Build and Test"
       os: windows
-      env: GOX_OS=windows
+      env: GOX_OS=windows PATH=/c/Python36:/c/Python36/Scripts:$PATH
+      before_install:
+        - choco install python --version 3.6.8
+        - python -m pip install --upgrade pip
+        - pip install awscli
 
     - stage: "Tag and Publish"
       os: linux
       arch: amd64
       script:
-        - pip install -U pip
+        - pip install --upgrade --user pip
         - pip install awscli
         - ziti-ci configure-git
         - ziti-ci generate-build-info common/version/info_generated.go version
@@ -62,8 +74,6 @@ jobs:
         - find release/
 
 script:
-  - pip install -U pip
-  - pip install awscli
   - go get github.com/mitchellh/gox
   - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
   - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
