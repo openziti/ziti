@@ -71,7 +71,8 @@ jobs:
         - CGO_ENABLED=true gox -os="linux" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
         - ziti-ci tag --only-for-branch master -v -f "$VERSION_FILE"
         - aws s3 sync s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID release/
-        - find release/
+        - aws s3 rm --recursive s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
+        - ziti-ci publish-to-artifactory
 
 script:
   - go get github.com/mitchellh/gox
