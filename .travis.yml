@@ -73,6 +73,7 @@ jobs:
         - aws s3 sync s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID release/
         - aws s3 rm --recursive s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
         - ziti-ci publish-to-artifactory
+        - ziti-ci trigger-jenkins-smoke-build
 
 script:
   - go get github.com/mitchellh/gox
