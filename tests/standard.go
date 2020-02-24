@@ -20,7 +20,6 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
@@ -41,10 +40,6 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 		require.New(t).NoError(err)
 	})
 
-	t.Run("response has 2xx or 3xx response code", func(t *testing.T) {
-		require.New(t).True(response.StatusCode() >= 200 && response.StatusCode() < 400, fmt.Sprintf("status code is not 2xx or 3xx series: got status %s, body: %s", response.Status(), response.Body()))
-	})
-
 	t.Run("response body is a valid envelope", func(t *testing.T) {
 		body := response.Body()
 		r := require.New(t)
@@ -59,7 +54,7 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 		hasData := data.ExistsP("data")
 		hasError := data.ExistsP("error")
 
-		r.False(hasError, "response has 'error' property, not expected, value: %s", data.Path("error").String())
+		r.False(hasError, "response has 'error' property, not expected, value: %s", data.StringIndent("", "  "))
 
 		r.True(hasData, "response is missing 'data' property")
 
@@ -79,8 +74,8 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 		bodyData, err := gabs.ParseJSON(body)
 		r.NoError(err)
 
-		_, err = bodyData.Object("meta", "property 'meta' was not an object")
-		r.NoError(err)
+		_, err = bodyData.Object("meta")
+		r.NoError(err, "property 'meta' was not an object")
 	})
 
 	t.Run("has a valid data section", func(t *testing.T) {
@@ -91,7 +86,12 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 		r.NoError(err)
 
 		_, err = bodyData.Object("data", "property 'data' was not an object")
-		r.NoError(err)
+
+		if err != nil {
+			_, err = bodyData.Array("data")
+		}
+
+		r.NoError(err, "expected property 'data' to be an object or array")
 	})
 
 	t.Run("has the expected HTTP status code", func(t *testing.T) {
@@ -110,11 +110,7 @@ func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode 
 		out := map[string]interface{}{}
 		err := json.Unmarshal(body, &out)
 
-		require.New(t).NoError(err)
-	})
-
-	t.Run("response has 4xx response code", func(t *testing.T) {
-		require.New(t).True(response.StatusCode() >= 400 && response.StatusCode() < 500, fmt.Sprintf("status code is not 4xx series, got:  %s", response.Status()))
+		require.New(t).NoError(err, `could not parse JSON: "%s""`, body)
 	})
 
 	t.Run("response body is a valid envelope", func(t *testing.T) {
@@ -122,7 +118,7 @@ func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode 
 		r := require.New(t)
 
 		data, err := gabs.ParseJSON(body)
-		r.NoError(err)
+		r.NoError(err, "could not parse JSON: %s", body)
 
 		hasData := data.ExistsP("data")
 		hasError := data.ExistsP("error")
@@ -175,7 +171,13 @@ func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode 
 
 		errorCode := data.Path("error.code").Data().(string)
 
-		r.Equal(expectedErrorCode, errorCode)
+		switch errorCode {
+		case "COULD_NOT_VALIDATE":
+			r.Equal(expectedErrorCode, errorCode, `response cause: "%s"`, data.Path("error.cause").String())
+		default:
+			r.Equal(expectedErrorCode, errorCode)
+		}
+
 	})
 
 	t.Run("has the expected HTTP status code", func(t *testing.T) {

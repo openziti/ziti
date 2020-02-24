@@ -303,13 +303,15 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	ctx.logJson(resp.Body())
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
 
-	certs := nfpem.PemToX509(string(resp.Body()))
+	certPem := string(resp.Body())
+	certs := nfpem.PemToX509(certPem)
 
 	ctx.req.NotEmpty(certs)
 
 	return &certAuthenticator{
-		cert: certs[0],
-		key:  privateKey,
+		cert:    certs[0],
+		key:     privateKey,
+		certPem: certPem,
 	}
 }
 

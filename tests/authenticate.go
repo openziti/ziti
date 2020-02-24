@@ -42,8 +42,9 @@ type authenticator interface {
 }
 
 type certAuthenticator struct {
-	cert *x509.Certificate
-	key  crypto.PrivateKey
+	cert    *x509.Certificate
+	key     crypto.PrivateKey
+	certPem string
 }
 
 func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session, error) {
@@ -51,6 +52,12 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 		authenticator: authenticator,
 		testContext:   ctx,
 	}
+
+	sess.authenticatedRequests = authenticatedRequests{
+		testContext: ctx,
+		session:     sess,
+	}
+
 	transport := ctx.Transport()
 	transport.TLSClientConfig.Certificates = []tls.Certificate{
 		{
@@ -59,6 +66,7 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 		},
 	}
 	client := ctx.Client(ctx.HttpClient(transport))
+	client.SetHostURL("https://" + ctx.ApiHost)
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
@@ -214,7 +222,35 @@ func (request *authenticatedRequests) newAuthenticatedRequest() *resty.Request {
 	return request.session.newRequest(request.testContext)
 }
 
-func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) string {
+func (request *authenticatedRequests) newAuthenticatedJsonRequest(body interface{}) *resty.Request {
+	return request.session.newRequest(request.testContext).
+		SetHeader("content-type", "application/json").
+		SetBody(body)
+}
+
+func (request *authenticatedRequests) requireCreateIdentity(name string, isAdmin bool, rolesAttributes ...string) string {
+	entityData := gabs.New()
+	request.testContext.setJsonValue(entityData, name, "name")
+	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
+	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
+
+	enrollments := map[string]interface{}{}
+	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
+
+	entityJson := entityData.String()
+	httpCode, body := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, httpCode)
+	id := request.testContext.getEntityId(body)
+	return id
+}
+
+func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) (string, *updbAuthenticator) {
+	userAuth := &updbAuthenticator{
+		Username: name,
+		Password: password,
+	}
+
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
 	request.testContext.setJsonValue(entityData, "User", "type")
@@ -231,7 +267,7 @@ func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(na
 	request.testContext.req.Equal(http.StatusCreated, httpCode)
 	id := request.testContext.getEntityId(body)
 	request.testContext.completeUpdbEnrollment(id, password)
-	return id
+	return id, userAuth
 }
 
 func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name string, isAdmin bool, rolesAttributes ...string) (string, *certAuthenticator) {
@@ -544,12 +580,9 @@ func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) b
 }
 
 func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttributes, configTypes []string) *session {
-	userAuth := &updbAuthenticator{
-		Username:    uuid.New().String(),
-		Password:    uuid.New().String(),
-		ConfigTypes: configTypes,
-	}
-	_ = request.requireCreateIdentityWithUpdbEnrollment(userAuth.Username, userAuth.Password, isAdmin, roleAttributes...)
+	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), isAdmin, roleAttributes...)
+	userAuth.ConfigTypes = configTypes
+
 	session, _ := userAuth.Authenticate(request.testContext)
 
 	return session

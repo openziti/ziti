@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 
 	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/gobuffalo/packr"
@@ -69,6 +70,7 @@ type AppEnv struct {
 	ControlClientCsrSigner  cert.Signer
 	FingerprintGenerator    cert.FingerprintGenerator
 	RootRouter              *mux.Router
+	CurrentIdentityRouter   *mux.Router
 	RequestResponderFactory response.RequestResponderFactory
 	ModelHandlers           *migration.ModelHandlers
 	AuthRegistry            model.AuthRegistry
@@ -137,6 +139,7 @@ type HostController interface {
 
 type Schemes struct {
 	Association             *BasicEntitySchema
+	Authenticator           *BasicEntitySchema
 	Ca                      *BasicEntitySchema
 	Config                  *BasicEntitySchema
 	ConfigType              *BasicEntitySchema
@@ -200,6 +203,11 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 		AuthRegistry:            &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:          &model.EnrollmentRegistryImpl{},
 	}
+
+	ae.RootRouter.NotFoundHandler = NewNotFoundHandler(ae)
+	ae.RootRouter.MethodNotAllowedHandler = NewMethodNotAllowedHandler(ae)
+
+	ae.CurrentIdentityRouter = ae.RootRouter.PathPrefix("/current-identity").Subrouter()
 
 	sm := getJwtSigningMethod(c.Api.Identity.ServerCert())
 	key := c.Api.Identity.ServerCert().PrivateKey
@@ -488,4 +496,48 @@ func kebabToCamelCase(kebab string) (camelCase string) {
 		}
 	}
 	return
+}
+
+type NotFoundHandler struct {
+	appEnv      *AppEnv
+	handler     func(http.ResponseWriter, *http.Request)
+	handlerOnce sync.Once
+}
+
+func (handler NotFoundHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	handler.handlerOnce.Do(func() {
+		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
+			rc.RequestResponder.RespondWithNotFound()
+		})
+	})
+
+	handler.handler(rw, r)
+}
+
+func NewNotFoundHandler(ae *AppEnv) http.Handler {
+	return &NotFoundHandler{
+		appEnv: ae,
+	}
+}
+
+type MethodNotAllowedHandler struct {
+	appEnv      *AppEnv
+	handler     func(http.ResponseWriter, *http.Request)
+	handlerOnce sync.Once
+}
+
+func (handler MethodNotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	handler.handlerOnce.Do(func() {
+		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
+			rc.RequestResponder.RespondWithMethodNotAllowed()
+		})
+	})
+
+	handler.handler(rw, r)
+}
+
+func NewMethodNotAllowedHandler(ae *AppEnv) http.Handler {
+	return &MethodNotAllowedHandler{
+		appEnv: ae,
+	}
 }

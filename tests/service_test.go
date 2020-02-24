@@ -37,7 +37,7 @@ func Test_Services(t *testing.T) {
 	ctx.requireAdminLogin()
 
 	identityRole := uuid.New().String()
-	nonAdminuserSession := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
+	nonAdminUserSession := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -92,7 +92,7 @@ func Test_Services(t *testing.T) {
 		fmt.Printf("Expecting\n%v\n%v\n%v and not\n%v to be in final list\n", service1.id, service2.id, service3.id, service4.id)
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
 			service1.id, service2.id, service3.id, service4.id, service5.id, service6.id, service7.id))
-		result := nonAdminuserSession.requireQuery("services?filter=" + query)
+		result := nonAdminUserSession.requireQuery("services?filter=" + query)
 		data := ctx.requirePath(result, "data")
 		ctx.requireNoChildWith(data, "id", service4.id)
 		ctx.requireNoChildWith(data, "id", service5.id)
@@ -133,21 +133,21 @@ func Test_Services(t *testing.T) {
 		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole))
 		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole))
 
-		nonAdminuserSession.validateEntityWithLookup(service1)
-		nonAdminuserSession.validateEntityWithLookup(service2)
-		nonAdminuserSession.validateEntityWithLookup(service3)
+		nonAdminUserSession.validateEntityWithLookup(service1)
+		nonAdminUserSession.validateEntityWithLookup(service2)
+		nonAdminUserSession.validateEntityWithLookup(service3)
 	})
 
 	t.Run("lookup non-existent service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(nonAdminuserSession.query("services/" + uuid.New().String()))
+		ctx.requireNotFoundError(nonAdminUserSession.query("services/" + uuid.New().String()))
 	})
 
 	t.Run("query non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v"]`, service.id))
-		body := nonAdminuserSession.requireQuery("services?filter=" + query)
+		body := nonAdminUserSession.requireQuery("services?filter=" + query)
 		data := body.S("data")
 		children, err := data.Children()
 		ctx.req.True(data == nil || data.Data() == nil || (err == nil && len(children) == 0))
@@ -157,7 +157,7 @@ func Test_Services(t *testing.T) {
 	t.Run("lookup non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
-		httpStatus, body := nonAdminuserSession.query("services/" + service.id)
+		httpStatus, body := nonAdminUserSession.query("services/" + service.id)
 		ctx.logJson(body)
 		ctx.requireNotFoundError(httpStatus, body)
 	})

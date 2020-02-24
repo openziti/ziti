@@ -1,0 +1,154 @@
+/*
+	Copyright 2020 NetFoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package routes
+
+import (
+	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/netfoundry/ziti-edge/controller/env"
+	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
+	"github.com/netfoundry/ziti-edge/controller/model"
+	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-edge/controller/util"
+)
+
+func init() {
+	r := NewCurrentIdentityAuthenticatorRouter()
+	env.AddRouter(r)
+}
+
+type CurrentIdentityAuthenticatorRouter struct {
+	BasePath string
+	IdType   response.IdType
+}
+
+func NewCurrentIdentityAuthenticatorRouter() *CurrentIdentityAuthenticatorRouter {
+	return &CurrentIdentityAuthenticatorRouter{
+		BasePath: "/" + EntityNameAuthenticator,
+		IdType:   response.IdTypeUuid,
+	}
+}
+
+func (ir *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
+	registerReadUpdateRouter(ae, ae.CurrentIdentityRouter, ir.BasePath, ir, permissions.IsAuthenticated())
+}
+
+func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
+		result, err := ae.Handlers.Authenticator.ListForIdentity(rc.Identity.Id, queryOptions)
+		if err != nil {
+			pfxlog.Logger().Errorf("error executing list query: %+v", err)
+			return nil, err
+		}
+
+		apiAuthenticators, err := MapAuthenticatorsToApiEntities(ae, rc, result.Authenticators)
+		if err != nil {
+			return nil, err
+		}
+		return NewQueryResult(apiAuthenticators, &result.QueryMetaData), nil
+	})
+}
+
+func (ir *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (entity BaseApiEntity, err error) {
+		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity, id)
+		if err != nil {
+			return nil, err
+		}
+
+		if authenticator == nil {
+			return nil, util.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
+		}
+
+		apiAuthenticator, err := MapAuthenticatorToApiList(authenticator)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return apiAuthenticator, nil
+	})
+}
+
+func (ir *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
+	apiEntity := &map[string]interface{}{}
+	Update(rc, ae.Schemes.Authenticator.Put, ir.IdType, apiEntity, func(id string) error {
+		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity, id)
+
+		if err != nil {
+			return err
+		}
+
+		if authenticator == nil {
+			return util.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
+		}
+
+		if authenticator.IdentityId != rc.Identity.Id {
+			return apierror.NewUnhandled()
+		}
+
+		authenticatorUpdate := &AuthenticatorUpdateApi{}
+		authenticatorUpdate.FillFromMap(*apiEntity)
+
+		authenticatorUpdateModel := authenticatorUpdate.ToModel(id)
+
+		if authenticatorUpdateModel.Method != authenticator.Method {
+			return apierror.NewInvalidAuthenticatorProperties()
+		}
+
+		if authenticatorUpdateModel.Method == persistence.MethodAuthenticatorCert {
+			return apierror.NewAuthenticatorCannotBeUpdated()
+		}
+
+		return ae.Handlers.Authenticator.Update(authenticatorUpdateModel)
+	})
+}
+
+func (ir *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
+	apiEntity := &map[string]interface{}{}
+	Patch(rc, ae.Schemes.Authenticator.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
+		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity, id)
+
+		if err != nil {
+			return err
+		}
+
+		if authenticator == nil {
+			return util.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
+		}
+
+		if authenticator.IdentityId != rc.Identity.Id {
+			return apierror.NewUnhandled()
+		}
+
+		authenticatorUpdate := &AuthenticatorUpdateApi{}
+		authenticatorUpdate.FillFromMap(*apiEntity)
+
+		authenticatorUpdateModel := authenticatorUpdate.ToModel(id)
+
+		if authenticatorUpdateModel.Method != authenticator.Method {
+			return apierror.NewInvalidAuthenticatorProperties()
+		}
+
+		if authenticatorUpdateModel.Method == persistence.MethodAuthenticatorCert {
+			return apierror.NewAuthenticatorCannotBeUpdated()
+		}
+
+		return ae.Handlers.Authenticator.Patch(authenticatorUpdateModel, fields.FilterMaps("tags"))
+	})
+}

@@ -17,6 +17,7 @@
 package validation
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -55,6 +56,22 @@ type SchemaValidationErrors struct {
 
 func (e SchemaValidationErrors) Error() string {
 	return fmt.Sprintf("schema validation failed")
+}
+
+func (e SchemaValidationErrors) MarshalJSON() ([]byte, error) {
+	if len(e.Errors) > 1 {
+		errMap := map[string]interface{}{
+			"Reason": "multiple validation errors occurred",
+			"Errors": e.Errors,
+		}
+		return json.Marshal(errMap)
+	}
+
+	if len(e.Errors) == 1 {
+		return json.Marshal(e.Errors[0])
+	}
+
+	return nil, nil
 }
 
 type SchemaValidationError struct {

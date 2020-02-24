@@ -1,0 +1,34 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator.patch.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "certPem": {
+          "type": "string"
+        },
+        "tags": {
+          "default": {},
+          "$ref": "definitions.all.json#/definitions/tags-null"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "$ref": "definitions.all.json#/definitions/username"
+        },
+        "password": {
+          "$ref": "definitions.all.json#/definitions/password"
+        },
+        "tags": {
+          "default": {},
+          "$ref": "definitions.all.json#/definitions/tags-null"
+        }
+      }
+    }
+  ]
+}

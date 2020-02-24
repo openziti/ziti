@@ -80,7 +80,7 @@ func (er *ErrorResponse) Respond(rc *RequestContext) error {
 		er.Status = http.StatusInternalServerError
 		log.Warn("invalid HTTP status code detected for error response, defaulting to 500")
 	}
-
+	rc.ResponseWriter.Header().Set("content-type", "application/json")
 	AddVersionHeader(rc.ResponseWriter)
 	rc.ResponseWriter.WriteHeader(er.Status)
 	_, err := rc.ResponseWriter.Write(jsonObj.Bytes())

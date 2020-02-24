@@ -36,6 +36,7 @@ type RequestResponder interface {
 	RespondWithOk(data interface{}, meta *Meta)
 	RespondWithUnauthorizedError(rc *RequestContext)
 	RespondWithValidationErrors(ves *validation.SchemaValidationErrors)
+	RespondWithMethodNotAllowed()
 }
 
 type RequestResponderFactory func(rc *RequestContext) RequestResponder
@@ -144,7 +145,15 @@ func (rr *RequestResponderImpl) RespondWithNotFound() {
 	rr.RespondWithApiError(&apierror.ApiError{
 		Code:    apierror.NotFoundCode,
 		Message: apierror.NotFoundMessage,
-		Status:  http.StatusNotFound,
+		Status:  apierror.NotFoundStatus,
+	})
+}
+
+func (rr *RequestResponderImpl) RespondWithMethodNotAllowed() {
+	rr.RespondWithApiError(&apierror.ApiError{
+		Code:    apierror.MethodNotAllowedCode,
+		Message: apierror.MethodNotAllowedMessage,
+		Status:  apierror.MethodNotAllowedStatus,
 	})
 }
 
@@ -160,7 +169,7 @@ func (rr *RequestResponderImpl) RespondWithValidationErrors(e *validation.Schema
 	rr.RespondWithApiError(&apierror.ApiError{
 		Code:    apierror.CouldNotValidateCode,
 		Message: apierror.CouldNotValidateMessage,
-		Cause:   e.Errors[0],
+		Cause:   e,
 		Status:  http.StatusBadRequest,
 	})
 }

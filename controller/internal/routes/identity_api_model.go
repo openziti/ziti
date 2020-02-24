@@ -183,8 +183,8 @@ func NewIdentityEntityRef(s *model.Identity) *EntityApiRef {
 	}
 }
 
-func NewIdentityLink(sessionId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameIdentity, sessionId))
+func NewIdentityLink(identityId string) *response.Link {
+	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameIdentity, identityId))
 }
 
 func MapIdentityToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
