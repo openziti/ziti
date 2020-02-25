@@ -93,10 +93,6 @@ func (ir *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *respons
 func (ir *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &AuthenticatorSelfUpdateApi{}
 	Patch(rc, ae.Schemes.AuthenticatorSelf.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		if fields.IsUpdated("newPassword") {
-			fields.AddField("password")
-			fields.AddField("salt")
-		}
 		return ae.Handlers.Authenticator.PatchSelf(apiEntity.ToModel(id, rc.Identity.Id), fields.FilterMaps("tags"))
 	})
 }
