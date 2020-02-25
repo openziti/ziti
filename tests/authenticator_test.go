@@ -779,6 +779,47 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		})
 	})
 
+	t.Run("a non-admin can not update their own updb authenticator with an invalid current password", func(t *testing.T) {
+		req := require.New(t)
+		ctx.testContextChanged(t)
+
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		authSession, err := auth.Authenticate(ctx)
+		req.NoError(err)
+
+		authResp, err := authSession.newAuthenticatedRequest().Get("/current-identity/authenticators")
+		req.NoError(err)
+
+		authListBody, err := gabs.ParseJSON(authResp.Body())
+		req.NoError(err)
+
+		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
+		req.True(ok)
+		req.NotEmpty(authId)
+		_, err = uuid.Parse(authId)
+		req.NoError(err)
+
+		newUsername := uuid.New().String()
+		newPassword := uuid.New().String()
+
+		body := fmt.Sprintf(`{"username":"%s", "newPassword":"%s", "currentPassword":"%s"}`, newUsername, newPassword, uuid.New().String())
+		resp, err := authSession.newAuthenticatedJsonRequest(body).
+			Put("/current-identity/authenticators/" + authId)
+
+		req.NoError(err)
+
+		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
+
+		t.Run("a non-admin can authenticate with the original updb credentials", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, err := auth.Authenticate(ctx)
+
+			req.NoError(err)
+		})
+	})
+
 	t.Run("a non-admin can patch their own updb authenticator", func(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
@@ -821,6 +862,46 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		})
 	})
 
+	t.Run("a non-admin can not patch their own updb authenticator with an invalid current password", func(t *testing.T) {
+		req := require.New(t)
+		ctx.testContextChanged(t)
+
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		authSession, err := auth.Authenticate(ctx)
+		req.NoError(err)
+
+		authResp, err := authSession.newAuthenticatedRequest().Get("/current-identity/authenticators")
+		req.NoError(err)
+
+		authListBody, err := gabs.ParseJSON(authResp.Body())
+		req.NoError(err)
+
+		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
+		req.True(ok)
+		req.NotEmpty(authId)
+		_, err = uuid.Parse(authId)
+		req.NoError(err)
+
+		newPassword := uuid.New().String()
+
+		body := fmt.Sprintf(`{"newPassword":"%s", "currentPassword":"%s"}`, newPassword, uuid.New().String())
+		resp, err := authSession.newAuthenticatedJsonRequest(body).
+			Patch("/current-identity/authenticators/" + authId)
+
+		req.NoError(err)
+
+		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
+
+		t.Run("a non-admin can authenticate with original updb credentials", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, err := auth.Authenticate(ctx)
+
+			req.NoError(err)
+		})
+	})
+
 	t.Run("a non-admin cannot update their own cert authenticator", func(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
@@ -848,6 +929,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		standardErrorJsonResponseTests(resp, apierror.AuthenticatorCanNotBeUpdatedCode, http.StatusConflict, t)
 	})
+
 	t.Run("a non-admin cannot patch their own cert authenticator", func(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
