@@ -194,7 +194,7 @@
     },
     "password": {
       "type": "string",
-      "minLength": 6,
+      "minLength": 5,
       "maxLength": 100
     },
     "password-null": {
@@ -202,7 +202,7 @@
         "string",
         "null"
       ],
-      "minLength": 6,
+      "minLength": 5,
       "maxLength": 100
     },
     "username": {
