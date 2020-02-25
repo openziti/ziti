@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/crypto"
 	"net/http"
 )
 
@@ -93,11 +92,9 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
 		return "", apierror.NewInvalidAuth()
 	}
 
-	hr := crypto.ReHash(password, salt)
+	hr := handler.env.GetHandlers().Authenticator.ReHashPassword(password, salt)
 
-	target := base64.StdEncoding.EncodeToString(hr.Hash)
-
-	if updb.Password != target {
+	if updb.Password != hr.Password {
 		return "", apierror.NewInvalidAuth()
 	}
 

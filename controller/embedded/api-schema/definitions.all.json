@@ -197,8 +197,24 @@
       "minLength": 6,
       "maxLength": 100
     },
+    "password-null": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 6,
+      "maxLength": 100
+    },
     "username": {
       "type": "string",
+      "minLength": 4,
+      "maxLength": 100
+    },
+    "username-null": {
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 4,
       "maxLength": 100
     },

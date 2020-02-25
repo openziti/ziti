@@ -197,8 +197,8 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 		rr.RespondWithCouldNotParseBody(err)
 		return
 	}
-
-	il := gojsonschema.NewGoLoader(in)
+	
+	il := gojsonschema.NewBytesLoader(body)
 
 	result, err := sc.Validate(il)
 
@@ -338,7 +338,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, 
 			return
 		}
 
-		il := gojsonschema.NewGoLoader(in)
+		il := gojsonschema.NewBytesLoader(body)
 
 		result, err := sc.Validate(il)
 
@@ -405,7 +405,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 		rc.RequestResponder.RespondWithCouldNotParseBody(err)
 	}
 
-	il := gojsonschema.NewGoLoader(in)
+	il := gojsonschema.NewBytesLoader(body)
 
 	result, err := sc.Validate(il)
 

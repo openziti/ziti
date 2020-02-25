@@ -162,9 +162,9 @@ const (
 	InvalidAuthenticatorPropertiesMessage string = "The properties supplied did not match the authenticator method"
 	InvalidAuthenticatorPropertiesStatus  int    = http.StatusBadRequest
 
-	AuthenticatorCannotBeUpdatedCode    string = "CANNOT_UPDATE_AUTHENTICATOR"
-	AuthenticatorCannotBeUpdatedMessage string = "The authenticator cannot be updated in this fashion"
-	AuthenticatorCannotBeUpdatedStatus  int    = http.StatusConflict
+	AuthenticatorCanNotBeUpdatedCode    string = "CAN_NOT_UPDATE_AUTHENTICATOR"
+	AuthenticatorCanNotBeUpdatedMessage string = "The authenticator cannot be updated in this fashion"
+	AuthenticatorCanNotBeUpdatedStatus  int    = http.StatusConflict
 
 	AuthenticatorMethodMaxCode    string = "MAX_AUTHENTICATOR_METHODS_REACHED"
 	AuthenticatorMethodMaxMessage string = "The identity already has the maximum authenticators of the specified method"
