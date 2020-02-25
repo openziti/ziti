@@ -62,6 +62,7 @@ jobs:
       os: linux
       arch: amd64
       script:
+        - set -e
         - pip install --upgrade --user pip
         - pip install awscli
         - ziti-ci configure-git
