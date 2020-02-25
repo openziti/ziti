@@ -306,3 +306,32 @@ type AndFieldChecker struct {
 func (checker *AndFieldChecker) IsUpdated(field string) bool {
 	return checker.first.IsUpdated(field) && checker.second.IsUpdated(field)
 }
+
+type OrFieldChecker struct {
+	first  boltz.FieldChecker
+	second boltz.FieldChecker
+}
+
+func NewOrFieldChecker(checker boltz.FieldChecker, fields ...string) *OrFieldChecker {
+	return &OrFieldChecker{first: NewFieldChecker(fields...), second: checker}
+}
+
+func (checker *OrFieldChecker) IsUpdated(field string) bool {
+	return checker.first.IsUpdated(field) || checker.second.IsUpdated(field)
+}
+
+type FieldChecker map[string]struct{}
+
+func NewFieldChecker(fields ...string) *FieldChecker {
+	ret := FieldChecker{}
+	for _, field := range fields {
+		ret[field] = struct{}{}
+	}
+
+	return &ret
+}
+
+func (fc *FieldChecker) IsUpdated(field string) bool {
+	_, found := (*fc)[field]
+	return found
+}

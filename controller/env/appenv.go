@@ -140,6 +140,7 @@ type HostController interface {
 type Schemes struct {
 	Association             *BasicEntitySchema
 	Authenticator           *BasicEntitySchema
+	AuthenticatorSelf       *BasicEntitySchema
 	Ca                      *BasicEntitySchema
 	Config                  *BasicEntitySchema
 	ConfigType              *BasicEntitySchema

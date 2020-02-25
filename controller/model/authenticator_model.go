@@ -17,6 +17,7 @@
 package model
 
 import (
+	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -30,6 +31,14 @@ type Authenticator struct {
 	Method     string
 	IdentityId string
 	SubType    interface{}
+}
+
+type AuthenticatorSelf struct {
+	BaseModelEntityImpl
+	CurrentPassword string
+	NewPassword     string
+	IdentityId      string
+	Username        string
 }
 
 func (entity *Authenticator) Fingerprints() []string {
@@ -131,7 +140,7 @@ func (entity *Authenticator) ToCert() *AuthenticatorCert {
 	cert, ok := entity.SubType.(*AuthenticatorCert)
 
 	if !ok {
-		pfxlog.Logger().Panicf("unexpected type assertion failure for authenticator cert sub type %s", reflect.TypeOf(entity.SubType))
+		return nil
 	}
 	cert.Authenticator = entity
 
@@ -142,7 +151,7 @@ func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 	updb, ok := entity.SubType.(*AuthenticatorUpdb)
 
 	if !ok {
-		pfxlog.Logger().Panicf("unexpected type assertion failure for authenticator cert sub type %s", reflect.TypeOf(entity.SubType))
+		return nil
 	}
 	updb.Authenticator = entity
 
@@ -160,4 +169,9 @@ type AuthenticatorUpdb struct {
 	Username string
 	Password string
 	Salt     string
+}
+
+func (au *AuthenticatorUpdb) DecodedSalt() []byte {
+	result, _ := base64.StdEncoding.DecodeString(au.Salt)
+	return result
 }

@@ -31,6 +31,7 @@ func Test_EdgeRouter(t *testing.T) {
 	ctx.requireAdminLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		edgeRouter := newTestEdgeRouter(role1, role2)
@@ -40,6 +41,7 @@ func Test_EdgeRouter(t *testing.T) {
 	})
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		role1 := uuid.New().String()
 		role2 := uuid.New().String()
 		edgeRouter := newTestEdgeRouter(role1, role2)

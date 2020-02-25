@@ -276,9 +276,9 @@ func NewInvalidAuthenticatorProperties() *ApiError {
 
 func NewAuthenticatorCannotBeUpdated() *ApiError {
 	return &ApiError{
-		Code:    AuthenticatorCannotBeUpdatedCode,
-		Message: AuthenticatorCannotBeUpdatedMessage,
-		Status:  AuthenticatorCannotBeUpdatedStatus,
+		Code:    AuthenticatorCanNotBeUpdatedCode,
+		Message: AuthenticatorCanNotBeUpdatedMessage,
+		Status:  AuthenticatorCanNotBeUpdatedStatus,
 	}
 }
 

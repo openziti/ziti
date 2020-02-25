@@ -117,21 +117,23 @@ func (entity *identity) getEntityType() string {
 	return "identities"
 }
 
-func (entity *identity) toJson(_ bool, ctx *TestContext, _ ...string) string {
+func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.identityType, "type")
 	ctx.setJsonValue(entityData, entity.isAdmin, "isAdmin")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 
-	enrollments := map[string]interface{}{
-		"updb": entity.name,
-	}
-	ctx.setJsonValue(entityData, enrollments, "enrollment")
+	if isCreate {
+		enrollments := map[string]interface{}{
+			"updb": entity.name,
+		}
+		ctx.setJsonValue(entityData, enrollments, "enrollment")
 
-	if len(entity.tags) > 0 {
-		ctx.setJsonValue(entityData, entity.tags, "tags")
 	}
+
+	ctx.setJsonValue(entityData, entity.tags, "tags")
+
 	return entityData.String()
 }
 
@@ -176,9 +178,9 @@ func (entity *edgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 
-	if len(entity.tags) > 0 {
-		ctx.setJsonValue(entityData, entity.tags, "tags")
-	}
+	ctx.setJsonValue(entityData, entity.tags, "tags")
+
+	
 	return entityData.String()
 }
 

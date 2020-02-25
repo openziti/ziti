@@ -205,12 +205,13 @@ func Test_Configs(t *testing.T) {
 	})
 
 	t.Run("update of type config should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
 		ctx.AdminSession.validateEntityWithQuery(config)
 
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
-		config.sendType = true
+		config.sendType = false
 		config.configType = configType2.id
 		ctx.AdminSession.requireUpdateEntity(config)
 

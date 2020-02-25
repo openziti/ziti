@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/crypto"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -170,20 +171,55 @@ func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Auth
 }
 
 func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
-	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
-		if updb, ok := authenticator.SubType.(*AuthenticatorUpdb); ok {
-			hashResult := handler.HashPassword(updb.Password)
-			updb.Password = hashResult.Password
-			updb.Salt = hashResult.Salt
-		}
+	if updb := authenticator.ToUpdb(); updb != nil {
+		hashResult := handler.HashPassword(updb.Password)
+		updb.Password = hashResult.Password
+		updb.Salt = hashResult.Salt
 	}
 
 	return handler.updateEntity(authenticator, handler)
 }
 
+func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorSelf) error {
+	authenticator, err := handler.ReadForIdentity(authenticatorSelf.IdentityId, authenticatorSelf.Id)
+
+	if err != nil {
+		return err
+	}
+
+	if authenticator == nil {
+		return util.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
+	}
+
+	if authenticator.IdentityId != authenticatorSelf.IdentityId {
+		return apierror.NewUnhandled()
+	}
+
+	updbAuth := authenticator.ToUpdb()
+
+	if updbAuth == nil {
+		return apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	curHashResult := handler.ReHashPassword(authenticatorSelf.CurrentPassword, updbAuth.DecodedSalt())
+
+	if curHashResult.Password != updbAuth.Password {
+		apiErr := apierror.NewUnauthorized()
+		apiErr.Cause = apierror.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
+		return apiErr
+	}
+
+	updbAuth.Username = authenticatorSelf.Username
+	updbAuth.Password = authenticatorSelf.NewPassword
+	updbAuth.Salt = ""
+	authenticator.SubType = updbAuth
+
+	return handler.Update(authenticator)
+}
+
 func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker boltz.FieldChecker) error {
 	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
-		if updb, ok := authenticator.SubType.(*AuthenticatorUpdb); ok {
+		if updb := authenticator.ToUpdb(); updb != nil {
 			if checker.IsUpdated("password") {
 				hashResult := handler.HashPassword(updb.Password)
 				updb.Password = hashResult.Password
@@ -195,8 +231,62 @@ func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker 
 	return handler.patchEntity(authenticator, combinedChecker)
 }
 
+func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSelf, checker boltz.FieldChecker) error {
+	if checker.IsUpdated("newPassword") {
+		checker = NewOrFieldChecker(checker, "salt", "password")
+
+	}
+
+	authenticator, err := handler.ReadForIdentity(authenticatorSelf.IdentityId, authenticatorSelf.Id)
+
+	if err != nil {
+		return err
+	}
+
+	if authenticator == nil {
+		return util.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
+	}
+
+	if authenticator.IdentityId != authenticatorSelf.IdentityId {
+		return apierror.NewUnhandled()
+	}
+
+	updbAuth := authenticator.ToUpdb()
+
+	if updbAuth == nil {
+		return apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	curHashResult := handler.ReHashPassword(authenticatorSelf.CurrentPassword, updbAuth.DecodedSalt())
+
+	if curHashResult.Password != updbAuth.Password {
+		apiErr := apierror.NewUnauthorized()
+		apiErr.Cause = apierror.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
+		return apiErr
+	}
+
+	updbAuth.Username = authenticatorSelf.Username
+	updbAuth.Password = authenticatorSelf.NewPassword
+	updbAuth.Salt = ""
+	authenticator.SubType = updbAuth
+
+	return handler.Patch(authenticator, checker)
+}
+
 func (handler AuthenticatorHandler) HashPassword(password string) *HashedPassword {
 	newResult := crypto.Hash(password)
+	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
+	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
+
+	return &HashedPassword{
+		RawResult: newResult,
+		Salt:      b64Salt,
+		Password:  b64Password,
+	}
+}
+
+func (handler AuthenticatorHandler) ReHashPassword(password string, salt []byte) *HashedPassword {
+	newResult := crypto.ReHash(password, salt)
 	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
 	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
 
@@ -234,14 +324,14 @@ func (handler AuthenticatorHandler) ListForIdentity(identityId string, options *
 	}, nil
 }
 
-func (handler AuthenticatorHandler) ReadForIdentity(identity *Identity, authenticatorId string) (*Authenticator, error) {
+func (handler AuthenticatorHandler) ReadForIdentity(identityId string, authenticatorId string) (*Authenticator, error) {
 	authenticator, err := handler.Read(authenticatorId)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if authenticator.IdentityId == identity.Id {
+	if authenticator.IdentityId == identityId {
 		return authenticator, err
 	}
 

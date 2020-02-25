@@ -1,30 +1,18 @@
 {
-  "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator.post.json",
+  "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator-self.put.json",
   "oneOf": [
     {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "method",
-        "certPem",
-        "identityId"
+        "certPem"
       ],
       "properties": {
-        "method": {
-          "type": [
-            "string"
-          ],
-          "enum": [
-            "cert"
-          ]
-        },
         "certPem": {
           "type": "string"
         },
-        "identityId": {
-          "$ref": "definitions.all.json#/definitions/id"
-        },
         "tags": {
+          "default": {},
           "$ref": "definitions.all.json#/definitions/tags-null"
         }
       }
@@ -33,30 +21,22 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "method",
         "username",
-        "password",
-        "identityId"
+        "newPassword",
+        "currentPassword"
       ],
       "properties": {
-        "method": {
-          "type": [
-            "string"
-          ],
-          "enum": [
-            "updb"
-          ]
-        },
         "username": {
           "$ref": "definitions.all.json#/definitions/username"
         },
-        "password": {
+        "newPassword": {
           "$ref": "definitions.all.json#/definitions/password"
         },
-        "identityId": {
-          "$ref": "definitions.all.json#/definitions/id"
+        "currentPassword": {
+          "$ref": "definitions.all.json#/definitions/password"
         },
         "tags": {
+          "default": {},
           "$ref": "definitions.all.json#/definitions/tags-null"
         }
       }
