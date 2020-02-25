@@ -1,7 +1,7 @@
 // +build apitests
 
 /*
-	Copyright 2019 Netfoundry, Inc.
+	Copyright 2019 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -287,7 +287,7 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	ctx.req.NoError(err)
 
 	request, err := certtools.NewCertRequest(map[string]string{
-		"C": "US", "O": "Netfoundry-APi-Test", "CN": identityId,
+		"C": "US", "O": "NetFoundry-APi-Test", "CN": identityId,
 	}, nil)
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
