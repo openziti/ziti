@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
@@ -59,7 +60,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
+	cmd.AddCommand(newListServicesCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
@@ -137,6 +138,35 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 	return cmd
 }
 
+// newListCmdForEntityType creates the list command for the given entity type
+func newListServicesCmd(options *commonOptions) *cobra.Command {
+	var asIdentity string
+	var configTypes string
+
+	cmd := &cobra.Command{
+		Use:   "services <filter>?",
+		Short: "lists services managed by the Ziti Edge Controller",
+		Long:  "lists services managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListServices(asIdentity, configTypes, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().StringVar(&asIdentity, "as-identity", "", "Allow admins to see services as they would be seen by a different identity")
+	cmd.Flags().StringVar(&configTypes, "config-types", "", "Override which config types to view on services")
+
+	return cmd
+}
+
 // newSubListCmdForEntityType creates the list command for the given entity type
 func newSubListCmdForEntityType(entityType string, subType string, outputF outputFunction, options *commonOptions) *cobra.Command {
 	desc := fmt.Sprintf("lists %v related to a %v instanced managed by the Ziti Edge Controller", subType, entityType)
@@ -163,20 +193,22 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, options *commonOptions) ([]*gabs.Container, error) {
-	return filterEntitiesOfType(entityType, "", options.OutputJSONResponse)
+func listEntitiesWithOptions(entityType string, options *commonOptions) ([]*gabs.Container, error) {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	return listEntitiesOfType(entityType, nil, options.OutputJSONResponse)
 }
 
-func listEntitiesOfTypeWithOptionalFilter(entityType string, options *commonOptions) ([]*gabs.Container, error) {
-	filter := ""
-	if len(options.Args) > 0 {
-		filter = options.Args[0]
-	}
-	return filterEntitiesOfType(entityType, filter, options.OutputJSONResponse)
+func filterEntitiesOfType(entityType string, filter string, outputJson bool) ([]*gabs.Container, error) {
+	params := url.Values{}
+	params.Add("filter", filter)
+	return listEntitiesOfType(entityType, params, outputJson)
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterEntitiesOfType(entityType string, filter string, outputJSON bool) ([]*gabs.Container, error) {
+func listEntitiesOfType(entityType string, params url.Values, outputJSON bool) ([]*gabs.Container, error) {
 	session := &session{}
 	err := session.Load()
 
@@ -188,7 +220,7 @@ func filterEntitiesOfType(entityType string, filter string, outputJSON bool) ([]
 		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
 	}
 
-	jsonParsed, err := util.EdgeControllerListEntities(session, entityType, filter, outputJSON)
+	jsonParsed, err := util.EdgeControllerList(session, entityType, params, outputJSON)
 
 	if err != nil {
 		return nil, err
@@ -220,7 +252,7 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, outpu
 }
 
 func runListEdgeRouters(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("edge-routers", o)
+	children, err := listEntitiesWithOptions("edge-routers", o)
 	if err != nil {
 		return err
 	}
@@ -240,7 +272,7 @@ func outputEdgeRouters(o *commonOptions, children []*gabs.Container) error {
 }
 
 func runListEdgeRouterPolicies(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("edge-router-policies", o)
+	children, err := listEntitiesWithOptions("edge-router-policies", o)
 	if err != nil {
 		return err
 	}
@@ -261,12 +293,22 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) erro
 	return nil
 }
 
-func runListServices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("services", o)
+func runListServices(asIdentity string, configTypes string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	if asIdentity != "" {
+		params.Add("asIdentity", asIdentity)
+	}
+	if configTypes != "" {
+		params.Add("configTypes", configTypes)
+	}
+	children, err := listEntitiesOfType("services", params, options.OutputJSONResponse)
 	if err != nil {
 		return err
 	}
-	return outputServices(o, children)
+	return outputServices(options, children)
 }
 
 func outputServices(o *commonOptions, children []*gabs.Container) error {
@@ -284,7 +326,7 @@ func outputServices(o *commonOptions, children []*gabs.Container) error {
 }
 
 func runListServiceEdgeRouterPolices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("service-edge-router-policies", o)
+	children, err := listEntitiesWithOptions("service-edge-router-policies", o)
 	if err != nil {
 		return err
 	}
@@ -306,7 +348,7 @@ func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Containe
 }
 
 func runListServicePolices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("service-policies", o)
+	children, err := listEntitiesWithOptions("service-policies", o)
 	if err != nil {
 		return err
 	}
@@ -330,7 +372,7 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container) error {
 
 // runListIdentities implements the command to list identities
 func runListIdentities(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("identities", o)
+	children, err := listEntitiesWithOptions("identities", o)
 	if err != nil {
 		return err
 	}
@@ -353,7 +395,7 @@ func outputIdentities(o *commonOptions, children []*gabs.Container) error {
 }
 
 func runListCAs(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("cas", o)
+	children, err := listEntitiesWithOptions("cas", o)
 	if err != nil {
 		return err
 	}
@@ -371,7 +413,7 @@ func runListCAs(o *commonOptions) error {
 }
 
 func runListConfigTypes(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("config-types", o)
+	children, err := listEntitiesWithOptions("config-types", o)
 	if err != nil {
 		return err
 	}
@@ -388,7 +430,7 @@ func runListConfigTypes(o *commonOptions) error {
 }
 
 func runListConfigs(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("configs", o)
+	children, err := listEntitiesWithOptions("configs", o)
 	if err != nil {
 		return err
 	}
@@ -414,7 +456,7 @@ func outputConfigs(o *commonOptions, children []*gabs.Container) error {
 }
 
 func runListApiSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("api-sessions", o)
+	children, err := listEntitiesWithOptions("api-sessions", o)
 	if err != nil {
 		return err
 	}
@@ -432,7 +474,7 @@ func runListApiSessions(o *commonOptions) error {
 }
 
 func runListSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("sessions", o)
+	children, err := listEntitiesWithOptions("sessions", o)
 
 	if err != nil {
 		return err
