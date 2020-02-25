@@ -22,7 +22,6 @@ stages:
   - name: "Tag and Publish"
     if: branch != update-dependency
 
-
 jobs:
   include:
     - stage: "Update Dependency"
