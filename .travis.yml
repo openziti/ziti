@@ -1,7 +1,12 @@
 version: "~> 1.0"
 
 import:
-  - source: netfoundry/ziti-ci:ziti-go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:go-defaults.yml@v1
+  - source: netfoundry/ziti-ci:ziti-ci.yml@v1
+
+  - source: netfoundry/ziti-ci:update-dependency.yml@v1
+    if: branch = update-dependency
+
   - source: buildinfo.yml
     if: type != pull_request and branch != update-dependency
 
@@ -9,19 +14,68 @@ env:
   global:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
 
-matrix:
+stages:
+  - name: "Build and Test"
+    if: branch != update-dependency
+  - name: "Update Dependency"
+    if: branch = update-dependency
+  - name: "Tag and Publish"
+    if: branch != update-dependency
+
+jobs:
   include:
-    - os: linux
+    - stage: "Update Dependency"
+      os: linux
       arch: amd64
       env: GOX_OS=linux
-    - os: linux
+      script:
+        - set -e
+        - ziti-ci configure-git
+        - ziti-ci update-go-dependency
+        - go test ./...
+        - ziti-ci complete-update-go-dependency
+
+    - stage: "Build and Test"
+      os: linux
       arch: arm64
       env: GOX_OS=linux
-    - os: mac
+      before_install:
+        - pip install --upgrade --user pip
+        - pip install --user awscli
+
+    - stage: "Build and Test"
+      os: mac
       env: GOX_OS=darwin
-    - os: windows
-      env: GOX_OS=windows
+      before_install:
+        - pip install --upgrade pip
+        - pip install awscli
+
+    - stage: "Build and Test"
+      os: windows
+      env: GOX_OS=windows PATH=/c/Python36:/c/Python36/Scripts:$PATH
+      before_install:
+        - choco install python --version 3.6.8
+        - python -m pip install --upgrade pip
+        - pip install awscli
+
+    - stage: "Tag and Publish"
+      os: linux
+      arch: amd64
+      script:
+        - set -e
+        - pip install --upgrade --user pip
+        - pip install awscli
+        - ziti-ci configure-git
+        - ziti-ci generate-build-info common/version/info_generated.go version
+        - go get github.com/mitchellh/gox
+        - CGO_ENABLED=true gox -os="linux" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - ziti-ci tag --only-for-branch master -v -f "$VERSION_FILE"
+        - aws s3 sync s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID release/
+        - aws s3 rm --recursive s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
+        - ziti-ci publish-to-artifactory
+        - ziti-ci trigger-jenkins-smoke-build
 
 script:
   - go get github.com/mitchellh/gox
   - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+  - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
