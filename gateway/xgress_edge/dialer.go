@@ -51,8 +51,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	}
 
 	token := destParts[1]
-	log.Error("key", string(sessionId.Data[0xED6E]))
-	
+
 	log.Debug("looking up hosted service conn", len(sessionId.Data))
 	listenConn, found := dialer.factory.hostedServices.Get(token)
 	if !found {
@@ -61,6 +60,8 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(listenConn.Id(), token)
+	dialRequest.Headers[edge.PublicKeyHeader] = sessionId.Data[edge.PublicKeyHeader]
+
 	reply, err := listenConn.SendAndWaitWithTimeout(dialRequest, 5*time.Second)
 	if err != nil {
 		return err

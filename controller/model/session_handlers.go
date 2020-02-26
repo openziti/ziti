@@ -69,9 +69,23 @@ func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*S
 
 func (handler *SessionHandler) Read(id string) (*Session, error) {
 	entity := &Session{}
-	if err := handler.readEntity(id, entity); err != nil {
+
+	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
+		if err := handler.readEntityInTx(tx, id, entity); err != nil {
+			return err
+		}
+		serv, err := handler.env.GetStores().EdgeService.LoadOneById(tx, entity.ServiceId)
+		if  err != nil {
+			return err
+		}
+
+		entity.PubKey = serv.PubKey
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
+
 	return entity, nil
 }
 

@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"testing"
 	"time"
@@ -230,8 +231,9 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 		service.Binding = uuid.New().String()
 		service.EndpointAddress = uuid.New().String()
 		service.Egress = uuid.New().String()
-		service.PubKey = make([]byte, 32)
-		rand.Read(service.PubKey)
+		pk := make([]byte, 32)
+		rand.Read(pk)
+		service.PubKey = base64.StdEncoding.EncodeToString(pk)
 		service.UpdatedAt = earlier
 		service.CreatedAt = now
 		service.Tags = tags

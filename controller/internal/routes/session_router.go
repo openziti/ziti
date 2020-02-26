@@ -165,6 +165,7 @@ func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link *respon
 	newSession := &NewSession{
 		SessionApiList: apiSession,
 		Token:          modelSession.Token,
+		Pubkey:         modelSession.PubKey,
 	}
 	nsr.RespondWithCreated(newSession, nil, link)
 }

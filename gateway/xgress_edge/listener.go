@@ -17,6 +17,7 @@
 package xgress_edge
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
@@ -152,9 +153,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	// fabric connect
 	log.Debug("dialing fabric")
-	hints := make(map[uint32][]byte)
-	hints[0xED6E] = []byte("this be the key")
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, hints)
+	peerData := make(map[uint32][]byte)
+	peerData[edge.PublicKeyHeader] = req.Headers[edge.PublicKeyHeader]
+	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, peerData)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
@@ -176,6 +177,8 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 	pubKey := req.Headers[edge.PublicKeyHeader]
+	pubKeyStr := base64.StdEncoding.EncodeToString(pubKey)
+
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
@@ -202,7 +205,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 
 	log.Debug("binding service")
-	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id, pubKey); err != nil {
+	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id, pubKeyStr); err != nil {
 		proxy.sendStateClosedReply(err.Error(), req)
 		return
 	}
