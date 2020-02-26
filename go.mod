@@ -3,8 +3,9 @@ module github.com/netfoundry/ziti-edge
 go 1.13
 
 // replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
-// replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
-// replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
+replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+
+replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -44,7 +45,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.3
-	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708
+	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9
 	gopkg.in/Masterminds/squirrel.v1 v1.0.0-20170825200431-a6b93000bd21
 	gopkg.in/oleiade/reflections.v1 v1.0.0

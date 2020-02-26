@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 	"time"
@@ -229,6 +230,8 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 		service.Binding = uuid.New().String()
 		service.EndpointAddress = uuid.New().String()
 		service.Egress = uuid.New().String()
+		service.PubKey = make([]byte, 32)
+		rand.Read(service.PubKey)
 		service.UpdatedAt = earlier
 		service.CreatedAt = now
 		service.Tags = tags

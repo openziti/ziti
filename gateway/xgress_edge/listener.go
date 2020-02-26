@@ -152,7 +152,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	// fabric connect
 	log.Debug("dialing fabric")
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id)
+	hints := make(map[uint32][]byte)
+	hints[0xED6E] = []byte("this be the key")
+	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, hints)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
@@ -173,6 +175,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
+	pubKey := req.Headers[edge.PublicKeyHeader]
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
@@ -199,7 +202,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 
 	log.Debug("binding service")
-	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id); err != nil {
+	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id, pubKey); err != nil {
 		proxy.sendStateClosedReply(err.Error(), req)
 		return
 	}
