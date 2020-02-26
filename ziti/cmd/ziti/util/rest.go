@@ -412,16 +412,7 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
-				panic(err)
-			}
-		} else {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
-				panic(err)
-			}
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -432,6 +423,19 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	return jsonParsed, nil
 }
 
+func outputJson(out io.Writer, data []byte) {
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, data, "", "    "); err == nil {
+		if _, err := fmt.Fprint(out, prettyJSON.String()); err != nil {
+			panic(err)
+		}
+	} else {
+		if _, err := fmt.Fprint(out, data); err != nil {
+			panic(err)
+		}
+	}
+}
+
 type Session interface {
 	GetBaseUrl() string
 	GetCert() string
@@ -439,16 +443,16 @@ type Session interface {
 }
 
 // EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
-func EdgeControllerListSubEntities(session Session, entityType, subType, entityId string, filter string, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerListSubEntities(session Session, entityType, subType, entityId string, filter string, logJSON bool, out io.Writer) (*gabs.Container, error) {
 	params := url.Values{}
 	if filter != "" {
 		params.Add("filter", filter)
 	}
-	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, params, logJSON)
+	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, params, logJSON, out)
 }
 
 // EdgeControllerList will list entities of the given type in the given Edge Controller
-func EdgeControllerList(session Session, path string, params url.Values, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerList(session Session, path string, params url.Values, logJSON bool, out io.Writer) (*gabs.Container, error) {
 	client := newClient()
 
 	if session.GetCert() != "" {
@@ -477,10 +481,7 @@ func EdgeControllerList(session Session, path string, params url.Values, logJSON
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			fmt.Printf("Result:\n%s\n", prettyJSON.String())
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -517,16 +518,7 @@ func EdgeControllerCreate(url string, cert string, token string, entityType stri
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
-				panic(err)
-			}
-		} else {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
-				panic(err)
-			}
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -564,16 +556,7 @@ func EdgeControllerDelete(baseUrl string, cert string, token string, entityType 
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
-				panic(err)
-			}
-		} else {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
-				panic(err)
-			}
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -617,16 +600,7 @@ func EdgeControllerUpdate(url string, cert string, token string, entityType stri
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
-				panic(err)
-			}
-		} else {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
-				panic(err)
-			}
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -662,16 +636,7 @@ func EdgeControllerRequest(url string, cert string, token string, entityType str
 	}
 
 	if logJSON {
-		var prettyJSON bytes.Buffer
-		if err = json.Indent(&prettyJSON, resp.Body(), "", "    "); err == nil {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", prettyJSON.String()); err != nil {
-				panic(err)
-			}
-		} else {
-			if _, err := fmt.Fprintf(out, "Result:\n%s\n", resp.Body()); err != nil {
-				panic(err)
-			}
-		}
+		outputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())

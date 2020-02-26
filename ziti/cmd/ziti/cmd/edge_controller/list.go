@@ -198,17 +198,17 @@ func listEntitiesWithOptions(entityType string, options *commonOptions) ([]*gabs
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
 	}
-	return listEntitiesOfType(entityType, nil, options.OutputJSONResponse)
+	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out)
 }
 
-func filterEntitiesOfType(entityType string, filter string, outputJson bool) ([]*gabs.Container, error) {
+func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer) ([]*gabs.Container, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, outputJson)
+	return listEntitiesOfType(entityType, params, logJSON, out)
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, params url.Values, outputJSON bool) ([]*gabs.Container, error) {
+func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer) ([]*gabs.Container, error) {
 	session := &session{}
 	err := session.Load()
 
@@ -220,7 +220,7 @@ func listEntitiesOfType(entityType string, params url.Values, outputJSON bool) (
 		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
 	}
 
-	jsonParsed, err := util.EdgeControllerList(session, entityType, params, outputJSON)
+	jsonParsed, err := util.EdgeControllerList(session, entityType, params, logJSON, out)
 
 	if err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func listEntitiesOfType(entityType string, params url.Values, outputJSON bool) (
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterSubEntitiesOfType(entityType, subType, entityId, filter string, outputJSON bool) ([]*gabs.Container, error) {
+func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *commonOptions) ([]*gabs.Container, error) {
 	session := &session{}
 	err := session.Load()
 
@@ -242,7 +242,7 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, outpu
 		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
 	}
 
-	jsonParsed, err := util.EdgeControllerListSubEntities(session, entityType, subType, entityId, filter, outputJSON)
+	jsonParsed, err := util.EdgeControllerListSubEntities(session, entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out)
 
 	if err != nil {
 		return nil, err
@@ -256,10 +256,16 @@ func runListEdgeRouters(o *commonOptions) error {
 	if err != nil {
 		return err
 	}
+
 	return outputEdgeRouters(o, children)
 }
 
 func outputEdgeRouters(o *commonOptions, children []*gabs.Container) error {
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -280,6 +286,10 @@ func runListEdgeRouterPolicies(o *commonOptions) error {
 }
 
 func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -304,7 +314,7 @@ func runListServices(asIdentity string, configTypes string, options *commonOptio
 	if configTypes != "" {
 		params.Add("configTypes", configTypes)
 	}
-	children, err := listEntitiesOfType("services", params, options.OutputJSONResponse)
+	children, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
 		return err
 	}
@@ -312,6 +322,10 @@ func runListServices(asIdentity string, configTypes string, options *commonOptio
 }
 
 func outputServices(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -334,6 +348,10 @@ func runListServiceEdgeRouterPolices(o *commonOptions) error {
 }
 
 func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -356,6 +374,10 @@ func runListServicePolices(o *commonOptions) error {
 }
 
 func outputServicePolicies(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -381,6 +403,10 @@ func runListIdentities(o *commonOptions) error {
 
 // outputIdentities implements the command to list identities
 func outputIdentities(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -400,6 +426,10 @@ func runListCAs(o *commonOptions) error {
 		return err
 	}
 
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -416,6 +446,10 @@ func runListConfigTypes(o *commonOptions) error {
 	children, err := listEntitiesWithOptions("config-types", o)
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
@@ -438,6 +472,11 @@ func runListConfigs(o *commonOptions) error {
 }
 
 func outputConfigs(o *commonOptions, children []*gabs.Container) error {
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -461,6 +500,10 @@ func runListApiSessions(o *commonOptions) error {
 		return err
 	}
 
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		sessionToken, _ := entity.Path("token").Data().(string)
@@ -478,6 +521,10 @@ func runListSessions(o *commonOptions) error {
 
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
@@ -500,9 +547,14 @@ func runListChilden(parentType, childType string, o *commonOptions, outputF outp
 		return err
 	}
 
-	children, err := filterSubEntitiesOfType(parentType, childType, serviceId, "", o.OutputJSONResponse)
+	children, err := filterSubEntitiesOfType(parentType, childType, serviceId, "", o)
 	if err != nil {
 		return err
 	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	return outputF(o, children)
 }
