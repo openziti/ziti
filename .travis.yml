@@ -15,7 +15,7 @@ stages:
   - name: "Build and Test"
     if: branch != update-dependency or type = pull_request
   - name: "Update Dependency"
-    if: branch = update-dependency and type != pull_request
+    if: branch = update-dependency and type == api
   - name: "Tag and Publish"
     if: branch != update-dependency or type = pull_request
 
