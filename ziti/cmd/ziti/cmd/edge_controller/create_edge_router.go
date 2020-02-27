@@ -78,8 +78,12 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 
 	id := result.S("data", "id").Data().(string)
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
-		panic(err)
+	if !o.OutputJSONResponse {
+
+		//output id
+		if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
+			panic(err)
+		}
 	}
 
 	if o.jwtOutputFile != "" {
@@ -91,7 +95,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	list, err := listEntitiesOfType("edge-routers", nil, o.OutputJSONResponse)
+	list, err := listEntitiesOfType("edge-routers", nil, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
 	}

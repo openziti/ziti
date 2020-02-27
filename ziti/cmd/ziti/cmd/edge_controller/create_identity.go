@@ -118,7 +118,7 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 }
 
 func getIdentityJwt(o *createIdentityOptions, id string) error {
-	list, err := listEntitiesOfType("identities", nil, o.OutputJSONResponse)
+	list, err := listEntitiesOfType("identities", nil, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
 	}
