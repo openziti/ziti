@@ -111,7 +111,9 @@ func (o *loginOptions) Run() error {
 		return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
 	}
 
-	fmt.Printf("Token: %v\n", token)
+	if !o.OutputJSONResponse {
+		fmt.Printf("Token: %v\n", token)
+	}
 
 	absCertPath, err := filepath.Abs(o.Cert)
 	if err == nil {

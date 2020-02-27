@@ -4,9 +4,6 @@ import:
   - source: netfoundry/ziti-ci:go-defaults.yml@v1
   - source: netfoundry/ziti-ci:ziti-ci.yml@v1
 
-  - source: buildinfo.yml
-    if: branch != update-dependency and type != pull_request
-
 env:
   global:
     - GOX_OUTPUT="release/{{.Arch}}/{{.OS}}/{{.Dir}}"
@@ -36,24 +33,36 @@ jobs:
       os: linux
       arch: arm64
       env: GOX_OS=linux
-      before_install:
+      script:
+        - set -e
         - pip install --upgrade --user pip
         - pip install --user awscli
+        - go get github.com/mitchellh/gox
+        - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
     - stage: "Build and Test"
       os: mac
       env: GOX_OS=darwin
-      before_install:
+      script:
+        - set -e
         - pip install --upgrade pip
         - pip install awscli
+        - go get github.com/mitchellh/gox
+        - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
     - stage: "Build and Test"
       os: windows
       env: GOX_OS=windows PATH=/c/Python36:/c/Python36/Scripts:$PATH
-      before_install:
+      script:
+        - set -e
         - choco install python --version 3.6.8
         - python -m pip install --upgrade pip
         - pip install awscli
+        - go get github.com/mitchellh/gox
+        - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
+        - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
     - stage: "Tag and Publish"
       os: linux
@@ -71,8 +80,3 @@ jobs:
         - aws s3 rm --recursive s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
         - ziti-ci publish-to-artifactory
         - ziti-ci trigger-jenkins-smoke-build
-
-script:
-  - go get github.com/mitchellh/gox
-  - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
-  - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
