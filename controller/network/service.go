@@ -17,9 +17,12 @@
 package network
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/orcaman/concurrent-map"
+	"go.etcd.io/bbolt"
 )
 
 type Service struct {
@@ -30,17 +33,36 @@ type Service struct {
 	PeerData        map[uint32][]byte
 }
 
-type serviceController struct {
-	cache cmap.ConcurrentMap
-	store ServiceStore
+func (entity *Service) toBolt() *db.Service {
+	return &db.Service{
+		Id:              entity.Id,
+		Binding:         entity.Binding,
+		EndpointAddress: entity.EndpointAddress,
+		Egress:          entity.Egress,
+		PeerData:        entity.PeerData,
+	}
 }
 
-func newServiceController(db *db.Db) (*serviceController, error) {
-	return &serviceController{cache: cmap.New(), store: NewServiceStore(db)}, nil
+type serviceController struct {
+	cache  cmap.ConcurrentMap
+	db     *db.Db
+	stores *db.Stores
+	store  db.ServiceStore
+}
+
+func newServiceController(db *db.Db, stores *db.Stores) *serviceController {
+	return &serviceController{
+		cache:  cmap.New(),
+		db:     db,
+		stores: stores,
+		store:  stores.Service,
+	}
 }
 
 func (c *serviceController) create(s *Service) error {
-	err := c.store.create(s)
+	err := c.db.Update(func(tx *bbolt.Tx) error {
+		return c.store.Create(boltz.NewMutateContext(tx), s.toBolt())
+	})
 	if err != nil {
 		return err
 	}
@@ -49,7 +71,9 @@ func (c *serviceController) create(s *Service) error {
 }
 
 func (c *serviceController) update(s *Service) error {
-	err := c.store.update(s)
+	err := c.db.Update(func(tx *bbolt.Tx) error {
+		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
+	})
 	if err != nil {
 		return err
 	}
@@ -62,7 +86,18 @@ func (c *serviceController) get(id string) (*Service, bool) {
 		return t.(*Service), true
 
 	}
-	svc, err := c.store.loadOneById(id)
+	var svc *Service
+	err := c.db.View(func(tx *bbolt.Tx) error {
+		boltSvc, err := c.store.LoadOneById(tx, id)
+		if err != nil {
+			return err
+		}
+		if boltSvc == nil {
+			return fmt.Errorf("missing service '%s'", id)
+		}
+		svc = c.fromBolt(boltSvc)
+		return nil
+	})
 	if err != nil {
 		pfxlog.Logger().Errorf("failed loading service (%s)", err)
 		return nil, false
@@ -75,18 +110,44 @@ func (c *serviceController) get(id string) (*Service, bool) {
 }
 
 func (c *serviceController) all() ([]*Service, error) {
-	svcs, err := c.store.all()
+	var services []*Service
+	err := c.db.View(func(tx *bbolt.Tx) error {
+		ids, _, err := c.store.QueryIds(tx, "true")
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			service, err := c.store.LoadOneById(tx, id)
+			if err != nil {
+				return err
+			}
+			services = append(services, c.fromBolt(service))
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return svcs, nil
+	return services, nil
 }
 
 func (c *serviceController) remove(id string) error {
 	c.cache.Remove(id)
-	return c.store.remove(id)
+	return c.db.Update(func(tx *bbolt.Tx) error {
+		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
+	})
 }
 
 func (c *serviceController) RemoveFromCache(id string) {
 	c.cache.Remove(id)
+}
+
+func (c *serviceController) fromBolt(entity *db.Service) *Service {
+	return &Service{
+		Id:              entity.Id,
+		Binding:         entity.Binding,
+		EndpointAddress: entity.EndpointAddress,
+		Egress:          entity.Egress,
+		PeerData:        entity.PeerData,
+	}
 }

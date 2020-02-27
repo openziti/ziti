@@ -40,8 +40,8 @@ type Network struct {
 	nodeId                     *identity.TokenId
 	db                         *db.Db
 	options                    *Options
+	stores                     *db.Stores
 	routerController           *routerController
-	routerStore                RouterStore
 	routerChanged              chan *Router
 	linkController             *linkController
 	linkChanged                chan *Link
@@ -59,17 +59,17 @@ type Network struct {
 	lock                       sync.Mutex
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, db *db.Db, metricsCfg *metrics.Config) (*Network, error) {
-	serviceController, err := newServiceController(db)
-	if err != nil {
-		return nil, err
-	}
+func NewNetwork(nodeId *identity.TokenId, options *Options, database *db.Db, metricsCfg *metrics.Config) (*Network, error) {
+	stores := db.InitStores()
+	serviceController := newServiceController(database, stores)
+	routerController := newRouterController(database, stores)
+
 	network := &Network{
 		nodeId:                     nodeId,
-		db:                         db,
+		db:                         database,
 		options:                    options,
-		routerController:           newRouterController(),
-		routerStore:                NewRouterStore(db),
+		stores:                     stores,
+		routerController:           routerController,
 		routerChanged:              make(chan *Router),
 		linkController:             newLinkController(),
 		linkChanged:                make(chan *Link),
@@ -96,35 +96,35 @@ func (network *Network) GetDb() boltz.Db {
 	return network.db
 }
 
-func (network *Network) GetRouterStore() RouterStore {
-	return network.routerStore
+func (network *Network) GetFabricStores() *db.Stores {
+	return network.stores
 }
 
 func (network *Network) CreateRouter(router *Router) error {
-	return network.routerStore.create(router)
+	return network.routerController.create(router)
 }
 
 func (network *Network) GetConnectedRouter(routerId string) (*Router, bool) {
-	return network.routerController.get(routerId)
+	return network.routerController.getConnected(routerId)
 }
 
 func (network *Network) GetRouter(routerId string) (*Router, error) {
-	return network.routerStore.loadOneById(routerId)
+	return network.routerController.loadOneById(routerId)
 }
 
 func (network *Network) AllRouters() ([]*Router, error) {
-	return network.routerStore.all()
-}
-
-func (network *Network) AllConnectedRouters() []*Router {
 	return network.routerController.all()
 }
 
-func (network *Network) RemoveRouter(router *Router) error {
-	return network.routerStore.remove(router.Id)
+func (network *Network) AllConnectedRouters() []*Router {
+	return network.routerController.allConnected()
 }
 
-func (network *Network) GetServiceStore() ServiceStore {
+func (network *Network) RemoveRouter(router *Router) error {
+	return network.routerController.remove(router.Id)
+}
+
+func (network *Network) GetServiceStore() db.ServiceStore {
 	return network.serviceController.store
 }
 
@@ -185,11 +185,11 @@ func (network *Network) RouterChanged(r *Router) {
 }
 
 func (network *Network) ConnectedRouter(id string) bool {
-	return network.routerController.has(id)
+	return network.routerController.isConnected(id)
 }
 
 func (network *Network) KnownRouter(id string) (*Router, error) {
-	r, err := network.routerStore.loadOneById(id)
+	r, err := network.routerController.loadOneById(id)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (network *Network) KnownRouter(id string) (*Router, error) {
 }
 
 func (network *Network) ConnectRouter(r *Router) {
-	network.routerController.add(r)
+	network.routerController.markConnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -212,7 +212,7 @@ func (network *Network) DisconnectRouter(r *Router) {
 		network.LinkChanged(l)
 	}
 	// 2: remove Router
-	network.routerController.remove(r)
+	network.routerController.markDisconnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -283,7 +283,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		sessionId := &identity.TokenId{Token: sessionIdHash}
 
 		// 3: Get Egress Router
-		if er, found := network.routerController.get(svc.Egress); found {
+		if er, found := network.routerController.getConnected(svc.Egress); found {
 			// 4: Create Circuit
 			circuit, err := network.CreateCircuit(srcR, er)
 			if err != nil {
@@ -551,7 +551,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 func (network *Network) AcceptMetrics(metrics *ctrl_pb.MetricsMessage) {
 	log := pfxlog.Logger()
 
-	router, err := network.routerStore.loadOneById(metrics.SourceId)
+	router, err := network.routerController.loadOneById(metrics.SourceId)
 	if err != nil {
 		log.Warnf("could not find router [r/%s] while processing metrics", metrics.SourceId)
 		return

@@ -32,10 +32,10 @@ func TestSimpleCircuit2(t *testing.T) {
 	assert.Nil(t, err)
 
 	r0 := newRouter("r0", "", transportAddr, nil)
-	network.routerController.add(r0)
+	network.routerController.markConnected(r0)
 
 	r1 := newRouter("r1", "", transportAddr, nil)
-	network.routerController.add(r1)
+	network.routerController.markConnected(r1)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
 	l0.Src = r0
@@ -90,13 +90,13 @@ func TestTransitCircuit2(t *testing.T) {
 	assert.Nil(t, err)
 
 	r0 := newRouter("r0", "", transportAddr, nil)
-	network.routerController.add(r0)
+	network.routerController.markConnected(r0)
 
 	r1 := newRouter("r1", "", transportAddr, nil)
-	network.routerController.add(r1)
+	network.routerController.markConnected(r1)
 
 	r2 := newRouter("r2", "", transportAddr, nil)
-	network.routerController.add(r2)
+	network.routerController.markConnected(r2)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
 	l0.Src = r0
