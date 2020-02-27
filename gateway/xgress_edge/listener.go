@@ -17,7 +17,6 @@
 package xgress_edge
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
@@ -162,7 +161,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		return
 	}
 
-	proxy.sendStateConnectedReply(req)
+	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
 
 	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
 	proxy.listener.bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, xgress.Initiator, x)
@@ -176,8 +175,6 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
-	pubKey := req.Headers[edge.PublicKeyHeader]
-	pubKeyStr := base64.StdEncoding.EncodeToString(pubKey)
 
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
@@ -205,7 +202,14 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 
 	log.Debug("binding service")
-	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id, pubKeyStr); err != nil {
+
+	hostData := make(map[uint32][]byte)
+	pubKey, hasKey := req.Headers[edge.PublicKeyHeader]
+	if hasKey {
+		hostData[edge.PublicKeyHeader] = pubKey
+	}
+
+	if err := xgress.BindService(proxy.listener.factory, token, ns.Service.Id, hostData); err != nil {
 		proxy.sendStateClosedReply(err.Error(), req)
 		return
 	}
@@ -236,7 +240,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 
 	proxy.listener.factory.hostedServices.Put(token, messageSink)
 	log.Debug("returning connection state CONNECTED to client")
-	proxy.sendStateConnectedReply(req)
+	proxy.sendStateConnectedReply(req, nil)
 }
 
 func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Channel) {
@@ -269,9 +273,12 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	}
 }
 
-func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message) {
+func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
+	for k,v := range hostData {
+		msg.Headers[int32(k)] = v
+	}
 	msg.ReplyTo(req)
 
 	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)

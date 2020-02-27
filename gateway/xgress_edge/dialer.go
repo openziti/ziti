@@ -52,7 +52,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	token := destParts[1]
 
-	log.Debug("looking up hosted service conn", len(sessionId.Data))
+	log.Debug("looking up hosted service conn")
 	listenConn, found := dialer.factory.hostedServices.Get(token)
 	if !found {
 		return fmt.Errorf("host for token '%v' not found", token)

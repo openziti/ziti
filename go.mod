@@ -2,9 +2,9 @@ module github.com/netfoundry/ziti-edge
 
 go 1.13
 
-//replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
-//replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
-//replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
+// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+// replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+// replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -33,9 +33,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.22
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/netfoundry/ziti-fabric v0.9.3
+	github.com/netfoundry/ziti-fabric v0.10.0
 	github.com/netfoundry/ziti-foundation v0.6.5
-	github.com/netfoundry/ziti-sdk-golang v0.10.0
+	github.com/netfoundry/ziti-sdk-golang v0.11.0
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.8.1

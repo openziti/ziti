@@ -36,7 +36,6 @@ type Session struct {
 	ApiSessionId string
 	ServiceId    string
 	Type         string
-	PubKey       string
 	SessionCerts []*SessionCert
 }
 

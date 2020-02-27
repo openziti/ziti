@@ -53,8 +53,7 @@ func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
 
 type NewSession struct {
 	*SessionApiList
-	Token  string `json:"token"`
-	Pubkey string `json:"pubkey"`
+	Token string `json:"token"`
 }
 
 type SessionApiList struct {

@@ -34,8 +34,6 @@ type Service struct {
 	Name            string   `json:"name"`
 	EgressRouter    string   `json:"egressRouter"`
 	EndpointAddress string   `json:"endpointAddress"`
-	PublicKey       []byte   `json:"publicKey"`
-	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 	RoleAttributes  []string `json:"roleAttributes"`
 	Configs         []string `json:"configs"`
 }
