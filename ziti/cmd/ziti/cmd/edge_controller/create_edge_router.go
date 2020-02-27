@@ -78,8 +78,12 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 
 	id := result.S("data", "id").Data().(string)
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
-		panic(err)
+	if !o.OutputJSONResponse {
+
+		//output id
+		if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
+			panic(err)
+		}
 	}
 
 	if o.jwtOutputFile != "" {
