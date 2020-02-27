@@ -92,7 +92,7 @@ func (rh *routeHandler) connectEgress(route *ctrl_pb.Route) error {
 		route.Egress.Binding, route.Egress.Destination, route.Egress.Address)
 	if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-			sessionId := &identity.TokenId{Token: route.SessionId}
+			sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
 			return dialer.Dial(route.Egress.Destination,
 				sessionId,
 				xgress.Address(route.Egress.Address),

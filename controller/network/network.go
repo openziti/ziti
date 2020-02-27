@@ -243,12 +243,16 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) BindService(srcR *Router, token string, serviceId string) error {
+func (network *Network) BindService(srcR *Router, token string, serviceId string, peerData map[uint32][]byte) error {
+	log := pfxlog.Logger()
+
 	// 1: Find Service
 	if svc, found := network.serviceController.get(serviceId); found {
 		svc.Egress = srcR.Id
 		svc.EndpointAddress = "hosted:" + token
+		svc.PeerData = peerData
 
+		log.Debugf("binding service[%s] to session[%s] with hostdata[%v]", serviceId, token, svc.PeerData)
 		return network.serviceController.update(svc)
 	}
 	return errors.New("invalid service")
@@ -259,6 +263,7 @@ func (network *Network) UnbindService(srcR *Router, token string, serviceId stri
 	if svc, found := network.serviceController.get(serviceId); found {
 		svc.Egress = network.nodeId.Token // TODO: can't set this to null, so setting it to the controller ID
 		svc.EndpointAddress = "hosted:unbound"
+		svc.PeerData = nil
 
 		return network.serviceController.update(svc)
 	}
@@ -300,6 +305,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			}
 
 			// 5: Route Egress
+			rms[len(rms)-1].Egress.PeerData = clientId.Data
 			err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
 			if err != nil {
 				return nil, err

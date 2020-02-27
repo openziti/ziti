@@ -142,11 +142,12 @@ func (si *SessionInfo) SendStartEgress() error {
 
 var authError = errors.New("unexpected failure while authenticating")
 
-func GetSession(ctrl CtrlChannel, ingressId string, serviceId string) (*SessionInfo, error) {
+func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData map[uint32][]byte) (*SessionInfo, error) {
 	log := pfxlog.Logger()
 	sessionRequest := &ctrl_pb.SessionRequest{
 		IngressId: ingressId,
 		ServiceId: serviceId,
+		PeerData:  peerData,
 	}
 	bytes, err := proto.Marshal(sessionRequest)
 	if err != nil {
@@ -162,8 +163,18 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string) (*SessionI
 	}
 
 	if reply.ContentType == ctrl_msg.ContentTypeSessionSuccessType {
+		var address string
+
 		sessionId := &identity.TokenId{Token: string(reply.Body)}
-		address := string(reply.Headers[ctrl_msg.SessionSuccessAddressHeader])
+		sessionId.Data = make(map[uint32][]byte)
+		for k,v := range reply.Headers {
+			if k == ctrl_msg.SessionSuccessAddressHeader {
+				address = string(v)
+			} else {
+				sessionId.Data[uint32(k)] = v
+			}
+		}
+
 		log.Debugf("created new session [s/%s]", sessionId.Token)
 		return &SessionInfo{
 			SessionId:   sessionId,
@@ -182,7 +193,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string) (*SessionI
 }
 
 func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
-	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId)
+	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId, nil)
 	if err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}
@@ -197,12 +208,13 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func BindService(ctrl CtrlChannel, token string, serviceId string) error {
+func BindService(ctrl CtrlChannel, token string, serviceId string, peerData map[uint32][]byte) error {
 	log := pfxlog.Logger()
 	hostRequest := &ctrl_pb.BindRequest{
 		BindType:  ctrl_pb.BindType_Bind,
 		Token:     token,
 		ServiceId: serviceId,
+		PeerData:  peerData,
 	}
 	bytes, err := proto.Marshal(hostRequest)
 	if err != nil {

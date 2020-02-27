@@ -28,6 +28,7 @@ enum ContentType {
 message SessionRequest {
     string ingressId = 1;
     string serviceId = 2;
+    map<uint32, bytes> peerData = 3;
 }
 
 enum BindType {
@@ -39,6 +40,7 @@ message BindRequest {
     BindType bindType = 1;
     string token = 2;
     string serviceId = 3;
+    map<uint32, bytes> peerData = 4;
 }
 
 message BindResponse {
@@ -73,6 +75,7 @@ message Route {
         string binding = 1;
         string address = 2;
         string destination = 3;
+        map<uint32, bytes> peerData = 4;
     }
     Egress egress = 2;
 

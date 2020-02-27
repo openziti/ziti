@@ -17,6 +17,7 @@
 package network
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -28,6 +29,7 @@ const (
 	FieldServiceBinding  = "binding"
 	FieldServiceEndpoint = "endpoint"
 	FieldServiceEgress   = "egress"
+	FieldServerPeerData  = "peerdata"
 )
 
 func (service *Service) GetId() string {
@@ -42,12 +44,31 @@ func (service *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	service.Binding = bucket.GetStringWithDefault(FieldServiceBinding, "")
 	service.EndpointAddress = bucket.GetStringWithDefault(FieldServiceEndpoint, "")
 	service.Egress = bucket.GetStringWithDefault(FieldServiceEgress, "")
+
+	data := bucket.GetBucket(FieldServerPeerData)
+	if data != nil {
+		service.PeerData = make(map[uint32][]byte)
+		iter := data.Cursor()
+		for k, v := iter.First(); k != nil; k,v = iter.Next() {
+			service.PeerData[binary.LittleEndian.Uint32(k)] = v
+		}
+	}
 }
 
 func (service *Service) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldServiceBinding, service.Binding)
 	ctx.SetString(FieldServiceEndpoint, service.EndpointAddress)
 	ctx.SetString(FieldServiceEgress, service.Egress)
+
+	_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
+	if service.PeerData != nil {
+		hostDataBucket := ctx.Bucket.GetOrCreateBucket(FieldServerPeerData)
+		for k, v := range service.PeerData {
+			key := make([]byte, 4)
+			binary.LittleEndian.PutUint32(key, k)
+			hostDataBucket.PutValue(key, v)
+		}
+	}
 }
 
 func (service *Service) GetEntityType() string {

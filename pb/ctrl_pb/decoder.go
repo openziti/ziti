@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/ctrl_msg"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"strconv"
+	"strings"
 )
 
 type Decoder struct{}
@@ -37,6 +38,54 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Session Request")
 			meta["ingressId"] = sessionRequest.IngressId
 			meta["serviceId"] = sessionRequest.ServiceId
+			headers := make([]string, 0)
+			for k, _ := range sessionRequest.PeerData {
+				headers = append(headers, strconv.Itoa(int(k)))
+			}
+			meta["peerData"] = strings.Join(headers, ",")
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_BindRequestType):
+		bindRequest := &BindRequest{}
+		if err := proto.Unmarshal(msg.Body, bindRequest); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
+			meta["bindType"] = bindRequest.BindType
+			meta["serviceId"] = bindRequest.ServiceId
+			dataIds := make([]string, 0)
+			for k, _ := range bindRequest.PeerData {
+				dataIds = append(dataIds, strconv.Itoa(int(k)))
+			}
+			meta["peerData"] = strings.Join(dataIds, ",")
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_BindResponseType):
+		bindResponse := &BindResponse{}
+		if err := proto.Unmarshal(msg.Body, bindResponse); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
+			meta["success"] = bindResponse.Success
+			meta["message"] = bindResponse.Message
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
