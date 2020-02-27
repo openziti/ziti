@@ -27,10 +27,10 @@ import (
 func (network *Network) assemble() {
 	log := pfxlog.Logger()
 
-	if network.routerController.count() > 1 {
-		log.Debugf("assembling with [%d] routers", network.routerController.count())
+	if network.routerController.connectedCount() > 1 {
+		log.Debugf("assembling with [%d] routers", network.routerController.connectedCount())
 
-		missingLinks, err := network.linkController.missingLinks(network.routerController.all())
+		missingLinks, err := network.linkController.missingLinks(network.routerController.allConnected())
 		if err == nil {
 			for _, missingLink := range missingLinks {
 				network.linkController.add(missingLink)

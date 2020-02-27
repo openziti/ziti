@@ -34,7 +34,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, err
 	prev := make(map[*Router]*Router)
 	unvisited := make(map[*Router]bool)
 
-	for _, r := range network.routerController.all() {
+	for _, r := range network.routerController.allConnected() {
 		dist[r] = math.MaxInt32
 		unvisited[r] = true
 	}

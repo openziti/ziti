@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package db
 
 import (
 	"encoding/binary"
@@ -31,6 +31,14 @@ const (
 	FieldServiceEgress   = "egress"
 	FieldServerPeerData  = "peerdata"
 )
+
+type Service struct {
+	Id              string
+	Binding         string
+	EndpointAddress string
+	Egress          string
+	PeerData        map[uint32][]byte
+}
 
 func (service *Service) GetId() string {
 	return service.Id
@@ -49,7 +57,7 @@ func (service *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	if data != nil {
 		service.PeerData = make(map[uint32][]byte)
 		iter := data.Cursor()
-		for k, v := iter.First(); k != nil; k,v = iter.Next() {
+		for k, v := iter.First(); k != nil; k, v = iter.Next() {
 			service.PeerData[binary.LittleEndian.Uint32(k)] = v
 		}
 	}
@@ -76,23 +84,20 @@ func (service *Service) GetEntityType() string {
 }
 
 type ServiceStore interface {
-	boltz.CrudStore
-	create(service *Service) error
-	update(svc *Service) error
-	remove(id string) error
-	all() ([]*Service, error)
-	loadOneById(id string) (*Service, error)
+	store
 	LoadOneById(tx *bbolt.Tx, id string) (*Service, error)
 }
 
-func NewServiceStore(db boltz.Db) ServiceStore {
+func newServiceStore(stores *stores) *serviceStoreImpl {
 	notFoundErrorFactory := func(id string) error {
 		return fmt.Errorf("missing service '%s'", id)
 	}
 
 	store := &serviceStoreImpl{
-		db:        db,
-		BaseStore: boltz.NewBaseStore(nil, EntityTypeServices, notFoundErrorFactory, boltz.RootBucket),
+		baseStore: baseStore{
+			stores:    stores,
+			BaseStore: boltz.NewBaseStore(nil, EntityTypeServices, notFoundErrorFactory, boltz.RootBucket),
+		},
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldServiceBinding, ast.NodeTypeString)
@@ -102,72 +107,17 @@ func NewServiceStore(db boltz.Db) ServiceStore {
 }
 
 type serviceStoreImpl struct {
-	db boltz.Db
-	*boltz.BaseStore
+	baseStore
 }
 
 func (store *serviceStoreImpl) NewStoreEntity() boltz.BaseEntity {
 	return &Service{}
 }
 
-func (store *serviceStoreImpl) create(service *Service) error {
-	return store.db.Update(func(tx *bbolt.Tx) error {
-		return store.Create(boltz.NewMutateContext(tx), service)
-	})
-}
-
-func (store *serviceStoreImpl) update(service *Service) error {
-	return store.db.Update(func(tx *bbolt.Tx) error {
-		return store.Update(boltz.NewMutateContext(tx), service, nil)
-	})
-}
-
-func (store *serviceStoreImpl) remove(id string) error {
-	return store.db.Update(func(tx *bbolt.Tx) error {
-		return store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
-}
-
-func (store *serviceStoreImpl) loadOneById(id string) (service *Service, err error) {
-	err = store.db.View(func(tx *bbolt.Tx) error {
-		service, err = store.LoadOneById(tx, id)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	if service == nil {
-		return nil, fmt.Errorf("missing service '%s'", id)
-	}
-	return
-}
-
 func (store *serviceStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Service, error) {
-	service := &Service{}
-	if found, err := store.BaseLoadOneById(tx, id, service); !found || err != nil {
+	entity := &Service{}
+	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
 		return nil, err
 	}
-	return service, nil
-}
-
-func (store *serviceStoreImpl) all() ([]*Service, error) {
-	services := make([]*Service, 0)
-	err := store.db.View(func(tx *bbolt.Tx) error {
-		ids, _, err := store.QueryIds(tx, "true")
-		if err != nil {
-			return err
-		}
-		for _, id := range ids {
-			service, err := store.LoadOneById(tx, string(id))
-			if err != nil {
-				return err
-			}
-			services = append(services, service)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return services, nil
+	return entity, nil
 }
