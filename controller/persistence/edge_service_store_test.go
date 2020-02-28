@@ -17,7 +17,9 @@
 package persistence
 
 import (
+	"crypto/rand"
 	"fmt"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"testing"
 	"time"
 
@@ -229,6 +231,10 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 		service.Binding = uuid.New().String()
 		service.EndpointAddress = uuid.New().String()
 		service.Egress = uuid.New().String()
+		pk := make([]byte, 32)
+		rand.Read(pk)
+		service.PeerData = make(map[uint32][]byte)
+		service.PeerData[edge.PublicKeyHeader] = pk
 		service.UpdatedAt = earlier
 		service.CreatedAt = now
 		service.Tags = tags

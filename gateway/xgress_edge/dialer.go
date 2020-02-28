@@ -60,6 +60,8 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(listenConn.Id(), token)
+	dialRequest.Headers[edge.PublicKeyHeader] = sessionId.Data[edge.PublicKeyHeader]
+
 	reply, err := listenConn.SendAndWaitWithTimeout(dialRequest, 5*time.Second)
 	if err != nil {
 		return err
