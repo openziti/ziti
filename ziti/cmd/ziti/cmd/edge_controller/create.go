@@ -17,7 +17,6 @@
 package edge_controller
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/Jeffail/gabs"
@@ -54,23 +53,5 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 
 // createEntityOfType create an entity of the given type on the Ziti Edge Controller
 func createEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerCreate(session.Host, session.Cert, session.Token, entityType, body, options.Out, options.OutputJSONResponse)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerCreate(entityType, body, options.Out, options.OutputJSONResponse)
 }

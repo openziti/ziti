@@ -17,7 +17,6 @@
 package edge_controller
 
 import (
-	"fmt"
 	"github.com/Jeffail/gabs"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
@@ -57,43 +56,9 @@ func patchEntityOfType(entityType string, body string, options *commonOptions) (
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
 func updateEntityOfType(entityType string, body string, options *commonOptions, put bool) (*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerUpdate(session.Host, session.Cert, session.Token, entityType, body, options.Out, put, options.OutputJSONResponse)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerUpdate(entityType, body, options.Out, put, options.OutputJSONResponse)
 }
 
 func doRequest(entityType string, options *commonOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerRequest(session.Host, session.Cert, session.Token, entityType, options.Out, options.OutputJSONResponse, doRequest)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerRequest(entityType, options.Out, options.OutputJSONResponse, doRequest)
 }

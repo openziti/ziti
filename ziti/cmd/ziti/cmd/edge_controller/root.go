@@ -47,6 +47,7 @@ func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
 	cmd.AddCommand(newListCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
+	cmd.AddCommand(newVersionCmd(f, out, errOut))
 	return cmd
 }
 

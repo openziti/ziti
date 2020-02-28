@@ -120,7 +120,7 @@ func (o *loginOptions) Run() error {
 		o.Cert = absCertPath
 	}
 
-	session := &session{
+	session := &util.Session{
 		Host:  host,
 		Token: token,
 		Cert:  o.Cert,

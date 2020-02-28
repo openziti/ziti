@@ -14,11 +14,10 @@
 	limitations under the License.
 */
 
-package edge_controller
+package util
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 )
 
 const (
@@ -26,39 +25,42 @@ const (
 	sessionType = "edge-controller-session"
 )
 
-// session stores configuration options for the CLI
-type session struct {
+// Session stores configuration options for the CLI
+type Session struct {
 	Host  string
 	Token string
 	Cert  string
 }
 
-func (session *session) GetBaseUrl() string {
+func (session *Session) GetBaseUrl() string {
 	return session.Host
 }
 
-func (session *session) GetCert() string {
+func (session *Session) GetCert() string {
 	return session.Cert
 }
 
-func (session *session) GetToken() string {
+func (session *Session) GetToken() string {
 	return session.Token
 }
 
 // Persist writes out the Ziti CLI session file
-func (session *session) Persist() error {
-	return util.WriteZitiAppFile(appName, sessionType, session)
+func (session *Session) Persist() error {
+	return WriteZitiAppFile(appName, sessionType, session)
 }
 
 // Load reads in the Ziti CLI session file
-func (session *session) Load() error {
-	err := util.ReadZitiAppFile(appName, sessionType, session)
+func (session *Session) Load() error {
+	err := ReadZitiAppFile(appName, sessionType, session)
 	if err != nil {
 		return fmt.Errorf("unable to load Ziti CLI configuration. Exiting. Error: %v", err)
+	}
+	if session.Host == "" {
+		return fmt.Errorf("host not specififed in cli config file. Exiting")
 	}
 	return nil
 }
 
-func (session *session) String() string {
+func (session *Session) String() string {
 	return fmt.Sprintf("session Host: %v, Token: %s, Cert: %s", session.Host, session.Token, session.Cert)
 }
