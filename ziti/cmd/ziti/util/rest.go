@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -436,23 +436,22 @@ func outputJson(out io.Writer, data []byte) {
 	}
 }
 
-type Session interface {
-	GetBaseUrl() string
-	GetCert() string
-	GetToken() string
-}
-
 // EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
-func EdgeControllerListSubEntities(session Session, entityType, subType, entityId string, filter string, logJSON bool, out io.Writer) (*gabs.Container, error) {
+func EdgeControllerListSubEntities(entityType, subType, entityId string, filter string, logJSON bool, out io.Writer) (*gabs.Container, error) {
 	params := url.Values{}
 	if filter != "" {
 		params.Add("filter", filter)
 	}
-	return EdgeControllerList(session, entityType+"/"+entityId+"/"+subType, params, logJSON, out)
+	return EdgeControllerList(entityType+"/"+entityId+"/"+subType, params, logJSON, out)
 }
 
 // EdgeControllerList will list entities of the given type in the given Edge Controller
-func EdgeControllerList(session Session, path string, params url.Values, logJSON bool, out io.Writer) (*gabs.Container, error) {
+func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Writer) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
 	client := newClient()
 
 	if session.GetCert() != "" {
@@ -494,27 +493,31 @@ func EdgeControllerList(session Session, path string, params url.Values, logJSON
 }
 
 // EdgeControllerCreate will create entities of the given type in the given Edge Controller
-func EdgeControllerCreate(url string, cert string, token string, entityType string, body string, out io.Writer, logJSON bool) (*gabs.Container, error) {
-	client := newClient()
-
-	if cert != "" {
-		client.SetRootCertificate(cert)
+func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
 	}
 
+	client := newClient()
+
+	if session.Cert != "" {
+		client.SetRootCertificate(session.Cert)
+	}
 	resp, err := client.
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token).
+		SetHeader(constants.ZitiSession, session.Token).
 		SetBody(body).
-		Post(url + "/" + entityType)
+		Post(session.Host + "/" + entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to create %v instance in Ziti Edge Controller at %v. Error: %v", entityType, url, err)
+		return nil, fmt.Errorf("unable to create %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusCreated {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, url, resp.Status(), resp.String())
+			entityType, session.Host, resp.Status(), resp.String())
 	}
 
 	if logJSON {
@@ -524,35 +527,40 @@ func EdgeControllerCreate(url string, cert string, token string, entityType stri
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
 	}
 
 	return jsonParsed, nil
 }
 
 // EdgeControllerDelete will delete entities of the given type in the given Edge Controller
-func EdgeControllerDelete(baseUrl string, cert string, token string, entityType string, id string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
 	client := newClient()
 
-	if cert != "" {
-		client.SetRootCertificate(cert)
+	if session.Cert != "" {
+		client.SetRootCertificate(session.Cert)
 	}
 	entityPath := entityType + "/" + id
-	fullUrl := baseUrl + "/" + entityPath
+	fullUrl := session.Host + "/" + entityPath
 
 	resp, err := client.
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token).
+		SetHeader(constants.ZitiSession, session.Token).
 		Delete(fullUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, baseUrl, err)
+		return nil, fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), resp.String())
+			entityPath, session.Host, resp.Status(), resp.String())
 	}
 
 	if logJSON {
@@ -562,41 +570,46 @@ func EdgeControllerDelete(baseUrl string, cert string, token string, entityType 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", baseUrl, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
 	}
 
 	return jsonParsed, nil
 }
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
-func EdgeControllerUpdate(url string, cert string, token string, entityType string, body string, out io.Writer, put bool, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerUpdate(entityType string, body string, out io.Writer, put bool, logJSON bool) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
 	client := newClient()
 
-	if cert != "" {
-		client.SetRootCertificate(cert)
+	if session.Cert != "" {
+		client.SetRootCertificate(session.Cert)
 	}
 
 	request := client.
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token).
+		SetHeader(constants.ZitiSession, session.Token).
 		SetBody(body)
 
 	var err error
 	var resp *resty.Response
 	if put {
-		resp, err = request.Put(url + "/" + entityType)
+		resp, err = request.Put(session.Host + "/" + entityType)
 	} else {
-		resp, err = request.Patch(url + "/" + entityType)
+		resp, err = request.Patch(session.Host + "/" + entityType)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, url, err)
+		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, url, resp.Status(), resp.String())
+			entityType, session.Host, resp.Status(), resp.String())
 	}
 
 	if logJSON {
@@ -606,33 +619,38 @@ func EdgeControllerUpdate(url string, cert string, token string, entityType stri
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
 	}
 
 	return jsonParsed, nil
 }
 
-func EdgeControllerRequest(url string, cert string, token string, entityType string, out io.Writer, logJSON bool, doRequest func(*resty.Request, string) (*resty.Response, error)) (*gabs.Container, error) {
+func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doRequest func(*resty.Request, string) (*resty.Response, error)) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
 	client := newClient()
 
-	if cert != "" {
-		client.SetRootCertificate(cert)
+	if session.Cert != "" {
+		client.SetRootCertificate(session.Cert)
 	}
 
 	request := client.
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, token)
+		SetHeader(constants.ZitiSession, session.Token)
 
-	resp, err := doRequest(request, url+"/"+entityType)
+	resp, err := doRequest(request, session.Host+"/"+entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, url, err)
+		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, url, resp.Status(), resp.String())
+			entityType, session.Host, resp.Status(), resp.String())
 	}
 
 	if logJSON {
@@ -642,7 +660,7 @@ func EdgeControllerRequest(url string, cert string, token string, entityType str
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
 	}
 
 	return jsonParsed, nil

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
 	cmd.AddCommand(newListCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
+	cmd.AddCommand(newVersionCmd(f, out, errOut))
 	return cmd
 }
 

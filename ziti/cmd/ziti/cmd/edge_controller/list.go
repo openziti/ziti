@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -209,18 +209,7 @@ func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
 func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer) ([]*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerList(session, entityType, params, logJSON, out)
+	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out)
 
 	if err != nil {
 		return nil, err
@@ -231,18 +220,7 @@ func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out 
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
 func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *commonOptions) ([]*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerListSubEntities(session, entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out)
+	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out)
 
 	if err != nil {
 		return nil, err

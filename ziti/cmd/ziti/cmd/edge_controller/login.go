@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -120,7 +120,7 @@ func (o *loginOptions) Run() error {
 		o.Cert = absCertPath
 	}
 
-	session := &session{
+	session := &util.Session{
 		Host:  host,
 		Token: token,
 		Cert:  o.Cert,

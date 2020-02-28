@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package edge_controller
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -93,23 +92,12 @@ func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, optio
 
 // runDeleteEntityOfType implements the commands to delete various entity types
 func runDeleteEntityOfType(o *commonOptions, entityType string) error {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return err
-	}
-
-	if session.Host == "" {
-		return fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
 	ids, err := mapNamesToIDs(entityType, o.Args[0])
 	if err != nil {
 		return err
 	}
 	for _, id := range ids {
-		_, err := util.EdgeControllerDelete(session.Host, session.Cert, session.Token, entityType, id, o.Out, o.OutputJSONResponse)
+		_, err := util.EdgeControllerDelete(entityType, id, o.Out, o.OutputJSONResponse)
 		if err != nil {
 			return err
 		}
@@ -125,23 +113,5 @@ func getPlural(entityType string) string {
 }
 
 func deleteEntityOfType(entityType string, id string, options *commonOptions) (*gabs.Container, error) {
-
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerDelete(session.Host, session.Cert, session.Token, entityType, id, options.Out, options.OutputJSONResponse)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerDelete(entityType, id, options.Out, options.OutputJSONResponse)
 }
