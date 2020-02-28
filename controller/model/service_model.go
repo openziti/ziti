@@ -19,11 +19,11 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"reflect"
 	"strings"
 
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -59,7 +59,7 @@ func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	}
 
 	edgeService := &persistence.EdgeService{
-		Service: network.Service{
+		Service: db.Service{
 			Id:              entity.Id,
 			Binding:         binding,
 			EndpointAddress: entity.EndpointAddress,

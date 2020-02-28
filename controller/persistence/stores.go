@@ -95,7 +95,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.configType = newConfigTypesStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
-	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetServiceStore())
+	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetFabricStores().Service)
 	internalStores.eventLog = newEventLogStore(internalStores)
 	internalStores.geoRegion = newGeoRegionStore(internalStores)
 	internalStores.identity = newIdentityStore(internalStores)

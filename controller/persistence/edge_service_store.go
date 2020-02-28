@@ -19,7 +19,7 @@ package persistence
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"go.etcd.io/bbolt"
@@ -27,7 +27,7 @@ import (
 )
 
 type EdgeService struct {
-	network.Service
+	db.Service
 	EdgeEntityFields
 	Name           string
 	RoleAttributes []string
@@ -40,7 +40,7 @@ const (
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	return &EdgeService{
-		Service:        network.Service{Id: uuid.New().String()},
+		Service:        db.Service{Id: uuid.New().String()},
 		Name:           name,
 		RoleAttributes: roleAttributes,
 	}
@@ -91,7 +91,7 @@ type EdgeServiceStore interface {
 	GetNameIndex() boltz.ReadIndex
 }
 
-func newEdgeServiceStore(stores *stores, serviceStore network.ServiceStore) *edgeServiceStoreImpl {
+func newEdgeServiceStore(stores *stores, serviceStore db.ServiceStore) *edgeServiceStoreImpl {
 	store := &edgeServiceStoreImpl{
 		baseStore: newChildBaseStore(stores, serviceStore, EntityTypeServices),
 	}

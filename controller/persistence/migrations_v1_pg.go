@@ -18,12 +18,12 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/migration"
-	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -195,7 +195,7 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 		}
 
 		edgeService := &EdgeService{
-			Service: network.Service{
+			Service: db.Service{
 				Id:              pgService.ID,
 				Binding:         "edge", //todo confirm this
 				EndpointAddress: stringz.OrEmpty(pgService.EndpointAddress),

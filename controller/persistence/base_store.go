@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -33,9 +34,8 @@ import (
 
 type DbProvider interface {
 	GetDb() boltz.Db
-	GetServiceStore() network.ServiceStore
+	GetFabricStores() *db.Stores
 	GetServiceCache() network.Cache
-	GetRouterStore() network.RouterStore
 }
 
 type Store interface {

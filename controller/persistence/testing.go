@@ -41,8 +41,7 @@ type TestContext struct {
 	t             *testing.T
 	dbFile        *os.File
 	db            *db.Db
-	serviceStore  network.ServiceStore
-	routerStore   network.RouterStore
+	fabricStores  *db.Stores
 	stores        *Stores
 	ReferenceTime time.Time
 }
@@ -53,8 +52,6 @@ func NewTestContext(t *testing.T) *TestContext {
 		t:             t,
 		dbFile:        nil,
 		db:            nil,
-		serviceStore:  nil,
-		routerStore:   nil,
 		stores:        nil,
 		ReferenceTime: time.Now(),
 	}
@@ -64,16 +61,12 @@ func (ctx *TestContext) GetDb() boltz.Db {
 	return ctx.db
 }
 
-func (ctx *TestContext) GetServiceStore() network.ServiceStore {
-	return ctx.serviceStore
+func (ctx *TestContext) GetFabricStores() *db.Stores {
+	return ctx.fabricStores
 }
 
 func (ctx *TestContext) GetServiceCache() network.Cache {
 	return ctx
-}
-
-func (ctx *TestContext) GetRouterStore() network.RouterStore {
-	return ctx.routerStore
 }
 
 func (ctx *TestContext) GetStores() *Stores {
@@ -94,8 +87,7 @@ func (ctx *TestContext) Init() {
 	ctx.db, err = db.Open(ctx.dbFile.Name())
 	ctx.NoError(err)
 
-	ctx.serviceStore = network.NewServiceStore(ctx.db)
-	ctx.routerStore = network.NewRouterStore(ctx.db)
+	ctx.fabricStores = db.InitStores()
 	ctx.stores, err = NewBoltStores(ctx)
 	ctx.NoError(err)
 
@@ -140,7 +132,7 @@ func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity 
 
 func (ctx *TestContext) requireNewService(name string) *EdgeService {
 	edgeService := &EdgeService{
-		Service: network.Service{
+		Service: db.Service{
 			Id:              uuid.New().String(),
 			Binding:         "edge",
 			EndpointAddress: "hosted:unclaimed",
@@ -231,10 +223,10 @@ func (ctx *TestContext) update(entity boltz.BaseEntity) error {
 func (ctx *TestContext) getStoreForEntity(entity boltz.BaseEntity) (boltz.CrudStore, error) {
 	var store boltz.CrudStore
 
-	if _, ok := entity.(*network.Service); ok {
-		store = ctx.GetServiceStore()
-	} else if _, ok := entity.(*network.Router); ok {
-		store = ctx.GetRouterStore()
+	if _, ok := entity.(*db.Service); ok {
+		store = ctx.fabricStores.Service
+	} else if _, ok := entity.(*db.Router); ok {
+		store = ctx.fabricStores.Router
 	} else {
 		store = ctx.stores.getStoreForEntity(entity)
 	}
@@ -340,7 +332,7 @@ func (ctx *TestContext) cleanupAll() {
 		ctx.stores.ApiSession,
 		ctx.stores.EdgeRouterPolicy,
 		ctx.stores.Appwan,
-		ctx.GetServiceStore(),
+		ctx.fabricStores.Service,
 		ctx.stores.EdgeService,
 		ctx.stores.Identity,
 		ctx.stores.EdgeRouter,
