@@ -34,7 +34,6 @@ type createIdentityOptions struct {
 	commonOptions
 	isAdmin        bool
 	roleAttributes []string
-	configTypes    []string
 	jwtOutputFile  string
 }
 
@@ -82,7 +81,6 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
-	cmd.Flags().StringSliceVarP(&options.configTypes, "config-types", "c", nil, "Configuration types used by the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 
 	return cmd
@@ -95,7 +93,6 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	setJSONValue(entityData, true, "enrollment", "ott")
 	setJSONValue(entityData, o.isAdmin, "isAdmin")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.configTypes, "configTypes")
 
 	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
 
