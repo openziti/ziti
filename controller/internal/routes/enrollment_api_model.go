@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"time"
 )
 
@@ -79,7 +80,7 @@ func NewEnrollmentApiList(ae *env.AppEnv, i *migration.Enrollment) (*EnrollmentA
 	return ret, nil
 }
 
-func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestContext, entity model.BaseModelEntity) (BaseApiEntity, error) {
+func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {
 	enrollment, ok := entity.(*model.Enrollment)
 
 	if !ok {

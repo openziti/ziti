@@ -31,10 +31,7 @@ type EnrollmentHandler struct {
 
 func NewEnrollmentHandler(env Env) *EnrollmentHandler {
 	handler := &EnrollmentHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().Enrollment,
-		},
+		baseHandler:     newBaseHandler(env, env.GetStores().Enrollment),
 		enrollmentStore: env.GetStores().Enrollment,
 	}
 
@@ -139,5 +136,5 @@ func (handler *EnrollmentHandler) readInTx(tx *bbolt.Tx, id string) (*Enrollment
 }
 
 func (handler *EnrollmentHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }

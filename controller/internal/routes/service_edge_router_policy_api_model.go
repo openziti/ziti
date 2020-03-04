@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -83,7 +84,7 @@ func (c *ServiceEdgeRouterPolicyApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapServiceEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapServiceEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.ServiceEdgeRouterPolicy)
 
 	if !ok {

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,8 +22,12 @@ import (
 )
 
 type IdentityType struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name string
+}
+
+func (entity *IdentityType) GetName() string {
+	return entity.Name
 }
 
 func (entity *IdentityType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -41,10 +45,9 @@ func (entity *IdentityType) GetEntityType() string {
 }
 
 type IdentityTypeStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*IdentityType, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*IdentityType, error)
-	GetNameIndex() boltz.ReadIndex
 }
 
 func newIdentityTypeStore(stores *stores) *IdentityTypeStoreImpl {
@@ -60,12 +63,12 @@ type IdentityTypeStoreImpl struct {
 	indexName boltz.ReadIndex
 }
 
-func (store *IdentityTypeStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *IdentityTypeStoreImpl) NewStoreEntity() boltz.Entity {
 	return &IdentityType{}
 }
 
 func (store *IdentityTypeStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
 }
 

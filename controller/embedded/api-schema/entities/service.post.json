@@ -3,19 +3,17 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "name",
-    "egressRouter",
-    "endpointAddress"
+    "name"
   ],
   "properties": {
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "egressRouter": {
-      "type": "string"
-    },
-    "endpointAddress": {
-      "type": "string"
+    "terminatorStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "roleAttributes": {
       "default": null,

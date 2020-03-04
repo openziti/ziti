@@ -8,13 +8,7 @@
     "name": {
       "$ref": "definitions.all.json#/definitions/name-null"
     },
-    "egressRouter": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "endpointAddress": {
+    "terminatorStrategy": {
       "type": [
         "string",
         "null"

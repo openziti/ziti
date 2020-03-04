@@ -26,7 +26,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -113,7 +113,7 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 	ca, err := ae.Handlers.Ca.Read(id)
 
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -223,7 +223,7 @@ func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	ca, loadErr := ae.Handlers.Ca.Read(id)
 
 	if loadErr != nil {
-		if util.IsErrNotFoundErr(loadErr) {
+		if boltz.IsErrNotFoundErr(loadErr) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}

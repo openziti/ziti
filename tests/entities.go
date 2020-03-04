@@ -1,7 +1,7 @@
 // +build apitests
 
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -34,14 +34,13 @@ type entity interface {
 }
 
 type service struct {
-	id              string
-	name            string
-	egressRouter    string
-	endpointAddress string
-	roleAttributes  []string
-	configs         []string
-	permissions     []string
-	tags            map[string]interface{}
+	id                 string
+	name               string
+	terminatorStrategy string
+	roleAttributes     []string
+	configs            []string
+	permissions        []string
+	tags               map[string]interface{}
 }
 
 func (entity *service) getId() string {
@@ -59,8 +58,7 @@ func (entity *service) getEntityType() string {
 func (entity *service) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
-	ctx.setJsonValue(entityData, entity.egressRouter, "egressRouter")
-	ctx.setJsonValue(entityData, entity.endpointAddress, "endpointAddress")
+	ctx.setJsonValue(entityData, entity.terminatorStrategy, "terminatorStrategy")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.configs, "configs")
 
@@ -76,8 +74,7 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.egressRouter, path("egressRouter"))
-	ctx.pathEquals(c, entity.endpointAddress, path("endpointAddress"))
+	ctx.pathEquals(c, entity.terminatorStrategy, path("terminatorStrategy"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 
 	sort.Strings(entity.roleAttributes)
@@ -85,6 +82,52 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 
 	sort.Strings(entity.permissions)
 	ctx.pathEqualsStringSlice(c, entity.permissions, path("permissions"))
+}
+
+type terminator struct {
+	id        string
+	serviceId string
+	routerId  string
+	binding   string
+	address   string
+	tags      map[string]interface{}
+}
+
+func (entity *terminator) getId() string {
+	return entity.id
+}
+
+func (entity *terminator) setId(id string) {
+	entity.id = id
+}
+
+func (entity *terminator) getEntityType() string {
+	return "terminators"
+}
+
+func (entity *terminator) toJson(_ bool, ctx *TestContext, _ ...string) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.serviceId, "service")
+	ctx.setJsonValue(entityData, entity.routerId, "router")
+	ctx.setJsonValue(entityData, entity.binding, "binding")
+	ctx.setJsonValue(entityData, entity.address, "address")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+
+	return entityData.String()
+}
+
+func (entity *terminator) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.serviceId, path("serviceId"))
+	ctx.pathEquals(c, entity.routerId, path("routerId"))
+	ctx.pathEquals(c, entity.binding, path("binding"))
+	ctx.pathEquals(c, entity.address, path("address"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
@@ -180,7 +223,6 @@ func (entity *edgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 
 	ctx.setJsonValue(entityData, entity.tags, "tags")
 
-	
 	return entityData.String()
 }
 

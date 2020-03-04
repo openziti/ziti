@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
@@ -31,7 +32,7 @@ import (
 )
 
 type Enrollment struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Method     string
 	IdentityId string
 	Token      string
@@ -81,12 +82,12 @@ func (entity *Enrollment) FillJwtInfo(env Env) error {
 	return nil
 }
 
-func (entity *Enrollment) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Enrollment) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEnrollment, ok := boltEntity.(*persistence.Enrollment)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltEnrollment)
+	entity.FillCommon(boltEnrollment)
 	entity.Method = boltEnrollment.Method
 	entity.IdentityId = boltEnrollment.IdentityId
 	entity.CaId = boltEnrollment.CaId
@@ -99,7 +100,7 @@ func (entity *Enrollment) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	return nil
 }
 
-func (entity *Enrollment) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 	if entity.Method == persistence.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
 			apiErr := apierror.NewNotFound()
@@ -119,25 +120,29 @@ func (entity *Enrollment) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	}
 
 	boltEntity := &persistence.Enrollment{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Method:             entity.Method,
-		IdentityId:         entity.IdentityId,
-		Token:              entity.Token,
-		IssuedAt:           entity.IssuedAt,
-		ExpiresAt:          entity.ExpiresAt,
-		Jwt:                entity.Jwt,
-		CaId:               entity.CaId,
-		Username:           entity.Username,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Method:        entity.Method,
+		IdentityId:    entity.IdentityId,
+		Token:         entity.Token,
+		IssuedAt:      entity.IssuedAt,
+		ExpiresAt:     entity.ExpiresAt,
+		Jwt:           entity.Jwt,
+		CaId:          entity.CaId,
+		Username:      entity.Username,
 	}
 
 	return boltEntity, nil
 }
 
-func (entity *Enrollment) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(handler)
+}
+
+func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(handler)
 
 }
 
-func (entity *Enrollment) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
+func (entity *Enrollment) toBoltEntityForPatch(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(handler)
 }

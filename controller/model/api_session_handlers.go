@@ -17,15 +17,13 @@
 package model
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"go.etcd.io/bbolt"
 )
 
 func NewApiSessionHandler(env Env) *ApiSessionHandler {
 	handler := &ApiSessionHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().ApiSession,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().ApiSession),
 	}
 	handler.impl = handler
 	return handler
@@ -77,7 +75,7 @@ func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
 }
 
 func (handler *ApiSessionHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }
 
 func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
@@ -95,22 +93,13 @@ func (handler *ApiSessionHandler) Query(query string) (*ApiSessionListResult, er
 	return result, nil
 }
 
-func (handler *ApiSessionHandler) PublicQuery(queryOptions *QueryOptions) (*ApiSessionListResult, error) {
-	result := &ApiSessionListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 type ApiSessionListResult struct {
 	handler     *ApiSessionHandler
 	ApiSessions []*ApiSession
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		ApiSession, err := result.handler.readInTx(tx, key)

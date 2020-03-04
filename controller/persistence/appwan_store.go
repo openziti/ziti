@@ -23,7 +23,7 @@ import (
 )
 
 type Appwan struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name       string
 	Identities []string
 	Services   []string
@@ -65,12 +65,12 @@ type appwanStoreImpl struct {
 	symbolServices   boltz.EntitySetSymbol
 }
 
-func (store *appwanStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *appwanStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Appwan{}
 }
 
 func (store *appwanStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)

@@ -30,22 +30,19 @@ func init() {
 }
 
 type EdgeRouterRouter struct {
-	BasePath       string
-	BasePathLegacy string
-	IdType         response.IdType
+	BasePath string
+	IdType   response.IdType
 }
 
 func NewEdgeRouterRouter() *EdgeRouterRouter {
 	return &EdgeRouterRouter{
-		BasePath:       "/" + EntityNameEdgeRouter,
-		BasePathLegacy: "/" + EntityNameGateway,
-		IdType:         response.IdTypeString,
+		BasePath: "/" + EntityNameEdgeRouter,
+		IdType:   response.IdTypeString,
 	}
 }
 
 func (ir *EdgeRouterRouter) Register(ae *env.AppEnv) {
 	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
-	registerCrudRouter(ae, ae.RootRouter, ir.BasePathLegacy, ir, permissions.IsAdmin())
 
 	serviceEdgeRouterPoliciesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
 	serviceEdgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListServiceEdgeRouterPolicies, permissions.IsAdmin())
@@ -95,9 +92,9 @@ func (ir *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (ir *EdgeRouterRouter) ListServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectServiceEdgeRouterPolicies, MapServiceEdgeRouterPolicyToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeRouter, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity)
 }
 
 func (ir *EdgeRouterRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.EdgeRouter.CollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeRouter, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToApiEntity)
 }

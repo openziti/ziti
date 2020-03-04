@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
@@ -191,7 +192,7 @@ func (c *AuthenticatorApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapAuthenticatorToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapAuthenticatorToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.Authenticator)
 
 	if !ok {

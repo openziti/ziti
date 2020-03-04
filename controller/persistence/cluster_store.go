@@ -23,7 +23,7 @@ import (
 )
 
 type Cluster struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name string
 }
 
@@ -65,7 +65,7 @@ type clusterStoreImpl struct {
 	symbolServices    boltz.EntitySetSymbol
 }
 
-func (store *clusterStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *clusterStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Cluster{}
 }
 
@@ -74,7 +74,7 @@ func (store *clusterStoreImpl) GetNameIndex() boltz.ReadIndex {
 }
 
 func (store *clusterStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)

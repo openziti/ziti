@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
@@ -27,20 +28,13 @@ import (
 )
 
 type Config struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name string
 	Type string
 	Data map[string]interface{}
 }
 
-func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	if entity.Type == "" {
-		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
-	}
-	return entity.toBoltEntityForUpdate(tx, handler)
-}
-
-func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	if entity.Type != "" {
 		providedType := entity.Type
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
@@ -80,24 +74,35 @@ func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (pers
 	}
 
 	return &persistence.Config{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		Type:               entity.Type,
-		Data:               entity.Data,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		Type:          entity.Type,
+		Data:          entity.Data,
 	}, nil
 }
 
-func (entity *Config) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
+func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	if entity.Type == "" {
+		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
+	}
+	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Config) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, handler)
+}
+
+func (entity *Config) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, handler)
+}
+
+func (entity *Config) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltConfig, ok := boltEntity.(*persistence.Config)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model config", reflect.TypeOf(boltEntity))
 	}
 
-	entity.fillCommon(boltConfig)
+	entity.FillCommon(boltConfig)
 	entity.Name = boltConfig.Name
 	entity.Type = boltConfig.Type
 	entity.Data = boltConfig.Data

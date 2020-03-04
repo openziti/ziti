@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"math"
 )
@@ -35,9 +36,8 @@ type ConfigCreateApi struct {
 	Tags map[string]interface{} `json:"tags"`
 }
 
-func (i *ConfigCreateApi) ToModel(id string) *model.Config {
+func (i *ConfigCreateApi) ToModel() *model.Config {
 	result := &model.Config{}
-	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
 	result.Type = stringz.OrEmpty(i.Type)
 	result.Data = i.Data
@@ -98,7 +98,7 @@ func (c *ConfigApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapConfigToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapConfigToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.Config)
 
 	if !ok {

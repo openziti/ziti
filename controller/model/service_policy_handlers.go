@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,16 +17,12 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 )
 
 func NewServicePolicyHandler(env Env) *ServicePolicyHandler {
 	handler := &ServicePolicyHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().ServicePolicy,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().ServicePolicy),
 	}
 	handler.impl = handler
 	return handler
@@ -61,13 +57,5 @@ func (handler *ServicePolicyHandler) Patch(servicePolicy *ServicePolicy, checker
 }
 
 func (handler *ServicePolicyHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
-}
-
-func (handler *ServicePolicyHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
-}
-
-func (handler *ServicePolicyHandler) CollectIdentities(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeIdentities, handler.env.GetHandlers().Identity, collector)
+	return handler.deleteEntity(id)
 }

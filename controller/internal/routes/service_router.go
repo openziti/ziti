@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,15 +18,14 @@ package routes
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"net/http"
 	"strings"
 
-	"github.com/michaelquigley/pfxlog"
-
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 )
 
@@ -57,25 +56,29 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 	})
 
 	serviceEdgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
-	serviceEdgeRouterPolicyListHandler := ae.WrapHandler(ir.ListServiceEdgeRouterPolicies, permissions.IsAdmin())
+	serviceEdgeRouterPolicyListHandler := ae.WrapHandler(ir.listServiceEdgeRouterPolicies, permissions.IsAdmin())
 	sr.HandleFunc(serviceEdgeRouterPolicyUrl, serviceEdgeRouterPolicyListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(serviceEdgeRouterPolicyUrl+"/", serviceEdgeRouterPolicyListHandler).Methods(http.MethodGet)
 
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
-
+	servicePoliciesListHandler := ae.WrapHandler(ir.listServicePolicies, permissions.IsAdmin())
 	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)
 
 	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
-	configsListHandler := ae.WrapHandler(ir.ListConfigs, permissions.IsAdmin())
+	configsListHandler := ae.WrapHandler(ir.listConfigs, permissions.IsAdmin())
 	sr.HandleFunc(configsUrl, configsListHandler).Methods(http.MethodGet)
 	sr.HandleFunc(configsUrl+"/", configsListHandler).Methods(http.MethodGet)
+
+	terminatorsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameTerminator)
+	terminatorsListHandler := ae.WrapHandler(ir.listTerminators, permissions.IsAdmin())
+	sr.HandleFunc(terminatorsUrl, terminatorsListHandler).Methods(http.MethodGet)
+	sr.HandleFunc(terminatorsUrl+"/", terminatorsListHandler).Methods(http.MethodGet)
 }
 
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
-	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		identity := rc.Identity
 		if rc.Identity.IsAdmin {
 			if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
@@ -85,7 +88,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 					return nil, err
 				}
 				if identity == nil {
-					return nil, util.NewNotFoundError("identity", "id or name", asId)
+					return nil, boltz.NewNotFoundError("identity", "id or name", asId)
 				}
 			}
 		}
@@ -96,7 +99,12 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			configTypes = mapConfigTypeNamesToIds(ae, strings.Split(requestedConfigTypes, ","), identity.Id)
 		}
 
-		result, err := ae.Handlers.Service.PublicQueryForIdentity(identity, configTypes, queryOptions)
+		query, err := queryOptions.getFullQuery(ae.Handlers.EdgeService.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := ae.Handlers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -111,8 +119,8 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		service, err := ae.Handlers.Service.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
+	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (interface{}, error) {
+		service, err := ae.Handlers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -123,36 +131,44 @@ func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceCreate := &ServiceApiCreate{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Service.Post, serviceCreate, (&ServiceApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Service.Create(serviceCreate.ToModel())
+		return ae.Handlers.EdgeService.Create(serviceCreate.ToModel())
 	})
 }
 
 func (ir *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.Service)
+	DeleteWithHandler(rc, ir.IdType, ae.Handlers.EdgeService)
 }
 
 func (ir *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceUpdate := &ServiceApiUpdate{}
 	Update(rc, ae.Schemes.Service.Put, ir.IdType, serviceUpdate, func(id string) error {
-		return ae.Handlers.Service.Update(serviceUpdate.ToModel(id))
+		return ae.Handlers.EdgeService.Update(serviceUpdate.ToModel(id))
 	})
 }
 
 func (ir *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	serviceUpdate := &ServiceApiUpdate{}
 	Patch(rc, ae.Schemes.Service.Patch, ir.IdType, serviceUpdate, func(id string, fields JsonFields) error {
-		return ae.Handlers.Service.Patch(serviceUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Handlers.EdgeService.Patch(serviceUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
-func (ir *ServiceRouter) ListServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectServiceEdgeRouterPolicies, MapServiceEdgeRouterPolicyToApiEntity)
+func (ir *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ir.listAssociations(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity)
 }
 
-func (ir *ServiceRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectServicePolicies, MapServicePolicyToApiEntity)
+func (ir *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ir.listAssociations(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
 }
 
-func (ir *ServiceRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Service.CollectConfigs, MapConfigToApiEntity)
+func (ir *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+	ir.listAssociations(ae, rc, ae.Handlers.Config, MapConfigToApiEntity)
+}
+
+func (ir *ServiceRouter) listTerminators(ae *env.AppEnv, rc *response.RequestContext) {
+	ir.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToApiEntity)
+}
+
+func (ir *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeService, associationLoader, mapper)
 }

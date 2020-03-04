@@ -19,7 +19,6 @@ package persistence
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
@@ -39,15 +38,15 @@ const (
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
 	return &Identity{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
-		IdentityTypeId:     identityTypeId,
-		RoleAttributes:     roleAttributes,
+		BaseExtEntity:  boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:           name,
+		IdentityTypeId: identityTypeId,
+		RoleAttributes: roleAttributes,
 	}
 }
 
 type Identity struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name           string
 	IdentityTypeId string
 	IsDefaultAdmin bool
@@ -108,7 +107,7 @@ func (entity *Identity) GetName() string {
 }
 
 type IdentityStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*Identity, error)
@@ -140,12 +139,12 @@ type identityStoreImpl struct {
 	symbolIdentityTypeId     boltz.EntitySymbol
 }
 
-func (store *identityStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *identityStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Identity{}
 }
 
 func (store *identityStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
 	store.indexName = store.addUniqueNameField()
@@ -175,7 +174,7 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
-func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
+func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity boltz.NamedExtEntity, oldName string) {
 	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolIdentityRoles, entity, oldName)
 	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolIdentityRoles, entity, oldName)
 }
@@ -255,7 +254,7 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 func (store *identityStoreImpl) AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error {
 	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
 	if entityBucket == nil {
-		return util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+		return boltz.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
 	}
 	configsBucket := entityBucket.GetOrCreateBucket(FieldIdentityServiceConfigs)
 	if configsBucket.HasError() {
@@ -316,7 +315,7 @@ func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId st
 func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeFilter func(serviceId, configTypeId, configId string) bool) error {
 	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
 	if entityBucket == nil {
-		return util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+		return boltz.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
 	}
 	configsBucket := entityBucket.GetBucket(FieldIdentityServiceConfigs)
 	if configsBucket == nil {
@@ -352,7 +351,7 @@ func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId st
 func (store *identityStoreImpl) GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error) {
 	entityBucket := store.GetEntityBucket(tx, []byte(identityId))
 	if entityBucket == nil {
-		return nil, util.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
+		return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "id", identityId)
 	}
 	var result []ServiceConfig
 	configsBucket := entityBucket.GetBucket(FieldIdentityServiceConfigs)

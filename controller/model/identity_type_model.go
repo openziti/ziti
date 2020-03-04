@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -29,31 +30,35 @@ const (
 )
 
 type IdentityType struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name string `json:"name"`
 }
 
-func (entity *IdentityType) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *IdentityType) toBoltEntity() (boltz.Entity, error) {
 	return &persistence.IdentityType{
-		Name:               entity.Name,
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *IdentityType) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *IdentityType) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *IdentityType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltIdentityType, ok := boltEntity.(*persistence.IdentityType)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model IdentityType", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltIdentityType)
+	entity.FillCommon(boltIdentityType)
 	entity.Name = boltIdentityType.Name
 	return nil
 }

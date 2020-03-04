@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -29,8 +30,24 @@ import (
 
 const (
 	EntityNameEdgeRouter = "edge-routers"
-	EntityNameGateway    = "gateways"
 )
+
+func NewEdgeRouterEntityRef(entity *model.EdgeRouter) *EntityApiRef {
+	links := &response.Links{
+		"self": NewEdgeRouterLink(entity.Id),
+	}
+
+	return &EntityApiRef{
+		Entity: EntityNameEdgeRouter,
+		Id:     entity.Id,
+		Name:   &entity.Name,
+		Links:  links,
+	}
+}
+
+func NewEdgeRouterLink(edgeRouterId string) *response.Link {
+	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameEdgeRouter, edgeRouterId))
+}
 
 type EdgeRouterEntityApiRef struct {
 	*EntityApiRef
@@ -95,7 +112,7 @@ func (e *EdgeRouterApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapEdgeRouterToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapEdgeRouterToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.EdgeRouter)
 
 	if !ok {

@@ -16,26 +16,33 @@
 
 package persistence
 
-func createServicePoliciesV3(mtx *MigrationContext) error {
-	appwanIds, _, err := mtx.Stores.Appwan.QueryIds(mtx.Ctx.Tx(), "true")
-	if err != nil {
-		return err
-	}
+import "github.com/netfoundry/ziti-foundation/storage/boltz"
+
+func (m *Migrations) createServicePoliciesV3(step *boltz.MigrationStep) {
+	appwanIds, _, err := m.stores.Appwan.QueryIds(step.Ctx.Tx(), "true")
+	step.SetError(err)
 	for _, appwanId := range appwanIds {
-		appwan, err := mtx.Stores.Appwan.LoadOneById(mtx.Ctx.Tx(), appwanId)
-		if err != nil {
-			return err
+		appwan, err := m.stores.Appwan.LoadOneById(step.Ctx.Tx(), appwanId)
+		if step.SetError(err) {
+			return
 		}
+
+		var identityRoles []string
+		for _, id := range appwan.Identities {
+			identityRoles = append(identityRoles, "@"+id)
+		}
+
+		var serviceRoles []string
+		for _, id := range appwan.Services {
+			serviceRoles = append(serviceRoles, "@"+id)
+		}
+
 		servicePolicy := &ServicePolicy{
 			PolicyType:    PolicyTypeDial,
 			Name:          appwan.Name,
-			IdentityRoles: appwan.Identities,
-			ServiceRoles:  appwan.Services,
+			IdentityRoles: identityRoles,
+			ServiceRoles:  serviceRoles,
 		}
-		if err = mtx.Stores.ServicePolicy.Create(mtx.Ctx, servicePolicy); err != nil {
-			return err
-		}
+		step.SetError(m.stores.ServicePolicy.Create(step.Ctx, servicePolicy))
 	}
-
-	return nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/crypto"
 	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -93,7 +94,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	encodedSalt := base64.StdEncoding.EncodeToString(hash.Salt)
 
 	newAuthenticator := &Authenticator{
-		BaseModelEntityImpl: BaseModelEntityImpl{
+		BaseEntity: models.BaseEntity{
 			Id: uuid.New().String(),
 		},
 		Method:     persistence.MethodAuthenticatorUpdb,

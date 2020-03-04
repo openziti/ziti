@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
@@ -28,7 +29,7 @@ import (
 )
 
 type ConfigType struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name   string
 	Schema map[string]interface{}
 }
@@ -42,7 +43,7 @@ func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
 	return schemaLoader.Compile(entitySchemaLoader)
 }
 
-func (entity *ConfigType) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
 	if entity.Name == ConfigTypeAll {
 		return nil, validation.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
@@ -53,27 +54,31 @@ func (entity *ConfigType) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 		}
 	}
 	return &persistence.ConfigType{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		Schema:             entity.Schema,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		Schema:        entity.Schema,
 	}, nil
 }
 
-func (entity *ConfigType) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ConfigType) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *ConfigType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltConfigType, ok := boltEntity.(*persistence.ConfigType)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model configType", reflect.TypeOf(boltEntity))
 	}
 
-	entity.fillCommon(boltConfigType)
+	entity.FillCommon(boltConfigType)
 	entity.Name = boltConfigType.Name
 	entity.Schema = boltConfigType.Schema
 	return nil

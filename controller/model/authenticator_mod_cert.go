@@ -90,8 +90,8 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 
 func (module *AuthModuleCert) isEdgeRouter(certs []*x509.Certificate) bool {
 
-	for _, cert := range certs {
-		fingerprint := module.fingerprintGenerator.FromCert(cert)
+	for _, certificate := range certs {
+		fingerprint := module.fingerprintGenerator.FromCert(certificate)
 
 		router, err := module.env.GetHandlers().EdgeRouter.ReadOneByFingerprint(fingerprint)
 

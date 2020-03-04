@@ -18,10 +18,7 @@ package model
 
 func NewEventLogHandler(env Env) *EventLogHandler {
 	handler := &EventLogHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().EventLog,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().EventLog),
 	}
 	handler.impl = handler
 	return handler

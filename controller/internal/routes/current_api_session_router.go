@@ -76,12 +76,10 @@ func (ir *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestConte
 }
 
 func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.Duration) (*CurrentSessionApiList, error) {
-	baseApi := env.FromBaseModelEntity(s)
-
 	expiresAt := s.UpdatedAt.Add(sessionTimeout)
 
 	ret := &CurrentSessionApiList{
-		BaseApi:     baseApi,
+		BaseApi:     env.FromBaseModelEntity(s),
 		Token:       &s.Token,
 		ExpiresAt:   &expiresAt,
 		Identity:    NewIdentityEntityRef(s.Identity),

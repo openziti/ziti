@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -45,32 +45,32 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 
 	identity := ctx.requireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.requireCreate(apiSession)
+	ctx.RequireCreate(apiSession)
 
 	service := ctx.requireNewService("test-service")
 
 	session := NewSession("", service.Id)
-	err := ctx.create(session)
+	err := ctx.Create(session)
 	ctx.EqualError(err, "index on sessions.apiSession does not allow null or empty values")
 
 	session.ApiSessionId = "invalid-id"
-	err = ctx.create(session)
+	err = ctx.Create(session)
 	ctx.EqualError(err, fmt.Sprintf("no entity of type apiSessions with id %v", session.ApiSessionId))
 
 	session.ApiSessionId = apiSession.Id
 	session.ServiceId = ""
-	err = ctx.create(session)
+	err = ctx.Create(session)
 	ctx.EqualError(err, "index on sessions.service does not allow null or empty values")
 
 	session.ServiceId = "invalid-id"
-	err = ctx.create(session)
+	err = ctx.Create(session)
 	ctx.EqualError(err, fmt.Sprintf("no entity of type services with id %v", session.ServiceId))
 
 	session.ServiceId = service.Id
-	err = ctx.create(session)
+	err = ctx.Create(session)
 	ctx.NoError(err)
-	err = ctx.create(session)
-	ctx.EqualError(err, fmt.Sprintf("an entity of type sessions already exists with id %v", session.Id))
+	err = ctx.Create(session)
+	ctx.EqualError(err, fmt.Sprintf("an entity of type session already exists with id %v", session.Id))
 }
 
 func (ctx *TestContext) testCreateSessions(_ *testing.T) {
@@ -78,11 +78,11 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 
 	identity := ctx.requireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.requireCreate(apiSession)
+	ctx.RequireCreate(apiSession)
 	service := ctx.requireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
-	ctx.requireCreate(session)
-	ctx.validateBaseline(session)
+	ctx.RequireCreate(session)
+	ctx.ValidateBaseline(session)
 
 	sessionIds := ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
@@ -93,9 +93,9 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.EqualValues(session.Id, sessionIds[0])
 
 	session2 := NewSession(apiSession.Id, service.Id)
-	session2.Tags = ctx.createTags()
-	ctx.requireCreate(session2)
-	ctx.validateBaseline(session2)
+	session2.Tags = ctx.CreateTags()
+	ctx.RequireCreate(session2)
+	ctx.ValidateBaseline(session2)
 
 	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(2, len(sessionIds))
@@ -107,7 +107,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.True(stringz.Contains(sessionIds, session.Id))
 	ctx.True(stringz.Contains(sessionIds, session2.Id))
 
-	ctx.requireDelete(session)
+	ctx.RequireDelete(session)
 
 	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
@@ -139,14 +139,14 @@ func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
 
 	identity := ctx.requireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.requireCreate(apiSession)
+	ctx.RequireCreate(apiSession)
 	service := ctx.requireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
 	session.Certs = []*SessionCert{sessionCert1, sessionCert2}
-	ctx.requireCreate(session)
+	ctx.RequireCreate(session)
 
 	var certs []*SessionCert
-	err := ctx.db.View(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
 		certs, err = ctx.stores.Session.LoadCerts(tx, session.Id)
 		return err
@@ -172,22 +172,22 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 	identity1 := ctx.requireNewIdentity("admin1", true)
 
 	apiSession1 := NewApiSession(identity1.Id)
-	ctx.requireCreate(apiSession1)
+	ctx.RequireCreate(apiSession1)
 
 	apiSession2 := NewApiSession(identity1.Id)
-	ctx.requireCreate(apiSession2)
+	ctx.RequireCreate(apiSession2)
 
 	service1 := ctx.requireNewService(uuid.New().String())
 	service2 := ctx.requireNewService(uuid.New().String())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
-	ctx.requireCreate(session1)
+	ctx.RequireCreate(session1)
 
 	session2 := NewSession(apiSession2.Id, service2.Id)
-	ctx.requireCreate(session2)
+	ctx.RequireCreate(session2)
 
 	session3 := NewSession(apiSession2.Id, service2.Id)
-	ctx.requireCreate(session3)
+	ctx.RequireCreate(session3)
 
 	return &sessionTestEntities{
 		identity1:   identity1,
@@ -206,7 +206,7 @@ func (ctx *TestContext) testLoadQuerySessions(_ *testing.T) {
 
 	entities := ctx.createSessionTestEntities()
 
-	err := ctx.db.View(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		session, err := ctx.stores.Session.LoadOneByToken(tx, entities.session1.Token)
 		ctx.NoError(err)
 		ctx.NotNil(session)
@@ -235,7 +235,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.db.Update(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		original, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
@@ -244,7 +244,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 		ctx.NoError(err)
 		ctx.NotNil(session)
 
-		tags := ctx.createTags()
+		tags := ctx.CreateTags()
 		now := time.Now()
 		session.Token = uuid.New().String()
 		session.UpdatedAt = earlier
@@ -271,7 +271,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 func (ctx *TestContext) testDeleteSessions(_ *testing.T) {
 	ctx.cleanupAll()
 	entities := ctx.createSessionTestEntities()
-	ctx.requireDelete(entities.session1)
-	ctx.requireDelete(entities.session2)
-	ctx.requireDelete(entities.session3)
+	ctx.RequireDelete(entities.session1)
+	ctx.RequireDelete(entities.session2)
+	ctx.RequireDelete(entities.session3)
 }

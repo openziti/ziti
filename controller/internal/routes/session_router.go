@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -30,16 +30,14 @@ func init() {
 }
 
 type SessionRouter struct {
-	BasePath       string
-	LegacyBasePath string
-	IdType         response.IdType
+	BasePath string
+	IdType   response.IdType
 }
 
 func NewSessionRouter() *SessionRouter {
 	return &SessionRouter{
-		BasePath:       "/" + EntityNameSession,
-		LegacyBasePath: "/" + EntityNameSessionLegacy,
-		IdType:         response.IdTypeUuid,
+		BasePath: "/" + EntityNameSession,
+		IdType:   response.IdTypeUuid,
 	}
 }
 
@@ -50,19 +48,17 @@ func (ir *SessionRouter) Register(ae *env.AppEnv) {
 		Delete:  permissions.IsAuthenticated(),
 		Default: permissions.IsAdmin(),
 	})
-
-	registerCreateReadDeleteRouter(ae, ae.RootRouter, ir.LegacyBasePath, ir, &crudResolvers{
-		Create:  permissions.IsAuthenticated(),
-		Read:    permissions.IsAuthenticated(),
-		Delete:  permissions.IsAuthenticated(),
-		Default: permissions.IsAdmin(),
-	})
 }
 
 func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
-	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Session.PublicQueryForIdentity(rc.Identity, queryOptions)
+	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+		query, err := queryOptions.getFullQuery(ae.Handlers.Session.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := ae.Handlers.Session.PublicQueryForIdentity(rc.Identity, query)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +72,7 @@ func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
+	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (interface{}, error) {
 		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
 		if err != nil {
 			return nil, err

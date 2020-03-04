@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,8 +22,12 @@ import (
 )
 
 type GeoRegion struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name string
+}
+
+func (entity *GeoRegion) GetName() string {
+	return entity.Name
 }
 
 func (entity *GeoRegion) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -41,7 +45,7 @@ func (entity *GeoRegion) GetEntityType() string {
 }
 
 type GeoRegionStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*GeoRegion, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*GeoRegion, error)
 }
@@ -59,12 +63,16 @@ type geoRegionStoreImpl struct {
 	indexName boltz.ReadIndex
 }
 
-func (store *geoRegionStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *geoRegionStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
+}
+
+func (store *geoRegionStoreImpl) NewStoreEntity() boltz.Entity {
 	return &GeoRegion{}
 }
 
 func (store *geoRegionStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
 }
 

@@ -84,5 +84,5 @@ func (ir *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (ir *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ConfigType.CollectConfigs, MapConfigToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ConfigType, ae.Handlers.Config, MapConfigToApiEntity)
 }

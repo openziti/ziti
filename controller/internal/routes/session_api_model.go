@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,16 +18,15 @@ package routes
 
 import (
 	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 )
 
 const EntityNameSession = "sessions"
-const EntityNameSessionLegacy = "network-sessions"
 
 type SessionApiPost struct {
 	ServiceId *string                `json:"serviceId"`
@@ -41,7 +40,7 @@ func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
 		sessionType = *i.Type
 	}
 	return &model.Session{
-		BaseModelEntityImpl: model.BaseModelEntityImpl{
+		BaseEntity: models.BaseEntity{
 			Tags: i.Tags,
 		},
 		Token:        uuid.New().String(),
@@ -91,7 +90,7 @@ func (e *SessionApiList) ToEntityApiRef() *EntityApiRef {
 }
 
 func MapSessionsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Session) ([]BaseApiEntity, error) {
-	// can't use modelToApi b/c it require list of BaseModelEntity
+	// can't use modelToApi b/c it require list of network.Entity
 	apiEntities := make([]BaseApiEntity, 0)
 
 	for _, e := range es {
@@ -107,7 +106,7 @@ func MapSessionsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []
 	return apiEntities, nil
 }
 
-func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.Session)
 
 	if !ok {
@@ -129,7 +128,7 @@ func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e model.B
 }
 
 func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, error) {
-	service, err := ae.Handlers.Service.Read(i.ServiceId)
+	service, err := ae.Handlers.EdgeService.Read(i.ServiceId)
 	if err != nil {
 		return nil, err
 	}

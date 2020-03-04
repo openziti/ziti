@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import (
 
 type EdgeService struct {
 	db.Service
-	EdgeEntityFields
 	Name           string
 	RoleAttributes []string
 	Configs        []string
@@ -40,7 +39,9 @@ const (
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	return &EdgeService{
-		Service:        db.Service{Id: uuid.New().String()},
+		Service: db.Service{
+			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		},
 		Name:           name,
 		RoleAttributes: roleAttributes,
 	}
@@ -85,15 +86,14 @@ func (entity *EdgeService) GetName() string {
 }
 
 type EdgeServiceStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
-	GetNameIndex() boltz.ReadIndex
 }
 
-func newEdgeServiceStore(stores *stores, serviceStore db.ServiceStore) *edgeServiceStoreImpl {
+func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
 	store := &edgeServiceStoreImpl{
-		baseStore: newChildBaseStore(stores, serviceStore, EntityTypeServices),
+		baseStore: newChildBaseStore(stores, stores.Service, EntityTypeServices),
 	}
 	store.InitImpl(store)
 	return store
@@ -112,12 +112,12 @@ type edgeServiceStoreImpl struct {
 	symbolConfigs                   boltz.EntitySetSymbol
 }
 
-func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.Entity {
 	return &EdgeService{}
 }
 
 func (store *edgeServiceStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.GetParentStore().GrantSymbols(store)
 
 	store.indexName = store.addUniqueNameField()
@@ -146,7 +146,7 @@ func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []
 	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
-func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity NamedEdgeEntity, oldName string) {
+func (store *edgeServiceStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity boltz.NamedExtEntity, oldName string) {
 	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolServiceRoles, entity, oldName)
 	store.updateEntityNameReferences(bucket, store.stores.serviceEdgeRouterPolicy.symbolServiceRoles, entity, oldName)
 }

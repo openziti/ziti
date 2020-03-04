@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package persistence
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/network"
@@ -29,61 +28,45 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"strings"
 )
 
 type DbProvider interface {
 	GetDb() boltz.Db
-	GetFabricStores() *db.Stores
 	GetServiceCache() network.Cache
+	GetStores() *db.Stores
+	GetControllers() *network.Controllers
 }
 
 type Store interface {
 	boltz.CrudStore
-	GetSingularEntityType() string
-	FindMatchingAnyOf(tx *bbolt.Tx, readIndex boltz.SetReadIndex, values []string) []string
 	initializeLocal()
 	initializeLinked()
 	initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder)
 }
 
 func newBaseStore(stores *stores, entityType string) *baseStore {
-	singularEntityType := getSingularEntityType(entityType)
+	singularEntityType := boltz.GetSingularEntityType(entityType)
 	return &baseStore{
 		stores: stores,
 		BaseStore: boltz.NewBaseStore(nil, entityType, func(id string) error {
-			return util.NewNotFoundError(singularEntityType, "id", id)
+			return boltz.NewNotFoundError(singularEntityType, "id", id)
 		}, boltz.RootBucket),
-		singularEntityType: singularEntityType,
 	}
 }
 
 func newChildBaseStore(stores *stores, parent boltz.CrudStore, entityType string) *baseStore {
-	singularEntityType := getSingularEntityType(entityType)
+	singularEntityType := boltz.GetSingularEntityType(entityType)
 	return &baseStore{
 		stores: stores,
 		BaseStore: boltz.NewBaseStore(parent, entityType, func(id string) error {
-			return util.NewNotFoundError(singularEntityType, "id", id)
+			return boltz.NewNotFoundError(singularEntityType, "id", id)
 		}, EdgeBucket),
-		singularEntityType: singularEntityType,
 	}
 }
 
 type baseStore struct {
 	stores *stores
 	*boltz.BaseStore
-	singularEntityType string
-}
-
-func (store *baseStore) GetSingularEntityType() string {
-	return store.singularEntityType
-}
-
-func (store *baseStore) addBaseFields() {
-	store.AddIdSymbol(FieldId, ast.NodeTypeString)
-	store.AddSymbol(FieldCreatedAt, ast.NodeTypeDatetime)
-	store.AddSymbol(FieldUpdatedAt, ast.NodeTypeDatetime)
-	store.AddMapSymbol(FieldTags, ast.NodeTypeAnyType, FieldTags)
 }
 
 func (store *baseStore) addUniqueNameField() boltz.ReadIndex {
@@ -100,18 +83,18 @@ func (store *baseStore) initializeIndexes(tx *bbolt.Tx, errorHolder errorz.Error
 	store.InitializeIndexes(tx, errorHolder)
 }
 
-func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.BaseEntity) error {
+func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.Entity) error {
 	found, err := store.BaseLoadOneById(tx, id, entity)
 	if err != nil {
 		return err
 	}
 	if !found {
-		return util.NewNotFoundError(store.GetSingularEntityType(), "id", id)
+		return boltz.NewNotFoundError(store.GetSingularEntityType(), "id", id)
 	}
 	return nil
 }
 
-func (store *baseStore) updateEntityNameReferences(bucket *boltz.TypedBucket, rolesSymbol boltz.EntitySetSymbol, entity NamedEdgeEntity, oldName string) {
+func (store *baseStore) updateEntityNameReferences(bucket *boltz.TypedBucket, rolesSymbol boltz.EntitySetSymbol, entity boltz.NamedExtEntity, oldName string) {
 	// If the entity name is the same as entity ID, bail out. We don't want to remove any references by ID, since
 	// those take precedence over named references
 	if store.IsEntityPresent(bucket.Tx(), oldName) {
@@ -133,7 +116,7 @@ func (store *baseStore) updateEntityNameReferences(bucket *boltz.TypedBucket, ro
 	}
 }
 
-func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity NamedEdgeEntity, rolesSymbol boltz.EntitySetSymbol) error {
+func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {
 	// If the entity name is the same as entity ID, don't remove any of those references as id references take precedence
 	checkName := !store.IsEntityPresent(tx, entity.GetName())
 	if !checkName {
@@ -264,43 +247,9 @@ func convertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, ids []string) {
 	}
 }
 
-func getSingularEntityType(entityType string) string {
-	if strings.HasSuffix(entityType, "ies") {
-		return strings.TrimSuffix(entityType, "ies") + "y"
-	}
-	return strings.TrimSuffix(entityType, "s")
-}
-
 type NameIndexedStore interface {
 	Store
 	GetNameIndex() boltz.ReadIndex
-}
-
-func (*baseStore) FindMatchingAnyOf(tx *bbolt.Tx, readIndex boltz.SetReadIndex, values []string) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	var result []string
-	if len(values) == 1 {
-		readIndex.Read(tx, []byte(values[0]), func(val []byte) {
-			result = append(result, string(val))
-		})
-		return result
-	}
-
-	// If there are multiple roles, we want to avoid duplicates
-	set := map[string]struct{}{}
-	for _, role := range values {
-		readIndex.Read(tx, []byte(role), func(val []byte) {
-			set[string(val)] = struct{}{}
-		})
-	}
-
-	for key := range set {
-		result = append(result, key)
-	}
-
-	return result
 }
 
 func (store *baseStore) GetName(tx *bbolt.Tx, id string) *string {

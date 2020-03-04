@@ -37,13 +37,13 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.cleanupAll()
 
 	configType := newConfigType(uuid.New().String())
-	ctx.requireCreate(configType)
+	ctx.RequireCreate(configType)
 
 	config := newConfig(uuid.New().String(), "", map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	err := ctx.create(config)
+	err := ctx.Create(config)
 	ctx.EqualError(err, "index on configs.type does not allow null or empty values")
 
 	invalidId := uuid.New().String()
@@ -51,15 +51,15 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	err = ctx.create(config)
+	err = ctx.Create(config)
 	ctx.EqualError(err, fmt.Sprintf("no entity of type configTypes with id %v", invalidId))
 
 	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	ctx.requireCreate(config)
-	ctx.validateBaseline(config)
+	ctx.RequireCreate(config)
+	ctx.ValidateBaseline(config)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		testConfig, err := ctx.stores.Config.LoadOneByName(tx, config.Name)
@@ -72,7 +72,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.NoError(err)
 
 	config.Id = uuid.New().String()
-	err = ctx.create(config)
+	err = ctx.Create(config)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on configs store", config.Name))
 
 	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
@@ -85,8 +85,8 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 			"count":    1000.32,
 		},
 	})
-	ctx.requireCreate(config)
-	ctx.validateBaseline(config)
+	ctx.RequireCreate(config)
+	ctx.ValidateBaseline(config)
 
 	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
@@ -105,8 +105,8 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 			},
 		},
 	})
-	ctx.requireCreate(config)
-	ctx.validateBaseline(config)
+	ctx.RequireCreate(config)
+	ctx.ValidateBaseline(config)
 
 	config.Data = map[string]interface{}{
 		"dnsHostname": "ssh.mycompany.com",
@@ -114,17 +114,17 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	}
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
-	ctx.requireUpdate(config)
-	ctx.validateUpdated(config)
+	ctx.RequireUpdate(config)
+	ctx.ValidateUpdated(config)
 
-	ctx.requireDelete(config)
+	ctx.RequireDelete(config)
 }
 
 func (ctx *TestContext) testConfigQuery(*testing.T) {
 	ctx.cleanupAll()
 
 	configType := newConfigType(uuid.New().String())
-	ctx.requireCreate(configType)
+	ctx.RequireCreate(configType)
 
 	config := newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
@@ -143,7 +143,7 @@ func (ctx *TestContext) testConfigQuery(*testing.T) {
 			},
 		},
 	})
-	ctx.requireCreate(config)
+	ctx.RequireCreate(config)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ids, _, err := ctx.stores.Config.QueryIds(tx, `data.enabled and data.nested.hello = "hi"`)
@@ -163,5 +163,5 @@ func (ctx *TestContext) testConfigQuery(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	ctx.requireDelete(config)
+	ctx.RequireDelete(config)
 }

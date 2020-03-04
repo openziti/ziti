@@ -1,7 +1,7 @@
 // +build apitests
 
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,12 +27,16 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/gateway/enroll"
+	"github.com/netfoundry/ziti-fabric/router"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
 	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,6 +74,8 @@ type TestContext struct {
 	req                *require.Assertions
 	client             *resty.Client
 	enabledJsonLogging bool
+
+	edgeRouter *edgeRouter
 }
 
 var defaultTestContext = &TestContext{
@@ -158,7 +164,16 @@ func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *htt
 func (ctx *TestContext) startServer() {
 	log := pfxlog.Logger()
 	_ = os.Mkdir("testdata", os.FileMode(0755))
-	_ = os.Remove("testdata/ctrl.db")
+	err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			if !info.IsDir() && strings.HasPrefix(info.Name(), "ctrl.db") {
+				pfxlog.Logger().Infof("removing test bolt file or backup: %v", path)
+				err = os.Remove(path)
+			}
+		}
+		return err
+	})
+	ctx.req.NoError(err)
 
 	log.Info("loading config")
 	config, err := controller.LoadConfig("ats-ctrl.yml")
@@ -189,6 +204,28 @@ func (ctx *TestContext) startServer() {
 	}()
 	err = ctx.waitForPort(time.Minute * 5)
 	ctx.req.NoError(err)
+}
+
+func (ctx *TestContext) createAndEnroll(roleAttributes ...string) *edgeRouter {
+	// If an edge router has already been created, delete it and create a new one
+	if ctx.edgeRouter != nil {
+		ctx.AdminSession.requireDeleteEntity(ctx.edgeRouter)
+		ctx.edgeRouter = nil
+	}
+
+	_ = os.MkdirAll("testdata/edge-router", os.FileMode(0755))
+
+	ctx.edgeRouter = ctx.AdminSession.requireNewEdgeRouter(roleAttributes...)
+	jwt := ctx.AdminSession.getEdgeRouterJwt(ctx.edgeRouter.id)
+
+	cfgmap, err := router.LoadConfigMap("ats-edge.router.yml")
+	ctx.req.NoError(err)
+
+	enroller := enroll.NewRestEnroller()
+	ctx.req.NoError(enroller.LoadConfig(cfgmap))
+	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
+
+	return ctx.edgeRouter
 }
 
 func (ctx *TestContext) waitForPort(duration time.Duration) error {
@@ -328,12 +365,20 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 
 func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 	return &service{
-		name:            uuid.New().String(),
-		egressRouter:    uuid.New().String(),
-		endpointAddress: uuid.New().String(),
-		roleAttributes:  roleAttributes,
-		configs:         configs,
-		tags:            nil,
+		name:           uuid.New().String(),
+		roleAttributes: roleAttributes,
+		configs:        configs,
+		tags:           nil,
+	}
+}
+
+func (ctx *TestContext) newTerminator(serviceId, routerId, binding, address string) *terminator {
+	return &terminator{
+		serviceId: serviceId,
+		routerId:  routerId,
+		binding:   binding,
+		address:   address,
+		tags:      nil,
 	}
 }
 

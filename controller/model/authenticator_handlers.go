@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/crypto"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -35,7 +36,7 @@ type AuthenticatorHandler struct {
 }
 
 func (handler AuthenticatorHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }
 
 func (handler AuthenticatorHandler) IsUpdated(field string) bool {
@@ -44,11 +45,8 @@ func (handler AuthenticatorHandler) IsUpdated(field string) bool {
 
 func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
 	handler := &AuthenticatorHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().Authenticator,
-		},
-		authStore: env.GetStores().Authenticator,
+		baseHandler: newBaseHandler(env, env.GetStores().Authenticator),
+		authStore:   env.GetStores().Authenticator,
 	}
 
 	handler.impl = handler
@@ -105,18 +103,18 @@ func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 }
 
 func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
-	result, err := handler.ListForIdentity(authenticator.IdentityId, &QueryOptions{
-		Predicate:  fmt.Sprintf(`method = "%s"`, authenticator.Method),
-		Sort:       "",
-		Paging:     nil,
-		finalQuery: "",
-	})
+	queryString := fmt.Sprintf(`method = "%s"`, authenticator.Method)
+	query, err := ast.Parse(handler.GetStore(), queryString)
+	if err != nil {
+		return "", err
+	}
+	result, err := handler.ListForIdentity(authenticator.IdentityId, query)
 
 	if err != nil {
 		return "", err
 	}
 
-	if result.Count > 0 {
+	if result.GetMetaData().Count > 0 {
 		return "", apierror.NewAuthenticatorMethodMax()
 	}
 
@@ -188,7 +186,7 @@ func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorS
 	}
 
 	if authenticator == nil {
-		return util.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
+		return boltz.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
@@ -244,7 +242,7 @@ func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSe
 	}
 
 	if authenticator == nil {
-		return util.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
+		return boltz.NewNotFoundError(handler.authStore.GetSingularEntityType(), "id", authenticatorSelf.Id)
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
@@ -297,14 +295,14 @@ func (handler AuthenticatorHandler) ReHashPassword(password string, salt []byte)
 	}
 }
 
-func (handler AuthenticatorHandler) ListForIdentity(identityId string, options *QueryOptions) (*AuthenticatorListQueryResult, error) {
-	query := options.Predicate
-	if query != "" {
-		query = "(" + query + ") and "
+func (handler AuthenticatorHandler) ListForIdentity(identityId string, query ast.Query) (*AuthenticatorListQueryResult, error) {
+	filterString := fmt.Sprintf(`identity = "%s"`, identityId)
+	filter, err := ast.Parse(handler.Store, filterString)
+	if err != nil {
+		return nil, err
 	}
-	query += fmt.Sprintf(`(identity = "%s")`, identityId)
-	options.Predicate = query
-	result, err := handler.BaseList(options)
+	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), filter))
+	result, err := handler.BasePreparedList(query)
 
 	if err != nil {
 		return nil, err
@@ -312,15 +310,15 @@ func (handler AuthenticatorHandler) ListForIdentity(identityId string, options *
 
 	var authenticators []*Authenticator
 
-	for _, entity := range result.Entities {
+	for _, entity := range result.GetEntities() {
 		if auth, ok := entity.(*Authenticator); ok {
 			authenticators = append(authenticators, auth)
 		}
 	}
 
 	return &AuthenticatorListQueryResult{
-		BaseModelEntityListResult: result,
-		Authenticators:            authenticators,
+		EntityListResult: result,
+		Authenticators:   authenticators,
 	}, nil
 }
 
@@ -345,6 +343,6 @@ type HashedPassword struct {
 }
 
 type AuthenticatorListQueryResult struct {
-	*BaseModelEntityListResult
+	*models.EntityListResult
 	Authenticators []*Authenticator
 }

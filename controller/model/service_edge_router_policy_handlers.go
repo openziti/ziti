@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,17 +17,14 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
 func NewServiceEdgeRouterPolicyHandler(env Env) *ServiceEdgeRouterPolicyHandler {
 	handler := &ServiceEdgeRouterPolicyHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().ServiceEdgeRouterPolicy,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().ServiceEdgeRouterPolicy),
 	}
 	handler.impl = handler
 	return handler
@@ -70,45 +67,16 @@ func (handler *ServiceEdgeRouterPolicyHandler) Patch(edgeRouterPolicy *ServiceEd
 }
 
 func (handler *ServiceEdgeRouterPolicyHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
-}
-
-func (handler *ServiceEdgeRouterPolicyHandler) List(queryOptions *QueryOptions) (*ServiceEdgeRouterPolicyListResult, error) {
-	result := &ServiceEdgeRouterPolicyListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *ServiceEdgeRouterPolicyHandler) ListEdgeRouters(id string) ([]*EdgeRouter, error) {
-	var result []*EdgeRouter
-	err := handler.CollectEdgeRouters(id, func(entity BaseModelEntity) {
-		result = append(result, entity.(*EdgeRouter))
-	})
-
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *ServiceEdgeRouterPolicyHandler) CollectEdgeRouters(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouters, handler.env.GetHandlers().EdgeRouter, collector)
-}
-
-func (handler *ServiceEdgeRouterPolicyHandler) CollectServices(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeServices, handler.env.GetHandlers().Service, collector)
+	return handler.deleteEntity(id)
 }
 
 type ServiceEdgeRouterPolicyListResult struct {
 	handler                   *ServiceEdgeRouterPolicyHandler
 	ServiceEdgeRouterPolicies []*ServiceEdgeRouterPolicy
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *ServiceEdgeRouterPolicyListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *ServiceEdgeRouterPolicyListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.handler.readInTx(tx, key)

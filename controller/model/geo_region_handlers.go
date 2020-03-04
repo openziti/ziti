@@ -18,10 +18,7 @@ package model
 
 func NewGeoRegionHandler(env Env) *GeoRegionHandler {
 	handler := &GeoRegionHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().GeoRegion,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().GeoRegion),
 	}
 	handler.impl = handler
 	return handler
@@ -40,5 +37,5 @@ func (handler *GeoRegionHandler) Create(geoRegionModel *GeoRegion) (string, erro
 }
 
 func (handler *GeoRegionHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }

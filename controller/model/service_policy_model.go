@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -28,7 +29,7 @@ import (
 )
 
 type ServicePolicy struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name          string
 	PolicyType    string
 	Semantic      string
@@ -36,7 +37,7 @@ type ServicePolicy struct {
 	ServiceRoles  []string
 }
 
-func (entity *ServicePolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
 		return nil, validation.NewFieldError(msg, "policyType", entity.PolicyType)
@@ -50,24 +51,28 @@ func (entity *ServicePolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (pers
 	}
 
 	return &persistence.ServicePolicy{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		PolicyType:         policyType,
-		Semantic:           entity.Semantic,
-		IdentityRoles:      entity.IdentityRoles,
-		ServiceRoles:       entity.ServiceRoles,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		PolicyType:    policyType,
+		Semantic:      entity.Semantic,
+		IdentityRoles: entity.IdentityRoles,
+		ServiceRoles:  entity.ServiceRoles,
 	}, nil
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service policy", reflect.TypeOf(boltEntity))
@@ -80,7 +85,7 @@ func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.B
 		policyType = persistence.PolicyTypeBindName
 	}
 
-	entity.fillCommon(boltServicePolicy)
+	entity.FillCommon(boltServicePolicy)
 	entity.Name = boltServicePolicy.Name
 	entity.PolicyType = policyType
 	entity.Semantic = boltServicePolicy.Semantic

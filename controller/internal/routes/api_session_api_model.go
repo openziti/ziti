@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 
 	"github.com/michaelquigley/pfxlog"
@@ -80,7 +81,7 @@ func (e *ApiSessionApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapApiSessionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapApiSessionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.ApiSession)
 
 	if !ok {

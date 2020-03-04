@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,130 +17,57 @@
 package persistence
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/migration"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 )
 
 const (
-	FieldVersion   = "version"
-	currentVersion = 4
+	CurrentDbVersion = 4
+	FieldVersion     = "version"
 )
 
 type Migrations struct {
-	dbVersion     uint32
-	versionBucket *boltz.TypedBucket
-	migrations    bool
+	stores   *Stores
+	dbStores *migration.Stores
 }
 
-type MigrationContext struct {
-	Ctx      boltz.MutateContext
-	Stores   *Stores
-	DbStores *migration.Stores
+func RunMigrations(db boltz.Db, stores *Stores, dbStores *migration.Stores) error {
+	migrations := &Migrations{
+		stores:   stores,
+		dbStores: dbStores,
+	}
+
+	mm := boltz.NewMigratorManager(db)
+	return mm.Migrate("edge", CurrentDbVersion, migrations.migrate)
 }
 
-func RunMigrations(dbProvider DbProvider, stores *Stores, dbStores *migration.Stores) error {
-	migrations := &Migrations{}
-	return dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		mtx := &MigrationContext{
-			Ctx:      ctx,
-			Stores:   stores,
-			DbStores: dbStores,
-		}
-		return migrations.run(mtx)
-	})
-}
-
-func (m *Migrations) run(mtx *MigrationContext) error {
-	m.versionBucket = boltz.GetOrCreatePath(mtx.Ctx.Tx(), boltz.RootBucket)
-	if m.versionBucket.Err != nil {
-		return m.versionBucket.Err
-	}
-	version := m.versionBucket.GetInt64(FieldVersion)
-	if version == nil {
-		m.dbVersion = 0
-	} else {
-		m.dbVersion = uint32(*version)
-	}
-	pfxlog.Logger().Infof("bolt storage at version %v", m.dbVersion)
-	baseVersion := m.dbVersion
-	if m.dbVersion == 0 {
-		m.createDefaultData(mtx)
-
-		if mtx.DbStores != nil {
-			m.upgradeToV1FromPG(mtx)
-		} else {
-			pfxlog.Logger().Info("no postgres configured, skipping migration from postgres")
-		}
-		m.setVersion(1)
+func (m *Migrations) migrate(step *boltz.MigrationStep) int {
+	if step.CurrentVersion == 0 {
+		return m.initialize(step)
 	}
 
-	if m.dbVersion == 1 {
-		// Only want to migrate existing database, if it's a fresh DB, leave it alone
-		if baseVersion == 1 {
-			m.upgradeToV2FromV1(mtx)
-		}
-		m.setVersion(2)
+	if step.CurrentVersion == 1 {
+		m.createEdgeRouterPoliciesV2(step)
+		return 2
 	}
 
-	if m.dbVersion == 2 {
-		m.upgradeToV3FromV2(mtx)
+	if step.CurrentVersion == 2 {
+		m.createServicePoliciesV3(step)
+		return 3
 	}
 
-	if m.dbVersion == 3 {
-		m.upgradeToV4FromV3(mtx)
+	if step.CurrentVersion == 3 {
+		m.createInitialTunnelerConfigTypes(step)
+		m.createInitialTunnelerConfigs(step)
+		return 4
 	}
 
-	if m.migrations {
-		pfxlog.Logger().Infof("bolt storage at version %v", m.dbVersion)
+	// current version
+	if step.CurrentVersion == 4 {
+		return 4
 	}
 
-	if m.versionBucket.Err == nil && m.dbVersion != currentVersion {
-		return errors.Errorf("unable to migrate from schema version %v to %v", m.dbVersion, currentVersion)
-	}
-
-	return m.versionBucket.Err
-}
-
-func (m *Migrations) setVersion(version uint32) {
-	m.versionBucket.SetInt64(FieldVersion, int64(version), nil)
-	if m.versionBucket.Err == nil {
-		m.dbVersion = version
-	}
-	m.migrations = true
-}
-
-func (m *Migrations) createDefaultData(mtx *MigrationContext) {
-	creators := []func(mtx *MigrationContext) error{
-		createGeoRegionsV1,
-		createIdentityTypesV1,
-	}
-
-	for _, creator := range creators {
-		if err := creator(mtx); err != nil {
-			m.versionBucket.SetError(err)
-		}
-	}
-}
-
-func (m *Migrations) upgradeToV1FromPG(mtx *MigrationContext) {
-	m.versionBucket.SetError(upgradeToV1FromPG(mtx))
-}
-
-func (m *Migrations) upgradeToV2FromV1(mtx *MigrationContext) {
-	m.versionBucket.SetError(createEdgeRouterPoliciesV2(mtx))
-}
-
-func (m *Migrations) upgradeToV3FromV2(mtx *MigrationContext) {
-	m.versionBucket.SetError(createServicePoliciesV3(mtx))
-	m.setVersion(3)
-}
-
-func (m *Migrations) upgradeToV4FromV3(mtx *MigrationContext) {
-	m.versionBucket.SetError(createInitialTunnelerConfigTypes(mtx))
-	m.versionBucket.SetError(createInitialTunnelerConfigs(mtx))
-	m.setVersion(4)
+	step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))
+	return 0
 }

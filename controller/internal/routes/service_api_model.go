@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,30 +18,28 @@ package routes
 
 import (
 	"fmt"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 )
 
 const EntityNameService = "services"
 
 type ServiceApiCreate struct {
-	Name            *string                `json:"name"`
-	Tags            map[string]interface{} `json:"tags"`
-	EgressRouter    *string                `json:"egressRouter"`
-	EndpointAddress *string                `json:"endpointAddress"`
-	RoleAttributes  []string               `json:"roleAttributes"`
-	Configs         []string               `json:"configs"`
+	Name               *string                `json:"name"`
+	TerminatorStrategy *string                `json:"terminatorStrategy"`
+	Tags               map[string]interface{} `json:"tags"`
+	RoleAttributes     []string               `json:"roleAttributes"`
+	Configs            []string               `json:"configs"`
 }
 
 func (i *ServiceApiCreate) ToModel() *model.Service {
 	result := &model.Service{}
 	result.Name = stringz.OrEmpty(i.Name)
-	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
-	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
+	result.TerminatorStrategy = stringz.OrEmpty(i.TerminatorStrategy)
 	result.RoleAttributes = i.RoleAttributes
 	result.Tags = i.Tags
 	result.Configs = i.Configs
@@ -49,20 +47,18 @@ func (i *ServiceApiCreate) ToModel() *model.Service {
 }
 
 type ServiceApiUpdate struct {
-	Name            *string                `json:"name"`
-	Tags            map[string]interface{} `json:"tags"`
-	EgressRouter    *string                `json:"egressRouter"`
-	EndpointAddress *string                `json:"endpointAddress"`
-	RoleAttributes  []string               `json:"roleAttributes"`
-	Configs         []string               `json:"configs"`
+	Name               *string                `json:"name"`
+	TerminatorStrategy *string                `json:"terminatorStrategy"`
+	Tags               map[string]interface{} `json:"tags"`
+	RoleAttributes     []string               `json:"roleAttributes"`
+	Configs            []string               `json:"configs"`
 }
 
 func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
 	result := &model.Service{}
 	result.Id = id
 	result.Name = stringz.OrEmpty(i.Name)
-	result.EgressRouter = stringz.OrEmpty(i.EgressRouter)
-	result.EndpointAddress = stringz.OrEmpty(i.EndpointAddress)
+	result.TerminatorStrategy = stringz.OrEmpty(i.TerminatorStrategy)
 	result.Tags = i.Tags
 	result.RoleAttributes = i.RoleAttributes
 	result.Configs = i.Configs
@@ -88,13 +84,12 @@ func NewServiceLink(sessionId string) *response.Link {
 
 type ServiceApiList struct {
 	*env.BaseApi
-	Name            *string                           `json:"name"`
-	EndpointAddress *string                           `json:"endpointAddress"`
-	EgressRouter    *string                           `json:"egressRouter"`
-	RoleAttributes  []string                          `json:"roleAttributes"`
-	Permissions     []string                          `json:"permissions"`
-	Configs         []string                          `json:"configs"`
-	Config          map[string]map[string]interface{} `json:"config"`
+	Name               *string                           `json:"name"`
+	TerminatorStrategy *string                           `json:"terminatorStrategy"`
+	RoleAttributes     []string                          `json:"roleAttributes"`
+	Permissions        []string                          `json:"permissions"`
+	Configs            []string                          `json:"configs"`
+	Config             map[string]map[string]interface{} `json:"config"`
 }
 
 func (e *ServiceApiList) GetSelfLink() *response.Link {
@@ -111,7 +106,9 @@ func (e *ServiceApiList) PopulateLinks() {
 		e.Links = &response.Links{
 			EntityNameSelf:                    self,
 			EntityNameServiceEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServiceEdgeRouterPolicy)),
-			EntityNameServicePolicy:           response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
+			EntityNameServicePolicy:           response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServicePolicy)),
+			EntityNameTerminator:              response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameTerminator)),
+			EntityNameConfig:                  response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameConfig)),
 		}
 	}
 }
@@ -127,7 +124,7 @@ func (e *ServiceApiList) ToEntityApiRef() *EntityApiRef {
 }
 
 func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]BaseApiEntity, error) {
-	// can't use modelToApi b/c it require list of BaseModelEntity
+	// can't use modelToApi b/c it require list of network.Entity
 	apiEntities := make([]BaseApiEntity, 0)
 
 	for _, e := range es {
@@ -143,7 +140,7 @@ func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []
 	return apiEntities, nil
 }
 
-func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.ServiceDetail)
 
 	if !ok {
@@ -166,15 +163,15 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e model.
 
 func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.ServiceDetail) (*ServiceApiList, error) {
 	ret := &ServiceApiList{
-		BaseApi:         env.FromBaseModelEntity(i),
-		Name:            &i.Name,
-		EndpointAddress: &i.EndpointAddress,
-		EgressRouter:    &i.EgressRouter,
-		RoleAttributes:  i.RoleAttributes,
-		Permissions:     i.Permissions,
-		Configs:         i.Configs,
-		Config:          i.Config,
+		BaseApi:            env.FromBaseModelEntity(i),
+		Name:               &i.Name,
+		TerminatorStrategy: &i.TerminatorStrategy,
+		RoleAttributes:     i.RoleAttributes,
+		Permissions:        i.Permissions,
+		Configs:            i.Configs,
+		Config:             i.Config,
 	}
+
 	ret.PopulateLinks()
 	return ret, nil
 }

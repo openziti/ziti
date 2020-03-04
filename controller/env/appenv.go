@@ -21,6 +21,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/mirror"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -42,7 +43,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-edge/internal/jwt"
 	"github.com/netfoundry/ziti-edge/migration"
@@ -154,6 +154,7 @@ type Schemes struct {
 	ServiceEdgeRouterPolicy *BasicEntitySchema
 	ServicePolicy           *BasicEntitySchema
 	Session                 *BasicEntitySchema
+	Terminator              *BasicEntitySchema
 }
 
 func (s Schemes) GetEnrollErPost() *gojsonschema.Schema {
@@ -245,7 +246,7 @@ func (ae *AppEnv) InitPersistence() error {
 
 	ae.BoltStores, err = persistence.NewBoltStores(ae.HostController.GetNetwork())
 	if err == nil {
-		err = persistence.RunMigrations(ae.HostController.GetNetwork(), ae.BoltStores, dbStores)
+		err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores, dbStores)
 	}
 
 	if err == nil {
@@ -332,7 +333,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 			if err != nil {
 				//don't error on "not found", just an un-authed session, rely on permissions below
 				//error on anything else as we  failed to work with the store
-				if !util.IsErrNotFoundErr(err) {
+				if !boltz.IsErrNotFoundErr(err) {
 					log.WithError(err).Debug("error requesting session")
 					rc.RequestResponder.RespondWithError(err)
 					return
@@ -343,7 +344,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		//updates updatedAt for session timeouts
 		if rc.ApiSession != nil {
 			err := ae.GetHandlers().ApiSession.Update(rc.ApiSession)
-			if err != nil && !util.IsErrNotFoundErr(err) {
+			if err != nil && !boltz.IsErrNotFoundErr(err) {
 				log.WithError(err).Debug("failed to update session activity")
 				rc.RequestResponder.RespondWithError(err)
 				return
@@ -355,7 +356,7 @@ func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.Ha
 		if rc.ApiSession != nil {
 			rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
 			if err != nil {
-				if util.IsErrNotFoundErr(err) {
+				if boltz.IsErrNotFoundErr(err) {
 					apiErr := apierror.NewUnauthorized()
 					apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
 					apiErr.AppendCause = true
@@ -505,7 +506,7 @@ type NotFoundHandler struct {
 	handlerOnce sync.Once
 }
 
-func (handler NotFoundHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (handler *NotFoundHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handler.handlerOnce.Do(func() {
 		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
 			rc.RequestResponder.RespondWithNotFound()
@@ -527,7 +528,7 @@ type MethodNotAllowedHandler struct {
 	handlerOnce sync.Once
 }
 
-func (handler MethodNotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (handler *MethodNotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handler.handlerOnce.Do(func() {
 		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
 			rc.RequestResponder.RespondWithMethodNotAllowed()

@@ -125,15 +125,15 @@ func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (ir *IdentityRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.CollectEdgeRouterPolicies, MapEdgeRouterPolicyToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToApiEntity)
 }
 
 func (ir *IdentityRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.Identity.CollectServicePolicies, MapServicePolicyToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
 }
 
 func (ir *IdentityRouter) ListServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	listWithId(ae, rc, ir.IdType, func(id string) ([]interface{}, error) {
+	listWithId(rc, ir.IdType, func(id string) ([]interface{}, error) {
 		configs, err := ae.Handlers.Identity.GetServiceConfigs(id)
 		if err != nil {
 			return nil, err
