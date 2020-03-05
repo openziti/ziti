@@ -27,41 +27,33 @@ import (
 )
 
 func init() {
-	listServicesClient = NewMgmtClient(listServices)
-	listCmd.AddCommand(listServices)
+	listEndpointsClient = NewMgmtClient(listEndpoints)
+	listCmd.AddCommand(listEndpoints)
 }
 
-var listServices = &cobra.Command{
-	Use:   "services",
-	Short: "Retrieve all service definitions",
+var listEndpoints = &cobra.Command{
+	Use:   "endpoints",
+	Short: "Retrieve endpoint definitions",
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := listServicesClient.Connect(); err == nil {
-			request := &mgmt_pb.ListServicesRequest{}
+		if ch, err := listEndpointsClient.Connect(); err == nil {
+			request := &mgmt_pb.ListEndpointsRequest{}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListServicesRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListEndpointsRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListServicesResponseType) {
-				response := &mgmt_pb.ListServicesResponse{}
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListEndpointsResponseType) {
+				response := &mgmt_pb.ListEndpointsResponse{}
 				if err := proto.Unmarshal(responseMsg.Body, response); err == nil {
-					out := fmt.Sprintf("\nServices: (%d)\n\n", len(response.Services))
-					out += fmt.Sprintf("%-12s | %-12s | %s\n", "Id", "EP Strategy", "Destination(s)")
-					for _, svc := range response.Services {
-						if len(svc.Endpoints) > 0 {
-							out += fmt.Sprintf("%-12s | %-12s | %s\n", svc.Id, svc.EndpointStrategy,
-								fmt.Sprintf("%-12s -> %s", svc.Endpoints[0].RouterId, svc.Endpoints[0].Address))
-							for _, ep := range svc.Endpoints[1:] {
-								out += fmt.Sprintf("%-12s | %-12s | %s\n", "", "",
-									fmt.Sprintf("%-12s -> %s", ep.RouterId, ep.Address))
-							}
-						} else {
-							out += fmt.Sprintf("%-12s | %-12s | \n", svc.Id, svc.EndpointStrategy)
-						}
+					out := fmt.Sprintf("\nEndpoints: (%d)\n\n", len(response.Endpoints))
+					out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", "Id", "Service", "Binding", "Destination")
+					for _, endpoint := range response.Endpoints {
+						out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", endpoint.Id, endpoint.ServiceId, endpoint.Binding,
+							fmt.Sprintf("%-12s -> %s", endpoint.RouterId, endpoint.Address))
 					}
 					out += "\n"
 					fmt.Print(out)
@@ -76,4 +68,4 @@ var listServices = &cobra.Command{
 		}
 	},
 }
-var listServicesClient *mgmtClient
+var listEndpointsClient *mgmtClient

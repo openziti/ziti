@@ -25,37 +25,41 @@ import (
 	"time"
 )
 
-var createServiceClient *mgmtClient
-var createServiceEndpointStrategy string
-
 func init() {
-	createService.Flags().StringVar(&createServiceEndpointStrategy, "endpoint-strategy", "", "Endpoint strategy for service")
-	createServiceClient = NewMgmtClient(createService)
-	createCmd.AddCommand(createService)
+	getEndpointClient = NewMgmtClient(getEndpoint)
+	getCmd.AddCommand(getEndpoint)
 }
 
-var createService = &cobra.Command{
-	Use:   "service <serviceId>",
-	Short: "Create a new fabric service",
+var getEndpoint = &cobra.Command{
+	Use:   "endpoint <endpointId>",
+	Short: "Retrieve a endpoint definition",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createServiceClient.Connect(); err == nil {
-			request := &mgmt_pb.CreateServiceRequest{
-				Service: &mgmt_pb.Service{
-					Id:               args[0],
-					EndpointStrategy: createServiceEndpointStrategy,
-				},
+		if ch, err := getEndpointClient.Connect(); err == nil {
+			request := &mgmt_pb.GetEndpointRequest{
+				EndpointId: args[0],
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == channel2.ContentTypeResultType {
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_GetEndpointResponseType) {
+				response := &mgmt_pb.GetEndpointResponse{}
+				err := proto.Unmarshal(responseMsg.Body, response)
+				if err == nil {
+					endpoint := response.Endpoint
+					fmt.Printf("\n%10s | %-12s|  %-12s| %v\n", "Id", "Service", "Binding", "Destination")
+					fmt.Printf("%-10s | %-12s | %-12s | %v\n", endpoint.Id, endpoint.ServiceId, endpoint.Binding,
+						fmt.Sprintf("%-12s -> %s", endpoint.RouterId, endpoint.Address))
+				} else {
+					fmt.Printf("Id not found\n")
+				}
+			} else if responseMsg.ContentType == channel2.ContentTypeResultType {
 				result := channel2.UnmarshalResult(responseMsg)
 				if result.Success {
 					fmt.Printf("\nsuccess\n\n")
@@ -70,3 +74,4 @@ var createService = &cobra.Command{
 		}
 	},
 }
+var getEndpointClient *mgmtClient

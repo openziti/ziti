@@ -3,9 +3,10 @@ module github.com/netfoundry/ziti-cmd
 go 1.13
 
 //replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
-//replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+
 //replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
-//replace github.com/netfoundry/ziti-edge => ../ziti-edge
+replace github.com/netfoundry/ziti-edge => ../ziti-edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -22,7 +23,7 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/netfoundry/ziti-edge v0.11.0
-	github.com/netfoundry/ziti-fabric v0.10.0
+	github.com/netfoundry/ziti-fabric v0.10.1
 	github.com/netfoundry/ziti-foundation v0.6.5
 	github.com/netfoundry/ziti-sdk-golang v0.11.0
 	github.com/pborman/uuid v1.2.0

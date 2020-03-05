@@ -25,32 +25,34 @@ import (
 	"time"
 )
 
-var createServiceClient *mgmtClient
-var createServiceEndpointStrategy string
+var createEndpointClient *mgmtClient
+var createEndpointBinding string
 
 func init() {
-	createService.Flags().StringVar(&createServiceEndpointStrategy, "endpoint-strategy", "", "Endpoint strategy for service")
-	createServiceClient = NewMgmtClient(createService)
-	createCmd.AddCommand(createService)
+	createEndpoint.Flags().StringVar(&createEndpointBinding, "binding", "transport", "Endpoint binding")
+	createEndpointClient = NewMgmtClient(createEndpoint)
+	createCmd.AddCommand(createEndpoint)
 }
 
-var createService = &cobra.Command{
-	Use:   "service <serviceId>",
-	Short: "Create a new fabric service",
-	Args:  cobra.ExactArgs(1),
+var createEndpoint = &cobra.Command{
+	Use:   "endpoint <serviceId> <router> <address>",
+	Short: "Create a new fabric service endpoint",
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createServiceClient.Connect(); err == nil {
-			request := &mgmt_pb.CreateServiceRequest{
-				Service: &mgmt_pb.Service{
-					Id:               args[0],
-					EndpointStrategy: createServiceEndpointStrategy,
+		if ch, err := createEndpointClient.Connect(); err == nil {
+			request := &mgmt_pb.CreateEndpointRequest{
+				Endpoint: &mgmt_pb.Endpoint{
+					ServiceId: args[0],
+					RouterId:  args[1],
+					Binding:   createEndpointBinding,
+					Address:   args[2],
 				},
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateEndpointRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
