@@ -32,7 +32,7 @@ jobs:
     - stage: "Build and Test"
       os: linux
       arch: arm64
-      env: GOX_OS=linux 
+      env: GOX_OS=linux
       script:
         - set -e
         - sudo dpkg --add-architecture armhf
@@ -44,7 +44,7 @@ jobs:
         - pip install --upgrade --user pip
         - pip install --user awscli
         - go get github.com/mitchellh/gox
-        - CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -os="$GOX_OS" -arch=arm -output=$GOX_OUTPUT ./...
+        - CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os="$GOX_OS" -arch=arm -output=$GOX_OUTPUT ./...
         - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
     - stage: "Build and Test"
