@@ -58,6 +58,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("endpoints", runListEndpoints, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -274,6 +275,34 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) erro
 		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
 		identityRoles := entity.Path("identityRoles").String()
 		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runListEndpoints(o *commonOptions) error {
+	children, err := listEntitiesWithOptions("endpoints", o)
+	if err != nil {
+		return err
+	}
+	return outputEndpoints(o, children)
+}
+
+func outputEndpoints(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		serviceId := entity.Path("service").Data().(string)
+		routerId := entity.Path("router").Data().(string)
+		binding := entity.Path("binding").Data().(string)
+		address := entity.Path("address").Data().(string)
+		_, err := fmt.Fprintf(o.Out, "id: %v    serviceId: %v    routerId: %v    binding: %v    address: %v\n",
+			id, serviceId, routerId, binding, address)
 		if err != nil {
 			return err
 		}

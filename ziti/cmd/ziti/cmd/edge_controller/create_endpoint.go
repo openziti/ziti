@@ -26,17 +26,15 @@ import (
 	"io"
 )
 
-type createServiceOptions struct {
+type createEndpointOptions struct {
 	commonOptions
-	endpointStrategy string
-	tags             map[string]string
-	roleAttributes   []string
-	configs          []string
+	binding string
+	tags    map[string]string
 }
 
-// newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
-func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createServiceOptions{
+// newCreateEndpointCmd creates the 'edge controller create Endpoint local' command for the given entity type
+func newCreateEndpointCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createEndpointOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
@@ -48,14 +46,14 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service <name>",
-		Short: "creates a service managed by the Ziti Edge Controller",
-		Long:  "creates a service managed by the Ziti Edge Controller",
+		Use:   "endpoint <name> service router address",
+		Short: "creates an endpoint managed by the Ziti Edge Controller",
+		Long:  "creates an endpoint managed by the Ziti Edge Controller",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateService(options)
+			err := runCreateEndpoint(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -63,35 +61,31 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
+	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to endpoint definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
-	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
-	cmd.Flags().StringVar(&options.endpointStrategy, "endpoint-strategy", "", "Specifies the endpoint strategy for the service")
+	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Add tags to endpoint definition")
 
 	return cmd
 }
 
-// runCreateService implements the command to create a service
-func runCreateService(o *createServiceOptions) (err error) {
+// runCreateEndpoint implements the command to create a Endpoint
+func runCreateEndpoint(o *createEndpointOptions) (err error) {
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	if o.endpointStrategy != "" {
-		setJSONValue(entityData, o.endpointStrategy, "endpointStrategy")
-	}
-	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.configs, "configs")
+	setJSONValue(entityData, o.Args[0], "service")
+	setJSONValue(entityData, o.Args[1], "router")
+	setJSONValue(entityData, o.binding, "binding")
+	setJSONValue(entityData, o.Args[2], "address")
 	setJSONValue(entityData, o.tags, "tags")
 
-	result, err := createEntityOfType("services", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("endpoints", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	serviceId := result.S("data", "id").Data()
+	EndpointId := result.S("data", "id").Data()
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", serviceId); err != nil {
+	if _, err = fmt.Fprintf(o.Out, "%v\n", EndpointId); err != nil {
 		panic(err)
 	}
 
