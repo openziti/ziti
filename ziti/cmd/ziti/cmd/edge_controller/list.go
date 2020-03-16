@@ -538,8 +538,8 @@ func runListSessions(o *commonOptions) error {
 		id, _ := entity.Path("id").Data().(string)
 		sessionId, _ := entity.Path("apiSession.id").Data().(string)
 		serviceName, _ := entity.Path("service.name").Data().(string)
-		hosting, _ := entity.Path("hosting").Data().(bool)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     hosting: %v\n", id, sessionId, serviceName, hosting); err != nil {
+		sessionType, _ := entity.Path("type").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
 			return err
 		}
 	}
