@@ -230,6 +230,8 @@ github.com/netfoundry/ziti-foundation v0.6.5 h1:csIX4eMBM8p/UvoDioBByGpqOAxA3Wn2
 github.com/netfoundry/ziti-foundation v0.6.5/go.mod h1:D2kU4O23O3Ll+v34tidLYr/jNhigiHM0Mz8fKuIJu7E=
 github.com/netfoundry/ziti-foundation v0.6.6-0.20200316174256-184c15a8b3f0 h1:Ni9pH87WsC3EM7fCltkWldYZnsx9mZ3Po1ADe50Fze8=
 github.com/netfoundry/ziti-foundation v0.6.6-0.20200316174256-184c15a8b3f0/go.mod h1:MK2ajCpS40MtiZFnMYjKIBDTQFDWwgqNq+RxypNjl9U=
+github.com/netfoundry/ziti-foundation v0.6.6-0.20200316194733-44f236b15c93 h1:672afGBBsw8aiilQwIRosoQHao+mXyZhh+ZlrEtDm8U=
+github.com/netfoundry/ziti-foundation v0.6.6-0.20200316194733-44f236b15c93/go.mod h1:MK2ajCpS40MtiZFnMYjKIBDTQFDWwgqNq+RxypNjl9U=
 github.com/netfoundry/ziti-sdk-golang v0.11.0 h1:nx+dPme/gasknswOFkUS++ZATncF8Yb0tcOmlV1E2V4=
 github.com/netfoundry/ziti-sdk-golang v0.11.0/go.mod h1:aUgEuA/gse9E+hXldo2WioP4KoxyJjxZTjHieHLs5C8=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
