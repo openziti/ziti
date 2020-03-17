@@ -36,6 +36,15 @@ func (self *connection) Reader() io.Reader {
 	return self.socket
 }
 
+func (self *connection) ReadPeer(p []byte) (int, transport.Address, error) {
+	n, peer, err := self.socket.ReadFromUDP(p)
+	var addr transport.Address
+	if peer != nil {
+		addr = &address{hostname: peer.IP.String(), port: uint16(peer.Port)}
+	}
+	return n, addr, err
+}
+
 func (self *connection) Writer() io.Writer {
 	return self.socket
 }
@@ -56,7 +65,7 @@ func (self *connection) Close() error {
 	return self.socket.Close()
 }
 
-func newConnection(detail *transport.ConnectionDetail, socket net.Conn) *connection {
+func newConnection(detail *transport.ConnectionDetail, socket *net.UDPConn) *connection {
 	return &connection{
 		detail: detail,
 		socket: socket,
@@ -66,7 +75,7 @@ func newConnection(detail *transport.ConnectionDetail, socket net.Conn) *connect
 
 type connection struct {
 	detail *transport.ConnectionDetail
-	socket net.Conn
+	socket *net.UDPConn
 	buffer []byte
 	copy   []byte
 }
