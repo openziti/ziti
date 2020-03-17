@@ -52,7 +52,7 @@ listeners:
       drop1InN:         5000
 
   # example xgress_udp
-  - binding:            udp
+  - binding:            transport_udp
     address:            udp:0.0.0.0:7003
     options:
       retransmission:   true

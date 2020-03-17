@@ -14,8 +14,3 @@ ctrl:
 
 link:
   listener:             quic:127.0.0.1:6002
-
-listeners:
-  - binding:            transport
-    address:            tls:0.0.0.0:7002 # make sure we don't conflict with router 001
-
