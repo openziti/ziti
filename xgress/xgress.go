@@ -22,6 +22,8 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/netfoundry/ziti-foundation/util/mathz"
+	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"sync"
@@ -116,154 +118,154 @@ func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, or
 	}
 }
 
-func (txg *Xgress) SessionId() *identity.TokenId {
-	return txg.sessionId
+func (self *Xgress) SessionId() *identity.TokenId {
+	return self.sessionId
 }
 
-func (txg *Xgress) Address() Address {
-	return txg.address
+func (self *Xgress) Address() Address {
+	return self.address
 }
 
-func (txg *Xgress) Originator() Originator {
-	return txg.originator
+func (self *Xgress) Originator() Originator {
+	return self.originator
 }
 
-func (txg *Xgress) IsTerminator() bool {
-	return txg.originator == Terminator
+func (self *Xgress) IsTerminator() bool {
+	return self.originator == Terminator
 }
 
-func (txg *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
-	txg.receiveHandler = receiveHandler
+func (self *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
+	self.receiveHandler = receiveHandler
 }
 
-func (txg *Xgress) SetPayloadBuffer(payloadBuffer *PayloadBuffer) {
-	txg.payloadBuffer = payloadBuffer
+func (self *Xgress) SetPayloadBuffer(payloadBuffer *PayloadBuffer) {
+	self.payloadBuffer = payloadBuffer
 }
 
-func (txg *Xgress) SetCloseHandler(closeHandler CloseHandler) {
-	txg.closeHandler = closeHandler
+func (self *Xgress) SetCloseHandler(closeHandler CloseHandler) {
+	self.closeHandler = closeHandler
 }
 
-func (txg *Xgress) AddPeekHandler(peekHandler PeekHandler) {
-	txg.peekHandlers = append(txg.peekHandlers, peekHandler)
+func (self *Xgress) AddPeekHandler(peekHandler PeekHandler) {
+	self.peekHandlers = append(self.peekHandlers, peekHandler)
 }
 
-func (txg *Xgress) Start() {
-	go txg.tx()
-	go txg.rx()
+func (self *Xgress) Start() {
+	go self.tx()
+	go self.rx()
 }
 
-func (txg *Xgress) Label() string {
-	return fmt.Sprintf("{s/%s|@/%s}<%s>", txg.sessionId.Token, string(txg.address), txg.originator.String())
+func (self *Xgress) Label() string {
+	return fmt.Sprintf("{s/%s|@/%s}<%s>", self.sessionId.Token, string(self.address), self.originator.String())
 }
 
-func (txg *Xgress) GetEndSession() *Payload {
+func (self *Xgress) GetEndSession() *Payload {
 	endSession := &Payload{
 		Header: Header{
-			SessionId: txg.sessionId.Token,
-			flags:     SetOriginatorFlag(uint32(PayloadFlagSessionEnd), txg.originator),
+			SessionId: self.sessionId.Token,
+			flags:     SetOriginatorFlag(uint32(PayloadFlagSessionEnd), self.originator),
 		},
-		Sequence: txg.nextReceiveSequence(),
+		Sequence: self.nextReceiveSequence(),
 		Data:     nil,
 	}
 	return endSession
 }
 
-func (txg *Xgress) CloseTimeout(duration time.Duration) {
-	go txg.closeTimeoutHandler(duration)
+func (self *Xgress) CloseTimeout(duration time.Duration) {
+	go self.closeTimeoutHandler(duration)
 }
 
-func (txg *Xgress) Close() {
-	log := pfxlog.ContextLogger(txg.Label())
+func (self *Xgress) Close() {
+	log := pfxlog.ContextLogger(self.Label())
 	log.Debug("closing xgress peer")
-	if err := txg.peer.Close(); err != nil {
+	if err := self.peer.Close(); err != nil {
 		log.WithError(err).Warn("error while closing xgress peer")
 	}
 
-	if txg.closed.CompareAndSwap(false, true) {
+	if self.closed.CompareAndSwap(false, true) {
 		log.Debug("closing tx queue")
-		close(txg.txQueue)
+		close(self.txQueue)
 
-		if txg.options.Retransmission && txg.payloadBuffer != nil {
-			txg.payloadBuffer.Close()
+		if self.options.Retransmission && self.payloadBuffer != nil {
+			self.payloadBuffer.Close()
 		}
 
-		for _, peekHandler := range txg.peekHandlers {
-			peekHandler.Close(txg)
+		for _, peekHandler := range self.peekHandlers {
+			peekHandler.Close(self)
 		}
 
-		if txg.closeHandler != nil {
-			txg.closeHandler.HandleXgressClose(txg)
+		if self.closeHandler != nil {
+			self.closeHandler.HandleXgressClose(self)
 		} else {
-			pfxlog.ContextLogger(txg.Label()).Warn("no close handler")
+			pfxlog.ContextLogger(self.Label()).Warn("no close handler")
 		}
 	} else {
 		log.Debug("xgress already closed, skipping close")
 	}
 }
 
-func (txg *Xgress) Closed() bool {
-	return txg.closed.Get()
+func (self *Xgress) Closed() bool {
+	return self.closed.Get()
 }
 
-func (txg *Xgress) SendPayload(payload *Payload) error {
+func (self *Xgress) SendPayload(payload *Payload) error {
 	defer func() {
 		if r := recover(); r != nil {
-			pfxlog.ContextLogger(txg.Label()).WithFields(payload.GetLoggerFields()).
+			pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).
 				WithField("error", r).Error("send on closed channel")
 			return
 		}
 	}()
 
 	if payload.IsSessionEndFlagSet() {
-		pfxlog.ContextLogger(txg.Label()).Error("received end of session Payload")
+		pfxlog.ContextLogger(self.Label()).Error("received end of session Payload")
 	}
 
-	if !txg.closed.Get() {
-		pfxlog.ContextLogger(txg.Label()).WithFields(payload.GetLoggerFields()).Debug("queuing to txQueue")
-		txg.txQueue <- payload
+	if !self.closed.Get() {
+		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("queuing to txQueue")
+		self.txQueue <- payload
 	}
 	return nil
 }
 
-func (txg *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error {
-	if txg.options.Retransmission && txg.payloadBuffer != nil {
+func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error {
+	if self.options.Retransmission && self.payloadBuffer != nil {
 		// if we have xgress <-> xgress in a single router, they will share a Payload buffer, as they share
 		// a session and can get caught in deadlock if we don't dispatch to a new goroutine here
-		go txg.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
+		go self.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
 	}
 	return nil
 }
 
-func (txg *Xgress) tx() {
-	log := pfxlog.ContextLogger(txg.Label())
+func (self *Xgress) tx() {
+	log := pfxlog.ContextLogger(self.Label())
 
 	log.Debug("started")
 	defer log.Debug("exited")
 
 	for {
 		select {
-		case inPayload := <-txg.txQueue:
+		case inPayload := <-self.txQueue:
 			if inPayload != nil && !inPayload.IsSessionEndFlagSet() {
 				payloadLogger := log.WithFields(inPayload.GetLoggerFields())
-				if !txg.options.RandomDrops || rand.Int31n(txg.options.Drop1InN) != 1 {
+				if !self.options.RandomDrops || rand.Int31n(self.options.Drop1InN) != 1 {
 					payloadLogger.Debug("adding to transmit buffer")
-					txg.txBuffer.ReceiveUnordered(inPayload)
-					if txg.options.Retransmission && txg.payloadBuffer != nil {
+					self.txBuffer.ReceiveUnordered(inPayload)
+					if self.options.Retransmission && self.payloadBuffer != nil {
 						payloadLogger.Debug("acknowledging")
-						txg.payloadBuffer.AcknowledgePayload(inPayload)
+						self.payloadBuffer.AcknowledgePayload(inPayload)
 					}
 				} else {
 					payloadLogger.Error("drop!")
 				}
 
-				ready := txg.txBuffer.ReadyForTransmit()
+				ready := self.txBuffer.ReadyForTransmit()
 				for _, outPayload := range ready {
 					outPayloadLogger := log.WithFields(outPayload.GetLoggerFields())
-					for _, peekHandler := range txg.peekHandlers {
-						peekHandler.Tx(txg, outPayload)
+					for _, peekHandler := range self.peekHandlers {
+						peekHandler.Tx(self, outPayload)
 					}
-					n, err := txg.peer.WritePayload(outPayload.Data, outPayload.Headers)
+					n, err := self.peer.WritePayload(outPayload.Data, outPayload.Headers)
 					if err != nil {
 						outPayloadLogger.Warnf("write failed (%s)", err)
 					} else {
@@ -282,8 +284,8 @@ func (txg *Xgress) tx() {
 	}
 }
 
-func (txg *Xgress) rx() {
-	log := pfxlog.ContextLogger(txg.Label())
+func (self *Xgress) rx() {
+	log := pfxlog.ContextLogger(self.Label())
 
 	log.Debug("started")
 	defer log.Warn("exited")
@@ -294,10 +296,10 @@ func (txg *Xgress) rx() {
 			return
 		}
 	}()
-	defer txg.Close()
+	defer self.Close()
 
 	for {
-		buffer, headers, err := txg.peer.ReadPayload()
+		buffer, headers, err := self.peer.ReadPayload()
 		log.Debugf("read: %v bytes read", len(buffer))
 		n := len(buffer)
 
@@ -311,51 +313,64 @@ func (txg *Xgress) rx() {
 
 			return
 		}
-		if n < 1 && !txg.closed.Get() {
+		if n < 1 && !self.closed.Get() {
 			continue
 		}
 
-		if !txg.closed.Get() {
-			payload := &Payload{
-				Header: Header{
-					SessionId: txg.sessionId.Token,
-					flags:     SetOriginatorFlag(0, txg.originator),
-				},
-				Sequence: txg.nextReceiveSequence(),
-				Data:     buffer[:n],
-				Headers:  headers,
+		if !self.closed.Get() {
+			start := 0
+			remaining := n
+			payloads := 0
+			for remaining > 0 {
+				length := mathz.MinInt(remaining, int(self.options.Mtu))
+				payload := &Payload{
+					Header: Header{
+						SessionId: self.sessionId.Token,
+						flags:     SetOriginatorFlag(0, self.originator),
+					},
+					Sequence: self.nextReceiveSequence(),
+					Data:     buffer[start : start+length],
+					Headers:  headers,
+				}
+				start += length
+				remaining -= length
+				payloads++
+
+				payloadLogger := log.WithFields(payload.GetLoggerFields())
+
+				if self.options.Retransmission && self.payloadBuffer != nil {
+					payloadLogger.Debug("buffering payload")
+					self.payloadBuffer.BufferPayload(payload)
+				}
+
+				for _, peekHandler := range self.peekHandlers {
+					peekHandler.Rx(self, payload)
+				}
+
+				self.receiveHandler.HandleXgressReceive(payload, self)
+
+				payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
 			}
-			payloadLogger := log.WithFields(payload.GetLoggerFields())
 
-			if txg.options.Retransmission && txg.payloadBuffer != nil {
-				payloadLogger.Debug("buffering payload")
-				txg.payloadBuffer.BufferPayload(payload)
-			}
+			logrus.Infof("received [%d] payloads for [%d] bytes", payloads, n)
 
-			for _, peekHandler := range txg.peekHandlers {
-				peekHandler.Rx(txg, payload)
-			}
-
-			txg.receiveHandler.HandleXgressReceive(payload, txg)
-
-			payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
 		} else {
 			return
 		}
 	}
 }
 
-func (txg *Xgress) nextReceiveSequence() int32 {
-	txg.rxSequenceLock.Lock()
-	defer txg.rxSequenceLock.Unlock()
+func (self *Xgress) nextReceiveSequence() int32 {
+	self.rxSequenceLock.Lock()
+	defer self.rxSequenceLock.Unlock()
 
-	next := txg.rxSequence
-	txg.rxSequence++
+	next := self.rxSequence
+	self.rxSequence++
 
 	return next
 }
 
-func (txg *Xgress) closeTimeoutHandler(duration time.Duration) {
+func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
 	time.Sleep(duration)
-	txg.Close()
+	self.Close()
 }
