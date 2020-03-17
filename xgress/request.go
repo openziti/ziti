@@ -88,7 +88,7 @@ func SendRequest(request *Request, peer io.Writer) error {
 }
 
 func ReceiveRequest(peer transport.Connection) (*Request, error) {
-	line, err := transport.ReadUntilNewline(peer)
+	line, err := ReadUntilNewline(peer)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func SendResponse(response *Response, peer io.Writer) error {
 }
 
 func ReceiveResponse(peer transport.Connection) (*Response, error) {
-	line, err := transport.ReadUntilNewline(peer)
+	line, err := ReadUntilNewline(peer)
 	if err != nil {
 		return nil, err
 	}
