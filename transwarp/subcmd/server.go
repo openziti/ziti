@@ -47,11 +47,11 @@ func server(_ *cobra.Command, _ []string) {
 
 	buffer := make([]byte, 10240)
 	for {
-		n, err := connection.Conn().Read(buffer)
+		n, peer, err := connection.ReadPeer(buffer)
 		if err != nil {
 			logrus.Errorf("error reading (%v)", err)
 		} else {
-			logrus.Infof("received [%s]", string(buffer[:n]))
+			logrus.Infof("received [%s] from [%s]", string(buffer[:n]), peer)
 		}
 	}
 }
