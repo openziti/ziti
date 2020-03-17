@@ -29,12 +29,12 @@ func (self address) Dial(name string, _ *identity.TokenId) (transport.Connection
 	return Dial(self.bindableAddress(), name)
 }
 
-func (self address) Listen(_ string, _ *identity.TokenId, _ chan transport.Connection) (io.Closer, error) {
-	return Listen(self.bindableAddress())
+func (self address) Listen(name string, _ *identity.TokenId, incoming chan transport.Connection) (io.Closer, error) {
+	return Listen(self.bindableAddress(), name, incoming)
 }
 
-func (self address) MustListen(name string, _ *identity.TokenId, _ chan transport.Connection) io.Closer {
-	closer, err := self.Listen(name, nil, nil)
+func (self address) MustListen(name string, _ *identity.TokenId, incoming chan transport.Connection) io.Closer {
+	closer, err := self.Listen(name, nil, incoming)
 	if err != nil {
 		panic(fmt.Errorf("cannot listen (%w)", err))
 	}

@@ -18,11 +18,12 @@ package transwarp
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/transport"
 	"io"
 	"net"
 )
 
-func Listen(bindAddress string) (io.Closer, error) {
+func Listen(bindAddress, name string, incoming chan transport.Connection) (io.Closer, error) {
 	listenAddress, err := net.ResolveUDPAddr("udp", bindAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving bind address (%w)", err)
@@ -32,6 +33,12 @@ func Listen(bindAddress string) (io.Closer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error listening (%w)", err)
 	}
+
+	incoming <- newConnection(&transport.ConnectionDetail{
+		Address: "transwarp" + bindAddress,
+		InBound: true,
+		Name:    name,
+	}, socket)
 
 	return socket, nil
 }
