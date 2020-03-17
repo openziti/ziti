@@ -17,9 +17,9 @@
 package subcmd
 
 import (
+	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
 )
 
 func init() {
@@ -33,25 +33,25 @@ var serverCmd = &cobra.Command{
 }
 
 func server(_ *cobra.Command, _ []string) {
-	serverAddress, err := net.ResolveUDPAddr("udp", serverAddressString)
+	serverAddress, err := transport.ParseAddress(serverAddressString)
 	if err != nil {
-		logrus.Fatalf("error resolving UDP address (%v)", err)
+		logrus.Fatalf("error parsing address (%w)", err)
 	}
 
-	conn, err := net.ListenUDP("udp", serverAddress)
+	incoming := make(chan transport.Connection, 1)
+	_, err = serverAddress.Listen("transwarp", nil, incoming)
 	if err != nil {
-		logrus.Fatalf("error listening (%v)", err)
+		logrus.Fatalf("error listening (%w)", err)
 	}
-	defer func() { _ = conn.Close() }()
+	connection := <-incoming
 
 	buffer := make([]byte, 10240)
-
 	for {
-		n, peer, err := conn.ReadFromUDP(buffer)
+		n, err := connection.Conn().Read(buffer)
 		if err != nil {
 			logrus.Errorf("error reading (%v)", err)
 		} else {
-			logrus.Infof("received [%s] from [%s]", string(buffer[:n]), peer)
+			logrus.Infof("received [%s]", string(buffer[:n]))
 		}
 	}
 }

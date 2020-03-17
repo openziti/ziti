@@ -19,12 +19,15 @@ package main
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-cmd/transwarp/subcmd"
+	"github.com/netfoundry/ziti-fabric/transwarp"
+	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/sirupsen/logrus"
 )
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
 	pfxlog.SetPrefix("github.com/netfoundry/")
+	transport.AddAddressParser(transwarp.AddressParser{})
 }
 
 func main() {

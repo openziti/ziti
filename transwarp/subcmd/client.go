@@ -18,9 +18,9 @@ package subcmd
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
 	"time"
 )
 
@@ -35,17 +35,12 @@ var clientCmd = &cobra.Command{
 }
 
 func client(_ *cobra.Command, _ []string) {
-	serverAddress, err := net.ResolveUDPAddr("udp", serverAddressString)
+	serverAddress, err := transport.ParseAddress(serverAddressString)
 	if err != nil {
 		logrus.Fatalf("error resolving address (%v)", err)
 	}
 
-	localAddress, err := net.ResolveUDPAddr("udp", ":0")
-	if err != nil {
-		logrus.Fatalf("error resolving address (%v)", err)
-	}
-
-	conn, err := net.DialUDP("udp", localAddress, serverAddress)
+	conn, err := serverAddress.Dial("transwarp", nil)
 	if err != nil {
 		logrus.Fatalf("error dialing (%v)", err)
 	}
@@ -55,7 +50,7 @@ func client(_ *cobra.Command, _ []string) {
 	for {
 		msg := fmt.Sprintf("hello #%d", i)
 		logrus.Infof("sending [%s] to [%s]", msg, serverAddress)
-		_, err := conn.Write([]byte(msg))
+		_, err := conn.Writer().Write([]byte(msg))
 		if err != nil {
 			logrus.Fatalf("error writing (%v)", err)
 		}

@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	Root.PersistentFlags().StringVarP(&serverAddressString, "address", "a", ":7001", "server address")
+	Root.PersistentFlags().StringVarP(&serverAddressString, "address", "a", "transwarp:127.0.0.1:7001", "server address")
 }
 
 var Root = &cobra.Command{
