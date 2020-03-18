@@ -4,7 +4,7 @@
   "items": {
     "items": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "service",
         "config"

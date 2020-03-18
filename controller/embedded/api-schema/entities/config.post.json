@@ -1,7 +1,7 @@
 {
   "$id": "http://ziti-edge.netfoundry.io/schemas/config.post.json",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
     "name",
     "type",

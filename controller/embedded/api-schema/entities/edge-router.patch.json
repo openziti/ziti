@@ -1,7 +1,7 @@
 {
   "$id": "http://ziti-edge.netfoundry.io/schemas/edge-routers.patch.json",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
   ],
   "properties": {
