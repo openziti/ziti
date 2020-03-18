@@ -19,7 +19,7 @@ This release includes the following:
   * Terminators extracted from service as separate entities
   * When SDK applications bind and unbind, the controller now dynamically adds/removes terminators as appropriate
  
-This release does not yet include a terminator strategy API. Strategies can be specified per service, but if a service has multiple terminators the first one will be used. The terminator strategy API along with some implementations will be added in a follow up release. This release also does not include strategy inputs on terminators as discusse din the above design document. Those may be added in the furure, if they are found to be useful.
+This release does not yet include a terminator strategy API. Strategies can be specified per service, but if a service has multiple terminators the first one will be used. The terminator strategy API along with some implementations will be added in a follow-up release. This release also does not include strategy inputs on terminators as discussed in the above design document. If strategy inputs end up being useful, they may be added in the furure.
 
 ## Terminator related API changes
 
@@ -37,14 +37,14 @@ There is a new terminators endpoint:
          * Terminators support the standard properties (id, createdAt, updatedAt, tags)
          * service - type: uuid, must be a valid service id
          * router - type: uuid, must be a valid router id
-         * binding - type: string. Optional,defaults to transport. The xgress binding on the selected router to use
+         * binding - type: string. Optional, defaults to "transport". The xgress binding on the selected router to use
          * address - type: string. The address that will be dialed using the xgress component on the selected router
          
 The service endpoint has changes as well:
   
     * Endpoint: /services
     * New operations
-       * Query related endpoints: GET /services/<service-id>/endpoints?filter=<optional-filter>
+       * Query related endpoints: GET /services/<service-id>/terminators?filter=<optional-filter>
     * The following properties have been removed
        * egressRouter
        * endpointAddress
@@ -54,23 +54,23 @@ The service endpoint has changes as well:
 The fabric service definition has also changed (visible from ziti-fabric).
 
   * The following properties have been removed
-       * binding
-       * egressRouter
-       * endpointAddress
+       * `binding`
+       * `egressRouter`
+       * `endpointAddress`
   * The following property has been added
-       * terminatorStrategy
+       * `terminatorStrategy`
        
 The ziti and ziti-fabric CLIs have been updated with new terminator related functionality, so that terminators can be viewed, created and deleted from both.
    
-# Filter/sort/paging Changes
+# Filtering/Sorting/Paging Changes
 List operations on entities previously allowed the following parameters:
 
-  * filter
-  * sort
-  * limit
-  * offset
+  * `filter`
+  * `sort`
+  * `limit`
+  * `offset`
   
-These are all still supported, but now sort, limit and offset can also be included in the filter. If paramters are specified both in the filter and in an explicit query parameter, the filter takes precedence. 
+These are all still supported, but now sort, limit and offset can also be included in the filter. If parameters are specified both in the filter and in an explicit query parameter, the filter takes precedence. 
 
 When listing entities from the ziti CLI, filters can be included as an optional argument.
 
