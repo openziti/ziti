@@ -4,7 +4,7 @@ This page discusses the changes that you need to be aware of when migrating your
 Ziti 0.12 includes the following: 
  
  * Terminators have been extracted from services
-     * Terminators configurate where a service terminates. Previously each service had exactly one terminator. Now services can have 0 to N terminators.
+     * Terminators define where a service terminates. Previously each service had exactly one terminator. Now services can have 0 to N terminators.
  * List APIs now support inline paging
  * Association APIs now support filtering, paging and querying 
  * The bolt datastore creates a backup of the datastore file before attempting a schema/data migration
