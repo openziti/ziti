@@ -77,9 +77,9 @@ func convertServices(in []*mgmt_pb.Service) interface{} {
 	for _, svc := range in {
 		address := ""
 		router := ""
-		if len(svc.Endpoints) > 0 {
-			address = svc.Endpoints[0].Address
-			router = svc.Endpoints[0].RouterId
+		if len(svc.Terminators) > 0 {
+			address = svc.Terminators[0].Address
+			router = svc.Terminators[0].RouterId
 		}
 		d.Data = append(d.Data, &service{
 			Id:              svc.Id,

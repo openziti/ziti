@@ -28,10 +28,10 @@ import (
 
 type createServiceOptions struct {
 	commonOptions
-	endpointStrategy string
-	tags             map[string]string
-	roleAttributes   []string
-	configs          []string
+	terminatorStrategy string
+	tags               map[string]string
+	roleAttributes     []string
+	configs            []string
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -67,7 +67,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
-	cmd.Flags().StringVar(&options.endpointStrategy, "endpoint-strategy", "", "Specifies the endpoint strategy for the service")
+	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
 
 	return cmd
 }
@@ -76,8 +76,8 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 func runCreateService(o *createServiceOptions) (err error) {
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	if o.endpointStrategy != "" {
-		setJSONValue(entityData, o.endpointStrategy, "endpointStrategy")
+	if o.terminatorStrategy != "" {
+		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
 	}
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	setJSONValue(entityData, o.configs, "configs")

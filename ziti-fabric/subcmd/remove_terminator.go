@@ -26,40 +26,29 @@ import (
 )
 
 func init() {
-	getEndpointClient = NewMgmtClient(getEndpoint)
-	getCmd.AddCommand(getEndpoint)
+	removeTerminatorClient = NewMgmtClient(removeTerminator)
+	removeCmd.AddCommand(removeTerminator)
 }
 
-var getEndpoint = &cobra.Command{
-	Use:   "endpoint <endpointId>",
-	Short: "Retrieve a endpoint definition",
+var removeTerminator = &cobra.Command{
+	Use:   "terminator <terminatorId>",
+	Short: "Remove a service terminator from the fabric",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := getEndpointClient.Connect(); err == nil {
-			request := &mgmt_pb.GetEndpointRequest{
-				EndpointId: args[0],
+		if ch, err := removeTerminatorClient.Connect(); err == nil {
+			request := &mgmt_pb.RemoveTerminatorRequest{
+				TerminatorId: args[0],
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveTerminatorRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_GetEndpointResponseType) {
-				response := &mgmt_pb.GetEndpointResponse{}
-				err := proto.Unmarshal(responseMsg.Body, response)
-				if err == nil {
-					endpoint := response.Endpoint
-					fmt.Printf("\n%10s | %-12s|  %-12s| %v\n", "Id", "Service", "Binding", "Destination")
-					fmt.Printf("%-10s | %-12s | %-12s | %v\n", endpoint.Id, endpoint.ServiceId, endpoint.Binding,
-						fmt.Sprintf("%-12s -> %s", endpoint.RouterId, endpoint.Address))
-				} else {
-					fmt.Printf("Id not found\n")
-				}
-			} else if responseMsg.ContentType == channel2.ContentTypeResultType {
+			if responseMsg.ContentType == channel2.ContentTypeResultType {
 				result := channel2.UnmarshalResult(responseMsg)
 				if result.Success {
 					fmt.Printf("\nsuccess\n\n")
@@ -69,9 +58,7 @@ var getEndpoint = &cobra.Command{
 			} else {
 				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
-		} else {
-			panic(err)
 		}
 	},
 }
-var getEndpointClient *mgmtClient
+var removeTerminatorClient *mgmtClient

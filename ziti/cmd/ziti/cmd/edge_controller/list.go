@@ -58,7 +58,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("endpoints", runListEndpoints, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -175,7 +175,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 		Use:   fmt.Sprintf("%v <id or name>", subType),
 		Short: desc,
 		Long:  desc,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -282,23 +282,23 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) erro
 	return nil
 }
 
-func runListEndpoints(o *commonOptions) error {
-	children, err := listEntitiesWithOptions("endpoints", o)
+func runListTerminators(o *commonOptions) error {
+	children, err := listEntitiesWithOptions("terminators", o)
 	if err != nil {
 		return err
 	}
-	return outputEndpoints(o, children)
+	return outputTerminators(o, children)
 }
 
-func outputEndpoints(o *commonOptions, children []*gabs.Container) error {
+func outputTerminators(o *commonOptions, children []*gabs.Container) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
-		serviceId := entity.Path("service").Data().(string)
-		routerId := entity.Path("router").Data().(string)
+		serviceId := entity.Path("serviceId").Data().(string)
+		routerId := entity.Path("routerId").Data().(string)
 		binding := entity.Path("binding").Data().(string)
 		address := entity.Path("address").Data().(string)
 		_, err := fmt.Fprintf(o.Out, "id: %v    serviceId: %v    routerId: %v    binding: %v    address: %v\n",
@@ -549,12 +549,17 @@ func runListSessions(o *commonOptions) error {
 
 func runListChilden(parentType, childType string, o *commonOptions, outputF outputFunction) error {
 	idOrName := o.Args[0]
-	serviceId, err := mapNameToID(parentType, idOrName)
+	parentId, err := mapNameToID(parentType, idOrName)
 	if err != nil {
 		return err
 	}
 
-	children, err := filterSubEntitiesOfType(parentType, childType, serviceId, "", o)
+	filter := ""
+	if len(o.Args) > 1 {
+		filter = o.Args[1]
+	}
+
+	children, err := filterSubEntitiesOfType(parentType, childType, parentId, filter, o)
 	if err != nil {
 		return err
 	}

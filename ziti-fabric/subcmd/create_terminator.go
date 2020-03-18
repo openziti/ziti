@@ -25,25 +25,34 @@ import (
 	"time"
 )
 
+var createTerminatorClient *mgmtClient
+var createTerminatorBinding string
+
 func init() {
-	removeEndpointClient = NewMgmtClient(removeEndpoint)
-	removeCmd.AddCommand(removeEndpoint)
+	createTerminator.Flags().StringVar(&createTerminatorBinding, "binding", "transport", "Terminator binding")
+	createTerminatorClient = NewMgmtClient(createTerminator)
+	createCmd.AddCommand(createTerminator)
 }
 
-var removeEndpoint = &cobra.Command{
-	Use:   "endpoint <endpointId>",
-	Short: "Remove a service endpoint from the fabric",
-	Args:  cobra.ExactArgs(1),
+var createTerminator = &cobra.Command{
+	Use:   "terminator <serviceId> <router> <address>",
+	Short: "Create a new fabric service terminator",
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := removeEndpointClient.Connect(); err == nil {
-			request := &mgmt_pb.RemoveEndpointRequest{
-				EndpointId: args[0],
+		if ch, err := createTerminatorClient.Connect(); err == nil {
+			request := &mgmt_pb.CreateTerminatorRequest{
+				Terminator: &mgmt_pb.Terminator{
+					ServiceId: args[0],
+					RouterId:  args[1],
+					Binding:   createTerminatorBinding,
+					Address:   args[2],
+				},
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveEndpointRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateTerminatorRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
@@ -58,7 +67,8 @@ var removeEndpoint = &cobra.Command{
 			} else {
 				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
+		} else {
+			panic(err)
 		}
 	},
 }
-var removeEndpointClient *mgmtClient

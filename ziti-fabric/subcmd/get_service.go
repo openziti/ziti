@@ -52,15 +52,15 @@ var getService = &cobra.Command{
 				response := &mgmt_pb.GetServiceResponse{}
 				err := proto.Unmarshal(responseMsg.Body, response)
 				if err == nil {
-					fmt.Printf("\n%10s | %30s\n", "Id", "Endpoint Strategy")
+					fmt.Printf("\n%10s | %30s\n", "Id", "Terminator Strategy")
 					fmt.Printf("-----------+--------------------------------+----------\n")
 					svc := response.Service
-					fmt.Printf("%10s | %30s\n\n", svc.Id, svc.EndpointStrategy)
-					fmt.Printf("Endpoints (%v)\n", len(svc.Endpoints))
+					fmt.Printf("%10s | %30s\n\n", svc.Id, svc.TerminatorStrategy)
+					fmt.Printf("Terminators (%v)\n", len(svc.Terminators))
 					fmt.Printf("\n%10s | %-12s| %v\n", "Id", "Binding", "Destination")
-					for _, endpoint := range svc.Endpoints {
-						fmt.Printf("%-10s | %-12s | %s\n", endpoint.Id, endpoint.Binding,
-							fmt.Sprintf("%-12s -> %s", endpoint.RouterId, endpoint.Address))
+					for _, terminator := range svc.Terminators {
+						fmt.Printf("%-10s | %-12s | %s\n", terminator.Id, terminator.Binding,
+							fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 					}
 				} else {
 					fmt.Printf("Id not found\n")

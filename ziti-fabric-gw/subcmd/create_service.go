@@ -42,7 +42,7 @@ func handleCreateService(w http.ResponseWriter, req *http.Request) {
 	request := &mgmt_pb.CreateServiceRequest{
 		Service: &mgmt_pb.Service{
 			Id: svc.Id,
-			Endpoints: []*mgmt_pb.Endpoint{{
+			Terminators: []*mgmt_pb.Terminator{{
 				RouterId: svc.Egress,
 				Binding:  svc.Binding,
 				Address:  svc.EndpointAddress,

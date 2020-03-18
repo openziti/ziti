@@ -50,17 +50,17 @@ var listServices = &cobra.Command{
 				response := &mgmt_pb.ListServicesResponse{}
 				if err := proto.Unmarshal(responseMsg.Body, response); err == nil {
 					out := fmt.Sprintf("\nServices: (%d)\n\n", len(response.Services))
-					out += fmt.Sprintf("%-12s | %-12s | %s\n", "Id", "EP Strategy", "Destination(s)")
+					out += fmt.Sprintf("%-12s | %-12s | %s\n", "Id", "Terminator Strategy", "Destination(s)")
 					for _, svc := range response.Services {
-						if len(svc.Endpoints) > 0 {
-							out += fmt.Sprintf("%-12s | %-12s | %s\n", svc.Id, svc.EndpointStrategy,
-								fmt.Sprintf("%-12s -> %s", svc.Endpoints[0].RouterId, svc.Endpoints[0].Address))
-							for _, ep := range svc.Endpoints[1:] {
+						if len(svc.Terminators) > 0 {
+							out += fmt.Sprintf("%-12s | %-12s | %s\n", svc.Id, svc.TerminatorStrategy,
+								fmt.Sprintf("%-12s -> %s", svc.Terminators[0].RouterId, svc.Terminators[0].Address))
+							for _, terminator := range svc.Terminators[1:] {
 								out += fmt.Sprintf("%-12s | %-12s | %s\n", "", "",
-									fmt.Sprintf("%-12s -> %s", ep.RouterId, ep.Address))
+									fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 							}
 						} else {
-							out += fmt.Sprintf("%-12s | %-12s | \n", svc.Id, svc.EndpointStrategy)
+							out += fmt.Sprintf("%-12s | %-12s | \n", svc.Id, svc.TerminatorStrategy)
 						}
 					}
 					out += "\n"

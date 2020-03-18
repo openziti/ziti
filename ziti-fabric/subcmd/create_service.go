@@ -26,10 +26,10 @@ import (
 )
 
 var createServiceClient *mgmtClient
-var createServiceEndpointStrategy string
+var createServiceTerminatorStrategy string
 
 func init() {
-	createService.Flags().StringVar(&createServiceEndpointStrategy, "endpoint-strategy", "", "Endpoint strategy for service")
+	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
 	createServiceClient = NewMgmtClient(createService)
 	createCmd.AddCommand(createService)
 }
@@ -42,8 +42,8 @@ var createService = &cobra.Command{
 		if ch, err := createServiceClient.Connect(); err == nil {
 			request := &mgmt_pb.CreateServiceRequest{
 				Service: &mgmt_pb.Service{
-					Id:               args[0],
-					EndpointStrategy: createServiceEndpointStrategy,
+					Id:                 args[0],
+					TerminatorStrategy: createServiceTerminatorStrategy,
 				},
 			}
 			body, err := proto.Marshal(request)

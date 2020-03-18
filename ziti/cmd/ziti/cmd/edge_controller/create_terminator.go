@@ -26,15 +26,15 @@ import (
 	"io"
 )
 
-type createEndpointOptions struct {
+type createTerminatorOptions struct {
 	commonOptions
 	binding string
 	tags    map[string]string
 }
 
-// newCreateEndpointCmd creates the 'edge controller create Endpoint local' command for the given entity type
-func newCreateEndpointCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createEndpointOptions{
+// newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
+func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createTerminatorOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
@@ -46,14 +46,14 @@ func newCreateEndpointCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	}
 
 	cmd := &cobra.Command{
-		Use:   "endpoint <name> service router address",
-		Short: "creates an endpoint managed by the Ziti Edge Controller",
-		Long:  "creates an endpoint managed by the Ziti Edge Controller",
+		Use:   "terminator <name> service router address",
+		Short: "creates an terminator managed by the Ziti Edge Controller",
+		Long:  "creates an terminator managed by the Ziti Edge Controller",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEndpoint(options)
+			err := runCreateTerminator(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -61,15 +61,15 @@ func newCreateEndpointCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to endpoint definition")
+	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to terminator definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Add tags to endpoint definition")
+	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Add tags to terminator definition")
 
 	return cmd
 }
 
-// runCreateEndpoint implements the command to create a Endpoint
-func runCreateEndpoint(o *createEndpointOptions) (err error) {
+// runCreateTerminator implements the command to create a Terminator
+func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "service")
 	setJSONValue(entityData, o.Args[1], "router")
@@ -77,15 +77,15 @@ func runCreateEndpoint(o *createEndpointOptions) (err error) {
 	setJSONValue(entityData, o.Args[2], "address")
 	setJSONValue(entityData, o.tags, "tags")
 
-	result, err := createEntityOfType("endpoints", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("terminators", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	EndpointId := result.S("data", "id").Data()
+	TerminatorId := result.S("data", "id").Data()
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", EndpointId); err != nil {
+	if _, err = fmt.Fprintf(o.Out, "%v\n", TerminatorId); err != nil {
 		panic(err)
 	}
 
