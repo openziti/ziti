@@ -32,8 +32,8 @@ listeners:
   - binding:            proxy
     address:            tcp:0.0.0.0:1122
     service:            ssh
-  # options:
-  #   mtu:              64
+    options:
+      mtu:              768
 
   # for iperf_tcp (iperf3)
   - binding:            proxy

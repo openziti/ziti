@@ -13,4 +13,4 @@ ctrl:
   endpoint:             tls:127.0.0.1:6262
 
 link:
-  listener:             quic:127.0.0.1:6002
+  listener:             transwarp:127.0.0.1:6996

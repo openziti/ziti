@@ -21,6 +21,7 @@ import (
 	"github.com/netfoundry/ziti-cmd/common/version"
 	"github.com/netfoundry/ziti-cmd/ziti-controller/subcmd"
 	"github.com/netfoundry/ziti-edge/build"
+	"github.com/netfoundry/ziti-fabric/transwarp"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
@@ -30,10 +31,11 @@ import (
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
+	pfxlog.SetPrefix("github.com/netfoundry/")
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
+	transport.AddAddressParser(transwarp.AddressParser{})
 
 	build.InitBuildInfo(version.GetCmdBuildInfo())
 }
