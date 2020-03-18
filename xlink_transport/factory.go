@@ -19,21 +19,24 @@ package xlink_transport
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/xlink"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func newFactory() xlink.Factory {
-	return &factory{}
+func newFactory(accepter Accepter, options *channel2.Options) xlink.Factory {
+	return &factory{accepter: accepter, options: options}
 }
 
-func (_ *factory) Create(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Xlink, error) {
+func (self *factory) Create(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Xlink, error) {
 	c, err := loadConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading configuration (%w)", err)
 	}
-	return &impl{id: id, config: c}, nil
+	return &impl{id: id, config: c, accepter: self.accepter, options: self.options}, nil
 }
 
-type factory struct{
-	id *identity.TokenId
+type factory struct {
+	id       *identity.TokenId
+	accepter Accepter
+	options  *channel2.Options
 }
