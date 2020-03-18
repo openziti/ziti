@@ -32,11 +32,12 @@ jobs:
     - stage: "Build and Test"
       os: linux
       arch: arm64
+      dist: bionic
       env: GOX_OS=linux
       script:
         - set -e
         - sudo dpkg --add-architecture armhf
-        - sudo apt-get update -yq || true
+        - sudo apt-get update -yq 
         - |-
           sudo apt-get -yq install \
             crossbuild-essential-armhf \
