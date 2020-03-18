@@ -36,7 +36,7 @@ jobs:
       script:
         - set -e
         - sudo dpkg --add-architecture armhf
-        - sudo apt-get update -yq
+        - sudo apt-get update -yq || true
         - |-
           sudo apt-get -yq install \
             crossbuild-essential-armhf \
