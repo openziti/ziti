@@ -14,16 +14,26 @@
 	limitations under the License.
 */
 
-package xlink
+package xlink_transport
 
-import "github.com/netfoundry/ziti-foundation/identity/identity"
+import (
+	"fmt"
+	"github.com/netfoundry/ziti-fabric/xlink"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
+)
 
-type Factory interface {
-	Create(id *identity.TokenId, config map[interface{}]interface{}) (Xlink, error)
+func newFactory() xlink.Factory {
+	return &factory{}
 }
 
-type Xlink interface {
-	Listen() error
-	Dial(address string) error
-	GetAdvertisement() string
+func (_ *factory) Create(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Xlink, error) {
+	c, err := loadConfig(configData)
+	if err != nil {
+		return nil, fmt.Errorf("error loading configuration (%w)", err)
+	}
+	return &impl{id: id, config: c}, nil
+}
+
+type factory struct{
+	id *identity.TokenId
 }
