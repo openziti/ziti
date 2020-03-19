@@ -76,7 +76,7 @@ When listing entities from the ziti CLI, filters can be included as an optional 
 
 For example:
 
-    plorenz@carrot:~/work/nf$ ziti edge controller list services
+    $ ziti edge controller list services
     id: 37f1e34c-af06-442f-8e62-032916912bc6    name: grpc-ping-standalone    terminator strategy:     role attributes: {}
     id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
     id: 9480e39d-0664-4482-b230-5da2c17b225b    name: iperf    terminator strategy:     role attributes: {}
@@ -84,36 +84,36 @@ For example:
     id: dc0446f0-7eaa-465f-80b5-c88f0a6b59cc    name: grpc-ping    terminator strategy:     role attributes: ["fortio","fortio-server"]
     id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
 
-    plorenz@carrot:~/work/nf$ ziti edge controller list services 'name contains "s"'
+    $ ziti edge controller list services 'name contains "s"'
     id: 37f1e34c-af06-442f-8e62-032916912bc6    name: grpc-ping-standalone    terminator strategy:     role attributes: {}
     id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
     id: cd1ae16e-5015-49ad-9864-3ca0f5814091    name: ssh    terminator strategy:     role attributes: {}
     id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
     
-    plorenz@carrot:~/work/nf$ ziti edge controller list services 'name contains "s" sort by name'
+    $ ziti edge controller list services 'name contains "s" sort by name'
     id: 37f1e34c-af06-442f-8e62-032916912bc6    name: grpc-ping-standalone    terminator strategy:     role attributes: {}
     id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
     id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
     id: cd1ae16e-5015-49ad-9864-3ca0f5814091    name: ssh    terminator strategy:     role attributes: {}
     
-    plorenz@carrot:~/work/nf$ ziti edge controller list services 'name contains "s" sort by name skip 1 limit 2'
+    $ ziti edge controller list services 'name contains "s" sort by name skip 1 limit 2'
     id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
     id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
 
 Association lists now also support filtering, sorting and paging. Association GET operations only support the filter parameter. 
     
 
-    plorenz@carrot:~/work/nf$ ziti edge controller list service terminators ssh
+    $ ziti edge controller list service terminators ssh
     Found services with id cd1ae16e-5015-49ad-9864-3ca0f5814091 for name ssh
     id: 41f4fd01-0bd7-4987-93b3-3b2217b00a22    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:22
     id: a5213300-9c5f-4b0e-a790-1ed460964d7c    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:2022
     
-    plorenz@carrot:~/work/nf$ ziti edge controller list service terminators ssh "true sort by address"
+    $ ziti edge controller list service terminators ssh "true sort by address"
     Found services with id cd1ae16e-5015-49ad-9864-3ca0f5814091 for name ssh
     id: a5213300-9c5f-4b0e-a790-1ed460964d7c    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:2022
     id: 41f4fd01-0bd7-4987-93b3-3b2217b00a22    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:22
 
-    plorenz@carrot:~/work/nf$ ziti edge controller list service terminators ssh "true sort by address desc"
+    $ ziti edge controller list service terminators ssh "true sort by address desc"
     Found services with id cd1ae16e-5015-49ad-9864-3ca0f5814091 for name ssh
     id: 41f4fd01-0bd7-4987-93b3-3b2217b00a22    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:22
     id: a5213300-9c5f-4b0e-a790-1ed460964d7c    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:2022
@@ -142,3 +142,15 @@ Previously the only common property was `id`.
 
 # Deprecated Endpoints
 The `/gateways` (replaced by `/edge-routers`) and `network-sessions` (replaced by `/sessions`) endpoints, which were previously deprecated, have now been removed.  
+
+# Miscellaneous 
+
+There is a new `ziti edge controller version` command which shows information about the version of the controller being connected to:
+
+Example:
+
+    $ ziti edge controller version
+    Version     : v0.9.0
+    GIT revision: ea556fc18740
+    Build Date  : 2020-02-11 16:09:08
+    Runtime     : go1.13
