@@ -46,7 +46,7 @@ const (
 var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 
 type Session struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Token        string
 	ApiSessionId string
 	ServiceId    string
@@ -100,12 +100,12 @@ type SessionCert struct {
 
 func NewSession(apiSessionId, serviceId string) *Session {
 	return &Session{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Token:              uuid.New().String(),
-		ApiSessionId:       apiSessionId,
-		ServiceId:          serviceId,
-		Type:               SessionTypeDial,
-		Certs:              nil,
+		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Token:         uuid.New().String(),
+		ApiSessionId:  apiSessionId,
+		ServiceId:     serviceId,
+		Type:          SessionTypeDial,
+		Certs:         nil,
 	}
 }
 
@@ -159,12 +159,12 @@ type sessionStoreImpl struct {
 	symbolService    boltz.EntitySymbol
 }
 
-func (store *sessionStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *sessionStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Session{}
 }
 
 func (store *sessionStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	symbolToken := store.AddSymbol(FieldSessionToken, ast.NodeTypeString)
 	store.indexToken = store.AddUniqueIndex(symbolToken)

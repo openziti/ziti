@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,15 +19,13 @@ package routes
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"strings"
@@ -36,10 +34,6 @@ import (
 const (
 	EntityNameSelf = "self"
 )
-
-type associationIdArrayRequest struct {
-	Ids []string `json:"ids"`
-}
 
 func unmarshal(body []byte, in interface{}) error {
 	err := json.Unmarshal(body, in)
@@ -115,7 +109,7 @@ func getJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
 	}
 }
 
-func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []model.BaseModelEntity) ([]BaseApiEntity, error) {
+func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]BaseApiEntity, error) {
 	apiEntities := make([]BaseApiEntity, 0)
 
 	for _, e := range es {
@@ -131,21 +125,30 @@ func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMa
 	return apiEntities, nil
 }
 
-func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, handler model.Handler, mapper ModelToApiMapper) {
-	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := handler.BaseList(queryOptions)
+func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper) {
+	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+		// validate that the submitted query is only using public symbols. The query options may contain an final
+		// query which has been modified with additional filters
+		query, err := queryOptions.getFullQuery(lister.GetStore())
 		if err != nil {
 			return nil, err
 		}
-		apiEntities, err := modelToApi(ae, rc, mapper, result.Entities)
+
+		result, err := lister.BasePreparedList(query)
 		if err != nil {
 			return nil, err
 		}
-		return NewQueryResult(apiEntities, &result.QueryMetaData), nil
+
+		apiEntities, err := modelToApi(ae, rc, mapper, result.GetEntities())
+		if err != nil {
+			return nil, err
+		}
+
+		return NewQueryResult(apiEntities, result.GetMetaData()), nil
 	})
 }
 
-type ModelListF func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error)
+type ModelListF func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error)
 
 func List(rc *response.RequestContext, f ModelListF) {
 	qo, err := GetModelQueryOptionsFromRequest(rc.Request)
@@ -197,7 +200,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 		rr.RespondWithCouldNotParseBody(err)
 		return
 	}
-	
+
 	il := gojsonschema.NewBytesLoader(body)
 
 	result, err := sc.Validate(il)
@@ -214,7 +217,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 
 	id, err := creator()
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rr.RespondWithNotFound()
 			return
 		}
@@ -236,9 +239,9 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 	rr.RespondWithCreatedId(id, lb(id))
 }
 
-func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, handler model.Handler, mapper ModelToApiMapper, idType response.IdType) {
-	Detail(rc, idType, func(rc *response.RequestContext, id string) (BaseApiEntity, error) {
-		entity, err := handler.BaseLoad(id)
+func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever, mapper ModelToApiMapper, idType response.IdType) {
+	Detail(rc, idType, func(rc *response.RequestContext, id string) (interface{}, error) {
+		entity, err := loader.BaseLoad(id)
 		if err != nil {
 			return nil, err
 		}
@@ -246,7 +249,7 @@ func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, handler mode
 	})
 }
 
-type ModelDetailF func(rc *response.RequestContext, id string) (BaseApiEntity, error)
+type ModelDetailF func(rc *response.RequestContext, id string) (interface{}, error)
 
 func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF) {
 	id, err := rc.GetIdFromRequest(idType)
@@ -260,7 +263,7 @@ func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF)
 	apiEntity, err := f(rc, id)
 
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -298,7 +301,7 @@ func Delete(rc *response.RequestContext, idType response.IdType, deleteF ModelDe
 	err = deleteF(rc, id)
 
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 		} else {
 			rc.RequestResponder.RespondWithError(err)
@@ -354,7 +357,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, 
 	}
 
 	if err = updateF(id); err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -421,7 +424,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 
 	err = patchF(id, jsonFields)
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -443,7 +446,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 	rc.RequestResponder.RespondWithOk(nil, nil)
 }
 
-func listWithId(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, f func(id string) ([]interface{}, error)) {
+func listWithId(rc *response.RequestContext, idType response.IdType, f func(id string) ([]interface{}, error)) {
 	id, err := rc.GetIdFromRequest(idType)
 
 	if err != nil {
@@ -457,7 +460,7 @@ func listWithId(ae *env.AppEnv, rc *response.RequestContext, idType response.IdT
 	results, err := f(id)
 
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
@@ -482,9 +485,33 @@ func listWithId(ae *env.AppEnv, rc *response.RequestContext, idType response.IdT
 	rc.RequestResponder.RespondWithOk(results, meta)
 }
 
-type ListAssocF func(string, func(model.BaseModelEntity)) error
+// type ListAssocF func(string, func(models.Entity)) error
+type listAssocF func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error)
 
-func ListAssociations(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, listF ListAssocF, converter ModelToApiMapper) {
+func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociations(rc, idType, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+		// validate that the submitted query is only using public symbols. The query options may contain an final
+		// query which has been modified with additional filters
+		query, err := queryOptions.getFullQuery(associationLoader.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := lister.BasePreparedListAssociated(id, associationLoader, query)
+		if err != nil {
+			return nil, err
+		}
+
+		apiEntities, err := modelToApi(ae, rc, mapper, result.GetEntities())
+		if err != nil {
+			return nil, err
+		}
+
+		return NewQueryResult(apiEntities, result.GetMetaData()), nil
+	})
+}
+
+func ListAssociations(rc *response.RequestContext, idType response.IdType, listF listAssocF) {
 	id, err := rc.GetIdFromRequest(idType)
 
 	if err != nil {
@@ -495,172 +522,37 @@ func ListAssociations(ae *env.AppEnv, rc *response.RequestContext, idType respon
 		return
 	}
 
-	var modelResults []model.BaseModelEntity
-	err = listF(id, func(entity model.BaseModelEntity) {
-		modelResults = append(modelResults, entity)
-	})
+	filter := rc.Request.URL.Query().Get("filter")
+	queryOptions := &QueryOptions{
+		Predicate: filter,
+	}
+
+	result, err := listF(rc, id, queryOptions)
 
 	if err != nil {
-		if util.IsErrNotFoundErr(err) {
+		if boltz.IsErrNotFoundErr(err) {
 			rc.RequestResponder.RespondWithNotFound()
 			return
 		}
 
 		log := pfxlog.Logger()
-		log.WithField("id", id).WithError(err).Error("could not load associations by id")
+		log.WithField("cause", err).Error("could not convert list")
 		rc.RequestResponder.RespondWithError(err)
 		return
 	}
 
-	subApiEs, err := modelToApi(ae, rc, converter, modelResults)
-
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
+	if result.Result == nil {
+		result.Result = []BaseApiEntity{}
 	}
-
-	count := len(modelResults)
 
 	meta := &response.Meta{
 		"pagination": map[string]interface{}{
-			"limit":      count,
-			"offset":     0,
-			"totalCount": count,
+			"limit":      result.Limit,
+			"offset":     result.Offset,
+			"totalCount": result.Count,
 		},
-		"filterableFields": []string{},
+		"filterableFields": result.FilterableFields,
 	}
 
-	rc.RequestResponder.RespondWithOk(subApiEs, meta)
-}
-
-type AssocF func(parentId string, childIds []string) error
-
-func UpdateAssociationsFor(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, store persistence.Store, action model.AssociationAction, field string) {
-	UpdateAssociations(ae, rc, idType, func(parentId string, childIds []string) error {
-		return ae.Handlers.Associations.UpdateAssociations(store, action, field, parentId, childIds...)
-	})
-}
-
-func UpdateAssociations(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, assocF AssocF) {
-	parentId, err := rc.GetIdFromRequest(idType)
-
-	if err != nil {
-		log := pfxlog.Logger()
-		logErr := fmt.Errorf("could not find parentId property: %v", response.IdPropertyName)
-		log.WithField("property", response.IdPropertyName).
-			Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	body, err := ioutil.ReadAll(rc.Request.Body)
-
-	in := &associationIdArrayRequest{}
-
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-	}
-
-	il := gojsonschema.NewBytesLoader(body)
-
-	result, err := ae.Schemes.Association.Put.Validate(il)
-
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	if !result.Valid() {
-		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
-		return
-	}
-
-	err = unmarshal(body, in)
-
-	if err != nil {
-		rc.RequestResponder.RespondWithCouldNotParseBody(err)
-		return
-	}
-
-	for i, cid := range in.Ids {
-		_, err := uuid.Parse(cid)
-
-		if err != nil {
-			fieldErr := apierror.NewFieldError(fmt.Sprintf("invalid UUID as ID [%s]: %s", cid, err), fmt.Sprintf("ids[%d]", i), cid)
-			rc.RequestResponder.RespondWithApiError(apierror.NewField(fieldErr))
-			return
-		}
-	}
-
-	err = assocF(parentId, in.Ids)
-
-	if err != nil {
-		if util.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
-			return
-		}
-
-		if fe, ok := err.(*validation.FieldError); ok {
-			rc.RequestResponder.RespondWithFieldError(fe)
-			return
-		}
-
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	rc.RequestResponder.RespondWithOk(nil, nil)
-}
-
-func RemoveAssociationFor(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, store persistence.Store, field string) {
-	RemoveAssociationForModel(rc, idType, func(parentId string, childIds []string) error {
-		return ae.Handlers.Associations.UpdateAssociations(store, model.AssociationsActionRemove, field, parentId, childIds...)
-	})
-}
-
-func RemoveAssociationForModel(rc *response.RequestContext, idType response.IdType, assocF AssocF) {
-	parentId, err := rc.GetIdFromRequest(idType)
-
-	if err != nil {
-		log := pfxlog.Logger()
-		logErr := fmt.Errorf("could not load parent id property: %v", response.IdPropertyName)
-		log.WithField("property", response.IdPropertyName).
-			Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	subId, err := rc.GetSubIdFromRequest()
-
-	if err != nil {
-		log := pfxlog.Logger()
-		logErr := fmt.Errorf("could not find assigned entity property: %v", response.SubIdPropertyName)
-		log.WithField("property", response.SubIdPropertyName).
-			Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	err = assocF(parentId, []string{subId})
-
-	if err != nil {
-		if util.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
-			return
-		}
-
-		if fe, ok := err.(*validation.FieldError); ok {
-			rc.RequestResponder.RespondWithFieldError(fe)
-			return
-		}
-
-		log := pfxlog.Logger()
-		log.WithField("parentId", parentId).
-			WithField("cause", err).
-			Errorf("could not load parent record by id [%s]: %s", parentId, err)
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	rc.RequestResponder.RespondWithOk(nil, nil)
+	rc.RequestResponder.RespondWithOk(result.Result, meta)
 }

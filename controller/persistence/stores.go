@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,13 +17,20 @@
 package persistence
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
 type Stores struct {
 	DbProvider DbProvider
+
+	// fabric stores
+	Router     db.RouterStore
+	Service    db.ServiceStore
+	Terminator db.TerminatorStore
 
 	ApiSession              ApiSessionStore
 	Appwan                  AppwanStore
@@ -45,19 +52,42 @@ type Stores struct {
 	Authenticator           AuthenticatorStore
 
 	storeList []Store
+	storeMap  map[string]boltz.CrudStore
 }
 
-func (stores *Stores) getStoreForEntity(entity boltz.BaseEntity) Store {
-	for _, store := range stores.storeList {
-		if store.GetEntityType() == entity.GetEntityType() {
-			return store
+func (stores *Stores) buildStoreMap() {
+	val := reflect.ValueOf(stores).Elem()
+	for i := 0; i < val.NumField(); i++ {
+		f := val.Field(i)
+		if f.CanInterface() {
+			if store, ok := f.Interface().(boltz.CrudStore); ok {
+				stores.storeMap[store.GetEntityType()] = store
+			}
 		}
 	}
-	return nil
+}
+
+func (stores *Stores) getStoreList() []Store {
+	var result []Store
+	for _, crudStore := range stores.storeMap {
+		if store, ok := crudStore.(Store); ok {
+			result = append(result, store)
+		}
+	}
+	return result
+}
+
+func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+	return stores.storeMap[entity.GetEntityType()]
 }
 
 type stores struct {
 	DbProvider DbProvider
+
+	// fabric stores
+	Router     db.RouterStore
+	Service    db.ServiceStore
+	Terminator db.TerminatorStore
 
 	apiSession              *apiSessionStoreImpl
 	appwan                  *appwanStoreImpl
@@ -86,6 +116,10 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		DbProvider: dbProvider,
 	}
 
+	internalStores.Terminator = dbProvider.GetStores().Terminator
+	internalStores.Router = dbProvider.GetStores().Router
+	internalStores.Service = dbProvider.GetStores().Service
+
 	internalStores.apiSession = newApiSessionStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
 	internalStores.appwan = newAppwanStore(internalStores)
@@ -95,7 +129,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.configType = newConfigTypesStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
-	internalStores.edgeService = newEdgeServiceStore(internalStores, dbProvider.GetFabricStores().Service)
+	internalStores.edgeService = newEdgeServiceStore(internalStores)
 	internalStores.eventLog = newEventLogStore(internalStores)
 	internalStores.geoRegion = newGeoRegionStore(internalStores)
 	internalStores.identity = newIdentityStore(internalStores)
@@ -107,6 +141,10 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 	externalStores := &Stores{
 		DbProvider: dbProvider,
+
+		Terminator: dbProvider.GetStores().Terminator,
+		Router:     dbProvider.GetStores().Router,
+		Service:    dbProvider.GetStores().Service,
 
 		ApiSession:              internalStores.apiSession,
 		Appwan:                  internalStores.appwan,
@@ -126,36 +164,21 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Session:                 internalStores.session,
 		Authenticator:           internalStores.authenticator,
 		Enrollment:              internalStores.enrollment,
+
+		storeMap: make(map[string]boltz.CrudStore),
 	}
 
-	externalStores.storeList = []Store{
-		internalStores.apiSession,
-		internalStores.authenticator,
-		internalStores.appwan,
-		internalStores.ca,
-		internalStores.cluster,
-		internalStores.config,
-		internalStores.configType,
-		internalStores.edgeRouter,
-		internalStores.edgeRouterPolicy,
-		internalStores.edgeService,
-		internalStores.enrollment,
-		internalStores.geoRegion,
-		internalStores.identity,
-		internalStores.identityType,
-		internalStores.session,
-		internalStores.serviceEdgeRouterPolicy,
-		internalStores.servicePolicy,
-	}
+	externalStores.buildStoreMap()
+	storeList := externalStores.getStoreList()
 
 	err := dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-		for _, store := range externalStores.storeList {
+		for _, store := range storeList {
 			store.initializeLocal()
 		}
-		for _, store := range externalStores.storeList {
+		for _, store := range storeList {
 			store.initializeLinked()
 		}
-		for _, store := range externalStores.storeList {
+		for _, store := range storeList {
 			store.initializeIndexes(tx, errorHolder)
 		}
 		return nil

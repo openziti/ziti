@@ -22,10 +22,10 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/predicate"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/migration"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"net/http"
 	"strconv"
 )
@@ -67,9 +67,9 @@ type ReadUpdateRouter interface {
 	Patch(ae *env.AppEnv, rc *response.RequestContext)
 }
 
-type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, model.BaseModelEntity) (BaseApiEntity, error)
+type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, models.Entity) (BaseApiEntity, error)
 
-func GetModelQueryOptionsFromRequest(r *http.Request) (*model.QueryOptions, error) {
+func GetModelQueryOptionsFromRequest(r *http.Request) (*QueryOptions, error) {
 	filter := r.URL.Query().Get("filter")
 	sort := r.URL.Query().Get("sort")
 
@@ -79,35 +79,9 @@ func GetModelQueryOptionsFromRequest(r *http.Request) (*model.QueryOptions, erro
 		return nil, err
 	}
 
-	return &model.QueryOptions{
+	return &QueryOptions{
 		Predicate: filter,
 		Sort:      sort,
-		Paging:    pg,
-	}, nil
-}
-
-func GetQueryOptionsFromRequest(r *http.Request, imap *predicate.IdentifierMap) (*migration.QueryOptions, error) {
-	pr, err := GetRequestPredicate(r, imap)
-
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := GetRequestSort(r, imap)
-
-	if err != nil {
-		return nil, err
-	}
-
-	pg, err := GetRequestPaging(r)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &migration.QueryOptions{
-		Predicate: pr,
-		Sort:      *s,
 		Paging:    pg,
 	}, nil
 }
@@ -116,7 +90,7 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 	l := r.URL.Query().Get("limit")
 	o := r.URL.Query().Get("offset")
 
-	p := &predicate.Paging{}
+	var p *predicate.Paging
 
 	if l != "" {
 		i, err := strconv.ParseInt(l, 10, 64)
@@ -129,6 +103,7 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 				AppendCause: true,
 			}
 		}
+		p = &predicate.Paging{}
 		p.Limit = i
 	}
 
@@ -142,6 +117,9 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 				Cause:       apierror.NewFieldError("could not parse offset, value is not an integer", "offset", o),
 				AppendCause: true,
 			}
+		}
+		if p == nil {
+			p = &predicate.Paging{}
 		}
 		p.Offset = i
 	}
@@ -478,7 +456,7 @@ type QueryResult struct {
 	FilterableFields []string
 }
 
-func NewQueryResult(result []BaseApiEntity, metadata *model.QueryMetaData) *QueryResult {
+func NewQueryResult(result []BaseApiEntity, metadata *models.QueryMetaData) *QueryResult {
 	return &QueryResult{
 		Result:           result,
 		Count:            metadata.Count,

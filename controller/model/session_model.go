@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"reflect"
 	"time"
 
@@ -31,7 +32,7 @@ import (
 )
 
 type Session struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Token        string
 	ApiSessionId string
 	ServiceId    string
@@ -46,7 +47,7 @@ type SessionCert struct {
 	ValidTo     time.Time
 }
 
-func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	apiSession, err := handler.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := handler.GetEnv().GetHandlers().Service.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
+	service, err := handler.GetEnv().GetHandlers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,11 +79,11 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	}
 
 	boltEntity := &persistence.Session{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Token:              entity.Token,
-		ApiSessionId:       entity.ApiSessionId,
-		ServiceId:          entity.ServiceId,
-		Type:               entity.Type,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:         entity.Token,
+		ApiSessionId:  entity.ApiSessionId,
+		ServiceId:     entity.ServiceId,
+		Type:          entity.Type,
 	}
 
 	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
@@ -119,26 +120,26 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (per
 	return boltEntity, nil
 }
 
-func (entity *Session) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	return &persistence.Session{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Token:              entity.Token,
-		ApiSessionId:       entity.ApiSessionId,
-		ServiceId:          entity.ServiceId,
-		Type:               entity.Type,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:         entity.Token,
+		ApiSessionId:  entity.ApiSessionId,
+		ServiceId:     entity.ServiceId,
+		Type:          entity.Type,
 	}, nil
 }
 
-func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltSession, ok := boltEntity.(*persistence.Session)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model Session", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltSession)
+	entity.FillCommon(boltSession)
 	entity.Token = boltSession.Token
 	entity.ApiSessionId = boltSession.ApiSessionId
 	entity.ServiceId = boltSession.ServiceId
@@ -146,7 +147,7 @@ func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEnt
 	return nil
 }
 
-func (entity *SessionCert) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *SessionCert) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltSessionCert, ok := boltEntity.(*persistence.SessionCert)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model SessionCert", reflect.TypeOf(boltEntity))

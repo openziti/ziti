@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -46,10 +46,6 @@ func (ctx *TestContext) GetConfig() *config.Config {
 
 func (ctx *TestContext) GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator {
 	return ctx
-}
-
-func (ctx *TestContext) GetDbProvider() persistence.DbProvider {
-	return ctx.TestContext
 }
 
 func (ctx *TestContext) GetAuthRegistry() AuthRegistry {
@@ -123,12 +119,10 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 
 func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
-		EndpointAddress: "hosted:unclaimed",
-		EgressRouter:    "unclaimed",
-		Name:            uuid.New().String(),
+		Name: uuid.New().String(),
 	}
 	var err error
-	service.Id, err = ctx.handlers.Service.Create(service)
+	service.Id, err = ctx.handlers.EdgeService.Create(service)
 	ctx.NoError(err)
 	return service
 }

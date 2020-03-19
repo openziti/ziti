@@ -20,9 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 )
 
 func init() {
@@ -47,8 +46,13 @@ func (ir *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	List(rc, func(rc *response.RequestContext, queryOptions *model.QueryOptions) (*QueryResult, error) {
-		result, err := ae.Handlers.Authenticator.ListForIdentity(rc.Identity.Id, queryOptions)
+	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+		query, err := queryOptions.getFullQuery(ae.Handlers.Authenticator.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := ae.Handlers.Authenticator.ListForIdentity(rc.Identity.Id, query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -58,19 +62,19 @@ func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.
 		if err != nil {
 			return nil, err
 		}
-		return NewQueryResult(apiAuthenticators, &result.QueryMetaData), nil
+		return NewQueryResult(apiAuthenticators, result.GetMetaData()), nil
 	})
 }
 
 func (ir *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (entity BaseApiEntity, err error) {
+	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (entity interface{}, err error) {
 		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity.Id, id)
 		if err != nil {
 			return nil, err
 		}
 
 		if authenticator == nil {
-			return nil, util.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
+			return nil, boltz.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
 		}
 
 		apiAuthenticator, err := MapAuthenticatorToApiList(authenticator)

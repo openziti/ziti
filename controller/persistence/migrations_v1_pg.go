@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -35,32 +37,30 @@ var queryOptionsListAll = &migration.QueryOptions{
 	},
 }
 
-func upgradeToV1FromPG(mtx *MigrationContext) error {
+func (m *Migrations) upgradeToV1FromPG(step *boltz.MigrationStep) {
 	pfxlog.Logger().Info("postgres configured, migrating from postgres")
 
-	migrationFuncs := []func(mtx *MigrationContext) error{
-		migrateIdentitiesFromPG,
-		migrateCasFromPG,
-		migrateAuthenticatorsFromPG,
-		migrateEnrollmentsFromPG,
-		migrateEventLogsFromPG,
-		migrateClusterFromPG,
-		migrateEdgeRoutersFromPG,
-		migrateServicesFromPG,
-		migrateAppWansFromPG,
+	migrationFuncs := []func(step *boltz.MigrationStep) error{
+		m.migrateIdentitiesFromPG,
+		m.migrateCasFromPG,
+		m.migrateAuthenticatorsFromPG,
+		m.migrateEnrollmentsFromPG,
+		m.migrateEventLogsFromPG,
+		m.migrateClusterFromPG,
+		m.migrateEdgeRoutersFromPG,
+		m.migrateServicesFromPG,
+		m.migrateAppWansFromPG,
 	}
 
 	for _, migrationFunc := range migrationFuncs {
-		if err := migrationFunc(mtx); err != nil {
-			return err
+		if step.SetError(migrationFunc(step)) {
+			return
 		}
 	}
-
-	return nil
 }
 
-func migrateCasFromPG(mtx *MigrationContext) error {
-	cas, err := mtx.DbStores.Ca.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateCasFromPG(step *boltz.MigrationStep) error {
+	cas, err := m.dbStores.Ca.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func migrateCasFromPG(mtx *MigrationContext) error {
 			return err
 		}
 		ca := &Ca{
-			BaseEdgeEntityImpl:        *toBaseBoltEntity(&pgCa.BaseDbEntity),
+			BaseExtEntity:             *toBaseBoltEntity(&pgCa.BaseDbEntity),
 			Name:                      *pgCa.Name,
 			Fingerprint:               *pgCa.Fingerprint,
 			CertPem:                   *pgCa.CertPem,
@@ -80,15 +80,15 @@ func migrateCasFromPG(mtx *MigrationContext) error {
 			IsOttCaEnrollmentEnabled:  *pgCa.IsOttCaEnrollmentEnabled,
 			IsAuthEnabled:             *pgCa.IsAuthEnabled,
 		}
-		err = mtx.Stores.Ca.Create(mtx.Ctx, ca)
+		err = m.stores.Ca.Create(step.Ctx, ca)
 	}
 	pfxlog.Logger().Infof("migrated %v cas from pg to bolt", len(cas))
 
 	return nil
 }
 
-func migrateAuthenticatorsFromPG(mtx *MigrationContext) error {
-	authenticators, err := mtx.DbStores.Authenticator.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateAuthenticatorsFromPG(step *boltz.MigrationStep) error {
+	authenticators, err := m.dbStores.Authenticator.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func migrateAuthenticatorsFromPG(mtx *MigrationContext) error {
 		var subtype AuthenticatorSubType
 		switch *pgAuthenticator.Method {
 		case "updb":
-			pgUpdb, err := mtx.DbStores.AuthenticatorUpdb.LoadOneByAuthenticatorId(pgAuthenticator.ID, nil)
+			pgUpdb, err := m.dbStores.AuthenticatorUpdb.LoadOneByAuthenticatorId(pgAuthenticator.ID, nil)
 
 			if err != nil {
 				return fmt.Errorf("error migrating authenticator updb for authenticator with id %s: %s", pgAuthenticator.ID, err)
@@ -111,7 +111,7 @@ func migrateAuthenticatorsFromPG(mtx *MigrationContext) error {
 				Salt:     *pgUpdb.Salt,
 			}
 		case "cert":
-			pgCert, err := mtx.DbStores.AuthenticatorCert.LoadOneByAuthenticatorId(pgAuthenticator.ID, nil)
+			pgCert, err := m.dbStores.AuthenticatorCert.LoadOneByAuthenticatorId(pgAuthenticator.ID, nil)
 
 			if err != nil {
 				return fmt.Errorf("error migrating authenticator cert for authenticator with id %s: %s", pgAuthenticator.ID, err)
@@ -122,20 +122,20 @@ func migrateAuthenticatorsFromPG(mtx *MigrationContext) error {
 		}
 
 		authenticator := &Authenticator{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgAuthenticator.BaseDbEntity),
-			Type:               *pgAuthenticator.Method,
-			IdentityId:         *pgAuthenticator.IdentityID,
-			SubType:            subtype,
+			BaseExtEntity: *toBaseBoltEntity(&pgAuthenticator.BaseDbEntity),
+			Type:          *pgAuthenticator.Method,
+			IdentityId:    *pgAuthenticator.IdentityID,
+			SubType:       subtype,
 		}
-		err = mtx.Stores.Authenticator.Create(mtx.Ctx, authenticator)
+		err = m.stores.Authenticator.Create(step.Ctx, authenticator)
 	}
 	pfxlog.Logger().Infof("migrated %v authenticators from pg to bolt", len(authenticators))
 
 	return nil
 }
 
-func migrateEnrollmentsFromPG(mtx *MigrationContext) error {
-	enrollments, err := mtx.DbStores.Enrollment.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateEnrollmentsFromPG(step *boltz.MigrationStep) error {
+	enrollments, err := m.dbStores.Enrollment.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -146,27 +146,27 @@ func migrateEnrollmentsFromPG(mtx *MigrationContext) error {
 		}
 
 		enrollment := &Enrollment{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgEnrollment.BaseDbEntity),
-			Token:              *pgEnrollment.Token,
-			Method:             *pgEnrollment.Method,
-			IdentityId:         *pgEnrollment.IdentityID,
-			ExpiresAt:          pgEnrollment.ExpiresAt,
-			IssuedAt:           pgEnrollment.CreatedAt,
-			CaId:               nil,
-			Username:           nil,
-			Jwt:                "",
+			BaseExtEntity: *toBaseBoltEntity(&pgEnrollment.BaseDbEntity),
+			Token:         *pgEnrollment.Token,
+			Method:        *pgEnrollment.Method,
+			IdentityId:    *pgEnrollment.IdentityID,
+			ExpiresAt:     pgEnrollment.ExpiresAt,
+			IssuedAt:      pgEnrollment.CreatedAt,
+			CaId:          nil,
+			Username:      nil,
+			Jwt:           "",
 		}
 		method := *pgEnrollment.Method
 		switch {
 		case method == "updb":
-			pgUpdb, err := mtx.DbStores.EnrollmentUpdb.LoadOneByEnrollmentId(pgEnrollment.ID, nil)
+			pgUpdb, err := m.dbStores.EnrollmentUpdb.LoadOneByEnrollmentId(pgEnrollment.ID, nil)
 
 			if err != nil {
 				return fmt.Errorf("error migrating enrollment updb for enrollment with id %s: %s", pgEnrollment.ID, err)
 			}
 			enrollment.Username = pgUpdb.Username
 		case method == "ott" || method == "ottca":
-			pgCert, err := mtx.DbStores.EnrollmentCert.LoadOneByEnrollmentId(pgEnrollment.ID, nil)
+			pgCert, err := m.dbStores.EnrollmentCert.LoadOneByEnrollmentId(pgEnrollment.ID, nil)
 
 			if err != nil {
 				return fmt.Errorf("error migrating enrollment cert for enrollment with id %s: %s", pgEnrollment.ID, err)
@@ -175,15 +175,15 @@ func migrateEnrollmentsFromPG(mtx *MigrationContext) error {
 			enrollment.Jwt = *pgCert.Jwt
 		}
 
-		err = mtx.Stores.Enrollment.Create(mtx.Ctx, enrollment)
+		err = m.stores.Enrollment.Create(step.Ctx, enrollment)
 	}
 	pfxlog.Logger().Infof("migrated %v enrollments from pg to bolt", len(enrollments))
 
 	return nil
 }
 
-func migrateServicesFromPG(mtx *MigrationContext) error {
-	services, err := mtx.DbStores.Service.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateServicesFromPG(step *boltz.MigrationStep) error {
+	services, err := m.dbStores.Service.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -196,20 +196,31 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 
 		edgeService := &EdgeService{
 			Service: db.Service{
-				Id:              pgService.ID,
-				Binding:         "edge", //todo confirm this
-				EndpointAddress: stringz.OrEmpty(pgService.EndpointAddress),
-				Egress:          stringz.OrEmpty(pgService.EgressRouter),
+				BaseExtEntity:      *toBaseBoltEntity(&pgService.BaseDbEntity),
+				TerminatorStrategy: "",
 			},
-			EdgeEntityFields: toBaseBoltEntity(&pgService.BaseDbEntity).EdgeEntityFields,
-			Name:             *pgService.Name,
+			Name: *pgService.Name,
 		}
-		if err = mtx.Stores.EdgeService.Create(mtx.Ctx, edgeService); err != nil {
+
+		if err = m.stores.EdgeService.Create(step.Ctx, edgeService); err != nil {
 			return err
 		}
 
-		linkCollection := mtx.Stores.EdgeService.GetLinkCollection(EntityTypeClusters)
-		if err = linkCollection.SetLinks(mtx.Ctx.Tx(), pgService.ID, clusterIds); err != nil {
+		terminator := &db.Terminator{
+			BaseExtEntity: *boltz.NewExtEntity(uuid.New().String(), nil),
+			Service:       edgeService.Id,
+			Router:        stringz.OrEmpty(pgService.EgressRouter),
+			Binding:       "transport",
+			Address:       stringz.OrEmpty(pgService.EndpointAddress),
+			PeerData:      nil,
+		}
+
+		if err = m.stores.Terminator.Create(step.Ctx, terminator); err != nil {
+			return err
+		}
+
+		linkCollection := m.stores.EdgeService.GetLinkCollection(EntityTypeClusters)
+		if err = linkCollection.SetLinks(step.Ctx.Tx(), pgService.ID, clusterIds); err != nil {
 			return err
 		}
 
@@ -217,7 +228,7 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 		if pgService.DnsPort != nil {
 			finalPort = int(*pgService.DnsPort)
 		}
-		if err = createServiceConfigs(mtx, edgeService, pgService.DnsHostname, finalPort); err != nil {
+		if err = m.createServiceConfigs(step, edgeService, pgService.DnsHostname, finalPort); err != nil {
 			return err
 		}
 	}
@@ -226,8 +237,8 @@ func migrateServicesFromPG(mtx *MigrationContext) error {
 	return nil
 }
 
-func migrateAppWansFromPG(mtx *MigrationContext) error {
-	appwans, err := mtx.DbStores.AppWan.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateAppWansFromPG(step *boltz.MigrationStep) error {
+	appwans, err := m.dbStores.AppWan.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -248,46 +259,42 @@ func migrateAppWansFromPG(mtx *MigrationContext) error {
 		}
 
 		appwan := &Appwan{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgAppwan.BaseDbEntity),
-			Name:               *pgAppwan.Name,
-			Identities:         identityIds,
-			Services:           serviceIds,
+			BaseExtEntity: *toBaseBoltEntity(&pgAppwan.BaseDbEntity),
+			Name:          *pgAppwan.Name,
+			Identities:    identityIds,
+			Services:      serviceIds,
 		}
-		err = mtx.Stores.Appwan.Create(mtx.Ctx, appwan)
+		err = m.stores.Appwan.Create(step.Ctx, appwan)
 	}
 	pfxlog.Logger().Infof("migrated %v appwans from pg to bolt", len(appwans))
 
 	return nil
 }
 
-func migrateIdentitiesFromPG(mtx *MigrationContext) error {
-	identities, err := mtx.DbStores.Identity.LoadList(queryOptionsListAll)
-	if err != nil {
-		return err
-	}
+func (m *Migrations) migrateIdentitiesFromPG(step *boltz.MigrationStep) error {
+	identities, err := m.dbStores.Identity.LoadList(queryOptionsListAll)
 
 	for _, pgIdentity := range identities {
 		if err != nil {
 			return err
 		}
 		identity := &Identity{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgIdentity.BaseDbEntity),
-			Name:               *pgIdentity.Name,
-			IdentityTypeId:     pgIdentity.Type.ID,
-			IsDefaultAdmin:     *pgIdentity.IsDefaultAdmin,
-			IsAdmin:            *pgIdentity.IsAdmin,
+			BaseExtEntity:  *toBaseBoltEntity(&pgIdentity.BaseDbEntity),
+			Name:           *pgIdentity.Name,
+			IdentityTypeId: pgIdentity.Type.ID,
+			IsDefaultAdmin: *pgIdentity.IsDefaultAdmin,
+			IsAdmin:        *pgIdentity.IsAdmin,
 			//enrollments & auths done in their own section
 		}
-		err = mtx.Stores.Identity.Create(mtx.Ctx, identity)
+		err = m.stores.Identity.Create(step.Ctx, identity)
 	}
 	pfxlog.Logger().Infof("migrated %v identities from pg to bolt", len(identities))
 
 	return nil
 }
 
-func migrateEventLogsFromPG(mtx *MigrationContext) error {
-
-	eventLogs, err := mtx.DbStores.EventLog.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateEventLogsFromPG(step *boltz.MigrationStep) error {
+	eventLogs, err := m.dbStores.EventLog.LoadList(queryOptionsListAll)
 	if err != nil {
 		return err
 	}
@@ -297,26 +304,26 @@ func migrateEventLogsFromPG(mtx *MigrationContext) error {
 			return err
 		}
 		eventLog := &EventLog{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgEventLog.BaseDbEntity),
-			Data:               pgEventLog.Data,
-			Type:               pgEventLog.Type,
-			FormattedMessage:   pgEventLog.FormattedMessage,
-			FormatString:       pgEventLog.FormatString,
-			FormatData:         pgEventLog.FormatData,
-			EntityType:         pgEventLog.EntityType,
-			EntityId:           pgEventLog.EntityId,
-			ActorType:          pgEventLog.ActorType,
-			ActorId:            pgEventLog.ActorId,
+			BaseExtEntity:    *toBaseBoltEntity(&pgEventLog.BaseDbEntity),
+			Data:             pgEventLog.Data,
+			Type:             pgEventLog.Type,
+			FormattedMessage: pgEventLog.FormattedMessage,
+			FormatString:     pgEventLog.FormatString,
+			FormatData:       pgEventLog.FormatData,
+			EntityType:       pgEventLog.EntityType,
+			EntityId:         pgEventLog.EntityId,
+			ActorType:        pgEventLog.ActorType,
+			ActorId:          pgEventLog.ActorId,
 		}
-		err = mtx.Stores.EventLog.Create(mtx.Ctx, eventLog)
+		err = m.stores.EventLog.Create(step.Ctx, eventLog)
 	}
 	pfxlog.Logger().Infof("migrated %v geo regions from pg to bolt", len(eventLogs))
 
 	return nil
 }
 
-func migrateClusterFromPG(mtx *MigrationContext) error {
-	clusters, err := mtx.DbStores.Cluster.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateClusterFromPG(step *boltz.MigrationStep) error {
+	clusters, err := m.dbStores.Cluster.LoadList(queryOptionsListAll)
 
 	if err != nil {
 		return err
@@ -327,18 +334,18 @@ func migrateClusterFromPG(mtx *MigrationContext) error {
 			return err
 		}
 		cluster := &Cluster{
-			BaseEdgeEntityImpl: *toBaseBoltEntity(&pgCluster.BaseDbEntity),
-			Name:               *pgCluster.Name,
+			BaseExtEntity: *toBaseBoltEntity(&pgCluster.BaseDbEntity),
+			Name:          *pgCluster.Name,
 		}
-		err = mtx.Stores.Cluster.Create(mtx.Ctx, cluster)
+		err = m.stores.Cluster.Create(step.Ctx, cluster)
 	}
 	pfxlog.Logger().Infof("migrated %v clusters from pg to bolt", len(clusters))
 
 	return nil
 }
 
-func migrateEdgeRoutersFromPG(mtx *MigrationContext) error {
-	edgeRouters, err := mtx.DbStores.Gateway.LoadList(queryOptionsListAll)
+func (m *Migrations) migrateEdgeRoutersFromPG(step *boltz.MigrationStep) error {
+	edgeRouters, err := m.dbStores.Gateway.LoadList(queryOptionsListAll)
 
 	if err != nil {
 		return err
@@ -350,7 +357,7 @@ func migrateEdgeRoutersFromPG(mtx *MigrationContext) error {
 		}
 
 		edgeRouter := &EdgeRouter{
-			BaseEdgeEntityImpl:  *toBaseBoltEntity(&pgEdgeRouter.BaseDbEntity),
+			BaseExtEntity:       *toBaseBoltEntity(&pgEdgeRouter.BaseDbEntity),
 			Name:                *pgEdgeRouter.Name,
 			ClusterId:           pgEdgeRouter.ClusterID,
 			Fingerprint:         pgEdgeRouter.Fingerprint,
@@ -363,15 +370,15 @@ func migrateEdgeRoutersFromPG(mtx *MigrationContext) error {
 			EnrollmentExpiresAt: pgEdgeRouter.EnrollmentExpiresAt,
 			EdgeRouterProtocols: pgEdgeRouter.GatewayProtocols,
 		}
-		err = mtx.Stores.EdgeRouter.Create(mtx.Ctx, edgeRouter)
+		err = m.stores.EdgeRouter.Create(step.Ctx, edgeRouter)
 	}
 	pfxlog.Logger().Infof("migrated %v edge-routers from pg to bolt", len(edgeRouters))
 
 	return nil
 }
 
-func toBaseBoltEntity(entity *migration.BaseDbEntity) *BaseEdgeEntityImpl {
-	result := BaseEdgeEntityImpl{Id: entity.ID}
+func toBaseBoltEntity(entity *migration.BaseDbEntity) *boltz.BaseExtEntity {
+	result := boltz.BaseExtEntity{Id: entity.ID}
 	if entity.Tags != nil {
 		result.Tags = *entity.Tags
 	}

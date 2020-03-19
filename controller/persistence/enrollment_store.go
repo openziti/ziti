@@ -40,7 +40,7 @@ const (
 )
 
 type Enrollment struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Token      string
 	Method     string
 	IdentityId string
@@ -103,12 +103,12 @@ type enrollmentStoreImpl struct {
 	symbolIdentityId boltz.EntitySymbol
 }
 
-func (store *enrollmentStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Enrollment{}
 }
 
 func (store *enrollmentStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	symbolToken := store.AddSymbol(FieldEnrollmentToken, ast.NodeTypeString)
 	store.tokenIndex = store.AddUniqueIndex(symbolToken)
 

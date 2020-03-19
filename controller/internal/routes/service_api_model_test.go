@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"reflect"
 	"testing"
 
@@ -25,11 +26,10 @@ import (
 
 func TestServiceApiCreate_ToModelService(t *testing.T) {
 	type fields struct {
-		Name            *string
-		RoleAttributes  []string
-		Tags            map[string]interface{}
-		EgressRouter    *string
-		EndpointAddress *string
+		Name               *string
+		TerminatorStrategy *string
+		RoleAttributes     []string
+		Tags               map[string]interface{}
 	}
 	tests := []struct {
 		name    string
@@ -38,29 +38,26 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "test all fields", fields: fields{
-			Name:            strPtr("bar"),
-			RoleAttributes:  []string{"id1", "id2"},
-			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
-			EgressRouter:    strPtr("001"),
-			EndpointAddress: strPtr("tcp:localhost:8908"),
+			Name:               strPtr("bar"),
+			TerminatorStrategy: strPtr("default"),
+			RoleAttributes:     []string{"id1", "id2"},
+			Tags:               map[string]interface{}{"hello": 1, "thing": "hi"},
 		}, want: &model.Service{
-			BaseModelEntityImpl: model.BaseModelEntityImpl{
+			BaseEntity: models.BaseEntity{
 				Tags: map[string]interface{}{"hello": 1, "thing": "hi"},
 			},
-			Name:            "bar",
-			EgressRouter:    "001",
-			EndpointAddress: "tcp:localhost:8908",
-			RoleAttributes:  []string{"id1", "id2"},
+			Name:               "bar",
+			TerminatorStrategy: "default",
+			RoleAttributes:     []string{"id1", "id2"},
 		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiCreate{
-				Name:            tt.fields.Name,
-				RoleAttributes:  tt.fields.RoleAttributes,
-				Tags:            tt.fields.Tags,
-				EgressRouter:    tt.fields.EgressRouter,
-				EndpointAddress: tt.fields.EndpointAddress,
+				Name:               tt.fields.Name,
+				TerminatorStrategy: tt.fields.TerminatorStrategy,
+				RoleAttributes:     tt.fields.RoleAttributes,
+				Tags:               tt.fields.Tags,
 			}
 			got := apiService.ToModel()
 			if !reflect.DeepEqual(got, tt.want) {
@@ -72,11 +69,9 @@ func TestServiceApiCreate_ToModelService(t *testing.T) {
 
 func TestServiceApiUpdate_ToModelService(t *testing.T) {
 	type fields struct {
-		Name            *string
-		HostIds         []string
-		Tags            map[string]interface{}
-		EgressRouter    *string
-		EndpointAddress *string
+		Name               *string
+		TerminatorStrategy *string
+		Tags               map[string]interface{}
 	}
 	tests := []struct {
 		name    string
@@ -85,26 +80,23 @@ func TestServiceApiUpdate_ToModelService(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "test all fields", fields: fields{
-			Name:            strPtr("bar"),
-			Tags:            map[string]interface{}{"hello": 1, "thing": "hi"},
-			EgressRouter:    strPtr("001"),
-			EndpointAddress: strPtr("tcp:localhost:8908"),
+			Name:               strPtr("bar"),
+			TerminatorStrategy: strPtr("foobar"),
+			Tags:               map[string]interface{}{"hello": 1, "thing": "hi"},
 		}, want: &model.Service{
-			BaseModelEntityImpl: model.BaseModelEntityImpl{
+			BaseEntity: models.BaseEntity{
 				Tags: map[string]interface{}{"hello": 1, "thing": "hi"},
 			},
-			Name:            "bar",
-			EgressRouter:    "001",
-			EndpointAddress: "tcp:localhost:8908",
+			Name:               "bar",
+			TerminatorStrategy: "foobar",
 		}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apiService := &ServiceApiUpdate{
-				Name:            tt.fields.Name,
-				Tags:            tt.fields.Tags,
-				EgressRouter:    tt.fields.EgressRouter,
-				EndpointAddress: tt.fields.EndpointAddress,
+				Name:               tt.fields.Name,
+				TerminatorStrategy: tt.fields.TerminatorStrategy,
+				Tags:               tt.fields.Tags,
 			}
 			got := apiService.ToModel("")
 			if !reflect.DeepEqual(got, tt.want) {

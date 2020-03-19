@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -27,14 +28,11 @@ import (
 
 func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 	handler := &EdgeRouterHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().EdgeRouter,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().EdgeRouter),
 		allowedFieldsChecker: boltz.MapFieldChecker{
 			persistence.FieldName:           struct{}{},
 			persistence.FieldRoleAttributes: struct{}{},
-			persistence.FieldTags:           struct{}{},
+			boltz.FieldTags:                 struct{}{},
 		},
 	}
 	handler.impl = handler
@@ -97,30 +95,13 @@ func (handler *EdgeRouterHandler) Patch(modelEntity *EdgeRouter, checker boltz.F
 	return handler.patchEntity(modelEntity, combinedChecker)
 }
 
-func (handler *EdgeRouterHandler) beforeDelete(tx *bbolt.Tx, id string) error {
-	store := handler.GetDbProvider().GetFabricStores().Router
-	if store.IsEntityPresent(tx, id) {
-		return store.DeleteById(boltz.NewMutateContext(tx), id)
-	}
-	return nil
-}
-
 func (handler *EdgeRouterHandler) Delete(id string) error {
-	return handler.deleteEntity(id, handler.beforeDelete)
+	return handler.deleteEntity(id)
 }
 
 func (handler *EdgeRouterHandler) Query(query string) (*EdgeRouterListResult, error) {
 	result := &EdgeRouterListResult{handler: handler}
 	err := handler.list(query, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (handler *EdgeRouterHandler) PublicQuery(queryOptions *QueryOptions) (*EdgeRouterListResult, error) {
-	result := &EdgeRouterListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -162,27 +143,19 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 	}
 
 	result := &EdgeRouterListResult{handler: handler}
-	if err = handler.listWithTx(tx, query, result.collect); err != nil {
+	if err = handler.ListWithTx(tx, query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) CollectServiceEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeServiceEdgeRouterPolicies, handler.env.GetHandlers().ServiceEdgeRouterPolicy, collector)
-}
-
-func (handler *EdgeRouterHandler) CollectEdgeRouterPolicies(id string, collector func(entity BaseModelEntity)) error {
-	return handler.collectAssociated(id, persistence.EntityTypeEdgeRouterPolicies, handler.env.GetHandlers().EdgeRouterPolicy, collector)
-}
-
 type EdgeRouterListResult struct {
 	handler     *EdgeRouterHandler
 	EdgeRouters []*EdgeRouter
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.handler.readInTx(tx, key)

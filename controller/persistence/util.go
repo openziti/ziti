@@ -31,28 +31,6 @@ const (
 	AllRole      = "#all"
 )
 
-func ToInFilter(ids ...string) string {
-	builder := strings.Builder{}
-	builder.WriteString("id in [")
-	if len(ids) > 0 {
-		builder.WriteRune('"')
-		builder.WriteString(ids[0])
-		builder.WriteRune('"')
-	}
-	for _, id := range ids[1:] {
-		builder.WriteString(", ")
-		builder.WriteRune('"')
-		builder.WriteString(id)
-		builder.WriteRune('"')
-	}
-	builder.WriteString("]")
-	return builder.String()
-}
-
-func Field(elements ...string) string {
-	return strings.Join(elements, ".")
-}
-
 func validateRolesAndIds(field string, values []string) error {
 	if len(values) > 1 && stringz.Contains(values, AllRole) {
 		return validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole), field, values)
@@ -60,7 +38,7 @@ func validateRolesAndIds(field string, values []string) error {
 
 	var invalidKeys []string
 	for _, entry := range values {
-		if !strings.HasPrefix(entry, RolePrefix) && ! strings.HasPrefix(entry, EntityPrefix) {
+		if !strings.HasPrefix(entry, RolePrefix) && !strings.HasPrefix(entry, EntityPrefix) {
 			invalidKeys = append(invalidKeys, entry)
 		}
 	}

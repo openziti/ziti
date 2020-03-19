@@ -21,6 +21,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ import (
 )
 
 type EdgeRouter struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name                string
 	RoleAttributes      []string
 	IsVerified          bool
@@ -44,16 +45,16 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	et := uuid.New().String()
 
 	boltEntity := &persistence.EdgeRouter{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		RoleAttributes:     entity.RoleAttributes,
-		Fingerprint:        nil,
-		IsVerified:         false,
-		EnrollmentToken:    &et,
+		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:            entity.Name,
+		RoleAttributes:  entity.RoleAttributes,
+		Fingerprint:     nil,
+		IsVerified:      false,
+		EnrollmentToken: &et,
 	}
 	env := handler.GetEnv()
 
@@ -91,9 +92,9 @@ func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (p
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
 	return &persistence.EdgeRouter{
-		BaseEdgeEntityImpl:  *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		BaseExtEntity:       *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                entity.Name,
 		RoleAttributes:      entity.RoleAttributes,
 		IsVerified:          entity.IsVerified,
@@ -108,17 +109,17 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persist
 	}, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router", reflect.TypeOf(boltEntity))
 	}
 
-	entity.fillCommon(boltEdgeRouter)
+	entity.FillCommon(boltEdgeRouter)
 	entity.Name = boltEdgeRouter.Name
 	entity.RoleAttributes = boltEdgeRouter.RoleAttributes
 	entity.IsVerified = boltEdgeRouter.IsVerified

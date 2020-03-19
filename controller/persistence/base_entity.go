@@ -16,11 +16,6 @@
 
 package persistence
 
-import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"time"
-)
-
 const (
 	EntityTypeApiSessions               = "apiSessions"
 	EntityTypeAppwans                   = "appwans"
@@ -43,13 +38,9 @@ const (
 	EntityTypeAuthenticators            = "authenticators"
 	EdgeBucket                          = "edge"
 
-	FieldId             = "id"
 	FieldName           = "name"
 	FieldSemantic       = "semantic"
 	FieldRoleAttributes = "roleAttributes"
-	FieldCreatedAt      = "createdAt"
-	FieldUpdatedAt      = "updatedAt"
-	FieldTags           = "tags"
 
 	FieldEdgeRouterRoles = "edgeRouterRoles"
 	FieldIdentityRoles   = "identityRoles"
@@ -60,107 +51,6 @@ const (
 )
 
 var validSemantics = []string{SemanticAllOf, SemanticAnyOf}
-
-type BaseEdgeEntity interface {
-	boltz.BaseEntity
-	GetCreatedAt() time.Time
-	GetUpdatedAt() time.Time
-	GetTags() map[string]interface{}
-
-	setCreateAt(createdAt time.Time)
-	setUpdatedAt(updatedAt time.Time)
-	setTags(tags map[string]interface{})
-}
-
-type NamedEdgeEntity interface {
-	BaseEdgeEntity
-	GetName() string
-}
-
-func NewBaseEdgeEntity(id string, tags map[string]interface{}) *BaseEdgeEntityImpl {
-	return &BaseEdgeEntityImpl{
-		Id: id,
-		EdgeEntityFields: EdgeEntityFields{
-			Tags: tags,
-		},
-	}
-}
-
-type BaseEdgeEntityImpl struct {
-	Id string
-	EdgeEntityFields
-}
-
-type EdgeEntityFields struct {
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Tags      map[string]interface{}
-	Migrate   bool
-}
-
-func (entity *BaseEdgeEntityImpl) GetId() string {
-	return entity.Id
-}
-
-func (entity *BaseEdgeEntityImpl) SetId(id string) {
-	entity.Id = id
-}
-
-func (entity *EdgeEntityFields) GetCreatedAt() time.Time {
-	return entity.CreatedAt
-}
-
-func (entity *EdgeEntityFields) GetUpdatedAt() time.Time {
-	return entity.UpdatedAt
-}
-
-func (entity *EdgeEntityFields) GetTags() map[string]interface{} {
-	return entity.Tags
-}
-
-func (entity *EdgeEntityFields) setCreateAt(createdAt time.Time) {
-	entity.CreatedAt = createdAt
-}
-
-func (entity *EdgeEntityFields) setUpdatedAt(updatedAt time.Time) {
-	entity.UpdatedAt = updatedAt
-}
-
-func (entity *EdgeEntityFields) setTags(tags map[string]interface{}) {
-	entity.Tags = tags
-}
-
-func (entity *EdgeEntityFields) LoadBaseValues(bucket *boltz.TypedBucket) {
-	entity.CreatedAt = bucket.GetTimeOrError("createdAt")
-	entity.UpdatedAt = bucket.GetTimeOrError("updatedAt")
-	entity.Tags = bucket.GetMap("tags")
-}
-
-func (entity *EdgeEntityFields) SetBaseValues(ctx *boltz.PersistContext) {
-	if ctx.IsCreate {
-		entity.CreateBaseValues(ctx.Bucket)
-	} else {
-		entity.UpdateBaseValues(ctx.Bucket, ctx.FieldChecker)
-	}
-}
-
-func (entity *EdgeEntityFields) CreateBaseValues(bucket *boltz.TypedBucket) {
-	now := time.Now()
-	if entity.Migrate {
-		bucket.SetTimeP(FieldCreatedAt, &entity.CreatedAt, nil)
-		bucket.SetTimeP(FieldUpdatedAt, &entity.UpdatedAt, nil)
-	} else {
-		bucket.SetTimeP(FieldCreatedAt, &now, nil)
-		bucket.SetTimeP(FieldUpdatedAt, &now, nil)
-	}
-	bucket.PutMap(FieldTags, entity.Tags, nil)
-}
-
-func (entity *EdgeEntityFields) UpdateBaseValues(bucket *boltz.TypedBucket, fieldChecker boltz.FieldChecker) {
-	now := time.Now()
-	bucket.SetTimeP(FieldUpdatedAt, &now, nil)
-	bucket.PutMap(FieldTags, entity.Tags, fieldChecker)
-}
 
 func toStringStringMap(m map[string]interface{}) map[string]string {
 	result := map[string]string{}

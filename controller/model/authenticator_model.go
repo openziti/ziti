@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -27,14 +28,14 @@ import (
 )
 
 type Authenticator struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Method     string
 	IdentityId string
 	SubType    interface{}
 }
 
 type AuthenticatorSelf struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	CurrentPassword string
 	NewPassword     string
 	IdentityId      string
@@ -51,12 +52,12 @@ func (entity *Authenticator) Fingerprints() []string {
 	}
 }
 
-func (entity *Authenticator) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Authenticator) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltAuthenticator, ok := boltEntity.(*persistence.Authenticator)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltAuthenticator)
+	entity.FillCommon(boltAuthenticator)
 	entity.Method = boltAuthenticator.Type
 	entity.IdentityId = boltAuthenticator.IdentityId
 
@@ -82,11 +83,11 @@ func (entity *Authenticator) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity 
 	return nil
 }
 
-func (entity *Authenticator) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Authenticator) toBoltEntity() (boltz.Entity, error) {
 	boltEntity := &persistence.Authenticator{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Type:               entity.Method,
-		IdentityId:         entity.IdentityId,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Type:          entity.Method,
+		IdentityId:    entity.IdentityId,
 	}
 
 	var subType persistence.AuthenticatorSubType
@@ -127,13 +128,16 @@ func (entity *Authenticator) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler
 	return boltEntity, nil
 }
 
-func (entity *Authenticator) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
-
+func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
+func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *Authenticator) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
 func (entity *Authenticator) ToCert() *AuthenticatorCert {

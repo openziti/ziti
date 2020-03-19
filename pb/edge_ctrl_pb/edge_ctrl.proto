@@ -41,19 +41,9 @@ message Error {
     string cause = 3;
 }
 
-message Dns {
-    string hostname = 1;
-    int32 port = 2;
-    string protocol = 3;
-}
-
 message Service {
     string id = 1;
     string name = 2;
-    string supportedProtocol = 4;
-    string egressRouter = 5;
-    string endpointAddress = 6;
-    Dns dns = 8;
 }
 
 message Session {

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -43,25 +43,25 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 	defer ctx.cleanupAll()
 
 	apiSession := NewApiSession(uuid.New().String())
-	err := ctx.create(apiSession)
+	err := ctx.Create(apiSession)
 	ctx.EqualError(err, fmt.Sprintf("no entity of type identities with id %v", apiSession.IdentityId))
 
 	apiSession.IdentityId = ""
-	err = ctx.create(apiSession)
+	err = ctx.Create(apiSession)
 	ctx.EqualError(err, "index on apiSessions.identity does not allow null or empty values")
 
 	identity := ctx.requireNewIdentity("user1", false)
 	apiSession.Token = ""
 	apiSession.IdentityId = identity.Id
 
-	err = ctx.create(apiSession)
+	err = ctx.Create(apiSession)
 	ctx.EqualError(err, "index on apiSessions.token does not allow null or empty values")
 
 	apiSession.Token = uuid.New().String()
-	err = ctx.create(apiSession)
+	err = ctx.Create(apiSession)
 	ctx.NoError(err)
-	err = ctx.create(apiSession)
-	ctx.EqualError(err, fmt.Sprintf("an entity of type apiSessions already exists with id %v", apiSession.GetId()))
+	err = ctx.Create(apiSession)
+	ctx.EqualError(err, fmt.Sprintf("an entity of type apiSession already exists with id %v", apiSession.GetId()))
 }
 
 func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
@@ -70,26 +70,26 @@ func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
 	identity := ctx.requireNewIdentity("Jojo", false)
 
 	apiSession := NewApiSession(identity.Id)
-	ctx.requireCreate(apiSession)
+	ctx.RequireCreate(apiSession)
 
-	ctx.validateBaseline(apiSession)
+	ctx.ValidateBaseline(apiSession)
 
 	apiSessionIds := ctx.getRelatedIds(identity, FieldIdentityApiSessions)
 	ctx.EqualValues(1, len(apiSessionIds))
 	ctx.EqualValues(apiSession.Id, apiSessionIds[0])
 
 	apiSession2 := NewApiSession(identity.Id)
-	apiSession2.Tags = ctx.createTags()
-	ctx.requireCreate(apiSession2)
+	apiSession2.Tags = ctx.CreateTags()
+	ctx.RequireCreate(apiSession2)
 
-	ctx.validateBaseline(apiSession2)
+	ctx.ValidateBaseline(apiSession2)
 
 	apiSessionIds = ctx.getRelatedIds(identity, FieldIdentityApiSessions)
 	ctx.EqualValues(2, len(apiSessionIds))
 	ctx.True(stringz.Contains(apiSessionIds, apiSession.Id))
 	ctx.True(stringz.Contains(apiSessionIds, apiSession2.Id))
 
-	ctx.requireDelete(apiSession)
+	ctx.RequireDelete(apiSession)
 
 	apiSessionIds = ctx.getRelatedIds(identity, FieldIdentityApiSessions)
 	ctx.EqualValues(1, len(apiSessionIds))
@@ -111,22 +111,22 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 	identity2 := ctx.requireNewIdentity("user1", false)
 
 	apiSession1 := NewApiSession(identity1.Id)
-	ctx.requireCreate(apiSession1)
+	ctx.RequireCreate(apiSession1)
 
 	apiSession2 := NewApiSession(identity2.Id)
-	ctx.requireCreate(apiSession2)
+	ctx.RequireCreate(apiSession2)
 
 	apiSession3 := NewApiSession(identity2.Id)
-	ctx.requireCreate(apiSession3)
+	ctx.RequireCreate(apiSession3)
 
 	service := ctx.requireNewService("test-service")
 	session := &Session{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Token:              uuid.New().String(),
-		ApiSessionId:       apiSession2.Id,
-		ServiceId:          service.Id,
+		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Token:         uuid.New().String(),
+		ApiSessionId:  apiSession2.Id,
+		ServiceId:     service.Id,
 	}
-	ctx.requireCreate(session)
+	ctx.RequireCreate(session)
 
 	return &apiSessionTestEntities{
 		identity1:   identity1,
@@ -144,7 +144,7 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 
 	entities := ctx.createApiSessionTestEntities()
 
-	err := ctx.db.View(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		apiSession, err := ctx.stores.ApiSession.LoadOneByToken(tx, entities.apiSession1.Token)
 		ctx.NoError(err)
 		ctx.NotNil(apiSession)
@@ -179,7 +179,7 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.db.Update(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		original, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
@@ -188,7 +188,7 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 		ctx.NoError(err)
 		ctx.NotNil(apiSession)
 
-		tags := ctx.createTags()
+		tags := ctx.CreateTags()
 		now := time.Now()
 		apiSession.Token = uuid.New().String()
 		apiSession.UpdatedAt = earlier
@@ -214,7 +214,7 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 func (ctx *TestContext) testDeleteApiSessions(_ *testing.T) {
 	ctx.cleanupAll()
 	entities := ctx.createApiSessionTestEntities()
-	ctx.requireDelete(entities.apiSession1)
-	ctx.requireDelete(entities.apiSession2)
-	ctx.requireDelete(entities.apiSession3)
+	ctx.RequireDelete(entities.apiSession1)
+	ctx.RequireDelete(entities.apiSession2)
+	ctx.RequireDelete(entities.apiSession3)
 }

@@ -92,9 +92,9 @@ func (ir *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext
 }
 
 func (ir *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.CollectServices, MapServiceToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServicePolicy, ae.Handlers.EdgeService, MapServiceToApiEntity)
 }
 
 func (ir *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociations(ae, rc, ir.IdType, ae.Handlers.ServicePolicy.CollectIdentities, MapIdentityToApiEntity)
+	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToApiEntity)
 }

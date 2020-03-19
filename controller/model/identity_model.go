@@ -18,7 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/util"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -26,7 +26,7 @@ import (
 )
 
 type Identity struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name           string
 	IdentityTypeId string
 	IsDefaultAdmin bool
@@ -34,38 +34,38 @@ type Identity struct {
 	RoleAttributes []string
 }
 
-func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
-	edgeService := &persistence.Identity{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		IdentityTypeId:     entity.IdentityTypeId,
-		IsDefaultAdmin:     entity.IsDefaultAdmin,
-		IsAdmin:            entity.IsAdmin,
-		RoleAttributes:     entity.RoleAttributes,
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
+	boltEntity := &persistence.Identity{
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:           entity.Name,
+		IdentityTypeId: entity.IdentityTypeId,
+		IsDefaultAdmin: entity.IsDefaultAdmin,
+		IsAdmin:        entity.IsAdmin,
+		RoleAttributes: entity.RoleAttributes,
 	}
 
-	return edgeService, nil
+	return boltEntity, nil
 }
 
-func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	return &persistence.Identity{
-		Name:               entity.Name,
-		IdentityTypeId:     entity.IdentityTypeId,
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		RoleAttributes:     entity.RoleAttributes,
+		Name:           entity.Name,
+		IdentityTypeId: entity.IdentityTypeId,
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		RoleAttributes: entity.RoleAttributes,
 	}, nil
 }
 
-func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltIdentity)
+	entity.FillCommon(boltIdentity)
 	entity.Name = boltIdentity.Name
 	entity.IdentityTypeId = boltIdentity.IdentityTypeId
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
@@ -88,12 +88,12 @@ func toBoltServiceConfigs(tx *bbolt.Tx, handler Handler, serviceConfigs []Servic
 	for _, serviceConfig := range serviceConfigs {
 		service := persistence.ValidateAndConvertNameToId(tx, serviceStore, serviceConfig.Service)
 		if service == nil {
-			return nil, util.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
+			return nil, boltz.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
 		}
 
 		config := persistence.ValidateAndConvertNameToId(tx, configStore, serviceConfig.Config)
 		if config == nil {
-			return nil, util.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
+			return nil, boltz.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
 		}
 
 		boltServiceConfigs = append(boltServiceConfigs, persistence.ServiceConfig{

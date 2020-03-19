@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -25,7 +26,7 @@ import (
 )
 
 type EventLog struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Type             string
 	ActorType        string
 	ActorId          string
@@ -37,35 +38,39 @@ type EventLog struct {
 	Data             map[string]interface{}
 }
 
-func (entity *EventLog) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EventLog) toBoltEntity() (boltz.Entity, error) {
 	return &persistence.EventLog{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Type:               entity.Type,
-		ActorType:          entity.ActorType,
-		ActorId:            entity.ActorId,
-		EntityType:         entity.EntityType,
-		EntityId:           entity.EntityId,
-		FormattedMessage:   entity.FormattedMessage,
-		FormatString:       entity.FormatString,
-		FormatData:         entity.FormatData,
-		Data:               entity.Data,
+		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Type:             entity.Type,
+		ActorType:        entity.ActorType,
+		ActorId:          entity.ActorId,
+		EntityType:       entity.EntityType,
+		EntityId:         entity.EntityId,
+		FormattedMessage: entity.FormattedMessage,
+		FormatString:     entity.FormatString,
+		FormatData:       entity.FormatData,
+		Data:             entity.Data,
 	}, nil
 }
 
-func (entity *EventLog) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *EventLog) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *EventLog) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *EventLog) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *EventLog) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EventLog) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *EventLog) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEventLog, ok := boltEntity.(*persistence.EventLog)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model event log", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltEventLog)
+	entity.FillCommon(boltEventLog)
 	entity.Type = boltEventLog.Type
 	entity.ActorType = boltEventLog.ActorType
 	entity.ActorId = boltEventLog.ActorId

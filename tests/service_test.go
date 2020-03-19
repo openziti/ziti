@@ -1,7 +1,7 @@
 // +build apitests
 
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -172,7 +172,7 @@ func Test_Services(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		service.endpointAddress = uuid.New().String()
+		service.terminatorStrategy = uuid.New().String()
 		ctx.AdminSession.requireUpdateEntity(service)
 
 		result := ctx.AdminSession.requireQuery("services/" + service.id)
@@ -218,6 +218,8 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	service2 := ctx.AdminSession.requireNewService(nil, s(config1.id))
 	service3 := ctx.AdminSession.requireNewService(nil, s(config2.name))
 	service4 := ctx.AdminSession.requireNewService(nil, s(config2.id, config3.name))
+
+	ctx.AdminSession.validateAssociations(service4, "configs", config2, config3)
 
 	service1V := &configValidatingService{service: service1}
 	service2V := &configValidatingService{service: service2}
@@ -298,7 +300,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		service.configs = map[string]*config{}
 	}
 
-	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{Service: service1.id, Config: config5.id}, serviceConfig{Service: service3.id, Config: config1.id}, )
+	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{Service: service1.id, Config: config5.id}, serviceConfig{Service: service3.id, Config: config1.id})
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
 	checkConfigs = []serviceConfig{
 		{Service: service4.id, Config: config1.id},

@@ -295,6 +295,12 @@ func (request *authenticatedRequests) requireNewService(roleAttributes, configs 
 	return service
 }
 
+func (request *authenticatedRequests) requireNewTerminator(serviceId, routerId, binding, address string) *terminator {
+	terminator := request.testContext.newTerminator(serviceId, routerId, binding, address)
+	request.requireCreateEntity(terminator)
+	return terminator
+}
+
 func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...string) *edgeRouter {
 	edgeRouter := newTestEdgeRouter(roleAttributes...)
 	request.requireCreateEntity(edgeRouter)
@@ -635,4 +641,10 @@ func (request *authenticatedRequests) requirePatchEntity(entity entity, fields .
 
 func (request *authenticatedRequests) patchEntity(entity entity, fields ...string) (int, []byte) {
 	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext, fields...), true)
+}
+
+func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
+	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
+	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
+	return data.Data().(string)
 }

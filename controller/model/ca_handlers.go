@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -25,10 +26,7 @@ import (
 
 func NewCaHandler(env Env) *CaHandler {
 	handler := &CaHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().Ca,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().Ca),
 	}
 	handler.impl = handler
 	return handler
@@ -64,7 +62,7 @@ func (handler *CaHandler) readInTx(tx *bbolt.Tx, id string) (*Ca, error) {
 
 func (handler *CaHandler) IsUpdated(field string) bool {
 	return strings.EqualFold(field, persistence.FieldName) ||
-		strings.EqualFold(field, persistence.FieldTags) ||
+		strings.EqualFold(field, boltz.FieldTags) ||
 		strings.EqualFold(field, persistence.FieldCaIsAutoCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsOttCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled)
@@ -88,7 +86,7 @@ func (handler *CaHandler) Verified(ca *Ca) error {
 }
 
 func (handler *CaHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }
 
 func (handler *CaHandler) Query(query string) (*CaListResult, error) {
@@ -99,21 +97,13 @@ func (handler *CaHandler) Query(query string) (*CaListResult, error) {
 	return result, nil
 }
 
-func (handler *CaHandler) PublicQuery(queryOptions *QueryOptions) (*CaListResult, error) {
-	result := &CaListResult{handler: handler}
-	if err := handler.parseAndList(queryOptions, result.collect); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 type CaListResult struct {
 	handler *CaHandler
 	Cas     []*Ca
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.handler.readInTx(tx, key)

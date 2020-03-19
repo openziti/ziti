@@ -18,17 +18,16 @@ package model
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 
-	"github.com/netfoundry/ziti-edge/controller/util"
 	"go.etcd.io/bbolt"
 )
 
 func NewSessionHandler(env Env) *SessionHandler {
 	handler := &SessionHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().Session,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().Session),
 	}
 	handler.impl = handler
 	return handler
@@ -62,7 +61,7 @@ func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*S
 		return nil, err
 	}
 	if len(result.Sessions) == 0 {
-		return nil, util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
+		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
 	}
 	return result.Sessions[0], nil
 }
@@ -89,26 +88,26 @@ func (handler *SessionHandler) DeleteForIdentity(id, identityId string) error {
 		return err
 	}
 	if session == nil {
-		return util.NewNotFoundError(handler.store.GetSingularEntityType(), "id", id)
+		return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
 	}
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }
 
 func (handler *SessionHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
+	return handler.deleteEntity(id)
 }
 
-func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity, queryOptions *QueryOptions) (*SessionListResult, error) {
+func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {
 	if sessionIdentity.IsAdmin {
-		return handler.parseAndListSessions(queryOptions)
+		return handler.querySessions(query)
 	}
-	query := queryOptions.Predicate
-	if query != "" {
-		query = "(" + query + ") and "
+	identityFilterString := fmt.Sprintf(`apiSession.identity = "%v"`, sessionIdentity.Id)
+	identityFilter, err := ast.Parse(handler.Store, identityFilterString)
+	if err != nil {
+		return nil, err
 	}
-	query += fmt.Sprintf(`apiSession.identity = "%v"`, sessionIdentity.Id)
-	queryOptions.finalQuery = query
-	return handler.parseAndListSessions(queryOptions)
+	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), identityFilter))
+	return handler.querySessions(query)
 }
 
 func (handler *SessionHandler) ReadSessionCerts(sessionId string) ([]*SessionCert, error) {
@@ -143,9 +142,9 @@ func (handler *SessionHandler) Query(query string) (*SessionListResult, error) {
 	return result, nil
 }
 
-func (handler *SessionHandler) parseAndListSessions(queryOptions *QueryOptions) (*SessionListResult, error) {
+func (handler *SessionHandler) querySessions(query ast.Query) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
+	err := handler.preparedList(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +165,10 @@ func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*
 type SessionListResult struct {
 	handler  *SessionHandler
 	Sessions []*Session
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *SessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *SessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.handler.readInTx(tx, key)

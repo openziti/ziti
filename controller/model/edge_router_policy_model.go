@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -25,37 +26,41 @@ import (
 )
 
 type EdgeRouterPolicy struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name            string
 	Semantic        string
 	IdentityRoles   []string
 	EdgeRouterRoles []string
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
 	return &persistence.EdgeRouterPolicy{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Name:               entity.Name,
-		Semantic:           entity.Semantic,
-		IdentityRoles:      entity.IdentityRoles,
-		EdgeRouterRoles:    entity.EdgeRouterRoles,
+		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:            entity.Name,
+		Semantic:        entity.Semantic,
+		IdentityRoles:   entity.IdentityRoles,
+		EdgeRouterRoles: entity.EdgeRouterRoles,
 	}, nil
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *EdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *EdgeRouterPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltEdgeRouterPolicy)
+	entity.FillCommon(boltEdgeRouterPolicy)
 	entity.Name = boltEdgeRouterPolicy.Name
 	entity.Semantic = boltEdgeRouterPolicy.Semantic
 	entity.EdgeRouterRoles = boltEdgeRouterPolicy.EdgeRouterRoles

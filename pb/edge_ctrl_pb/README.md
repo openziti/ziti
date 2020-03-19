@@ -7,5 +7,5 @@
 
 
 #Generate Go Code
-1) Navigate to the ziti project root
-1) Run: ```protoc -I ./edge/pb/edge_ctrl_pb/ ./edge/pb/edge_ctrl_pb/edge_ctrl.proto --go_out=edge/pb/edge_ctrl_pb```
+1) Navigate to the ziti-edge project root
+1) Run: ```protoc -I ./pb/edge_ctrl_pb/ ./pb/edge_ctrl_pb/edge_ctrl.proto --go_out=./pb/edge_ctrl_pb```

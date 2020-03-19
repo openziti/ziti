@@ -17,6 +17,7 @@
 package model
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -24,10 +25,7 @@ import (
 
 func NewConfigHandler(env Env) *ConfigHandler {
 	handler := &ConfigHandler{
-		baseHandler: baseHandler{
-			env:   env,
-			store: env.GetStores().Config,
-		},
+		baseHandler: newBaseHandler(env, env.GetStores().Config),
 	}
 	handler.impl = handler
 	return handler
@@ -75,25 +73,16 @@ func (handler *ConfigHandler) Patch(config *Config, checker boltz.FieldChecker) 
 }
 
 func (handler *ConfigHandler) Delete(id string) error {
-	return handler.deleteEntity(id, nil)
-}
-
-func (handler *ConfigHandler) PublicQuery(queryOptions *QueryOptions) (*ConfigListResult, error) {
-	result := &ConfigListResult{handler: handler}
-	err := handler.parseAndList(queryOptions, result.collect)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return handler.deleteEntity(id)
 }
 
 type ConfigListResult struct {
 	handler *ConfigHandler
 	Configs []*Config
-	QueryMetaData
+	models.QueryMetaData
 }
 
-func (result *ConfigListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *ConfigListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.handler.readInTx(tx, key)

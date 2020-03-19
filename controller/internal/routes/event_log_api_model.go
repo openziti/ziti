@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 )
 
 const EntityNameEventLog = "event-logs"
@@ -64,7 +65,7 @@ func (e *EventLogApiList) ToEntityApiRef() *EntityApiRef {
 	}
 }
 
-func MapEventLogToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model.BaseModelEntity) (BaseApiEntity, error) {
+func MapEventLogToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
 	i, ok := e.(*model.EventLog)
 
 	if !ok {

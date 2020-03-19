@@ -1,9 +1,9 @@
 {
   "$id": "http://ziti-edge.netfoundry.io/schemas/authenticator.post.json",
-  "oneOf": [
+  "anyOf": [
     {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "method",
         "certPem",
@@ -31,7 +31,7 @@
     },
     {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "method",
         "username",

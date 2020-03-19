@@ -31,15 +31,19 @@ const (
 
 func newConfigType(name string) *ConfigType {
 	return &ConfigType{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
+		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:          name,
 	}
 }
 
 type ConfigType struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name   string
 	Schema map[string]interface{}
+}
+
+func (entity *ConfigType) GetName() string {
+	return entity.Name
 }
 
 func (entity *ConfigType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -73,10 +77,9 @@ func (entity *ConfigType) GetEntityType() string {
 }
 
 type ConfigTypeStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*ConfigType, error)
 	LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error)
-	GetNameIndex() boltz.ReadIndex
 	GetName(tx *bbolt.Tx, id string) *string
 }
 
@@ -100,7 +103,7 @@ func (store *configTypeStoreImpl) GetNameIndex() boltz.ReadIndex {
 }
 
 func (store *configTypeStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
 	store.AddSymbol(FieldConfigTypeSchema, ast.NodeTypeString)
@@ -109,7 +112,7 @@ func (store *configTypeStoreImpl) initializeLocal() {
 func (store *configTypeStoreImpl) initializeLinked() {
 }
 
-func (store *configTypeStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *configTypeStoreImpl) NewStoreEntity() boltz.Entity {
 	return &ConfigType{}
 }
 

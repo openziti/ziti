@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -29,7 +30,7 @@ import (
 )
 
 type Ca struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name                      string
 	Fingerprint               string
 	CertPem                   string
@@ -40,12 +41,12 @@ type Ca struct {
 	IsAuthEnabled             bool
 }
 
-func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltCa, ok := boltEntity.(*persistence.Ca)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltCa)
+	entity.FillCommon(boltCa)
 	entity.Name = boltCa.Name
 	entity.Fingerprint = boltCa.Fingerprint
 	entity.CertPem = boltCa.CertPem
@@ -57,7 +58,7 @@ func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.BaseEntity) 
 	return nil
 }
 
-func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	var fp string
 
 	if entity.CertPem != "" {
@@ -105,7 +106,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 	}
 
 	boltEntity := &persistence.Ca{
-		BaseEdgeEntityImpl:        *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
 		CertPem:                   entity.CertPem,
 		Fingerprint:               fp,
@@ -119,9 +120,9 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persiste
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.Ca{
-		BaseEdgeEntityImpl:        *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
 		IsAuthEnabled:             entity.IsAuthEnabled,
 		IsAutoCaEnrollmentEnabled: entity.IsAutoCaEnrollmentEnabled,
@@ -132,6 +133,6 @@ func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (persistence.Bas
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }

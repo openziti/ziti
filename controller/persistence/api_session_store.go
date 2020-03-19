@@ -30,7 +30,7 @@ const (
 )
 
 type ApiSession struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	IdentityId  string
 	Token       string
 	ConfigTypes []string
@@ -38,9 +38,9 @@ type ApiSession struct {
 
 func NewApiSession(identityId string) *ApiSession {
 	return &ApiSession{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		IdentityId:         identityId,
-		Token:              uuid.New().String(),
+		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		IdentityId:    identityId,
+		Token:         uuid.New().String(),
 	}
 }
 
@@ -87,7 +87,7 @@ type apiSessionStoreImpl struct {
 	symbolSessions boltz.EntitySetSymbol
 }
 
-func (store *apiSessionStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *apiSessionStoreImpl) NewStoreEntity() boltz.Entity {
 	return &ApiSession{}
 }
 
@@ -96,7 +96,7 @@ func (store *apiSessionStoreImpl) GetTokenIndex() boltz.ReadIndex {
 }
 
 func (store *apiSessionStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	symbolToken := store.AddSymbol(FieldApiSessionToken, ast.NodeTypeString)
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 	store.symbolIdentity = store.AddFkSymbol(FieldApiSessionIdentity, store.stores.identity)
@@ -120,7 +120,7 @@ func (store *apiSessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*A
 	if id != nil {
 		return store.LoadOneById(tx, string(id))
 	}
-	return nil, nil
+	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
 }
 
 func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error) {

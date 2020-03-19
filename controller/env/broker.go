@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -371,7 +371,7 @@ func (b *Broker) sessionCreateEventHandler(args ...interface{}) {
 func (b *Broker) sendSessionCreates(session *persistence.Session) {
 	sessionAdded := &edge_ctrl_pb.SessionAdded{}
 
-	service, err := b.ae.Handlers.Service.Read(session.ServiceId)
+	service, err := b.ae.Handlers.EdgeService.Read(session.ServiceId)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("could not send network session added, could not find service")
 		return
@@ -413,10 +413,8 @@ func (b *Broker) sendSessionCreates(session *persistence.Session) {
 
 func (b *Broker) modelServiceToProto(service *model.Service) (*edge_ctrl_pb.Service, error) {
 	return &edge_ctrl_pb.Service{
-		Name:            service.Name,
-		Id:              service.Id,
-		EndpointAddress: service.EndpointAddress,
-		EgressRouter:    service.EgressRouter,
+		Name: service.Name,
+		Id:   service.Id,
 	}, nil
 }
 
@@ -533,7 +531,7 @@ func (b *Broker) modelApiSessionToProto(token, identityId string) (*edge_ctrl_pb
 }
 
 func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, error) {
-	service, err := b.ae.Handlers.Service.Read(ns.ServiceId)
+	service, err := b.ae.Handlers.EdgeService.Read(ns.ServiceId)
 	if err != nil {
 		return nil, fmt.Errorf("could not convert to session proto, could not find service: %s", err)
 	}

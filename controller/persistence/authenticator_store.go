@@ -64,7 +64,7 @@ func (entity *AuthenticatorUpdb) Fingerprints() []string {
 }
 
 type Authenticator struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Type       string
 	IdentityId string
 	SubType    AuthenticatorSubType
@@ -171,12 +171,12 @@ type authenticatorStoreImpl struct {
 	symbolIdentityId boltz.EntitySymbol
 }
 
-func (store *authenticatorStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *authenticatorStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Authenticator{}
 }
 
 func (store *authenticatorStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	store.AddSymbol(FieldAuthenticatorMethod, ast.NodeTypeString)
 	store.AddSymbol(FieldAuthenticatorCertFingerprint, ast.NodeTypeString)

@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -27,42 +28,46 @@ import (
 )
 
 type ApiSession struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Token       string
 	IdentityId  string
 	Identity    *Identity
 	ConfigTypes map[string]struct{}
 }
 
-func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, validation.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
 	boltEntity := &persistence.ApiSession{
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
-		Token:              entity.Token,
-		IdentityId:         entity.IdentityId,
-		ConfigTypes:        stringz.SetToSlice(entity.ConfigTypes),
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:         entity.Token,
+		IdentityId:    entity.IdentityId,
+		ConfigTypes:   stringz.SetToSlice(entity.ConfigTypes),
 	}
 
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, handler)
+}
+
+func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSession", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltApiSession)
+	entity.FillCommon(boltApiSession)
 	entity.Token = boltApiSession.Token
 	entity.IdentityId = boltApiSession.IdentityId
 	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)

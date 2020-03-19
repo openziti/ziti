@@ -12,17 +12,21 @@ import (
 
 func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
 	return &EdgeRouterPolicy{
-		BaseEdgeEntityImpl: BaseEdgeEntityImpl{Id: uuid.New().String()},
-		Name:               name,
+		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:          name,
 	}
 }
 
 type EdgeRouterPolicy struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name            string
 	Semantic        string
 	IdentityRoles   []string
 	EdgeRouterRoles []string
+}
+
+func (entity *EdgeRouterPolicy) GetName() string {
+	return entity.Name
 }
 
 func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -75,7 +79,7 @@ func (entity *EdgeRouterPolicy) GetEntityType() string {
 }
 
 type EdgeRouterPolicyStore interface {
-	Store
+	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 }
@@ -102,19 +106,23 @@ type edgeRouterPolicyStoreImpl struct {
 	edgeRouterCollection boltz.LinkCollection
 }
 
-func (store *edgeRouterPolicyStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *edgeRouterPolicyStoreImpl) NewStoreEntity() boltz.Entity {
 	return &EdgeRouterPolicy{}
 }
 
+func (store *edgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
+}
+
 func (store *edgeRouterPolicyStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
 	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
-	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeService)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)
 }
 
 func (store *edgeRouterPolicyStoreImpl) initializeLinked() {

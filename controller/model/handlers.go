@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -16,30 +16,41 @@
 
 package model
 
+import "github.com/netfoundry/ziti-fabric/controller/network"
+
 type Handlers struct {
+	// fabric
+	Router     *network.RouterController
+	Service    *network.ServiceController
+	Terminator *network.TerminatorController
+
+	// edge
 	ApiSession              *ApiSessionHandler
 	Ca                      *CaHandler
 	Config                  *ConfigHandler
 	ConfigType              *ConfigTypeHandler
 	EdgeRouter              *EdgeRouterHandler
 	EdgeRouterPolicy        *EdgeRouterPolicyHandler
+	EdgeService             *EdgeServiceHandler
 	EventLog                *EventLogHandler
 	GeoRegion               *GeoRegionHandler
 	Identity                *IdentityHandler
 	IdentityType            *IdentityTypeHandler
-	Service                 *ServiceHandler
 	ServiceEdgeRouterPolicy *ServiceEdgeRouterPolicyHandler
 	ServicePolicy           *ServicePolicyHandler
 	Session                 *SessionHandler
 
 	Authenticator *AuthenticatorHandler
 	Enrollment    *EnrollmentHandler
-
-	Associations *AssociationsHandler
 }
 
 func InitHandlers(env Env) *Handlers {
 	handlers := &Handlers{}
+
+	handlers.Router = env.GetDbProvider().GetControllers().Routers
+	handlers.Service = env.GetDbProvider().GetControllers().Services
+	handlers.Terminator = env.GetDbProvider().GetControllers().Terminators
+
 	handlers.ApiSession = NewApiSessionHandler(env)
 	handlers.Authenticator = NewAuthenticatorHandler(env)
 	handlers.Ca = NewCaHandler(env)
@@ -52,11 +63,10 @@ func InitHandlers(env Env) *Handlers {
 	handlers.GeoRegion = NewGeoRegionHandler(env)
 	handlers.Identity = NewIdentityHandler(env)
 	handlers.IdentityType = NewIdentityTypeHandler(env)
-	handlers.Service = NewServiceHandler(env)
+	handlers.EdgeService = NewEdgeServiceHandler(env)
 	handlers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyHandler(env)
 	handlers.ServicePolicy = NewServicePolicyHandler(env)
 	handlers.Session = NewSessionHandler(env)
 
-	handlers.Associations = NewAssociationsHandler(env)
 	return handlers
 }

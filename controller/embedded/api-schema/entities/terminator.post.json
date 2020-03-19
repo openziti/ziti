@@ -1,0 +1,31 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/terminator.post.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "service",
+    "router",
+    "address"
+  ],
+  "properties": {
+    "service": {
+      "type": "string"
+    },
+    "router": {
+      "type": "string"
+    },
+    "binding": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "address": {
+      "type": "string"
+    },
+    "tags": {
+      "default": {},
+      "$ref": "definitions.all.json#/definitions/tags-null"
+    }
+  }
+}

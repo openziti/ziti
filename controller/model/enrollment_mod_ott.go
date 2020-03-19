@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 )
 
 type EnrollModuleOtt struct {
@@ -81,7 +82,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 	})
 
 	newAuthenticator := &Authenticator{
-		BaseModelEntityImpl: BaseModelEntityImpl{
+		BaseEntity: models.BaseEntity{
 			Id: uuid.New().String(),
 		},
 		Method:     persistence.MethodAuthenticatorCert,

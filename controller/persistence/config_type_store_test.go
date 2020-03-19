@@ -36,12 +36,12 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	ctx.cleanupAll()
 
 	configType := newConfigType("")
-	err := ctx.create(configType)
+	err := ctx.Create(configType)
 	ctx.EqualError(err, "index on configTypes.name does not allow null or empty values")
 
 	configType = newConfigType(uuid.New().String())
-	ctx.requireCreate(configType)
-	ctx.validateBaseline(configType)
+	ctx.RequireCreate(configType)
+	ctx.ValidateBaseline(configType)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		testConfigType, err := ctx.stores.ConfigType.LoadOneByName(tx, configType.Name)
@@ -55,14 +55,14 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
 	configType.Name = uuid.New().String()
-	ctx.requireUpdate(configType)
-	ctx.validateUpdated(configType)
+	ctx.RequireUpdate(configType)
+	ctx.ValidateUpdated(configType)
 
 	config := newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	ctx.requireCreate(config)
+	ctx.RequireCreate(config)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ids := ctx.stores.ConfigType.GetRelatedEntitiesIdList(tx, configType.Id, EntityTypeConfigs)
@@ -71,9 +71,9 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	err = ctx.delete(configType)
+	err = ctx.Delete(configType)
 	ctx.EqualError(err, fmt.Sprintf("cannot delete config type %v, as configs of that type exist", configType.Id))
 
-	ctx.requireDelete(config)
-	ctx.requireDelete(configType)
+	ctx.RequireDelete(config)
+	ctx.RequireDelete(configType)
 }

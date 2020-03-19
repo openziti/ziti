@@ -60,14 +60,11 @@ type StateManager interface {
 	RemoveConnectedSession(token string, underlay channel2.Channel)
 }
 
-type ProtocolEndpointMap map[string]string
-
 type StateManagerImpl struct {
 	networkSessionsByToken *sync.Map
 	sessionsByToken        *sync.Map
 	supportedFabrics       *sync.Map
 	activeSessions         *sync.Map
-	ProtocolEndpoint       ProtocolEndpointMap
 	Hostname               string
 	ControllerAddr         string
 	ClusterId              string

@@ -35,7 +35,7 @@ const (
 )
 
 type EventLog struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Type             string
 	ActorType        string
 	ActorId          string
@@ -95,12 +95,12 @@ type eventLogStoreImpl struct {
 	*baseStore
 }
 
-func (store *eventLogStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *eventLogStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Cluster{}
 }
 
 func (store *eventLogStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 
 	store.AddSymbol(FieldEventLogType, ast.NodeTypeString)
 	store.AddSymbol(FieldEventLogActorType, ast.NodeTypeString)

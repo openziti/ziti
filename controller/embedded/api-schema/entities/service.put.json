@@ -1,21 +1,19 @@
 {
   "$id": "http://ziti-edge.netfoundry.io/schemas/services.put.json",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
-    "name",
-    "endpointAddress",
-    "egressRouter"
+    "name"
   ],
   "properties": {
     "name": {
       "$ref": "definitions.all.json#/definitions/name"
     },
-    "egressRouter": {
-      "type": "string"
-    },
-    "endpointAddress": {
-      "type": "string"
+    "terminatorStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "roleAttributes": {
       "default": null,

@@ -54,7 +54,7 @@ func (ir *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (ir *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &ConfigCreateApi{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Config.Post, apiEntity, (&ConfigApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Config.Create(apiEntity.ToModel(""))
+		return ae.Handlers.Config.Create(apiEntity.ToModel())
 	})
 }
 

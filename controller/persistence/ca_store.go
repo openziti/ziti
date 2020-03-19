@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ const (
 )
 
 type Ca struct {
-	BaseEdgeEntityImpl
+	boltz.BaseExtEntity
 	Name                      string
 	Fingerprint               string
 	CertPem                   string
@@ -42,6 +42,10 @@ type Ca struct {
 	IsAutoCaEnrollmentEnabled bool
 	IsOttCaEnrollmentEnabled  bool
 	IsAuthEnabled             bool
+}
+
+func (entity *Ca) GetName() string {
+	return entity.Name
 }
 
 func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -92,12 +96,12 @@ type caStoreImpl struct {
 	indexName boltz.ReadIndex
 }
 
-func (store *caStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *caStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Ca{}
 }
 
 func (store *caStoreImpl) initializeLocal() {
-	store.addBaseFields()
+	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
 	store.AddSymbol(FieldCaFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldCaIsVerified, ast.NodeTypeBool)

@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -25,31 +26,35 @@ import (
 )
 
 type GeoRegion struct {
-	BaseModelEntityImpl
+	models.BaseEntity
 	Name string `json:"name"`
 }
 
-func (entity *GeoRegion) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
+func (entity *GeoRegion) toBoltEntity() (boltz.Entity, error) {
 	return &persistence.GeoRegion{
-		Name:               entity.Name,
-		BaseEdgeEntityImpl: *persistence.NewBaseEdgeEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *GeoRegion) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *GeoRegion) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *GeoRegion) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *GeoRegion) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
 }
 
-func (entity *GeoRegion) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error {
+func (entity *GeoRegion) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+	return entity.toBoltEntity()
+}
+
+func (entity *GeoRegion) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltGeoRegion, ok := boltEntity.(*persistence.GeoRegion)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model geoRegion", reflect.TypeOf(boltEntity))
 	}
-	entity.fillCommon(boltGeoRegion)
+	entity.FillCommon(boltGeoRegion)
 	entity.Name = boltGeoRegion.Name
 	return nil
 }

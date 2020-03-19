@@ -17,91 +17,19 @@
 package model
 
 import (
-	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
-type BaseModelEntity interface {
-	GetId() string
-	setId(string)
-	GetCreatedAt() time.Time
-	GetUpdatedAt() time.Time
-	GetTags() map[string]interface{}
-}
-
 type boltEntitySink interface {
-	BaseModelEntity
-	fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.BaseEntity) error
+	models.Entity
+	fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
 type boltEntitySource interface {
-	BaseModelEntity
-	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.BaseEdgeEntity, error)
-}
-
-type BaseModelEntityImpl struct {
-	Id        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Tags      map[string]interface{}
-}
-
-func (entity *BaseModelEntityImpl) GetId() string {
-	return entity.Id
-}
-
-func (entity *BaseModelEntityImpl) setId(id string) {
-	entity.Id = id
-}
-
-func (entity *BaseModelEntityImpl) GetCreatedAt() time.Time {
-	return entity.CreatedAt
-}
-
-func (entity *BaseModelEntityImpl) GetUpdatedAt() time.Time {
-	return entity.UpdatedAt
-}
-
-func (entity *BaseModelEntityImpl) GetTags() map[string]interface{} {
-	return entity.Tags
-}
-
-func (entity *BaseModelEntityImpl) fillCommon(boltEntity persistence.BaseEdgeEntity) {
-	entity.Id = boltEntity.GetId()
-	entity.CreatedAt = boltEntity.GetCreatedAt()
-	entity.UpdatedAt = boltEntity.GetUpdatedAt()
-	entity.Tags = boltEntity.GetTags()
-}
-
-type QueryMetaData struct {
-	Count            int64
-	Limit            int64
-	Offset           int64
-	FilterableFields []string
-}
-
-func ValidateEntityList(tx *bbolt.Tx, store boltz.ListStore, field string, ids []string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-
-	query := persistence.ToInFilter(ids...) + " limit none"
-	foundIds, _, err := store.QueryIds(tx, query)
-
-	if err != nil {
-		return err
-	}
-
-	if len(ids) != len(foundIds) {
-		invalidIds := stringz.Difference(ids, foundIds)
-		return validation.NewFieldError(fmt.Sprintf("%v(s) not found", store.GetEntityType()), field, invalidIds)
-	}
-	return nil
+	models.Entity
+	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
 }
