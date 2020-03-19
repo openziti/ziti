@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -133,6 +133,112 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
+		// terminator messages
+	case int32(ContentType_ListTerminatorsRequestType):
+		data, err := channel2.NewTraceMessageDecode(DECODER, "List Terminators Request").MarshalTraceMessageDecode()
+		if err != nil {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+		return data, true
+
+	case int32(ContentType_ListTerminatorsResponseType):
+		listTerminators := &ListTerminatorsResponse{}
+		if err := proto.Unmarshal(msg.Body, listTerminators); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "List Terminators Response")
+			meta["terminators"] = len(listTerminators.Terminators)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_CreateTerminatorRequestType):
+		createTerminator := &CreateTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, createTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Create Terminator Request")
+			meta["terminator"] = terminatorToString(createTerminator.Terminator)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_RemoveTerminatorRequestType):
+		removeTerminator := &RemoveTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, removeTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Terminator Request")
+			meta["terminatorId"] = removeTerminator.TerminatorId
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_GetTerminatorRequestType):
+		getTerminator := &GetTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, getTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Get Terminator Request")
+			meta["terminatorId"] = getTerminator.TerminatorId
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_GetTerminatorResponseType):
+		getTerminator := &GetTerminatorResponse{}
+		if err := proto.Unmarshal(msg.Body, getTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Get Terminator Response")
+			meta["terminator"] = terminatorToString(getTerminator.Terminator)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+		// router messages
 	case int32(ContentType_ListRoutersRequestType):
 		data, err := channel2.NewTraceMessageDecode(DECODER, "List Routers Request").MarshalTraceMessageDecode()
 		if err != nil {
@@ -300,7 +406,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 }
 
 func serviceToString(service *Service) string {
-	return fmt.Sprintf("{id=[%s] binding=[%s] endpoint=[%s] egress=[%s]}", service.Id, service.Binding, service.EndpointAddress, service.Egress)
+	return fmt.Sprintf("{id=[%s]}", service.Id)
+}
+
+func terminatorToString(terminator *Terminator) string {
+	return fmt.Sprintf("{id=[%s]}", terminator.Id)
 }
 
 func routerToString(router *Router) string {

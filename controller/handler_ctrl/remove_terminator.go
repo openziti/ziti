@@ -14,46 +14,46 @@
 	limitations under the License.
 */
 
-package handler_mgmt
+package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type removeServiceHandler struct {
+type removeTerminatorHandler struct {
 	network *network.Network
 }
 
-func newRemoveServiceHandler(network *network.Network) *removeServiceHandler {
-	return &removeServiceHandler{network: network}
+func newRemoveTerminatorHandler(network *network.Network) *removeTerminatorHandler {
+	return &removeTerminatorHandler{network: network}
 }
 
-func (h *removeServiceHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_RemoveServiceRequestType)
+func (h *removeTerminatorHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_RemoveTerminatorRequestType)
 }
 
-func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	request := &mgmt_pb.RemoveServiceRequest{}
+	request := &ctrl_pb.RemoveTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	_, err := h.network.Services.Read(request.ServiceId)
+	_, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	if err := h.network.Services.Delete(request.ServiceId); err == nil {
-		log.Infof("removed service [s/%v]", request.ServiceId)
+	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
+		log.Infof("removed terminator [e/%s]", request.TerminatorId)
 		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())

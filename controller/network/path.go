@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, err
 	prev := make(map[*Router]*Router)
 	unvisited := make(map[*Router]bool)
 
-	for _, r := range network.routerController.allConnected() {
+	for _, r := range network.Routers.allConnected() {
 		dist[r] = math.MaxInt32
 		unvisited[r] = true
 	}

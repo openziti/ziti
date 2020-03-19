@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -42,12 +43,12 @@ func (handler *removeSessionHandler) HandleReceive(msg *channel2.Message, ch cha
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
 		sessionId := &identity.TokenId{Token: request.SessionId}
 		if err := handler.network.RemoveSession(sessionId, request.Now); err == nil {
-			sendSuccess(msg, ch, "")
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
 			pfxlog.Logger().Errorf("unexpected error removing session s/[%s] (%s)", sessionId.Token, err)
-			sendFailure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

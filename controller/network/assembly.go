@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ import (
 func (network *Network) assemble() {
 	log := pfxlog.Logger()
 
-	if network.routerController.connectedCount() > 1 {
-		log.Debugf("assembling with [%d] routers", network.routerController.connectedCount())
+	if network.Routers.connectedCount() > 1 {
+		log.Debugf("assembling with [%d] routers", network.Routers.connectedCount())
 
-		missingLinks, err := network.linkController.missingLinks(network.routerController.allConnected())
+		missingLinks, err := network.linkController.missingLinks(network.Routers.allConnected())
 		if err == nil {
 			for _, missingLink := range missingLinks {
 				network.linkController.add(missingLink)

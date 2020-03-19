@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,137 +17,143 @@
 package network
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/orcaman/concurrent-map"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
 type Service struct {
-	Id              string
-	Binding         string
-	EndpointAddress string
-	Egress          string
-	PeerData        map[uint32][]byte
+	models.BaseEntity
+	TerminatorStrategy string
+	Terminators        []*Terminator
+}
+
+func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltService, ok := boltEntity.(*db.Service)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
+	}
+	entity.TerminatorStrategy = boltService.TerminatorStrategy
+	entity.FillCommon(boltService)
+
+	terminatorIds := ctrl.getControllers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if terminator, _ := ctrl.getControllers().Terminators.readInTx(tx, terminatorId); terminator != nil {
+			entity.Terminators = append(entity.Terminators, terminator)
+		}
+	}
+
+	return nil
 }
 
 func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
-		Id:              entity.Id,
-		Binding:         entity.Binding,
-		EndpointAddress: entity.EndpointAddress,
-		Egress:          entity.Egress,
-		PeerData:        entity.PeerData,
+		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
+		TerminatorStrategy: entity.TerminatorStrategy,
 	}
 }
 
-type serviceController struct {
-	cache  cmap.ConcurrentMap
-	db     *db.Db
-	stores *db.Stores
-	store  db.ServiceStore
+func newServiceController(controllers *Controllers) *ServiceController {
+	result := &ServiceController{
+		baseController: newController(controllers, controllers.stores.Service),
+		cache:          cmap.New(),
+		store:          controllers.stores.Service,
+	}
+	result.impl = result
+
+	controllers.stores.Terminator.On(boltz.EventCreate, result.terminatorChanged)
+	controllers.stores.Terminator.On(boltz.EventUpdate, result.terminatorChanged)
+	controllers.stores.Terminator.On(boltz.EventDelete, result.terminatorChanged)
+
+	return result
 }
 
-func newServiceController(db *db.Db, stores *db.Stores) *serviceController {
-	return &serviceController{
-		cache:  cmap.New(),
-		db:     db,
-		stores: stores,
-		store:  stores.Service,
+type ServiceController struct {
+	baseController
+	cache cmap.ConcurrentMap
+	store db.ServiceStore
+}
+
+func (ctrl *ServiceController) newModelEntity() boltEntitySink {
+	return &Service{}
+}
+
+func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
+	if len(params) > 0 {
+		if entity, ok := params[0].(*db.Terminator); ok {
+			ctrl.RemoveFromCache(entity.Service)
+		}
 	}
 }
 
-func (c *serviceController) create(s *Service) error {
-	err := c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Create(boltz.NewMutateContext(tx), s.toBolt())
-	})
-	if err != nil {
-		return err
-	}
-	c.cache.Set(s.Id, s)
-	return nil
-}
-
-func (c *serviceController) update(s *Service) error {
-	err := c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
-	})
-	if err != nil {
-		return err
-	}
-	c.cache.Set(s.Id, s)
-	return nil
-}
-
-func (c *serviceController) get(id string) (*Service, bool) {
-	if t, found := c.cache.Get(id); found {
-		return t.(*Service), true
-
-	}
-	var svc *Service
-	err := c.db.View(func(tx *bbolt.Tx) error {
-		boltSvc, err := c.store.LoadOneById(tx, id)
-		if err != nil {
+func (ctrl *ServiceController) Create(s *Service) error {
+	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		if err := ctrl.store.Create(ctx, s.toBolt()); err != nil {
 			return err
 		}
-		if boltSvc == nil {
-			return fmt.Errorf("missing service '%s'", id)
-		}
-		svc = c.fromBolt(boltSvc)
-		return nil
-	})
-	if err != nil {
-		pfxlog.Logger().Errorf("failed loading service (%s)", err)
-		return nil, false
-	}
-	if svc != nil {
-		c.cache.Set(svc.Id, svc)
-		return svc, true
-	}
-	return nil, false
-}
-
-func (c *serviceController) all() ([]*Service, error) {
-	var services []*Service
-	err := c.db.View(func(tx *bbolt.Tx) error {
-		ids, _, err := c.store.QueryIds(tx, "true")
-		if err != nil {
-			return err
-		}
-		for _, id := range ids {
-			service, err := c.store.LoadOneById(tx, id)
-			if err != nil {
+		for _, terminator := range s.Terminators {
+			terminator.Service = s.Id
+			if _, err := ctrl.Terminators.createInTx(ctx, terminator); err != nil {
 				return err
 			}
-			services = append(services, c.fromBolt(service))
 		}
 		return nil
+	})
+	if err != nil {
+		return err
+	}
+	ctrl.cache.Set(s.Id, s)
+	return nil
+}
+
+func (ctrl *ServiceController) Update(s *Service) error {
+	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+		return ctrl.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
+	})
+	if err != nil {
+		return err
+	}
+	ctrl.cache.Set(s.Id, s)
+	return nil
+}
+
+func (ctrl *ServiceController) Read(id string) (entity *Service, err error) {
+	err = ctrl.db.View(func(tx *bbolt.Tx) error {
+		entity, err = ctrl.readInTx(tx, id)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return services, nil
+	return entity, err
 }
 
-func (c *serviceController) remove(id string) error {
-	c.cache.Remove(id)
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
-}
-
-func (c *serviceController) RemoveFromCache(id string) {
-	c.cache.Remove(id)
-}
-
-func (c *serviceController) fromBolt(entity *db.Service) *Service {
-	return &Service{
-		Id:              entity.Id,
-		Binding:         entity.Binding,
-		EndpointAddress: entity.EndpointAddress,
-		Egress:          entity.Egress,
-		PeerData:        entity.PeerData,
+func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
+	if t, found := ctrl.cache.Get(id); found {
+		return t.(*Service), nil
 	}
+
+	entity := &Service{}
+	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
+		return nil, err
+	}
+
+	ctrl.cache.Set(id, entity)
+	return entity, nil
+}
+
+func (ctrl *ServiceController) Delete(id string) error {
+	err := controllers.DeleteEntityById(ctrl.store, ctrl.db, id)
+	ctrl.cache.Remove(id)
+	return err
+}
+
+func (ctrl *ServiceController) RemoveFromCache(id string) {
+	ctrl.cache.Remove(id)
 }

@@ -6,30 +6,38 @@ import "google/protobuf/timestamp.proto";
 
 enum ContentType {
     // Protoc says this has to be here
-    Zero                     = 0;
+    Zero = 0;
 
     // Services
-    ListServicesRequestType  = 10001;
+    ListServicesRequestType = 10001;
     ListServicesResponseType = 10002;
     CreateServiceRequestType = 10003;
     RemoveServiceRequestType = 10005;
-    GetServiceRequestType    = 10006;
-    GetServiceResponseType   = 10007;
+    GetServiceRequestType = 10006;
+    GetServiceResponseType = 10007;
+
+    // Service Terminators
+    CreateTerminatorRequestType = 10050;
+    RemoveTerminatorRequestType = 10051;
+    ListTerminatorsRequestType = 10052;
+    ListTerminatorsResponseType = 10053;
+    GetTerminatorRequestType = 10054;
+    GetTerminatorResponseType = 10055;
 
     // Routers
-    ListRoutersRequestType  = 10010;
+    ListRoutersRequestType = 10010;
     ListRoutersResponseType = 10011;
     CreateRouterRequestType = 10012;
     RemoveRouterRequestType = 10013;
 
     // Links
-    ListLinksRequestType   = 10020;
-    ListLinksResponseType  = 10021;
+    ListLinksRequestType = 10020;
+    ListLinksResponseType = 10021;
     SetLinkCostRequestType = 10022;
     SetLinkDownRequestType = 10023;
 
     // Sessions
-    ListSessionsRequestType  = 10030;
+    ListSessionsRequestType = 10030;
     ListSessionsResponseType = 10031;
     RemoveSessionRequestType = 10032;
 
@@ -55,12 +63,24 @@ enum ContentType {
 
 message Service {
     string id = 1;
-    string binding = 2;
-    string endpointAddress = 3;
-    string egress = 4;
+    string terminatorStrategy = 2;
+    repeated Terminator terminators = 3;
 }
 
-message ListServicesRequest {}
+message Terminator {
+    string id = 1;
+    string serviceId = 2;
+    string routerId = 3;
+    string binding = 4;
+    string address = 5;
+    google.protobuf.Timestamp createdAt = 6;
+    map<uint32, bytes> peerData = 7;
+}
+
+message ListServicesRequest {
+    string query = 1;
+}
+
 message ListServicesResponse {
     repeated Service services = 1;
 }
@@ -76,10 +96,35 @@ message RemoveServiceRequest {
 message GetServiceRequest {
     string serviceId = 1;
 }
+
 message GetServiceResponse {
     Service service = 1;
 }
 
+// service terminators
+message ListTerminatorsRequest {
+    string query = 1;
+}
+
+message ListTerminatorsResponse {
+    repeated Terminator terminators = 1;
+}
+
+message CreateTerminatorRequest {
+    Terminator terminator = 1;
+}
+
+message RemoveTerminatorRequest {
+    string terminatorId = 1;
+}
+
+message GetTerminatorRequest {
+    string terminatorId = 1;
+}
+
+message GetTerminatorResponse {
+    Terminator terminator = 1;
+}
 
 //
 // --- Router ------------------------------------------------------------------------------------------------------- //
@@ -92,7 +137,9 @@ message Router {
     bool connected = 4;
 }
 
-message ListRoutersRequest {}
+message ListRoutersRequest {
+    string query = 1;
+}
 message ListRoutersResponse {
     repeated Router routers = 1;
 }
@@ -120,7 +167,8 @@ message Link {
     int64 dstLatency = 8;
 }
 
-message ListLinksRequest{}
+message ListLinksRequest {
+}
 message ListLinksResponse {
     repeated Link links = 1;
 }
@@ -148,10 +196,12 @@ message Session {
     string id = 1;
     string clientId = 2;
     string serviceId = 3;
-    Circuit circuit = 4;
+    string terminatorId = 4;
+    Circuit circuit = 5;
 }
 
-message ListSessionsRequest{}
+message ListSessionsRequest {
+}
 message ListSessionsResponse {
     repeated Session sessions = 1;
 }
@@ -192,7 +242,8 @@ message StreamMetricsEvent {
     }
 }
 
-message StreamSessionsRequest {}
+message StreamSessionsRequest {
+}
 
 enum StreamSessionEventType {
     SessionCreated = 0;

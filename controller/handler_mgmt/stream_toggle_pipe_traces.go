@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
@@ -45,7 +46,7 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 	request := &trace_pb.TogglePipeTracesRequest{}
 
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -109,9 +110,9 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 
 func (handler *traceTogglePipeHandler) complete(msg *channel2.Message, ch channel2.Channel, result *trace.ToggleResult) {
 	if result.Success {
-		sendSuccess(msg, ch, result.Message.String())
+		handler_common.SendSuccess(msg, ch, result.Message.String())
 	} else {
-		sendFailure(msg, ch, result.Message.String())
+		handler_common.SendFailure(msg, ch, result.Message.String())
 	}
 }
 

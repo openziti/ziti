@@ -62,7 +62,7 @@ func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []
 		return errors.New("router already connected")
 	}
 
-	if r, err := h.network.KnownRouter(id); err == nil {
+	if r, err := h.network.GetRouter(id); err == nil {
 		if r.Fingerprint != fingerprint {
 			return errors.New("unenrolled router")
 		}

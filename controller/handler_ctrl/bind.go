@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -36,7 +36,8 @@ func newBindHandler(router *network.Router, network *network.Network, xctrls []x
 func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.SetLogicalName(bindHandler.router.Id)
 	ch.AddReceiveHandler(newSessionRequestHandler(bindHandler.router, bindHandler.network))
-	ch.AddReceiveHandler(newHostRequestHandler(bindHandler.router, bindHandler.network))
+	ch.AddReceiveHandler(newCreateTerminatorHandler(bindHandler.network, bindHandler.router))
+	ch.AddReceiveHandler(newRemoveTerminatorHandler(bindHandler.network))
 	ch.AddReceiveHandler(newLinkHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newFaultHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newMetricsHandler(bindHandler.network))

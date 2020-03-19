@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,10 @@ import (
 )
 
 func TestSimpleCircuit2(t *testing.T) {
-	network, err := NewNetwork(nil, nil, nil, nil)
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	network, err := NewNetwork(nil, nil, ctx.GetDb(), nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -32,10 +36,10 @@ func TestSimpleCircuit2(t *testing.T) {
 	assert.Nil(t, err)
 
 	r0 := newRouter("r0", "", transportAddr, nil)
-	network.routerController.markConnected(r0)
+	network.Routers.markConnected(r0)
 
 	r1 := newRouter("r1", "", transportAddr, nil)
-	network.routerController.markConnected(r1)
+	network.Routers.markConnected(r1)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
 	l0.Src = r0
@@ -82,7 +86,10 @@ func TestSimpleCircuit2(t *testing.T) {
 }
 
 func TestTransitCircuit2(t *testing.T) {
-	network, err := NewNetwork(nil, nil, nil, nil)
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	network, err := NewNetwork(nil, nil, ctx.GetDb(), nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -90,13 +97,13 @@ func TestTransitCircuit2(t *testing.T) {
 	assert.Nil(t, err)
 
 	r0 := newRouter("r0", "", transportAddr, nil)
-	network.routerController.markConnected(r0)
+	network.Routers.markConnected(r0)
 
 	r1 := newRouter("r1", "", transportAddr, nil)
-	network.routerController.markConnected(r1)
+	network.Routers.markConnected(r1)
 
 	r2 := newRouter("r2", "", transportAddr, nil)
-	network.routerController.markConnected(r2)
+	network.Routers.markConnected(r2)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
 	l0.Src = r0

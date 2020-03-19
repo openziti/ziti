@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -47,6 +47,11 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newRemoveSessionHandler(network))
 	ch.AddReceiveHandler(newSetLinkCostHandler(network))
 	ch.AddReceiveHandler(newSetLinkDownHandler(network))
+
+	ch.AddReceiveHandler(newCreateTerminatorHandler(network))
+	ch.AddReceiveHandler(newRemoveTerminatorHandler(network))
+	ch.AddReceiveHandler(newGetTerminatorHandler(network))
+	ch.AddReceiveHandler(newListTerminatorsHandler(network))
 
 	streamMetricHandler := newStreamMetricsHandler(network)
 	ch.AddReceiveHandler(streamMetricHandler)
