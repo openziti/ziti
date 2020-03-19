@@ -1,6 +1,8 @@
 ziti edge controller create config netcat ziti-tunneler-client.v1 '{ "hostname" : "localhost", "port" : 7256 }'
 
-ziti edge controller create service netcat7256 "${ZITI_ROUTER_BR_HOSTNAME}" tcp://localhost:7256 --configs netcat
+ziti edge controller create service netcat7256  --configs netcat
+
+ziti edge controller create terminator netcat7256 "${ZITI_ROUTER_BR_HOSTNAME}" tcp://localhost:7256
 
 ziti edge controller create identity device "test_identity" -o "${ZITI_HOME}/test_identity".jwt
 

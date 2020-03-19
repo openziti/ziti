@@ -58,6 +58,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -83,6 +84,8 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", outputServicePolicies, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "terminators", outputTerminators, newOptions()))
 
 	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy")
 	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "services", outputServices, newOptions()))
@@ -174,7 +177,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 		Use:   fmt.Sprintf("%v <id or name>", subType),
 		Short: desc,
 		Long:  desc,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -281,6 +284,34 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) erro
 	return nil
 }
 
+func runListTerminators(o *commonOptions) error {
+	children, err := listEntitiesWithOptions("terminators", o)
+	if err != nil {
+		return err
+	}
+	return outputTerminators(o, children)
+}
+
+func outputTerminators(o *commonOptions, children []*gabs.Container) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		serviceId := entity.Path("serviceId").Data().(string)
+		routerId := entity.Path("routerId").Data().(string)
+		binding := entity.Path("binding").Data().(string)
+		address := entity.Path("address").Data().(string)
+		_, err := fmt.Fprintf(o.Out, "id: %v    serviceId: %v    routerId: %v    binding: %v    address: %v\n",
+			id, serviceId, routerId, binding, address)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func runListServices(asIdentity string, configTypes string, options *commonOptions) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
@@ -307,8 +338,9 @@ func outputServices(o *commonOptions, children []*gabs.Container) error {
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v\n", id, name, edgeRouterRoles)
+		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
+		roleAttributes := entity.Path("roleAttributes").String()
+		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    terminator strategy: %v    role attributes: %v\n", id, name, terminatorStrategy, roleAttributes)
 		if err != nil {
 			return err
 		}
@@ -509,8 +541,8 @@ func runListSessions(o *commonOptions) error {
 		id, _ := entity.Path("id").Data().(string)
 		sessionId, _ := entity.Path("apiSession.id").Data().(string)
 		serviceName, _ := entity.Path("service.name").Data().(string)
-		hosting, _ := entity.Path("hosting").Data().(bool)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     hosting: %v\n", id, sessionId, serviceName, hosting); err != nil {
+		sessionType, _ := entity.Path("type").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
 			return err
 		}
 	}
@@ -520,12 +552,17 @@ func runListSessions(o *commonOptions) error {
 
 func runListChilden(parentType, childType string, o *commonOptions, outputF outputFunction) error {
 	idOrName := o.Args[0]
-	serviceId, err := mapNameToID(parentType, idOrName)
+	parentId, err := mapNameToID(parentType, idOrName)
 	if err != nil {
 		return err
 	}
 
-	children, err := filterSubEntitiesOfType(parentType, childType, serviceId, "", o)
+	filter := ""
+	if len(o.Args) > 1 {
+		filter = o.Args[1]
+	}
+
+	children, err := filterSubEntitiesOfType(parentType, childType, parentId, filter, o)
 	if err != nil {
 		return err
 	}

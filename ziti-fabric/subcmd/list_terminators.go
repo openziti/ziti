@@ -27,41 +27,33 @@ import (
 )
 
 func init() {
-	listServicesClient = NewMgmtClient(listServices)
-	listCmd.AddCommand(listServices)
+	listTerminatorsClient = NewMgmtClient(listTerminators)
+	listCmd.AddCommand(listTerminators)
 }
 
-var listServices = &cobra.Command{
-	Use:   "services",
-	Short: "Retrieve all service definitions",
+var listTerminators = &cobra.Command{
+	Use:   "terminators",
+	Short: "Retrieve terminator definitions",
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := listServicesClient.Connect(); err == nil {
-			request := &mgmt_pb.ListServicesRequest{}
+		if ch, err := listTerminatorsClient.Connect(); err == nil {
+			request := &mgmt_pb.ListTerminatorsRequest{}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListServicesRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListTerminatorsRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListServicesResponseType) {
-				response := &mgmt_pb.ListServicesResponse{}
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListTerminatorsResponseType) {
+				response := &mgmt_pb.ListTerminatorsResponse{}
 				if err := proto.Unmarshal(responseMsg.Body, response); err == nil {
-					out := fmt.Sprintf("\nServices: (%d)\n\n", len(response.Services))
-					out += fmt.Sprintf("%-12s | %-12s | %s\n", "Id", "Terminator Strategy", "Destination(s)")
-					for _, svc := range response.Services {
-						if len(svc.Terminators) > 0 {
-							out += fmt.Sprintf("%-12s | %-12s | %s\n", svc.Id, svc.TerminatorStrategy,
-								fmt.Sprintf("%-12s -> %s", svc.Terminators[0].RouterId, svc.Terminators[0].Address))
-							for _, terminator := range svc.Terminators[1:] {
-								out += fmt.Sprintf("%-12s | %-12s | %s\n", "", "",
-									fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
-							}
-						} else {
-							out += fmt.Sprintf("%-12s | %-12s | \n", svc.Id, svc.TerminatorStrategy)
-						}
+					out := fmt.Sprintf("\nTerminators: (%d)\n\n", len(response.Terminators))
+					out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", "Id", "Service", "Binding", "Destination")
+					for _, terminator := range response.Terminators {
+						out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", terminator.Id, terminator.ServiceId, terminator.Binding,
+							fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 					}
 					out += "\n"
 					fmt.Print(out)
@@ -76,4 +68,4 @@ var listServices = &cobra.Command{
 		}
 	},
 }
-var listServicesClient *mgmtClient
+var listTerminatorsClient *mgmtClient

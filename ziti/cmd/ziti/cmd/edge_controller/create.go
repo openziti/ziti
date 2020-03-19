@@ -43,6 +43,7 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newCreateConfigCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
+	cmd.AddCommand(newCreateTerminatorCmd(f, out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(f, out, errOut))

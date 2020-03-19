@@ -26,17 +26,15 @@ import (
 	"io"
 )
 
-type createServiceOptions struct {
+type createTerminatorOptions struct {
 	commonOptions
-	terminatorStrategy string
-	tags               map[string]string
-	roleAttributes     []string
-	configs            []string
+	binding string
+	tags    map[string]string
 }
 
-// newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
-func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createServiceOptions{
+// newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
+func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createTerminatorOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
@@ -48,14 +46,14 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service <name>",
-		Short: "creates a service managed by the Ziti Edge Controller",
-		Long:  "creates a service managed by the Ziti Edge Controller",
+		Use:   "terminator <name> service router address",
+		Short: "creates an terminator managed by the Ziti Edge Controller",
+		Long:  "creates an terminator managed by the Ziti Edge Controller",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateService(options)
+			err := runCreateTerminator(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -63,35 +61,41 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
+	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to terminator definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
-	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
-	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Add tags to terminator definition")
 
 	return cmd
 }
 
-// runCreateService implements the command to create a service
-func runCreateService(o *createServiceOptions) (err error) {
+// runCreateTerminator implements the command to create a Terminator
+func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	if o.terminatorStrategy != "" {
-		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
+	service, err := mapNameToID("services", o.Args[0])
+	if err != nil {
+		return err
 	}
-	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.configs, "configs")
+
+	router, err := mapNameToID("edge-routers", o.Args[1])
+	if err != nil {
+		router = o.Args[1] // might be a pure fabric router, id might not be UUID
+	}
+
+	setJSONValue(entityData, service, "service")
+	setJSONValue(entityData, router, "router")
+	setJSONValue(entityData, o.binding, "binding")
+	setJSONValue(entityData, o.Args[2], "address")
 	setJSONValue(entityData, o.tags, "tags")
 
-	result, err := createEntityOfType("services", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("terminators", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	serviceId := result.S("data", "id").Data()
+	TerminatorId := result.S("data", "id").Data()
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", serviceId); err != nil {
+	if _, err = fmt.Fprintf(o.Out, "%v\n", TerminatorId); err != nil {
 		panic(err)
 	}
 

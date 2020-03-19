@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -45,40 +44,36 @@ var getService = &cobra.Command{
 				panic(err)
 			}
 			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceRequestType), body)
-			waitCh, err := ch.SendAndWait(requestMsg)
+			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			select {
-			case responseMsg := <-waitCh:
-				if responseMsg.ContentType == int32(mgmt_pb.ContentType_GetServiceResponseType) {
-					response := &mgmt_pb.GetServiceResponse{}
-					err := proto.Unmarshal(responseMsg.Body, response)
-					if err == nil {
-						out := fmt.Sprintf("\n%10s | %30s | %s\n", "Id", "Endpoint", "Egress")
-						out += "-----------+--------------------------------+----------\n"
-						svc := response.Service
-						out += fmt.Sprintf("%10s | %30s | %s\n", svc.Id, svc.EndpointAddress, svc.Egress)
-						out += "\n"
-						fmt.Print(out)
-
-					} else {
-						out := fmt.Sprintf("Id not found\n")
-						fmt.Print(out)
-					}
-				} else if responseMsg.ContentType == channel2.ContentTypeResultType {
-					result := channel2.UnmarshalResult(responseMsg)
-					if result.Success {
-						fmt.Printf("\nsuccess\n\n")
-					} else {
-						fmt.Printf("\nfailure [%s]\n\n", result.Message)
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_GetServiceResponseType) {
+				response := &mgmt_pb.GetServiceResponse{}
+				err := proto.Unmarshal(responseMsg.Body, response)
+				if err == nil {
+					fmt.Printf("\n%10s | %30s\n", "Id", "Terminator Strategy")
+					fmt.Printf("-----------+--------------------------------+----------\n")
+					svc := response.Service
+					fmt.Printf("%10s | %30s\n\n", svc.Id, svc.TerminatorStrategy)
+					fmt.Printf("Terminators (%v)\n", len(svc.Terminators))
+					fmt.Printf("\n%10s | %-12s| %v\n", "Id", "Binding", "Destination")
+					for _, terminator := range svc.Terminators {
+						fmt.Printf("%-10s | %-12s | %s\n", terminator.Id, terminator.Binding,
+							fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 					}
 				} else {
-					panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
+					fmt.Printf("Id not found\n")
 				}
-
-			case <-time.After(5 * time.Second):
-				panic(errors.New("timeout"))
+			} else if responseMsg.ContentType == channel2.ContentTypeResultType {
+				result := channel2.UnmarshalResult(responseMsg)
+				if result.Success {
+					fmt.Printf("\nsuccess\n\n")
+				} else {
+					fmt.Printf("\nfailure [%s]\n\n", result.Message)
+				}
+			} else {
+				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
 		} else {
 			panic(err)
