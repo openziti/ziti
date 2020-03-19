@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			meta["ingressId"] = sessionRequest.IngressId
 			meta["serviceId"] = sessionRequest.ServiceId
 			headers := make([]string, 0)
-			for k, _ := range sessionRequest.PeerData {
+			for k := range sessionRequest.PeerData {
 				headers = append(headers, strconv.Itoa(int(k)))
 			}
 			meta["peerData"] = strings.Join(headers, ",")
@@ -56,20 +56,15 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_BindRequestType):
-		bindRequest := &BindRequest{}
-		if err := proto.Unmarshal(msg.Body, bindRequest); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
-			meta["bindType"] = bindRequest.BindType
-			meta["serviceId"] = bindRequest.ServiceId
-			dataIds := make([]string, 0)
-			for k, _ := range bindRequest.PeerData {
-				dataIds = append(dataIds, strconv.Itoa(int(k)))
-			}
-			meta["peerData"] = strings.Join(dataIds, ",")
+	case int32(ContentType_CreateTerminatorRequestType):
+		createTerminator := &CreateTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, createTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Create Terminator Request")
+			meta["terminator"] = terminatorToString(createTerminator)
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
 				return nil, true
 			}
 
@@ -80,15 +75,15 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_BindResponseType):
-		bindResponse := &BindResponse{}
-		if err := proto.Unmarshal(msg.Body, bindResponse); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
-			meta["success"] = bindResponse.Success
-			meta["message"] = bindResponse.Message
+	case int32(ContentType_RemoveTerminatorRequestType):
+		removeTerminator := &RemoveTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, removeTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Terminator Request")
+			meta["terminatorId"] = removeTerminator.TerminatorId
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
 				return nil, true
 			}
 
@@ -276,4 +271,8 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	}
 
 	return nil, false
+}
+
+func terminatorToString(request *CreateTerminatorRequest) string {
+	return fmt.Sprintf("{id=[%s]}", request.Id)
 }

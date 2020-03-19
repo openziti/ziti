@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@ import (
 )
 
 type session struct {
-	Id       *identity.TokenId
-	ClientId *identity.TokenId
-	Service  *Service
-	Circuit  *Circuit
+	Id         *identity.TokenId
+	ClientId   *identity.TokenId
+	Service    *Service
+	Terminator *Terminator
+	Circuit    *Circuit
 }
 
 func (s *session) latency() int64 {

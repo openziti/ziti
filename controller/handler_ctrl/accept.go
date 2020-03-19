@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 	for {
 		ch, err := channel2.NewChannel("ctrl", ctrlAccepter.listener, ctrlAccepter.options)
 		if err == nil {
-			if r, err := ctrlAccepter.network.KnownRouter(ch.Id().Token); err == nil {
+			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
 				if ch.Underlay().Headers() != nil {
 					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloListenerHeader]; found {
 						listenerString := string(listenerValue)

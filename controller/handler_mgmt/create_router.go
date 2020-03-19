@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -44,11 +45,11 @@ func (h *createRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 		r := network.NewRouter(create.Router.Id, create.Router.Fingerprint)
 		if err := h.network.CreateRouter(r); err == nil {
 			log.Infof("created router [r/%s] with fingerprint [%s]", r.Id, r.Fingerprint)
-			sendSuccess(msg, ch, "")
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
-			sendFailure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

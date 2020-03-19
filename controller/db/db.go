@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,7 +19,10 @@ package db
 import (
 	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"go.etcd.io/bbolt"
+	"os"
+	"time"
 )
 
 type Db struct {
@@ -55,6 +58,32 @@ func (db *Db) RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 		return nil, errors.New("db missing 'ziti' root")
 	}
 	return ziti, nil
+}
+
+func (db *Db) Snapshot(tx *bbolt.Tx) error {
+	path := db.db.Path()
+	path += "-" + time.Now().Format("20060102-150405")
+
+	_, err := os.Stat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else {
+		pfxlog.Logger().Infof("bolt db backup already made: %v", path)
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = tx.WriteTo(file)
+	if err != nil {
+		pfxlog.Logger().Infof("created bolt db backup: %v", path)
+	}
+	return err
 }
 
 func createRoots(tx *bbolt.Tx) error {

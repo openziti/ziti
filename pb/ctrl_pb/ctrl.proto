@@ -7,22 +7,22 @@ import "google/protobuf/timestamp.proto";
 enum ContentType {
     Zero = 0;
 
-    SessionRequestType  = 1000;
-    SessionSuccessType  = 1001;
-    DialType            = 1002;
-    LinkType            = 1003;
-    FaultType           = 1004;
-    RouteType           = 1005;
-    UnrouteType         = 1006;
-    MetricsType         = 1007;
+    SessionRequestType = 1000;
+    SessionSuccessType = 1001;
+    DialType = 1002;
+    LinkType = 1003;
+    FaultType = 1004;
+    RouteType = 1005;
+    UnrouteType = 1006;
+    MetricsType = 1007;
     TogglePipeTracesRequestType = 1008;
-    TraceEventType      = 1010;
-    BindRequestType     = 1011;
-    BindResponseType    = 1012;
-    InspectRequestType  = 1013;
+    TraceEventType = 1010;
+    CreateTerminatorRequestType = 1011;
+    RemoveTerminatorRequestType = 1012;
+    InspectRequestType = 1013;
     InspectResponseType = 1014;
-    StartXgressType     = 1015;
-    SessionFailedType   = 1016;
+    StartXgressType = 1015;
+    SessionFailedType = 1016;
 }
 
 message SessionRequest {
@@ -31,21 +31,16 @@ message SessionRequest {
     map<uint32, bytes> peerData = 3;
 }
 
-enum BindType {
-    Bind = 0;
-    Unbind = 1;
+message CreateTerminatorRequest {
+    string id = 1;
+    string serviceId = 2;
+    string binding = 3;
+    string address = 4;
+    map<uint32, bytes> peerData = 5;
 }
 
-message BindRequest {
-    BindType bindType = 1;
-    string token = 2;
-    string serviceId = 3;
-    map<uint32, bytes> peerData = 4;
-}
-
-message BindResponse {
-    bool success = 1;
-    string message = 2;
+message RemoveTerminatorRequest {
+    string terminatorId = 1;
 }
 
 message Dial {
@@ -110,26 +105,26 @@ message MetricsMessage {
     map<string, IntervalCounter> intervalCounters = 9;
 
     message Meter {
-        int64 count     = 1;
-        double m1Rate   = 2;
-        double m5Rate   = 3;
-        double m15Rate  = 4;
+        int64 count = 1;
+        double m1Rate = 2;
+        double m5Rate = 3;
+        double m15Rate = 4;
         double meanRate = 5;
     }
 
     message Histogram {
-        int64 count     = 1;
-        int64 max       = 2;
-        double mean     = 3;
-        int64 min       = 4;
-        double stdDev   = 5;
+        int64 count = 1;
+        int64 max = 2;
+        double mean = 3;
+        int64 min = 4;
+        double stdDev = 5;
         double variance = 6;
-        double p50      = 7;
-        double p75      = 8;
-        double p95      = 9;
-        double p99      = 10;
-        double p999     = 11;
-        double p9999    = 12;
+        double p50 = 7;
+        double p75 = 8;
+        double p95 = 9;
+        double p99 = 10;
+        double p999 = 11;
+        double p9999 = 12;
     }
 
     message IntervalCounter {

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,40 +17,55 @@
 package network
 
 import (
-	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
 type Router struct {
-	Id                 string
+	models.BaseEntity
 	Fingerprint        string
 	AdvertisedListener transport.Address
 	Control            channel2.Channel
 	CostFactor         int
+	Connected          concurrenz.AtomicBoolean
+}
+
+func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltRouter, ok := boltEntity.(*db.Router)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
+	}
+	entity.Fingerprint = boltRouter.Fingerprint
+	entity.FillCommon(boltRouter)
+	return nil
 }
 
 func (entity *Router) toBolt() *db.Router {
 	return &db.Router{
-		Id:          entity.Id,
-		Fingerprint: entity.Fingerprint,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Fingerprint:   entity.Fingerprint,
 	}
 }
 
 func NewRouter(id, fingerprint string) *Router {
 	return &Router{
-		Id:          id,
+		BaseEntity:  models.BaseEntity{Id: id},
 		Fingerprint: fingerprint,
 	}
 }
 
 func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
 	return &Router{
-		Id:                 id,
+		BaseEntity:         models.BaseEntity{Id: id},
 		Fingerprint:        fingerprint,
 		AdvertisedListener: advLstnr,
 		Control:            ctrl,
@@ -58,115 +73,98 @@ func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl c
 	}
 }
 
-type routerController struct {
-	connected cmap.ConcurrentMap // map[string]*Router
-	db        *db.Db
-	stores    *db.Stores
+type RouterController struct {
+	baseController
+	cache     cmap.ConcurrentMap
+	connected cmap.ConcurrentMap
 	store     db.RouterStore
 }
 
-func newRouterController(db *db.Db, stores *db.Stores) *routerController {
-	return &routerController{
-		connected: cmap.New(),
-		db:        db,
-		stores:    stores,
-		store:     stores.Router,
+func (ctrl *RouterController) newModelEntity() boltEntitySink {
+	return &Router{}
+}
+
+func newRouterController(controllers *Controllers) *RouterController {
+	result := &RouterController{
+		baseController: newController(controllers, controllers.stores.Router),
+		cache:          cmap.New(),
+		connected:      cmap.New(),
+		store:          controllers.stores.Router,
 	}
+	result.impl = result
+	return result
 }
 
-func (c *routerController) markConnected(r *Router) {
-	c.connected.Set(r.Id, r)
+func (ctrl *RouterController) markConnected(r *Router) {
+	r.Connected.Set(true)
+	ctrl.connected.Set(r.Id, r)
 }
 
-func (c *routerController) markDisconnected(r *Router) {
-	c.connected.Remove(r.Id)
+func (ctrl *RouterController) markDisconnected(r *Router) {
+	r.Connected.Set(false)
+	ctrl.connected.Remove(r.Id)
 }
 
-func (c *routerController) isConnected(id string) bool {
-	return c.connected.Has(id)
+func (ctrl *RouterController) isConnected(id string) bool {
+	return ctrl.connected.Has(id)
 }
 
-func (c *routerController) getConnected(id string) (*Router, bool) {
-	if t, found := c.connected.Get(id); found {
-		return t.(*Router), true
+func (ctrl *RouterController) getConnected(id string) *Router {
+	if t, found := ctrl.connected.Get(id); found {
+		return t.(*Router)
 	}
-	return nil, false
+	return nil
 }
 
-func (c *routerController) allConnected() []*Router {
-	routers := make([]*Router, 0)
-	for i := range c.connected.IterBuffered() {
+func (ctrl *RouterController) allConnected() []*Router {
+	var routers []*Router
+	for i := range ctrl.connected.IterBuffered() {
 		routers = append(routers, i.Val.(*Router))
 	}
 	return routers
 }
 
-func (c *routerController) connectedCount() int {
-	return c.connected.Count()
+func (ctrl *RouterController) connectedCount() int {
+	return ctrl.connected.Count()
 }
 
-func (c *routerController) create(router *Router) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Create(boltz.NewMutateContext(tx), router.toBolt())
+func (ctrl *RouterController) Create(router *Router) error {
+	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+		return ctrl.store.Create(boltz.NewMutateContext(tx), router.toBolt())
 	})
+	if err != nil {
+		ctrl.cache.Set(router.Id, router)
+	}
+	return err
 }
 
-func (c *routerController) update(router *Router) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Update(boltz.NewMutateContext(tx), router.toBolt(), nil)
-	})
+func (ctrl *RouterController) Delete(id string) error {
+	err := controllers.DeleteEntityById(ctrl.store, ctrl.db, id)
+	ctrl.cache.Remove(id)
+	return err
 }
 
-func (c *routerController) remove(id string) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
-}
-
-func (c *routerController) loadOneById(id string) (*Router, error) {
-	var router *Router
-	err := c.db.View(func(tx *bbolt.Tx) error {
-		boltRouter, err := c.store.LoadOneById(tx, id)
-		if err != nil {
-			return err
-		}
-		if boltRouter == nil {
-			return fmt.Errorf("missing router '%s'", id)
-		}
-		router = c.fromBolt(boltRouter)
-		return nil
+func (ctrl *RouterController) Read(id string) (entity *Router, err error) {
+	err = ctrl.db.View(func(tx *bbolt.Tx) error {
+		entity, err = ctrl.readInTx(tx, id)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return router, err
+	return entity, err
 }
 
-func (c *routerController) all() ([]*Router, error) {
-	var routers []*Router
-	err := c.db.View(func(tx *bbolt.Tx) error {
-		ids, _, err := c.store.QueryIds(tx, "true")
-		if err != nil {
-			return err
-		}
-		for _, id := range ids {
-			router, err := c.store.LoadOneById(tx, id)
-			if err != nil {
-				return err
-			}
-			routers = append(routers, c.fromBolt(router))
-		}
-		return nil
-	})
-	if err != nil {
+func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
+	if t, found := ctrl.cache.Get(id); found {
+		return t.(*Router), nil
+	}
+
+	entity := &Router{}
+	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
-	return routers, nil
-}
 
-func (c *routerController) fromBolt(entity *db.Router) *Router {
-	return &Router{
-		Id:          entity.Id,
-		Fingerprint: entity.Fingerprint,
-	}
+	ctrl.cache.Set(id, entity)
+	return entity, nil
 }

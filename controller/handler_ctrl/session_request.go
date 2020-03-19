@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 			if session, err := h.network.CreateSession(h.r, id, request.ServiceId); err == nil {
 				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Circuit.IngressId)
 				responseMsg.ReplyTo(msg)
-				for k, v := range session.Service.PeerData {
+				for k, v := range session.Terminator.PeerData {
 					responseMsg.Headers[int32(k)] = v
 				}
 				if startXgressSession, err := h.r.Control.SendAndWaitWithTimeout(responseMsg, time.Second*10); err != nil {

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -39,21 +41,24 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	cs := &mgmt_pb.CreateServiceRequest{}
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
-		binding := "transport"
-		if cs.Service.Binding != "" {
-			binding = cs.Service.Binding
+		service := &network.Service{
+			BaseEntity:         models.BaseEntity{Id: cs.Service.Id},
+			TerminatorStrategy: cs.Service.TerminatorStrategy,
 		}
-		if err = h.network.CreateService(&network.Service{
-			Id:              cs.Service.Id,
-			Binding:         binding,
-			EndpointAddress: cs.Service.EndpointAddress,
-			Egress:          cs.Service.Egress,
-		}); err == nil {
-			sendSuccess(msg, ch, "")
+		for _, terminator := range cs.Service.Terminators {
+			modelTerminator, err := toModelTerminator(h.network, terminator)
+			if err != nil {
+				handler_common.SendFailure(msg, ch, err.Error())
+				return
+			}
+			service.Terminators = append(service.Terminators, modelTerminator)
+		}
+		if err = h.network.Services.Create(service); err == nil {
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
-			sendFailure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

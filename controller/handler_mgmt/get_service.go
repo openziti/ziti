@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -39,30 +40,39 @@ func (h *getServiceHandler) ContentType() int32 {
 func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	rs := &mgmt_pb.GetServiceRequest{}
 	err := proto.Unmarshal(msg.Body, rs)
+
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	response := &mgmt_pb.GetServiceResponse{}
+	svc, err := h.network.Services.Read(rs.ServiceId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	response.Service = toApiService(svc)
+	body, err := proto.Marshal(response)
 	if err == nil {
-		response := &mgmt_pb.GetServiceResponse{}
-		if svc, found := h.network.GetService(rs.ServiceId); found {
-			response.Service = &mgmt_pb.Service{
-				Id:              svc.Id,
-				Binding:         svc.Binding,
-				EndpointAddress: svc.EndpointAddress,
-				Egress:          svc.Egress,
-			}
-
-			body, err := proto.Marshal(response)
-			if err == nil {
-				responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
-				responseMsg.ReplyTo(msg)
-				ch.Send(responseMsg)
-
-			} else {
-				pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
-			}
-
-		} else {
-			sendFailure(msg, ch, "no such service")
-		}
+		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
+		responseMsg.ReplyTo(msg)
+		ch.Send(responseMsg)
 	} else {
-		sendFailure(msg, ch, err.Error())
+		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
+	}
+}
+
+func toApiService(s *network.Service) *mgmt_pb.Service {
+	var terminators []*mgmt_pb.Terminator
+	for _, terminator := range s.Terminators {
+		terminators = append(terminators, toApiTerminator(terminator))
+	}
+
+	return &mgmt_pb.Service{
+		Id:                 s.Id,
+		TerminatorStrategy: s.TerminatorStrategy,
+		Terminators:        terminators,
 	}
 }

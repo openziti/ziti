@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -32,27 +32,21 @@ const (
 )
 
 type Router struct {
-	Id          string
+	boltz.BaseExtEntity
 	Fingerprint string
 }
 
-func (router *Router) GetId() string {
-	return router.Id
+func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
 }
 
-func (router *Router) SetId(id string) {
-	router.Id = id
+func (entity *Router) SetValues(ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldRouterFingerprint, entity.Fingerprint)
 }
 
-func (router *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	router.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
-}
-
-func (router *Router) SetValues(ctx *boltz.PersistContext) {
-	ctx.SetString(FieldRouterFingerprint, router.Fingerprint)
-}
-
-func (router *Router) GetEntityType() string {
+func (entity *Router) GetEntityType() string {
 	return EntityTypeRouters
 }
 
@@ -74,14 +68,19 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
+	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, stores.terminator)
 	return store
 }
 
 type routerStoreImpl struct {
 	baseStore
+	terminatorsSymbol boltz.EntitySetSymbol
 }
 
-func (store *routerStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *routerStoreImpl) initializeLinked() {
+}
+
+func (store *routerStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Router{}
 }
 
@@ -91,4 +90,14 @@ func (store *routerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Router, err
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (store *routerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	terminatorIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if err := store.stores.terminator.DeleteById(ctx, terminatorId); err != nil {
+			return err
+		}
+	}
+	return store.BaseStore.DeleteById(ctx, id)
 }
