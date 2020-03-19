@@ -126,10 +126,10 @@ Example:
     Original file: /tmp/ziti-bolt.db
     Backup file:   /tmp/ziti-bolt.db-20200316-134725
     
-The fabric and edge schemas do not yet get migrated in the same transation. This will be addressed in a follow-up release.
+The fabric and edge schemas do not yet get migrated in the same transaction. This will be addressed in a follow-up release.
 
 # Fabric and Edge Alignment
-The fabric and edge persistence and model layers are now using the same foundational plumbing. This will allow for a common API layer in a follow up release.
+The fabric and edge persistence and model layers are now using the same foundational plumbing. This will allow for a common API layer in a follow-up release.
 
 As part of this consolidation effort, fabric entities now share the same set of common properties as edge entities, namely:
 
