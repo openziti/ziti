@@ -17,9 +17,9 @@
 package subcmd
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/proxy"
-	"fmt"
 	"github.com/spf13/cobra"
 	"math"
 	"net"
@@ -28,11 +28,12 @@ import (
 )
 
 var runProxyCmd = &cobra.Command{
-	Use:   "proxy <service-name:port> [sevice-name:port]",
-	Short: "Run in 'proxy' mode",
-	Long:  "The 'proxy' intercept mode creates a network listener for each service that is intercepted.",
-	Args:  cobra.MinimumNArgs(1),
-	RunE:  runProxy,
+	Use:     "proxy <service-name:port> [sevice-name:port]",
+	Short:   "Run in 'proxy' mode",
+	Long:    "The 'proxy' intercept mode creates a network listener for each service that is intercepted.",
+	Args:    cobra.MinimumNArgs(1),
+	RunE:    runProxy,
+	PostRun: rootPostRun,
 }
 
 func init() {

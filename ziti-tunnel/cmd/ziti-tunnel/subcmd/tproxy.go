@@ -19,16 +19,17 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
 	"fmt"
+	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
 
 var runTProxyCmd = &cobra.Command{
-	Use:   "tproxy",
-	Short: "Use the 'tproxy' interceptor",
-	Long:  "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
-	RunE:  runTProxy,
+	Use:     "tproxy",
+	Short:   "Use the 'tproxy' interceptor",
+	Long:    "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
+	RunE:    runTProxy,
+	PostRun: rootPostRun,
 }
 
 func init() {

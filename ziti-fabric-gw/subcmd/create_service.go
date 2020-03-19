@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"net/http"
 )
 
@@ -41,10 +41,12 @@ func handleCreateService(w http.ResponseWriter, req *http.Request) {
 
 	request := &mgmt_pb.CreateServiceRequest{
 		Service: &mgmt_pb.Service{
-			Id:              svc.Id,
-			Binding:         svc.Binding,
-			EndpointAddress: svc.EndpointAddress,
-			Egress:          svc.Egress,
+			Id: svc.Id,
+			Terminators: []*mgmt_pb.Terminator{{
+				RouterId: svc.Egress,
+				Binding:  svc.Binding,
+				Address:  svc.EndpointAddress,
+			}},
 		},
 	}
 	body, err := proto.Marshal(request)

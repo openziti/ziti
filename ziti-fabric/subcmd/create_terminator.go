@@ -25,32 +25,34 @@ import (
 	"time"
 )
 
-var createServiceClient *mgmtClient
-var createServiceTerminatorStrategy string
+var createTerminatorClient *mgmtClient
+var createTerminatorBinding string
 
 func init() {
-	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
-	createServiceClient = NewMgmtClient(createService)
-	createCmd.AddCommand(createService)
+	createTerminator.Flags().StringVar(&createTerminatorBinding, "binding", "transport", "Terminator binding")
+	createTerminatorClient = NewMgmtClient(createTerminator)
+	createCmd.AddCommand(createTerminator)
 }
 
-var createService = &cobra.Command{
-	Use:   "service <serviceId>",
-	Short: "Create a new fabric service",
-	Args:  cobra.ExactArgs(1),
+var createTerminator = &cobra.Command{
+	Use:   "terminator <serviceId> <router> <address>",
+	Short: "Create a new fabric service terminator",
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createServiceClient.Connect(); err == nil {
-			request := &mgmt_pb.CreateServiceRequest{
-				Service: &mgmt_pb.Service{
-					Id:                 args[0],
-					TerminatorStrategy: createServiceTerminatorStrategy,
+		if ch, err := createTerminatorClient.Connect(); err == nil {
+			request := &mgmt_pb.CreateTerminatorRequest{
+				Terminator: &mgmt_pb.Terminator{
+					ServiceId: args[0],
+					RouterId:  args[1],
+					Binding:   createTerminatorBinding,
+					Address:   args[2],
 				},
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateTerminatorRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)

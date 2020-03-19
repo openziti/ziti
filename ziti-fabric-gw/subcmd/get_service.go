@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"net/http"
 	"time"
 )
@@ -94,10 +94,16 @@ func handleGetService(w http.ResponseWriter, req *http.Request) {
 
 func convertService(svc *mgmt_pb.Service) interface{} {
 	d := &data{Data: make([]interface{}, 0)}
+	address := ""
+	router := ""
+	if len(svc.Terminators) > 0 {
+		address = svc.Terminators[0].Address
+		router = svc.Terminators[0].RouterId
+	}
 	d.Data = append(d.Data, &service{
 		Id:              svc.Id,
-		EndpointAddress: svc.EndpointAddress,
-		Egress:          svc.Egress,
+		EndpointAddress: address,
+		Egress:          router,
 	})
 	return d
 }

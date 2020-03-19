@@ -25,37 +25,41 @@ import (
 	"time"
 )
 
-var createServiceClient *mgmtClient
-var createServiceTerminatorStrategy string
-
 func init() {
-	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
-	createServiceClient = NewMgmtClient(createService)
-	createCmd.AddCommand(createService)
+	getTerminatorClient = NewMgmtClient(getTerminator)
+	getCmd.AddCommand(getTerminator)
 }
 
-var createService = &cobra.Command{
-	Use:   "service <serviceId>",
-	Short: "Create a new fabric service",
+var getTerminator = &cobra.Command{
+	Use:   "terminator <terminatorId>",
+	Short: "Retrieve a terminator definition",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createServiceClient.Connect(); err == nil {
-			request := &mgmt_pb.CreateServiceRequest{
-				Service: &mgmt_pb.Service{
-					Id:                 args[0],
-					TerminatorStrategy: createServiceTerminatorStrategy,
-				},
+		if ch, err := getTerminatorClient.Connect(); err == nil {
+			request := &mgmt_pb.GetTerminatorRequest{
+				TerminatorId: args[0],
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetTerminatorRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == channel2.ContentTypeResultType {
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_GetTerminatorResponseType) {
+				response := &mgmt_pb.GetTerminatorResponse{}
+				err := proto.Unmarshal(responseMsg.Body, response)
+				if err == nil {
+					terminator := response.Terminator
+					fmt.Printf("\n%10s | %-12s|  %-12s| %v\n", "Id", "Service", "Binding", "Destination")
+					fmt.Printf("%-10s | %-12s | %-12s | %v\n", terminator.Id, terminator.ServiceId, terminator.Binding,
+						fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
+				} else {
+					fmt.Printf("Id not found\n")
+				}
+			} else if responseMsg.ContentType == channel2.ContentTypeResultType {
 				result := channel2.UnmarshalResult(responseMsg)
 				if result.Success {
 					fmt.Printf("\nsuccess\n\n")
@@ -70,3 +74,4 @@ var createService = &cobra.Command{
 		}
 	},
 }
+var getTerminatorClient *mgmtClient

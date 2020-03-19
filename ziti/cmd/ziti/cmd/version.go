@@ -17,18 +17,18 @@
 package cmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
 	"fmt"
 	"github.com/blang/semver"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
+	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
 	"io"
 	// "strings"
 
+	"github.com/netfoundry/ziti-cmd/common/version"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"github.com/netfoundry/ziti-cmd/common/version"
 
 	"github.com/spf13/cobra"
 )
@@ -182,7 +182,7 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 	if err != nil {
 		log.Warnf("\nAn err occurred: %s", err)
 	} else {
-		currentVersion, err = semver.Make(output)
+		currentVersion, err = semver.ParseTolerant(output)
 		if err != nil {
 			log.Warnf("Failed to get %s version: %s\n", zitiApp, err)
 			return err

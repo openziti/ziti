@@ -25,32 +25,25 @@ import (
 	"time"
 )
 
-var createServiceClient *mgmtClient
-var createServiceTerminatorStrategy string
-
 func init() {
-	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
-	createServiceClient = NewMgmtClient(createService)
-	createCmd.AddCommand(createService)
+	removeTerminatorClient = NewMgmtClient(removeTerminator)
+	removeCmd.AddCommand(removeTerminator)
 }
 
-var createService = &cobra.Command{
-	Use:   "service <serviceId>",
-	Short: "Create a new fabric service",
+var removeTerminator = &cobra.Command{
+	Use:   "terminator <terminatorId>",
+	Short: "Remove a service terminator from the fabric",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createServiceClient.Connect(); err == nil {
-			request := &mgmt_pb.CreateServiceRequest{
-				Service: &mgmt_pb.Service{
-					Id:                 args[0],
-					TerminatorStrategy: createServiceTerminatorStrategy,
-				},
+		if ch, err := removeTerminatorClient.Connect(); err == nil {
+			request := &mgmt_pb.RemoveTerminatorRequest{
+				TerminatorId: args[0],
 			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
+			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveTerminatorRequestType), body)
 			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
@@ -65,8 +58,7 @@ var createService = &cobra.Command{
 			} else {
 				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
-		} else {
-			panic(err)
 		}
 	},
 }
+var removeTerminatorClient *mgmtClient
