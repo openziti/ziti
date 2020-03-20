@@ -76,7 +76,7 @@ func (router *Router) RegisterXctrl(x xctrl.Xctrl) error {
 	return nil
 }
 
-func (r *Router) Run() error {
+func (r *Router) Start() error {
 	rand.Seed(info.NowInMilliseconds())
 
 	r.showOptions()
@@ -94,7 +94,13 @@ func (r *Router) Run() error {
 	if err := r.startControlPlane(); err != nil {
 		return err
 	}
+	return nil
+}
 
+func (r *Router) Run() error {
+	if err := r.Start(); err != nil {
+		return err
+	}
 	for {
 		time.Sleep(1 * time.Hour)
 	}
