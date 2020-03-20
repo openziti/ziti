@@ -18,6 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/metrics"
 	forwarder2 "github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
@@ -25,12 +26,13 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func NewFactory(ctrl xgress.CtrlChannel, forwarder *forwarder2.Forwarder, forwarderOptions *forwarder2.Options, options *channel2.Options) xlink.Factory {
+func NewFactory(ctrl xgress.CtrlChannel, f *forwarder2.Forwarder, fo *forwarder2.Options, mr metrics.Registry, lo *channel2.Options) xlink.Factory {
 	return &factory{
 		ctrl:             ctrl,
-		forwarder:        forwarder,
-		forwarderOptions: forwarderOptions,
-		options:          options,
+		forwarder:        f,
+		forwarderOptions: fo,
+		metricsRegistry:  mr,
+		linkOptions:      lo,
 	}
 }
 
@@ -45,7 +47,7 @@ func (self *factory) Create(id *identity.TokenId, configData map[interface{}]int
 		ctrl:             self.ctrl,
 		forwarder:        self.forwarder,
 		forwarderOptions: self.forwarderOptions,
-		options:          self.options,
+		linkOptions:      self.linkOptions,
 	}, nil
 }
 
@@ -53,5 +55,6 @@ type factory struct {
 	ctrl             xgress.CtrlChannel
 	forwarder        *forwarder2.Forwarder
 	forwarderOptions *forwarder2.Options
-	options          *channel2.Options
+	metricsRegistry  metrics.Registry
+	linkOptions      *channel2.Options
 }

@@ -32,6 +32,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xgress_proxy_udp"
 	"github.com/netfoundry/ziti-fabric/router/xgress_transport"
 	"github.com/netfoundry/ziti-fabric/router/xgress_transport_udp"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/info"
@@ -49,6 +50,7 @@ type Router struct {
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
+	xlinks          map[string]xlink.Xlink
 	metricsRegistry metrics.Registry
 }
 

@@ -24,6 +24,6 @@ type Factory interface {
 
 type Xlink interface {
 	Listen() error
-	Dial(address string) error
+	Dial(address, linkId string) error
 	GetAdvertisement() string
 }
