@@ -18,13 +18,20 @@ package xlink_transport
 
 import (
 	"fmt"
+	forwarder2 "github.com/netfoundry/ziti-fabric/router/forwarder"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func newFactory(accepter Accepter, options *channel2.Options) xlink.Factory {
-	return &factory{accepter: accepter, options: options}
+func NewFactory(ctrl xgress.CtrlChannel, forwarder *forwarder2.Forwarder, forwarderOptions *forwarder2.Options, options *channel2.Options) xlink.Factory {
+	return &factory{
+		ctrl:             ctrl,
+		forwarder:        forwarder,
+		forwarderOptions: forwarderOptions,
+		options:          options,
+	}
 }
 
 func (self *factory) Create(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Xlink, error) {
@@ -32,11 +39,19 @@ func (self *factory) Create(id *identity.TokenId, configData map[interface{}]int
 	if err != nil {
 		return nil, fmt.Errorf("error loading configuration (%w)", err)
 	}
-	return &impl{id: id, config: c, accepter: self.accepter, options: self.options}, nil
+	return &impl{
+		id:               id,
+		config:           c,
+		ctrl:             self.ctrl,
+		forwarder:        self.forwarder,
+		forwarderOptions: self.forwarderOptions,
+		options:          self.options,
+	}, nil
 }
 
 type factory struct {
-	id       *identity.TokenId
-	accepter Accepter
-	options  *channel2.Options
+	ctrl             xgress.CtrlChannel
+	forwarder        *forwarder2.Forwarder
+	forwarderOptions *forwarder2.Options
+	options          *channel2.Options
 }

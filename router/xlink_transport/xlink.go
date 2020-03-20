@@ -18,9 +18,11 @@ package xlink_transport
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/router/forwarder"
+	"github.com/netfoundry/ziti-fabric/router/handler_link"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/sirupsen/logrus"
 )
 
 func (self *impl) Listen() error {
@@ -28,7 +30,7 @@ func (self *impl) Listen() error {
 	if err := self.listener.Listen(); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
-	go self.runAccepter()
+	go handler_link.NewAccepter(self.id, self.ctrl, self.forwarder, self.listener, self.options, self.forwarderOptions)
 	return nil
 }
 
@@ -40,26 +42,12 @@ func (_ *impl) GetAdvertisement() string {
 	return ""
 }
 
-func (self *impl) runAccepter() {
-	defer logrus.Warn("exited")
-	logrus.Info("started")
-
-	for {
-		ch, err := channel2.NewChannel("link", self.listener, self.options)
-		if err == nil {
-			if err := self.accepter.Accept(ch); err != nil {
-				logrus.Errorf("error invoking accepter (%w)", err)
-			}
-		} else {
-			logrus.Errorf("error accepting (%w)", err)
-		}
-	}
-}
-
 type impl struct {
-	id       *identity.TokenId
-	config   *config
-	listener channel2.UnderlayListener
-	accepter Accepter
-	options  *channel2.Options
+	id               *identity.TokenId
+	config           *config
+	listener         channel2.UnderlayListener
+	ctrl             xgress.CtrlChannel
+	forwarder        *forwarder.Forwarder
+	forwarderOptions *forwarder.Options
+	options          *channel2.Options
 }
