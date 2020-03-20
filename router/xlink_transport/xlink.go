@@ -35,7 +35,7 @@ func (self *impl) Listen() error {
 	if err := self.listener.Listen(); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
-	go handler_link.NewAccepter(self.id, self.ctrl, self.forwarder, self.listener, self.linkOptions, self.forwarderOptions)
+	go handler_link.NewAccepter(self.id, self.ctrl, self.forwarder, self.listener, self.config.options, self.forwarderOptions)
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (self *impl) Dial(addressString, linkId string) error {
 		name := "l/" + linkId.Token
 
 		dialer := channel2.NewClassicDialer(linkId, address, nil)
-		ch, err := channel2.NewChannel(name, dialer, self.linkOptions)
+		ch, err := channel2.NewChannel(name, dialer, self.config.options)
 		if err == nil {
 			link := forwarder.NewLink(linkId, ch)
 			if err := link.Channel.Bind(handler_link.NewBindHandler(self.id, link, self.ctrl, self.forwarder)); err == nil {
@@ -107,5 +107,4 @@ type impl struct {
 	forwarder        *forwarder.Forwarder
 	forwarderOptions *forwarder.Options
 	metricsRegistry  metrics.Registry
-	linkOptions      *channel2.Options
 }

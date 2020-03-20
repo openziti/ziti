@@ -33,6 +33,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xgress_transport"
 	"github.com/netfoundry/ziti-fabric/router/xgress_transport_udp"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
+	"github.com/netfoundry/ziti-fabric/router/xlink_transport"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/info"
@@ -50,7 +51,7 @@ type Router struct {
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
-	xlinks          map[string]xlink.Xlink
+	xlinks          map[string]xlink.Factory
 	metricsRegistry metrics.Registry
 }
 
@@ -130,6 +131,9 @@ func (router *Router) startProfiling() {
 }
 
 func (router *Router) registerComponents() error {
+	router.xlinks = make(map[string]xlink.Factory)
+	router.xlinks["transport"] = xlink_transport.NewFactory(router, router.forwarder, router.config.Forwarder, router.metricsRegistry)
+
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(router.config.Id, router))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(router))
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(router.config.Id, router))
