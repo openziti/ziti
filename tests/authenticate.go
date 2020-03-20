@@ -349,6 +349,13 @@ func (request *authenticatedRequests) requireNewIdentity(isAdmin bool, roleAttri
 	return identity
 }
 
+func (request *authenticatedRequests) requireNewIdentityWithOtt(isAdmin bool, roleAttributes ...string) *identity {
+	identity := newTestIdentity(isAdmin, roleAttributes...)
+	identity.enrollment = map[string]interface{}{"ott": true}
+	request.requireCreateEntity(identity)
+	return identity
+}
+
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	httpStatus, body := request.createEntity(entity)
 	request.testContext.req.Equal(http.StatusCreated, httpStatus)
@@ -646,5 +653,12 @@ func (request *authenticatedRequests) patchEntity(entity entity, fields ...strin
 func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
 	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
 	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
+	return data.Data().(string)
+}
+
+func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
+	request.testContext.enabledJsonLogging = true
+	jsonBody := request.requireQuery("identities/" + identityId)
+	data := request.testContext.requirePath(jsonBody, "data", "enrollment", "ott", "jwt")
 	return data.Data().(string)
 }
