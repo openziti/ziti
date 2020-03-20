@@ -22,7 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport"
