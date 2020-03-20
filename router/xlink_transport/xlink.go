@@ -95,8 +95,8 @@ func (self *impl) Dial(addressString, linkId string) error {
 	return nil
 }
 
-func (_ *impl) GetAdvertisement() string {
-	return ""
+func (self *impl) GetAdvertisement() string {
+	return self.config.advertise.String()
 }
 
 type impl struct {
