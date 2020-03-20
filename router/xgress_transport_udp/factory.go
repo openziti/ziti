@@ -14,33 +14,29 @@
 	limitations under the License.
 */
 
-package xgress_proxy_udp
+package xgress_transport_udp
 
 import (
-	"fmt"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
-	return &factory{ctrl: ctrl}
+func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
+	return &factory{id: id, ctrl: ctrl}
 }
 
-func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
+func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options := xgress.LoadOptions(optionsData)
-	service := ""
-	if value, found := optionsData["service"]; found {
-		service = value.(string)
-	} else {
-		return nil, fmt.Errorf("missing 'service' configuration option")
-	}
-	return newListener(service, f.ctrl, options), nil
+	return newListener(factory.id, factory.ctrl, options), nil
 }
 
-func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
-	return nil, fmt.Errorf("not implemented")
+func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
+	options := xgress.LoadOptions(optionsData)
+	return newDialer(factory.id, factory.ctrl, options)
 }
 
 type factory struct {
+	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
 }

@@ -18,8 +18,8 @@ package xgress_proxy_udp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/xgress"
-	"github.com/netfoundry/ziti-fabric/xgress_udp"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress_udp"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"github.com/sirupsen/logrus"
 	"net"

@@ -18,7 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/xlink"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )

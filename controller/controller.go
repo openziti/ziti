@@ -23,9 +23,9 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/handler_ctrl"
 	"github.com/netfoundry/ziti-fabric/controller/handler_mgmt"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/xctrl"
-	"github.com/netfoundry/ziti-fabric/xctrl_example"
-	"github.com/netfoundry/ziti-fabric/xmgmt"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl_example"
+	"github.com/netfoundry/ziti-fabric/controller/xmgmt"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
 )
