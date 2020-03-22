@@ -1,4 +1,4 @@
-# 0.13 is not yet released! These are pre=release notes for features coming in 0.13. Some of these features may be released in 0.12 point releases
+# 0.13 is not yet released! These are pre-release notes for features coming in 0.13. Some of these features may be released in 0.12 point releases
 
 This page discusses the changes that you need to be aware of when migrating your Ziti deployment from version 0.12.x to version 0.13.x
 
@@ -27,9 +27,9 @@ All three support the same operations:
             
 The CLI supports these new operations as well.
 
-    ziti edge controller list edge-router-role-policices
-    ziti edge controller list identity-role-policices
-    ziti edge controller list service-role-policices
+    ziti edge controller list edge-router-role-attributes
+    ziti edge controller list identity-role-attributes
+    ziti edge controller list service-role-attributes
     
 Example output:
 
