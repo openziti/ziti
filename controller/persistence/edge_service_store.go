@@ -89,6 +89,7 @@ type EdgeServiceStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
+	GetRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
@@ -114,6 +115,10 @@ type edgeServiceStoreImpl struct {
 
 func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.Entity {
 	return &EdgeService{}
+}
+
+func (store *edgeServiceStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexRoleAttributes
 }
 
 func (store *edgeServiceStoreImpl) initializeLocal() {

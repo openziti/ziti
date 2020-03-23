@@ -367,6 +367,24 @@ func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
+func (request *authenticatedRequests) requireList(url string) []string {
+	httpStatus, body := request.query(url)
+	request.testContext.logJson(body)
+	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	jsonBody := request.testContext.parseJson(body)
+	values := request.testContext.requirePath(jsonBody, "data")
+
+	var result []string
+	children, err := values.Children()
+	request.testContext.req.NoError(err)
+	for _, child := range children {
+		val, ok := child.Data().(string)
+		request.testContext.req.True(ok)
+		result = append(result, val)
+	}
+	return result
+}
+
 func (request *authenticatedRequests) requireQuery(url string) *gabs.Container {
 	httpStatus, body := request.query(url)
 	request.testContext.logJson(body)

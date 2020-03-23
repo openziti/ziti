@@ -279,6 +279,36 @@ func (handler *baseHandler) list(queryString string, resultHandler models.ListRe
 	})
 }
 
+func (handler *baseHandler) queryRoleAttributes(index boltz.SetReadIndex, queryString string) ([]string, *models.QueryMetaData, error) {
+	query, err := ast.Parse(handler.env.GetStores().Index, queryString)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var results []string
+	var count int64
+	err = handler.GetDb().View(func(tx *bbolt.Tx) error {
+		cursorProvider := func(forward bool) ast.SetCursor {
+			return index.OpenCursor(tx, forward)
+		}
+		results, count, err = handler.env.GetStores().Index.QueryWithCursorC(tx, cursorProvider, query)
+		return err
+	})
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	qmd := &models.QueryMetaData{
+		Count:            count,
+		Limit:            *query.GetLimit(),
+		Offset:           *query.GetSkip(),
+		FilterableFields: handler.env.GetStores().Index.GetPublicSymbols(),
+	}
+
+	return results, qmd, nil
+}
+
 type AndFieldChecker struct {
 	first  boltz.FieldChecker
 	second boltz.FieldChecker

@@ -121,7 +121,7 @@ type EdgeRouterStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouter, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*EdgeRouter, error)
+	GetRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
@@ -144,6 +144,10 @@ type edgeRouterStoreImpl struct {
 
 func (store *edgeRouterStoreImpl) NewStoreEntity() boltz.Entity {
 	return &EdgeRouter{}
+}
+
+func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexRoleAttributes
 }
 
 func (store *edgeRouterStoreImpl) initializeLocal() {
@@ -205,14 +209,6 @@ func (store *edgeRouterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Edg
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, nil
-}
-
-func (store *edgeRouterStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*EdgeRouter, error) {
-	entity := &EdgeRouter{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

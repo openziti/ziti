@@ -148,9 +148,9 @@ func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.
 	})
 }
 
-type ModelListF func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error)
+type modelListF func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error)
 
-func List(rc *response.RequestContext, f ModelListF) {
+func List(rc *response.RequestContext, f modelListF) {
 	qo, err := GetModelQueryOptionsFromRequest(rc.Request)
 
 	if err != nil {

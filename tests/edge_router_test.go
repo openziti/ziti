@@ -19,6 +19,9 @@
 package tests
 
 import (
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -51,5 +54,40 @@ func Test_EdgeRouter(t *testing.T) {
 		edgeRouter.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(edgeRouter)
 		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
+	})
+
+	t.Run("role attributes should be queryable", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		prefix := "rol3-attribut3-qu3ry-t3st-"
+		role1 := prefix + "sales"
+		role2 := prefix + "support"
+		role3 := prefix + "engineering"
+		role4 := prefix + "field-ops"
+		role5 := prefix + "executive"
+
+		ctx.AdminSession.requireNewEdgeRouter(role1, role2)
+		ctx.AdminSession.requireNewEdgeRouter(role2, role3)
+		ctx.AdminSession.requireNewEdgeRouter(role3, role4)
+		edgeRouter := ctx.AdminSession.requireNewEdgeRouter(role5)
+		ctx.AdminSession.requireNewEdgeRouter()
+
+		list := ctx.AdminSession.requireList("edge-router-role-attributes")
+		ctx.req.True(len(list) >= 5)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+
+		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
+		list = ctx.AdminSession.requireList("edge-router-role-attributes?filter=" + filter)
+		ctx.req.Equal(4, len(list))
+
+		expected := []string{role1, role3, role4, role5}
+		sort.Strings(expected)
+		ctx.req.Equal(expected, list)
+
+		edgeRouter.roleAttributes = nil
+		ctx.AdminSession.requireUpdateEntity(edgeRouter)
+		list = ctx.AdminSession.requireList("edge-router-role-attributes")
+		ctx.req.True(len(list) >= 4)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.req.False(stringz.Contains(list, role5))
 	})
 }

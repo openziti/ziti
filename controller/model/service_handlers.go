@@ -160,6 +160,11 @@ func (handler *EdgeServiceHandler) queryServices(query ast.Query, identityId str
 	return result, nil
 }
 
+func (handler *EdgeServiceHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := handler.env.GetStores().EdgeService.GetRoleAttributesIndex()
+	return handler.queryRoleAttributes(index, queryString)
+}
+
 type ServiceListResult struct {
 	handler     *EdgeServiceHandler
 	Services    []*ServiceDetail

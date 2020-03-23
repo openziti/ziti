@@ -70,7 +70,7 @@ func (qo *QueryOptions) ValidateAndCorrect() {
 	}
 }
 
-func (qo *QueryOptions) getFullQuery(store boltz.CrudStore) (ast.Query, error) {
+func (qo *QueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
 	if qo.Predicate == "" {
 		qo.Predicate = "true"
 	}

@@ -37,7 +37,7 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/netfoundry/ziti-fabric v0.11.3
 	github.com/netfoundry/ziti-foundation v0.8.0
-	github.com/netfoundry/ziti-sdk-golang v0.11.3
+	github.com/netfoundry/ziti-sdk-golang v0.11.4
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.8.1
