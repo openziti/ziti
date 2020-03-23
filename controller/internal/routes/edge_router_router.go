@@ -21,7 +21,6 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"net/http"
 )
 
 func init() {
@@ -45,16 +44,16 @@ func (ir *EdgeRouterRouter) Register(ae *env.AppEnv) {
 	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
 
 	serviceEdgeRouterPoliciesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
-	serviceEdgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListServiceEdgeRouterPolicies, permissions.IsAdmin())
-
-	sr.HandleFunc(serviceEdgeRouterPoliciesUrl, serviceEdgeRouterPoliciesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(serviceEdgeRouterPoliciesUrl+"/", serviceEdgeRouterPoliciesListHandler).Methods(http.MethodGet)
+	ae.HandleGet(sr, serviceEdgeRouterPoliciesUrl, ir.listServiceEdgeRouterPolicies, permissions.IsAdmin())
 
 	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
-	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions.IsAdmin())
+	ae.HandleGet(sr, edgeRouterPolicyUrl, ir.listEdgeRouterPolicies, permissions.IsAdmin())
 
-	sr.HandleFunc(edgeRouterPolicyUrl, edgeRouterPoliciesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(edgeRouterPolicyUrl+"/", edgeRouterPoliciesListHandler).Methods(http.MethodGet)
+	identitiesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentity)
+	ae.HandleGet(sr, identitiesUrl, ir.listIdentities, permissions.IsAdmin())
+
+	servicesUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
+	ae.HandleGet(sr, servicesUrl, ir.listServices, permissions.IsAdmin())
 }
 
 func (ir *EdgeRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -91,10 +90,20 @@ func (ir *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (ir *EdgeRouterRouter) ListServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *EdgeRouterRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeRouter, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity)
 }
 
-func (ir *EdgeRouterRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *EdgeRouterRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeRouter, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToApiEntity)
+}
+
+func (ir *EdgeRouterRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(edgeRouters) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.Identity, MapIdentityToApiEntity)
+}
+
+func (ir *EdgeRouterRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(edgeRouters) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeService, MapServiceToApiEntity)
 }

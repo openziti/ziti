@@ -393,10 +393,22 @@ func (ae *AppEnv) WrapMiddleware(f AppMiddleware) mux.MiddlewareFunc {
 	}
 }
 
-func (ae *AppEnv) HandleGet(path string, f AppHandler, prs ...permissions.Resolver) {
+func (ae *AppEnv) HandleGet(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
 	handler := ae.WrapHandler(f, prs...)
-	ae.RootRouter.HandleFunc(path, handler).Methods(http.MethodGet)
-	ae.RootRouter.HandleFunc(path+"/", handler).Methods(http.MethodGet)
+	router.HandleFunc(path, handler).Methods(http.MethodGet)
+	router.HandleFunc(path+"/", handler).Methods(http.MethodGet)
+}
+
+func (ae *AppEnv) HandlePost(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
+	handler := ae.WrapHandler(f, prs...)
+	router.HandleFunc(path, handler).Methods(http.MethodPost)
+	router.HandleFunc(path+"/", handler).Methods(http.MethodPost)
+}
+
+func (ae *AppEnv) HandleDelete(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
+	handler := ae.WrapHandler(f, prs...)
+	router.HandleFunc(path, handler).Methods(http.MethodDelete)
+	router.HandleFunc(path+"/", handler).Methods(http.MethodDelete)
 }
 
 func (ae *AppEnv) GetEmbeddedFileContent(filePath string) (string, error) {

@@ -25,6 +25,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
@@ -487,6 +488,36 @@ func listWithId(rc *response.RequestContext, idType response.IdType, f func(id s
 
 // type ListAssocF func(string, func(models.Entity)) error
 type listAssocF func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error)
+
+func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, filterTemplate string, entityController models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociations(rc, idType, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+		query, err := queryOptions.getFullQuery(entityController.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		filter := fmt.Sprintf(filterTemplate, id)
+
+		filterQuery, err := ast.Parse(entityController.GetStore(), filter)
+		if err != nil {
+			return nil, err
+		}
+
+		query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), filterQuery.GetPredicate()))
+
+		result, err := entityController.BasePreparedList(query)
+		if err != nil {
+			return nil, err
+		}
+
+		entities, err := modelToApi(ae, rc, mapper, result.GetEntities())
+		if err != nil {
+			return nil, err
+		}
+
+		return NewQueryResult(entities, &result.QueryMetaData), nil
+	})
+}
 
 func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
 	ListAssociations(rc, idType, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {

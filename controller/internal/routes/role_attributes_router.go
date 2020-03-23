@@ -41,9 +41,9 @@ func NewRoleAttributesRouter() *RoleAttributesRouter {
 }
 
 func (ir *RoleAttributesRouter) Register(ae *env.AppEnv) {
-	ae.HandleGet(PathEdgeRouterRoleAttributes, ir.listEdgeRouterRoleAttributes, permissions.IsAdmin())
-	ae.HandleGet(PathIdentityRoleAttributes, ir.listIdentityRoleAttributes, permissions.IsAdmin())
-	ae.HandleGet(PathServiceRoleAttributes, ir.listServiceRoleAttributes, permissions.IsAdmin())
+	ae.HandleGet(ae.RootRouter, PathEdgeRouterRoleAttributes, ir.listEdgeRouterRoleAttributes, permissions.IsAdmin())
+	ae.HandleGet(ae.RootRouter, PathIdentityRoleAttributes, ir.listIdentityRoleAttributes, permissions.IsAdmin())
+	ae.HandleGet(ae.RootRouter, PathServiceRoleAttributes, ir.listServiceRoleAttributes, permissions.IsAdmin())
 }
 
 func (ir *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
