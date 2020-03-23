@@ -74,8 +74,10 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "service-edge-router-polices", outputServiceEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-polices", outputServiceEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "identities", outputIdentities, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "services", outputServices, newOptions()))
 
 	edgeRouterPolicyListRootCmd := newEntityListRootCmd("edge-router-policy")
 	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
@@ -83,13 +85,17 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 
 	identityListRootCmd := newEntityListRootCmd("identity")
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-routers", outputEdgeRouters, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", outputServicePolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "services", outputServices, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", outputServicePolicies, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "terminators", outputTerminators, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "identities", outputIdentities, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", outputEdgeRouters, newOptions()))
 
 	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy")
 	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "services", outputServices, newOptions()))
