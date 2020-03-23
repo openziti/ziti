@@ -16,14 +16,32 @@
 
 package xlink
 
-import "github.com/netfoundry/ziti-foundation/identity/identity"
+import (
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
+)
 
 type Factory interface {
-	Create(id *identity.TokenId, config map[interface{}]interface{}) (Xlink, error)
+	CreateListener(id *identity.TokenId, config map[interface{}]interface{}) (Listener, error)
+	CreateDialer(id *identity.TokenId, config map[interface{}]interface{}) (Dialer, error)
+}
+
+type Listener interface {
+	Listen() error
+	GetAdvertisement() string
+}
+
+type Accepter interface {
+	Accept(xlink Xlink) error
+}
+
+type Dialer interface {
+	Dial(address string, id *identity.TokenId) error
 }
 
 type Xlink interface {
-	Listen() error
-	Dial(address, linkId string) error
-	GetAdvertisement() string
+	Id() *identity.TokenId
+	SendPayload(payload *xgress.Payload) error
+	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
+	Close() error
 }

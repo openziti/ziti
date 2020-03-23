@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/metrics"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-fabric/trace"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/util/info"
@@ -100,7 +101,7 @@ func (forwarder *Forwarder) StartDestinations(sessionId *identity.TokenId) {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				if xgressDest, ok := destination.(XgressDestination); ok && xgressDest.IsTerminator() {
 					xgressDest.Start()
-					pfxlog.Logger().Infof("Started xgress for session %v", sessionId.Token)
+					pfxlog.Logger().Infof("started Xgress for session %v", sessionId.Token)
 				}
 			}
 		}
@@ -112,12 +113,12 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 	return found
 }
 
-func (forwarder *Forwarder) RegisterLink(link *Link) {
-	forwarder.destinations.addDestination(xgress.Address(link.Id.Token), link)
+func (forwarder *Forwarder) RegisterLink(link xlink.Xlink) {
+	forwarder.destinations.addDestination(xgress.Address(link.Id().Token), link)
 }
 
-func (forwarder *Forwarder) UnregisterLink(link *Link) {
-	forwarder.destinations.removeDestination(xgress.Address(link.Id.Token))
+func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
+	forwarder.destinations.removeDestination(xgress.Address(link.Id().Token))
 }
 
 func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {

@@ -18,39 +18,41 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/metrics"
-	forwarder2 "github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func NewFactory(ctrl xgress.CtrlChannel, f *forwarder2.Forwarder, fo *forwarder2.Options, mr metrics.Registry) xlink.Factory {
-	return &factory{
-		ctrl:             ctrl,
-		forwarder:        f,
-		forwarderOptions: fo,
-		metricsRegistry:  mr,
-	}
+func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter) xlink.Factory {
+	return &factory{accepter: accepter, chAccepter: chAccepter}
 }
 
-func (self *factory) Create(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Xlink, error) {
-	c, err := loadConfig(configData)
+func (self *factory) CreateListener(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Listener, error) {
+	c, err := loadListenerConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading configuration (%w)", err)
 	}
-	return &impl{
-		id:               id,
-		config:           c,
-		ctrl:             self.ctrl,
-		forwarder:        self.forwarder,
-		forwarderOptions: self.forwarderOptions,
+	return &listenerImpl{
+		id:         id,
+		config:     c,
+		accepter:   self.accepter,
+		chAccepter: self.chAccepter,
+	}, nil
+}
+
+func (self *factory) CreateDialer(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Dialer, error) {
+	c, err := loadDialerConfig(configData)
+	if err != nil {
+		return nil, fmt.Errorf("error loading configuration (%w)", err)
+	}
+	return &dialerImpl{
+		id:         id,
+		config:     c,
+		accepter:   self.accepter,
+		chAccepter: self.chAccepter,
 	}, nil
 }
 
 type factory struct {
-	ctrl             xgress.CtrlChannel
-	forwarder        *forwarder2.Forwarder
-	forwarderOptions *forwarder2.Options
-	metricsRegistry  metrics.Registry
+	accepter   xlink.Accepter
+	chAccepter ChannelAccepter
 }

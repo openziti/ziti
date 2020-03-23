@@ -22,8 +22,8 @@ import (
 	"github.com/netfoundry/ziti-foundation/transport"
 )
 
-func loadConfig(data map[interface{}]interface{}) (*config, error) {
-	c := &config{}
+func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, error) {
+	c := &listenerConfig{}
 
 	if value, found := data["listener"]; found {
 		address, err := transport.ParseAddress(value.(string))
@@ -53,8 +53,24 @@ func loadConfig(data map[interface{}]interface{}) (*config, error) {
 	return c, nil
 }
 
-type config struct {
+type listenerConfig struct {
 	listener  transport.Address
 	advertise transport.Address
 	options   *channel2.Options
+}
+
+func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
+	c := &dialerConfig{}
+
+	if value, found := data["options"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			c.options = channel2.LoadOptions(submap)
+		}
+	}
+
+	return c, nil
+}
+
+type dialerConfig struct {
+	options *channel2.Options
 }

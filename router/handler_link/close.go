@@ -22,34 +22,35 @@ import (
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type closeHandler struct {
-	link      *forwarder.Link
+	link      xlink.Xlink
 	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
 }
 
-func newCloseHandler(link *forwarder.Link, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *closeHandler {
+func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *closeHandler {
 	return &closeHandler{link: link, ctrl: ctrl, forwarder: forwarder}
 }
 
-func (h *closeHandler) HandleClose(ch channel2.Channel) {
+func (self *closeHandler) HandleClose(ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 	log.Info("link closed")
 
-	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: h.link.Id.Token}
+	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
 	if body, err := proto.Marshal(fault); err == nil {
 		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		if err := h.ctrl.Channel().Send(msg); err == nil {
+		if err := self.ctrl.Channel().Send(msg); err == nil {
 			log.Error("transmitted link fault")
 		} else {
-			log.Errorf("unexpected error transmitting link fault (%s)", err)
+			log.Errorf("unexpected error transmitting link fault (%v)", err)
 		}
 	} else {
-		log.Errorf("unexpected error (%s)", err)
+		log.Errorf("unexpected error (%v)", err)
 	}
 
-	h.forwarder.UnregisterLink(h.link)
+	self.forwarder.UnregisterLink(self.link)
 }

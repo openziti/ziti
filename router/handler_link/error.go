@@ -20,33 +20,33 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type errorHandler struct {
-	link *forwarder.Link
+	link xlink.Xlink
 	ctrl xgress.CtrlChannel
 }
 
-func newErrorHandler(link *forwarder.Link, ctrl xgress.CtrlChannel) *errorHandler {
+func newErrorHandler(link xlink.Xlink, ctrl xgress.CtrlChannel) *errorHandler {
 	return &errorHandler{link: link, ctrl: ctrl}
 }
 
-func (errorHandler *errorHandler) HandleError(err error, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(errorHandler.link.Channel.Label())
+func (self *errorHandler) HandleError(err error, ch channel2.Channel) {
+	log := pfxlog.ContextLogger(self.link.Id().Token)
 	fault := &ctrl_pb.Fault{
 		Subject: ctrl_pb.FaultSubject_LinkFault,
-		Id:      errorHandler.link.Id.Token,
+		Id:      self.link.Id().Token,
 	}
 	if body, err := proto.Marshal(fault); err == nil {
 		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		if err := errorHandler.ctrl.Channel().Send(msg); err == nil {
+		if err := self.ctrl.Channel().Send(msg); err == nil {
 			log.Infof("transmitted link fault")
 		} else {
-			log.Errorf("unexpected error sending fault (%s)", err)
+			log.Errorf("unexpected error sending fault (%v)", err)
 		}
 	}
-	errorHandler.link.Channel.Close()
+	self.link.Close()
 }

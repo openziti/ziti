@@ -18,55 +18,49 @@ package handler_ctrl
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-fabric/metrics"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-fabric/trace"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
 type bindHandler struct {
-	id               *identity.TokenId
-	dialerCfg        map[string]xgress.OptionsData
-	linkOptions      *channel2.Options
-	forwarderOptions *forwarder.Options
-	ctrl             xgress.CtrlChannel
-	forwarder        *forwarder.Forwarder
-	xctrls           []xctrl.Xctrl
-	metricsRegistry  metrics.Registry
+	id           *identity.TokenId
+	dialerCfg    map[string]xgress.OptionsData
+	xlinkDialers []xlink.Dialer
+	ctrl         xgress.CtrlChannel
+	forwarder    *forwarder.Forwarder
+	xctrls       []xctrl.Xctrl
 }
 
 func NewBindHandler(id *identity.TokenId,
 	dialerCfg map[string]xgress.OptionsData,
-	linkOptions *channel2.Options,
-	forwarderOptions *forwarder.Options,
+	xlinkDialers []xlink.Dialer,
 	ctrl xgress.CtrlChannel,
 	forwarder *forwarder.Forwarder,
-	xctrls []xctrl.Xctrl,
-	metricsRegistry metrics.Registry) channel2.BindHandler {
+	xctrls []xctrl.Xctrl) channel2.BindHandler {
 	return &bindHandler{
-		id:               id,
-		dialerCfg:        dialerCfg,
-		linkOptions:      linkOptions,
-		forwarderOptions: forwarderOptions,
-		ctrl:             ctrl,
-		forwarder:        forwarder,
-		xctrls:           xctrls,
-		metricsRegistry:  metricsRegistry,
+		id:           id,
+		dialerCfg:    dialerCfg,
+		xlinkDialers: xlinkDialers,
+		ctrl:         ctrl,
+		forwarder:    forwarder,
+		xctrls:       xctrls,
 	}
 }
 
-func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
-	ch.AddReceiveHandler(newDialHandler(bindHandler.id, bindHandler.ctrl, bindHandler.linkOptions, bindHandler.forwarderOptions, bindHandler.forwarder, bindHandler.metricsRegistry))
-	ch.AddReceiveHandler(newRouteHandler(bindHandler.id, bindHandler.ctrl, bindHandler.dialerCfg, bindHandler.forwarder))
-	ch.AddReceiveHandler(newUnrouteHandler(bindHandler.forwarder))
-	ch.AddReceiveHandler(newStartXgressHandler(bindHandler.forwarder))
-	ch.AddReceiveHandler(newTraceHandler(bindHandler.id, bindHandler.forwarder.TraceController()))
-	ch.AddReceiveHandler(newInspectHandler(bindHandler.id))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.id, ch, bindHandler.forwarder.TraceController(), trace.NewChannelSink(ch)))
+func (self *bindHandler) BindChannel(ch channel2.Channel) error {
+	ch.AddReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers))
+	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder))
+	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
+	ch.AddReceiveHandler(newStartXgressHandler(self.forwarder))
+	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
+	ch.AddReceiveHandler(newInspectHandler(self.id))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
 
-	for _, x := range bindHandler.xctrls {
+	for _, x := range self.xctrls {
 		if err := ch.Bind(x); err != nil {
 			return err
 		}
