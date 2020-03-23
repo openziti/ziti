@@ -66,6 +66,10 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
 
+	cmd.AddCommand(newListCmdForEntityType("edge-router-role-attributes", runListEdgeRouterRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("service-role-attributes", runListServiceRoleAttributes, newOptions()))
+
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
@@ -543,6 +547,38 @@ func runListSessions(o *commonOptions) error {
 		serviceName, _ := entity.Path("service.name").Data().(string)
 		sessionType, _ := entity.Path("type").Data().(string)
 		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func runListEdgeRouterRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("edge-router", o)
+}
+
+func runListIdentityRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("identity", o)
+}
+
+func runListServiceRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("service", o)
+}
+
+func runListRoleAttributes(entityType string, o *commonOptions) error {
+	children, err := listEntitiesWithOptions(entityType+"-role-attributes", o)
+
+	if err != nil {
+		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		if _, err := fmt.Fprintf(o.Out, "role-attribute: %v\n", entity.Data().(string)); err != nil {
 			return err
 		}
 	}
