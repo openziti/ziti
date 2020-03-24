@@ -20,9 +20,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/metrics"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 )
 
 type metricsHandler struct {
@@ -34,11 +34,11 @@ func newMetricsHandler(network *network.Network) *metricsHandler {
 }
 
 func (h *metricsHandler) ContentType() int32 {
-	return int32(ctrl_pb.ContentType_MetricsType)
+	return int32(metrics_pb.ContentType_MetricsType)
 }
 
 func (h *metricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	metricsMsg := &ctrl_pb.MetricsMessage{}
+	metricsMsg := &metrics_pb.MetricsMessage{}
 	if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
 		h.AcceptMetrics(metricsMsg)
 	} else {

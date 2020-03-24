@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/ctrl_msg"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"strconv"
 	"strings"
 )
@@ -229,7 +230,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 		return data, true
 
 	case int32(ContentType_MetricsType):
-		metricsMsg := &MetricsMessage{}
+		metricsMsg := &metrics_pb.MetricsMessage{}
 		if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Metrics")
 
