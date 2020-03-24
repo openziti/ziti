@@ -4,6 +4,7 @@ Ziti 0.13 includes the following:
  
   * Changes to make working with policies easier, including
       * New APIs to list existing role attributes used by edge routers, identities and services
+      * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
@@ -50,6 +51,24 @@ Example output:
             "one"
         ]
     }
+
+## Listing Entities Related by Policies
+This adds operations to the `/services`, `/identities` and `/edge-routers` endpoints.
+
+    * Endpoint: /edge-routers
+    * New operations
+       * Query related identities: GET /edge-routers/<edge-router-id>/identities?filter=<optional-filter>
+       * Query related services: GET /edge-routers/<edge-router-id>/services?filter=<optional-filter>
+
+    * Endpoint: /identities
+    * New operations
+       * Query related edge routers: GET /identities/<identity-id>/edge-routers?filter=<optional-filter>
+       * Query related services: GET /identities/<identity-id>/services?filter=<optional-filter>
+
+    * Endpoint: /services
+    * New operations
+       * Query related identities: GET /services/<service-id>/identities?filter=<optional-filter>
+       * Query related edge routers: GET /services/<service-id>/edge-routers?filter=<optional-filter>
 
 # Release 0.12
 ## Theme
