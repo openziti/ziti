@@ -21,7 +21,6 @@ import (
 	"github.com/netfoundry/ziti-cmd/common/version"
 	"github.com/netfoundry/ziti-cmd/ziti-controller/subcmd"
 	"github.com/netfoundry/ziti-edge/build"
-	"github.com/netfoundry/ziti-fabric/transwarp"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
@@ -35,7 +34,6 @@ func init() {
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
-	transport.AddAddressParser(transwarp.AddressParser{})
 
 	build.InitBuildInfo(version.GetCmdBuildInfo())
 }
