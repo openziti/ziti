@@ -21,7 +21,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"net/http"
 	"strings"
 
 	"github.com/netfoundry/ziti-edge/controller/env"
@@ -56,24 +55,22 @@ func (ir *ServiceRouter) Register(ae *env.AppEnv) {
 	})
 
 	serviceEdgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
-	serviceEdgeRouterPolicyListHandler := ae.WrapHandler(ir.listServiceEdgeRouterPolicies, permissions.IsAdmin())
-	sr.HandleFunc(serviceEdgeRouterPolicyUrl, serviceEdgeRouterPolicyListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(serviceEdgeRouterPolicyUrl+"/", serviceEdgeRouterPolicyListHandler).Methods(http.MethodGet)
+	ae.HandleGet(sr, serviceEdgeRouterPolicyUrl, ir.listServiceEdgeRouterPolicies, permissions.IsAdmin())
+
+	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
+	ae.HandleGet(sr, edgeRouterUrl, ir.listEdgeRouters, permissions.IsAdmin())
 
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	servicePoliciesListHandler := ae.WrapHandler(ir.listServicePolicies, permissions.IsAdmin())
-	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)
+	ae.HandleGet(sr, servicePolicyUrl, ir.listServicePolicies, permissions.IsAdmin())
+
+	identityUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentity)
+	ae.HandleGet(sr, identityUrl, ir.listIdentities, permissions.IsAdmin())
 
 	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
-	configsListHandler := ae.WrapHandler(ir.listConfigs, permissions.IsAdmin())
-	sr.HandleFunc(configsUrl, configsListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(configsUrl+"/", configsListHandler).Methods(http.MethodGet)
+	ae.HandleGet(sr, configsUrl, ir.listConfigs, permissions.IsAdmin())
 
 	terminatorsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameTerminator)
-	terminatorsListHandler := ae.WrapHandler(ir.listTerminators, permissions.IsAdmin())
-	sr.HandleFunc(terminatorsUrl, terminatorsListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(terminatorsUrl+"/", terminatorsListHandler).Methods(http.MethodGet)
+	ae.HandleGet(sr, terminatorsUrl, ir.listTerminators, permissions.IsAdmin())
 }
 
 func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -171,4 +168,14 @@ func (ir *ServiceRouter) listTerminators(ae *env.AppEnv, rc *response.RequestCon
 
 func (ir *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
 	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeService, associationLoader, mapper)
+}
+
+func (ir *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeService, MapServiceToApiEntity)
+}
+
+func (ir *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(services) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
 }

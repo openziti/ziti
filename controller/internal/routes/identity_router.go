@@ -51,32 +51,25 @@ func (ir *IdentityRouter) Register(ae *env.AppEnv) {
 
 	// edge router policies list
 	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
-	edgeRouterPoliciesListHandler := ae.WrapHandler(ir.ListEdgeRouterPolicies, permissions.IsAdmin())
+	ae.HandleGet(sr, edgeRouterPolicyUrl, ir.listEdgeRouterPolicies, permissions.IsAdmin())
 
-	sr.HandleFunc(edgeRouterPolicyUrl, edgeRouterPoliciesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(edgeRouterPolicyUrl+"/", edgeRouterPoliciesListHandler).Methods(http.MethodGet)
+	// edge routers list
+	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
+	ae.HandleGet(sr, edgeRouterUrl, ir.listEdgeRouters, permissions.IsAdmin())
 
 	// service policies list
 	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	servicePoliciesListHandler := ae.WrapHandler(ir.ListServicePolicies, permissions.IsAdmin())
+	ae.HandleGet(sr, servicePolicyUrl, ir.listServicePolicies, permissions.IsAdmin())
 
-	sr.HandleFunc(servicePolicyUrl, servicePoliciesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(servicePolicyUrl+"/", servicePoliciesListHandler).Methods(http.MethodGet)
+	// service list
+	serviceUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
+	ae.HandleGet(sr, serviceUrl, ir.listServices, permissions.IsAdmin())
 
 	// service configs crud
 	serviceConfigUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentityServiceConfig)
-	listServiceConfigHandler := ae.WrapHandler(ir.ListServiceConfigs, permissions.IsAdmin())
-	serviceConfigAssignHandler := ae.WrapHandler(ir.AssignServiceConfigs, permissions.IsAdmin())
-	serviceConfigRemoveHandler := ae.WrapHandler(ir.RemoveServiceConfigs, permissions.IsAdmin())
-
-	sr.HandleFunc(serviceConfigUrl, listServiceConfigHandler).Methods(http.MethodGet)
-	sr.HandleFunc(serviceConfigUrl+"/", listServiceConfigHandler).Methods(http.MethodGet)
-
-	sr.HandleFunc(serviceConfigUrl, serviceConfigAssignHandler).Methods(http.MethodPost)
-	sr.HandleFunc(servicePolicyUrl+"/", serviceConfigAssignHandler).Methods(http.MethodPost)
-
-	sr.HandleFunc(serviceConfigUrl, serviceConfigRemoveHandler).Methods(http.MethodDelete)
-	sr.HandleFunc(servicePolicyUrl+"/", serviceConfigRemoveHandler).Methods(http.MethodDelete)
+	ae.HandleGet(sr, serviceConfigUrl, ir.listServiceConfigs, permissions.IsAdmin())
+	ae.HandlePost(sr, serviceConfigUrl, ir.assignServiceConfigs, permissions.IsAdmin())
+	ae.HandleDelete(sr, serviceConfigUrl, ir.removeServiceConfigs, permissions.IsAdmin())
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
@@ -124,15 +117,25 @@ func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (ir *IdentityRouter) ListEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *IdentityRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToApiEntity)
 }
 
-func (ir *IdentityRouter) ListServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *IdentityRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
 	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
 }
 
-func (ir *IdentityRouter) ListServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeService, MapServiceToApiEntity)
+}
+
+func (ir *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+}
+
+func (ir *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	listWithId(rc, ir.IdType, func(id string) ([]interface{}, error) {
 		configs, err := ae.Handlers.Identity.GetServiceConfigs(id)
 		if err != nil {
@@ -146,7 +149,7 @@ func (ir *IdentityRouter) ListServiceConfigs(ae *env.AppEnv, rc *response.Reques
 	})
 }
 
-func (ir *IdentityRouter) AssignServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	var serviceConfigList []IdentityServiceConfig
 	Update(rc, ae.Schemes.Identity.ServiceConfigs, ir.IdType, &serviceConfigList, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
@@ -157,7 +160,7 @@ func (ir *IdentityRouter) AssignServiceConfigs(ae *env.AppEnv, rc *response.Requ
 	})
 }
 
-func (ir *IdentityRouter) RemoveServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	var serviceConfigList []IdentityServiceConfig
 	UpdateAllowEmptyBody(rc, ae.Schemes.Identity.ServiceConfigs, ir.IdType, &serviceConfigList, true, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
