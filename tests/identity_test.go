@@ -19,6 +19,9 @@
 package tests
 
 import (
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -51,5 +54,40 @@ func Test_Identity(t *testing.T) {
 		identity.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(identity)
 		ctx.AdminSession.validateEntityWithLookup(identity)
+	})
+
+	t.Run("role attributes should be queryable", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		prefix := "rol3-attribut3-qu3ry-t3st-"
+		role1 := prefix + "sales"
+		role2 := prefix + "support"
+		role3 := prefix + "engineering"
+		role4 := prefix + "field-ops"
+		role5 := prefix + "executive"
+
+		ctx.AdminSession.requireNewIdentity(false, role1, role2)
+		ctx.AdminSession.requireNewIdentity(false, role2, role3)
+		ctx.AdminSession.requireNewIdentity(false, role3, role4)
+		identity := ctx.AdminSession.requireNewIdentity(false, role5)
+		ctx.AdminSession.requireNewIdentity(false)
+
+		list := ctx.AdminSession.requireList("identity-role-attributes")
+		ctx.req.True(len(list) >= 5)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+
+		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
+		list = ctx.AdminSession.requireList("identity-role-attributes?filter=" + filter)
+		ctx.req.Equal(4, len(list))
+
+		expected := []string{role1, role3, role4, role5}
+		sort.Strings(expected)
+		ctx.req.Equal(expected, list)
+
+		identity.roleAttributes = nil
+		ctx.AdminSession.requireUpdateEntity(identity)
+		list = ctx.AdminSession.requireList("identity-role-attributes")
+		ctx.req.True(len(list) >= 4)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.req.False(stringz.Contains(list, role5))
 	})
 }

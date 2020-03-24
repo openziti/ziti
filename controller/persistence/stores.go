@@ -18,8 +18,10 @@ package persistence
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
 )
@@ -45,6 +47,7 @@ type Stores struct {
 	GeoRegion               GeoRegionStore
 	Identity                IdentityStore
 	IdentityType            IdentityTypeStore
+	Index                   boltz.ListStore
 	Session                 SessionStore
 	ServiceEdgeRouterPolicy ServiceEdgeRouterPolicyStore
 	ServicePolicy           ServicePolicyStore
@@ -167,6 +170,13 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 		storeMap: make(map[string]boltz.CrudStore),
 	}
+
+	// The Index store is used for querying indexes. It's a convenient store with only a single value (id), which
+	// is only ever queried using an index set cursor
+	externalStores.Index = boltz.NewBaseStore(nil, "invalid", func(id string) error {
+		return errors.Errorf("should never happen")
+	})
+	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
 
 	externalStores.buildStoreMap()
 	storeList := externalStores.getStoreList()

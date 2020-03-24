@@ -149,6 +149,11 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 	return result, nil
 }
 
+func (handler *EdgeRouterHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := handler.env.GetStores().EdgeRouter.GetRoleAttributesIndex()
+	return handler.queryRoleAttributes(index, queryString)
+}
+
 type EdgeRouterListResult struct {
 	handler     *EdgeRouterHandler
 	EdgeRouters []*EdgeRouter

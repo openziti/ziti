@@ -349,6 +349,13 @@ func (request *authenticatedRequests) requireNewIdentity(isAdmin bool, roleAttri
 	return identity
 }
 
+func (request *authenticatedRequests) requireNewIdentityWithOtt(isAdmin bool, roleAttributes ...string) *identity {
+	identity := newTestIdentity(isAdmin, roleAttributes...)
+	identity.enrollment = map[string]interface{}{"ott": true}
+	request.requireCreateEntity(identity)
+	return identity
+}
+
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	httpStatus, body := request.createEntity(entity)
 	request.testContext.req.Equal(http.StatusCreated, httpStatus)
@@ -365,6 +372,24 @@ func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
 func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
 	httpStatus, _ := request.updateEntity(entity)
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
+}
+
+func (request *authenticatedRequests) requireList(url string) []string {
+	httpStatus, body := request.query(url)
+	request.testContext.logJson(body)
+	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	jsonBody := request.testContext.parseJson(body)
+	values := request.testContext.requirePath(jsonBody, "data")
+
+	var result []string
+	children, err := values.Children()
+	request.testContext.req.NoError(err)
+	for _, child := range children {
+		val, ok := child.Data().(string)
+		request.testContext.req.True(ok)
+		result = append(result, val)
+	}
+	return result
 }
 
 func (request *authenticatedRequests) requireQuery(url string) *gabs.Container {
@@ -646,5 +671,12 @@ func (request *authenticatedRequests) patchEntity(entity entity, fields ...strin
 func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
 	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
 	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
+	return data.Data().(string)
+}
+
+func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
+	request.testContext.enabledJsonLogging = true
+	jsonBody := request.requireQuery("identities/" + identityId)
+	data := request.testContext.requirePath(jsonBody, "data", "enrollment", "ott", "jwt")
 	return data.Data().(string)
 }

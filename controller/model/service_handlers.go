@@ -135,15 +135,18 @@ func (handler *EdgeServiceHandler) PublicQueryForIdentity(sessionIdentity *Ident
 	if sessionIdentity.IsAdmin {
 		return handler.queryServices(query, sessionIdentity.Id, configTypes, true)
 	}
-	idFilterQueryString := fmt.Sprintf(`not isEmpty(from servicePolicies where anyOf(identities) = "%v")`, sessionIdentity.Id)
+	return handler.QueryForIdentity(sessionIdentity.Id, configTypes, query)
+}
+
+func (handler *EdgeServiceHandler) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
+	idFilterQueryString := fmt.Sprintf(`not isEmpty(from servicePolicies where anyOf(identities) = "%v")`, identityId)
 	idFilterQuery, err := ast.Parse(handler.Store, idFilterQueryString)
 	if err != nil {
 		return nil, err
 	}
 
 	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), idFilterQuery.GetPredicate()))
-
-	return handler.queryServices(query, sessionIdentity.Id, configTypes, false)
+	return handler.queryServices(query, identityId, configTypes, false)
 }
 
 func (handler *EdgeServiceHandler) queryServices(query ast.Query, identityId string, configTypes map[string]struct{}, isAdmin bool) (*ServiceListResult, error) {
@@ -158,6 +161,11 @@ func (handler *EdgeServiceHandler) queryServices(query ast.Query, identityId str
 		return nil, err
 	}
 	return result, nil
+}
+
+func (handler *EdgeServiceHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := handler.env.GetStores().EdgeService.GetRoleAttributesIndex()
+	return handler.queryRoleAttributes(index, queryString)
 }
 
 type ServiceListResult struct {

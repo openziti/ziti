@@ -110,7 +110,7 @@ type IdentityStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Identity, error)
+	GetRoleAttributesIndex() boltz.SetReadIndex
 	AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
 	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
 	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
@@ -141,6 +141,10 @@ type identityStoreImpl struct {
 
 func (store *identityStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Identity{}
+}
+
+func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexRoleAttributes
 }
 
 func (store *identityStoreImpl) initializeLocal() {
@@ -204,14 +208,6 @@ func (store *identityStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Ident
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, nil
-}
-
-func (store *identityStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Identity, error) {
-	entity := &Identity{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

@@ -20,6 +20,7 @@ package tests
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"net/url"
 	"sort"
 	"testing"
@@ -354,4 +355,70 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 	service := ctx.newService(nil, s(config1.name, config2.name))
 	httpCode, body := ctx.AdminSession.createEntity(service)
 	ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "configs")
+}
+
+func Test_ServiceRoleAttributes(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.teardown()
+	ctx.startServer()
+	ctx.requireAdminLogin()
+
+	t.Run("role attributes should be created", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		role1 := uuid.New().String()
+		role2 := uuid.New().String()
+		service := ctx.AdminSession.requireNewService(s(role1, role2), nil)
+		service.permissions = []string{"Dial", "Bind"}
+
+		ctx.AdminSession.validateEntityWithQuery(service)
+		ctx.AdminSession.validateEntityWithLookup(service)
+	})
+
+	t.Run("role attributes should be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		role1 := uuid.New().String()
+		role2 := uuid.New().String()
+		service := ctx.AdminSession.requireNewService(s(role1, role2), nil)
+		service.permissions = []string{"Dial", "Bind"}
+
+		role3 := uuid.New().String()
+		service.roleAttributes = []string{role2, role3}
+		ctx.AdminSession.requireUpdateEntity(service)
+		ctx.AdminSession.validateEntityWithLookup(service)
+	})
+
+	t.Run("role attributes should be queryable", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		prefix := "rol3-attribut3-qu3ry-t3st-"
+		role1 := prefix + "sales"
+		role2 := prefix + "support"
+		role3 := prefix + "engineering"
+		role4 := prefix + "field-ops"
+		role5 := prefix + "executive"
+
+		ctx.AdminSession.requireNewService(s(role1, role2), nil)
+		ctx.AdminSession.requireNewService(s(role2, role3), nil)
+		ctx.AdminSession.requireNewService(s(role3, role4), nil)
+		service := ctx.AdminSession.requireNewService(s(role5), nil)
+		ctx.AdminSession.requireNewService(nil, nil)
+
+		list := ctx.AdminSession.requireList("service-role-attributes")
+		ctx.req.True(len(list) >= 5)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+
+		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
+		list = ctx.AdminSession.requireList("service-role-attributes?filter=" + filter)
+		ctx.req.Equal(4, len(list))
+
+		expected := []string{role1, role3, role4, role5}
+		sort.Strings(expected)
+		ctx.req.Equal(expected, list)
+
+		service.roleAttributes = nil
+		ctx.AdminSession.requireUpdateEntity(service)
+		list = ctx.AdminSession.requireList("service-role-attributes")
+		ctx.req.True(len(list) >= 4)
+		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.req.False(stringz.Contains(list, role5))
+	})
 }

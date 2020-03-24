@@ -415,3 +415,8 @@ func (handler *IdentityHandler) RemoveServiceConfigs(id string, serviceConfigs [
 		return handler.env.GetStores().Identity.RemoveServiceConfigs(tx, id, boltServiceConfigs...)
 	})
 }
+
+func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := handler.env.GetStores().Identity.GetRoleAttributesIndex()
+	return handler.queryRoleAttributes(index, queryString)
+}
