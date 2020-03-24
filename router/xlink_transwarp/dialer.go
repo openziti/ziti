@@ -27,16 +27,22 @@ import (
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
 		name := "l/" + linkId.Token
-		logrus.Infof("dialing link [%s]", name)
+		logrus.Infof("dialing link [%s] at [%s]", name, address)
 
-		if conn, err := net.DialUDP("udp", self.config.bindAddress, address); err == nil {
-			xlink := &impl{id: linkId, conn: conn}
-
-			if err := self.accepter.Accept(xlink); err != nil {
-				return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
+		if conn, err := net.ListenUDP("udp", self.config.bindAddress); err == nil {
+			if err := writeHello(linkId, conn, address); err == nil {
+				if peerId, peer, err := readHello(conn); err == nil {
+					logrus.Infof("received hello [%s] from [%s], success", peerId.Token, peer)
+				} else {
+					return fmt.Errorf("error receiving hello from peer [%s] (%w)", address, err)
+				}
+			} else {
+				return fmt.Errorf("error sending hello to peer [%s] (%w)", address, err)
 			}
 
-			logrus.Infof("bound to [%s]", self.config.bindAddress)
+			if err := self.accepter.Accept(&impl{id: linkId, conn: conn}); err != nil {
+				return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
+			}
 
 			return nil
 

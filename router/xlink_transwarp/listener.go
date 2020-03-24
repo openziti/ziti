@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/sirupsen/logrus"
 	"net"
 )
 
@@ -29,11 +30,26 @@ func (self *listener) Listen() error {
 		return fmt.Errorf("error listening (%w)", err)
 	}
 	self.listener = listener
+	go self.listen()
 	return nil
 }
 
 func (self *listener) GetAdvertisement() string {
 	return self.config.advertiseAddress.String()
+}
+
+func (self *listener) listen() {
+	for {
+		linkId, peer, err := readHello(self.listener)
+		if err == nil {
+			logrus.Infof("read hello [%s] from peer at [%s], responding", linkId.Token, peer)
+			if err := writeHello(linkId, self.listener, peer); err != nil {
+				logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+			}
+		} else {
+			logrus.Errorf("error reading hello from peer at [%s] (%v)", peer, err)
+		}
+	}
 }
 
 type listener struct {

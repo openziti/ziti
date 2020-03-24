@@ -33,7 +33,7 @@ import (
 type Router struct {
 	models.BaseEntity
 	Fingerprint        string
-	AdvertisedListener transport.Address
+	AdvertisedListener string
 	Control            channel2.Channel
 	CostFactor         int
 	Connected          concurrenz.AtomicBoolean
@@ -67,7 +67,7 @@ func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl c
 	return &Router{
 		BaseEntity:         models.BaseEntity{Id: id},
 		Fingerprint:        fingerprint,
-		AdvertisedListener: advLstnr,
+		AdvertisedListener: advLstnr.String(),
 		Control:            ctrl,
 		CostFactor:         1,
 	}

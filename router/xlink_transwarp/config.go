@@ -29,6 +29,7 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		if addressString, ok := value.(string); ok {
 			if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
 				config.bindAddress = address
+				config.advertiseAddress = address
 			} else {
 				return nil, fmt.Errorf("error parsing 'bind' address (%w)", err)
 			}
@@ -49,8 +50,6 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		} else {
 			return nil, fmt.Errorf("invalid 'advertise' address in listener config (%s)", reflect.TypeOf(value))
 		}
-	} else {
-		return nil, fmt.Errorf("missing 'advertise' address in listener config")
 	}
 
 	return config, nil

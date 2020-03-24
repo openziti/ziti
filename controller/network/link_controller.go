@@ -122,7 +122,7 @@ func (linkController *linkController) missingLinks(routers []*Router) ([]*Link, 
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
 		for _, dstR := range routers {
-			if srcR != dstR && dstR.AdvertisedListener != nil {
+			if srcR != dstR && dstR.AdvertisedListener != "" {
 				if _, found := linkController.firstDirectedLink(srcR, dstR); !found {
 					id, err := linkController.sequence.NextHash()
 					if err != nil {

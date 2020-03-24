@@ -59,7 +59,7 @@ func (self *dialHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel
 				logrus.Infof("link [l/%s] established", linkId.Token)
 
 			} else {
-				logrus.Errorf("link dialing failed [%s]", dial.Address)
+				logrus.Errorf("link dialing failed [%s] (%v)", dial.Address, err)
 				if err := self.sendLinkFault(linkId); err != nil {
 					logrus.Errorf("error sending fault [l/%s] (%v)", linkId.Token, err)
 				}
