@@ -144,6 +144,7 @@ type identity struct {
 	name           string
 	identityType   string
 	isAdmin        bool
+	enrollment     map[string]interface{}
 	roleAttributes []string
 	tags           map[string]interface{}
 }
@@ -165,14 +166,16 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.identityType, "type")
 	ctx.setJsonValue(entityData, entity.isAdmin, "isAdmin")
+	ctx.setJsonValue(entityData, entity.enrollment, "enrollment")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 
 	if isCreate {
-		enrollments := map[string]interface{}{
-			"updb": entity.name,
+		if entity.enrollment == nil {
+			enrollments := map[string]interface{}{
+				"updb": entity.name,
+			}
+			ctx.setJsonValue(entityData, enrollments, "enrollment")
 		}
-		ctx.setJsonValue(entityData, enrollments, "enrollment")
-
 	}
 
 	ctx.setJsonValue(entityData, entity.tags, "tags")

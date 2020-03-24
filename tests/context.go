@@ -28,9 +28,13 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/netfoundry/ziti-edge/gateway/enroll"
+	"github.com/netfoundry/ziti-edge/gateway/xgress_edge"
 	"github.com/netfoundry/ziti-fabric/router"
+	"github.com/netfoundry/ziti-fabric/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
 	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
+	sdkconfig "github.com/netfoundry/ziti-sdk-golang/ziti/config"
+	sdkenroll "github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -55,6 +59,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	ControllerConfFile = "ats-ctrl.yml"
+	EdgeRouterConfFile = "ats-edge.router.yml"
+)
+
 func init() {
 	pfxlog.Global(logrus.DebugLevel)
 	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
@@ -75,7 +84,8 @@ type TestContext struct {
 	client             *resty.Client
 	enabledJsonLogging bool
 
-	edgeRouter *edgeRouter
+	edgeRouterEntity *edgeRouter
+	router           *router.Router
 }
 
 var defaultTestContext = &TestContext{
@@ -176,7 +186,7 @@ func (ctx *TestContext) startServer() {
 	ctx.req.NoError(err)
 
 	log.Info("loading config")
-	config, err := controller.LoadConfig("ats-ctrl.yml")
+	config, err := controller.LoadConfig(ControllerConfFile)
 	ctx.req.NoError(err)
 
 	log.Info("creating fabric controller")
@@ -206,26 +216,52 @@ func (ctx *TestContext) startServer() {
 	ctx.req.NoError(err)
 }
 
-func (ctx *TestContext) createAndEnroll(roleAttributes ...string) *edgeRouter {
+func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
 	// If an edge router has already been created, delete it and create a new one
-	if ctx.edgeRouter != nil {
-		ctx.AdminSession.requireDeleteEntity(ctx.edgeRouter)
-		ctx.edgeRouter = nil
+	if ctx.edgeRouterEntity != nil {
+		ctx.AdminSession.requireDeleteEntity(ctx.edgeRouterEntity)
+		ctx.edgeRouterEntity = nil
 	}
 
 	_ = os.MkdirAll("testdata/edge-router", os.FileMode(0755))
 
-	ctx.edgeRouter = ctx.AdminSession.requireNewEdgeRouter(roleAttributes...)
-	jwt := ctx.AdminSession.getEdgeRouterJwt(ctx.edgeRouter.id)
+	ctx.edgeRouterEntity = ctx.AdminSession.requireNewEdgeRouter(roleAttributes...)
+	jwt := ctx.AdminSession.getEdgeRouterJwt(ctx.edgeRouterEntity.id)
 
-	cfgmap, err := router.LoadConfigMap("ats-edge.router.yml")
+	cfgmap, err := router.LoadConfigMap(EdgeRouterConfFile)
 	ctx.req.NoError(err)
 
 	enroller := enroll.NewRestEnroller()
 	ctx.req.NoError(enroller.LoadConfig(cfgmap))
 	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
 
-	return ctx.edgeRouter
+	return ctx.edgeRouterEntity
+}
+
+func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {
+	ctx.createAndEnrollEdgeRouter(roleAttributes...)
+
+	config, err := router.LoadConfig(EdgeRouterConfFile)
+	ctx.req.NoError(err)
+	ctx.router = router.Create(config)
+
+	xgressEdgeFactory := xgress_edge.NewFactory()
+	xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
+	ctx.req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
+	ctx.req.NoError(ctx.router.Start())
+}
+
+func (ctx *TestContext) enrollIdentity(identityId string) *sdkconfig.Config {
+	jwt := ctx.AdminSession.getIdentityJwt(identityId)
+	tkn, _, err := sdkenroll.ParseToken(jwt)
+	ctx.req.NoError(err)
+
+	flags := sdkenroll.EnrollmentFlags{
+		Token: tkn,
+	}
+	conf, err := sdkenroll.Enroll(flags)
+	ctx.req.NoError(err)
+	return conf
 }
 
 func (ctx *TestContext) waitForPort(duration time.Duration) error {
