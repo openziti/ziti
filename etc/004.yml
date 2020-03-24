@@ -24,6 +24,6 @@ ctrl:
 link:
   listeners:
     - binding:          transport
-      listener:         tls:127.0.0.1:6004
+      bind:             tls:127.0.0.1:6004
   dialers:
     - binding:          transport

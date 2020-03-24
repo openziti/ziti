@@ -15,7 +15,7 @@ ctrl:
 link:
   listeners:
     - binding:          transport
-      listener:         tls:127.0.0.1:6002
+      bind:             tls:127.0.0.1:6002
       advertise:        tls:127.0.0.1:6002
       options:
         outQueueSize:   16
