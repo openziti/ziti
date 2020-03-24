@@ -211,7 +211,7 @@ func (self *Router) startControlPlane() error {
 	var attributes map[int32][]byte
 	if len(self.xlinkListeners) == 1 {
 		attributes = make(map[int32][]byte)
-		attributes[channel2.HelloListenerHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
+		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
 	dialer := channel2.NewReconnectingDialer(self.config.Id, self.config.Ctrl.Endpoint, attributes)

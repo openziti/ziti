@@ -53,17 +53,17 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 		if err == nil {
 			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
 				if ch.Underlay().Headers() != nil {
-					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloListenerHeader]; found {
+					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloRouterAdvertisementsHeader]; found {
 						listenerString := string(listenerValue)
 						if listener, err := transport.ParseAddress(listenerString); err == nil {
 							r.AdvertisedListener = listener
 						} else {
-							log.Errorf("error parsing listener address (%s)", err)
+							log.Errorf("error parsing advertised listener address (%s)", err)
 							_ = ch.Close()
 							continue
 						}
 					} else {
-						log.Warn("missing listener attribute")
+						log.Warn("no advertised listeners")
 					}
 				} else {
 					log.Warn("no attributes provided")
