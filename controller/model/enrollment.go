@@ -68,6 +68,7 @@ type EnrollmentContext interface {
 	GetDataAsByteArray() []byte
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
+	GetMethod() string
 }
 
 type EnrollmentContextHttp struct {
@@ -76,6 +77,11 @@ type EnrollmentContextHttp struct {
 	Data       interface{}
 	Certs      []*x509.Certificate
 	Token      string
+	Method     string
+}
+
+func (context *EnrollmentContextHttp) GetMethod() string {
+	return context.Method
 }
 
 func (context *EnrollmentContextHttp) GetToken() string {
@@ -122,6 +128,8 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 	queryValues := request.URL.Query()
 	parameters := map[string]interface{}{}
 
+	method := queryValues.Get("method")
+
 	for key, value := range queryValues {
 		parameters[key] = value
 
@@ -163,6 +171,7 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 		headers[h] = v
 	}
 
+	context.Method = method
 	context.Parameters = parameters
 	context.Data = enrollData
 	context.Certs = request.TLS.PeerCertificates

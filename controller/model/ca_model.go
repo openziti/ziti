@@ -39,6 +39,7 @@ type Ca struct {
 	IsAutoCaEnrollmentEnabled bool
 	IsOttCaEnrollmentEnabled  bool
 	IsAuthEnabled             bool
+	IdentityRoles             []string
 }
 
 func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -55,6 +56,7 @@ func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) erro
 	entity.IsAutoCaEnrollmentEnabled = boltCa.IsAutoCaEnrollmentEnabled
 	entity.IsOttCaEnrollmentEnabled = boltCa.IsOttCaEnrollmentEnabled
 	entity.IsAuthEnabled = boltCa.IsAuthEnabled
+	entity.IdentityRoles = boltCa.IdentityRoles
 	return nil
 }
 
@@ -115,6 +117,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.En
 		IsAuthEnabled:             entity.IsAuthEnabled,
 		IsAutoCaEnrollmentEnabled: entity.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  entity.IsOttCaEnrollmentEnabled,
+		IdentityRoles:             entity.IdentityRoles,
 	}
 
 	return boltEntity, nil
@@ -128,6 +131,7 @@ func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, e
 		IsAutoCaEnrollmentEnabled: entity.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  entity.IsOttCaEnrollmentEnabled,
 		IsVerified:                entity.IsVerified,
+		IdentityRoles:             entity.IdentityRoles,
 	}
 
 	return boltEntity, nil
