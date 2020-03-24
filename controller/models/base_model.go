@@ -195,10 +195,12 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 		return errors.Errorf("invalid association: '%v'", association)
 	}
 
-	if cursor := symbol.GetStore().GetRelatedEntitiesCursor(tx, id, association); cursor != nil {
-		if keys, count, err = linkedType.QueryWithCursorC(tx, cursor, query); err != nil {
-			return err
-		}
+	cursorProvider := func(forward bool) ast.SetCursor {
+		return symbol.GetStore().GetRelatedEntitiesCursor(tx, id, association, forward)
+	}
+
+	if keys, count, err = linkedType.QueryWithCursorC(tx, cursorProvider, query); err != nil {
+		return err
 	}
 
 	qmd := &QueryMetaData{
