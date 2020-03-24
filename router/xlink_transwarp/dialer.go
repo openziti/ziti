@@ -14,40 +14,34 @@
 	limitations under the License.
 */
 
-package xlink_transport
+package xlink_transwarp
 
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/sirupsen/logrus"
+	"net"
 )
 
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
-	if address, err := transport.ParseAddress(addressString); err == nil {
-		logrus.Infof("dialing link [l/%s]", linkId.Token)
+	if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
+		name := "l/" + linkId.Token
+		logrus.Infof("dialing link [%s]", name)
 
-		dialer := channel2.NewClassicDialer(linkId, address, nil)
-		ch, err := channel2.NewChannel("l/"+linkId.Token, dialer, self.config.options)
-		if err == nil {
-			xlink := &impl{id: linkId, ch: ch}
-
-			if self.chAccepter != nil {
-				if err := self.chAccepter.AcceptChannel(xlink, ch); err != nil {
-					logrus.Errorf("error accepting outgoing channel (%w)", err)
-				}
-			}
+		if conn, err := net.DialUDP("udp", self.config.bindAddress, address); err == nil {
+			xlink := &impl{id: linkId, conn: conn}
 
 			if err := self.accepter.Accept(xlink); err != nil {
 				return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 			}
 
+			logrus.Infof("bound to [%s]", self.config.bindAddress)
+
 			return nil
 
 		} else {
-			return fmt.Errorf("error dialing link [l/%s] (%w)", linkId.Token, err)
+			return fmt.Errorf("error dialing link [%s] (%w)", name, err)
 		}
 	} else {
 		return fmt.Errorf("error parsing link address [%s] (%w)", addressString, err)
@@ -55,8 +49,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 }
 
 type dialer struct {
-	id         *identity.TokenId
-	config     *dialerConfig
-	accepter   xlink.Accepter
-	chAccepter ChannelAccepter
+	id       *identity.TokenId
+	config   *dialerConfig
+	accepter xlink.Accepter
 }

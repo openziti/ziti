@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package xlink_transport
+package xlink_transwarp
 
 import (
 	"fmt"
@@ -22,8 +22,8 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
-func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter) xlink.Factory {
-	return &factory{accepter: accepter, chAccepter: chAccepter}
+func NewFactory(accepter xlink.Accepter) xlink.Factory {
+	return &factory{accepter: accepter}
 }
 
 func (self *factory) CreateListener(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Listener, error) {
@@ -32,10 +32,9 @@ func (self *factory) CreateListener(id *identity.TokenId, configData map[interfa
 		return nil, fmt.Errorf("error loading listener configuration (%w)", err)
 	}
 	return &listener{
-		id:         id,
-		config:     config,
-		accepter:   self.accepter,
-		chAccepter: self.chAccepter,
+		id:       id,
+		config:   config,
+		accepter: self.accepter,
 	}, nil
 }
 
@@ -45,14 +44,12 @@ func (self *factory) CreateDialer(id *identity.TokenId, configData map[interface
 		return nil, fmt.Errorf("error loading dialer configuration (%w)", err)
 	}
 	return &dialer{
-		id:         id,
-		config:     config,
-		accepter:   self.accepter,
-		chAccepter: self.chAccepter,
+		id:       id,
+		config:   config,
+		accepter: self.accepter,
 	}, nil
 }
 
 type factory struct {
-	accepter   xlink.Accepter
-	chAccepter ChannelAccepter
+	accepter xlink.Accepter
 }

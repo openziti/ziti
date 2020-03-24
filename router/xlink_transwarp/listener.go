@@ -18,28 +18,27 @@ package xlink_transwarp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"net"
 )
 
-func (self *impl) Id() *identity.TokenId {
-	return self.id
+func (self *listener) Listen() error {
+	listener, err := net.ListenUDP("udp", self.config.bindAddress)
+	if err != nil {
+		return fmt.Errorf("error listening (%w)", err)
+	}
+	self.listener = listener
+	return nil
 }
 
-func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return fmt.Errorf("not implemented")
+func (self *listener) GetAdvertisement() string {
+	return self.config.advertiseAddress.String()
 }
 
-func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return fmt.Errorf("not implemented")
-}
-
-func (self *impl) Close() error {
-	return self.conn.Close()
-}
-
-type impl struct {
-	id   *identity.TokenId
-	conn *net.UDPConn
+type listener struct {
+	id       *identity.TokenId
+	config   *listenerConfig
+	listener *net.UDPConn
+	accepter xlink.Accepter
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (self *listenerImpl) Listen() error {
+func (self *listener) Listen() error {
 	self.listener = channel2.NewClassicListener(self.id, self.config.bind)
 	if err := self.listener.Listen(); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
@@ -33,11 +33,11 @@ func (self *listenerImpl) Listen() error {
 	return nil
 }
 
-func (self *listenerImpl) GetAdvertisement() string {
+func (self *listener) GetAdvertisement() string {
 	return self.config.advertise.String()
 }
 
-func (self *listenerImpl) acceptLoop() {
+func (self *listener) acceptLoop() {
 	for {
 		ch, err := channel2.NewChannel("link", self.listener, self.config.options)
 		if err == nil {
@@ -62,7 +62,7 @@ func (self *listenerImpl) acceptLoop() {
 	}
 }
 
-type listenerImpl struct {
+type listener struct {
 	id         *identity.TokenId
 	config     *listenerConfig
 	listener   channel2.UnderlayListener
