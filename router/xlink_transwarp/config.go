@@ -14,12 +14,11 @@
 	limitations under the License.
 */
 
-package xlink_transport
+package xlink_transwarp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"net"
 	"reflect"
 )
 
@@ -28,11 +27,10 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 
 	if value, found := data["bind"]; found {
 		if addressString, ok := value.(string); ok {
-			if address, err := transport.ParseAddress(addressString); err == nil {
-				config.bind = address
-				config.advertise = address
+			if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
+				config.bindAddress = address
 			} else {
-				return nil, fmt.Errorf("error parsing 'bind' address in listener config (%w)", err)
+				return nil, fmt.Errorf("error parsing 'bind' address (%w)", err)
 			}
 		} else {
 			return nil, fmt.Errorf("invalid 'bind' address in listener config (%s)", reflect.TypeOf(value))
@@ -43,47 +41,46 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 
 	if value, found := data["advertise"]; found {
 		if addressString, ok := value.(string); ok {
-			if address, err := transport.ParseAddress(addressString); err == nil {
-				config.advertise = address
+			if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
+				config.advertiseAddress = address
 			} else {
-				return nil, fmt.Errorf("error parsing 'advertise' address in listener config")
+				return nil, fmt.Errorf("error parsing 'advertise' address in listener config (%w)", err)
 			}
 		} else {
 			return nil, fmt.Errorf("invalid 'advertise' address in listener config (%s)", reflect.TypeOf(value))
 		}
-	}
-
-	if value, found := data["options"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			config.options = channel2.LoadOptions(submap)
-		} else {
-			return nil, fmt.Errorf("invalid 'options' in listener config (%s)", reflect.TypeOf(value))
-		}
+	} else {
+		return nil, fmt.Errorf("missing 'advertise' address in listener config")
 	}
 
 	return config, nil
 }
 
 type listenerConfig struct {
-	bind      transport.Address
-	advertise transport.Address
-	options   *channel2.Options
+	bindAddress      *net.UDPAddr
+	advertiseAddress *net.UDPAddr
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	config := &dialerConfig{}
 
-	if value, found := data["options"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			config.options = channel2.LoadOptions(submap)
+	if value, found := data["bind"]; found {
+		if addressString, ok := value.(string); ok {
+			if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
+				config.bindAddress = address
+			} else {
+				return nil, fmt.Errorf("error parsing 'bind' address in dialer config (%w)", err)
+			}
 		} else {
-			return nil, fmt.Errorf("invalid 'options' in dialer config (%s)", reflect.TypeOf(value))
+			return nil, fmt.Errorf("invalid 'bind' address in dialer config (%s)", reflect.TypeOf(value))
 		}
+	} else {
+		return nil, fmt.Errorf("missing 'bind' address in dialer config")
 	}
 
 	return config, nil
 }
 
 type dialerConfig struct {
-	options *channel2.Options
+	bindAddress *net.UDPAddr
 }
