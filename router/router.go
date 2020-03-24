@@ -176,7 +176,7 @@ func (self *Router) startXlinkListeners() {
 				logrus.Fatalf("error listening on Xlink (%v)", err)
 			}
 			self.xlinkListeners = append(self.xlinkListeners, listener)
-			logrus.Infof("started Xlink listener with binding [%s]", binding)
+			logrus.Infof("started Xlink listener with binding [%s] advertising [%s]", binding, listener.GetAdvertisement())
 		}
 	}
 }
