@@ -1,0 +1,13 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/fabric-routers.patch.json",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "$ref": "definitions.all.json#/definitions/name-null"
+    },
+    "tags": {
+      "$ref": "definitions.all.json#/definitions/tags-null"
+    }
+  }
+}

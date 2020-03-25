@@ -60,8 +60,9 @@ import (
 )
 
 const (
-	ControllerConfFile = "ats-ctrl.yml"
-	EdgeRouterConfFile = "ats-edge.router.yml"
+	ControllerConfFile    = "ats-ctrl.yml"
+	EdgeRouterConfFile    = "ats-edge.router.yml"
+	TransitRouterConfFile = "ats-transit.router.yml"
 )
 
 func init() {
@@ -84,8 +85,10 @@ type TestContext struct {
 	client             *resty.Client
 	enabledJsonLogging bool
 
-	edgeRouterEntity *edgeRouter
-	router           *router.Router
+	edgeRouterEntity    *edgeRouter
+	transitRouterEntity *transitRouter
+	router              *router.Router
+	testing             *testing.T
 }
 
 var defaultTestContext = &TestContext{
@@ -111,6 +114,7 @@ func GetTestContext() *TestContext {
 }
 
 func (ctx *TestContext) testContextChanged(t *testing.T) {
+	ctx.testing = t
 	ctx.req = require.New(t)
 }
 
@@ -236,6 +240,28 @@ func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edg
 	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
 
 	return ctx.edgeRouterEntity
+}
+
+func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
+	// If a tx router has already been created, delete it and create a new one
+	if ctx.transitRouterEntity != nil {
+		ctx.AdminSession.requireDeleteEntity(ctx.transitRouterEntity)
+		ctx.transitRouterEntity = nil
+	}
+
+	_ = os.MkdirAll("testdata/transit-router", os.FileMode(0755))
+
+	ctx.transitRouterEntity = ctx.AdminSession.requireNewTransitRouter()
+	jwt := ctx.AdminSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
+
+	cfgmap, err := router.LoadConfigMap(TransitRouterConfFile)
+	ctx.req.NoError(err)
+
+	enroller := enroll.NewRestEnroller()
+	ctx.req.NoError(enroller.LoadConfig(cfgmap))
+	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
+
+	return ctx.transitRouterEntity
 }
 
 func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {

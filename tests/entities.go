@@ -570,6 +570,45 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	}
 }
 
+func newTestTransitRouter() *transitRouter {
+	return &transitRouter{
+		name: uuid.New().String(),
+	}
+}
+
+type transitRouter struct {
+	id   string
+	name string
+	tags map[string]interface{}
+}
+
+func (entity *transitRouter) getId() string {
+	return entity.id
+}
+
+func (entity *transitRouter) setId(id string) {
+	entity.id = id
+}
+
+func (entity *transitRouter) getEntityType() string {
+	return "transit-routers"
+}
+
+func (entity *transitRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.tags, "tags")
+
+	return entityData.String()
+}
+
+func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
 type ca struct {
 	id                        string
 	name                      string                 `json:"name"`

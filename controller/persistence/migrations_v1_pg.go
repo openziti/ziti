@@ -149,7 +149,7 @@ func (m *Migrations) migrateEnrollmentsFromPG(step *boltz.MigrationStep) error {
 			BaseExtEntity: *toBaseBoltEntity(&pgEnrollment.BaseDbEntity),
 			Token:         *pgEnrollment.Token,
 			Method:        *pgEnrollment.Method,
-			IdentityId:    *pgEnrollment.IdentityID,
+			IdentityId:    pgEnrollment.IdentityID,
 			ExpiresAt:     pgEnrollment.ExpiresAt,
 			IssuedAt:      pgEnrollment.CreatedAt,
 			CaId:          nil,

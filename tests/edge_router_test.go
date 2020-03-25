@@ -90,4 +90,12 @@ func Test_EdgeRouter(t *testing.T) {
 		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
 		ctx.req.False(stringz.Contains(list, role5))
 	})
+
+	t.Run("newly created edge routers that is deleted", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		edgeRouter := ctx.AdminSession.requireNewEdgeRouter()
+
+		ctx.AdminSession.requireDeleteEntity(edgeRouter)
+	})
 }

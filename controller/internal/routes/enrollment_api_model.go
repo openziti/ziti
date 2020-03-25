@@ -31,11 +31,13 @@ const EntityNameEnrollment = "enrollments"
 
 type EnrollmentApiList struct {
 	*env.BaseApi
-	Token     *string       `json:"token"`
-	Method    *string       `json:"method"`
-	ExpiresAt *time.Time    `json:"expiresAt"`
-	Identity  *EntityApiRef `json:"identity"`
-	Details   interface{}   `json:"details"`
+	Token         *string       `json:"token"`
+	Method        *string       `json:"method"`
+	ExpiresAt     *time.Time    `json:"expiresAt"`
+	Identity      *EntityApiRef `json:"identity"`
+	Details       interface{}   `json:"details"`
+	EdgeRouter    *EntityApiRef `json:"edgeRouter"`
+	TransitRouter *EntityApiRef `json:"transitRouter"`
 }
 
 func (e *EnrollmentApiList) GetSelfLink() *response.Link {
@@ -101,19 +103,35 @@ func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestConte
 }
 
 func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*EnrollmentApiList, error) {
-
-	identity, err := ae.Handlers.Identity.Read(enrollment.IdentityId)
-
-	if err != nil {
-		return nil, err
-	}
-
 	ret := &EnrollmentApiList{
 		BaseApi:   env.FromBaseModelEntity(enrollment),
 		Token:     &enrollment.Token,
 		Method:    &enrollment.Method,
 		ExpiresAt: enrollment.ExpiresAt,
-		Identity:  NewIdentityEntityRef(identity),
+	}
+
+	if enrollment.IdentityId != nil {
+		identity, err := ae.Handlers.Identity.Read(*enrollment.IdentityId)
+		if err != nil {
+			return nil, err
+		}
+		ret.Identity = NewIdentityEntityRef(identity)
+	}
+
+	if enrollment.EdgeRouterId != nil {
+		edgeRouter, err := ae.Handlers.EdgeRouter.Read(*enrollment.EdgeRouterId)
+		if err != nil {
+			return nil, err
+		}
+		ret.EdgeRouter = NewEdgeRouterEntityRef(edgeRouter)
+	}
+
+	if enrollment.TransitRouterId != nil {
+		transitRouter, err := ae.Handlers.TransitRouter.Read(*enrollment.TransitRouterId)
+		if err != nil {
+			return nil, err
+		}
+		ret.TransitRouter = NewTransitRouterEntityRef(transitRouter)
 	}
 
 	ret.PopulateLinks()

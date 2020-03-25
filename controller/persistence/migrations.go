@@ -63,9 +63,13 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		return 4
 	}
 
-	// current version
 	if step.CurrentVersion == 4 {
+		m.createEnrollmentsForEdgeRouters(step)
 		return 4
+	}
+	// current version
+	if step.CurrentVersion == 5 {
+		return 5
 	}
 
 	step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))

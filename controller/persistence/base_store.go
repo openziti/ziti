@@ -64,6 +64,12 @@ func newChildBaseStore(stores *stores, parent boltz.CrudStore, entityType string
 	}
 }
 
+func newExtendedBaseStore(stores *stores, parent boltz.CrudStore, entityType string) *baseStore {
+	store := newChildBaseStore(stores, parent, entityType)
+	store.BaseStore.Extended()
+	return store
+}
+
 type baseStore struct {
 	stores *stores
 	*boltz.BaseStore

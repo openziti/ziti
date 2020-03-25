@@ -307,6 +307,12 @@ func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...str
 	return edgeRouter
 }
 
+func (request *authenticatedRequests) requireNewTransitRouter() *transitRouter {
+	transitRouter := newTestTransitRouter()
+	request.requireCreateEntity(transitRouter)
+	return transitRouter
+}
+
 func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
 	policy := newServicePolicy(policyType, nil, serviceRoles, identityRoles)
 	request.requireCreateEntity(policy)
@@ -500,6 +506,7 @@ func (request *authenticatedRequests) deleteEntityOfType(entityType string, id s
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
 
+	//standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 	return resp.StatusCode(), resp.Body()
 }
 
@@ -670,6 +677,12 @@ func (request *authenticatedRequests) patchEntity(entity entity, fields ...strin
 
 func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
 	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
+	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
+	return data.Data().(string)
+}
+
+func (request *authenticatedRequests) getTransitRouterJwt(transitRouterId string) string {
+	jsonBody := request.requireQuery("transit-routers/" + transitRouterId)
 	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
 	return data.Data().(string)
 }

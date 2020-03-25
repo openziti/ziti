@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"net/http"
 )
@@ -59,13 +58,13 @@ func (rc *RequestContext) GetIdFromRequest(idType IdType) (string, error) {
 		return "", fmt.Errorf("id property '%s' not found in request", IdPropertyName)
 	}
 
-	if idType == IdTypeUuid {
-		_, err := uuid.Parse(id)
-
-		if err != nil {
-			return "", apierror.NewInvalidUuid(id)
-		}
-	}
+	//if idType == IdTypeUuid {
+	//	_, err := uuid.Parse(id)
+	//
+	//	if err != nil {
+	//		return "", apierror.NewInvalidUuid(id)
+	//	}
+	//}
 
 	return id, nil
 }
