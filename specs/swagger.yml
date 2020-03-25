@@ -1,0 +1,4741 @@
+---
+swagger: '2.0'
+info:
+  version: 0.12.0
+  title: Ziti Edge
+  contact: {}
+host: demo.ziti.dev
+basePath: /
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  ztSession:
+    type: apiKey
+    in: header
+    name: zt-session
+
+
+#  changes for 0.12 in the edge api
+#
+#  NEW
+#
+#- edge-routers/{id}/identities GET
+#- edge-routers/{id}/services GET
+#
+#- identities/{id}/edge-routers GET
+#- identities/{id}/services GET
+#
+#- /edge-router-role-attributes GET
+#- /identity-role-attributes GET
+#- /service-role-attributes GET
+#
+
+#
+#  - terminators
+#    full CRUD
+#
+#    Create/update/patch:
+#    Service *string `json:"service"`
+#
+#    Router  *string `json:"router"`
+#    Binding *string `json:"binding"`
+#    Address *string `json:"address"`
+#
+#  List:
+#    *env.BaseApi
+#      ServiceId string        `json:"serviceId"`
+#      Service   *EntityApiRef `json:"service"`
+#      RouterId  string        `json:"routerId"`
+#      Router    *EntityApiRef `json:"router"`
+#      Binding   string        `json:"binding"`
+#      Address   string        `json:"address"`
+#
+
+
+
+
+#######################################################################################################################
+#
+# Paths - Endpoints and their associated HTTP methods
+#
+#######################################################################################################################
+paths:
+  ###################################################################
+  # .well-known RFC
+  ##################################################################
+  '/.well-known/est/cacerts':
+    get:
+      summary: Get CA Cert Store
+      description: |
+        This endpoint is used during enrollments to bootstrap trust between enrolling clients and the Ziti Edge API.
+        This endpoint returns a base64 encoded PKCS7 store. The content can be base64 decoded and parsed by any library
+        that supports parsing PKCS7 stores.
+      security: []
+      tags:
+        - Well Known
+      operationId: listWellKnownCas
+      produces:
+        - application/pkcs7-mime
+      responses:
+        '200':
+          description: A base64 encoded PKCS7 store
+          schema:
+            type: string
+            example: 'MIIMUQYJKoZIhvcNAQcCoIIMQjCCDD4CAQExADALBgkqhkiG9w0BBwGgggwkMIIG
+                      BjCCA+6gAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwgZcxCzAJBgNVBAYTAlVTMRcw
+                      FQYDVQQIDA5Ob3J0aCBDYXJvbGluYTESMBAGA1UEBwwJQ2hhcmxvdHRlMRMwEQYD
+                      VQQKDApOZXRGb3VuZHJ5MSkwJwYDVQQLDCBOZXRGb3VuZHJ5IENlcnRpZmljYXRl
+                      IEF1dGhvcml0eTEbMBkGA1UEAwwSTmV0Rm91bmRyeSBSb290IENBMB4XDTE4MDUx
+                      ODE2NTcyM1oXDTI4MDUxNTE2NTcyM1owgYsxCzAJBgNVBAYTAlVTMRcwFQYDVQQI
+                      DA5Ob3J0aCBDYXJvbGluYTETMBEGA1UECgwKTmV0Rm91bmRyeTEpMCcGA1UECwwg
+                      TmV0Rm91bmRyeSBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIzAhBgNVBAMMGk5ldEZv
+                      dW5kcnkgSW50ZXJtZWRpYXRlIENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIIC
+                      CgKCAgEAsb1EPhMUweS9WpjT7L54xAOmZqugJ6fhSrFfLUwNUy172q+ASvZTpT1z
+                      KIPcZpGmPB3TX2bHaAR67BbRkUR11JgWE3U8+FsGrYmPZtaKM6fg8Mh0WZ41oMYQ
+                      NJyQixOktrgqfybyJoT5PeT5AA7QQmd8mku2X9nkAu6gWPf2nHNc7SeQdijmyQQa
+                      VK3oqyaxOzWzsU/XbfMEz/ObkefUxgt5Z6jlK0xcW0Q+QgtawMKLUiuo6obWRPcl
+                      7Hm9Sze8XJS5pbvS5JkUszxoRZuDVHZylrlHIpA/IL+BnvS+M7SP28UWe9skrv/s
+                      6ACpJtuPJ1EYf5fakugOpY7i+hq7YNi//csbc49Qjn2OtttrR7JcTaHUEU1I/tQb
+                      QGAtNkI4pJjRVUdDawQFQlWHZD1COixNLErs2HzAI00DhLrY6SKITI/kjN0Xx010
+                      XdMcdfay0PLWm6RwxiRmMQFL4GNIC895NF1q6xV4W4rWgqUNlcvKpy+i1chWpRbU
+                      He16ul0qh10fcESrRvAbXn5YrQJLrwbSr+85ubN8lYdNLE0qg2cIXZlUilarZZzW
+                      ghtCe+KkUpjfRuAi/CqfSwNK3QXEfeVEK6S49mHeSekOizFIw7fmDhCz9vXwMOnb
+                      ryRSLEJks0gIRcSDVChXheAqC98y4kcQdniNWFnqJXoqA+rrSokCAwEAAaNmMGQw
+                      HQYDVR0OBBYEFK8UXC/sq6dGVFAqEXHsQDzqzwuUMB8GA1UdIwQYMBaAFEHz6RRu
+                      OuXj2mwAzOeUinfWeivpMBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQD
+                      AgGGMA0GCSqGSIb3DQEBCwUAA4ICAQBDAAaOE2Nbb49eOjyTNxIeOB+ZKQjJ1hUE
+                      gRrootAA8NYbtKW/vyxTWnNi5XOGXd4DFS9OKZ0mL/7NyLc0mbTwPH2ZT8KTPUTS
+                      Cpo6yktZ/7TMjyAtWZiOMg2EH+6m/nlNSXk/v5fb8+JQLdZfpxoA017dHh3tc8l7
+                      KOskCZNwQHgF/YMXrPXUNbsGkXRuJLtpjPw5O9GvPys7p+a1aJH1WCTly9zfB6j+
+                      rMF+UGCPDT30sxitVlohik83j6pKLgEAP/gi8nJbILlTP7ce+gJeHR2tfDvmK91X
+                      6QgCF2STUFBU7/9H1/pPRRykOxQpAd8xqSgqGEyp9Ie4tysZjwoUEnG8IVJ5ykrI
+                      Fximvnb4B+LABV9WEo08n8m1R8wEryrISi8fBPn3Pr5nuayOfFLa15CLTkZF40FN
+                      8ika1qNZy8bWRDwTZJQUUb7VCheRWcMwdZdNmhl3J+VZLpQ+ruW7b2ajwacHz5Nw
+                      BHKNcmxXb/4vHq/BnlcayHnSqT6036+OZQ+owDegcYmWV6LaM7xLErjHz2EE38M2
+                      YSiW5SU1zluDe+iHb6l3Gd3Fj/X1gkMWFgYh0XPMSUSyimLNYzy4THKzmWlcQNFo
+                      LLiIDbLrMt+vk+vBkIsNTTPXRJOFPBhmIF6uIUj+2YhzNotX/pQtqMKms3pPlmHq
+                      dH6biwygETCCBhYwggP+oAMCAQICCQDquKpymLJ5WzANBgkqhkiG9w0BAQsFADCB
+                      lzELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRIwEAYDVQQH
+                      DAlDaGFybG90dGUxEzARBgNVBAoMCk5ldEZvdW5kcnkxKTAnBgNVBAsMIE5ldEZv
+                      dW5kcnkgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MRswGQYDVQQDDBJOZXRGb3VuZHJ5
+                      IFJvb3QgQ0EwHhcNMTgwNTE4MTY1NDQ3WhcNMzgwNTEzMTY1NDQ3WjCBlzELMAkG
+                      A1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRIwEAYDVQQHDAlDaGFy
+                      bG90dGUxEzARBgNVBAoMCk5ldEZvdW5kcnkxKTAnBgNVBAsMIE5ldEZvdW5kcnkg
+                      Q2VydGlmaWNhdGUgQXV0aG9yaXR5MRswGQYDVQQDDBJOZXRGb3VuZHJ5IFJvb3Qg
+                      Q0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDKq/Xa+749Cr3WJGYD
+                      DIEtNKIRnTFc6TeiRSm/O7hG2+1Nrh/dObjZJuDjsopWP8NFA/DwlNyEphYKAeSw
+                      HDmu+4nFd6ifoeDE2lYq6bNhLcgN+A3MlN5Phb2rnO32YYZwHXGWov+jtd2gaK0f
+                      WsH8CQxn6n2v7qvPMTeYFP8p4jqTZw2bvZWw+LMYTFCy541DFqQLQasMg10mXRAV
+                      XO7Oa9y+D1re1zLq4wS6u8ItJoKzfmvZkMvD90C/tQ4u0iJaL7GB2SE9MOPDeGVv
+                      pnoSAIkSVmvRDUAj2x9PuukykzoL1OAWzc5Cg+5LxRmLejVE7PvPcHaTtNag2tRD
+                      w2vbMeFKN8NvQH1QYcaPWZe4Vl9b6DAuTaH5RN919H/F+ZHyjZybVPwC14lflneI
+                      KyNy8JEV/YMIbEADWnuiedzDehk2Opn+0+9Zr2X/xfjCo8iWHFbNaVnQX7wdRaOo
+                      783lEouncqe46FDBLBpyAuDKHQpIT3MK8rkC/1yBNxsH44vMweUZuK0u7PC9KHtm
+                      pQfuflYGfxA34kY6WU3jzyQHetoLYjoxTqNEEjuGpwy2o1j7RaCBEFIbYlnlbhpE
+                      WFTaQf96z2GQ6m1U3y7JyDflHSu9Fo1JNkG3qXsjDwda/6W7NRJRgdFrhnOwrm7F
+                      6L9X4P1HnzU/VJL66LwPmiHVjQIDAQABo2MwYTAdBgNVHQ4EFgQUQfPpFG465ePa
+                      bADM55SKd9Z6K+kwHwYDVR0jBBgwFoAUQfPpFG465ePabADM55SKd9Z6K+kwDwYD
+                      VR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYwDQYJKoZIhvcNAQELBQADggIB
+                      ACfU74aKWROaxnue8tZb5PFkEbnDRcRrKXRhnptA0vrgB4ydnYxX9hEBZD8o6PBy
+                      3rewvl5meSOBE6zyb4JD80lHdzHSVFIwbzsNOeEjCslv/PA/3Y+J7DCt6gPNMDeY
+                      uEssdqeSiMoYz2gnven4flSMKgTAJd3/SpVrn35HzXiU9MkmFVpPEMnTctOjw+Jn
+                      cCkG5+D9N14dxtgZ/tUfbH+GUfhyGVxRdPrX5KQqAyapMfEaMXXa8KNs7PG+sDiS
+                      WI+Sg9jUGtxgkfKdVNtFW+QMXyy7eT3iXPA+1r2hFAhgfIaGtBJUhxPHMhKtjbAg
+                      AX+6+2D3GAbaD1+lcQHhKry3hygQ3OX79FJW6zyPS0tiV/LfovHqX/3x9q5PTVBO
+                      wEOS2/LCc4R2M7S+HIPf4eSJ+nH4uCIdJ42WCror/mRsuL7geCksi70GHuCynP4y
+                      qQFszu/UtbBEsN8loTnLpOInxaGB1Y8UPm14b2Lo1/3HkoMVh0/UaHJ0TmnZ1r7m
+                      fGhfRyAZYRdvT1sB+Eb4b5A2zEZqsTc9IwFOhnI4ZilPoZ5s2xejqrVw3GSvovEh
+                      dprrQmvxuh+VQ23y/+/4z9b2xWyDu2zVveB4whqPe2rkgxJrEl4GfLk2DW+dN6j8
+                      3Zl4lPoUZYwzkC6raCaHyFlAoaTbqz0H6rvVJYxJPS6UoQAxAA=='
+
+  '/version':
+    get:
+      summary: Returns version information
+      security: []
+      tags:
+        - Informational
+      operationId: listVersion
+      responses:
+        '200':
+          $ref: '#/responses/listVersion'
+  ###################################################################
+  # Informational
+  ##################################################################
+  '/summary':
+    get:
+      summary: Returns a list of accessible resource counts
+      description: This endpoint is usefull for UIs that wish to display UI elements with counts.
+      security:
+        - ztSession: []
+      tags:
+        - Informational
+      operationId: listSummary
+      responses:
+        '200':
+          $ref: '#/responses/listSummaryCounts'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # API Sessions
+  ##################################################################
+  '/api-sessions':
+    get:
+      summary: List active API sessions
+      description: |
+        Returns a list of active API sessions. The resources can be sorted, filtered, and paginated. This endpoint
+        requries admin access.
+      security:
+        - ztSession: []
+      tags:
+        - API Session
+      operationId: listAPISessions
+      produces:
+        - application/json; charset=utf-8
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listAPISessions'
+  '/api-sessions/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single API Session
+      description: Retrieves a single API Session by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - API Session
+      operationId: detailAPISessions
+      responses:
+        '200':
+          $ref: '#/responses/detailAPISession'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Deletes an API Sessions
+      description: Deletes and API sesion by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - API Session
+      operationId: deleteAPISessions
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '403':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Authentication
+  ##################################################################
+  '/authenticate':
+    parameters:
+      - $ref: '#/parameters/authMethod'
+    post:
+      summary: Authenticate via a method supplied via a query string parameter
+      description: |
+        Allows authentication  Methods include "password" and "cert"
+      security: []
+      tags:
+        - Authentication
+      operationId: authenticate
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/authenticate'
+      responses:
+        '200':
+          $ref: '#/responses/detailCurrentAPISession'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '403':
+          $ref: '#/responses/invalidAuthResponse'
+  ###################################################################
+  # Authenticators
+  ##################################################################
+  '/authenticators':
+    get:
+      summary: List authenticators
+      description: |
+        Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.
+        This endpoint requries admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: listAuthenticators
+
+      responses:
+        '200':
+          $ref: '#/responses/listAuthenticators'
+    post:
+      summary: Creates an authenticator
+      description: |
+        Creates an authenticator for a specific identity. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: createAuthenticators
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A Authenticators create object
+          schema:
+            $ref: '#/definitions/authenticatorCreate'
+      responses:
+        '200':
+          description: The create was successful
+          schema:
+            $ref: '#/definitions/authenticatorCreate'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/authenticators/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single authenticator
+      description: Retrieves a single authenticator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: detailAuthenticator
+      responses:
+        '200':
+          $ref: '#/responses/detailAuthenticator'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an authenticator
+      description: Update all fields on an authenticator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: updateAuthenticator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An authenticator put object'
+          schema:
+            $ref: '#/definitions/authenticatorUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an authenticator
+      description: Update the supplied fields on an authenticator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: patchAuthenticator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An authenticator patch object
+          schema:
+            $ref: '#/definitions/authenticatorPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an Authenticator
+      description: |
+        Delete an authenticator by id. Deleting all authenticators for an identity will make it impossible to log in.
+        Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Authenticator
+      operationId: deleteAuthenticator
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Certificate Authorities
+  ##################################################################
+  '/cas':
+    get:
+      summary: List CAs
+      description: Retrieves a list of CA resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: listCA
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listCAs'
+    post:
+      summary: Creates a CA
+      description: Creates a CA in an unverified state. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: createCA
+
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A CA to create
+          schema:
+            $ref: '#/definitions/caCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/cas/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single CA
+      description: Retrieves a single CA by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: detailCA
+      responses:
+        '200':
+          $ref: '#/responses/detailCA'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a CA
+      description: Update all fields on a CA by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: updateCA
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A CA update object
+          schema:
+            $ref: '#/definitions/caUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a CA
+      description: Update only the supplied fields on a CA by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: patchCA
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A CA patch object
+          schema:
+            $ref: '#/definitions/caPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a CA
+      description: |
+        Delete a CA by id. Deleting a CA will delete its associated certificate authenticators. This can make it
+        impossible for identities to authenticate if they no longer have any valid authenticators. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      operationId: deleteCA
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/cas/{id}/jwt':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieve the enrollment JWT for a CA
+      description: |
+        For CA auto enrollment, the enrollment JWT is static and provided on each CA resource. This endpoint provides
+        the jwt as a text response.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      produces:
+        - 'application/jwt'
+      responses:
+        '200':
+          description: The result is the JWT text to validate the CA
+          schema:
+            type: string
+          examples:
+            'application/jwt': 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbSI6ImNhIiwiaXNzIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6MTI
+              4MC8ifQ.Ot6lhNBSOw8ygHytdI5l7WDf9EWadOj44UPvJ0c-8mJ54fClWM3uMZrAHSSfV6KmOSZOeBBJe4VlNyoD-_MOECP0BzYSnSQP3E
+              zJb0VlM-fFmGcKNGW157icyZNISfO43JL_Lw2QPBzTgikqSIj9eZnocC3BeAmZCHsVznnLfHWqDldcmuxnu-5MNOSrWV1x9iVcgLFlLHXK
+              2PLA4qIiZmlQTrQjpHJmUaoJ07mnj8hMKzxB3wBG8kpazjEo7HDRCO06aBH4eqFgf_l0iT8Dzcb31jquWMGUoSXPhf4lVJh_FiNcR1wVx-
+              UiHLbG5h23Aqf1UJF-F38rc1FElKz0Zg'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/cas/{id}/verify':
+    parameters:
+      - $ref: '#/parameters/id'
+    post:
+      summary: Verify a CA
+      description: |
+        Allows a CA to become verified by submitting a certificate in PEM format that has been signed by the target CA.
+        The common name on the certificate must match the verificationToken property of the CA. Unverfieid CAs can not
+        be used for enrollment/authentication. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - CA
+      consumes:
+        - 'text/plain'
+      parameters:
+        - name: certificate
+          required: true
+          in: body
+          description: A PEM formatted certificate signed by the target CA with the common name matching the CA's validationToken
+          schema:
+            type: string
+      responses:
+        200:
+          $ref: '#/responses/emptyResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Config-Types
+  ##################################################################
+  '/config-types':
+    get:
+      summary: List config-types
+      description: |
+        Retrieves a list of config-type resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: listConfigType
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listConfigTypes'
+    post:
+      summary: Create a config-type. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: createConfigType
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config-type to create
+          schema:
+            $ref: '#/definitions/configTypeCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/config-types/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single config-type
+      description: Retrieves a single config-type by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: detailConfigType
+      responses:
+        '200':
+          $ref: '#/responses/detailConfigType'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a config-type
+      description: Update all fields on a config-type by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: updateConfigType
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config-type update object
+          schema:
+            $ref: '#/definitions/configTypeUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a config-type
+      description: Update the supplied fields on a config-type. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: patchConfigType
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config-type patch object
+          schema:
+            $ref: '#/definitions/configTypePatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a config-type
+      description: Delete a config-type by id. Removing a configuration type that are in use will result in a 409 conflict HTTP status code and error. All configurations of a type must be removed first.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: deleteConfigType
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/config-types/{id}/configs':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Lists the configs of a specific config-type
+      description: Lists the configs associated to a config-type. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: listConfigsForConfigType
+      responses:
+        '200':
+          $ref: '#/responses/listConfigs'
+  ###################################################################
+  # Configs
+  ##################################################################
+  '/configs':
+    get:
+      summary: List configs
+      description: |
+        Retrieves a list of config resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: listConfig
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listConfigs'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a config resource
+      description: Create a config resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: createConfig
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config to create
+          schema:
+            $ref: '#/definitions/configCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/configs/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single config
+      description: Retrieves a single config by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: detailConfig
+      responses:
+        '200':
+          $ref: '#/responses/detailConfig'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a config
+      description: Update all fields on a config by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: updateConfig
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config update object
+          schema:
+            $ref: '#/definitions/configUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a config
+      description: Update the supplied fields on a config. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: patchConfig
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config patch object
+          schema:
+            $ref: '#/definitions/configPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a config
+      description: Delete a config by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Config
+      operationId: deleteConfig
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+
+  ###################################################################
+  # Current API Session
+  ##################################################################
+  '/current-api-session':
+    get:
+      summary: Return the current API session
+      description: Retrieves the API session that was used to issue the current request
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: getCurrentAPISession
+      responses:
+        200:
+          $ref: '#/responses/detailCurrentAPISession'
+        401:
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/current-identity':
+    get:
+      summary: Return the current identity
+      description: Returns the identity associated with the API sessions used to issue the current request
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: getCurrentIdentity
+      responses:
+        '200':
+          $ref: '#/responses/detailCurrentIdentity'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-identity/authenticators':
+    get:
+      summary: List authenticators for the current identity
+      description: Retrieves a list of authenticators assigned to the current API session's identity; supports filtering, sorting, and pagination.
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: listCurrentIdentityAuthenticators
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listAuthenticators'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-identity/authenticators/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieve an authenticator for the current identity
+      description: Retrieves a single authenticator by id. Will only show authenticators assigned to the API session's identity.
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: detailCurrentIdentityAuthenticator
+      responses:
+        '200':
+          $ref: '#/responses/detailAuthenticator'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an authenticator of this identity
+      description: |
+        Update all fields on an authenticator by id.  Will only update authenticators assigned to the API session's
+        identity.
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: updateCurrentIdentityAuthenticator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An authenticator put object'
+          schema:
+            $ref: '#/definitions/authenticatorUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an authenticator of this identity
+      description: |
+        Update the supplied fields on an authenticator by id. Will only update authenticators assigned to the API
+        session's identity.
+      security:
+        - ztSession: []
+      tags:
+        - Current API Session
+      operationId: patchCurrentIdentityAuthenticator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An authenticator patch object
+          schema:
+            $ref: '#/definitions/authenticatorPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Edge Router Policies
+  ##################################################################
+  '/edge-router-policies':
+    get:
+      summary: List edge router policies
+      description: |
+        Retrieves a list of edge router policy resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: listEdgeRouterPolicies
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouterPolicies'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create an edge router policy resource
+      description: Create an edge router policy resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: createEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An edge router policy to create
+          schema:
+            $ref: '#/definitions/edgeRouterPolicyCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/edge-router-policies/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single edge router policy
+      description: Retrieves a single edge router policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: detailEdgeRouterPolicy
+      responses:
+        '200':
+          $ref: '#/responses/detailEdgeRouterPolicy'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an edge router policy
+      description: Update all fields on an edge router policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: updateEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An edge router policy update object
+          schema:
+            $ref: '#/definitions/edgeRouterPolicyUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an edge router policy
+      description: Update the supplied fields on an edge router policy. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: patchEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An edge router policy patch object
+          schema:
+            $ref: '#/definitions/edgeRouterPolicyPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an edge router policy
+      description: Delete an edge router policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router Policy
+      operationId: deleteEdgeRouterPolicy
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/edge-router-policies/{id}/edge-routers':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List edge routers a policy affects
+      description: |
+        Retrieves a list of edge routers an edge router policy resources affects; supports filtering, sorting, and pagination. Requires admin access.
+      tags:
+        - Edge Router Policy
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/edge-router-policies/{id}/identities':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List identities an edge router policy affects
+      description: |
+        Retrieves a list of identities an edge router policy resources affects; supports filtering, sorting, and pagination. Requires admin access.
+      tags:
+        - Edge Router Policy
+      responses:
+        '200':
+          $ref: '#/responses/listIdentities'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Edge Routers
+  ##################################################################
+  '/edge-routers':
+    get:
+      summary: List edge routers
+      description: |
+        Retrieves a list of edge router resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: lisgEdgeRouters
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create an edge router
+      description: Create a edge router resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: createEdgeRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A config-type to create
+          schema:
+            $ref: '#/definitions/edgeRouterCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/edge-routers/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single edge router
+      description: Retrieves a single edge router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: detailEdgeRouter
+      responses:
+        '200':
+          $ref: '#/responses/detailEdgeRouter'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an edge router
+      description: Update all fields on an edge router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: updateEdgeRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An edge router update object
+          schema:
+            $ref: '#/definitions/edgeRouterUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an edge router
+      description: Update the supplied fields on an edge router. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: patchEdgeRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An edge router patch object
+          schema:
+            $ref: '#/definitions/edgeRouterPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an edge router
+      description: Delete an edge router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: deleteEdgeRouter
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/edge-routers/{id}/edge-router-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the edge router policies that affect an edge router
+      description: Retrieves a list of edge router policies that apply to the specified edge router.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: listEdgeRoutersEdgeRouterPolicies
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouterPolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/edge-routers/{id}/service-edge-router-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the service policies that affect an edge router
+      description: Retrieves a list of service policies policies that apply to the specified edge router.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: listEdgeRoutersServicePolicies
+      responses:
+        '200':
+          $ref: '#/responses/listServicePolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Enroll - Identity
+  ##################################################################
+  '/enroll/ca':
+    post:
+      summary: Enroll an identity with a pre-exchanged certificate
+      description: |
+        For CA auto enrollment, an identity is not created beforehand.
+        Instead one will be created during enrollment. The client will present a client certificate that is signed by a
+        Certificate Authority that has been added and verified (See POST /cas and POST /cas/{id}/verify).
+
+        During this process no CSRs are requires as the client should already be in possession of a valid certificate.
+      tags:
+        - Enroll
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+  '/enroll/ott':
+    parameters:
+      - $ref: '#/parameters/token'
+    post:
+      summary: Enroll an identity via one-time-token
+      description: |
+        Enroll an identity via a one-time-token which is supplied via a query string parameter. This enrollment method
+        expects a PEM encoded CSRs to be provided for fulfillment. It is up to the enrolling identity to manage the
+        private key backing the CSR request.
+      tags:
+        - Enroll
+      consumes:
+        - application/pkcs10
+      produces:
+        - application/x-x509-user-cert
+      responses:
+        '200':
+          $ref: '#/responses/zitiSignedCert'
+  '/enroll/ottca':
+    parameters:
+      - $ref: '#/parameters/token'
+    post:
+      summary: Enroll an identity via one-time-token with a pre-exchanged client certificate
+      description: |
+        Enroll an identity via a one-time-token that also requires a pre-exchanged client certificate to match a
+        Certificate Authority that has been added and verified (See POST /cas and POST /cas{id}/verify). The client
+        must present a client certificate signed by CA associated with the enrollment. This enrollment is similar to
+        CA auto enrollment except that is required the identity to be pre-created.
+
+        As the client certificat has been pre-exchanged there is no CSR input to this enrollment method.
+      tags:
+        - Enroll
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+  '/enroll/updb':
+    parameters:
+      - $ref: '#/parameters/token'
+    post:
+      summary: Enroll an identity vvia one-time-token
+      description: |
+        Enrolls and identity via a one-time-token to establish an initial username and password combination.
+      tags:
+        - Enroll
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+  ###################################################################
+  # Enroll - Routers
+  ##################################################################
+  '/enroll/erott':
+    parameters:
+      - $ref: '#/parameters/token'
+    post:
+      summary: Enroll an edge-router
+      description: |
+        Enrolls an edge-router via a one-time-token to establish a certificate based identity.
+      tags:
+        - Enroll
+      responses:
+        '200':
+          $ref: '#/responses/erottResponse'
+
+
+  ###################################################################
+  # Enrollments
+  ##################################################################
+  '/enrollments':
+    get:
+      summary: List outstanding enrollments
+      description: |
+        Retrieves a list of outstanding enrollments; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Enrollment
+      operationId: listEnrollments
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listEnrollments'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/enrollments/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves an outstanding enrollment
+      description: Retrieves a single outstanding enrollment by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Enrollment
+      operationId: detailEnrollment
+      responses:
+        '200':
+          $ref: '#/responses/detailEnrollment'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an outstanding enrollment
+      description: Delete an outstanding enrollment by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Enrollment
+      operationId: deleteEnrollment
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Geo Regions
+  ##################################################################
+  '/geo-regions':
+    get:
+      summary: List available geo-regions
+      description: |
+        Retrieves a list of geo-regions; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Geo Region
+      operationId: listGeoRegion
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listGeoRegions'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/geo-regions/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a geo-region
+      description: Retrieves a single geo-region by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Geo Region
+      operationId: detailGeoRegion
+      responses:
+        '200':
+          $ref: '#/responses/detailGeoRegion'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Identities
+  ##################################################################
+  '/identities':
+    get:
+      summary: List identities
+      description: |
+        Retrieves a list of identity resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentities
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listIdentities'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create an identity resource
+      description: Create an identity resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: createIdentity
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An identity to create
+          schema:
+            $ref: '#/definitions/identityCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single identity
+      description: Retrieves a single identity by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: detailIdentity
+      responses:
+        '200':
+          $ref: '#/responses/detailIdentity'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an identity
+      description: Update all fields on an identity by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: updateIdentity
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An identity update object
+          schema:
+            $ref: '#/definitions/identityUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an identity
+      description: Update the supplied fields on an identity. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: patchIdentity
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An identity patch object
+          schema:
+            $ref: '#/definitions/identityPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an identity
+      description: Delete an identity by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: deleteIdentity
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/identities/{id}/edge-router-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the edge router policies that affect an idenitty
+      description: Retrieves a list of edge router policies that apply to the specified identity.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentitysEdgeRouterPolicies
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouterPolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}/service-configs':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the service configs associated a specific identity
+      description: Retrieves a list of service configs associated to a specific identity
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentitysServiceConfigs
+      responses:
+        '200':
+          $ref: '#/responses/listServiceConfigs'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Associate service configs for a specific identity
+      description: Associate service configs to a specific identity
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An identity patch object
+          schema:
+            $ref: '#/definitions/serviceConfigs'
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: associateIdentitysServiceConfigs
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Remove associated service configs from a specific identity
+      description: Remove service configs from a specific identity
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: An identity patch object
+          schema:
+            $ref: '#/definitions/serviceConfigs'
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: disassociateIdentitysServiceConfigs
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}/service-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the service policies that affect an identity
+      description: Retrieves a list of service policies that apply to the specified identity.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentityServicePolicies
+      responses:
+        '200':
+          $ref: '#/responses/listServicePolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Identity-Types
+  ##################################################################
+  '/identity-types':
+    get:
+      summary: List available identity types
+      description: |
+        Retrieves a list of identity types; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentityType
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listIdentityTypes'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/identity-types/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a identity type
+      description: Retrieves a single identity type by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: detailIdentityType
+      responses:
+        '200':
+          $ref: '#/responses/detailIdentityType'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Service Edge Router Policies
+  ##################################################################
+  '/service-edge-router-policies':
+    get:
+      summary: List service edge router policies
+      description: |
+        Retrieves a list of service edge router policy resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: listServiceEdgeRouterPolicies
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServiceEdgeRouterPolicies'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a service edge router policy resource
+      description: Create a service edge router policy resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: createServiceEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service edge router policy to create
+          schema:
+            $ref: '#/definitions/serviceEdgeRouterPolicyCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/service-edge-router-policies/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single service edge policy
+      description: Retrieves a single service edge policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: detailServiceEdgeRouterPolicy
+      responses:
+        '200':
+          $ref: '#/responses/detailServiceEdgePolicy'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a service edge policy
+      description: Update all fields on a service edge policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: updateServiceEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service edge policy update object
+          schema:
+            $ref: '#/definitions/serviceEdgePolicyUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a service edge policy
+      description: Update the supplied fields on a service edge policy. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: patchServiceEdgeRouterPolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service edge policy patch object
+          schema:
+            $ref: '#/definitions/serviceEdgePolicyPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a service edge policy
+      description: Delete a service edge policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: deleteServiceEdgeRouterPolicy
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/service-edge-router-policies/{id}/edge-routers':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the edge routers that a service edge router policy applies to
+      description: List the edge routers that a service edge router policy applies to
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: listServiceEdgeRouterPolicyEdgeRouters
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/service-edge-router-policies/{id}/services':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List the services that a service edge router policy applies to
+      description: List the services that a service edge router policy applies to
+      security:
+        - ztSession: []
+      tags:
+        - Service Edge Router Policy
+      operationId: listServiceEdgeRouterPolicyServices
+      responses:
+        '200':
+          $ref: '#/responses/listServices'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Service Policies
+  ##################################################################
+  '/service-policies':
+    get:
+      summary: List service policies
+      description: |
+        Retrieves a list of service policy resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: listServicePolicies
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServicePolicies'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a service policy resource
+      description: Create a service policy resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: createServicePolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service policy to create
+          schema:
+            $ref: '#/definitions/servicePolicyCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/service-policies/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single service policy
+      description: Retrieves a single service policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: detailServicePolicy
+      responses:
+        '200':
+          $ref: '#/responses/detailServicePolicy'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a service policy
+      description: Update all fields on a service policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: updateServicePolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service policy update object
+          schema:
+            $ref: '#/definitions/servicePolicyUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a service policy
+      description: Update the supplied fields on a service policy. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: patchServicePolicy
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service policy patch object
+          schema:
+            $ref: '#/definitions/servicePolicyPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a service policy
+      description: Delete a service policy by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: deleteServicePolicy
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/service-policies/{id}/identities':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List identities a service policy affects
+      description: |
+        Retrieves a list of identity resources that are affected by a service policy; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: listServicePolicyIdentities
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listIdentities'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '400':
+          $ref: '#/responses/notFoundResponse'
+  '/service-policies/{id}/services':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List services a service policy affects
+      description: |
+        Retrieves a list of service resources that are affected by a service policy; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service Policy
+      operationId: listServicePolicyServices
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServices'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '400':
+          $ref: '#/responses/notFoundResponse'
+
+  ###################################################################
+  # Services
+  ##################################################################
+  '/services':
+    get:
+      summary: List services
+      description: |
+        Retrieves a list of config resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServices
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServices'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a services resource
+      description: Create a services resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: createService
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service to create
+          schema:
+            $ref: '#/definitions/serviceCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/services/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single service
+      description: Retrieves a single service by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: detailService
+      responses:
+        '200':
+          $ref: '#/responses/detailService'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a service
+      description: Update all fields on a service by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: updateService
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service update object
+          schema:
+            $ref: '#/definitions/serviceUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a service
+      description: Update the supplied fields on a service. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: patchService
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A service patch object
+          schema:
+            $ref: '#/definitions/servicePatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a service
+      description: Delete a service by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: deleteService
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/services/{id}/configs':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List configs associated to a specific service
+      description: |
+        Retrieves a list of config resources associated to a specific service; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceConfig
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listConfigs'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/services/{id}/service-edge-router-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List service edge router policies that affect a specific service
+      description: |
+        Retrieves a list of service edge router policy resources that affect a specific service; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceServiceEdgeRouterPolicies
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServiceEdgeRouterPolicies'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/services/{id}/service-policies':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List service policies that affect a specific service
+      description: |
+        Retrieves a list of service policy resources that affect specific service; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceServicePolicies
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listServicePolicies'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/services/{id}/terminators':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List of terminators assigned to a service
+      description: |
+        Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceTerminators
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listTerminators'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Sessions
+  ##################################################################
+  '/sessions':
+    get:
+      summary: List sessions
+      description: |
+        Retrieves a list of active sessions resources; supports filtering, sorting, and pagination. Requires admin access.
+
+        Sessions are tied to an API session and are moved when an API session times out or logs out. Active sessions
+        (i.e. Ziti SDK connected to an edge router) will keep the session and API session marked as active.
+      security:
+        - ztSession: []
+      tags:
+        - Session
+      operationId: listSessions
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listSessions'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a session resource
+      description: Create a session resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Session
+      operationId: createSession
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A session to create
+          schema:
+            $ref: '#/definitions/sessionCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/sessions/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single session
+      description: Retrieves a single session by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Session
+      operationId: detailSession
+      responses:
+        '200':
+          $ref: '#/responses/detailSession'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a session
+      description: Delete a session by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Session
+      operationId: deleteSession
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  ###################################################################
+  # Terminators
+  ##################################################################
+  '/terminators':
+    get:
+      summary: List terminators
+      description: |
+        Retrieves a list of terminator resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: listTerminators
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listTerminators'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a terminator resource
+      description: Create a terminator resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: createTerminator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A terminator to create
+          schema:
+            $ref: '#/definitions/terminatorCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/terminators/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single terminator
+      description: Retrieves a single terminator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: detailTerminator
+      responses:
+        '200':
+          $ref: '#/responses/detailTerminator'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a terminator
+      description: Update all fields on a terminator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: updateTerminator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A terminator update object
+          schema:
+            $ref: '#/definitions/terminatorUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a terminator
+      description: Update the supplied fields on a terminator. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: patchTerminator
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A terminator patch object
+          schema:
+            $ref: '#/definitions/terminatorPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a terminator
+      description: Delete a terminator by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Terminator
+      operationId: deleteTerminator
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+
+#######################################################################################################################
+#
+# Parameters - Reusable parameters
+#
+#######################################################################################################################
+parameters:
+  id:
+    name: id
+    required: true
+    type: string
+    format: uuid
+    in: path
+    description: The id of the requested resource
+  limit:
+    name: limit
+    type: integer
+    in: query
+  offset:
+    name: offset
+    type: integer
+    in: query
+  filter:
+    name: filter
+    type: string
+    in: query
+  token:
+    name: token
+    type: string
+    format: uuid
+    in: query
+    required: true
+  authMethod:
+    name: method
+    in: query
+    required: true
+    type: string
+    enum:
+      - password
+      - cert
+
+#######################################################################################################################
+#
+# Responses - Envelope Wrapped Definitions
+#
+#######################################################################################################################
+responses:
+  ###################################################################
+  # Errors
+  ##################################################################
+  badRequestResponse:
+    description: The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+            urlVars: {}
+          cause:
+            field: '(root)'
+            type: required
+            value:
+              fooField: abc
+              fooField2: def
+            message: '(root): fooField3 is required'
+            details:
+              context: '(root)'
+              field: '(root)'
+              property: fooField3
+          causeMessage: schema validation failed
+          code: COULD_NOT_VALIDATE
+          message: The supplied request contains an invalid document
+          requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
+  unauthorizedResponse:
+    description: The currently supplied session does not have the correct access rights to request this resource
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+            urlVars: {}
+          cause: ''
+          causeMessage: ''
+          code: UNAUTHORIZED
+          message: The request could not be completed. The session is not authorized or the
+            credentials are invalid
+          requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
+  invalidAuthResponse:
+    description: The authentication request could not be processed as the credentials are invalid
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+            urlVars: {}
+          cause: ''
+          causeMessage: ''
+          code: INVALID_AUTH
+          message: The authentication request failed
+          requestId: 5952ed10-3091-474f-a691-47ebab6990dc
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
+  notFoundResponse:
+    description: The requested resource does not exist
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+            urlVars:
+              id: 71a3000f-7dda-491a-9b90-a19f4ee6c406
+          cause:
+          causeMessage: ''
+          code: NOT_FOUND
+          message: The resource requested was not found or is no longer available
+          requestId: 270908d6-f2ef-4577-b973-67bec18ae376
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
+  cannotDeleteReferencedResourceResponse:
+    description: The resource requested to be removed/altered cannot be as it is referenced by another object.
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+            urlVars:
+              id: 71a3000f-7dda-491a-9b90-a19f4ee6c406
+          causeMessage: 'referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42'
+          code: CONFLIC_CANNOT_MODIFY_REFERENCED
+          message: The resource cannot be deleted/modified. Remove all referencing resources first.
+          requestId: 270908d6-f2ef-4577-b973-67bec18ae376
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
+  ###################################################################
+  # Standard Responses
+  ##################################################################
+  emptyResponse:
+    description: Base empty response
+    schema:
+      $ref: '#/definitions/empty'
+  deleteResponse:
+    description: The delete request was successful and the resource has been removed
+    schema:
+      $ref: '#/definitions/empty'
+  updateResponse:
+    description: The update request was successful and the resource has been altered
+    schema:
+      $ref: '#/definitions/empty'
+  patchResponse:
+    description: The patch request was successful and the resource has been altered
+    schema:
+      $ref: '#/definitions/empty'
+  createResponse:
+    description: The create request was successful and the resource has been added at the following location
+    schema:
+      $ref: '#/definitions/create'
+  ###################################################################
+  # Current Session
+  ##################################################################
+  detailCurrentAPISession:
+    description: The API session associated with the session used to issue the request
+    schema:
+      $ref: '#/definitions/currentAPISessionDetailEnvelope'
+    examples:
+      default:
+        meta: {}
+        data:
+          id: 27343114-b44f-406e-9981-f3c4f2f28d54
+          createdAt: '2020-03-09T19:03:49.1883693Z'
+          updatedAt: '2020-03-09T19:04:21.5600897Z'
+          _links:
+            self:
+              href: './current-api-session'
+          tags:
+            - userField1: 123
+            - userField2: asdf
+          token: 28bb0ed2-0577-4632-ae70-d17106b92871
+          identity:
+            urlName: identities
+            id: 66352d7b-a6b2-4ce9-85bb-9f18e318704d
+            name: Default Admin
+            _links:
+              self:
+                href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d'
+          expiresAt: '2020-03-09T19:34:21.5600897Z'
+          configTypes: []
+
+  detailCurrentIdentity:
+    description: The identity associated with the API Session used to issue the request
+    schema:
+      $ref: '#/definitions/currentIdentityDetailEnvelope'
+    examples:
+      default:
+        meta: {}
+        data:
+          id: 66352d7b-a6b2-4ce9-85bb-9f18e318704d
+          createdAt: '2020-01-13T16:38:13.6854788Z'
+          updatedAt: '2020-01-13T16:38:13.6854788Z'
+          _links:
+            edge-router-policies:
+              href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d/edge-routers'
+            self:
+              href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d'
+            service-policies:
+              href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d/identities'
+          tags: {}
+          name: Default Admin
+          type:
+            urlName: identity-types
+            id: 577104f2-1e3a-4947-a927-7383baefbc9a
+            name: User
+            _links:
+              self:
+                href: './identity-types/577104f2-1e3a-4947-a927-7383baefbc9a'
+          isDefaultAdmin: true
+          isAdmin: true
+          authenticators:
+            updb:
+              username: admin
+          enrollment: {}
+          roleAttributes:
+            $ref: '#/definitions/attributes'
+
+  ###################################################################
+  # API Session
+  ##################################################################
+  listAPISessions:
+    description: A list of active API Sessions
+    schema:
+      $ref: '#/definitions/listAPISessionsEnvelope'
+  detailAPISession:
+    description: Retrieves a singular API Session by id
+    schema:
+      $ref: '#/definitions/detailAPISessionEnvelope'
+
+  ###################################################################
+  # Authenticators
+  ##################################################################
+  listAuthenticators:
+    description: A list of authenticators
+    schema:
+      $ref: '#/definitions/listAuthenticatorsEnvelope'
+  detailAuthenticator:
+    description: A singular authenticator resource
+    schema:
+      $ref: '#/definitions/detailAuthenticatorEnvelope'
+  ###################################################################
+  # Certificate Authority
+  ##################################################################
+  listCAs:
+    description: A list of Certificate Authorities (CAs)
+    schema:
+      $ref: '#/definitions/listCAsEnvelope'
+  detailCA:
+    description: A singular Certificate Authority (CA) resource
+    schema:
+      $ref: '#/definitions/detailCAEnvelope'
+  ###################################################################
+  # Config-Types
+  ##################################################################
+  listConfigTypes:
+    description: A list of config-types
+    schema:
+      $ref: '#/definitions/listConfigTypesEnvelope'
+  detailConfigType:
+    description: A singular config-type resource
+    schema:
+      $ref: '#/definitions/detailConfigTypeEnvelope'
+  ###################################################################
+  # Configs
+  ##################################################################
+  listConfigs:
+    description: A list of configs
+    schema:
+      $ref: '#/definitions/listConfigsEnvelope'
+  detailConfig:
+    description: A singular config resource
+    schema:
+      $ref: '#/definitions/detailConfigEnvelope'
+  ###################################################################
+  # Informational
+  ##################################################################
+  listVersion:
+    description: Version information for the controller
+    schema:
+      $ref: '#/definitions/listVersionEnvelope'
+  listSummaryCounts:
+    description: Entity counts scopped to the current identitie's access
+    schema:
+      $ref: '#/definitions/listSummaryCountsEnvelope'
+  ###################################################################
+  # Enrollments
+  ##################################################################
+  listEnrollments:
+    description: A list of enrollments
+    schema:
+      $ref: '#/definitions/listEnrollmentsEnvelope'
+  detailEnrollment:
+    description: A singular enrollment resource
+    schema:
+      $ref: '#/definitions/detailEnrollmentEnvelope'
+  zitiSignedCert:
+    description: A PEM encoded certificate signed by the internal Ziti CA
+    schema:
+      type: string
+    examples:
+      application/x-x509-user-cert: |
+        -----BEGIN CERTIFICATE-----
+        MIICzDCCAlGgAwIBAgIRAPkVg1jVKqnNGFpSB3lPbaIwCgYIKoZIzj0EAwIwXjEL
+        MAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5DMRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0w
+        KwYDVQQDDCROZXRGb3VuZHJ5IFppdGkgRXh0ZXJuYWwgQVBJIFJvb3QgQ0EwHhcN
+        MTgxMTE1MTI1NzE3WhcNMTkxMTI1MTI1NzE3WjBrMQswCQYDVQQGEwJVUzELMAkG
+        A1UECAwCTkMxEjAQBgNVBAcMCUNoYXJsb3R0ZTETMBEGA1UECgwKTmV0Rm91bmRy
+        eTEPMA0GA1UECwwGQWR2RGV2MRUwEwYDVQQDDAxaaXRpQ2xpZW50MDEwdjAQBgcq
+        hkjOPQIBBgUrgQQAIgNiAATTl2ft+/K9RvDgki9gSr9udNcV2bxD4LrWEdCdXNzF
+        iVUiEcEte9z/M0JRt8lgo17OjFvS+ecrAmLtIZNmQnH3+9YeafjeNPpvQsMKxlTN
+        MnU7Hka11GHc6swQZSyHvlKjgcUwgcIwCQYDVR0TBAIwADARBglghkgBhvhCAQEE
+        BAMCBaAwMwYJYIZIAYb4QgENBCYWJE9wZW5TU0wgR2VuZXJhdGVkIENsaWVudCBD
+        ZXJ0aWZpY2F0ZTAdBgNVHQ4EFgQUtx+Tej6lSYdjb8Jbc2QuvoEsI/swHwYDVR0j
+        BBgwFoAUcdTlRrnP43ZbQ3PGAbZMPE26+H4wDgYDVR0PAQH/BAQDAgXgMB0GA1Ud
+        JQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAKBggqhkjOPQQDAgNpADBmAjEAuXDS
+        H7KKMr+la+Yuh8d8Q9cLtXzdS0j6a8e7iOyPJmdWq2WuzNdbCfAfLgKXuxhSAjEA
+        sadZrXl1OBv11RGAKdYBIyRmfYUotCFAtCNKcfgBUxci0TDaKDA7r3jnjKT1d7Fs
+        -----END CERTIFICATE-----
+  erottResponse:
+    description: A response containing the edge routers signed certificates (server chain, server cert, CAs).
+    schema:
+      $ref: '#/definitions/erott'
+  ###################################################################
+  # Edge Routers
+  ##################################################################
+  listEdgeRouters:
+    description: A list of edge routers
+    schema:
+      $ref: '#/definitions/listEdgeRoutersEnvelope'
+  detailEdgeRouter:
+    description: A singular edge router resource
+    schema:
+      $ref: '#/definitions/detailedEdgeRouterEnvelope'
+  ###################################################################
+  # Edge Router Policies
+  ##################################################################
+  listEdgeRouterPolicies:
+    description: A list of edge router policies
+    schema:
+      $ref: '#/definitions/listEdgeRouterPoliciesEnvelope'
+  detailEdgeRouterPolicy:
+    description: A single ege router policy
+    schema:
+      $ref: '#/definitions/detailEdgeRouterPolicyEnvelope'
+
+  ###################################################################
+  # Service Policies
+  ##################################################################
+  listServicePolicies:
+    description: A list of service policies
+    schema:
+      $ref: '#/definitions/listServicePoliciesEnvelope'
+  detailServicePolicy:
+    description: A signle service policy
+    schema:
+      $ref: '#/definitions/detailServicePolicyEnvelop'
+  ###################################################################
+  # Services
+  ##################################################################
+  listServices:
+    description: A list of services
+    schema:
+      $ref: '#/definitions/listServicesEnvelope'
+  detailService:
+    description: A single service
+    schema:
+      $ref: '#/definitions/detailServiceEnvelope'
+  ###################################################################
+  # Identities
+  ##################################################################
+  listIdentities:
+    description: A list of identities
+    schema:
+      $ref: '#/definitions/listIdentitiesEnvelope'
+  detailIdentity:
+    description: A signle identity
+    schema:
+      $ref: '#/definitions/detailIdentityEnvelope'
+  ###################################################################
+  # Geo Regions
+  ##################################################################
+  listGeoRegions:
+    description: A list of geo-regions
+    schema:
+      $ref: '#/definitions/listGeoRegionsEnvelope'
+  detailGeoRegion:
+    description: A single geo-region
+    schema:
+      $ref: '#/definitions/detailGeoRegionEnvelope'
+  ###################################################################
+  # Identity-Types
+  ##################################################################
+  listIdentityTypes:
+    description: A list of identity types
+    schema:
+      $ref: '#/definitions/listIdentityTypesEnvelope'
+  detailIdentityType:
+    description: A single identity type
+    schema:
+      $ref: '#/definitions/detailIdentityTypeEnvelope'
+  ###################################################################
+  # Service Configs
+  ##################################################################
+  listServiceConfigs:
+    description: A list of service configs
+    schema:
+      $ref: '#/definitions/listServiceConfigsEnvelope'
+  ###################################################################
+  # Service Edge Router Policies
+  ##################################################################
+  listServiceEdgeRouterPolicies:
+    description: A list of service edge router policies
+    schema:
+      $ref: '#/definitions/listServiceEdgeRouterPoliciesEnvelope'
+  detailServiceEdgePolicy:
+    description: A single service edge router policy
+    schema:
+      $ref: '#/definitions/detailServiceEdgePolicyEnvelope'
+  ###################################################################
+  # Sessions
+  ##################################################################
+  listSessions:
+    description: A list of sessions
+    schema:
+      $ref: '#/definitions/listSessionsEnvelope'
+  detailSession:
+    description: A single session
+    schema:
+      $ref: '#/definitions/detailSessionEnvelope'
+  ###################################################################
+  # Terminators
+  ##################################################################
+  listTerminators:
+    description: A list of terminators
+    schema:
+      $ref: '#/definitions/listTerminatorsEnvelope'
+  detailTerminator:
+    description: A single terminator
+    schema:
+      $ref: '#/definitions/detailTerminatorEnvelope'
+#######################################################################################################################
+#
+# Definitions - In & Out Models Only
+#
+#######################################################################################################################
+definitions:
+  ###################################################################
+  # Shared Definitions
+  ##################################################################
+  link:
+    description: A link to another resource
+    type: object
+    required:
+      - href
+    properties:
+      href:
+        type: string
+        format: uri
+      method:
+        type: string
+      comment:
+        type: string
+  links:
+    description: A map of named links
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/link'
+  entityRef:
+    description: A reference to another resource and links to interact with it
+    type: object
+    properties:
+      entity:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      _links:
+        $ref: '#/definitions/links'
+  tags:
+    description: 'A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean'
+    type: object
+    additionalProperties: true
+    properties: {}
+  attributes:
+    description: A set of strings used to loosly couple this resource to policies
+    type: array
+    items:
+      type: string
+  roles:
+    type: array
+    items:
+      type: string
+  semantic:
+    type: string
+    enum:
+      - AllOf
+      - OneOf
+  dialBind:
+    type: string
+    enum:
+      - Dial
+      - Bind
+  ###################################################################
+  # Authentication
+  ##################################################################
+  password:
+    type: string
+    minLength: 5
+    maxLength: 100
+  username:
+    type: string
+    minLength: 4
+    maxLength: 100
+  authenticate:
+    type: object
+    description: A generic authenticate object meant for use with the /authenticate path. Required fields depend on authentication method.
+    properties:
+      username:
+        $ref: '#/definitions/username'
+      password:
+        $ref: '#/definitions/password'
+      envInfo:
+        $ref: '#/definitions/envInfo'
+      sdkInfo:
+        $ref: '#/definitions/sdkInfo'
+      configTypes:
+        $ref: '#/definitions/configTypes'
+  authenticateUPDB:
+    type: object
+    description: A username and password pair
+    required: [username, password]
+    properties:
+      username:
+        $ref: '#/definitions/username'
+      password:
+        $ref: '#/definitions/password'
+      envInfo:
+        $ref: '#/definitions/envInfo'
+      sdkInfo:
+        $ref: '#/definitions/sdkInfo'
+      configTypes:
+        $ref: '#/definitions/configTypes'
+  authenticateCert:
+    type: object
+    description: A cert based authentication request. The certificate used by the client as its TLS client certificate will be interrogated for authentication
+    properties:
+      envInfo:
+        $ref: '#/definitions/envInfo'
+      sdkInfo:
+        $ref: '#/definitions/sdkInfo'
+      configTypes:
+        $ref: '#/definitions/configTypes'
+  ###################################################################
+  # Current Session
+  ##################################################################
+  apiSessionList:
+    type: array
+    items:
+      $ref: '#/definitions/apiSessionDetail'
+  apiSessionDetail:
+    description: An API Session object
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      token:
+        type: string
+      identity:
+        allOf:
+          - $ref: '#/definitions/entityRef'
+  ###################################################################
+  # Identities
+  ##################################################################
+  identityCreate:
+    description: An identity to create
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+        enum:
+          - User
+          - Device
+          - Service
+      isAdmin:
+        type: boolean
+      enrollment:
+        type: object
+        properties:
+          ott:
+            type: boolean
+          updb:
+            type: string
+          ottca:
+            type: string
+            format: uuid
+      tags:
+        $ref: '#/definitions/tags'
+  identityUpdate:
+    type: object
+    required:
+      - type
+      - name
+      - isAdmin
+      - tags
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+        enum:
+          - User
+          - Device
+          - Service
+      isAdmin:
+        type: boolean
+      tags:
+        $ref: '#/definitions/tags'
+  identityPatch:
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+        enum:
+          - User
+          - Device
+          - Service
+      isAdmin:
+        type: boolean
+  identityList:
+    description: A list of identities
+    type: array
+    items:
+      $ref: '#/definitions/identityDetail'
+  identityDetail:
+    description: Detail of a specific identity
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/entityRef'
+      isDefaultAdmin:
+        type: boolean
+      isAdmin:
+        type: boolean
+      authenticators:
+        properties:
+          updb:
+            properties:
+              username:
+                type: string
+            type: object
+        type: object
+      enrollment:
+        properties: {}
+        type: object
+  ###################################################################
+  # Authenticator
+  ##################################################################
+  authenticatorCreate:
+    description: Creates an authenticator for a specific identity which can be used for API authentication
+    type: object
+    properties:
+      username:
+        type: string
+        description: The username that the identity will login with. Used only for method='updb'
+      password:
+        type: string
+        description: The password the identity will login with, Used only for method='updb'
+      method:
+        type: string
+        description: The type of authenticator to create; which will dictate which properties on this object are required.
+      identityId:
+        type: string
+        format: uuid
+        description: The id of an existing identity that will be assigned this authenticator
+      tags:
+        $ref: '#/definitions/tags'
+  authenticatorList:
+    description: An array of authenticator resources
+    type: array
+    items:
+      $ref: '#/definitions/apiSessionDetail'
+  authenticatorDetail:
+    description: A singular authenticator resource
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      method:
+        type: string
+      identityId:
+        type: string
+        format: uuid
+      certPem:
+        type: string
+      fingerprint:
+        type: string
+  authenticatorUpdate:
+    description: All of the fields on an authenticator that will be updated
+    type: object
+    required:
+      - username
+      - password
+    properties:
+      username:
+        $ref: '#/definitions/username'
+      password:
+        $ref: '#/definitions/password'
+  authenticatorPatch:
+    description: All of the fields on an authenticator that may be updated
+    type: object
+    properties:
+      username:
+        $ref: '#/definitions/username'
+      password:
+        $ref: '#/definitions/password'
+  ###################################################################
+  # Certificate Authorities
+  ##################################################################
+  caList:
+    description: An array of Certificate Authority (CA) resources
+    type: array
+    items:
+      $ref: '#/definitions/caDetail'
+  caDetail:
+    description: A Certificate Authority (CA) resource
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      fingerprint:
+        type: string
+      certPem:
+        type: string
+      isVerified:
+        type: boolean
+        example: false
+      verificationToken:
+        type: string
+        format: uuid
+      isAutoCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isOttCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isAuthEnabled:
+        type: boolean
+        example: true
+    example:
+      id: c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c
+      createdAt: '2020-03-10T15:20:40.4301069Z'
+      updatedAt: '2020-03-10T15:20:40.4301069Z'
+      _links:
+        jwt:
+          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c/jwt'
+          method: GET
+        self:
+          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c'
+        verify:
+          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c/verify'
+          method: POST
+      tags:
+        externalId: '1234567489'
+      name: Test 3rd Party External CA-505d3728-6c4b-473b-8050-4862f8cf997c
+      fingerprint: 95:F1:95:C3:6D:B0:1E:4A:70:63:A7:E3:AB:8E:B2:B1:B4:10:BD:DB
+      certPem: |-
+        -----BEGIN CERTIFICATE-----
+        MIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT
+        AlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk
+        TmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy
+        NTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D
+        MRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg
+        RXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z
+        Iaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/
+        3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh
+        MB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG
+        uc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB
+        hjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms
+        kllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE
+        1ZG1zveyMvsYsH04C9FndE6w2MLvlA==
+        -----END CERTIFICATE-----
+      isVerified: false
+      verificationToken: 53065a7d-a535-4072-86a2-dd55b71f779c
+      isAutoCaEnrollmentEnabled: true
+      isOttCaEnrollmentEnabled: true
+      isAuthEnabled: true
+  caCreate:
+    description: A create Certificate Authority (CA) object
+    type: object
+    required:
+      - name
+      - certPem
+    properties:
+      name:
+        type: string
+        example: 'Test 3rd Party External CA'
+      isAutoCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isAuthEnabled:
+        type: boolean
+        example: true
+      isOttCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      certPem:
+        type: string
+        example: '-----BEGIN CERTIFICATE-----\nMIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT\nAlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk\nTmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy\nNTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D\nMRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg\nRXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z\nIaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/\n3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh\nMB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG\nuc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB\nhjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms\nkllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE\n1ZG1zveyMvsYsH04C9FndE6w2MLvlA==\n-----END CERTIFICATE-----'
+      tags:
+        $ref: '#/definitions/tags'
+    example:
+      name: Test 3rd Party External CA
+      isAutoCaEnrollmentEnabled: true
+      isAuthEnabled: true
+      isOttCaEnrollmentEnabled: true
+      certPem: |-
+        -----BEGIN CERTIFICATE-----
+        MIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT
+        AlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk
+        TmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy
+        NTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D
+        MRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg
+        RXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z
+        Iaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/
+        3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh
+        MB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG
+        uc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB
+        hjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms
+        kllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE
+        1ZG1zveyMvsYsH04C9FndE6w2MLvlA==
+        -----END CERTIFICATE-----
+      tags:
+        externalId: '1234567489'
+  caUpdate:
+    type: object
+    required:
+      - name
+      - isAutoCaEnrollmentEnabled
+      - isOttCaEnrollmentEnabled
+      - isAuthEnabled
+    properties:
+      name:
+        type: string
+        example: My CA
+      isAutoCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isOttCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isAuthEnabled:
+        type: boolean
+        example: true
+      tags:
+        $ref: '#/definitions/tags'
+  caPatch:
+    type: object
+    properties:
+      name:
+        type: string
+        example: My CA
+      isAutoCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isOttCaEnrollmentEnabled:
+        type: boolean
+        example: true
+      isAuthEnabled:
+        type: boolean
+        example: true
+      tags:
+        $ref: '#/definitions/tags'
+  ###################################################################
+  # Config-Types
+  ##################################################################
+  configTypeList:
+    description: An array of config-type resources
+    type: array
+    items:
+      $ref: '#/definitions/configTypeDetail'
+  configTypeDetail:
+    description: A config-type resource
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+        example: cea49285-6c07-42cf-9f52-09a9b115c783
+      createdAt:
+        type: string
+        format: date-time
+        example: 2020-02-06T18:50:32.7812998Z
+      updatedAt:
+        type: string
+        format: date-time
+        example: 2020-02-06T18:50:32.7812998Z
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: ziti-tunneler-server.v1
+      schema:
+        description: A JSON schema to enforce configuration against
+        type: object
+  configTypeCreate:
+    type: object
+    description: A config-type create object
+    required:
+      - name
+      - schema
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: ziti-tunneler-server.v1
+      schema:
+        description: A JSON schema to enforce configuration against
+        type: object
+  configTypeUpdate:
+    description: A config-type update object
+    type: object
+    required:
+      - name
+      - schema
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: ziti-tunneler-server.v1
+      schema:
+        description: A JSON schema to enforce configuration against
+        type: object
+  configTypePatch:
+    description: A config-type patch object
+    type: object
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: ziti-tunneler-server.v1
+      schema:
+        description: A JSON schema to enforce configuration against
+        type: object
+  ###################################################################
+  # Configs
+  ##################################################################
+  configList:
+    description: An array of config resources
+    type: array
+    items:
+      $ref: '#/definitions/configDetail'
+  configDetail:
+    description: A config resource
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/entityRef'
+      data:
+        type: object
+        description: The data section of a config is based on the schema of its type
+  configCreate:
+    type: object
+    description: A config create object
+    required:
+      - name
+      - type
+      - data
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: default.ziti-tunneler-server.v1
+      type:
+        type: string
+        format: uuid
+        description: The id of a config-type that the data section will match
+      data:
+        type: object
+        description: Data payload is defined by the schema of the config-type defined in the type parameter
+    example:
+      name: test-config
+      type: cea49285-6c07-42cf-9f52-09a9b115c783
+      data:
+        hostname: example.com
+        port: 80
+  configUpdate:
+    type: object
+    description: A config update object
+    required:
+      - name
+      - data
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: default.ziti-tunneler-server.v1
+      data:
+        type: object
+        description: Data payload is defined by the schema of the config-type defined in the type parameter
+    example:
+      name: example-config-name
+      data:
+        hostname: example.com
+        port: 80
+  configPatch:
+    type: object
+    description: A config patch object
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+        example: default.ziti-tunneler-server.v1
+      data:
+        type: object
+        description: Data payload is defined by the schema of the config-type defined in the type parameter
+    example:
+      name: example-config-name
+      data:
+        hostname: example.com
+        port: 80
+  ###################################################################
+  # Enrollments
+  ##################################################################
+  enrollmentDetail:
+    type: object
+    description: |
+      An enrollment object. Enrolments are tied to identities and portentially a CA. Depending on the
+      method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
+      use the username field, but not vice versa.
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      token:
+        type: string
+      method:
+        type: string
+      expiresAt:
+        type: string
+      identity:
+        $ref: '#/definitions/entityRef'
+      username:
+        type: string
+      details:
+        type: object
+        additionalProperties:
+          type: string
+    example:
+      id: 624fa53f-7629-4a7a-9e38-c1f4ce322c1d
+      createdAt: '0001-01-01T00:00:00Z'
+      updatedAt: '0001-01-01T00:00:00Z'
+      _links:
+        self:
+          href: './enrollments/624fa53f-7629-4a7a-9e38-c1f4ce322c1d'
+      tags:
+      token: 1e727c8f-07e4-4a1d-a8b0-da0c7a01c6e1
+      method: updb
+      expiresAt: '2020-03-11T20:20:24.0055543Z'
+      identity:
+        urlName: identities
+        id: f047ac96-dc3a-408a-a6f2-0ba487c08ef9
+        name: updb--0f245140-7f2e-4326-badf-6aba55e52475
+        _links:
+          self:
+            href: './identities/f047ac96-dc3a-408a-a6f2-0ba487c08ef9'
+      ca:
+      username: example-username
+  enrollmentList:
+    description: An array of enrollment resources
+    type: array
+    items:
+      $ref: '#/definitions/enrollmentDetail'
+  ###################################################################
+  # Edge Routers
+  ##################################################################
+  edgeRouterCreate:
+    description: An edge router create object
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterUpdate:
+    description: An edge router update object
+    type: object
+    required:
+      - name
+      - tags
+    properties:
+      name:
+        type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterPatch:
+    description: An edge router patch object
+    type: object
+    properties:
+      name:
+        type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterList:
+    description: A list of edge router resources
+    type: array
+    items:
+      $ref: '#/definitions/edgeRouterDetail'
+  edgeRouterDetail:
+    description: A detail edge router resource
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      isVerified:
+        type: boolean
+      isOnline:
+        type: boolean
+      enrollmentToken:
+        type: string
+      enrollmentJwt:
+        type: string
+      enrollmentCreatedAt:
+        type: string
+        format: date-time
+      enrollmentExpiresAt:
+        type: string
+        format: date-time
+      hostname:
+        type: string
+      supportedProtocols:
+        additionalProperties:
+          type: string
+        type: object
+    example:
+      id: b0766b8d-bd1a-4d28-8415-639b29d3c83d
+      createdAt: '2020-03-16T17:13:31.5807454Z'
+      updatedAt: '2020-03-16T17:13:31.5807454Z'
+      _links:
+        edge-router-policies:
+          href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d/edge-routers"
+        self:
+          href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
+      tags: {}
+      name: TestGateway-e33c837f-3222-4b40-bcd6-b3458fd5156e
+      fingerprint:
+      roleAttributes:
+        - eastCoast
+        - sales
+        - test
+      isVerified: false
+      isOnline: false
+      enrollmentToken: 30a1f0ea-d39b-4aae-b852-304cf1c30d1f
+      enrollmentJwt: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbSI6ImVyb3R0IiwiZXhwIjoxNTg0Mzc5MTExLCJpc3MiOiJodHRwczovL
+      2xvY2FsaG9zdDoxMjgwIiwianRpIjoiMzBhMWYwZWEtZDM5Yi00YWFlLWI4NTItMzA0Y2YxYzMwZDFmIiwic3ViIjoiYjA3NjZiOGQtYmQxYS00ZDI
+      4LTg0MTUtNjM5YjI5ZDNjODNkIn0.UsyQhCPORQ5tQnYWY7S88LNvV9iFS5Hy-P4aJaClZzEICobKgnQoyQblJcdMvk3cGKwyFqAnQtt0tDZkb8tHz
+      Vqyv6bilHcAFuMRrdwXRqdXquabSN5geu2qBUnyzL7Mf2X85if8sbMida6snB4oLZsVRF3CRn4ODBJdeiVJ_Z4rgD-zW2IwtXPApT7ALyiiw2cN4EH
+      8pqQ7tpZKqztE0PGEbBQFPGKUFnm7oXyvSUo17EsFJUv5gUlBzfKKGolh5io4ptp22HZrqsqSnqDSOnYEZHonr5Yljuwiktrlh-JKiK6GGns5OAJMP
+      dO9lgM4yHSpF2ILbqhWMV93Y3zMOg'
+      enrollmentCreatedAt: '2020-03-16T17:13:31.5777637Z'
+      enrollmentExpiresAt: '2020-03-16T17:18:31.5777637Z'
+      hostname: ''
+      supportedProtocols: {}
+  ###################################################################
+  # Edge Router Policies
+  ##################################################################
+  edgeRouterPolicyCreate:
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterPolicyUpdate:
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterPolicyPatch:
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+      tags:
+        $ref: '#/definitions/tags'
+  edgeRouterPolicyList:
+    type: array
+    items:
+      $ref: '#/definitions/edgeRouterPolicyDetail'
+  edgeRouterPolicyDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        type: array
+        items:
+          type: string
+      identityRoles:
+        type: array
+        items:
+          type: string
+  ###################################################################
+  # Service Policies
+  ##################################################################
+  servicePolicyList:
+    type: array
+    items:
+      $ref: '#/definitions/servicePolicyDetail'
+  servicePolicyDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/dialBind'
+      semantic:
+        $ref: '#/definitions/semantic'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+  servicePolicyCreate:
+    type: object
+    required:
+      - name
+      - type
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/dialBind'
+      semantic:
+        $ref: '#/definitions/semantic'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+  servicePolicyUpdate:
+    type: object
+    required:
+      - name
+      - type
+      - semantic
+      - serviceRoles
+      - identityRoles
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/dialBind'
+      semantic:
+        $ref: '#/definitions/semantic'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+  servicePolicyPatch:
+    type: object
+    required:
+      - name
+      - type
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/dialBind'
+      semantic:
+        $ref: '#/definitions/semantic'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+      identityRoles:
+        $ref: '#/definitions/roles'
+  ###################################################################
+  # Services
+  ##################################################################
+  serviceList:
+    type: array
+    items:
+      $ref: '#/definitions/serviceDetail'
+  serviceDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      terminatorStrategy:
+        type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
+      permissions:
+        $ref: '#/definitions/dialBind'
+      configs:
+        type: array
+        items:
+          $ref: '#/definitions/entityRef'
+  serviceCreate:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      terminatorStrategy:
+        type: string
+      roleAttributes:
+        type: array
+        items:
+          type: string
+      configs:
+        type: array
+        items:
+          type: string
+          format: uuid
+      tags:
+        $ref: '#/definitions/tags'
+  serviceUpdate:
+    type: object
+    required:
+      - name
+      - terminatorStrategy
+      - roleAttributes
+      - configs
+    properties:
+      name:
+        type: string
+      terminatorStartegy:
+        type: string
+      roleAttributes:
+        type: array
+        items:
+          type: string
+      configs:
+        type: array
+        items:
+          type: string
+          format: uuid
+      tags:
+        $ref: '#/definitions/tags'
+  servicePatch:
+    type: object
+    properties:
+      name:
+        type: string
+      terminatorStrategy:
+        type: string
+      roleAttributes:
+        type: array
+        items:
+          type: string
+      configs:
+        type: array
+        items:
+          type: string
+          format: uuid
+      tags:
+        $ref: '#/definitions/tags'
+  ###################################################################
+  # Geo Regions
+  ##################################################################
+  geoRegionList:
+    type: array
+    items:
+      $ref: '#/definitions/geoRegionDetail'
+  geoRegionDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+  ###################################################################
+  # Identity-Types
+  ##################################################################
+  identityTypeList:
+    type: array
+    items:
+      $ref: '#/definitions/identityDetail'
+  identityTypeDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+  ###################################################################
+  # Service Configs
+  ##################################################################
+  serviceConfigList:
+    type: array
+    items:
+      $ref: '#/definitions/serviceConfigDetail'
+  serviceConfigDetail:
+    type: object
+    properties:
+      service:
+        $ref: '#/definitions/entityRef'
+      config:
+        $ref: '#/definitions/entityRef'
+    example:
+      service:
+        urlName: services
+        id: 913a8c63-17a6-44d7-82b3-9f6eb997cf8e
+        name: netcat4545-egress-r2
+        _links:
+          self:
+            href: "./services/913a8c63-17a6-44d7-82b3-9f6eb997cf8e"
+      config:
+        urlName: configs
+        id: 13347602-ba34-4ff7-8082-e533ba945744
+        name: test-config-02fade09-fcc3-426c-854e-18539726bdc6
+        _links:
+          self:
+            href: "./identities/13347602-ba34-4ff7-8082-e533ba945744"
+  serviceConfig:
+    type: object
+    properties:
+      service:
+        type: string
+        format: uuid
+      config:
+        type: string
+        format: uuid
+  serviceConfigs:
+    type: array
+    items:
+      $ref: '#/definitions/serviceConfig'
+  ###################################################################
+  # Service Edge Router Policies
+  ##################################################################
+  serviceEdgeRouterPolicyList:
+    type: array
+    items:
+      $ref: '#/definitions/serviceEdgeRouterPolicyDetail'
+  serviceEdgeRouterPolicyDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+  serviceEdgeRouterPolicyCreate:
+    type: object
+    required:
+      - name
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+  serviceEdgePolicyUpdate:
+    type: object
+    required:
+      - name
+      - tags
+      - semantic
+      - edgeRouterRoles
+      - serviceRoles
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+  serviceEdgePolicyPatch:
+    type: object
+    properties:
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      semantic:
+        $ref: '#/definitions/semantic'
+      edgeRouterRoles:
+        $ref: '#/definitions/roles'
+      serviceRoles:
+        $ref: '#/definitions/roles'
+  ###################################################################
+  # Sessions
+  ##################################################################
+  sessionCreate:
+    type: object
+    properties:
+      serviceId:
+        type: string
+        format: uuid
+      type:
+        $ref: '#/definitions/dialBind'
+      tags:
+        $ref: '#/definitions/tags'
+  sessionList:
+    type: array
+    items:
+      $ref: '#/definitions/sessionDetail'
+  sessionDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      type:
+        $ref: '#/definitions/dialBind'
+      apiSession:
+        $ref: '#/definitions/entityRef'
+      service:
+        $ref: '#/definitions/entityRef'
+      sessionEdgeRouters:
+        type: array
+        items:
+          $ref: '#/definitions/sessionEdgeRouter'
+  sessionEdgeRouter:
+    type: object
+    properties:
+      hostname:
+        type: string
+      name:
+        type: string
+      urls:
+        type: object
+        additionalProperties:
+          type: string
+  apiErrorEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      error:
+        $ref: '#/definitions/apiError'
+  apiError:
+    type: object
+    properties:
+      args:
+        $ref: '#/definitions/apiErrorArgs'
+      causeMessage:
+        type: string
+      code:
+        type: string
+      message:
+        type: string
+      requestId:
+        type: string
+      cause:
+        $ref: '#/definitions/apiErrorCause'
+  apiErrorCause:
+    type: object
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      cause:
+        type: string
+  apiErrorArgs:
+    type: object
+    properties:
+      urlVars:
+        properties: {}
+        additionalProperties:
+          type: string
+        type: object
+  empty:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        type: object
+        example: {}
+  meta:
+    properties:
+      filterableFields:
+        type: array
+        items:
+          type: string
+      pagination:
+        $ref: '#/definitions/pagination'
+    type: object
+  create:
+    type: object
+    properties:
+      meta:
+        properties: {}
+        type: object
+      data:
+        properties:
+          _links:
+            $ref: '#/definitions/links'
+          id:
+            type: string
+        type: object
+  version:
+    type: object
+    properties:
+      buildDate:
+        type: string
+        example: '2020-02-11 16:09:08'
+      revision:
+        type: string
+        example: 'ea556fc18740'
+      runtimeVersion:
+        type: string
+        example: 'go1.13.5'
+      version:
+        type: string
+        example: 'v0.9.0'
+  listSummaryCounts:
+    type: object
+    additionalProperties:
+      type: integer
+  erott:
+    type: object
+    properties:
+      serverCert:
+        type: string
+        description: A PEM encoded set of certificates to use as the servers chain
+      cert:
+        type: string
+        description: A PEM encoded cert for the server
+      ca:
+        type: string
+        description: A PEM encoded set of CA certificates to trust
+  currentAPISessionDetailEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/apiSessionDetail'
+  currentIdentityDetailEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/identityDetail'
+  listAPISessionsEnvelope:
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/apiSessionList'
+  detailAPISessionEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/apiSessionDetail'
+  listAuthenticatorsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/authenticatorList'
+  detailAuthenticatorEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/authenticatorDetail'
+  listCAsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/caList'
+  detailCAEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/caDetail'
+  listConfigTypesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/configTypeList'
+  detailConfigTypeEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/configTypeDetail'
+  listConfigsEnvelope:
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/configList'
+  detailConfigEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/configDetail'
+  listVersionEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/version'
+  listSummaryCountsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/listSummaryCounts'
+  listEnrollmentsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/enrollmentList'
+  detailEnrollmentEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/enrollmentDetail'
+  listEdgeRoutersEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/edgeRouterList'
+  detailedEdgeRouterEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/edgeRouterDetail'
+  listEdgeRouterPoliciesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/edgeRouterPolicyList'
+  detailEdgeRouterPolicyEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/edgeRouterPolicyDetail'
+  listServicePoliciesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/servicePolicyList'
+  detailServicePolicyEnvelop:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/servicePolicyDetail'
+  listServicesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/serviceList'
+  detailServiceEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/serviceDetail'
+  listIdentitiesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/identityList'
+  detailIdentityEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/identityDetail'
+  listGeoRegionsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/geoRegionList'
+  detailGeoRegionEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/geoRegionDetail'
+  listIdentityTypesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/identityTypeList'
+  detailIdentityTypeEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/identityTypeDetail'
+  listServiceConfigsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/serviceConfigList'
+  listServiceEdgeRouterPoliciesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/serviceEdgeRouterPolicyList'
+  detailServiceEdgePolicyEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/serviceEdgeRouterPolicyDetail'
+  listSessionsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionList'
+  detailSessionEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionDetail'
+  envInfo:
+    description: Environment information an authenticating client may provide
+    properties:
+      os:
+        type: string
+      arch:
+        type: string
+      osRelease:
+        type: string
+      osVersion:
+        type: string
+    type: object
+  sdkInfo:
+    description: SDK information an authenticating client may provide
+    properties:
+      type:
+        type: string
+      branch:
+        type: string
+      version:
+        type: string
+      revision:
+        type: string
+    type: object
+  configTypes:
+    description: Specific configuration types that should be returned
+    type: array
+    items:
+      type: string
+  pagination:
+    type: object
+    properties:
+      limit:
+        type: number
+      offset:
+        type: number
+      totalCount:
+        type: number
+  listTerminatorsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/terminatorList'
+  detailTerminatorEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/terminatorDetail'
+  terminatorList:
+    type: array
+    items:
+      $ref: '#/definitions/terminatorDetail'
+  terminatorDetail:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      serviceId:
+        type: "string"
+        format: uuid
+      service:
+        $ref: '#/definitions/entityRef'
+      routerId:
+        type: "string"
+      router:
+        $ref: '#/definitions/entityRef'
+      binding:
+        type: "string"
+      address:
+        type: "string"
+  terminatorCreate:
+    type: object
+    required:
+      - service
+      - router
+      - address
+    properties:
+      service:
+        type: string
+      router:
+        type: string
+      binding:
+        type: string
+      address:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
+  terminatorUpdate:
+    type: object
+    required:
+      - service
+      - router
+      - address
+      - binding
+      - tags
+    properties:
+      service:
+        type: string
+      router:
+        type: string
+      binding:
+        type: string
+      address:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
+  terminatorPatch:
+    type: object
+    properties:
+      service:
+        type: string
+      router:
+        type: string
+      binding:
+        type: string
+      address:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
