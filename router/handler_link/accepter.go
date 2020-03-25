@@ -1,7 +1,6 @@
 package handler_link
 
 import (
-	metrics2 "github.com/netfoundry/ziti-fabric/metrics"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
@@ -28,7 +27,7 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	ch.AddReceiveHandler(newPayloadHandler(xlink, self.ctrl, self.forwarder))
 	ch.AddReceiveHandler(newAckHandler(xlink, self.ctrl, self.forwarder))
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
-	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
+	ch.AddPeekHandler(metrics.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id(), ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 
 	go metrics.ProbeLatency(
