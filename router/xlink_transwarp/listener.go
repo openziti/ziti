@@ -40,15 +40,19 @@ func (self *listener) GetAdvertisement() string {
 
 func (self *listener) listen() {
 	for {
-		linkId, peer, err := readHello(self.listener)
-		if err == nil {
-			logrus.Infof("read hello [%s] from peer at [%s], responding", linkId.Token, peer)
-			if err := writeHello(linkId, self.listener, peer); err != nil {
-				logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+		if err := readMessage(self.listener, self); err != nil {
+			if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
+				logrus.Errorf("error reading message (%v)", err)
 			}
-		} else {
-			logrus.Errorf("error reading hello from peer at [%s] (%v)", peer, err)
 		}
+	}
+}
+
+func (self *listener) HandleHello(linkId *identity.TokenId, peer *net.UDPAddr) {
+	if err := writeHello(linkId, self.listener, peer); err == nil {
+		logrus.Infof("sent hello [%s] to peer [%s]", linkId.Token, peer)
+	} else {
+		logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
 	}
 }
 

@@ -47,6 +47,7 @@ func (self *factory) CreateDialer(id *identity.TokenId, configData map[interface
 		id:       id,
 		config:   config,
 		accepter: self.accepter,
+		waiters:  make(map[string]chan struct{}),
 	}, nil
 }
 

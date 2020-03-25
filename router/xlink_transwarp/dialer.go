@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"net"
+	"time"
 )
 
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
@@ -30,21 +31,27 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 		logrus.Infof("dialing link [%s] at [%s]", name, address)
 
 		if conn, err := net.ListenUDP("udp", self.config.bindAddress); err == nil {
+			waitCh := make(chan struct{}, 0)
+			self.waiters[linkId.Token] = waitCh
 			if err := writeHello(linkId, conn, address); err == nil {
-				if peerId, peer, err := readHello(conn); err == nil {
-					logrus.Infof("received hello [%s] from [%s], success", peerId.Token, peer)
+				if err := readMessage(conn, self); err == nil {
+					select {
+					case <-waitCh:
+						if err := self.accepter.Accept(&impl{id: linkId, conn: conn}); err != nil {
+							return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
+						}
+						return nil
+
+					case <-time.After(5 * time.Second):
+						delete(self.waiters, linkId.Token)
+						return fmt.Errorf("timeout in hello response")
+					}
 				} else {
 					return fmt.Errorf("error receiving hello from peer [%s] (%w)", address, err)
 				}
 			} else {
 				return fmt.Errorf("error sending hello to peer [%s] (%w)", address, err)
 			}
-
-			if err := self.accepter.Accept(&impl{id: linkId, conn: conn}); err != nil {
-				return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
-			}
-
-			return nil
 
 		} else {
 			return fmt.Errorf("error dialing link [%s] (%w)", name, err)
@@ -54,8 +61,18 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	}
 }
 
+func (self *dialer) HandleHello(linkId *identity.TokenId, peer *net.UDPAddr) {
+	if ch, found := self.waiters[linkId.Token]; found {
+		logrus.Infof("received hello [%s] from peer [%s], success", linkId.Token, peer)
+		close(ch)
+	} else {
+		logrus.Errorf("invalid hello [%s] from peer [%s], failure", linkId.Token, peer)
+	}
+}
+
 type dialer struct {
 	id       *identity.TokenId
 	config   *dialerConfig
 	accepter xlink.Accepter
+	waiters  map[string]chan struct{}
 }
