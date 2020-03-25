@@ -20,15 +20,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-foundation/metrics"
 	"time"
 )
 
-const (
-	latencyProbeTime = 128
-)
-
 // NewChannelPeekHandler creates a channel PeekHandler which tracks latency, message rate and message size distribution
-func NewChannelPeekHandler(linkId string, registry Registry) channel2.PeekHandler {
+func NewChannelPeekHandler(linkId string, registry metrics.Registry) channel2.PeekHandler {
 	appTxBytesMeter := registry.Meter("fabric.tx.bytesrate")
 	appTxMsgMeter := registry.Meter("fabric.tx.msgrate")
 	appTxMsgSizeHistogram := registry.Histogram("fabric.tx.msgsize")
@@ -77,24 +74,24 @@ func NewChannelPeekHandler(linkId string, registry Registry) channel2.PeekHandle
 }
 
 type channelPeekHandler struct {
-	appTxBytesMeter Meter
-	appTxMsgMeter   Meter
-	appRxBytesMeter Meter
-	appRxMsgMeter   Meter
+	appTxBytesMeter metrics.Meter
+	appTxMsgMeter   metrics.Meter
+	appRxBytesMeter metrics.Meter
+	appRxMsgMeter   metrics.Meter
 
-	appTxMsgSizeHistogram Histogram
-	appRxMsgSizeHistogram Histogram
+	appTxMsgSizeHistogram metrics.Histogram
+	appRxMsgSizeHistogram metrics.Histogram
 
-	linkLatencyHistogram   Histogram
-	linkTxBytesMeter       Meter
-	linkTxMsgMeter         Meter
-	linkRxBytesMeter       Meter
-	linkRxMsgMeter         Meter
-	linkTxMsgSizeHistogram Histogram
-	linkRxMsgSizeHistogram Histogram
+	linkLatencyHistogram   metrics.Histogram
+	linkTxBytesMeter       metrics.Meter
+	linkTxMsgMeter         metrics.Meter
+	linkRxBytesMeter       metrics.Meter
+	linkRxMsgMeter         metrics.Meter
+	linkTxMsgSizeHistogram metrics.Histogram
+	linkRxMsgSizeHistogram metrics.Histogram
 
-	usageRxCounter IntervalCounter
-	usageTxCounter IntervalCounter
+	usageRxCounter metrics.IntervalCounter
+	usageTxCounter metrics.IntervalCounter
 
 	closeHook func()
 }
@@ -145,7 +142,7 @@ func (h *channelPeekHandler) Close(ch channel2.Channel) {
 }
 
 // NewXgressPeekHandler creates an xgress PeekHandler which tracks message rates and histograms as well as usage
-func NewXgressPeekHandler(registry Registry) xgress.PeekHandler {
+func NewXgressPeekHandler(registry metrics.Registry) xgress.PeekHandler {
 	ingressTxBytesMeter := registry.Meter("ingress.tx.bytesrate")
 	ingressTxMsgMeter := registry.Meter("ingress.tx.msgrate")
 	ingressRxBytesMeter := registry.Meter("ingress.rx.bytesrate")
@@ -183,24 +180,24 @@ func NewXgressPeekHandler(registry Registry) xgress.PeekHandler {
 }
 
 type xgressPeekHandler struct {
-	ingressTxBytesMeter Meter
-	ingressTxMsgMeter   Meter
-	ingressRxBytesMeter Meter
-	ingressRxMsgMeter   Meter
-	egressTxBytesMeter  Meter
-	egressTxMsgMeter    Meter
-	egressRxBytesMeter  Meter
-	egressRxMsgMeter    Meter
+	ingressTxBytesMeter metrics.Meter
+	ingressTxMsgMeter   metrics.Meter
+	ingressRxBytesMeter metrics.Meter
+	ingressRxMsgMeter   metrics.Meter
+	egressTxBytesMeter  metrics.Meter
+	egressTxMsgMeter    metrics.Meter
+	egressRxBytesMeter  metrics.Meter
+	egressRxMsgMeter    metrics.Meter
 
-	ingressTxMsgSizeHistogram Histogram
-	ingressRxMsgSizeHistogram Histogram
-	egressTxMsgSizeHistogram  Histogram
-	egressRxMsgSizeHistogram  Histogram
+	ingressTxMsgSizeHistogram metrics.Histogram
+	ingressRxMsgSizeHistogram metrics.Histogram
+	egressTxMsgSizeHistogram  metrics.Histogram
+	egressRxMsgSizeHistogram  metrics.Histogram
 
-	ingressRxUsageCounter IntervalCounter
-	ingressTxUsageCounter IntervalCounter
-	egressRxUsageCounter  IntervalCounter
-	egressTxUsageCounter  IntervalCounter
+	ingressRxUsageCounter metrics.IntervalCounter
+	ingressTxUsageCounter metrics.IntervalCounter
+	egressRxUsageCounter  metrics.IntervalCounter
+	egressTxUsageCounter  metrics.IntervalCounter
 }
 
 func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) {

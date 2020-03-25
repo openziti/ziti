@@ -23,11 +23,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-fabric/metrics"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/trace"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/sequence"
@@ -497,7 +498,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 	return nil
 }
 
-func (network *Network) AcceptMetrics(metrics *ctrl_pb.MetricsMessage) {
+func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 	log := pfxlog.Logger()
 
 	router, err := network.Routers.Read(metrics.SourceId)

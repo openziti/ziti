@@ -17,11 +17,11 @@
 package network
 
 import (
-	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/sequence"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -67,6 +67,7 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 	result := &TerminatorController{
 		baseController: newController(controllers, controllers.stores.Terminator),
 		store:          controllers.stores.Terminator,
+		sequence:       sequence.NewSequence(),
 	}
 	result.impl = result
 	return result
@@ -74,7 +75,8 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 
 type TerminatorController struct {
 	baseController
-	store db.TerminatorStore
+	store    db.TerminatorStore
+	sequence *sequence.Sequence
 }
 
 func (ctrl *TerminatorController) newModelEntity() boltEntitySink {
@@ -93,7 +95,11 @@ func (ctrl *TerminatorController) Create(s *Terminator) (string, error) {
 
 func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, e *Terminator) (string, error) {
 	if e.Id == "" {
-		e.Id = uuid.New().String()
+		var err error
+		e.Id, err = ctrl.sequence.NextHash()
+		if err != nil {
+			return "", err
+		}
 	}
 	if e.Binding == "" {
 		if strings.HasPrefix(e.Address, "udp:") {

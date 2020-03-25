@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-fabric/metrics"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/handler_ctrl"
 	"github.com/netfoundry/ziti-fabric/router/handler_link"
@@ -36,6 +34,8 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xlink_transport"
 	"github.com/netfoundry/ziti-fabric/router/xlink_transwarp"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/info"
 	"github.com/sirupsen/logrus"
@@ -63,7 +63,7 @@ func (self *Router) Channel() channel2.Channel {
 }
 
 func Create(config *Config) *Router {
-	metricsRegistry := metrics.NewRegistry(ctrl_pb.MetricsSourceType_Internal, config.Id.Token, make(map[string]string), time.Second*15, nil)
+	metricsRegistry := metrics.NewRegistry(metrics_pb.MetricsSourceType_Internal, config.Id.Token, make(map[string]string), time.Second*15, nil)
 
 	return &Router{
 		config:          config,
