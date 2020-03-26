@@ -44,7 +44,7 @@ func (self *listener) GetAdvertisement() string {
 }
 
 /*
- * xlink.Xlink
+ * xlink_transwarp.HelloHandler
  */
 func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) {
 	xlinkImpl := newImpl(linkId, conn, peer)
@@ -60,11 +60,15 @@ func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, p
 }
 
 /*
- * listener
+ * xlink_transwarp.listener
  */
 func (self *listener) listen() {
 	for {
-		if err := readMessage(self.listener, self); err != nil {
+		if m, peer, err := readMessage(self.listener); err == nil {
+			if err := handleHello(m, self.listener, peer, self); err != nil {
+				logrus.Errorf("error handling hello from [%s] (%v)", peer, err)
+			}
+		} else {
 			if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
 				logrus.Errorf("error reading message (%v)", err)
 			}

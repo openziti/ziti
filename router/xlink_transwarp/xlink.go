@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/sirupsen/logrus"
 	"net"
 	"sync"
 	"time"
@@ -45,6 +46,12 @@ func (self *impl) Close() error {
 }
 
 /*
+ * xlink_transwarp.MessageHandler
+ */
+func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr) {
+}
+
+/*
  * impl
  */
 func (self *impl) sendPing() error {
@@ -55,6 +62,13 @@ func (self *impl) sendPing() error {
 	self.lastPingTxSequence = sequence
 	self.lastPingTx = time.Now()
 	return nil
+}
+
+func (self *impl) receivePing(replyFor int32) {
+	if replyFor == self.lastPingTxSequence {
+		self.lastPingRx = time.Now()
+		logrus.Infof("received outstanding ping for [l/%s]", self.id.Token)
+	}
 }
 
 func (self *impl) nextSequence() int32 {

@@ -25,6 +25,9 @@ import (
 	"time"
 )
 
+/*
+ * xlink.Dialer
+ */
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	if address, err := net.ResolveUDPAddr("udp", addressString); err == nil {
 		name := "l/" + linkId.Token
@@ -34,25 +37,28 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 			waitCh := make(chan struct{}, 0)
 			self.waiters[linkId.Token] = waitCh
 			if err := writeHello(linkId, conn, address); err == nil {
-				if err := readMessage(conn, self); err == nil {
-					select {
-					case <-waitCh:
-						xlink := newImpl(linkId, conn, address)
-						if err := self.accepter.Accept(xlink); err != nil {
-							return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
-						}
-						// start xlink reader
-						return nil
+				if m, peer, err := readMessage(conn); err == nil {
+					if err := handleHello(m, conn, peer, self); err == nil {
+						select {
+						case <-waitCh:
+							xli := newImpl(linkId, conn, address)
+							if err := self.accepter.Accept(xli); err != nil {
+								return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
+							}
+							return nil
 
-					case <-time.After(5 * time.Second):
-						delete(self.waiters, linkId.Token)
-						return fmt.Errorf("timeout in hello response")
+						case <-time.After(5 * time.Second):
+							delete(self.waiters, linkId.Token)
+							return fmt.Errorf("timeout in hello response")
+						}
+					} else {
+						return fmt.Errorf("error handling hello from [%s] (%w)", peer, err)
 					}
 				} else {
-					return fmt.Errorf("error receiving hello from peer [%s] (%w)", address, err)
+					return fmt.Errorf("error receiving hello from peer [%s] (%w)", peer, err)
 				}
 			} else {
-				return fmt.Errorf("error sending hello to peer [%s] (%w)", address, err)
+				return fmt.Errorf("error sending hello to peer from [%s] (%w)", address, err)
 			}
 
 		} else {
@@ -63,6 +69,9 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	}
 }
 
+/*
+ * xlink_transwarp.HelloHandler
+ */
 func (self *dialer) HandleHello(linkId *identity.TokenId, _ *net.UDPConn, peer *net.UDPAddr) {
 	if ch, found := self.waiters[linkId.Token]; found {
 		logrus.Infof("received hello [%s] from peer [%s], success", linkId.Token, peer)
@@ -72,6 +81,9 @@ func (self *dialer) HandleHello(linkId *identity.TokenId, _ *net.UDPConn, peer *
 	}
 }
 
+/*
+ * xlink_transwarp.dialer
+ */
 type dialer struct {
 	id       *identity.TokenId
 	config   *dialerConfig
