@@ -80,7 +80,7 @@ The binaries will be placed in `$GOPATH/bin`.
 The development configuration files live in `ziti-fabric/etc`, and contain relative paths, which expect the executables to be started from the root of `ziti-fabric` (ensure that `~/local/ziti-fabric/bin` (`$GOPATH/bin`) is in your shell's `PATH`).
 
 ```
-$ cd ~repos/ziti-fabric
+$ cd ~repos/ziti-cmd
 $ ziti-controller run etc/ctrl.yml
 ```
 
@@ -90,7 +90,10 @@ You'll want to open a number of terminal windows. All commands are executed rela
 
 ### Launch The Controller
 
-`$ bin/ziti-controller run src/github.com/netfoundry/ziti-fabric/fabric/etc/ctrl.yml`
+```
+$ cd ~repos/ziti-cmd
+$ ziti-controller run etc/ctrl.yml
+```
 
 ### Configure Dotzeet
 
@@ -98,10 +101,10 @@ In order to use the `ziti-fabric` tool, you'll need a working identity configura
 
 ```
 default:
-  caCert: "$HOME/repos/ziti-fabric/etc/ca/intermediate/certs/ca-chain.cert.pem"
-  cert: "$HOME/repos/ziti-fabric/etc/ca/intermediate/certs/dotzeet-client.cert.pem"
-  serverCert: "$HOME/repos/ziti-fabric/etc/ca/intermediate/certs/dotzeet-server.cert.pem"
-  key: "$HOME/repos/ziti-fabric/etc/ca/intermediate/private/dotzeet.key.pem"
+  caCert: "$HOME/repos/ziti-cmd/etc/ca/intermediate/certs/ca-chain.cert.pem"
+  cert: "$HOME/repos/ziti-cmd/etc/ca/intermediate/certs/dotzeet-client.cert.pem"
+  serverCert: "$HOME/repos/ziti-cmd/etc/ca/intermediate/certs/dotzeet-server.cert.pem"
+  key: "$HOME/repos/ziti-cmd/etc/ca/intermediate/private/dotzeet.key.pem"
   endpoint: tls:127.0.0.1:10000
 ```
 
@@ -139,7 +142,8 @@ The configuration provided in the tree assembles a "diamond" shaped mesh, where 
 Create a service to access `google.com`:
 
 ```
-$ ziti-fabric create service google tcp:google.com:80 003
+$ ziti-fabric create service google
+$ ziti-fabric create terminator google 003 tcp:google.com:80
 ```
 
 ### Access the Google Service
