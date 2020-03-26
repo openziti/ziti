@@ -23,6 +23,9 @@ import (
 	"net"
 )
 
+/*
+ * xlink.Xlink
+*/
 func (self *impl) Id() *identity.TokenId {
 	return self.id
 }
@@ -37,6 +40,11 @@ func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) e
 
 func (self *impl) Close() error {
 	return self.conn.Close()
+}
+/* */
+
+func newImpl(id *identity.TokenId, conn *net.UDPConn) *impl {
+	return &impl{id: id, conn: conn}
 }
 
 type impl struct {

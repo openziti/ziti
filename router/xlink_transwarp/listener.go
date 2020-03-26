@@ -48,11 +48,16 @@ func (self *listener) listen() {
 	}
 }
 
-func (self *listener) HandleHello(linkId *identity.TokenId, peer *net.UDPAddr) {
-	if err := writeHello(linkId, self.listener, peer); err == nil {
-		logrus.Infof("sent hello [%s] to peer [%s]", linkId.Token, peer)
-	} else {
-		logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) {
+	xlink := newImpl(linkId, conn)
+	if err := self.accepter.Accept(xlink); err == nil {
+		self.peers[peer.String()] = xlink
+
+		if err := writeHello(linkId, self.listener, peer); err == nil {
+			logrus.Infof("sent hello [%s] to peer [%s]", linkId.Token, peer)
+		} else {
+			logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+		}
 	}
 }
 
@@ -61,4 +66,5 @@ type listener struct {
 	config   *listenerConfig
 	listener *net.UDPConn
 	accepter xlink.Accepter
+	peers    map[string]*impl
 }

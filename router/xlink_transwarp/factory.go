@@ -35,6 +35,7 @@ func (self *factory) CreateListener(id *identity.TokenId, configData map[interfa
 		id:       id,
 		config:   config,
 		accepter: self.accepter,
+		peers:    make(map[string]*impl),
 	}, nil
 }
 

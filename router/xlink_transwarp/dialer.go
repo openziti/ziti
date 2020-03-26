@@ -37,9 +37,11 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 				if err := readMessage(conn, self); err == nil {
 					select {
 					case <-waitCh:
-						if err := self.accepter.Accept(&impl{id: linkId, conn: conn}); err != nil {
+						xlink := newImpl(linkId, conn)
+						if err := self.accepter.Accept(xlink); err != nil {
 							return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 						}
+						// start xlink reader
 						return nil
 
 					case <-time.After(5 * time.Second):
@@ -61,7 +63,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	}
 }
 
-func (self *dialer) HandleHello(linkId *identity.TokenId, peer *net.UDPAddr) {
+func (self *dialer) HandleHello(linkId *identity.TokenId, _ *net.UDPConn, peer *net.UDPAddr) {
 	if ch, found := self.waiters[linkId.Token]; found {
 		logrus.Infof("received hello [%s] from peer [%s], success", linkId.Token, peer)
 		close(ch)

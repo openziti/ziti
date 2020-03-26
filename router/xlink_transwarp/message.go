@@ -27,7 +27,7 @@ import (
 )
 
 type MessageHandler interface {
-	HandleHello(linkId *identity.TokenId, addr *net.UDPAddr)
+	HandleHello(linkId *identity.TokenId, conn *net.UDPConn, addr *net.UDPAddr)
 }
 
 /**
@@ -56,6 +56,7 @@ type contentType uint8
 
 const (
 	Hello contentType = iota
+	Ping
 	Payload
 	Acknowledgement
 )
@@ -117,13 +118,13 @@ func readMessage(conn *net.UDPConn, handler MessageHandler) error {
 		return fmt.Errorf("error setting read deadline (%w)", err)
 	}
 	if n, peer, err := conn.ReadFromUDP(data); err == nil {
-		return handleMessage(data[:n], peer, handler)
+		return handleMessage(data[:n], conn, peer, handler)
 	} else {
 		return err
 	}
 }
 
-func handleMessage(data []byte, peer *net.UDPAddr, handler MessageHandler) error {
+func handleMessage(data []byte, conn *net.UDPConn, peer *net.UDPAddr, handler MessageHandler) error {
 	if len(data) < messageSectionLength {
 		return fmt.Errorf("short read [%s]", peer)
 	}
@@ -161,7 +162,7 @@ func handleMessage(data []byte, peer *net.UDPAddr, handler MessageHandler) error
 			return fmt.Errorf("hello expects single fragment [%s]", peer)
 		}
 		linkId := &identity.TokenId{Token: string(payload)}
-		handler.HandleHello(linkId, peer)
+		handler.HandleHello(linkId, conn, peer)
 
 	default:
 		return fmt.Errorf("no handler for content type [%d]", contentType)
