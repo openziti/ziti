@@ -41,10 +41,13 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 					if err := handleHello(m, conn, peer, self); err == nil {
 						select {
 						case <-waitCh:
-							xli := newImpl(linkId, conn, address)
-							if err := self.accepter.Accept(xli); err != nil {
+							xlinkImpl := newImpl(linkId, conn, address)
+							if err := self.accepter.Accept(xlinkImpl); err != nil {
 								return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 							}
+							go xlinkImpl.listener()
+							go xlinkImpl.pinger()
+
 							return nil
 
 						case <-time.After(5 * time.Second):

@@ -49,25 +49,70 @@ func (self *impl) Close() error {
  * xlink_transwarp.MessageHandler
  */
 func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr) {
+	if replyFor == -1 {
+		if err := self.sendPingReply(sequence); err != nil {
+			logrus.Errorf("error sending ping (%v)", err)
+		}
+	} else {
+		self.receivePing(replyFor)
+	}
 }
 
 /*
  * impl
  */
-func (self *impl) sendPing() error {
+func (self *impl) listener() {
+	for {
+		if m, peer, err := readMessage(self.conn); err == nil {
+			if err := handleMessage(m, self.conn, peer, self); err != nil {
+				logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+			}
+		}
+	}
+}
+
+func (self *impl) pinger() {
+	for {
+		time.Sleep(pingCycleDelayMs * time.Millisecond)
+		if time.Since(self.lastPingTx).Milliseconds() >= pingDelayMs {
+			if err := self.sendPingRequest(); err != nil {
+				logrus.Errorf("error sending ping request (%v)", err)
+			}
+		}
+		logrus.Debugf("time since last ping receipt [%d ms.]", time.Since(self.lastPingRx).Milliseconds())
+	}
+}
+
+func (self *impl) sendPingRequest() error {
 	sequence := self.nextSequence()
-	if err := writePing(sequence, self.conn, self.peer, noReplyFor); err != nil {
+	if err := writePing(sequence, self.conn, self.peer, noReplyFor); err == nil {
+		self.lastPingTxSequence = sequence
+		self.lastPingTx = time.Now()
+
+		logrus.Infof("[ping:%d] => %s", sequence, self.peer)
+
+		return nil
+
+	} else {
 		return fmt.Errorf("error sending ping (%w)", err)
 	}
-	self.lastPingTxSequence = sequence
-	self.lastPingTx = time.Now()
-	return nil
+}
+
+func (self *impl) sendPingReply(forSequence int32) error {
+	sequence := self.nextSequence()
+	if err := writePing(sequence, self.conn, self.peer, forSequence); err == nil {
+		logrus.Infof("[ping:%d] <= %s", forSequence, self.peer)
+		return nil
+
+	} else {
+		return fmt.Errorf("error sending ping reply to [%s] (%w)", self.peer, err)
+	}
 }
 
 func (self *impl) receivePing(replyFor int32) {
 	if replyFor == self.lastPingTxSequence {
 		self.lastPingRx = time.Now()
-		logrus.Infof("received outstanding ping for [l/%s]", self.id.Token)
+		logrus.Debugf("received outstanding ping for [l/%s]", self.id.Token)
 	}
 }
 
@@ -81,7 +126,14 @@ func (self *impl) nextSequence() int32 {
 }
 
 func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) *impl {
-	return &impl{id: id, conn: conn, peer: peer}
+	now := time.Now()
+	return &impl{
+		id:         id,
+		conn:       conn,
+		peer:       peer,
+		lastPingRx: now,
+		lastPingTx: now,
+	}
 }
 
 type impl struct {
@@ -94,3 +146,6 @@ type impl struct {
 	lastPingTx         time.Time
 	lastPingTxSequence int32
 }
+
+const pingDelayMs = 5000
+const pingCycleDelayMs = 500

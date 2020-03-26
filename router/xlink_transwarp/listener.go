@@ -22,7 +22,6 @@ import (
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"net"
-	"time"
 )
 
 /*
@@ -35,7 +34,6 @@ func (self *listener) Listen() error {
 	}
 	self.listener = listener
 	go self.listen()
-	go self.ping()
 	return nil
 }
 
@@ -50,8 +48,8 @@ func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, p
 	xlinkImpl := newImpl(linkId, conn, peer)
 	if err := self.accepter.Accept(xlinkImpl); err == nil {
 		self.peers[peer.String()] = xlinkImpl
-
 		if err := writeHello(linkId, self.listener, peer); err == nil {
+			go xlinkImpl.pinger()
 			logrus.Infof("sent hello [%s] to peer [%s]", linkId.Token, peer)
 		} else {
 			logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
@@ -65,31 +63,20 @@ func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, p
 func (self *listener) listen() {
 	for {
 		if m, peer, err := readMessage(self.listener); err == nil {
-			if err := handleHello(m, self.listener, peer, self); err != nil {
-				logrus.Errorf("error handling hello from [%s] (%v)", peer, err)
+			if m.messageType == Hello {
+				if err := handleHello(m, self.listener, peer, self); err != nil {
+					logrus.Errorf("error handling hello from [%s] (%v)", peer, err)
+				}
+			} else {
+				if xlinkImpl, found := self.peers[peer.String()]; found {
+					if err := handleMessage(m, self.listener, peer, xlinkImpl); err != nil {
+						logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+					}
+				}
 			}
 		} else {
 			if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
 				logrus.Errorf("error reading message (%v)", err)
-			}
-		}
-	}
-}
-
-func (self *listener) ping() {
-	for {
-		time.Sleep(pingCycleDelayMs * time.Millisecond)
-
-		for _, xlinkImpl := range self.peers {
-			/*
-			 * Send
-			 */
-			if time.Since(xlinkImpl.lastPingTx).Milliseconds() <= time.Since(xlinkImpl.lastPingRx).Milliseconds() && time.Since(xlinkImpl.lastPingTx).Milliseconds() >= pingDelayMs {
-				if err := xlinkImpl.sendPing(); err == nil {
-					logrus.Infof("sent ping for Xlink [l/%s]", xlinkImpl.id.Token)
-				} else {
-					logrus.Errorf("error sending ping for Xlink [l/%s] (%v)", xlinkImpl.id.Token, err)
-				}
 			}
 		}
 	}
@@ -102,6 +89,3 @@ type listener struct {
 	accepter xlink.Accepter
 	peers    map[string]*impl
 }
-
-const pingDelayMs = 2000
-const pingCycleDelayMs = 1000

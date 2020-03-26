@@ -110,6 +110,7 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 		messageType:   Ping,
 		headersLength: 0,
 		payloadLength: uint16(payload.Len()),
+		payload:       payload.Bytes(),
 	})
 	if err != nil {
 		return fmt.Errorf("error creating message (%w)", err)
