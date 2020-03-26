@@ -35,6 +35,7 @@ type CaApiUpdate struct {
 	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
 	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
 	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
+	IdentityRoles             []string               `json:"identityRoles"`
 }
 
 func (i *CaApiUpdate) ToModel(id string) *model.Ca {
@@ -47,6 +48,7 @@ func (i *CaApiUpdate) ToModel(id string) *model.Ca {
 	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
 	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
+	result.IdentityRoles = i.IdentityRoles
 	return result
 }
 
@@ -57,6 +59,7 @@ type CaApiCreate struct {
 	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
 	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
 	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
+	IdentityRoles             []string               `json:"identityRoles"`
 }
 
 func (i *CaApiCreate) ToModel() *model.Ca {
@@ -67,19 +70,21 @@ func (i *CaApiCreate) ToModel() *model.Ca {
 	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
 	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
+	result.IdentityRoles = i.IdentityRoles
 	return result
 }
 
 type CaApiList struct {
 	*env.BaseApi
-	Name                      *string `json:"name"`
-	Fingerprint               *string `json:"fingerprint"`
-	CertPem                   *string `json:"certPem"`
-	IsVerified                *bool   `json:"isVerified"`
-	VerificationToken         *string `json:"verificationToken"`
-	IsAutoCaEnrollmentEnabled *bool   `json:"isAutoCaEnrollmentEnabled"`
-	IsOttCaEnrollmentEnabled  *bool   `json:"isOttCaEnrollmentEnabled"`
-	IsAuthEnabled             *bool   `json:"isAuthEnabled"`
+	Name                      *string  `json:"name"`
+	Fingerprint               *string  `json:"fingerprint"`
+	CertPem                   *string  `json:"certPem"`
+	IsVerified                *bool    `json:"isVerified"`
+	VerificationToken         *string  `json:"verificationToken"`
+	IsAutoCaEnrollmentEnabled *bool    `json:"isAutoCaEnrollmentEnabled"`
+	IsOttCaEnrollmentEnabled  *bool    `json:"isOttCaEnrollmentEnabled"`
+	IsAuthEnabled             *bool    `json:"isAuthEnabled"`
+	IdentityRoles             []string `json:"identityRoles"`
 }
 
 func (CaApiList) BuildSelfLink(id string) *response.Link {
@@ -151,6 +156,7 @@ func MapCaToApiList(i *model.Ca) (*CaApiList, error) {
 		IsAuthEnabled:             &i.IsAuthEnabled,
 		IsAutoCaEnrollmentEnabled: &i.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  &i.IsOttCaEnrollmentEnabled,
+		IdentityRoles:             i.IdentityRoles,
 	}
 
 	ret.PopulateLinks()

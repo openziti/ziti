@@ -25,6 +25,10 @@
       "type": "boolean",
       "default": false
     },
+    "identityRoles": {
+      "default": null,
+      "$ref": "definitions.all.json#/definitions/arrayOfString-null"
+    },
     "tags": {
       "$ref": "definitions.all.json#/definitions/tags"
     }

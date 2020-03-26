@@ -19,7 +19,17 @@
 package tests
 
 import (
+	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"sort"
+	"time"
 
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
@@ -182,7 +192,6 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 
 	return entityData.String()
 }
-
 func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
@@ -558,5 +567,181 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	ctx.req.Equal(len(entity.configs), len(children))
 	for configType, config := range entity.configs {
 		ctx.pathEquals(configs, config.data, path(configType))
+	}
+}
+
+type ca struct {
+	id                        string
+	name                      string                 `json:"name"`
+	isAutoCaEnrollmentEnabled bool                   `json:"isAutoCaEnrollmentEnabled"`
+	isAuthEnabled             bool                   `json:"isAuthEnabled"`
+	isOttCaEnrollmentEnabled  bool                   `json:"isOttCaEnrollmentEnabled"`
+	certPem                   string                 `json:"certPem"`
+	identityRoles             []string               `json:"identityRoles"`
+	tags                      map[string]interface{} `json:"tags"`
+
+	privateKey crypto.Signer     `json:"-"` //utility property, not used in API calls
+	publicCert *x509.Certificate `json:"-"` //utility property, not used in API calls
+}
+
+func newTestCa(identityRoles ...string) *ca {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	caCert := &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization: []string{"Ziti Dev"},
+			Country:      []string{"US"},
+			Province:     []string{"Anywhere"},
+			Locality:     []string{"Anytime"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(0, 0, 1),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	caCert, err = x509.ParseCertificate(caBytes)
+
+	caPEM := new(bytes.Buffer)
+	_ = pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	return &ca{
+		name:                      uuid.New().String(),
+		isAutoCaEnrollmentEnabled: true,
+		isAuthEnabled:             true,
+		isOttCaEnrollmentEnabled:  true,
+		certPem:                   caPEM.String(),
+		identityRoles:             identityRoles,
+		tags:                      map[string]interface{}{},
+		privateKey:                key,
+		publicCert:                caCert,
+	}
+}
+
+func (entity ca) getId() string {
+	return entity.id
+}
+
+func (entity ca) setId(id string) {
+	entity.id = id
+}
+
+func (entity ca) getEntityType() string {
+	return "cas"
+}
+
+func (entity ca) toJson(create bool, ctx *TestContext, fields ...string) string {
+	entityData := gabs.New()
+	ctx.setValue(entityData, entity.name, fields, "name")
+	ctx.setValue(entityData, entity.isOttCaEnrollmentEnabled, fields, "isOttCaEnrollmentEnabled")
+	ctx.setValue(entityData, entity.isAutoCaEnrollmentEnabled, fields, "isAutoCaEnrollmentEnabled")
+	ctx.setValue(entityData, entity.isAuthEnabled, fields, "isAuthEnabled")
+	ctx.setValue(entityData, entity.identityRoles, fields, "identityRoles")
+	ctx.setValue(entityData, entity.tags, fields, "tags")
+
+	if create {
+		ctx.setValue(entityData, entity.certPem, fields, "certPem")
+	}
+
+	return entityData.String()
+}
+
+func (entity ca) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	sort.Strings(entity.identityRoles)
+	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
+	ctx.pathEquals(c, entity.certPem, path("certPem"))
+	ctx.pathEquals(c, entity.isAuthEnabled, path("isAuthEnabled"))
+	ctx.pathEquals(c, entity.isAutoCaEnrollmentEnabled, path("isAutoCaEnrollmentEnabled"))
+	ctx.pathEquals(c, entity.isOttCaEnrollmentEnabled, path("isOttCaEnrollmentEnabled"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func (entity ca) CreateSignedCert(name string) *certAuthenticator {
+	clientKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	csrTemplate := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:   name,
+			Organization: []string{"Ziti Dev"},
+			Country:      []string{"US"},
+			Province:     []string{"Anywhere"},
+			Locality:     []string{"Anytime"},
+		},
+	}
+
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, clientKey)
+	if err != nil {
+		panic(err)
+	}
+
+	csr, err := x509.ParseCertificateRequest(csrBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if err = csr.CheckSignature(); err != nil {
+		panic(err)
+	}
+
+	certTemplate := x509.Certificate{
+		Signature: csr.Signature,
+
+		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
+		PublicKey:          csr.PublicKey,
+
+		SerialNumber: big.NewInt(2020),
+		Issuer:       entity.publicCert.Subject,
+		Subject:      csr.Subject,
+		NotBefore:    time.Now().AddDate(0, 0, -1),
+		NotAfter:     time.Now().AddDate(1, 0, 0),
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		IsCA:         false,
+	}
+
+	clientBytes, err := x509.CreateCertificate(rand.Reader, &certTemplate, entity.publicCert, csr.PublicKey, entity.privateKey)
+
+	if err != nil {
+		panic(err)
+	}
+
+	clientCert, err := x509.ParseCertificate(clientBytes)
+
+	if err != nil {
+		panic(err)
+	}
+
+	clientPEM := new(bytes.Buffer)
+	_ = pem.Encode(clientPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: clientBytes,
+	})
+
+	return &certAuthenticator{
+		cert:    clientCert,
+		key:     clientKey,
+		certPem: clientPEM.String(),
 	}
 }

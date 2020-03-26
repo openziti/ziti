@@ -65,7 +65,8 @@ func (handler *CaHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, boltz.FieldTags) ||
 		strings.EqualFold(field, persistence.FieldCaIsAutoCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsOttCaEnrollmentEnabled) ||
-		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled)
+		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled) ||
+		strings.EqualFold(field, persistence.FieldIdentityRoles)
 }
 
 func (handler *CaHandler) Update(ca *Ca) error {

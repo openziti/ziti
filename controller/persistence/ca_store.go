@@ -42,6 +42,7 @@ type Ca struct {
 	IsAutoCaEnrollmentEnabled bool
 	IsOttCaEnrollmentEnabled  bool
 	IsAuthEnabled             bool
+	IdentityRoles             []string
 }
 
 func (entity *Ca) GetName() string {
@@ -58,6 +59,7 @@ func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.IsAutoCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsAutoCaEnrollmentEnabled, false)
 	entity.IsOttCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsOttCaEnrollmentEnabled, false)
 	entity.IsAuthEnabled = bucket.GetBoolWithDefault(FieldCaIsAuthEnabled, false)
+	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 }
 
 func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
@@ -70,6 +72,7 @@ func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldCaIsAutoCaEnrollmentEnabled, entity.IsAutoCaEnrollmentEnabled)
 	ctx.SetBool(FieldCaIsOttCaEnrollmentEnabled, entity.IsOttCaEnrollmentEnabled)
 	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
+	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
 }
 
 func (entity *Ca) GetEntityType() string {
@@ -109,6 +112,7 @@ func (store *caStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldCaIsAutoCaEnrollmentEnabled, ast.NodeTypeBool)
 	store.AddSymbol(FieldCaIsOttCaEnrollmentEnabled, ast.NodeTypeBool)
 	store.AddSymbol(FieldCaIsAuthEnabled, ast.NodeTypeBool)
+	store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
 }
 
 func (store *caStoreImpl) initializeLinked() {
@@ -141,4 +145,8 @@ func (store *caStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Ca, error
 func (store *caStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	// TODO: Delete enrollment certs
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *caStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	return store.baseStore.Update(ctx, entity, checker)
 }
