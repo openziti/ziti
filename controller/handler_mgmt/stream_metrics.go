@@ -22,10 +22,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/metrics"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"regexp"
 )
 
@@ -108,7 +108,7 @@ type MetricsStreamHandler struct {
 	eventController metrics.EventController
 }
 
-func (handler *MetricsStreamHandler) AcceptMetrics(msg *ctrl_pb.MetricsMessage) {
+func (handler *MetricsStreamHandler) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 	if handler.filters == nil {
 		handler.filter(nil, msg)
 		return
@@ -125,7 +125,7 @@ func (handler *MetricsStreamHandler) AcceptMetrics(msg *ctrl_pb.MetricsMessage) 
 	}
 }
 
-func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *ctrl_pb.MetricsMessage) {
+func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metrics_pb.MetricsMessage) {
 	event := &mgmt_pb.StreamMetricsEvent{
 		SourceId:  msg.SourceId,
 		Timestamp: msg.Timestamp,

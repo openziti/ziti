@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package ctrl.pb;
 
-import "google/protobuf/timestamp.proto";
-
 enum ContentType {
     Zero = 0;
 
@@ -84,58 +82,6 @@ message Route {
 message Unroute {
     string sessionId = 1;
     bool now = 2;
-}
-
-enum MetricsSourceType {
-    Ingress = 0;
-    Egress = 1;
-    Internal = 2; // Is there a better word here? Router, Intermediary, NonEdge?
-    // Do we also want Edge and/or SDK here? Anything else?
-}
-
-message MetricsMessage {
-    MetricsSourceType sourceType = 1;
-    string sourceId = 2;
-    google.protobuf.Timestamp timestamp = 3;
-    map<string, string> tags = 4;
-    map<string, int64> intValues = 5;
-    map<string, double> floatValues = 6;
-    map<string, Meter> meters = 7;
-    map<string, Histogram> histograms = 8;
-    map<string, IntervalCounter> intervalCounters = 9;
-
-    message Meter {
-        int64 count = 1;
-        double m1Rate = 2;
-        double m5Rate = 3;
-        double m15Rate = 4;
-        double meanRate = 5;
-    }
-
-    message Histogram {
-        int64 count = 1;
-        int64 max = 2;
-        double mean = 3;
-        int64 min = 4;
-        double stdDev = 5;
-        double variance = 6;
-        double p50 = 7;
-        double p75 = 8;
-        double p95 = 9;
-        double p99 = 10;
-        double p999 = 11;
-        double p9999 = 12;
-    }
-
-    message IntervalCounter {
-        uint64 intervalLength = 1;
-        repeated IntervalBucket buckets = 2;
-    }
-
-    message IntervalBucket {
-        int64 intervalStartUTC = 1; // Only need minute resolution, this will be seconds resolution
-        map<string, uint64> values = 3;
-    }
 }
 
 message InspectRequest {
