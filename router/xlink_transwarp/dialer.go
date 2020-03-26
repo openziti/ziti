@@ -37,7 +37,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 				if err := readMessage(conn, self); err == nil {
 					select {
 					case <-waitCh:
-						xlink := newImpl(linkId, conn)
+						xlink := newImpl(linkId, conn, address)
 						if err := self.accepter.Accept(xlink); err != nil {
 							return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 						}

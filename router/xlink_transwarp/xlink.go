@@ -21,11 +21,13 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"net"
+	"sync"
+	"time"
 )
 
 /*
  * xlink.Xlink
-*/
+ */
 func (self *impl) Id() *identity.TokenId {
 	return self.id
 }
@@ -41,13 +43,40 @@ func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) e
 func (self *impl) Close() error {
 	return self.conn.Close()
 }
-/* */
 
-func newImpl(id *identity.TokenId, conn *net.UDPConn) *impl {
-	return &impl{id: id, conn: conn}
+/*
+ * impl
+ */
+func (self *impl) sendPing() error {
+	sequence := self.nextSequence()
+	if err := writePing(sequence, self.conn, self.peer, noReplyFor); err != nil {
+		return fmt.Errorf("error sending ping (%w)", err)
+	}
+	self.lastPingTxSequence = sequence
+	self.lastPingTx = time.Now()
+	return nil
+}
+
+func (self *impl) nextSequence() int32 {
+	self.sequenceLock.Lock()
+	defer self.sequenceLock.Unlock()
+
+	sequence := self.sequence
+	self.sequence++
+	return sequence
+}
+
+func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) *impl {
+	return &impl{id: id, conn: conn, peer: peer}
 }
 
 type impl struct {
-	id   *identity.TokenId
-	conn *net.UDPConn
+	id                 *identity.TokenId
+	conn               *net.UDPConn
+	peer               *net.UDPAddr
+	sequence           int32
+	sequenceLock       sync.Mutex
+	lastPingRx         time.Time
+	lastPingTx         time.Time
+	lastPingTxSequence int32
 }

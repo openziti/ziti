@@ -61,17 +61,18 @@ const (
 	Acknowledgement
 )
 
-const versionLen = 4
+const timeoutSeconds = 5
 const mss = 1472
+const noReplyFor = -1
 
-func createMessage(sequence int32, frame uint8, ofFrames uint8, ct uint8, headers map[int32][]byte, payload []byte) ([]byte, error) {
+func createMessage(sequence int32, frame uint8, ofFrames uint8, ct contentType, headers map[int32][]byte, payload []byte) ([]byte, error) {
 	data := new(bytes.Buffer)
 
 	data.Write(magicV1)
 	if err := binary.Write(data, binary.LittleEndian, sequence); err != nil {
 		return nil, fmt.Errorf("sequence write (%w)", err)
 	}
-	data.Write([]byte{ frame, ofFrames, ct })
+	data.Write([]byte{ frame, ofFrames, uint8(ct) })
 	if err := binary.Write(data, binary.LittleEndian, uint16(0)); err != nil {	// headers length
 		return nil, fmt.Errorf("headers length write (%w)", err)
 	}
@@ -96,13 +97,35 @@ func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) 
 	payload := new(bytes.Buffer)
 	payload.Write([]byte(linkId.Token))
 
-	data, err := createMessage(-1, 0, 1, uint8(Hello), nil, payload.Bytes())
+	data, err := createMessage(-1, 0, 1, Hello, nil, payload.Bytes())
 	if err != nil {
 		return fmt.Errorf("error creating message (%w)", err)
 	}
 
-	if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
-		return fmt.Errorf("unable to set deadline (%w)", err)
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
+	}
+
+	if _, err := conn.WriteToUDP(data, peer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor int32) error {
+	payload := new(bytes.Buffer)
+	if err := binary.Write(payload, binary.LittleEndian, replyFor); err != nil {
+		return fmt.Errorf("reply for write (%w)", err)
+	}
+
+	data, err := createMessage(sequence, 0, 1, Ping, nil, payload.Bytes())
+	if err != nil {
+		return fmt.Errorf("error creating message (%w)", err)
+	}
+
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
 	}
 
 	if _, err := conn.WriteToUDP(data, peer); err != nil {
