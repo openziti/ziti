@@ -5,6 +5,7 @@ Ziti 0.13 includes the following:
   * Changes to make working with policies easier, including
       * New APIs to list existing role attributes used by edge routers, identities and services
       * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
+  * A small set of APIs accepted id or name. These have been changed to accept only id
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
@@ -69,6 +70,13 @@ This adds operations to the `/services`, `/identities` and `/edge-routers` endpo
     * New operations
        * Query related identities: GET /services/<service-id>/identities?filter=<optional-filter>
        * Query related edge routers: GET /services/<service-id>/edge-routers?filter=<optional-filter>
+
+## APIs now only accept ID, not ID or Name
+  1. Some APIs related to configurations accepted config names or ids. These now only accept name.
+  1. Policies would accept entity references with names as well as ids. So you could use `@ssh`, for example when referencing the ssh service. These now also only accept ID
+  
+In general allowing both values adds complexity to the server side code. Consuming code, such as user interfaces or the ziti cli, can do the name to id translation just as easily. 
+     
 
 # Release 0.12
 ## Theme
