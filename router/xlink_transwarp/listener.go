@@ -50,9 +50,9 @@ func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, p
 		self.peers[peer.String()] = xlinkImpl
 		if err := writeHello(linkId, self.listener, peer); err == nil {
 			go xlinkImpl.pinger()
-			logrus.Infof("sent hello [%s] to peer [%s]", linkId.Token, peer)
+			logrus.Infof("[hello->l/%s] -> %s", linkId.Token, peer)
 		} else {
-			logrus.Errorf("error sending hello [%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+			logrus.Errorf("error sending hello for [l/%s] to peer at [%s] (%v)", linkId.Token, peer, err)
 		}
 	}
 }

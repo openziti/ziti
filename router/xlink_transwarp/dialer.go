@@ -77,10 +77,10 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
  */
 func (self *dialer) HandleHello(linkId *identity.TokenId, _ *net.UDPConn, peer *net.UDPAddr) {
 	if ch, found := self.waiters[linkId.Token]; found {
-		logrus.Infof("received hello [%s] from peer [%s], success", linkId.Token, peer)
+		logrus.Infof("[hello->l/%s] <- %s", linkId.Token, peer)
 		close(ch)
 	} else {
-		logrus.Errorf("invalid hello [%s] from peer [%s], failure", linkId.Token, peer)
+		logrus.Errorf("invalid hello for link [%s] from peer [%s], failure", linkId.Token, peer)
 	}
 }
 
