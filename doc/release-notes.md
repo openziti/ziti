@@ -5,6 +5,7 @@ Ziti 0.13 includes the following:
   * Changes to make working with policies easier, including
       * New APIs to list existing role attributes used by edge routers, identities and services
       * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
+      * Enhancements to the LIST APIs for edge routers, identities and services which allow one to filter by roles
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
@@ -69,6 +70,67 @@ This adds operations to the `/services`, `/identities` and `/edge-routers` endpo
     * New operations
        * Query related identities: GET /services/<service-id>/identities?filter=<optional-filter>
        * Query related edge routers: GET /services/<service-id>/edge-routers?filter=<optional-filter>
+
+## Filtering Entity Lists by Roles
+When building UIs it may be useful to list entities which have role attributes by role filters, to see what policy changes may look like.
+
+     * Endpoint: /edge-routers
+     * Query: GET /edge-routers now supports two new query paramters
+         * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
+         * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
+ 
+     * Endpoint: /identities
+     * Query: GET /identities now supports two new query paramters
+         * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
+         * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
+ 
+     * Endpoint: /services
+     * Query: GET /services now supports two new query paramters
+         * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
+         * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
+         
+Note that a roleFilter should have one role specifier (like `@some-id` or `#sales`). If you wish to specify multiple, provide multiple role filters. 
+
+    /edge-routers?roleFilter=#sales@roleFilter=#us
+
+These are also supported from the CLI when listing edge routers, identities and services using the --role-filters and --role-semantic flags.
+
+Example:
+
+    $ ec list services
+    id: 2a724ae7-8b8f-4688-90df-34951bce6720    name: grpc-ping    terminator strategy:     role attributes: ["fortio","fortio-server"]
+    id: 37f1e34c-af06-442f-8e62-032916912bc6    name: grpc-ping-standalone    terminator strategy:     role attributes: {}
+    id: 38683097-2412-4335-b056-ae8747314dd3    name: quux    terminator strategy:     role attributes: ["blop","sales","three"]
+    id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
+    id: 9480e39d-0664-4482-b230-5da2c17b225b    name: iperf    terminator strategy:     role attributes: {}
+    id: a949cf80-b11b-4cce-bbb7-d2e4767878a6    name: baz    terminator strategy:     role attributes: ["development","sales","support"]
+    id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
+    id: cd1ae16e-5015-49ad-9864-3ca0f5814091    name: ssh    terminator strategy:     role attributes: {}
+    id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
+    id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+    
+    $ ec list services --role-filters '#three'
+    id: 38683097-2412-4335-b056-ae8747314dd3    name: quux    terminator strategy:     role attributes: ["blop","sales","three"]
+    id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
+    id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+
+    $ ec list services --role-filters '#three','#two'
+    id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
+    id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+    
+    $ ec list services --role-filters '#three','#sales' --role-semantic AnyOf
+    id: 38683097-2412-4335-b056-ae8747314dd3    name: quux    terminator strategy:     role attributes: ["blop","sales","three"]
+    id: a949cf80-b11b-4cce-bbb7-d2e4767878a6    name: baz    terminator strategy:     role attributes: ["development","sales","support"]
+    id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
+    id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+    
+    $ ec list services --role-filters '#three''#sales','@4e33859b-070d-42b1-8b40-4adf973f680c' --role-semantic AnyOf
+    id: 38683097-2412-4335-b056-ae8747314dd3    name: quux    terminator strategy:     role attributes: ["blop","sales","three"]
+    id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
+    id: a949cf80-b11b-4cce-bbb7-d2e4767878a6    name: baz    terminator strategy:     role attributes: ["development","sales","support"]
+    id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
+    id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+    
 
 # Release 0.12
 ## Theme
