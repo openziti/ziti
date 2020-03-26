@@ -39,14 +39,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 		providedType := entity.Type
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
 		if !configTypeStore.IsEntityPresent(tx, entity.Type) {
-			id := configTypeStore.GetNameIndex().Read(tx, []byte(entity.Type))
-			if id != nil {
-				entity.Type = string(id)
-			}
-
-			if !configTypeStore.IsEntityPresent(tx, entity.Type) {
-				return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
-			}
+			return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 		}
 	}
 

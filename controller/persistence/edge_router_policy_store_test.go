@@ -50,7 +50,7 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	invalidId := uuid.New().String()
 	policy.IdentityRoles = []string{entityRef(invalidId)}
 	err := ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given ids", invalidId))
 
 	policy.IdentityRoles = []string{AllRole, roleRef("other")}
 	err = ctx.Create(policy)
@@ -62,27 +62,22 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 
 	policy.IdentityRoles = []string{entityRef(identity.Id), entityRef(invalidId)}
 	err = ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given ids", invalidId))
 
 	policy.IdentityRoles = []string{entityRef(identity.Id)}
-	ctx.RequireCreate(policy)
-	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
-	ctx.RequireDelete(policy)
-
-	policy.IdentityRoles = []string{entityRef(identity.Name)}
 	ctx.RequireCreate(policy)
 	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
 
 	policy.IdentityRoles = append(policy.IdentityRoles, entityRef(invalidId))
 	err = ctx.Update(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given ids", invalidId))
 	ctx.RequireDelete(policy)
 
 	// test edgeRouter roles
 	policy.IdentityRoles = nil
 	policy.EdgeRouterRoles = []string{entityRef(invalidId)}
 	err = ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
 
 	policy.EdgeRouterRoles = []string{AllRole, roleRef("other")}
 	err = ctx.Create(policy)
@@ -93,20 +88,15 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(_ *testing.T) {
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id), entityRef(invalidId)}
 	err = ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
-	ctx.RequireCreate(policy)
-	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
-	ctx.RequireDelete(policy)
-
-	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Name)}
 	ctx.RequireCreate(policy)
 	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
 
 	policy.EdgeRouterRoles = append(policy.EdgeRouterRoles, entityRef(invalidId))
 	err = ctx.Update(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given names/ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
 	ctx.RequireDelete(policy)
 }
 
@@ -129,14 +119,14 @@ func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T) {
 	identity = newIdentity(uuid.New().String(), identityTypeId)
 	ctx.RequireCreate(identity)
 
-	policy.IdentityRoles = []string{entityRef(identity.Name)}
+	policy.IdentityRoles = []string{entityRef(identity.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
 
 	identity.Name = uuid.New().String()
 	ctx.RequireUpdate(identity)
 	ctx.RequireReload(policy)
-	ctx.True(stringz.Contains(policy.IdentityRoles, entityRef(identity.Name)))
+	ctx.True(stringz.Contains(policy.IdentityRoles, entityRef(identity.Id)))
 	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
 
 	ctx.RequireDelete(identity)
@@ -157,14 +147,14 @@ func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T) {
 	edgeRouter = newEdgeRouter(uuid.New().String())
 	ctx.RequireCreate(edgeRouter)
 
-	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Name)}
+	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
 
 	edgeRouter.Name = uuid.New().String()
 	ctx.RequireUpdate(edgeRouter)
 	ctx.RequireReload(policy)
-	ctx.True(stringz.Contains(policy.EdgeRouterRoles, entityRef(edgeRouter.Name)))
+	ctx.True(stringz.Contains(policy.EdgeRouterRoles, entityRef(edgeRouter.Id)))
 	ctx.validateEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*EdgeRouterPolicy{policy})
 
 	ctx.RequireDelete(edgeRouter)
@@ -438,11 +428,10 @@ func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeR
 	}
 }
 
-func (ctx *TestContext) policyShouldMatch(semantic string, roleSet []string, entity boltz.NamedExtEntity, roleAttribute []string) bool {
+func (ctx *TestContext) policyShouldMatch(semantic string, roleSet []string, entity boltz.ExtEntity, roleAttribute []string) bool {
 	roles, ids, err := splitRolesAndIds(roleSet)
 	ctx.NoError(err)
 	isIdMatch := stringz.Contains(ids, entity.GetId())
-	isNameMatch := stringz.Contains(ids, entity.GetName())
 	isAllMatch := stringz.Contains(roles, "all")
 	isRoleMatch := false
 	if semantic == SemanticAllOf {
@@ -450,5 +439,5 @@ func (ctx *TestContext) policyShouldMatch(semantic string, roleSet []string, ent
 	} else if semantic == SemanticAnyOf {
 		isRoleMatch = stringz.ContainsAny(roleAttribute, roles...)
 	}
-	return isIdMatch || isNameMatch || isAllMatch || isRoleMatch
+	return isIdMatch || isAllMatch || isRoleMatch
 }

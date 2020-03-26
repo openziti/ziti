@@ -35,7 +35,7 @@ type TerminatorRouter struct {
 func NewTerminatorRouter() *TerminatorRouter {
 	return &TerminatorRouter{
 		BasePath: "/" + EntityNameTerminator,
-		IdType:   response.IdTypeUuid,
+		IdType:   response.IdTypeString,
 	}
 }
 

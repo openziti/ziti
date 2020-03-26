@@ -18,7 +18,6 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/network"
@@ -94,40 +93,13 @@ func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.En
 	return nil
 }
 
-func (store *baseStore) updateEntityNameReferences(bucket *boltz.TypedBucket, rolesSymbol boltz.EntitySetSymbol, entity boltz.NamedExtEntity, oldName string) {
-	// If the entity name is the same as entity ID, bail out. We don't want to remove any references by ID, since
-	// those take precedence over named references
-	if store.IsEntityPresent(bucket.Tx(), oldName) {
-		pfxlog.Logger().Warnf("%v has name %v which is also used as an ID", store.GetSingularEntityType(), oldName)
-		return
-	}
-	oldNameRef := entityRef(oldName)
-	newNameRef := entityRef(entity.GetName())
-	for _, policyHolderId := range store.GetRelatedEntitiesIdList(bucket.Tx(), entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
-		err := rolesSymbol.Map(bucket.Tx(), []byte(policyHolderId), func(ctx *boltz.MapContext) {
-			if ctx.ValueS() == oldNameRef {
-				ctx.ReplaceS(newNameRef)
-			}
-		})
-		if err != nil {
-			bucket.SetError(err)
-			return
-		}
-	}
-}
-
 func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {
 	// If the entity name is the same as entity ID, don't remove any of those references as id references take precedence
-	checkName := !store.IsEntityPresent(tx, entity.GetName())
-	if !checkName {
-		pfxlog.Logger().Warnf("%v has name %v which is also used as an ID", store.GetSingularEntityType(), entity.GetName())
-	}
 	idRef := entityRef(entity.GetId())
-	nameRef := entityRef(entity.GetName())
 
 	for _, policyHolderId := range store.GetRelatedEntitiesIdList(tx, entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
 		err := rolesSymbol.Map(tx, []byte(policyHolderId), func(ctx *boltz.MapContext) {
-			if ctx.ValueS() == idRef || (checkName && ctx.ValueS() == nameRef) {
+			if ctx.ValueS() == idRef {
 				ctx.Delete()
 			}
 		})
@@ -152,7 +124,7 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleS
 	if err != nil {
 		return nil, err
 	}
-	if err := validateAndConvertNamesToIds(tx, targetStore, field, ids); err != nil {
+	if err := validateEntityIds(tx, targetStore, field, ids); err != nil {
 		return nil, err
 	}
 	var roleIds []string
@@ -172,33 +144,20 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleS
 	return roleIds, nil
 }
 
-func validateAndConvertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, field string, ids []string) error {
+func validateEntityIds(tx *bbolt.Tx, store NameIndexedStore, field string, ids []string) error {
 	var invalid []string
-	for idx, val := range ids {
-		if result := ValidateAndConvertNameToId(tx, store, val); result != nil {
-			ids[idx] = *result
-		} else {
+	for _, val := range ids {
+		if !store.IsEntityPresent(tx, val) {
 			invalid = append(invalid, val)
 		}
 	}
 	if len(invalid) > 0 {
-		return validation.NewFieldError(fmt.Sprintf("no %v found with the given names/ids", store.GetEntityType()), field, invalid)
+		return validation.NewFieldError(fmt.Sprintf("no %v found with the given ids", store.GetEntityType()), field, invalid)
 	}
 	return nil
 }
 
-func ValidateAndConvertNameToId(tx *bbolt.Tx, store NameIndexedStore, val string) *string {
-	if store.IsEntityPresent(tx, val) {
-		return &val
-	}
-	id := string(store.GetNameIndex().Read(tx, []byte(val)))
-	if id != "" && store.IsEntityPresent(tx, id) {
-		return &id
-	}
-	return nil
-}
-
-func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol,
+func UpdateRelatedRoles(tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol,
 	linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder, semanticSymbol boltz.EntitySymbol) {
 	ids, _, err := roleSymbol.GetStore().QueryIds(tx, "true")
 	holder.SetError(err)
@@ -212,7 +171,6 @@ func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, r
 			holder.SetError(err)
 			return
 		}
-		convertNamesToIds(tx, store, ids)
 		semantic := SemanticAllOf
 		if semanticSymbol != nil {
 			if _, semanticValue := semanticSymbol.Eval(tx, []byte(id)); semanticValue != nil {
@@ -233,16 +191,6 @@ func UpdateRelatedRoles(store NameIndexedStore, tx *bbolt.Tx, entityId string, r
 		holder.SetError(err)
 		if holder.HasError() {
 			return
-		}
-	}
-}
-
-func convertNamesToIds(tx *bbolt.Tx, store NameIndexedStore, ids []string) {
-	nameIndex := store.GetNameIndex()
-	for idx, val := range ids {
-		id := nameIndex.Read(tx, []byte(val))
-		if id != nil {
-			ids[idx] = string(id)
 		}
 	}
 }
