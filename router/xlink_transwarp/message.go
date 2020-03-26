@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"net"
@@ -127,6 +128,14 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 	return nil
 }
 
+func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *net.UDPAddr) error {
+	return fmt.Errorf("payload not implemented")
+}
+
+func writeAcknowledgement(sequence int32, p *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
+	return fmt.Errorf("acknowledgement not implemented")
+}
+
 func readMessage(conn *net.UDPConn) (*message, *net.UDPAddr, error) {
 	data := make([]byte, udp.MaxPacketSize)
 	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
@@ -213,6 +222,52 @@ func encodeMessage(m *message) ([]byte, error) {
 	return buffer, nil
 }
 
+/*
+ * TRANSWARP v1 Headers Wire Format
+ *
+ * <key:uint8>                                  0
+ * <length:uint8>                               1
+ * <data>                                       2 -> (2 + length)
+ */
+func encodeHeaders(headers map[uint8][]byte) ([]byte, error) {
+	data := new(bytes.Buffer)
+	for k, v := range headers {
+		if _, err := data.Write([]byte{ k }); err != nil {
+			return nil, err
+		}
+		if err := binary.Write(data, binary.LittleEndian, uint8(len(v))); err != nil {
+			return nil, err
+		}
+		if n, err := data.Write(v); err == nil {
+			if n != len(v) {
+				return nil, fmt.Errorf("short header write")
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return data.Bytes(), nil
+}
+
+func decodeHeaders(data []byte) (map[uint8][]byte, error) {
+	headers := make(map[uint8][]byte)
+	if len(data) > 0 && len(data) < 2 {
+		return nil, fmt.Errorf("truncated header data")
+	}
+	i := 0
+	for i < len(data) {
+		key := data[i]
+		length := data[i+1]
+		if i + 2 + int(length) > len(data) {
+			return nil, fmt.Errorf("short header data (%d > %d)", i+2+int(length), len(data))
+		}
+		headerData := data[i+2:i+2+int(length)]
+		headers[key] = headerData
+		i += 2+int(length)
+	}
+	return headers, nil
+}
+
 func decodeMessage(data []byte) (*message, error) {
 	m := &message{}
 	if len(data) < messageSectionLength {
@@ -255,6 +310,14 @@ func readInt32(data []byte) (ret int32, err error) {
 	buf := bytes.NewBuffer(data)
 	err = binary.Read(buf, binary.LittleEndian, &ret)
 	return
+}
+
+func writeInt32(value int32) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.LittleEndian, value); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func readUint16(data []byte) (ret uint16, err error) {

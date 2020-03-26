@@ -34,11 +34,11 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return fmt.Errorf("not implemented")
+	return writePayload(self.nextSequence(), payload, self.conn, self.peer)
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return fmt.Errorf("not implemented")
+	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.conn, self.peer)
 }
 
 func (self *impl) Close() error {
