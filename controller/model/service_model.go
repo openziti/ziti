@@ -37,7 +37,7 @@ type Service struct {
 }
 
 func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
-	if err := entity.mapConfigTypeNamesToIds(tx, handler); err != nil {
+	if err := entity.validateConfigs(tx, handler); err != nil {
 		return nil, err
 	}
 
@@ -57,20 +57,13 @@ func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) mapConfigTypeNamesToIds(tx *bbolt.Tx, handler Handler) error {
+func (entity *Service) validateConfigs(tx *bbolt.Tx, handler Handler) error {
 	typeMap := map[string]*persistence.Config{}
 	configStore := handler.GetEnv().GetStores().Config
-	for idx, val := range entity.Configs {
-		if !configStore.IsEntityPresent(tx, val) {
-			id := configStore.GetNameIndex().Read(tx, []byte(val))
-			if id == nil || !configStore.IsEntityPresent(tx, string(id)) {
-				return validation.NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
-			}
-			entity.Configs[idx] = string(id)
-		}
-		config, _ := configStore.LoadOneById(tx, entity.Configs[idx])
+	for _, id := range entity.Configs {
+		config, _ := configStore.LoadOneById(tx, id)
 		if config == nil {
-			return validation.NewFieldError(fmt.Sprintf("%v is not a valid config id or name", val), "configs", entity.Configs)
+			return boltz.NewNotFoundError(persistence.EntityTypeConfigs, "id", id)
 		}
 		conflictConfig, found := typeMap[config.Type]
 		if found {

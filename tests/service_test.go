@@ -202,23 +202,23 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		"dialAddress": "tcp:localhost:5432",
 	})
 
-	config3 := ctx.AdminSession.requireCreateNewConfig(configType1.name, map[string]interface{}{
+	config3 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
 		"hostname": "bar",
 		"port":     float64(80),
 	})
 
-	config4 := ctx.AdminSession.requireCreateNewConfig(configType2.name, map[string]interface{}{
+	config4 := ctx.AdminSession.requireCreateNewConfig(configType2.id, map[string]interface{}{
 		"dialAddress": "udp:external:5432",
 	})
 
-	config5 := ctx.AdminSession.requireCreateNewConfig(configType3.name, map[string]interface{}{
+	config5 := ctx.AdminSession.requireCreateNewConfig(configType3.id, map[string]interface{}{
 		"froboz": "schnapplecakes",
 	})
 
 	service1 := ctx.AdminSession.requireNewService(nil, nil)
 	service2 := ctx.AdminSession.requireNewService(nil, s(config1.id))
-	service3 := ctx.AdminSession.requireNewService(nil, s(config2.name))
-	service4 := ctx.AdminSession.requireNewService(nil, s(config2.id, config3.name))
+	service3 := ctx.AdminSession.requireNewService(nil, s(config2.id))
+	service4 := ctx.AdminSession.requireNewService(nil, s(config2.id, config3.id))
 
 	ctx.AdminSession.validateAssociations(service4, "configs", config2, config3)
 
@@ -252,7 +252,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		session.validateEntityWithQuery(service)
 	}
 
-	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.name, configType2.id))
+	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.id, configType2.id))
 	service2V.configs[configType1.name] = config1
 	service3V.configs[configType2.name] = config2
 	service4V.configs[configType1.name] = config3
@@ -271,14 +271,14 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		session.validateEntityWithQuery(service)
 	}
 
-	configs1 := []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.name, Config: config5.name}}
+	configs1 := []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.id, Config: config5.id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs1...)
 	configs1 = []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.id, Config: config5.id}}
 	sort.Sort(sortableServiceConfigSlice(configs1))
 	currentConfigs := ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
 	ctx.req.Equal(configs1, currentConfigs)
 
-	configs2 := []serviceConfig{{Service: service1.id, Config: config5.id}, {Service: service3.id, Config: config1.id}, {Service: service3.name, Config: config4.name}}
+	configs2 := []serviceConfig{{Service: service1.id, Config: config5.id}, {Service: service3.id, Config: config1.id}, {Service: service3.id, Config: config4.id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs2...)
 	checkConfigs := []serviceConfig{
 		{Service: service4.id, Config: config1.id},
@@ -347,12 +347,12 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 		"port":     float64(22),
 	})
 
-	config2 := ctx.AdminSession.requireCreateNewConfig(configType1.name, map[string]interface{}{
+	config2 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
 		"hostname": "bar",
 		"port":     float64(80),
 	})
 
-	service := ctx.newService(nil, s(config1.name, config2.name))
+	service := ctx.newService(nil, s(config1.id, config2.id))
 	httpCode, body := ctx.AdminSession.createEntity(service)
 	ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "configs")
 }

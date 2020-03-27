@@ -80,11 +80,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 
 	store := ctx.Store.(*identityStoreImpl)
-	if ctx.IsCreate {
-		ctx.SetString(FieldName, entity.Name)
-	} else if oldValue, changed := ctx.GetAndSetString(FieldName, entity.Name); changed {
-		store.nameChanged(ctx.Bucket, entity, *oldValue)
-	}
+	ctx.SetString(FieldName, entity.Name)
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
@@ -170,17 +166,12 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolIdentityRoles
 	linkCollection := store.stores.edgeRouterPolicy.identityCollection
 	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
+	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
 	rolesSymbol = store.stores.servicePolicy.symbolIdentityRoles
 	linkCollection = store.stores.servicePolicy.identityCollection
 	semanticSymbol = store.stores.servicePolicy.symbolSemantic
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-}
-
-func (store *identityStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity boltz.NamedExtEntity, oldName string) {
-	store.updateEntityNameReferences(bucket, store.stores.servicePolicy.symbolIdentityRoles, entity, oldName)
-	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolIdentityRoles, entity, oldName)
+	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *identityStoreImpl) initializeLinked() {

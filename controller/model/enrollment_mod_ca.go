@@ -122,14 +122,20 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		identityName = fmt.Sprintf("%s.%s", enrollmentCa.Name, identityId)
 	}
 
+	identType, err := module.env.GetHandlers().IdentityType.ReadByName("Device")
+	if err != nil {
+		return nil, err
+	}
+
 	identity := &Identity{
 		BaseEntity: models.BaseEntity{
 			Id: identityId,
 		},
 		Name:           identityName,
-		IdentityTypeId: "device",
+		IdentityTypeId: identType.Id,
 		IsDefaultAdmin: false,
 		IsAdmin:        false,
+		RoleAttributes: enrollmentCa.IdentityRoles,
 	}
 
 	newAuthenticator := &Authenticator{

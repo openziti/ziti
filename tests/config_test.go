@@ -81,20 +81,6 @@ func Test_Configs(t *testing.T) {
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
-	t.Run("create using config name should pass", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		configType := ctx.AdminSession.requireCreateNewConfigType()
-
-		now := time.Now()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.name, map[string]interface{}{"port": float64(22)})
-		config.configType = configType.id
-		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
-		ctx.validateDateFieldsForCreate(now, entityJson)
-
-		entityJson = ctx.AdminSession.validateEntityWithLookup(config)
-		ctx.validateDateFieldsForCreate(now, entityJson)
-	})
-
 	t.Run("create with nested values should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
