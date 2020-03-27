@@ -86,11 +86,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 
 	entity.SetBaseValues(ctx)
 	store := ctx.Store.(*edgeRouterStoreImpl)
-	if ctx.IsCreate {
-		ctx.SetString(FieldName, entity.Name)
-	} else if oldValue, changed := ctx.GetAndSetString(FieldName, entity.Name); changed {
-		store.nameChanged(ctx.Bucket, entity, *oldValue)
-	}
+	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldEdgeRouterFingerprint, entity.Fingerprint)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetStringP(FieldEdgeRouterCluster, entity.ClusterId)
@@ -172,18 +168,13 @@ func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []b
 	rolesSymbol := store.stores.edgeRouterPolicy.symbolEdgeRouterRoles
 	linkCollection := store.stores.edgeRouterPolicy.edgeRouterCollection
 	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
+	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 
 	// Recalculate service edge router policy links
 	rolesSymbol = store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles
 	linkCollection = store.stores.serviceEdgeRouterPolicy.edgeRouterCollection
 	semanticSymbol = store.stores.serviceEdgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(store, tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-}
-
-func (store *edgeRouterStoreImpl) nameChanged(bucket *boltz.TypedBucket, entity boltz.NamedExtEntity, oldName string) {
-	store.updateEntityNameReferences(bucket, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles, entity, oldName)
-	store.updateEntityNameReferences(bucket, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles, entity, oldName)
+	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeRouterStoreImpl) initializeLinked() {

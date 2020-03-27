@@ -86,19 +86,17 @@ func toBoltServiceConfigs(tx *bbolt.Tx, handler Handler, serviceConfigs []Servic
 
 	var boltServiceConfigs []persistence.ServiceConfig
 	for _, serviceConfig := range serviceConfigs {
-		service := persistence.ValidateAndConvertNameToId(tx, serviceStore, serviceConfig.Service)
-		if service == nil {
+		if !serviceStore.IsEntityPresent(tx, serviceConfig.Service) {
 			return nil, boltz.NewNotFoundError(serviceStore.GetSingularEntityType(), "id or name", serviceConfig.Service)
 		}
 
-		config := persistence.ValidateAndConvertNameToId(tx, configStore, serviceConfig.Config)
-		if config == nil {
+		if !configStore.IsEntityPresent(tx, serviceConfig.Config) {
 			return nil, boltz.NewNotFoundError(configStore.GetSingularEntityType(), "id or name", serviceConfig.Config)
 		}
 
 		boltServiceConfigs = append(boltServiceConfigs, persistence.ServiceConfig{
-			ServiceId: *service,
-			ConfigId:  *config,
+			ServiceId: serviceConfig.Service,
+			ConfigId:  serviceConfig.Config,
 		})
 	}
 	return boltServiceConfigs, nil
