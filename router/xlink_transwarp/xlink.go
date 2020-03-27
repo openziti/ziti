@@ -61,7 +61,13 @@ func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, 
 
 func (self *impl) HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr) {
 	if err := self.forwarder.ForwardPayload(xgress.Address(self.id.Token), p); err != nil {
-		logrus.Errorf("[l/%s] => error forwarding (%w)", self.id.Token, err)
+		logrus.Errorf("[l/%s] => error forwarding payload (%v)", self.id.Token, err)
+	}
+}
+
+func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr) {
+	if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.id.Token), a); err != nil {
+		logrus.Errorf("[l/%s] => error forwarding acknowledgement (%v)", self.id.Token, err)
 	}
 }
 
@@ -140,6 +146,7 @@ func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink
 		peer:       peer,
 		lastPingRx: now,
 		lastPingTx: now,
+		forwarder:  f,
 	}
 }
 

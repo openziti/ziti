@@ -34,6 +34,7 @@ type HelloHandler interface {
 type MessageHandler interface {
 	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
 }
 
 /**
@@ -147,8 +148,26 @@ func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *ne
 	return nil
 }
 
-func writeAcknowledgement(sequence int32, p *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
-	return fmt.Errorf("acknowledgement not implemented")
+func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
+	m, err := encodeAcnowledgement(a, sequence)
+	if err != nil {
+		return err
+	}
+
+	data, err := encodeMessage(m)
+	if err != nil {
+		return fmt.Errorf("error creating message (%w)", err)
+	}
+
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
+	}
+
+	if _, err := conn.WriteToUDP(data, peer); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func readMessage(conn *net.UDPConn) (*message, *net.UDPAddr, error) {
@@ -211,6 +230,15 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 			return fmt.Errorf("error decoding payload for peer [%s] (%w)", peer, err)
 		}
 		handler.HandlePayload(p, m.sequence, conn, peer)
+
+		return nil
+
+	case Acknowledgement:
+		a, err := decodeAcknowledgement(m)
+		if err != nil {
+			return fmt.Errorf("error decoding acknowledgement for peer [%s] (%w)", peer, err)
+		}
+		handler.HandleAcknowledgement(a, m.sequence, conn, peer)
 
 		return nil
 
