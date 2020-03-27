@@ -264,13 +264,15 @@ func encodeMessage(m *message) ([]byte, error) {
 	data.Write(m.payload)
 
 	buffer := make([]byte, data.Len())
-	n, err := data.Read(buffer)
+	_, err := data.Read(buffer)
 	if err != nil {
 		return nil, fmt.Errorf("error reading buffer (%w)", err)
 	}
+	/*
 	if n > mss {
 		return nil, fmt.Errorf("message too long [%d]", n)
 	}
+    */
 
 	return buffer, nil
 }
