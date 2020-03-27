@@ -33,6 +33,7 @@ type HelloHandler interface {
 
 type MessageHandler interface {
 	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
 }
 
 /**
@@ -79,8 +80,6 @@ func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) 
 		fragment:      0,
 		ofFragments:   1,
 		messageType:   Hello,
-		headersLength: 0,
-		payloadLength: uint16(payload.Len()),
 		payload:       payload.Bytes(),
 	})
 	if err != nil {
@@ -109,8 +108,6 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 		fragment:      0,
 		ofFragments:   1,
 		messageType:   Ping,
-		headersLength: 0,
-		payloadLength: uint16(payload.Len()),
 		payload:       payload.Bytes(),
 	})
 	if err != nil {
@@ -129,7 +126,25 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 }
 
 func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *net.UDPAddr) error {
-	return fmt.Errorf("payload not implemented")
+	m, err := encodePayload(p, sequence)
+	if err != nil {
+		return err
+	}
+
+	data, err := encodeMessage(m)
+	if err != nil {
+		return fmt.Errorf("error creating message (%w)", err)
+	}
+
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
+	}
+
+	if _, err := conn.WriteToUDP(data, peer); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func writeAcknowledgement(sequence int32, p *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -176,16 +191,26 @@ func handleHello(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Hello
 }
 
 func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler MessageHandler) error {
+	if m.fragment != 0 || m.ofFragments != 1 {
+		return fmt.Errorf("ping expects single fragment [%s]", peer)
+	}
+
 	switch m.messageType {
 	case Ping:
-		if m.fragment != 0 || m.ofFragments != 1 {
-			return fmt.Errorf("ping expects single fragment [%s]", peer)
-		}
 		replyFor, err := readInt32(m.payload)
 		if err != nil {
 			return fmt.Errorf("ping expects replyFor in payload [%s] (%w)", peer, err)
 		}
 		handler.HandlePing(m.sequence, replyFor, conn, peer)
+
+		return nil
+
+	case Payload:
+		p, err := decodePayload(m)
+		if err != nil {
+			return fmt.Errorf("error decoding payload for peer [%s] (%w)", peer, err)
+		}
+		handler.HandlePayload(p, m.sequence, conn, peer)
 
 		return nil
 
@@ -232,7 +257,7 @@ func encodeMessage(m *message) ([]byte, error) {
 func encodeHeaders(headers map[uint8][]byte) ([]byte, error) {
 	data := new(bytes.Buffer)
 	for k, v := range headers {
-		if _, err := data.Write([]byte{ k }); err != nil {
+		if _, err := data.Write([]byte{k}); err != nil {
 			return nil, err
 		}
 		if err := binary.Write(data, binary.LittleEndian, uint8(len(v))); err != nil {
@@ -258,12 +283,12 @@ func decodeHeaders(data []byte) (map[uint8][]byte, error) {
 	for i < len(data) {
 		key := data[i]
 		length := data[i+1]
-		if i + 2 + int(length) > len(data) {
+		if i+2+int(length) > len(data) {
 			return nil, fmt.Errorf("short header data (%d > %d)", i+2+int(length), len(data))
 		}
-		headerData := data[i+2:i+2+int(length)]
+		headerData := data[i+2 : i+2+int(length)]
 		headers[key] = headerData
-		i += 2+int(length)
+		i += 2 + int(length)
 	}
 	return headers, nil
 }
@@ -292,10 +317,11 @@ func decodeMessage(data []byte) (*message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading headers length (%w)", err)
 	}
-	if headersLength != 0 {
-		return nil, fmt.Errorf("headers error")
+	if headers, err := decodeHeaders(data[15 : 15+headersLength]); err == nil {
+		m.headers = headers
+	} else {
+		return nil, fmt.Errorf("headers error (%w)", err)
 	}
-	m.headersLength = headersLength
 
 	payloadLength, err := readUint16(data[13:15])
 	if err != nil {
@@ -312,12 +338,10 @@ func readInt32(data []byte) (ret int32, err error) {
 	return
 }
 
-func writeInt32(value int32) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.LittleEndian, value); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+func readUint32(data []byte) (ret uint32, err error) {
+	buf := bytes.NewBuffer(data)
+	err = binary.Read(buf, binary.LittleEndian, &ret)
+	return
 }
 
 func readUint16(data []byte) (ret uint16, err error) {
@@ -331,7 +355,6 @@ type message struct {
 	fragment      uint8
 	ofFragments   uint8
 	messageType   messageType
-	headersLength uint16
-	payloadLength uint16
+	headers       map[uint8][]byte
 	payload       []byte
 }

@@ -72,8 +72,8 @@ func DecodePayload(payload *Payload) ([]byte, bool) {
 	case Terminator:
 		meta["originator"] = "e"
 	}
-	if payload.flags != 0 {
-		meta["flags"] = payload.flags
+	if payload.Flags != 0 {
+		meta["flags"] = payload.Flags
 	}
 	meta["length"] = len(payload.Data)
 

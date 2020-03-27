@@ -65,7 +65,7 @@ const (
 
 type Header struct {
 	SessionId string
-	flags     uint32
+	Flags     uint32
 }
 
 func (header *Header) GetSessionId() string {
@@ -77,7 +77,7 @@ func (header *Header) GetFlags() string {
 }
 
 func (header *Header) GetOriginator() Originator {
-	if isPayloadFlagSet(header.flags, PayloadFlagEgress) {
+	if isPayloadFlagSet(header.Flags, PayloadFlagEgress) {
 		return Terminator
 	}
 	return Initiator
@@ -93,15 +93,15 @@ func (header *Header) unmarshallHeader(msg *channel2.Message) error {
 	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
 
 	header.SessionId = string(sessionId)
-	header.flags = flags
+	header.Flags = flags
 
 	return nil
 }
 
 func (header *Header) marshallHeader(msg *channel2.Message) {
 	msg.Headers[HeaderKeySessionId] = []byte(header.SessionId)
-	if header.flags != 0 {
-		msg.PutUint32Header(HeaderKeyFlags, header.flags)
+	if header.Flags != 0 {
+		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
 	}
 }
 
@@ -109,7 +109,7 @@ func NewAcknowledgement(sessionId string, originator Originator) *Acknowledgemen
 	return &Acknowledgement{
 		Header: Header{
 			SessionId: sessionId,
-			flags:     SetOriginatorFlag(0, originator),
+			Flags:     SetOriginatorFlag(0, originator),
 		},
 	}
 }
@@ -230,7 +230,7 @@ func isPayloadFlagSet(flags uint32, flag PayloadFlag) bool {
 }
 
 func (payload *Payload) IsSessionEndFlagSet() bool {
-	return isPayloadFlagSet(payload.flags, PayloadFlagSessionEnd)
+	return isPayloadFlagSet(payload.Flags, PayloadFlagSessionEnd)
 }
 
 func SetOriginatorFlag(flags uint32, originator Originator) uint32 {

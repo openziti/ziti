@@ -41,7 +41,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 					if err := handleHello(m, conn, peer, self); err == nil {
 						select {
 						case <-waitCh:
-							xlinkImpl := newImpl(linkId, conn, address)
+							xlinkImpl := newImpl(linkId, conn, address, self.forwarder)
 							if err := self.accepter.Accept(xlinkImpl); err != nil {
 								return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 							}
@@ -88,8 +88,9 @@ func (self *dialer) HandleHello(linkId *identity.TokenId, _ *net.UDPConn, peer *
  * xlink_transwarp.dialer
  */
 type dialer struct {
-	id       *identity.TokenId
-	config   *dialerConfig
-	accepter xlink.Accepter
-	waiters  map[string]chan struct{}
+	id        *identity.TokenId
+	config    *dialerConfig
+	accepter  xlink.Accepter
+	forwarder xlink.Forwarder
+	waiters   map[string]chan struct{}
 }

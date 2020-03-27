@@ -26,29 +26,31 @@ func NewFactory(accepter xlink.Accepter) xlink.Factory {
 	return &factory{accepter: accepter}
 }
 
-func (self *factory) CreateListener(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Listener, error) {
+func (self *factory) CreateListener(id *identity.TokenId, f xlink.Forwarder, configData map[interface{}]interface{}) (xlink.Listener, error) {
 	config, err := loadListenerConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading listener configuration (%w)", err)
 	}
 	return &listener{
-		id:       id,
-		config:   config,
-		accepter: self.accepter,
-		peers:    make(map[string]*impl),
+		id:        id,
+		config:    config,
+		accepter:  self.accepter,
+		forwarder: f,
+		peers:     make(map[string]*impl),
 	}, nil
 }
 
-func (self *factory) CreateDialer(id *identity.TokenId, configData map[interface{}]interface{}) (xlink.Dialer, error) {
+func (self *factory) CreateDialer(id *identity.TokenId, f xlink.Forwarder, configData map[interface{}]interface{}) (xlink.Dialer, error) {
 	config, err := loadDialerConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading dialer configuration (%w)", err)
 	}
 	return &dialer{
-		id:       id,
-		config:   config,
-		accepter: self.accepter,
-		waiters:  make(map[string]chan struct{}),
+		id:        id,
+		config:    config,
+		accepter:  self.accepter,
+		forwarder: f,
+		waiters:   make(map[string]chan struct{}),
 	}, nil
 }
 

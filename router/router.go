@@ -157,7 +157,7 @@ func (self *Router) startXlinkDialers() {
 	for _, lmap := range self.config.Link.Dialers {
 		binding := lmap["binding"].(string)
 		if factory, found := self.xlinkFactories[binding]; found {
-			dialer, err := factory.CreateDialer(self.config.Id, lmap)
+			dialer, err := factory.CreateDialer(self.config.Id, self.forwarder, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink dialer (%v)", err)
 			}
@@ -171,7 +171,7 @@ func (self *Router) startXlinkListeners() {
 	for _, lmap := range self.config.Link.Listeners {
 		binding := lmap["binding"].(string)
 		if factory, found := self.xlinkFactories[binding]; found {
-			listener, err := factory.CreateListener(self.config.Id, lmap)
+			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink listener (%v)", err)
 			}

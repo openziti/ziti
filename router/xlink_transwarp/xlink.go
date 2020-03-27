@@ -19,6 +19,7 @@ package xlink_transwarp
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"net"
@@ -55,6 +56,12 @@ func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, 
 		}
 	} else {
 		self.receivePing(replyFor)
+	}
+}
+
+func (self *impl) HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr) {
+	if err := self.forwarder.ForwardPayload(xgress.Address(self.id.Token), p); err != nil {
+		logrus.Errorf("[l/%s] => error forwarding (%w)", self.id.Token, err)
 	}
 }
 
@@ -125,7 +132,7 @@ func (self *impl) nextSequence() int32 {
 	return sequence
 }
 
-func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) *impl {
+func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink.Forwarder) *impl {
 	now := time.Now()
 	return &impl{
 		id:         id,
@@ -145,6 +152,7 @@ type impl struct {
 	lastPingRx         time.Time
 	lastPingTx         time.Time
 	lastPingTxSequence int32
+	forwarder          xlink.Forwarder
 }
 
 const pingDelayMs = 5000

@@ -22,8 +22,8 @@ import (
 )
 
 type Factory interface {
-	CreateListener(id *identity.TokenId, config map[interface{}]interface{}) (Listener, error)
-	CreateDialer(id *identity.TokenId, config map[interface{}]interface{}) (Dialer, error)
+	CreateListener(id *identity.TokenId, f Forwarder, config map[interface{}]interface{}) (Listener, error)
+	CreateDialer(id *identity.TokenId, f Forwarder, config map[interface{}]interface{}) (Dialer, error)
 }
 
 type Listener interface {
@@ -44,4 +44,9 @@ type Xlink interface {
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	Close() error
+}
+
+type Forwarder interface {
+	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error
+	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
 }

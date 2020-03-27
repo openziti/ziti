@@ -45,7 +45,7 @@ func (self *listener) GetAdvertisement() string {
  * xlink_transwarp.HelloHandler
  */
 func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) {
-	xlinkImpl := newImpl(linkId, conn, peer)
+	xlinkImpl := newImpl(linkId, conn, peer, self.forwarder)
 	if err := self.accepter.Accept(xlinkImpl); err == nil {
 		self.peers[peer.String()] = xlinkImpl
 		if err := writeHello(linkId, self.listener, peer); err == nil {
@@ -83,9 +83,10 @@ func (self *listener) listen() {
 }
 
 type listener struct {
-	id       *identity.TokenId
-	config   *listenerConfig
-	listener *net.UDPConn
-	accepter xlink.Accepter
-	peers    map[string]*impl
+	id        *identity.TokenId
+	config    *listenerConfig
+	listener  *net.UDPConn
+	accepter  xlink.Accepter
+	forwarder xlink.Forwarder
+	peers     map[string]*impl
 }

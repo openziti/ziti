@@ -163,7 +163,7 @@ func (self *Xgress) GetEndSession() *Payload {
 	endSession := &Payload{
 		Header: Header{
 			SessionId: self.sessionId.Token,
-			flags:     SetOriginatorFlag(uint32(PayloadFlagSessionEnd), self.originator),
+			Flags:     SetOriginatorFlag(uint32(PayloadFlagSessionEnd), self.originator),
 		},
 		Sequence: self.nextReceiveSequence(),
 		Data:     nil,
@@ -326,7 +326,7 @@ func (self *Xgress) rx() {
 				payload := &Payload{
 					Header: Header{
 						SessionId: self.sessionId.Token,
-						flags:     SetOriginatorFlag(0, self.originator),
+						Flags:     SetOriginatorFlag(0, self.originator),
 					},
 					Sequence: self.nextReceiveSequence(),
 					Data:     buffer[start : start+length],
