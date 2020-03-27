@@ -92,7 +92,7 @@ When building UIs it may be useful to list entities which have role attributes b
          
 Note that a roleFilter should have one role specifier (like `@some-id` or `#sales`). If you wish to specify multiple, provide multiple role filters. 
 
-    /edge-routers?roleFilter=#sales@roleFilter=#us
+    /edge-routers?roleFilter=#sales&roleFilter=#us
 
 These are also supported from the CLI when listing edge routers, identities and services using the --role-filters and --role-semantic flags.
 
