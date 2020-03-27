@@ -17,12 +17,12 @@
 package main
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-cmd/ziti-router/subcmd"
 	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/netfoundry/ziti-foundation/transport/tls"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 )
 
