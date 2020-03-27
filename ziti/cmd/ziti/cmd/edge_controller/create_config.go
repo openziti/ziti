@@ -72,9 +72,14 @@ func runCreateConfig(o *createConfigOptions) error {
 		return errors.Errorf("unable to parse data as json: %v", err)
 	}
 
+	configTypeId, err := mapNameToID("config-types", o.Args[1])
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.Args[1], "type")
+	setJSONValue(entityData, configTypeId, "type")
 	setJSONValue(entityData, dataMap, "data")
 	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
 
