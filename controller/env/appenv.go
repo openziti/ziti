@@ -482,7 +482,7 @@ func (ae *AppEnv) LoadSchemas() error {
 
 		if entitySchema == nil || reflect.ValueOf(entitySchema).IsNil() {
 			if err := mirror.InitializeStructField(ae.Schemes, entityPropertyName); err != nil {
-				return errors.Errorf("found schema with property name '%s', unable to initialized: %w", entityPropertyName, err)
+				return errors.Errorf("found schema with property name '%s', unable to initialized: %v", entityPropertyName, err)
 			}
 			entitySchema, err = reflections.GetField(ae.Schemes, entityPropertyName)
 		}
