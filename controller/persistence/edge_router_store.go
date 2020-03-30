@@ -118,6 +118,7 @@ type EdgeRouterStore interface {
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouter, error)
 	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
 }
 
 func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
@@ -219,4 +220,8 @@ func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *edgeRouterStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
+	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
 }

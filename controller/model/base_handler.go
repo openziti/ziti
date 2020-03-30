@@ -84,8 +84,7 @@ func (handler *baseHandler) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity
 
 func (handler *baseHandler) BaseList(query string) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: handler}
-	err := handler.list(query, result.Collect)
-	if err != nil {
+	if err := handler.list(query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -93,8 +92,15 @@ func (handler *baseHandler) BaseList(query string) (*models.EntityListResult, er
 
 func (handler *baseHandler) BasePreparedList(query ast.Query) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: handler}
-	err := handler.preparedList(query, result.Collect)
-	if err != nil {
+	if err := handler.preparedList(query, result.Collect); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (handler *baseHandler) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult, error) {
+	result := &models.EntityListResult{Loader: handler}
+	if err := handler.preparedListIndexed(cursorProvider, query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -103,6 +109,12 @@ func (handler *baseHandler) BasePreparedList(query ast.Query) (*models.EntityLis
 func (handler *baseHandler) preparedList(query ast.Query, resultHandler models.ListResultHandler) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		return handler.PreparedListWithTx(tx, query, resultHandler)
+	})
+}
+
+func (handler *baseHandler) preparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler models.ListResultHandler) error {
+	return handler.GetDb().View(func(tx *bbolt.Tx) error {
+		return handler.PreparedListIndexedWithTx(tx, cursorProvider, query, resultHandler)
 	})
 }
 
@@ -288,10 +300,7 @@ func (handler *baseHandler) queryRoleAttributes(index boltz.SetReadIndex, queryS
 	var results []string
 	var count int64
 	err = handler.GetDb().View(func(tx *bbolt.Tx) error {
-		cursorProvider := func(forward bool) ast.SetCursor {
-			return index.OpenCursor(tx, forward)
-		}
-		results, count, err = handler.env.GetStores().Index.QueryWithCursorC(tx, cursorProvider, query)
+		results, count, err = handler.env.GetStores().Index.QueryWithCursorC(tx, index.OpenKeyCursor, query)
 		return err
 	})
 

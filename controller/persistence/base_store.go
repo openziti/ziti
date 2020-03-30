@@ -27,6 +27,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"strings"
 )
 
 type DbProvider interface {
@@ -128,9 +129,9 @@ func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleS
 		return nil, err
 	}
 	var roleIds []string
-	if semantic == SemanticAllOf {
+	if strings.EqualFold(semantic, SemanticAllOf) {
 		roleIds = store.FindMatching(tx, index, roles)
-	} else if semantic == SemanticAnyOf {
+	} else if strings.EqualFold(semantic, SemanticAnyOf) {
 		roleIds = store.FindMatchingAnyOf(tx, index, roles)
 	} else {
 		return nil, errors.Errorf("unsupported policy semantic %v", semantic)
@@ -180,9 +181,9 @@ func UpdateRelatedRoles(tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySe
 
 		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") {
 			err = linkCollection.AddLinks(tx, id, entityId)
-		} else if semantic == SemanticAllOf && len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...) {
+		} else if strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...) {
 			err = linkCollection.AddLinks(tx, id, entityId)
-		} else if semantic == SemanticAnyOf && len(roles) > 0 && stringz.ContainsAny(entityRoles, roles...) {
+		} else if strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(entityRoles, roles...) {
 			err = linkCollection.AddLinks(tx, id, entityId)
 		} else {
 			err = linkCollection.RemoveLinks(tx, id, entityId)
@@ -211,4 +212,39 @@ func (store *baseStore) GetName(tx *bbolt.Tx, id string) *string {
 		return &result
 	}
 	return nil
+}
+
+func (store *baseStore) getRoleAttributesCursorProvider(index boltz.SetReadIndex, values []string, semantic string) (ast.SetCursorProvider, error) {
+	if semantic == "" {
+		semantic = SemanticAllOf
+	}
+
+	if !isSemanticValid(semantic) {
+		return nil, validation.NewFieldError("invalid semantic", FieldSemantic, semantic)
+	}
+
+	roles, ids, err := splitRolesAndIds(values)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(tx *bbolt.Tx, forward bool) ast.SetCursor {
+		validIds := ast.NewTreeSet(forward)
+		for _, id := range ids {
+			if store.IsEntityPresent(tx, id) {
+				validIds.Add([]byte(id))
+			}
+		}
+
+		var rolesCursor ast.SetCursor
+		if strings.EqualFold(semantic, SemanticAllOf) {
+			rolesCursor = store.IteratorMatchingAllOf(index, roles)(tx, forward)
+		} else {
+			rolesCursor = store.IteratorMatchingAnyOf(index, roles)(tx, forward)
+		}
+		if validIds.Size() == 0 {
+			return rolesCursor
+		}
+		return ast.NewUnionSetCursor(rolesCursor, validIds.ToCursor(), forward)
+	}, nil
 }

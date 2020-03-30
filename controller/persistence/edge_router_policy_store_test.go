@@ -7,6 +7,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -434,9 +435,9 @@ func (ctx *TestContext) policyShouldMatch(semantic string, roleSet []string, ent
 	isIdMatch := stringz.Contains(ids, entity.GetId())
 	isAllMatch := stringz.Contains(roles, "all")
 	isRoleMatch := false
-	if semantic == SemanticAllOf {
+	if strings.EqualFold(semantic, SemanticAllOf) {
 		isRoleMatch = len(roles) > 0 && stringz.ContainsAll(roleAttribute, roles...)
-	} else if semantic == SemanticAnyOf {
+	} else if strings.EqualFold(semantic, SemanticAnyOf) {
 		isRoleMatch = stringz.ContainsAny(roleAttribute, roles...)
 	}
 	return isIdMatch || isAllMatch || isRoleMatch

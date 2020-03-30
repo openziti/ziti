@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"go.etcd.io/bbolt"
@@ -83,9 +84,12 @@ func (entity *EdgeService) GetName() string {
 
 type EdgeServiceStore interface {
 	NameIndexedStore
+
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
+
 	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
 }
 
 func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
@@ -215,4 +219,8 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 	}
 
 	return store.BaseStore.DeleteById(ctx, id)
+}
+
+func (store *edgeServiceStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
+	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
 }
