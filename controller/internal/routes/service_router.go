@@ -101,16 +101,41 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			return nil, err
 		}
 
-		result, err := ae.Handlers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
-		if err != nil {
-			pfxlog.Logger().Errorf("error executing list query: %+v", err)
-			return nil, err
+		roleFilters := rc.Request.URL.Query()["roleFilter"]
+		roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
+
+		var apiEntities []BaseApiEntity
+		var qmd *models.QueryMetaData
+		if rc.Identity.IsAdmin && len(roleFilters) > 0 {
+			cursorProvider, err := ae.GetStores().EdgeService.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
+			if err != nil {
+				return nil, err
+			}
+
+			result, err := ae.Handlers.EdgeService.BasePreparedListIndexed(cursorProvider, query)
+
+			if err != nil {
+				return nil, err
+			}
+
+			apiEntities, err = modelToApi(ae, rc, MapServiceToApiEntity, result.GetEntities())
+			if err != nil {
+				return nil, err
+			}
+			qmd = &result.QueryMetaData
+		} else {
+			result, err := ae.Handlers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
+			if err != nil {
+				pfxlog.Logger().Errorf("error executing list query: %+v", err)
+				return nil, err
+			}
+			apiEntities, err = MapServicesToApiEntities(ae, rc, result.Services)
+			if err != nil {
+				return nil, err
+			}
+			qmd = &result.QueryMetaData
 		}
-		services, err := MapServicesToApiEntities(ae, rc, result.Services)
-		if err != nil {
-			return nil, err
-		}
-		return NewQueryResult(services, &result.QueryMetaData), nil
+		return NewQueryResult(apiEntities, qmd), nil
 	})
 }
 

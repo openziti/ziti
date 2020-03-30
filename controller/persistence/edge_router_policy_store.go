@@ -50,7 +50,7 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 		ctx.Bucket.SetError(err)
 	}
 
-	if !stringz.Contains(validSemantics, entity.Semantic) {
+	if !isSemanticValid(entity.Semantic) {
 		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}

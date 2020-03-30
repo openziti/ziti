@@ -106,7 +106,10 @@ type IdentityStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
+
 	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
+
 	AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
 	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
 	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
@@ -415,4 +418,8 @@ func (store *identityStoreImpl) LoadServiceConfigsByServiceAndType(tx *bbolt.Tx,
 	}
 
 	return result
+}
+
+func (store *identityStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
+	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
 }

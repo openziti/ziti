@@ -127,6 +127,12 @@ func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMa
 }
 
 func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper) {
+	ListWithQueryF(ae, rc, lister, mapper, lister.BasePreparedList)
+}
+
+type queryF func(query ast.Query) (*models.EntityListResult, error)
+
+func ListWithQueryF(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, qf queryF) {
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
@@ -135,7 +141,7 @@ func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.
 			return nil, err
 		}
 
-		result, err := lister.BasePreparedList(query)
+		result, err := qf(query)
 		if err != nil {
 			return nil, err
 		}

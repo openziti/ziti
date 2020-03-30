@@ -21,6 +21,8 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 )
 
 func init() {
@@ -57,7 +59,20 @@ func (ir *EdgeRouterRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *EdgeRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+	roleFilters := rc.Request.URL.Query()["roleFilter"]
+	roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
+
+	if len(roleFilters) > 0 {
+		ListWithQueryF(ae, rc, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity, func(query ast.Query) (*models.EntityListResult, error) {
+			cursorProvider, err := ae.GetStores().EdgeRouter.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
+			if err != nil {
+				return nil, err
+			}
+			return ae.Handlers.EdgeRouter.BasePreparedListIndexed(cursorProvider, query)
+		})
+	} else {
+		ListWithHandler(ae, rc, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+	}
 }
 
 func (ir *EdgeRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {

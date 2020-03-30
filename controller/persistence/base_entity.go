@@ -16,6 +16,8 @@
 
 package persistence
 
+import "strings"
+
 const (
 	EntityTypeApiSessions               = "apiSessions"
 	EntityTypeAppwans                   = "appwans"
@@ -51,6 +53,15 @@ const (
 )
 
 var validSemantics = []string{SemanticAllOf, SemanticAnyOf}
+
+func isSemanticValid(semantic string) bool {
+	for _, validSemantic := range validSemantics {
+		if strings.EqualFold(validSemantic, semantic) {
+			return true
+		}
+	}
+	return false
+}
 
 func toStringStringMap(m map[string]interface{}) map[string]string {
 	result := map[string]string{}
