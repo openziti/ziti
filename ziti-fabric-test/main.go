@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
 	_ "github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/client"
 	_ "github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/loop2"
@@ -24,16 +25,15 @@ import (
 	"github.com/netfoundry/ziti-foundation/transport/quic"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/netfoundry/ziti-foundation/transport/tls"
-	"github.com/netfoundry/ziti-foundation/util/info"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-foundation/util/info"
 	"github.com/sirupsen/logrus"
 	"math/rand"
 )
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
+	pfxlog.SetPrefix("github.com/netfoundry/")
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})

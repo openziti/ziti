@@ -56,11 +56,10 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
+	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
+	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
@@ -151,10 +150,12 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 	return cmd
 }
 
-// newListCmdForEntityType creates the list command for the given entity type
+// newListServicesCmd creates the list command for the given entity type
 func newListServicesCmd(options *commonOptions) *cobra.Command {
 	var asIdentity string
 	var configTypes string
+	var roleFilters []string
+	var roleSemantic string
 
 	cmd := &cobra.Command{
 		Use:   "services <filter>?",
@@ -164,7 +165,7 @@ func newListServicesCmd(options *commonOptions) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListServices(asIdentity, configTypes, options)
+			err := runListServices(asIdentity, configTypes, roleFilters, roleSemantic, options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -176,6 +177,66 @@ func newListServicesCmd(options *commonOptions) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVar(&asIdentity, "as-identity", "", "Allow admins to see services as they would be seen by a different identity")
 	cmd.Flags().StringVar(&configTypes, "config-types", "", "Override which config types to view on services")
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+
+	return cmd
+}
+
+// newListEdgeRoutersCmd creates the list command for the given entity type
+func newListEdgeRoutersCmd(options *commonOptions) *cobra.Command {
+	var roleFilters []string
+	var roleSemantic string
+
+	cmd := &cobra.Command{
+		Use:   "edge-routers <filter>?",
+		Short: "lists edge routers managed by the Ziti Edge Controller",
+		Long:  "lists edge routers managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListEdgeRouters(roleFilters, roleSemantic, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+
+	return cmd
+}
+
+// newListEdgeRoutersCmd creates the list command for the given entity type
+func newListIdentitiesCmd(options *commonOptions) *cobra.Command {
+	var roleFilters []string
+	var roleSemantic string
+
+	cmd := &cobra.Command{
+		Use:   "identities <filter>?",
+		Short: "lists identities managed by the Ziti Edge Controller",
+		Long:  "lists identities managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListIdentities(roleFilters, roleSemantic, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
 
 	return cmd
 }
@@ -242,17 +303,26 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *co
 	return jsonParsed.S("data").Children()
 }
 
-func runListEdgeRouters(o *commonOptions) error {
-	children, err := listEntitiesWithOptions("edge-routers", o)
+func runListEdgeRouters(roleFilters []string, roleSemantic string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
+	}
+	children, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
 		return err
 	}
 
-	return outputEdgeRouters(o, children)
+	return outputEdgeRouters(options, children)
 }
 
 func outputEdgeRouters(o *commonOptions, children []*gabs.Container) error {
-
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -322,7 +392,7 @@ func outputTerminators(o *commonOptions, children []*gabs.Container) error {
 	return nil
 }
 
-func runListServices(asIdentity string, configTypes string, options *commonOptions) error {
+func runListServices(asIdentity string, configTypes string, roleFilters []string, roleSemantic string, options *commonOptions) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -332,6 +402,12 @@ func runListServices(asIdentity string, configTypes string, options *commonOptio
 	}
 	if configTypes != "" {
 		params.Add("configTypes", configTypes)
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
 	}
 	children, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
@@ -413,12 +489,22 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container) error {
 }
 
 // runListIdentities implements the command to list identities
-func runListIdentities(o *commonOptions) error {
-	children, err := listEntitiesWithOptions("identities", o)
+func runListIdentities(roleFilters []string, roleSemantic string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
+	}
+	children, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
 		return err
 	}
-	return outputIdentities(o, children)
+	return outputIdentities(options, children)
 }
 
 // outputIdentities implements the command to list identities
