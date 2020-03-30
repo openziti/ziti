@@ -68,6 +68,8 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 		Handler: proxy.msgMux.HandleReceive,
 	})
 
+	ch.AddReceiveHandler(&channel2.LatencyHandler{})
+
 	// Since data is most common type, it gets to dispatch directly
 	ch.AddReceiveHandler(proxy.msgMux)
 	ch.AddCloseHandler(proxy)
