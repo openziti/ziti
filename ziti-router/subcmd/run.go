@@ -45,15 +45,15 @@ func run(cmd *cobra.Command, args []string) {
 		xgressEdgeFactory := xgress_edge.NewFactory()
 		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
-			logrus.Panicf("error registering edge in framework (%w)", err)
+			logrus.Panicf("error registering edge in framework (%v)", err)
 		}
 
 		if err := r.Run(); err != nil {
-			logrus.Panicf("error starting (%w)", err)
+			logrus.Panicf("error starting (%v)", err)
 		}
 
 	} else {
-		logrus.Panicf("error loading configuration (%w)", err)
+		logrus.Panicf("error loading configuration (%v)", err)
 	}
 }
 
