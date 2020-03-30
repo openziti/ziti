@@ -5,6 +5,8 @@ Ziti 0.13 includes the following:
   * Changes to make working with policies easier, including
       * New APIs to list existing role attributes used by edge routers, identities and services
       * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
+  * CA Auto Enrollment now allows identities to inherit role attributes from the validating CA
+      * New `identityRole` attributes added to CA entities
   * A small set of APIs accepted id or name. These have been changed to accept only id
       
 ## Making Policies More User Friendly 
@@ -70,6 +72,18 @@ This adds operations to the `/services`, `/identities` and `/edge-routers` endpo
     * New operations
        * Query related identities: GET /services/<service-id>/identities?filter=<optional-filter>
        * Query related edge routers: GET /services/<service-id>/edge-routers?filter=<optional-filter>
+
+## CA Auto Enrollment Identity Attributes
+
+Identities that are enrolled via a CA can now inherit a static list of identity role attributes. The normal create, 
+update, patch requests supported by the CA entities now allow the role attributes to be specified. CA identity role 
+attribute changes do no propagate to identities that have completed enrollment.
+
+This feature allows a simple degree of automation for identities that are auto-provisioning through a third party CA.
+
+   * `identityRoles` added to `/ca` endpoints for normal CRUD operations
+   * `identityRoles` from a CA entity are point-in-time copies
+
 
 ## APIs now only accept ID, not ID or Name
   1. Some APIs related to configurations accepted config names or ids. These now only accept name.
