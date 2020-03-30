@@ -67,7 +67,6 @@ func Test_Dataflow(t *testing.T) {
 	buf := make([]byte, 1024)
 	n, err = conn.Read(buf)
 	ctx.req.NoError(err)
-	ctx.req.Equal(n, len([]byte(expected)))
 	ctx.req.Equal(expected, string(buf[:n]))
 
 	n, err = conn.Write([]byte("quit"))
@@ -78,7 +77,6 @@ func Test_Dataflow(t *testing.T) {
 	buf = make([]byte, 1024)
 	n, err = conn.Read(buf)
 	ctx.req.NoError(err)
-	ctx.req.Equal(n, len([]byte(expected)))
 	ctx.req.Equal(expected, string(buf[:n]))
 
 	processing := false
