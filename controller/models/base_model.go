@@ -147,19 +147,7 @@ func (ctrl *BaseController) ListWithTx(tx *bbolt.Tx, queryString string, resultH
 		return err
 	}
 
-	ctrl.checkLimits(query)
-
-	keys, count, err := ctrl.Store.QueryIdsC(tx, query)
-	if err != nil {
-		return err
-	}
-	qmd := &QueryMetaData{
-		Count:            count,
-		Limit:            *query.GetLimit(),
-		Offset:           *query.GetSkip(),
-		FilterableFields: ctrl.Store.GetPublicSymbols(),
-	}
-	return resultHandler(tx, keys, qmd)
+	return ctrl.PreparedListWithTx(tx, query, resultHandler)
 }
 
 func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
@@ -195,7 +183,7 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 		return errors.Errorf("invalid association: '%v'", association)
 	}
 
-	cursorProvider := func(forward bool) ast.SetCursor {
+	cursorProvider := func(tx *bbolt.Tx, forward bool) ast.SetCursor {
 		return symbol.GetStore().GetRelatedEntitiesCursor(tx, id, association, forward)
 	}
 
@@ -209,5 +197,23 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 		Offset:           *query.GetSkip(),
 		FilterableFields: linkedType.GetPublicSymbols(),
 	}
+	return resultHandler(tx, keys, qmd)
+}
+
+func (ctrl *BaseController) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler ListResultHandler) error {
+	ctrl.checkLimits(query)
+
+	keys, count, err := ctrl.Store.QueryWithCursorC(tx, cursorProvider, query)
+	if err != nil {
+		return err
+	}
+
+	qmd := &QueryMetaData{
+		Count:            count,
+		Limit:            *query.GetLimit(),
+		Offset:           *query.GetSkip(),
+		FilterableFields: ctrl.Store.GetPublicSymbols(),
+	}
+
 	return resultHandler(tx, keys, qmd)
 }
