@@ -18,46 +18,6 @@ securityDefinitions:
     in: header
     name: zt-session
 
-
-#  changes for 0.12 in the edge api
-#
-#  NEW
-#
-#- edge-routers/{id}/identities GET
-#- edge-routers/{id}/services GET
-#
-#- identities/{id}/edge-routers GET
-#- identities/{id}/services GET
-#
-#- /edge-router-role-attributes GET
-#- /identity-role-attributes GET
-#- /service-role-attributes GET
-#
-
-#
-#  - terminators
-#    full CRUD
-#
-#    Create/update/patch:
-#    Service *string `json:"service"`
-#
-#    Router  *string `json:"router"`
-#    Binding *string `json:"binding"`
-#    Address *string `json:"address"`
-#
-#  List:
-#    *env.BaseApi
-#      ServiceId string        `json:"serviceId"`
-#      Service   *EntityApiRef `json:"service"`
-#      RouterId  string        `json:"routerId"`
-#      Router    *EntityApiRef `json:"router"`
-#      Binding   string        `json:"binding"`
-#      Address   string        `json:"address"`
-#
-
-
-
-
 #######################################################################################################################
 #
 # Paths - Endpoints and their associated HTTP methods
@@ -179,6 +139,45 @@ paths:
           $ref: '#/responses/listSummaryCounts'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+  '/specs':
+    get:
+      summary: Returns a list of API specs
+      description: Returns a list of spec files embedded within the controller for consumption/documentation/code geneartion
+      security: []
+      tags:
+        - Informational
+      operationId: listSpecs
+      responses:
+        '200':
+          $ref: '#/responses/listSpecs'
+  '/specs/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Return a single spec resource
+      description: Returns single spec resource embedded within the controller for consumption/documentation/code geneartion
+      security: []
+      tags:
+        - Informational
+      operationId: detailSpec
+      responses:
+        '200':
+          $ref: '#/responses/detailSpec'
+  '/specs/{id}/spec':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Returns the spec's file
+      description: Return the body of the specification (i.e. Swagger, OpenAPI 2.0, 3.0, etc).
+      security: []
+      tags:
+        - Informational
+      operationId: detailSpecBody
+      produces:
+        - text/yaml
+      responses:
+        '200':
+          $ref: '#/responses/detailSpecBody'
   ###################################################################
   # API Sessions
   ##################################################################
@@ -2948,6 +2947,21 @@ responses:
     description: A single terminator
     schema:
       $ref: '#/definitions/detailTerminatorEnvelope'
+  ###################################################################
+  # Specs
+  ##################################################################
+  listSpecs:
+    description: A list of specifications
+    schema:
+      $ref: '#/definitions/listSpecsEnvelope'
+  detailSpec:
+    description: A single specification
+    schema:
+      $ref: '#/definitions/detailSpecEnvelope'
+  detailSpecBody:
+    description: Returns the document that represents the specification
+    schema:
+      $ref: '#/definitions/detailSpecBodyEnvelope'
 #######################################################################################################################
 #
 # Definitions - In & Out Models Only
@@ -4643,6 +4657,9 @@ definitions:
         type: number
       totalCount:
         type: number
+  ###################################################################
+  # Terminators
+  ##################################################################
   listTerminatorsEnvelope:
     type: object
     properties:
@@ -4666,7 +4683,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4679,7 +4695,6 @@ definitions:
         $ref: '#/definitions/tags'
       serviceId:
         type: "string"
-        format: uuid
       service:
         $ref: '#/definitions/entityRef'
       routerId:
@@ -4739,3 +4754,51 @@ definitions:
         type: string
       tags:
         $ref: '#/definitions/tags'
+  ###################################################################
+  # Specs
+  ##################################################################
+  listSpecsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/specList'
+  detailSpecEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/specDetail'
+  detailSpecBodyEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/specBodyDetail'
+  specList:
+    type: array
+    items:
+      $ref: '#/definitions/specDetail'
+  specDetail:
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: "string"
+
+  specBodyDetail:
+    type: string
