@@ -24,9 +24,9 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/netfoundry/ziti-edge v0.12.0
-	github.com/netfoundry/ziti-fabric v0.11.4
+	github.com/netfoundry/ziti-fabric v0.11.6
 	github.com/netfoundry/ziti-foundation v0.9.0
-	github.com/netfoundry/ziti-sdk-golang v0.11.6
+	github.com/netfoundry/ziti-sdk-golang v0.11.7
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
