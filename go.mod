@@ -22,7 +22,7 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gobuffalo/packr v1.30.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.3.5
 	github.com/google/go-cmp v0.4.0
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
@@ -36,14 +36,14 @@ require (
 	github.com/miekg/dns v1.1.22
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/netfoundry/ziti-fabric v0.11.6
-	github.com/netfoundry/ziti-foundation v0.9.0
-	github.com/netfoundry/ziti-sdk-golang v0.11.7
+	github.com/netfoundry/ziti-foundation v0.9.1
+	github.com/netfoundry/ziti-sdk-golang v0.11.8
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v0.0.5
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
@@ -51,5 +51,5 @@ require (
 	gopkg.in/Masterminds/squirrel.v1 v1.0.0-20170825200431-a6b93000bd21
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/yaml.v2 v2.2.7
+	gopkg.in/yaml.v2 v2.2.8
 )
