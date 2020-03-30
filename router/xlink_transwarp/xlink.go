@@ -71,6 +71,14 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 	}
 }
 
+func (self *impl) HandleWindowReport(lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) {
+	logrus.Errorf("window report not connected")
+}
+
+func (self *impl) HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) {
+	logrus.Errorf("window size request not connected")
+}
+
 /*
  * impl
  */
@@ -140,14 +148,17 @@ func (self *impl) nextSequence() int32 {
 
 func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink.Forwarder) *impl {
 	now := time.Now()
-	return &impl{
+	xlinkImpl := &impl{
 		id:         id,
 		conn:       conn,
 		peer:       peer,
 		lastPingRx: now,
 		lastPingTx: now,
+		txBuffer:   newTransmitBuffer(),
 		forwarder:  f,
 	}
+	xlinkImpl.rxBuffer = newReceiveBuffer(xlinkImpl)
+	return xlinkImpl
 }
 
 type impl struct {
@@ -159,6 +170,8 @@ type impl struct {
 	lastPingRx         time.Time
 	lastPingTx         time.Time
 	lastPingTxSequence int32
+	txBuffer           *transmitBuffer
+	rxBuffer           *receiveBuffer
 	forwarder          xlink.Forwarder
 }
 

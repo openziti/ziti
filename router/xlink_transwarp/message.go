@@ -35,6 +35,8 @@ type MessageHandler interface {
 	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleWindowReport(lowWater, highWater, gaps, count int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, addr *net.UDPAddr)
 }
 
 /**
@@ -66,6 +68,8 @@ const (
 	Ping
 	Payload
 	Acknowledgement
+	WindowReport
+	WindowSizeRequest
 )
 
 const timeoutSeconds = 5
@@ -77,11 +81,11 @@ func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) 
 	payload.Write([]byte(linkId.Token))
 
 	data, err := encodeMessage(&message{
-		sequence:      -1,
-		fragment:      0,
-		ofFragments:   1,
-		messageType:   Hello,
-		payload:       payload.Bytes(),
+		sequence:    -1,
+		fragment:    0,
+		ofFragments: 1,
+		messageType: Hello,
+		payload:     payload.Bytes(),
 	})
 	if err != nil {
 		return fmt.Errorf("error creating message (%w)", err)
@@ -105,11 +109,11 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 	}
 
 	data, err := encodeMessage(&message{
-		sequence:      sequence,
-		fragment:      0,
-		ofFragments:   1,
-		messageType:   Ping,
-		payload:       payload.Bytes(),
+		sequence:    sequence,
+		fragment:    0,
+		ofFragments: 1,
+		messageType: Ping,
+		payload:     payload.Bytes(),
 	})
 	if err != nil {
 		return fmt.Errorf("error creating message (%w)", err)
@@ -150,6 +154,50 @@ func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *ne
 
 func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
 	m, err := encodeAcnowledgement(a, sequence)
+	if err != nil {
+		return err
+	}
+
+	data, err := encodeMessage(m)
+	if err != nil {
+		return fmt.Errorf("error creating message (%w)", err)
+	}
+
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
+	}
+
+	if _, err := conn.WriteToUDP(data, peer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+	m, err := encodeWindowReport(sequence, lowWater, highWater, gaps, count)
+	if err != nil {
+		return err
+	}
+
+	data, err := encodeMessage(m)
+	if err != nil {
+		return fmt.Errorf("error creating message (%w)", err)
+	}
+
+	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
+		return fmt.Errorf("unable to set write deadline (%w)", err)
+	}
+
+	if _, err := conn.WriteToUDP(data, peer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeWindowSizeRequest(sequence, newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+	m, err := encodeWindowSizeRequest(sequence, newWindowSize)
 	if err != nil {
 		return err
 	}
@@ -242,6 +290,24 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 
 		return nil
 
+	case WindowReport:
+		lowWater, highWater, gaps, count, err := decodeWindowReport(m)
+		if err != nil {
+			return fmt.Errorf("error decoding window report for peer [%s] (%w)", peer, err)
+		}
+		handler.HandleWindowReport(lowWater, highWater, gaps, count, conn, peer)
+
+		return nil
+
+	case WindowSizeRequest:
+		newWindowSize, err := decodeWindowSizeRequest(m)
+		if err != nil {
+			return fmt.Errorf("error decoding window size request for peer [%s] (%w)", peer, err)
+		}
+		handler.HandleWindowSizeRequest(newWindowSize, conn, peer)
+
+		return nil
+
 	default:
 		return fmt.Errorf("unexpected message type [%d] from [%s]", m.messageType, peer)
 	}
@@ -269,10 +335,10 @@ func encodeMessage(m *message) ([]byte, error) {
 		return nil, fmt.Errorf("error reading buffer (%w)", err)
 	}
 	/*
-	if n > mss {
-		return nil, fmt.Errorf("message too long [%d]", n)
-	}
-    */
+		if n > mss {
+			return nil, fmt.Errorf("message too long [%d]", n)
+		}
+	*/
 
 	return buffer, nil
 }
@@ -368,6 +434,15 @@ func readInt32(data []byte) (ret int32, err error) {
 	return
 }
 
+func writeInt32(value int32) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, value)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func readUint32(data []byte) (ret uint32, err error) {
 	buf := bytes.NewBuffer(data)
 	err = binary.Read(buf, binary.LittleEndian, &ret)
@@ -381,10 +456,10 @@ func readUint16(data []byte) (ret uint16, err error) {
 }
 
 type message struct {
-	sequence      int32
-	fragment      uint8
-	ofFragments   uint8
-	messageType   messageType
-	headers       map[uint8][]byte
-	payload       []byte
+	sequence    int32
+	fragment    uint8
+	ofFragments uint8
+	messageType messageType
+	headers     map[uint8][]byte
+	payload     []byte
 }
