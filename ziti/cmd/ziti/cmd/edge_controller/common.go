@@ -51,6 +51,21 @@ func mapNameToID(entityType string, val string) (string, error) {
 	return entityId, nil
 }
 
+func mapIdToName(entityType string, val string) (string, error) {
+	list, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if len(list) < 1 {
+		return "", errors.Errorf("no %v found for id %v", entityType, val)
+	}
+
+	entity := list[0]
+	name, _ := entity.Path("name").Data().(string)
+	return name, nil
+}
+
 func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
