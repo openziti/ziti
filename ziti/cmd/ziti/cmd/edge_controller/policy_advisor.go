@@ -38,17 +38,19 @@ func newPolicyAdivsorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 		},
 	}
 
-	cmd.AddCommand(newPolicyAdvisorIdentityCmd(f, out, errOut))
+	cmd.AddCommand(newPolicyAdvisorIdentitiesCmd(f, out, errOut))
+	cmd.AddCommand(newPolicyAdvisorServicesCmd(f, out, errOut))
 
 	return cmd
 }
 
 type policyAdvisorOptions struct {
 	commonOptions
+	quiet bool
 }
 
-// newPolicyAdvisorCmd creates the 'edge controller policy-advisor' command
-func newPolicyAdvisorIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+// newPolicyAdvisorIdentitiesCmd creates the 'edge controller policy-advisor identities' command
+func newPolicyAdvisorIdentitiesCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &policyAdvisorOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
@@ -56,13 +58,13 @@ func newPolicyAdvisorIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 	}
 
 	cmd := &cobra.Command{
-		Use:   "identity <identity name or id>? <service name or id>?",
-		Short: "validates that the given identity ",
+		Use:   "identities <identity name or id>? <service name or id>?",
+		Short: "checks policies/connectivity between identities and services",
 		Args:  cobra.RangeArgs(0, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runIdentityPolicyAdvisor(options)
+			err := runIdentitiesPolicyAdvisor(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -71,12 +73,42 @@ func newPolicyAdvisorIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().BoolVarP(&options.quiet, "quiet", "q", false, "Minimize output by hiding header")
 
 	return cmd
 }
 
-// runCreatePolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
-func runIdentityPolicyAdvisor(o *policyAdvisorOptions) error {
+// newPolicyAdvisorServicesCmd creates the 'edge controller policy-advisor services' command
+func newPolicyAdvisorServicesCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &policyAdvisorOptions{
+		commonOptions: commonOptions{
+			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+		},
+	}
+
+	cmd := &cobra.Command{
+		Use:   "services <service name or id>? <identity name or id>?",
+		Short: "checks policies/connectivity between services and identities ",
+		Args:  cobra.RangeArgs(0, 2),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runServicesPolicyAdvisor(options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().BoolVarP(&options.quiet, "quiet", "q", false, "Minimize output by hiding header")
+
+	return cmd
+}
+
+// runIdentitiesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
+func runIdentitiesPolicyAdvisor(o *policyAdvisorOptions) error {
 	if len(o.Args) > 0 {
 		identityId, err := mapNameToID("identities", o.Args[0])
 		if err != nil {
@@ -102,10 +134,44 @@ func runIdentityPolicyAdvisor(o *policyAdvisorOptions) error {
 	if err := outputHeader(o); err != nil {
 		return err
 	}
-	return runPolicyAdvisor(o)
+	return runPolicyAdvisorForIdentities(o)
+}
+
+// runServicesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
+func runServicesPolicyAdvisor(o *policyAdvisorOptions) error {
+	if len(o.Args) > 0 {
+		serviceId, err := mapNameToID("services", o.Args[0])
+		if err != nil {
+			return err
+		}
+
+		if len(o.Args) > 1 {
+			identityId, err := mapNameToID("identities", o.Args[1])
+			if err != nil {
+				return err
+			}
+			if err := outputHeader(o); err != nil {
+				return err
+			}
+			return runPolicyAdvisorForIdentityAndService(identityId, serviceId, o)
+		}
+
+		if err := outputHeader(o); err != nil {
+			return err
+		}
+		return runPolicyAdvisorForService(serviceId, o)
+	}
+
+	if err := outputHeader(o); err != nil {
+		return err
+	}
+	return runPolicyAdvisorForServices(o)
 }
 
 func outputHeader(o *policyAdvisorOptions) error {
+	if o.quiet {
+		return nil
+	}
 	_, err := fmt.Fprintf(o.Out, "\n"+
 		"Policy General Guidelines\n"+
 		"  In order for an identity to dial or bind a service, the following must be true:\n"+
@@ -135,7 +201,7 @@ func outputHeader(o *policyAdvisorOptions) error {
 	return err
 }
 
-func runPolicyAdvisor(o *policyAdvisorOptions) error {
+func runPolicyAdvisorForIdentities(o *policyAdvisorOptions) error {
 	skip := 0
 	done := false
 	for !done {
@@ -159,6 +225,36 @@ func runPolicyAdvisor(o *policyAdvisorOptions) error {
 
 	if skip == 0 {
 		_, err := fmt.Fprintln(o.Out, "No identities found")
+		return err
+	}
+
+	return nil
+}
+
+func runPolicyAdvisorForServices(o *policyAdvisorOptions) error {
+	skip := 0
+	done := false
+	for !done {
+		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
+		children, err := filterEntitiesOfType("services", filter, false, o.Out)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, child := range children {
+			serviceId, _ := child.S("id").Data().(string)
+			if err := runPolicyAdvisorForService(serviceId, o); err != nil {
+				panic(err)
+			}
+		}
+		skip += len(children)
+		if len(children) == 0 {
+			done = true
+		}
+	}
+
+	if skip == 0 {
+		_, err := fmt.Fprintln(o.Out, "No services found")
 		return err
 	}
 
@@ -194,6 +290,41 @@ func runPolicyAdvisorForIdentity(identityId string, o *policyAdvisorOptions) err
 			return err
 		}
 		_, err = fmt.Fprintf(o.Out, "ERROR: %v %v\n\n", identityName, "\n  - Identity does not have access to any services. Adjust service policies.")
+		return err
+	}
+
+	return nil
+}
+
+func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error {
+	skip := 0
+	done := false
+	for !done {
+		filter := "true limit 2"
+		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
+		children, err := filterSubEntitiesOfType("services", "identities", serviceId, filter, &o.commonOptions)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, child := range children {
+			identityId, _ := child.S("id").Data().(string)
+			if err := runPolicyAdvisorForIdentityAndService(identityId, serviceId, o); err != nil {
+				panic(err)
+			}
+		}
+		skip += len(children)
+		if len(children) == 0 {
+			done = true
+		}
+	}
+
+	if skip == 0 {
+		serviceName, err := mapIdToName("services", serviceId)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(o.Out, "ERROR: %v %v\n\n", serviceName, "\n  - Service is not accessible by any identities. Adjust service policies.")
 		return err
 	}
 
