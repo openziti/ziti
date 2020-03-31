@@ -105,7 +105,7 @@ func (ctrl *RouterController) markDisconnected(r *Router) {
 	ctrl.connected.Remove(r.Id)
 }
 
-func (ctrl *RouterController) isConnected(id string) bool {
+func (ctrl *RouterController) IsConnected(id string) bool {
 	return ctrl.connected.Has(id)
 }
 
