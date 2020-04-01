@@ -352,7 +352,7 @@ func (self *Xgress) rx() {
 				payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
 			}
 
-			logrus.Infof("received [%d] payloads for [%d] bytes", payloads, n)
+			logrus.Debugf("received [%d] payloads for [%d] bytes", payloads, n)
 
 		} else {
 			return
