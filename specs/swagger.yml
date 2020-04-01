@@ -2488,6 +2488,133 @@ paths:
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
 
+  ###################################################################
+  # Transit Routers
+  ##################################################################
+  '/transit-routers':
+    get:
+      summary: List transit routers
+      description: |
+        Retrieves a list of transit router resources; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: listTransitRouters
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listTransitRouters'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    post:
+      summary: Create a transit router resource
+      description: Create a transit router resource. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: createTransitRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A transit router to create
+          schema:
+            $ref: '#/definitions/transitRouterCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/transit-routers/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single transit router
+      description: Retrieves a single transit router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: detailTransitRouter
+      responses:
+        '200':
+          $ref: '#/responses/detailTransitRouter'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a transit router
+      description: Update all fields on a transit router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: updateTransitRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A transit router update object
+          schema:
+            $ref: '#/definitions/transitRouterUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a transit router
+      description: Update the supplied fields on a transit router. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: patchTransitRouter
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A transit router patch object
+          schema:
+            $ref: '#/definitions/transitRouterPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a transit router
+      description: Delete a transit router by id. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Transit Router
+      operationId: deleteTransitRouter
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
@@ -2962,6 +3089,17 @@ responses:
     description: Returns the document that represents the specification
     schema:
       $ref: '#/definitions/detailSpecBodyEnvelope'
+  ###################################################################
+  # Transit Routers
+  ##################################################################
+  listTransitRouters:
+    description: A list of specifications
+    schema:
+      $ref: '#/definitions/listTransitRoutersEnvelope'
+  detailTransitRouter:
+    description: A single transit router
+    schema:
+      $ref: '#/definitions/detailTransitRouterEnvelope'
 #######################################################################################################################
 #
 # Definitions - In & Out Models Only
@@ -3044,31 +3182,6 @@ definitions:
         $ref: '#/definitions/username'
       password:
         $ref: '#/definitions/password'
-      envInfo:
-        $ref: '#/definitions/envInfo'
-      sdkInfo:
-        $ref: '#/definitions/sdkInfo'
-      configTypes:
-        $ref: '#/definitions/configTypes'
-  authenticateUPDB:
-    type: object
-    description: A username and password pair
-    required: [username, password]
-    properties:
-      username:
-        $ref: '#/definitions/username'
-      password:
-        $ref: '#/definitions/password'
-      envInfo:
-        $ref: '#/definitions/envInfo'
-      sdkInfo:
-        $ref: '#/definitions/sdkInfo'
-      configTypes:
-        $ref: '#/definitions/configTypes'
-  authenticateCert:
-    type: object
-    description: A cert based authentication request. The certificate used by the client as its TLS client certificate will be interrogated for authentication
-    properties:
       envInfo:
         $ref: '#/definitions/envInfo'
       sdkInfo:
@@ -4694,17 +4807,17 @@ definitions:
       tags:
         $ref: '#/definitions/tags'
       serviceId:
-        type: "string"
+        type: string
       service:
         $ref: '#/definitions/entityRef'
       routerId:
-        type: "string"
+        type: string
       router:
         $ref: '#/definitions/entityRef'
       binding:
-        type: "string"
+        type: string
       address:
-        type: "string"
+        type: string
   terminatorCreate:
     type: object
     required:
@@ -4798,7 +4911,69 @@ definitions:
       tags:
         $ref: '#/definitions/tags'
       name:
-        type: "string"
-
+        type: string
   specBodyDetail:
     type: string
+  ###################################################################
+  # Transit Routers
+  ##################################################################
+  listTransitRoutersEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/transitRouterList'
+  detailTransitRouterEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/transitRouterDetail'
+  transitRouterList:
+    type: array
+    items:
+      $ref: '#/definitions/transitRouterDetail'
+  transitRouterDetail:
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
+      name:
+        type: string
+      fingerprint:
+        type: string
+      isVerified:
+        type: boolean
+      isOnline:
+        type: boolean
+  transitRouterCreate:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+  transitRouterUpdate:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+  transitRouterPatch:
+    type: object
+    properties:
+      name:
+        type: string
