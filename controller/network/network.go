@@ -587,10 +587,6 @@ func (network *Network) GetServiceCache() Cache {
 	return network.Services
 }
 
-func (network *Network) GetRouterController() *RouterController {
-	return network.Routers
-}
-
 type Cache interface {
 	RemoveFromCache(id string)
 }
