@@ -76,7 +76,7 @@ func (l *listener) relay() {
 		buf := make([]byte, udp.MaxPacketSize)
 		read, addr, err := l.conn.ReadFrom(buf)
 		if err != nil {
-			logrus.Errorf("error reading packet (%w)", err)
+			logrus.Errorf("error reading packet (%v)", err)
 		}
 
 		if read > 0 {
@@ -142,7 +142,7 @@ func (l *listener) handleConnect(session xgress_udp.Session) {
 func (l *listener) close() {
 	if l.conn != nil {
 		if err := l.conn.Close(); err != nil {
-			logrus.Errorf("error closing packet connection (%w)", err)
+			logrus.Errorf("error closing packet connection (%v)", err)
 		}
 	}
 }

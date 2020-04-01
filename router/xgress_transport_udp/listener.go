@@ -75,7 +75,7 @@ func (l *listener) close() {
 	logger := pfxlog.ContextLogger(l.address)
 	if l.conn != nil {
 		if err := l.conn.Close(); err != nil {
-			logger.Errorf("failure closing packet conn. (%w)", err)
+			logger.Errorf("failure closing packet conn. (%v)", err)
 		}
 	}
 }
@@ -205,7 +205,7 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 	err := xgress.SendResponse(respMsg, session)
 
 	if err != nil {
-		logger.Errorf("failure sending response (%w)", err)
+		logger.Errorf("failure sending response (%v)", err)
 	}
 }
 

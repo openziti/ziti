@@ -218,17 +218,17 @@ func LoadConfig(path string) (*Config, error) {
 								if _, ok := value.(string); ok {
 									cfg.Link.Listeners = append(cfg.Link.Listeners, lmap)
 								} else {
-									return nil, fmt.Errorf("[link/listeners] must provide string [binding] (%w)", lmap)
+									return nil, fmt.Errorf("[link/listeners] must provide string [binding] (%v)", lmap)
 								}
 							} else {
-								return nil, fmt.Errorf("[link/listeners] must provide [binding] (%w)", lmap)
+								return nil, fmt.Errorf("[link/listeners] must provide [binding] (%v)", lmap)
 							}
 						} else {
-							return nil, fmt.Errorf("[link/listeners] must express a map (%w)", value)
+							return nil, fmt.Errorf("[link/listeners] must express a map (%v)", value)
 						}
 					}
 				} else {
-					return nil, fmt.Errorf("[link/listenrs] must provide at least one listener (%w)", value)
+					return nil, fmt.Errorf("[link/listenrs] must provide at least one listener (%v)", value)
 				}
 			}
 			if value, found := submap["dialers"]; found {
@@ -239,17 +239,17 @@ func LoadConfig(path string) (*Config, error) {
 								if _, ok := value.(string); ok {
 									cfg.Link.Dialers = append(cfg.Link.Dialers, lmap)
 								} else {
-									return nil, fmt.Errorf("[link/dialers] must provide string [binding] (%w)", lmap)
+									return nil, fmt.Errorf("[link/dialers] must provide string [binding] (%v)", lmap)
 								}
 							} else {
-								return nil, fmt.Errorf("[link/dialers] must provide [binding] (%w)", lmap)
+								return nil, fmt.Errorf("[link/dialers] must provide [binding] (%v)", lmap)
 							}
 						} else {
-							return nil, fmt.Errorf("[link/dialers] must express a map (%w)", value)
+							return nil, fmt.Errorf("[link/dialers] must express a map (%v)", value)
 						}
 					}
 				} else {
-					return nil, fmt.Errorf("[link/dialers] must provide at least one dialer (%w)", value)
+					return nil, fmt.Errorf("[link/dialers] must provide at least one dialer (%v)", value)
 				}
 			}
 		}
@@ -261,11 +261,11 @@ func LoadConfig(path string) (*Config, error) {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					binding, found := submap["binding"].(string)
 					if !found {
-						return nil, fmt.Errorf("[listener] must provide [binding] (%w)", submap)
+						return nil, fmt.Errorf("[listener] must provide [binding] (%v)", submap)
 					}
 					_, found = submap["address"]
 					if !found {
-						return nil, fmt.Errorf("[listener] must provide [address] (%w)", submap)
+						return nil, fmt.Errorf("[listener] must provide [address] (%v)", submap)
 					}
 					cfg.Listeners = append(cfg.Listeners, listenerBinding{name: binding, options: submap})
 				}
@@ -284,7 +284,7 @@ func LoadConfig(path string) (*Config, error) {
 						}
 						cfg.Dialers[binding] = submap
 					} else {
-						return nil, fmt.Errorf("[dialer] must provide [binding] (%w)", submap)
+						return nil, fmt.Errorf("[dialer] must provide [binding] (%v)", submap)
 					}
 				}
 			}

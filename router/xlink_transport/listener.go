@@ -51,7 +51,7 @@ func (self *listener) acceptLoop() {
 			}
 
 			if err := self.accepter.Accept(xlink); err != nil {
-				logrus.Errorf("error accepting incoming Xlink (%w)", err)
+				logrus.Errorf("error accepting incoming Xlink (%v)", err)
 			}
 
 			logrus.Infof("accepted link [%s]", "l/"+ch.Id().Token)

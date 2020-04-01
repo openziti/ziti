@@ -64,13 +64,16 @@ func NewRouter(id, fingerprint string) *Router {
 }
 
 func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
-	return &Router{
+	r := &Router{
 		BaseEntity:         models.BaseEntity{Id: id},
 		Fingerprint:        fingerprint,
-		AdvertisedListener: advLstnr.String(),
 		Control:            ctrl,
 		CostFactor:         1,
 	}
+	if advLstnr != nil {
+		r.AdvertisedListener = advLstnr.String()
+	}
+	return r
 }
 
 type RouterController struct {

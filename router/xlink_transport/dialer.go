@@ -36,7 +36,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 
 			if self.chAccepter != nil {
 				if err := self.chAccepter.AcceptChannel(xlink, ch); err != nil {
-					logrus.Errorf("error accepting outgoing channel (%w)", err)
+					return fmt.Errorf("error accepting outgoing channel (%w)", err)
 				}
 			}
 
