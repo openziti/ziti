@@ -18,7 +18,7 @@ package forwarder
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/util/info"
 	"github.com/orcaman/concurrent-map"

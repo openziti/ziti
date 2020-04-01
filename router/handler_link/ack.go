@@ -19,32 +19,33 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type ackHandler struct {
-	link      *forwarder.Link
+	link      xlink.Xlink
 	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
 }
 
-func newAckHandler(link *forwarder.Link, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *ackHandler {
+func newAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *ackHandler {
 	return &ackHandler{link: link, ctrl: ctrl, forwarder: forwarder}
 }
 
-func (ackHandler *ackHandler) ContentType() int32 {
+func (self *ackHandler) ContentType() int32 {
 	return xgress.ContentTypeAcknowledgementType
 }
 
-func (ackHandler *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
-		if err := ackHandler.forwarder.ForwardAcknowledgement(xgress.Address(ackHandler.link.Id.Token), ack); err != nil {
-			log.Debugf("unable to forward acknowledgement (%s)", err)
+		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
+			log.Debugf("unable to forward acknowledgement (%v)", err)
 		}
 	} else {
-		log.Errorf("unexpected error (%s)", err)
+		log.Errorf("unexpected error (%v)", err)
 	}
 }

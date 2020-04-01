@@ -17,101 +17,88 @@
 package handler_ctrl
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/router/handler_link"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/metrics"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/sirupsen/logrus"
 )
 
 type dialHandler struct {
-	id               *identity.TokenId
-	ctrl             xgress.CtrlChannel
-	linkOptions      *channel2.Options
-	forwarderOptions *forwarder.Options
-	forwarder        *forwarder.Forwarder
-	metricsRegistry  metrics.Registry
+	id      *identity.TokenId
+	ctrl    xgress.CtrlChannel
+	dialers []xlink.Dialer
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, linkOptions *channel2.Options, forwarderOptions *forwarder.Options, forwarder *forwarder.Forwarder, metricsRegistry metrics.Registry) *dialHandler {
+func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer) *dialHandler {
 	return &dialHandler{
-		id:               id,
-		ctrl:             ctrl,
-		linkOptions:      linkOptions,
-		forwarderOptions: forwarderOptions,
-		forwarder:        forwarder,
-		metricsRegistry:  metricsRegistry,
+		id:      id,
+		ctrl:    ctrl,
+		dialers: dialers,
 	}
 }
 
-func (h *dialHandler) ContentType() int32 {
+func (self *dialHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_DialType)
 }
 
-func (h *dialHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
-	log.Info("received link connect request")
+func (self *dialHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+	logrus.Info("received link connect request")
 
 	dial := &ctrl_pb.Dial{}
 	if err := proto.Unmarshal(msg.Body, dial); err == nil {
-		address, err := transport.ParseAddress(dial.Address)
-		if err == nil {
-			linkId := h.id.ShallowCloneWithNewToken(dial.Id)
-			name := "l/" + linkId.Token
-
-			dialer := channel2.NewClassicDialer(linkId, address, nil)
-			ch, err := channel2.NewChannel(name, dialer, h.linkOptions)
-			if err == nil {
-				link := forwarder.NewLink(linkId, ch)
-				if err := link.Channel.Bind(handler_link.NewBindHandler(h.id, link, h.ctrl, h.forwarder)); err == nil {
-					h.forwarder.RegisterLink(link)
-
-					go metrics.ProbeLatency(
-						link.Channel,
-						h.metricsRegistry.Histogram("link."+linkId.Token+".latency"),
-						h.forwarderOptions.LatencyProbeInterval,
-					)
-
-					linkMsg := &ctrl_pb.Link{Id: link.Id.Token}
-					body, err := proto.Marshal(linkMsg)
-					if err == nil {
-						msg := channel2.NewMessage(int32(ctrl_pb.ContentType_LinkType), body)
-						if err := h.ctrl.Channel().Send(msg); err == nil {
-							log.Infof("link [l/%s] up", link.Id.Token)
-						} else {
-							log.Errorf("unexpected error sending link (%s)", err)
-						}
-
-					} else {
-						log.Errorf("unexpected error (%s)", err)
-					}
-				} else {
-					log.Errorf("error binding link (%s)", err)
+		linkId := self.id.ShallowCloneWithNewToken(dial.Id)
+		if len(self.dialers) == 1 {
+			if err := self.dialers[0].Dial(dial.Address, linkId); err == nil {
+				if err := self.sendLinkMessage(linkId); err != nil {
+					logrus.Errorf("error sending link message [l/%s] (%v)", linkId.Token, err)
 				}
-			} else {
-				log.Errorf("link dialing failed [%s]", address.String())
+				logrus.Infof("link [l/%s] established", linkId.Token)
 
-				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId.Token}
-				body, err := proto.Marshal(fault)
-				if err == nil {
-					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-					if err := h.ctrl.Channel().Send(msg); err != nil {
-						log.Errorf("error sending fault (%s)", err)
-					}
-				} else {
-					log.Errorf("unexpected error (%s)", err)
+			} else {
+				logrus.Errorf("link dialing failed [%s] (%v)", dial.Address, err)
+				if err := self.sendLinkFault(linkId); err != nil {
+					logrus.Errorf("error sending fault [l/%s] (%v)", linkId.Token, err)
 				}
 			}
 		} else {
-			log.Errorf("link address parsing failed (%s)", err)
+			logrus.Errorf("invalid Xlink dialers configuration")
+			if err := self.sendLinkFault(linkId); err != nil {
+				logrus.Errorf("error sending link fault [l/%s] (%v)", linkId.Token, err)
+			}
 		}
-
 	} else {
-		log.Errorf("unexpected error (%s)", err)
+		logrus.Errorf("error unmarshaling dial message (%v)", err)
 	}
+}
+
+func (self *dialHandler) sendLinkMessage(linkId *identity.TokenId) error {
+	linkMsg := &ctrl_pb.Link{Id: linkId.Token}
+	body, err := proto.Marshal(linkMsg)
+	if err == nil {
+		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_LinkType), body)
+		if err := self.ctrl.Channel().Send(msg); err != nil {
+			return fmt.Errorf("error sending link message (%w)", err)
+		}
+	} else {
+		return fmt.Errorf("error marshaling link message (%w)", err)
+	}
+	return nil
+}
+
+func (self *dialHandler) sendLinkFault(linkId *identity.TokenId) error {
+	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId.Token}
+	body, err := proto.Marshal(fault)
+	if err == nil {
+		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
+		if err := self.ctrl.Channel().Send(msg); err != nil {
+			return fmt.Errorf("error sending fault (%w)", err)
+		}
+	} else {
+		return fmt.Errorf("error marshaling fault (%w)", err)
+	}
+	return nil
 }

@@ -19,9 +19,8 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/xctrl"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/transport"
 )
 
 type CtrlAccepter struct {
@@ -53,17 +52,11 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 		if err == nil {
 			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
 				if ch.Underlay().Headers() != nil {
-					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloListenerHeader]; found {
+					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloRouterAdvertisementsHeader]; found {
 						listenerString := string(listenerValue)
-						if listener, err := transport.ParseAddress(listenerString); err == nil {
-							r.AdvertisedListener = listener
-						} else {
-							log.Errorf("error parsing listener address (%s)", err)
-							_ = ch.Close()
-							continue
-						}
+						r.AdvertisedListener = listenerString
 					} else {
-						log.Warn("missing listener attribute")
+						log.Warn("no advertised listeners")
 					}
 				} else {
 					log.Warn("no attributes provided")

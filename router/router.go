@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	(c) Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,16 +20,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/handler_ctrl"
 	"github.com/netfoundry/ziti-fabric/router/handler_link"
 	"github.com/netfoundry/ziti-fabric/router/handler_xgress"
-	"github.com/netfoundry/ziti-fabric/xctrl"
-	"github.com/netfoundry/ziti-fabric/xgress"
-	"github.com/netfoundry/ziti-fabric/xgress_proxy"
-	"github.com/netfoundry/ziti-fabric/xgress_proxy_udp"
-	"github.com/netfoundry/ziti-fabric/xgress_transport"
-	"github.com/netfoundry/ziti-fabric/xgress_transport_udp"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress_proxy"
+	"github.com/netfoundry/ziti-fabric/router/xgress_proxy_udp"
+	"github.com/netfoundry/ziti-fabric/router/xgress_transport"
+	"github.com/netfoundry/ziti-fabric/router/xgress_transport_udp"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
+	"github.com/netfoundry/ziti-fabric/router/xlink_transport"
+	"github.com/netfoundry/ziti-fabric/router/xlink_transwarp"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/metrics"
 	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
@@ -49,11 +52,14 @@ type Router struct {
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
+	xlinkFactories  map[string]xlink.Factory
+	xlinkListeners  []xlink.Listener
+	xlinkDialers    []xlink.Dialer
 	metricsRegistry metrics.Registry
 }
 
-func (router *Router) Channel() channel2.Channel {
-	return router.ctrl
+func (self *Router) Channel() channel2.Channel {
+	return self.ctrl
 }
 
 func Create(config *Config) *Router {
@@ -66,39 +72,39 @@ func Create(config *Config) *Router {
 	}
 }
 
-func (router *Router) RegisterXctrl(x xctrl.Xctrl) error {
-	if err := router.config.Configure(x); err != nil {
+func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
+	if err := self.config.Configure(x); err != nil {
 		return err
 	}
 	if x.Enabled() {
-		router.xctrls = append(router.xctrls, x)
+		self.xctrls = append(self.xctrls, x)
 	}
 	return nil
 }
 
-func (r *Router) Start() error {
+func (self *Router) Start() error {
 	rand.Seed(info.NowInMilliseconds())
 
-	r.showOptions()
+	self.showOptions()
 
-	r.startProfiling()
+	self.startProfiling()
 
-	if err := r.registerComponents(); err != nil {
+	if err := self.registerComponents(); err != nil {
 		return err
 	}
 
-	r.instantiateListeners()
+	self.startXlinkDialers()
+	self.startXlinkListeners()
+	self.startXgressListeners()
 
-	r.startLinkListener()
-
-	if err := r.startControlPlane(); err != nil {
+	if err := self.startControlPlane(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Router) Run() error {
-	if err := r.Start(); err != nil {
+func (self *Router) Run() error {
+	if err := self.Start(); err != nil {
 		return err
 	}
 	for {
@@ -106,118 +112,139 @@ func (r *Router) Run() error {
 	}
 }
 
-func (router *Router) showOptions() {
-	if ctrl, err := json.Marshal(router.config.Ctrl.Options); err == nil {
+func (self *Router) showOptions() {
+	if ctrl, err := json.Marshal(self.config.Ctrl.Options); err == nil {
 		pfxlog.Logger().Infof("ctrl = %s", string(ctrl))
 	} else {
-		logrus.Fatalf("unable to display options (%w)", err)
-	}
-	if link, err := json.Marshal(router.config.Link.Options); err == nil {
-		pfxlog.Logger().Infof("link = %s", string(link))
-	} else {
-		logrus.Fatalf("unable to display options (%w)", err)
+		logrus.Fatalf("unable to display options (%v)", err)
 	}
 }
 
-func (router *Router) startProfiling() {
-	if router.config.Profile.Memory.Path != "" {
-		go profiler.NewMemory(router.config.Profile.Memory.Path, router.config.Profile.Memory.Interval).Run()
+func (self *Router) startProfiling() {
+	if self.config.Profile.Memory.Path != "" {
+		go profiler.NewMemory(self.config.Profile.Memory.Path, self.config.Profile.Memory.Interval).Run()
 	}
-	if router.config.Profile.CPU.Path != "" {
-		if cpu, err := profiler.NewCPU(router.config.Profile.CPU.Path); err == nil {
+	if self.config.Profile.CPU.Path != "" {
+		if cpu, err := profiler.NewCPU(self.config.Profile.CPU.Path); err == nil {
 			go cpu.Run()
 		} else {
-			pfxlog.Logger().Errorf("unexpected error launching cpu profiling (%s)", err)
+			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
 		}
 	}
-	go newRouterMonitor(router.forwarder).Monitor()
+	go newRouterMonitor(self.forwarder).Monitor()
 }
 
-func (router *Router) registerComponents() error {
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(router.config.Id, router))
-	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(router))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(router.config.Id, router))
-	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(router.config.Id, router))
+func (self *Router) registerComponents() error {
+	self.xlinkFactories = make(map[string]xlink.Factory)
+	xlinkAccepter := newXlinkAccepter(self.forwarder)
+	xlinkChAccepter := handler_link.NewChannelAccepter(self,
+		self.forwarder,
+		self.config.Forwarder,
+		self.metricsRegistry,
+	)
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter)
+	self.xlinkFactories["transwarp"] = xlink_transwarp.NewFactory(xlinkAccepter)
+
+	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
+	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
 	return nil
 }
 
-func (router *Router) instantiateListeners() {
-	for _, binding := range router.config.Listeners {
+func (self *Router) startXlinkDialers() {
+	for _, lmap := range self.config.Link.Dialers {
+		binding := lmap["binding"].(string)
+		if factory, found := self.xlinkFactories[binding]; found {
+			dialer, err := factory.CreateDialer(self.config.Id, self.forwarder, lmap)
+			if err != nil {
+				logrus.Fatalf("error creating Xlink dialer (%v)", err)
+			}
+			self.xlinkDialers = append(self.xlinkDialers, dialer)
+			logrus.Infof("started Xlink dialer with binding [%s]", binding)
+		}
+	}
+}
+
+func (self *Router) startXlinkListeners() {
+	for _, lmap := range self.config.Link.Listeners {
+		binding := lmap["binding"].(string)
+		if factory, found := self.xlinkFactories[binding]; found {
+			listener, err := factory.CreateListener(self.config.Id, self.forwarder, lmap)
+			if err != nil {
+				logrus.Fatalf("error creating Xlink listener (%v)", err)
+			}
+			if err := listener.Listen(); err != nil {
+				logrus.Fatalf("error listening on Xlink (%v)", err)
+			}
+			self.xlinkListeners = append(self.xlinkListeners, listener)
+			logrus.Infof("started Xlink listener with binding [%s] advertising [%s]", binding, listener.GetAdvertisement())
+		}
+	}
+}
+
+func (self *Router) startXgressListeners() {
+	for _, binding := range self.config.Listeners {
 		factory, err := xgress.GlobalRegistry().Factory(binding.name)
 		if err != nil {
-			logrus.Fatalf("error getting xgress factory [%s] (%s)", binding.name, err)
+			logrus.Fatalf("error getting xgress factory [%s] (%v)", binding.name, err)
 		}
 		listener, err := factory.CreateListener(binding.options)
 		if err != nil {
-			logrus.Fatalf("error creating xgress listener [%s] (%s)", binding.name, err)
+			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.name, err)
 		}
 		if address, found := binding.options["address"]; found {
 			err = listener.Listen(address.(string),
 				handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(router, router.forwarder),
-					handler_xgress.NewCloseHandler(router, router.forwarder),
-					router.forwarder,
+					handler_xgress.NewReceiveHandler(self, self.forwarder),
+					handler_xgress.NewCloseHandler(self, self.forwarder),
+					self.forwarder,
 				),
 			)
 			if err != nil {
-				logrus.Fatalf("error listening [%s] (%s)", binding.name, err)
+				logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
 			}
 			logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
 		}
 	}
 }
 
-func (router *Router) startLinkListener() {
-	if router.config.Link.Advertise != nil && router.config.Link.Listener != nil {
-		router.linkListener = channel2.NewClassicListener(router.config.Id, router.config.Link.Listener)
-		if err := router.linkListener.Listen(); err != nil {
-			panic(err)
-		}
-		linkAccepter := handler_link.NewAccepter(router.config.Id, router, router.forwarder, router.linkListener, router.config.Link.Options, router.config.Forwarder)
-		go linkAccepter.Run()
-	} else {
-		pfxlog.Logger().Warn("skipping link listener due to configuration")
-	}
-}
-
-func (router *Router) startControlPlane() error {
+func (self *Router) startControlPlane() error {
 	var attributes map[int32][]byte
-	if router.config.Link.Listener != nil && router.config.Link.Advertise != nil {
+	if len(self.xlinkListeners) == 1 {
 		attributes = make(map[int32][]byte)
-		attributes[channel2.HelloListenerHeader] = []byte(router.config.Link.Advertise.String())
+		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
-	dialer := channel2.NewReconnectingDialer(router.config.Id, router.config.Ctrl.Endpoint, attributes)
+	dialer := channel2.NewReconnectingDialer(self.config.Id, self.config.Ctrl.Endpoint, attributes)
 
 	bindHandler := handler_ctrl.NewBindHandler(
-		router.config.Id,
-		router.config.Dialers,
-		router.config.Link.Options,
-		router.config.Forwarder,
-		router,
-		router.forwarder,
-		router.xctrls,
-		router.metricsRegistry,
+		self.config.Id,
+		self.config.Dialers,
+		self.xlinkDialers,
+		self,
+		self.forwarder,
+		self.xctrls,
 	)
 
-	router.config.Ctrl.Options.BindHandlers = append(router.config.Ctrl.Options.BindHandlers, bindHandler)
+	self.config.Ctrl.Options.BindHandlers = append(self.config.Ctrl.Options.BindHandlers, bindHandler)
 
-	ch, err := channel2.NewChannel("ctrl", dialer, router.config.Ctrl.Options)
+	ch, err := channel2.NewChannel("ctrl", dialer, self.config.Ctrl.Options)
 	if err != nil {
-		return fmt.Errorf("error connecting ctrl (%s)", err)
+		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
 
-	router.ctrl = ch
+	self.ctrl = ch
 
-	router.xctrlDone = make(chan struct{})
-	for _, x := range router.xctrls {
-		if err := x.Run(router.ctrl, nil, router.xctrlDone); err != nil {
+	self.xctrlDone = make(chan struct{})
+	for _, x := range self.xctrls {
+		if err := x.Run(self.ctrl, nil, self.xctrlDone); err != nil {
 			return err
 		}
 	}
 
-	router.metricsRegistry.EventController().AddHandler(metrics.NewChannelReporter(router.ctrl))
+	self.metricsRegistry.EventController().AddHandler(metrics.NewChannelReporter(self.ctrl))
 
 	return nil
 }
