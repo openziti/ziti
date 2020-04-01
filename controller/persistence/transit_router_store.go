@@ -19,11 +19,9 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 const (
@@ -124,26 +122,7 @@ func (store *transitRouterStoreImpl) initializeLocal() {
 }
 
 func (store *transitRouterStoreImpl) initializeLinked() {
-
 	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentity)
-
-	//todo: confirm this is needed
-	store.EventEmmiter.AddListener(boltz.EventDelete, func(i ...interface{}) {
-		if len(i) != 1 {
-			return
-		}
-		transitRouter, ok := i[0].(*TransitRouter)
-		if !ok {
-			pfxlog.Logger().Warnf("unexpected type in edge fabric router event: %v", reflect.TypeOf(i[0]))
-			return
-		}
-		if err := store.stores.DbProvider.GetControllers().Routers.Delete(transitRouter.Id); err != nil {
-			pfxlog.Logger().WithError(err).WithField("id", transitRouter.Id).Error("failed to remove fabric router from cache")
-		} else {
-			pfxlog.Logger().WithField("id", transitRouter).Debug("removed fabric router from fabric cache")
-		}
-
-	})
 }
 
 func (store *transitRouterStoreImpl) CleanupExternal(ctx boltz.MutateContext, id string) error {

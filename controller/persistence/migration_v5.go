@@ -52,14 +52,4 @@ func (m *Migrations) createEnrollmentsForEdgeRouters(step *boltz.MigrationStep) 
 
 		step.SetError(m.stores.EdgeRouter.Update(step.Ctx, edgeRouter, nil))
 	}
-
-	//clientConfigTypeV1 := &ConfigType{
-	//
-	//}
-	//step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
-	//
-	//serverConfigTypeV1 := &ConfigType{
-	//
-	//}
-	//step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
 }

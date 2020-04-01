@@ -65,7 +65,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion == 4 {
 		m.createEnrollmentsForEdgeRouters(step)
-		return 4
+		return 5
 	}
 	// current version
 	if step.CurrentVersion == 5 {
