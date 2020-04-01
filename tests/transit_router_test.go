@@ -18,7 +18,9 @@
 
 package tests
 
-import "testing"
+import (
+	"testing"
+)
 
 func Test_TransitRouters(t *testing.T) {
 	ctx := NewTestContext(t)
@@ -29,5 +31,17 @@ func Test_TransitRouters(t *testing.T) {
 	t.Run("transit routers can be created and enrolled", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.createAndEnrollTransitRouter()
+	})
+
+	t.Run("create transit router, then delete", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		router := ctx.AdminSession.requireNewTransitRouter()
+		ctx.AdminSession.requireDeleteEntity(router)
+	})
+
+	t.Run("create & enroll transit router, then delete", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		router := ctx.createAndEnrollTransitRouter()
+		ctx.AdminSession.requireDeleteEntity(router)
 	})
 }

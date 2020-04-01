@@ -371,8 +371,8 @@ func (request *authenticatedRequests) requireCreateEntity(entity entity) string 
 }
 
 func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
-	httpStatus, _ := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
-	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	resp := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
+	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 }
 
 func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
@@ -500,14 +500,13 @@ func (request *authenticatedRequests) createEntity(entity entity) (int, []byte) 
 	return request.createEntityOfType(entity.getEntityType(), entity.toJson(true, request.testContext))
 }
 
-func (request *authenticatedRequests) deleteEntityOfType(entityType string, id string) (int, []byte) {
+func (request *authenticatedRequests) deleteEntityOfType(entityType string, id string) *resty.Response {
 	resp, err := request.newAuthenticatedRequest().Delete("/" + entityType + "/" + id)
 
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
 
-	//standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
-	return resp.StatusCode(), resp.Body()
+	return resp
 }
 
 func (request *authenticatedRequests) updateEntity(entity entity) (int, []byte) {
