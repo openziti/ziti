@@ -99,7 +99,7 @@ var defaultTestContext = &TestContext{
 }
 
 func NewTestContext(t *testing.T) *TestContext {
-	return &TestContext{
+	ret := &TestContext{
 		ApiHost: "127.0.0.1:1281",
 		AdminAuthenticator: &updbAuthenticator{
 			Username: uuid.New().String(),
@@ -107,6 +107,9 @@ func NewTestContext(t *testing.T) *TestContext {
 		},
 		req: require.New(t),
 	}
+	ret.testContextChanged(t)
+
+	return ret
 }
 
 func GetTestContext() *TestContext {
