@@ -17,15 +17,15 @@
 package client
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
-	"github.com/netfoundry/ziti-fabric/xgress_transport"
-	"github.com/netfoundry/ziti-foundation/identity/dotziti"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
+	"github.com/netfoundry/ziti-fabric/router/xgress_transport"
+	"github.com/netfoundry/ziti-foundation/identity/dotziti"
+	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net"
