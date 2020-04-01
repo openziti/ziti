@@ -41,8 +41,8 @@ func Test_ConfigTypes(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
 		configType.name = ""
-		httpCode, body := ctx.AdminSession.createEntity(configType)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
+		resp := ctx.AdminSession.createEntity(configType)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create config type without schema should pass", func(t *testing.T) {
@@ -74,8 +74,8 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		httpCode, body := ctx.AdminSession.createEntity(configType)
-		ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "schema")
+		resp := ctx.AdminSession.createEntity(configType)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "schema")
 	})
 
 	t.Run("create config type with schema should pass", func(t *testing.T) {

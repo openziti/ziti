@@ -60,7 +60,7 @@ func NewRestEnroller() Enroller {
 
 func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*gateway.Config, error) {
 	config := gateway.NewConfig()
-	if err := config.LoadConfigFromMap(cfgmap); err != nil {
+	if err := config.LoadConfigFromMapForEnrollment(cfgmap); err != nil {
 		return nil, err
 	}
 

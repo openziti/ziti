@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -26,16 +27,15 @@ import (
 )
 
 const (
-	FieldEdgeRouterFingerprint         = "fingerprint"
-	FieldEdgeRouterCertPEM             = "certPem"
-	FieldEdgeRouterCluster             = "cluster"
-	FieldEdgeRouterIsVerified          = "isVerified"
-	FieldEdgeRouterEnrollmentToken     = "enrollmentToken"
-	FieldEdgeRouterHostname            = "hostname"
-	FieldEdgeRouterEnrollmentJwt       = "enrollmentJwt"
-	FieldEdgeRouterEnrollmentCreatedAt = "enrollmentCreatedAt"
-	FieldEdgeRouterEnrollmentExpiresAt = "enrollmentExpiresAt"
-	FieldEdgeRouterProtocols           = "protocols"
+	FieldEdgeRouterFingerprint = "fingerprint"
+	FieldEdgeRouterCertPEM     = "certPem"
+	FieldEdgeRouterCluster     = "cluster"
+	FieldEdgeRouterIsVerified  = "isVerified"
+	FieldEdgeRouterHostname    = "hostname"
+	FieldEdgeRouterProtocols   = "protocols"
+	FieldEdgeRouterEnrollments = "enrollments"
+
+	MethodEnrollEdgeRouterOtt = "erott"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -53,13 +53,16 @@ type EdgeRouter struct {
 	IsVerified          bool
 	Fingerprint         *string
 	CertPem             *string
-	EnrollmentToken     *string
 	Hostname            *string
+	EdgeRouterProtocols map[string]string
+	RoleAttributes      []string
+	Enrollments         []string
+
+	//old v4, migrations only
+	EnrollmentToken     *string
 	EnrollmentJwt       *string
 	EnrollmentCreatedAt *time.Time
 	EnrollmentExpiresAt *time.Time
-	EdgeRouterProtocols map[string]string
-	RoleAttributes      []string
 }
 
 var edgeRouterFieldMappings = map[string]string{FieldEdgeRouterCluster: "clusterId"}
@@ -72,11 +75,9 @@ func (entity *EdgeRouter) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.ClusterId = bucket.GetString(FieldEdgeRouterCluster)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
 
-	entity.EnrollmentToken = bucket.GetString(FieldEdgeRouterEnrollmentToken)
+	//old v4, migrations only
+	entity.Enrollments = bucket.GetStringList(FieldEdgeRouterEnrollments)
 	entity.Hostname = bucket.GetString(FieldEdgeRouterHostname)
-	entity.EnrollmentJwt = bucket.GetString(FieldEdgeRouterEnrollmentJwt)
-	entity.EnrollmentCreatedAt = bucket.GetTime(FieldEdgeRouterEnrollmentCreatedAt)
-	entity.EnrollmentExpiresAt = bucket.GetTime(FieldEdgeRouterEnrollmentExpiresAt)
 	entity.EdgeRouterProtocols = toStringStringMap(bucket.GetMap(FieldEdgeRouterProtocols))
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 }
@@ -91,13 +92,10 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetStringP(FieldEdgeRouterCluster, entity.ClusterId)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
-	ctx.SetStringP(FieldEdgeRouterEnrollmentToken, entity.EnrollmentToken)
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
-	ctx.SetStringP(FieldEdgeRouterEnrollmentJwt, entity.EnrollmentJwt)
-	ctx.SetTimeP(FieldEdgeRouterEnrollmentCreatedAt, entity.EnrollmentCreatedAt)
-	ctx.SetTimeP(FieldEdgeRouterEnrollmentExpiresAt, entity.EnrollmentExpiresAt)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetLinkedIds(FieldEdgeRouterEnrollments, entity.Enrollments)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
@@ -137,6 +135,7 @@ type edgeRouterStoreImpl struct {
 
 	symbolEdgeRouterPolicies        boltz.EntitySetSymbol
 	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
+	symbolEnrollments               boltz.EntitySetSymbol
 }
 
 func (store *edgeRouterStoreImpl) NewStoreEntity() boltz.Entity {
@@ -155,9 +154,7 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 
 	store.AddSymbol(FieldEdgeRouterFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
-	store.AddSymbol(FieldEdgeRouterEnrollmentToken, ast.NodeTypeString)
-	store.AddSymbol(FieldEdgeRouterEnrollmentCreatedAt, ast.NodeTypeString)
-	store.AddSymbol(FieldEdgeRouterEnrollmentExpiresAt, ast.NodeTypeString)
+	store.symbolEnrollments = store.AddFkSetSymbol(FieldEdgeRouterEnrollments, store.stores.enrollment)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 
@@ -181,6 +178,7 @@ func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []b
 func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouters)
+	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolEdgeRouter)
 }
 
 func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -211,6 +209,11 @@ func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 		}
 		// Remove entity from EdgeRouterRoles in service edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
+			return err
+		}
+
+		// Remove outstanding enrollments
+		if err := store.stores.enrollment.DeleteWhere(ctx, fmt.Sprintf(`edgeRouter="%s"`, entity.Id)); err != nil {
 			return err
 		}
 	}

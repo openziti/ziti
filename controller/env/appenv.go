@@ -149,6 +149,7 @@ type Schemes struct {
 	EnrollUpdb              *BasicEntitySchema
 	EdgeRouter              *BasicEntitySchema
 	EdgeRouterPolicy        *BasicEntitySchema
+	TransitRouter           *BasicEntitySchema
 	Identity                *IdentityEntitySchema
 	Service                 *BasicEntitySchema
 	ServiceEdgeRouterPolicy *BasicEntitySchema

@@ -27,6 +27,8 @@ const (
 	FieldEnrollmentToken     = "token"
 	FieldEnrollmentMethod    = "method"
 	FieldEnrollIdentity      = "identity"
+	FieldEnrollEdgeRouter    = "edgeRouter"
+	FieldEnrollTransitRouter = "transitRouter"
 	FieldEnrollmentExpiresAt = "expiresAt"
 	FieldEnrollmentIssuedAt  = "issuedAt"
 	FieldEnrollmentCaId      = "caId"
@@ -41,22 +43,30 @@ const (
 
 type Enrollment struct {
 	boltz.BaseExtEntity
-	Token      string
-	Method     string
-	IdentityId string
-	ExpiresAt  *time.Time
-	IssuedAt   *time.Time
-	CaId       *string
-	Username   *string
-	Jwt        string
+	Token           string
+	Method          string
+	IdentityId      *string
+	TransitRouterId *string
+	EdgeRouterId    *string
+	ExpiresAt       *time.Time
+	IssuedAt        *time.Time
+	CaId            *string
+	Username        *string
+	Jwt             string
 }
 
-var enrollmentFieldMappings = map[string]string{FieldEnrollIdentity: "identityId"}
+var enrollmentFieldMappings = map[string]string{
+	FieldEnrollIdentity:      "identityId",
+	FieldEnrollEdgeRouter:    "edgeRouterId",
+	FieldEnrollTransitRouter: "transitRouterId",
+}
 
 func (entity *Enrollment) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
 	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
-	entity.IdentityId = bucket.GetStringOrError(FieldEnrollIdentity)
+	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
+	entity.EdgeRouterId = bucket.GetString(FieldEnrollEdgeRouter)
+	entity.TransitRouterId = bucket.GetString(FieldEnrollTransitRouter)
 	entity.ExpiresAt = bucket.GetTime(FieldEnrollmentExpiresAt)
 	entity.IssuedAt = bucket.GetTime(FieldEnrollmentIssuedAt)
 	entity.CaId = bucket.GetString(FieldEnrollmentCaId)
@@ -70,7 +80,9 @@ func (entity *Enrollment) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldEnrollmentToken, entity.Token)
 	ctx.SetString(FieldEnrollmentMethod, entity.Method)
 	ctx.SetTimeP(FieldEnrollmentExpiresAt, entity.ExpiresAt)
-	ctx.SetString(FieldEnrollIdentity, entity.IdentityId)
+	ctx.SetStringP(FieldEnrollIdentity, entity.IdentityId)
+	ctx.SetStringP(FieldEnrollEdgeRouter, entity.EdgeRouterId)
+	ctx.SetStringP(FieldEnrollTransitRouter, entity.TransitRouterId)
 	ctx.SetStringP(FieldEnrollmentCaId, entity.CaId)
 	ctx.SetStringP(FieldEnrollmentUsername, entity.Username)
 	ctx.SetTimeP(FieldEnrollmentIssuedAt, entity.IssuedAt)
@@ -99,8 +111,10 @@ func newEnrollmentStore(stores *stores) *enrollmentStoreImpl {
 
 type enrollmentStoreImpl struct {
 	*baseStore
-	tokenIndex       boltz.ReadIndex
-	symbolIdentityId boltz.EntitySymbol
+	tokenIndex          boltz.ReadIndex
+	symbolIdentity      boltz.EntitySymbol
+	symbolEdgeRouter    boltz.EntitySymbol
+	symbolTransitRouter boltz.EntitySymbol
 }
 
 func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
@@ -109,14 +123,18 @@ func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
 
 func (store *enrollmentStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
+
 	symbolToken := store.AddSymbol(FieldEnrollmentToken, ast.NodeTypeString)
 	store.tokenIndex = store.AddUniqueIndex(symbolToken)
-
-	store.symbolIdentityId = store.AddFkSymbol(FieldEnrollIdentity, store.stores.identity)
+	store.symbolIdentity = store.AddFkSymbol(FieldEnrollIdentity, store.stores.identity)
+	store.symbolEdgeRouter = store.AddFkSymbol(FieldEnrollEdgeRouter, store.stores.edgeRouter)
+	store.symbolTransitRouter = store.AddFkSymbol(FieldEnrollTransitRouter, store.stores.transitRouter)
 }
 
 func (store *enrollmentStoreImpl) initializeLinked() {
-	store.AddFkIndex(store.symbolIdentityId, store.stores.identity.symbolEnrollments)
+	store.AddNullableFkIndex(store.symbolIdentity, store.stores.identity.symbolEnrollments)
+	store.AddNullableFkIndex(store.symbolEdgeRouter, store.stores.edgeRouter.symbolEnrollments)
+	store.AddNullableFkIndex(store.symbolTransitRouter, store.stores.transitRouter.symbolEnrollments)
 }
 
 func (store *enrollmentStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error) {

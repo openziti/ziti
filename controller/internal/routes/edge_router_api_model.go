@@ -150,15 +150,38 @@ func MapEdgeRouterToApiList(ae *env.AppEnv, i *model.EdgeRouter) (*EdgeRouterApi
 		BaseApi:             env.FromBaseModelEntity(i),
 		Name:                &i.Name,
 		RoleAttributes:      i.RoleAttributes,
-		EnrollmentToken:     i.EnrollmentToken,
-		EnrollmentCreatedAt: i.EnrollmentCreatedAt,
-		EnrollmentExpiresAt: i.EnrollmentExpiresAt,
+		EnrollmentToken:     nil,
+		EnrollmentCreatedAt: nil,
+		EnrollmentExpiresAt: nil,
+		EnrollmentJwt:       nil,
 		IsOnline:            &isOnline,
 		IsVerified:          &i.IsVerified,
 		Fingerprint:         i.Fingerprint,
-		EnrollmentJwt:       i.EnrollmentJwt,
 		Hostname:            &hostname,
 		SupportedProtocols:  protocols,
+	}
+
+	if !i.IsVerified {
+		var enrollments []*model.Enrollment
+
+		err := ae.GetHandlers().EdgeRouter.CollectEnrollments(i.Id, func(entity *model.Enrollment) error {
+			enrollments = append(enrollments, entity)
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(enrollments) != 1 {
+			return nil, fmt.Errorf("expected enrollment not found for unverified edge router %s", i.Id)
+		}
+		enrollment := enrollments[0]
+
+		ret.EnrollmentExpiresAt = enrollment.ExpiresAt
+		ret.EnrollmentCreatedAt = &enrollment.CreatedAt
+		ret.EnrollmentJwt = &enrollment.Jwt
+		ret.EnrollmentToken = &enrollment.Token
 	}
 
 	ret.PopulateLinks()

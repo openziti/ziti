@@ -54,11 +54,11 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 		return nil, err
 	}
 
-	if enrollment == nil {
+	if enrollment == nil || enrollment.IdentityId == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	identity, err := module.env.GetHandlers().Identity.Read(enrollment.IdentityId)
+	identity, err := module.env.GetHandlers().Identity.Read(*enrollment.IdentityId)
 
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 			Id: uuid.New().String(),
 		},
 		Method:     persistence.MethodAuthenticatorUpdb,
-		IdentityId: enrollment.IdentityId,
+		IdentityId: *enrollment.IdentityId,
 		SubType: &AuthenticatorUpdb{
 			Username: *enrollment.Username,
 			Password: encodedPassword,
