@@ -1,6 +1,6 @@
 module github.com/netfoundry/ziti-cmd
 
-go 1.13
+go 1.14
 
 // replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
 
