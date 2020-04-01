@@ -159,7 +159,7 @@ func (network *Network) RouterChanged(r *Router) {
 }
 
 func (network *Network) ConnectedRouter(id string) bool {
-	return network.Routers.isConnected(id)
+	return network.Routers.IsConnected(id)
 }
 
 func (network *Network) ConnectRouter(r *Router) {
