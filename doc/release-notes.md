@@ -10,6 +10,7 @@ Ziti 0.13 includes the following:
       * New `identityRole` attributes added to CA entities
   * New APIs to list and manage Transit Routers
   * Transit Routers now support enrolment via `ziti-router enroll`
+  * Embedded Swagger/OpenAPI 2.0 endpoint
   * A small set of APIs accepted id or name. These have been changed to accept only id
       
 ## Making Policies More User Friendly 
@@ -171,6 +172,64 @@ Edge SDK connections.
          * enrollmentCreatedAt - Type date-time - the date and time the enrollment was created (nil post enrollment)
          * enrollmentExpiresAt - Type date-time - the date and time the enrollment expires at (matches JWT expiration time, nil post enrollment)
 
+Example list output:
+```json
+{
+    "meta": {
+        "filterableFields": [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "name"
+        ],
+        "pagination": {
+            "limit": 10,
+            "offset": 0,
+            "totalCount": 2
+        }
+    },
+    "data": [
+        {
+            "id": "002",
+            "createdAt": "2020-03-30T00:55:38.1701084Z",
+            "updatedAt": "2020-03-30T00:55:38.1701084Z",
+            "_links": {
+                "self": {
+                    "href": "./transit-routers/002"
+                }
+            },
+            "tags": {},
+            "name": "",
+            "fingerprint": "07e011481921b4734df82c52ae2b3113617cdd18",
+            "isVerified": true,
+            "isOnline": false,
+            "enrollmentToken": null,
+            "enrollmentJwt": null,
+            "enrollmentCreatedAt": null,
+            "enrollmentExpiresAt": null
+        },
+        {
+            "id": "99f4109b-cd6d-40e3-9a62-bee24d7eccd6",
+            "createdAt": "2020-03-30T17:48:17.2949059Z",
+            "updatedAt": "2020-03-30T17:48:17.2949059Z",
+            "_links": {
+                "self": {
+                    "href": "./transit-routers/99f4109b-cd6d-40e3-9a62-bee24d7eccd6"
+                }
+            },
+            "tags": {},
+            "name": "",
+            "fingerprint": "25d1048f3c7bc4a5956ce7316e2ca70999c0e27d",
+            "isVerified": true,
+            "isOnline": false,
+            "enrollmentToken": null,
+            "enrollmentJwt": null,
+            "enrollmentCreatedAt": null,
+            "enrollmentExpiresAt": null
+        }
+    ]
+}
+```
 ## Transit Routers now support enrolment via `ziti-router enroll`
 
 Transit Routers now enroll using the same command: `ziti-router enroll <config> -j <jwt>`. During the enrollment process, 
@@ -218,6 +277,23 @@ listeners:
   - binding: transport
     address: tls:0.0.0.0:7099
 ```
+
+## Embedded Swagger/OpenAPI 2.0 endpoint
+
+The endpoint`/specs` has been added to retrieve API specifications from the Ziti Controller. The specifications
+are specific to the version of the controller deployed.
+
+The main endpoint to retrieve the Swagger/Open API 2.0 specification is: `/specs/swagger/spec`
+
+    * Endpoint: /specs
+    * Supported operations
+        * Detail: GET /specs/<spec-id>
+        * Get Spec: GET /specs/<spec-id>/spec
+        * List: GET /specs/
+     * Properties
+         * Transit Routers support the standard properties (id, createdAt, updatedAt, tags)
+         * name - Type string - the and intent of the spec
+
 
 ## APIs now only accept ID, not ID or Name
   1. Some APIs related to configurations accepted config names or ids. These now only accept name.
