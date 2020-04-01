@@ -1,4 +1,4 @@
-v: 2
+v: 3
 
 # (required) The certificates, ca chains, and private key used to represent this routers identity
 #
