@@ -173,6 +173,8 @@ github.com/netfoundry/secretstream v0.1.1 h1:z6T7B5DuOtr9O+SmKaS9DzwOoGLYtgvyTzu
 github.com/netfoundry/secretstream v0.1.1/go.mod h1:uasYkYSp0MmNSlKOWJ2sVzxPms8e58TS4ENq4yro86k=
 github.com/netfoundry/ziti-fabric v0.11.9 h1:YdZa1aLTaBhnRpjbFqV8LJVjYlfx3ILtLDwq4LbPXWE=
 github.com/netfoundry/ziti-fabric v0.11.9/go.mod h1:ctlElPPZpInmBg1HCKklBMRT+/O2Ia1z3S7+jk/rBNo=
+github.com/netfoundry/ziti-fabric v0.11.10 h1:LLzsAAjUSBU3WAa+4RgSR52s34XI1ol+UF5sOIU7LzU=
+github.com/netfoundry/ziti-fabric v0.11.10/go.mod h1:Zb4n8ZwksX60BfBATVTY7XtN+8zsALBaVyNn1VBeYCY=
 github.com/netfoundry/ziti-foundation v0.9.4 h1:0IsdbPTKJLbGNgq5gWFFwj/FYq+n9pnee69RGfXKli0=
 github.com/netfoundry/ziti-foundation v0.9.4/go.mod h1:GN+ALX+7zr1e4vcI2j6VRbaDVcF0wnuih0p9vj22Of0=
 github.com/netfoundry/ziti-foundation v0.9.5 h1:sNZmLwIE6YDYV1oeZy8L4pIzmE0YrvFor0tN6EdGh/U=
