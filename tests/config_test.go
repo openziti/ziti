@@ -42,30 +42,30 @@ func Test_Configs(t *testing.T) {
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
 		config.name = ""
-		httpCode, body := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
+		resp := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create without data should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.newConfig(configType.id, nil)
-		httpCode, body := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "data")
+		resp := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "data")
 	})
 
 	t.Run("create without type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		config := ctx.newConfig("", map[string]interface{}{"port": 22})
-		httpCode, body := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "type")
+		resp := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create with invalid config type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		config := ctx.newConfig(uuid.New().String(), map[string]interface{}{"port": 22})
-		httpCode, body := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "type")
+		resp := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "type")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
@@ -248,8 +248,8 @@ func Test_Configs(t *testing.T) {
 		configType.id = ctx.AdminSession.requireCreateEntity(configType)
 
 		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
-		httpCode, body := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "(root)")
+		resp := ctx.AdminSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "(root)")
 
 		now := time.Now()
 		config = ctx.newConfig(configType.id, map[string]interface{}{

@@ -104,9 +104,9 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 		}
 
 		for _, enrollmentModel := range enrollmentsModels {
-			enrollmentModel.IdentityId = identityModel.Id
+			enrollmentModel.IdentityId = &identityModel.Id
 
-			err := enrollmentModel.FillJwtInfo(handler.env)
+			err := enrollmentModel.FillJwtInfo(handler.env, identityModel.Id)
 
 			if err != nil {
 				return err

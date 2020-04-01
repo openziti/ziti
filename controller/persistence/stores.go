@@ -51,6 +51,7 @@ type Stores struct {
 	Session                 SessionStore
 	ServiceEdgeRouterPolicy ServiceEdgeRouterPolicyStore
 	ServicePolicy           ServicePolicyStore
+	TransitRouter           TransitRouterStore
 	Enrollment              EnrollmentStore
 	Authenticator           AuthenticatorStore
 
@@ -108,6 +109,7 @@ type stores struct {
 	serviceEdgeRouterPolicy *serviceEdgeRouterPolicyStoreImpl
 	servicePolicy           *servicePolicyStoreImpl
 	session                 *sessionStoreImpl
+	transitRouter           *transitRouterStoreImpl
 	enrollment              *enrollmentStoreImpl
 	authenticator           *authenticatorStoreImpl
 }
@@ -134,6 +136,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores)
 	internalStores.eventLog = newEventLogStore(internalStores)
+	internalStores.transitRouter = newTransitRouterStore(internalStores)
 	internalStores.geoRegion = newGeoRegionStore(internalStores)
 	internalStores.identity = newIdentityStore(internalStores)
 	internalStores.identityType = newIdentityTypeStore(internalStores)
@@ -159,6 +162,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		EdgeRouterPolicy:        internalStores.edgeRouterPolicy,
 		EdgeService:             internalStores.edgeService,
 		EventLog:                internalStores.eventLog,
+		TransitRouter:           internalStores.transitRouter,
 		GeoRegion:               internalStores.geoRegion,
 		Identity:                internalStores.identity,
 		IdentityType:            internalStores.identityType,

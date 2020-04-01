@@ -239,9 +239,9 @@ func (request *authenticatedRequests) requireCreateIdentity(name string, isAdmin
 	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
 
 	entityJson := entityData.String()
-	httpCode, body := request.createEntityOfType("identities", entityJson)
-	request.testContext.req.Equal(http.StatusCreated, httpCode)
-	id := request.testContext.getEntityId(body)
+	resp := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, resp.StatusCode())
+	id := request.testContext.getEntityId(resp.Body())
 	return id
 }
 
@@ -263,9 +263,9 @@ func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(na
 	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
 
 	entityJson := entityData.String()
-	httpCode, body := request.createEntityOfType("identities", entityJson)
-	request.testContext.req.Equal(http.StatusCreated, httpCode)
-	id := request.testContext.getEntityId(body)
+	resp := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, resp.StatusCode())
+	id := request.testContext.getEntityId(resp.Body())
 	request.testContext.completeUpdbEnrollment(id, password)
 	return id, userAuth
 }
@@ -283,9 +283,9 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name st
 	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
 
 	entityJson := entityData.String()
-	httpCode, body := request.createEntityOfType("identities", entityJson)
-	request.testContext.req.Equal(http.StatusCreated, httpCode)
-	id := request.testContext.getEntityId(body)
+	resp := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, resp.StatusCode())
+	id := request.testContext.getEntityId(resp.Body())
 	return id, request.testContext.completeOttEnrollment(id)
 }
 
@@ -305,6 +305,12 @@ func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...str
 	edgeRouter := newTestEdgeRouter(roleAttributes...)
 	request.requireCreateEntity(edgeRouter)
 	return edgeRouter
+}
+
+func (request *authenticatedRequests) requireNewTransitRouter() *transitRouter {
+	transitRouter := newTestTransitRouter()
+	request.requireCreateEntity(transitRouter)
+	return transitRouter
 }
 
 func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
@@ -357,21 +363,21 @@ func (request *authenticatedRequests) requireNewIdentityWithOtt(isAdmin bool, ro
 }
 
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
-	httpStatus, body := request.createEntity(entity)
-	request.testContext.req.Equal(http.StatusCreated, httpStatus)
-	id := request.testContext.getEntityId(body)
+	resp := request.createEntity(entity)
+	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+	id := request.testContext.getEntityId(resp.Body())
 	entity.setId(id)
 	return id
 }
 
 func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
-	httpStatus, _ := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
-	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	resp := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
+	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 }
 
 func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
-	httpStatus, _ := request.updateEntity(entity)
-	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	resp := request.updateEntity(entity)
+	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 }
 
 func (request *authenticatedRequests) requireList(url string) []string {
@@ -409,14 +415,14 @@ func (request *authenticatedRequests) requireRemoveAssociation(url string, ids .
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (request *authenticatedRequests) createEntityOfType(entityType string, body string) (int, []byte) {
+func (request *authenticatedRequests) createEntityOfType(entityType string, body string) *resty.Response {
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(body).
 		Post("/" + entityType)
 
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
+	return resp
 }
 
 type serviceConfig struct {
@@ -490,24 +496,24 @@ func (request *authenticatedRequests) updateIdentityServiceConfigs(method string
 	return resp.StatusCode(), resp.Body()
 }
 
-func (request *authenticatedRequests) createEntity(entity entity) (int, []byte) {
+func (request *authenticatedRequests) createEntity(entity entity) *resty.Response {
 	return request.createEntityOfType(entity.getEntityType(), entity.toJson(true, request.testContext))
 }
 
-func (request *authenticatedRequests) deleteEntityOfType(entityType string, id string) (int, []byte) {
+func (request *authenticatedRequests) deleteEntityOfType(entityType string, id string) *resty.Response {
 	resp, err := request.newAuthenticatedRequest().Delete("/" + entityType + "/" + id)
 
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
 
-	return resp.StatusCode(), resp.Body()
+	return resp
 }
 
-func (request *authenticatedRequests) updateEntity(entity entity) (int, []byte) {
+func (request *authenticatedRequests) updateEntity(entity entity) *resty.Response {
 	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext), false)
 }
 
-func (request *authenticatedRequests) updateEntityOfType(id string, entityType string, body string, patch bool) (int, []byte) {
+func (request *authenticatedRequests) updateEntityOfType(id string, entityType string, body string, patch bool) *resty.Response {
 	if request.testContext.enabledJsonLogging {
 		fmt.Printf("update body:\n%v\n", body)
 	}
@@ -528,7 +534,7 @@ func (request *authenticatedRequests) updateEntityOfType(id string, entityType s
 
 	request.testContext.req.NoError(err)
 	request.testContext.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
+	return resp
 }
 
 func (request *authenticatedRequests) query(url string) (int, []byte) {
@@ -660,16 +666,22 @@ func (request *authenticatedRequests) requireCreateNewConfigType() *configType {
 }
 
 func (request *authenticatedRequests) requirePatchEntity(entity entity, fields ...string) {
-	httpStatus, _ := request.patchEntity(entity, fields...)
-	request.testContext.req.Equal(http.StatusOK, httpStatus)
+	resp := request.patchEntity(entity, fields...)
+	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
 }
 
-func (request *authenticatedRequests) patchEntity(entity entity, fields ...string) (int, []byte) {
+func (request *authenticatedRequests) patchEntity(entity entity, fields ...string) *resty.Response {
 	return request.updateEntityOfType(entity.getId(), entity.getEntityType(), entity.toJson(false, request.testContext, fields...), true)
 }
 
 func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
 	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
+	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
+	return data.Data().(string)
+}
+
+func (request *authenticatedRequests) getTransitRouterJwt(transitRouterId string) string {
+	jsonBody := request.requireQuery("transit-routers/" + transitRouterId)
 	data := request.testContext.requirePath(jsonBody, "data", "enrollmentJwt")
 	return data.Data().(string)
 }

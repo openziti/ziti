@@ -179,7 +179,7 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 
 func (store *identityStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolAuthenticators, store.stores.authenticator.symbolIdentityId)
-	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentityId)
+	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentity)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
 }

@@ -26,6 +26,7 @@ const (
 	EntityTypeConfigs                   = "configs"
 	EntityTypeConfigTypes               = "configTypes"
 	EntityTypeEdgeRouters               = "edgeRouters"
+	EntityTypeTransitRouters            = "transitRouters"
 	EntityTypeEdgeRouterPolicies        = "edgeRouterPolicies"
 	EntityTypeEventLogs                 = "eventLogs"
 	EntityTypeGeoRegions                = "geoRegions"

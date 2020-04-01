@@ -17,17 +17,12 @@
 package model
 
 import (
-	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
-	"time"
 )
 
 type EdgeRouter struct {
@@ -37,57 +32,19 @@ type EdgeRouter struct {
 	IsVerified          bool
 	Fingerprint         *string
 	CertPem             *string
-	EnrollmentToken     *string
 	Hostname            *string
-	EnrollmentJwt       *string
-	EnrollmentCreatedAt *time.Time
-	EnrollmentExpiresAt *time.Time
 	EdgeRouterProtocols map[string]string
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
-	et := uuid.New().String()
 
 	boltEntity := &persistence.EdgeRouter{
-		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:            entity.Name,
-		RoleAttributes:  entity.RoleAttributes,
-		Fingerprint:     nil,
-		IsVerified:      false,
-		EnrollmentToken: &et,
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:           entity.Name,
+		RoleAttributes: entity.RoleAttributes,
+		Fingerprint:    nil,
+		IsVerified:     false,
 	}
-	env := handler.GetEnv()
-
-	now := time.Now()
-	exp := now.Add(env.GetConfig().Enrollment.EdgeRouter.DurationMinutes)
-
-	boltEntity.EnrollmentCreatedAt = &now
-	boltEntity.EnrollmentExpiresAt = &exp
-
-	enrollmentMethod := "erott"
-
-	claims := &config.EnrollmentClaims{
-		EnrollmentMethod: enrollmentMethod,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: exp.Unix(),
-			Id:        *boltEntity.EnrollmentToken,
-			Issuer:    fmt.Sprintf(`https://%s`, env.GetConfig().Api.Advertise),
-			Subject:   boltEntity.Id,
-		},
-	}
-	mapClaims, err := claims.ToMapClaims()
-
-	if err != nil {
-		return nil, fmt.Errorf("could not convert edge router enrollment claims to interface map: %s", err)
-	}
-
-	jwtJson, err := env.GetEnrollmentJwtGenerator().Generate(boltEntity.Id, boltEntity.Id, mapClaims)
-
-	if err != nil {
-		return nil, err
-	}
-
-	boltEntity.EnrollmentJwt = &jwtJson
 
 	return boltEntity, nil
 }
@@ -100,11 +57,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 		IsVerified:          entity.IsVerified,
 		Fingerprint:         entity.Fingerprint,
 		CertPem:             entity.CertPem,
-		EnrollmentToken:     entity.EnrollmentToken,
 		Hostname:            entity.Hostname,
-		EnrollmentJwt:       entity.EnrollmentJwt,
-		EnrollmentCreatedAt: entity.EnrollmentCreatedAt,
-		EnrollmentExpiresAt: entity.EnrollmentExpiresAt,
 		EdgeRouterProtocols: entity.EdgeRouterProtocols,
 	}, nil
 }
@@ -125,11 +78,7 @@ func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	entity.IsVerified = boltEdgeRouter.IsVerified
 	entity.Fingerprint = boltEdgeRouter.Fingerprint
 	entity.CertPem = boltEdgeRouter.CertPem
-	entity.EnrollmentToken = boltEdgeRouter.EnrollmentToken
 	entity.Hostname = boltEdgeRouter.Hostname
-	entity.EnrollmentJwt = boltEdgeRouter.EnrollmentJwt
-	entity.EnrollmentCreatedAt = boltEdgeRouter.EnrollmentCreatedAt
-	entity.EnrollmentExpiresAt = boltEdgeRouter.EnrollmentExpiresAt
 	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 
 	return nil

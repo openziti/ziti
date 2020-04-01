@@ -33,17 +33,19 @@ import (
 
 type Enrollment struct {
 	models.BaseEntity
-	Method     string
-	IdentityId string
-	Token      string
-	IssuedAt   *time.Time
-	ExpiresAt  *time.Time
-	Jwt        string
-	CaId       *string
-	Username   *string
+	Method          string
+	IdentityId      *string
+	TransitRouterId *string
+	EdgeRouterId    *string
+	Token           string
+	IssuedAt        *time.Time
+	ExpiresAt       *time.Time
+	Jwt             string
+	CaId            *string
+	Username        *string
 }
 
-func (entity *Enrollment) FillJwtInfo(env Env) error {
+func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 	now := time.Now()
 	expiresAt := now.Add(env.GetConfig().Enrollment.EdgeIdentity.DurationMinutes)
 	entity.IssuedAt = &now
@@ -61,7 +63,7 @@ func (entity *Enrollment) FillJwtInfo(env Env) error {
 			Id:        entity.Token,
 			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Advertise),
 			NotBefore: 0,
-			Subject:   entity.IdentityId,
+			Subject:   subject,
 		},
 	}
 
@@ -71,7 +73,7 @@ func (entity *Enrollment) FillJwtInfo(env Env) error {
 		return err
 	}
 
-	signedJwt, err := env.GetEnrollmentJwtGenerator().Generate(entity.IdentityId, entity.Id, mapClaims)
+	signedJwt, err := env.GetEnrollmentJwtGenerator().Generate(subject, entity.Id, mapClaims)
 
 	if err != nil {
 		return err
@@ -90,6 +92,8 @@ func (entity *Enrollment) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	entity.FillCommon(boltEnrollment)
 	entity.Method = boltEnrollment.Method
 	entity.IdentityId = boltEnrollment.IdentityId
+	entity.TransitRouterId = boltEnrollment.TransitRouterId
+	entity.EdgeRouterId = boltEnrollment.EdgeRouterId
 	entity.CaId = boltEnrollment.CaId
 	entity.Username = boltEnrollment.Username
 	entity.Token = boltEnrollment.Token
@@ -120,15 +124,17 @@ func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 	}
 
 	boltEntity := &persistence.Enrollment{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Method:        entity.Method,
-		IdentityId:    entity.IdentityId,
-		Token:         entity.Token,
-		IssuedAt:      entity.IssuedAt,
-		ExpiresAt:     entity.ExpiresAt,
-		Jwt:           entity.Jwt,
-		CaId:          entity.CaId,
-		Username:      entity.Username,
+		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Method:          entity.Method,
+		IdentityId:      entity.IdentityId,
+		EdgeRouterId:    entity.EdgeRouterId,
+		TransitRouterId: entity.TransitRouterId,
+		Token:           entity.Token,
+		IssuedAt:        entity.IssuedAt,
+		ExpiresAt:       entity.ExpiresAt,
+		Jwt:             entity.Jwt,
+		CaId:            entity.CaId,
+		Username:        entity.Username,
 	}
 
 	return boltEntity, nil

@@ -44,8 +44,8 @@ func Test_Services(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.newService(nil, nil)
 		service.name = ""
-		httpCode, body := ctx.AdminSession.createEntity(service)
-		ctx.requireFieldError(httpCode, body, apierror.CouldNotValidateCode, "name")
+		resp := ctx.AdminSession.createEntity(service)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
@@ -353,8 +353,8 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 	})
 
 	service := ctx.newService(nil, s(config1.id, config2.id))
-	httpCode, body := ctx.AdminSession.createEntity(service)
-	ctx.requireFieldError(httpCode, body, apierror.InvalidFieldCode, "configs")
+	resp := ctx.AdminSession.createEntity(service)
+	ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "configs")
 }
 
 func Test_ServiceRoleAttributes(t *testing.T) {

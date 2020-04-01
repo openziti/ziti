@@ -17,7 +17,6 @@
 package model
 
 import (
-	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -57,21 +56,10 @@ func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (st
 	}
 
 	if enrollment == nil {
-		edgeRouter, err := handler.env.GetHandlers().EdgeRouter.ReadOneByQuery(fmt.Sprintf("enrollmentToken = \"%v\"", ctx.GetToken()))
-
-		if err != nil {
-			return "", err
-		}
-
-		if edgeRouter != nil {
-			method = MethodEnrollErOtt
-		} else {
-			return "", apierror.NewInvalidEnrollmentToken()
-		}
-
-	} else {
-		method = enrollment.Method
+		return "", apierror.NewInvalidEnrollmentToken()
 	}
+
+	method = enrollment.Method
 
 	return method, nil
 }
@@ -141,4 +129,12 @@ func (handler *EnrollmentHandler) readInTx(tx *bbolt.Tx, id string) (*Enrollment
 
 func (handler *EnrollmentHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
+}
+
+func (handler *EnrollmentHandler) Read(id string) (*Enrollment, error) {
+	entity := &Enrollment{}
+	if err := handler.readEntity(id, entity); err != nil {
+		return nil, err
+	}
+	return entity, nil
 }

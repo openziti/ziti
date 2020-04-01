@@ -1,0 +1,62 @@
+v: 2
+
+# (required) The certificates, ca chains, and private key used to represent this routers identity
+#
+# If the 'edge" section is enabled and enrollment is run, the files in this section will be written to with the results.
+# The "key" value can be provided through any of the support private key engines (file, etc.).
+#
+# If the 'key' value is a file and that file exists; it is expected to a pre-generated private key. It will be used for
+# the  enrollment process and it will back the certificates generated during enrollment. If the file does not exist, it
+# will be generated.
+#
+# The 'cert', 'server_cert', and 'ca' files will be overwritten with the results of the enrollment process.
+#
+# When running the ziti-router the files/values in this section will be read and used. The 'cert' value will be used
+# as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
+# 'ca' value is used to populate an internally Trusted CA pool.
+identity:
+  cert:                 testdata/transit-router/transit-router-client.cert.pem
+  server_cert:          testdata/transit-router/transit-router-server.cert.pem
+  key:                  testdata/transit-router/transit-router.key.pem
+  ca:                   testdata/transit-router/transit-router-ca-chain.cert.pem
+
+#trace:
+# path:                 001.trace
+
+#profile:
+#  memory:
+#    path:               001.memprof
+#  cpu:
+#    path:               001.cpuprof
+
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+
+
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - "localhost"
+      - "test-network"
+      - "test-network.localhost"
+      - "ziti-dev-ingress01"
+    email:
+      - "admin@example.com"
+    ip:
+      - "127.0.0.1"
+    uri:
+      - "ziti://ziti-dev-gateway01/made/up/example"
+
+dialers:
+  - binding: udp
+  - binding: transport
+
+listeners:
+  - binding: transport
+    address: tls:0.0.0.0:7099
+

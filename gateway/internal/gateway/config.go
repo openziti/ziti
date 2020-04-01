@@ -53,6 +53,32 @@ func NewConfig() *Config {
 	return &Config{}
 }
 
+func (config *Config) LoadConfigFromMapForEnrollment(configMap map[interface{}]interface{}) error {
+	//enrollment config loading is more lax on where the CSR section lives (i.e. under edge: or at the root level)
+
+	if val, ok := configMap["edge"]; ok && val != nil {
+		var edgeConfigMap map[interface{}]interface{} = nil
+		config.Enabled = true
+		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {
+			return fmt.Errorf("expected map as edge configuration")
+		}
+
+		if err := config.loadCsr(edgeConfigMap, "edge"); err != nil {
+			return err
+		}
+	} else if val, ok := configMap["csr"]; ok && val != nil {
+		if err := config.loadCsr(configMap, ""); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("expected enrollment CSR section")
+	}
+
+	config.loadIdentity(configMap)
+
+	return nil
+}
+
 func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
 	var err error
 	config.Enabled = false
@@ -72,7 +98,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		return err
 	}
 
-	if err = config.loadCsr(edgeConfigMap); err != nil {
+	if err = config.loadCsr(edgeConfigMap, "edge"); err != nil {
 		return err
 	}
 
@@ -186,22 +212,26 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 	return nil
 }
 
-func (config *Config) loadCsr(edgeConfigMap map[interface{}]interface{}) error {
+func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix string) error {
 	config.Csr = Csr{}
 
-	if value, found := edgeConfigMap["csr"]; found {
+	if pathPrefix != "" {
+		pathPrefix = pathPrefix + "."
+	}
+
+	if value, found := configMap["csr"]; found {
 		submap := value.(map[interface{}]interface{})
 
 		if submap == nil {
-			return errors.New("required section [edge.csr] is not a map")
+			return fmt.Errorf("required section [%scsr] is not a map", pathPrefix)
 		}
 
 		if err := mapstructure.Decode(submap, &config.Csr); err != nil {
-			return fmt.Errorf("failed to load [edge.csr]: %s", err)
+			return fmt.Errorf("failed to load [%scsr]: %s", pathPrefix, err)
 		}
 
 	} else {
-		return errors.New("required section [edge.csr] not found")
+		return fmt.Errorf("required section [%scsr] not found", pathPrefix)
 	}
 
 	for _, uristr := range config.Csr.Sans.UriAddresses {

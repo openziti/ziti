@@ -22,59 +22,54 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/internal/cert"
-	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/xeipuuv/gojsonschema"
-	"strings"
 	"time"
 )
 
 const (
-	EdgeRouterEnrollmentCommonNameInvalidCode    = "EDGE_ROUTER_ENROLL_COMMON_NAME_INVALID"
-	EdgeRouterEnrollmentCommonNameInvalidMessage = "The edge router CSR enrollment must have a common name that matches the edge router's id"
-	MethodEnrollEdgeRouterOtt                    = "erott"
+	MethodEnrollTransitRouterOtt = "trott"
 )
 
-type EnrollModuleEr struct {
+type EnrollModuleRouterOtt struct {
 	env                  Env
 	method               string
 	fingerprintGenerator cert.FingerprintGenerator
 }
 
-func NewEnrollModuleEdgeRouterOtt(env Env) *EnrollModuleEr {
-	handler := &EnrollModuleEr{
+func NewEnrollModuleTransitRouterOtt(env Env) *EnrollModuleRouterOtt {
+	handler := &EnrollModuleRouterOtt{
 		env:                  env,
-		method:               MethodEnrollEdgeRouterOtt,
+		method:               MethodEnrollTransitRouterOtt,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
 
 	return handler
 }
 
-func (module *EnrollModuleEr) CanHandle(method string) bool {
+func (module *EnrollModuleRouterOtt) CanHandle(method string) bool {
 	return method == module.method
 }
 
-func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentResult, error) {
+func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*EnrollmentResult, error) {
 	enrollment, err := module.env.GetHandlers().Enrollment.ReadByToken(context.GetToken())
 
 	if err != nil {
 		return nil, err
 	}
 
-	if enrollment == nil || enrollment.EdgeRouterId == nil {
+	if enrollment == nil || enrollment.TransitRouterId == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	edgeRouter, err := module.env.GetHandlers().EdgeRouter.Read(*enrollment.EdgeRouterId)
+	txRouter, err := module.env.GetHandlers().TransitRouter.Read(*enrollment.TransitRouterId)
 
-	if edgeRouter == nil {
+	if txRouter == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
 	if time.Now().After(*enrollment.ExpiresAt) {
 		return nil, apierror.NewEnrollmentExpired()
 	}
-
 	enrollData := context.GetDataAsMap()
 	result, err := module.env.GetSchemas().GetEnrollErPost().Validate(gojsonschema.NewGoLoader(enrollData))
 
@@ -140,17 +135,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		URIs:           cr.URIs,
 	}
 
-	if cr.Subject.CommonName != edgeRouter.Id {
-
-		return nil, &apierror.ApiError{
-			Code:        EdgeRouterEnrollmentCommonNameInvalidCode,
-			Message:     EdgeRouterEnrollmentCommonNameInvalidMessage,
-			Status:      400,
-			Cause:       nil,
-			AppendCause: false,
-		}
-
-	}
+	cr.Subject.CommonName = txRouter.Id
 
 	cltCert, err := module.env.GetControlClientCsrSigner().Sign([]byte(enrollData["certCsr"].(string)), so)
 
@@ -166,18 +151,15 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	cltFp := module.fingerprintGenerator.FromPem(cltPem)
 
-	edgeRouter.IsVerified = true
-	edgeRouter.Fingerprint = &cltFp
-	if err := module.env.GetHandlers().EdgeRouter.Update(edgeRouter, false); err != nil {
+	txRouter.IsVerified = true
+	txRouter.Fingerprint = cltFp
+
+	if err := module.env.GetHandlers().TransitRouter.Update(txRouter); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 
 	if err := module.env.GetHandlers().Enrollment.Delete(enrollment.Id); err != nil {
 		return nil, fmt.Errorf("could not delete enrollment: %s", err)
-	}
-
-	if err := module.createRouter(cr.Subject.CommonName, cltFp); err != nil {
-		return nil, err
 	}
 
 	content, err := json.Marshal(&map[string]interface{}{
@@ -197,10 +179,4 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		ContentType:   "application/json",
 		Status:        200,
 	}, nil
-}
-
-func (module *EnrollModuleEr) createRouter(commonName string, fingerprint string) error {
-	fgp := strings.Replace(strings.ToLower(fingerprint), ":", "", -1)
-	r := network.NewRouter(commonName, fgp)
-	return module.env.GetHostController().GetNetwork().CreateRouter(r)
 }
