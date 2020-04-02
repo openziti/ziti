@@ -19,19 +19,20 @@
 package subcmd
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
 	"github.com/netfoundry/ziti-edge/tunnel/intercept/tun"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run <config>",
-	Short: "Auto-select interceptor",
-	Long:  "Provided for backwards compatibility with scripts that were coded around older ziti-tunnel versions.",
-	Args:  cobra.MaximumNArgs(1),
-	Run:   run,
+	Use:     "run <config>",
+	Short:   "Auto-select interceptor",
+	Long:    "Provided for backwards compatibility with scripts that were coded around older ziti-tunnel versions.",
+	Args:    cobra.MaximumNArgs(1),
+	Run:     run,
+	PostRun: rootPostRun,
 }
 
 func init() {
