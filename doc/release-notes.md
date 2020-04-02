@@ -8,6 +8,9 @@ Ziti 0.13 includes the following:
       * Enhancements to the LIST APIs for edge routers, identities and services which allow one to filter by roles
   * CA Auto Enrollment now allows identities to inherit role attributes from the validating CA
       * New `identityRole` attributes added to CA entities
+  * New APIs to list and manage Transit Routers
+  * Transit Routers now support enrolment via `ziti-router enroll`
+  * Embedded Swagger/OpenAPI 2.0 endpoint
   * A small set of APIs accepted id or name. These have been changed to accept only id
   * Fabric enhancements
       * New Xlink framework encapsulating the router capabilities for creating overlay mesh links.
@@ -147,6 +150,152 @@ This feature allows a simple degree of automation for identities that are auto-p
 
    * `identityRoles` added to `/ca` endpoints for normal CRUD operations
    * `identityRoles` from a CA entity are point-in-time copies
+
+## New APIs to list and manage Transit Routers
+
+The endpoint`/transit-routers` has been added to create and manage Transit Routers. Transit Routers do not handle incoming Ziti
+Edge SDK connections.
+
+    * Endpoint: /transit-routers
+    * Supported operations
+        * Detail: GET /transit-routers/<transit-router-id>
+        * List: GET /transit-routers/
+        * Create: POST /transit-routers
+        * Update All Fields: PUT /transit-routers/<transit-router-id>
+        * Update Selective Fields: PATCH /transit-routers/<transit-router-id>
+        * Delete: DELETE /transit-routers/<transit-router-id>
+     * Properties
+         * Transit Routers support the standard properties (id, createdAt, updatedAt, tags)
+         * name - Type string - a friendly Edge name for the transit router
+         * fingerprint - Type string - a hex string fingerprint of the transit router's public certificate (post enrollment)
+         * isVerified - Type bool - true if the router has completed enrollment
+         * isOnline - Type bool - true if the router is currently connected to the controller
+         * enrollmentToken - Type string - the enrollment token that would be used during enrollment (nil post enrollment)
+         * enrollmentJwt - Type string - an enrollment JWT suitable for use with "ziti-router enroll" (nil post enrollment)
+         * enrollmentCreatedAt - Type date-time - the date and time the enrollment was created (nil post enrollment)
+         * enrollmentExpiresAt - Type date-time - the date and time the enrollment expires at (matches JWT expiration time, nil post enrollment)
+
+Example list output:
+```json
+{
+    "meta": {
+        "filterableFields": [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "name"
+        ],
+        "pagination": {
+            "limit": 10,
+            "offset": 0,
+            "totalCount": 2
+        }
+    },
+    "data": [
+        {
+            "id": "002",
+            "createdAt": "2020-03-30T00:55:38.1701084Z",
+            "updatedAt": "2020-03-30T00:55:38.1701084Z",
+            "_links": {
+                "self": {
+                    "href": "./transit-routers/002"
+                }
+            },
+            "tags": {},
+            "name": "",
+            "fingerprint": "07e011481921b4734df82c52ae2b3113617cdd18",
+            "isVerified": true,
+            "isOnline": false,
+            "enrollmentToken": null,
+            "enrollmentJwt": null,
+            "enrollmentCreatedAt": null,
+            "enrollmentExpiresAt": null
+        },
+        {
+            "id": "99f4109b-cd6d-40e3-9a62-bee24d7eccd6",
+            "createdAt": "2020-03-30T17:48:17.2949059Z",
+            "updatedAt": "2020-03-30T17:48:17.2949059Z",
+            "_links": {
+                "self": {
+                    "href": "./transit-routers/99f4109b-cd6d-40e3-9a62-bee24d7eccd6"
+                }
+            },
+            "tags": {},
+            "name": "",
+            "fingerprint": "25d1048f3c7bc4a5956ce7316e2ca70999c0e27d",
+            "isVerified": true,
+            "isOnline": false,
+            "enrollmentToken": null,
+            "enrollmentJwt": null,
+            "enrollmentCreatedAt": null,
+            "enrollmentExpiresAt": null
+        }
+    ]
+}
+```
+## Transit Routers now support enrolment via `ziti-router enroll`
+
+Transit Routers now enroll using the same command: `ziti-router enroll <config> -j <jwt>`. During the enrollment process, 
+the CSR properties used will be taken from `edge.csr`. If `edge.csr` does not exist `csr` will be utilized. If both are 
+missing an error will occur.
+
+Example router configuration:
+
+```yaml
+v: 2
+
+identity:
+  cert:                 testdata/transit-router/transit-router-client.cert.pem
+  server_cert:          testdata/transit-router/transit-router-server.cert.pem
+  key:                  testdata/transit-router/transit-router.key.pem
+  ca:                   testdata/transit-router/transit-router-ca-chain.cert.pem
+
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - "localhost"
+      - "test-network"
+      - "test-network.localhost"
+      - "ziti-dev-ingress01"
+    email:
+      - "admin@example.com"
+    ip:
+      - "127.0.0.1"
+    uri:
+      - "ziti://ziti-dev-gateway01/made/up/example"
+
+dialers:
+  - binding: udp
+  - binding: transport
+
+listeners:
+  - binding: transport
+    address: tls:0.0.0.0:7099
+```
+
+## Embedded Swagger/OpenAPI 2.0 endpoint
+
+The endpoint`/specs` has been added to retrieve API specifications from the Ziti Controller. The specifications
+are specific to the version of the controller deployed.
+
+The main endpoint to retrieve the Swagger/Open API 2.0 specification is: `/specs/swagger/spec`
+
+    * Endpoint: /specs
+    * Supported operations
+        * Detail: GET /specs/<spec-id>
+        * Get Spec: GET /specs/<spec-id>/spec
+        * List: GET /specs/
+     * Properties
+         * Transit Routers support the standard properties (id, createdAt, updatedAt, tags)
+         * name - Type string - the and intent of the spec
 
 
 ## APIs now only accept ID, not ID or Name
