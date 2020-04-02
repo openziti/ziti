@@ -13,6 +13,8 @@ Ziti 0.13 includes the following:
   * Fabric enhancements
       * New Xlink framework encapsulating the router capabilities for creating overlay mesh links.
       * Adjustable Xgress MTU size.
+  * All Ziti Go projects are now being built with Go 1.14
+      * See here for change to Go in 1.14 - https://golang.org/doc/go1.14
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
