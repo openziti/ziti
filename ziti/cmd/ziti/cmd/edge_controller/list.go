@@ -300,7 +300,11 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *co
 		return nil, err
 	}
 
-	return jsonParsed.S("data").Children()
+	children, err := jsonParsed.S("data").Children()
+	if err == gabs.ErrNotObjOrArray {
+		return nil, nil
+	}
+	return children, err
 }
 
 func runListEdgeRouters(roleFilters []string, roleSemantic string, options *commonOptions) error {

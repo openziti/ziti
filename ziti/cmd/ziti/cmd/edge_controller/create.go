@@ -41,6 +41,7 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newCreateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newCreateCaCmd(f, out, errOut))
 	cmd.AddCommand(newCreateConfigCmd(f, out, errOut))
+	cmd.AddCommand(newCreateConfigTypeCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newCreateTerminatorCmd(f, out, errOut))

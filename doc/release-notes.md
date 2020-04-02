@@ -6,6 +6,7 @@ Ziti 0.13 includes the following:
       * New APIs to list existing role attributes used by edge routers, identities and services
       * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
       * Enhancements to the LIST APIs for edge routers, identities and services which allow one to filter by roles
+      * A policy advisor API, which helps analyze policies and current system state to figure out if an identity should be able to use a service and if not, why not 
   * CA Auto Enrollment now allows identities to inherit role attributes from the validating CA
       * New `identityRole` attributes added to CA entities
   * New APIs to list and manage Transit Routers
@@ -15,6 +16,8 @@ Ziti 0.13 includes the following:
   * Fabric enhancements
       * New Xlink framework encapsulating the router capabilities for creating overlay mesh links.
       * Adjustable Xgress MTU size.
+  * All Ziti Go projects are now being built with Go 1.14
+      * See here for change to Go in 1.14 - https://golang.org/doc/go1.14
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
@@ -139,7 +142,149 @@ Example:
     id: a949cf80-b11b-4cce-bbb7-d2e4767878a6    name: baz    terminator strategy:     role attributes: ["development","sales","support"]
     id: ad95ec7d-6c05-42b6-b278-2a98a7e502df    name: bar    terminator strategy:     role attributes: ["four","three","two"]
     id: e9673c77-7463-4517-a642-641ef35855cf    name: foo    terminator strategy:     role attributes: ["one","three","two"]
+
+## Policy Advisor
+This adds a new operation to the /identities endpoint
+
+    * Endpoint: /identities
+    * New operations
+       * Query related identities: GET /identities/<identity-id>/policy-advice/<service-id>
+
+This will return the following information about the identity and service:
+ 
+   * If the identity can dial the service
+   * If the identity can bind the service
+   * How many edge routers the identity has access to
+   * How many edge routers the service can be accessed through
+   * Which edge routers the identity and service have in common (if this is none, then the service can't be accessed by the identity)
+   * Which of the common edge routers are on-line 
     
+Example result:
+
+    {
+        "meta": {},
+        "data": {
+            "identityId": "700347c8-ca3a-4438-9060-68f7255ee4f8",
+            "identity": {
+                "entity": "identities",
+                "id": "700347c8-ca3a-4438-9060-68f7255ee4f8",
+                "name": "ssh-host",
+                "_links": {
+                    "self": {
+                        "href": "./identities/700347c8-ca3a-4438-9060-68f7255ee4f8"
+                    }
+                }
+            },
+            "serviceId": "8fa27a3e-ffb1-4bd1-befa-fcd38a6c26b3",
+            "service": {
+                "entity": "services",
+                "id": "8fa27a3e-ffb1-4bd1-befa-fcd38a6c26b3",
+                "name": "ssh",
+                "_links": {
+                    "self": {
+                        "href": "./services/8fa27a3e-ffb1-4bd1-befa-fcd38a6c26b3"
+                    }
+                }
+            },
+            "isBindAllowed": true,
+            "isDialAllowed": false,
+            "identityRouterCount": 2,
+            "serviceRouterCount": 2,
+            "commonRouters": [
+                {
+                    "entity": "edge-routers",
+                    "id": "43d220d8-860e-4d80-a25c-97322a7326b4",
+                    "name": "us-west-1",
+                    "_links": {
+                        "self": {
+                            "href": "./edge-routers/43d220d8-860e-4d80-a25c-97322a7326b4"
+                        }
+                    },
+                    "isOnline": false
+                },
+                {
+                    "entity": "edge-routers",
+                    "id": "8c118857-c12e-430d-9109-c31f535933f6",
+                    "name": "us-east-1",
+                    "_links": {
+                        "self": {
+                            "href": "./edge-routers/8c118857-c12e-430d-9109-c31f535933f6"
+                        }
+                    },
+                    "isOnline": true
+                }
+            ]
+        }
+    }
+
+The CLI has also been updated with a new policy-advisor common.
+
+Examples:
+
+    # Inspect all identities for policy issues
+    ziti edge controller policy-advisor identities
+
+    # Inspect just the jsmith-laptop identity for policy issues with all services that the identity can access
+    ziti edge controller policy-advisor identities jsmith-laptop
+
+    # Inspect the jsmith-laptop identity for issues related to the ssh service
+    ziti edge controller policy-advisor identities jsmith-laptop ssh
+
+    # Inspect all services for policy issues
+    ziti edge controller policy-advisor services
+
+    # Inspect just the ssh service for policy issues for all identities the service can access
+    ziti edge controller policy-advisor services ssh
+
+    # Inspect the ssh service for issues related to the jsmith-laptop identity 
+    ziti edge controller policy-advisor identities ssh jsmith-laptop
+    
+Some example output of the CLI:
+
+    $ ec policy-advisor identities -q
+    ERROR: mlapin-laptop (1) -> ssh-backup (0) Common Routers: (0/0) Dial: Y Bind: N 
+      - Service has no edge routers assigned. Adjust service edge router policies.
+    
+    ERROR: mlapin-laptop (1) -> ssh (2) Common Routers: (0/0) Dial: Y Bind: N 
+      - Identity and services have no edge routers in common. Adjust edge router policies and/or service edge router policies.
+    
+    ERROR: ndaniels-laptop (1) -> ssh-backup (0) Common Routers: (0/0) Dial: Y Bind: N 
+      - Service has no edge routers assigned. Adjust service edge router policies.
+    
+    ERROR: ndaniels-laptop (1) -> ssh (2) Common Routers: (0/1) Dial: Y Bind: N 
+      - Common edge routers are all off-line. Bring routers back on-line or adjust edge router policies and/or service edge router policies to increase common router pool.
+    
+    ERROR: Default Admin 
+      - Identity does not have access to any services. Adjust service policies.
+    
+    ERROR: jsmith-laptop (2) -> ssh-backup (0) Common Routers: (0/0) Dial: Y Bind: N 
+      - Service has no edge routers assigned. Adjust service edge router policies.
+    
+    OKAY : jsmith-laptop (2) -> ssh (2) Common Routers: (1/2) Dial: Y Bind: N 
+    
+    ERROR: ssh-host (2) -> ssh-backup (0) Common Routers: (0/0) Dial: N Bind: Y 
+      - Service has no edge routers assigned. Adjust service edge router policies.
+    
+    OKAY : ssh-host (2) -> ssh (2) Common Routers: (1/2) Dial: N Bind: Y 
+    
+    ERROR: aortega-laptop 
+      - Identity does not have access to any services. Adjust service policies.
+    
+    ERROR: djones-laptop (0) -> ssh-backup (0) Common Routers: (0/0) Dial: Y Bind: N 
+      - Identity has no edge routers assigned. Adjust edge router policies.
+      - Service has no edge routers assigned. Adjust service edge router policies.
+    
+    ERROR: djones-laptop (0) -> ssh (2) Common Routers: (0/0) Dial: Y Bind: N 
+      - Identity has no edge routers assigned. Adjust edge router policies.
+
+    $ ec policy-advisor identities aortega-laptop ssh-backup -q
+    Found identities with id 70567104-d4bd-45f1-8179-bd1e6ab8751f for name aortega-laptop
+    Found services with id 46e94977-0efc-4e7d-b9ae-cc8df1c95fc1 for name ssh-backup
+    ERROR: aortega-laptop (0) -> ssh-backup (0) Common Routers: (0/0) Dial: N Bind: N 
+      - No access to service. Adjust service policies.
+      - Identity has no edge routers assigned. Adjust edge router policies.
+      - Service has no edge routers assigned. Adjust service edge router policies.
+
 ## CA Auto Enrollment Identity Attributes
 
 Identities that are enrolled via a CA can now inherit a static list of identity role attributes. The normal create, 
