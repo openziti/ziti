@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"go.etcd.io/bbolt"
 )
 
 func NewServicePolicyHandler(env Env) *ServicePolicyHandler {
@@ -43,6 +44,14 @@ func (handler *ServicePolicyHandler) Create(servicePolicy *ServicePolicy) (strin
 func (handler *ServicePolicyHandler) Read(id string) (*ServicePolicy, error) {
 	modelEntity := &ServicePolicy{}
 	if err := handler.readEntity(id, modelEntity); err != nil {
+		return nil, err
+	}
+	return modelEntity, nil
+}
+
+func (handler *ServicePolicyHandler) readInTx(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
+	modelEntity := &ServicePolicy{}
+	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil

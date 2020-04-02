@@ -92,6 +92,13 @@ func (entity *ServicePolicy) GetEntityType() string {
 	return EntityTypeServicePolicies
 }
 
+func (entity *ServicePolicy) GetPolicyTypeName() string {
+	if entity.PolicyType == PolicyTypeBind {
+		return PolicyTypeBindName
+	}
+	return PolicyTypeDialName
+}
+
 type ServicePolicyStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*ServicePolicy, error)

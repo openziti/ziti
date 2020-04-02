@@ -197,7 +197,7 @@ func (ir *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestCo
 
 func (ir *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeService, MapServiceToApiEntity)
+	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.Identity, MapIdentityToApiEntity)
 }
 
 func (ir *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {

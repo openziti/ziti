@@ -1,7 +1,7 @@
 ---
 swagger: '2.0'
 info:
-  version: 0.12.0
+  version: 0.13.0
   title: Ziti Edge
   contact: {}
 host: demo.ziti.dev
@@ -1131,11 +1131,13 @@ paths:
         - ztSession: []
       tags:
         - Edge Router
-      operationId: lisgEdgeRouters
+      operationId: listEdgeRouters
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
         - $ref: '#/parameters/filter'
+        - $ref: '#/parameters/roleFilter'
+        - $ref: '#/parameters/roleSemantic'
       responses:
         '200':
           $ref: '#/responses/listEdgeRouters'
@@ -1256,10 +1258,29 @@ paths:
         - ztSession: []
       tags:
         - Edge Router
-      operationId: listEdgeRoutersEdgeRouterPolicies
+      operationId: listEdgeRouterEdgeRouterPolicies
       responses:
         '200':
           $ref: '#/responses/listEdgeRouterPolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/edge-routers/{id}/identities':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List associated identities
+      description: |
+        Retrieves a list of identities that may access services via the given edge router. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: listEdgeRouterIdentities
+      responses:
+        '200':
+          $ref: '#/responses/listIdentities'
         '404':
           $ref: '#/responses/notFoundResponse'
         '401':
@@ -1274,10 +1295,30 @@ paths:
         - ztSession: []
       tags:
         - Edge Router
-      operationId: listEdgeRoutersServicePolicies
+      operationId: listEdgeRouterServicePolicies
       responses:
         '200':
           $ref: '#/responses/listServicePolicies'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/edge-routers/{id}/services':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List associated services
+      description: |
+        Retrieves a list of services that may be accessed via the given edge router. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Edge Router
+      operationId: listEdgeRouterServices
+      responses:
+        '200':
+          $ref: '#/responses/listServices'
         '404':
           $ref: '#/responses/notFoundResponse'
         '401':
@@ -1476,6 +1517,8 @@ paths:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
         - $ref: '#/parameters/filter'
+        - $ref: '#/parameters/roleFilter'
+        - $ref: '#/parameters/roleSemantic'
       responses:
         '200':
           $ref: '#/responses/listIdentities'
@@ -1689,6 +1732,69 @@ paths:
         '401':
           $ref: '#/responses/unauthorizedResponse'
 
+  '/identities/{id}/edge-routers':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List accessible edge-routers
+      description: |
+        Retrieves a list of edge-routers that the given identity may use to access services. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentityEdgeRouters
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/identities/{id}/services':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List accessible services
+      description: |
+        Retrieves a list of services that the given identity has access to. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: listIdentityServices
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/identities/{id}/policy-advice/{serviceId}':
+    parameters:
+      - $ref: '#/parameters/id'
+      - $ref: '#/parameters/serviceId'
+    get:
+      summary: Analyze policies relating the given identity and service
+      description: |
+        Analyzes policies to see if the given identity should be able to dial or bind the given service. |
+        Will check services policies to see if the identity can access the service. Will check edge router policies |
+        to check if the identity and service have access to common edge routers so that a connnection can be made. |
+        Will also check if at least one edge router is on-line. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Identity
+      operationId: getIdentityPolicyAdvice
+      responses:
+        '200':
+          $ref: '#/responses/getIdentityPolicyAdvice'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
   ###################################################################
   # Identity-Types
   ##################################################################
@@ -2084,6 +2190,8 @@ paths:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
         - $ref: '#/parameters/filter'
+        - $ref: '#/parameters/roleFilter'
+        - $ref: '#/parameters/roleSemantic'
       responses:
         '200':
           $ref: '#/responses/listServices'
@@ -2257,6 +2365,51 @@ paths:
           $ref: '#/responses/listServicePolicies'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+
+  '/services/{id}/identities':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List identities with access
+      description: |
+        Retrieves a list of identities that have access to this service. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceIdentities
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listIdentities'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/services/{id}/edge-routers':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: List accessible edge-routers
+      description: |
+        Retrieves a list of edge-routers that may be used to access the given service. Supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Service
+      operationId: listServiceEdgeRouters
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listEdgeRouters'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
   '/services/{id}/terminators':
     parameters:
       - $ref: '#/parameters/id'
@@ -2489,6 +2642,68 @@ paths:
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
 
   ###################################################################
+  # List Role Attributes in Use
+  ##################################################################
+  '/edge-router-role-attributes':
+    get:
+      summary: List role attributes in use by edge routers
+      description: |
+        Retrieves a list of role attributes in use by edge routers; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Role Attributes
+      operationId: listEdgeRouterRoleAttributes
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listRoleAttributes'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/identity-role-attributes':
+    get:
+      summary: List role attributes in use by identities
+      description: |
+        Retrieves a list of role attributes in use by identities; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Role Attributes
+      operationId: listIdentityRoleAttributes
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listRoleAttributes'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  '/service-role-attributes':
+    get:
+      summary: List role attributes in use by services
+      description: |
+        Retrieves a list of role attributes in use by services; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Role Attributes
+      operationId: listServiceRoleAttributes
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listRoleAttributes'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
   # Transit Routers
   ##################################################################
   '/transit-routers':
@@ -2625,9 +2840,14 @@ parameters:
     name: id
     required: true
     type: string
-    format: uuid
     in: path
     description: The id of the requested resource
+  serviceId:
+    name: serviceId
+    required: true
+    type: string
+    in: path
+    description: The id of a service
   limit:
     name: limit
     type: integer
@@ -2654,6 +2874,17 @@ parameters:
     enum:
       - password
       - cert
+  roleFilter:
+    name: roleFilter
+    type: array
+    in: query
+    collectionFormat: multi
+    items:
+      type: string
+  roleSemantic:
+    name: roleSemantic
+    type: string
+    in: query
 
 #######################################################################################################################
 #
@@ -3090,6 +3321,22 @@ responses:
     schema:
       $ref: '#/definitions/detailSpecBodyEnvelope'
   ###################################################################
+  # Role Attributes
+  ##################################################################
+  listRoleAttributes:
+    description: A list of role attributes
+    schema:
+      $ref: '#/definitions/listRoleAttributesEnvelope'
+
+  ###################################################################
+  # Policy Advisor
+  ##################################################################
+  getIdentityPolicyAdvice:
+    description: Returns the document that represents the policy advice
+    schema:
+      $ref: '#/definitions/getIdentityPolicyAdviceEnvelope'
+
+  ###################################################################
   # Transit Routers
   ##################################################################
   listTransitRouters:
@@ -3201,7 +3448,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3290,7 +3536,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3338,7 +3583,6 @@ definitions:
         description: The type of authenticator to create; which will dictate which properties on this object are required.
       identityId:
         type: string
-        format: uuid
         description: The id of an existing identity that will be assigned this authenticator
       tags:
         $ref: '#/definitions/tags'
@@ -3353,7 +3597,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3366,7 +3609,6 @@ definitions:
         type: string
       identityId:
         type: string
-        format: uuid
       certPem:
         type: string
       fingerprint:
@@ -3404,7 +3646,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3574,7 +3815,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
         example: cea49285-6c07-42cf-9f52-09a9b115c783
       createdAt:
         type: string
@@ -3650,7 +3890,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3683,7 +3922,6 @@ definitions:
         example: default.ziti-tunneler-server.v1
       type:
         type: string
-        format: uuid
         description: The id of a config-type that the data section will match
       data:
         type: object
@@ -3743,7 +3981,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3840,7 +4077,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3956,7 +4192,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -3991,7 +4226,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4081,7 +4315,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4121,7 +4354,6 @@ definitions:
         type: array
         items:
           type: string
-          format: uuid
       tags:
         $ref: '#/definitions/tags'
   serviceUpdate:
@@ -4144,7 +4376,6 @@ definitions:
         type: array
         items:
           type: string
-          format: uuid
       tags:
         $ref: '#/definitions/tags'
   servicePatch:
@@ -4162,7 +4393,6 @@ definitions:
         type: array
         items:
           type: string
-          format: uuid
       tags:
         $ref: '#/definitions/tags'
   ###################################################################
@@ -4177,7 +4407,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4202,7 +4431,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4249,10 +4477,8 @@ definitions:
     properties:
       service:
         type: string
-        format: uuid
       config:
         type: string
-        format: uuid
   serviceConfigs:
     type: array
     items:
@@ -4269,7 +4495,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4343,7 +4568,6 @@ definitions:
     properties:
       serviceId:
         type: string
-        format: uuid
       type:
         $ref: '#/definitions/dialBind'
       tags:
@@ -4357,7 +4581,6 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
       createdAt:
         type: string
         format: date-time
@@ -4914,6 +5137,64 @@ definitions:
         type: string
   specBodyDetail:
     type: string
+
+  listRoleAttributesEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/roleAttributesList'
+
+  roleAttributesList:
+    description: An array of role attributes
+    type: array
+    items:
+      type: string
+
+  getIdentityPolicyAdviceEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/policyAdvice'
+
+  policyAdvice:
+    type: "object"
+    properties:
+      identityId:
+        type: "string"
+      identity:
+        $ref: '#/definitions/entityRef'
+      serviceId:
+        type: "string"
+      service:
+        $ref: '#/definitions/entityRef'
+      isBindAllowed:
+        type: "boolean"
+      isDialAllowed:
+        type: "boolean"
+      identityRouterCount:
+        type: "number"
+      serviceRouterCount:
+        type: "number"
+      commonRouters:
+        type: "array"
+        items:
+          type: "object"
+          items:
+            $ref: '#/definitions/routerEntityRef'
+
+  routerEntityRef:
+    type: object
+    allOf:
+      - $ref: '#/definitions/entityRef'
+      - type: object
+        properties:
+          isOnline:
+            type: boolean
+
   ###################################################################
   # Transit Routers
   ##################################################################

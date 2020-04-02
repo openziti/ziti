@@ -317,3 +317,46 @@ type IdentityServiceConfig struct {
 func (entity IdentityServiceConfig) toModel() model.ServiceConfig {
 	return model.ServiceConfig{Config: entity.Config, Service: entity.Service}
 }
+
+type AdvisorEdgeRouter struct {
+	*EntityApiRef
+	IsOnline bool `json:"isOnline"`
+}
+
+type AdvisorServiceReachability struct {
+	IdentityId          string               `json:"identityId"`
+	Identity            *EntityApiRef        `json:"identity"`
+	ServiceId           string               `json:"serviceId"`
+	Service             *EntityApiRef        `json:"service"`
+	IsBindAllowed       bool                 `json:"isBindAllowed"`
+	IsDialAllowed       bool                 `json:"isDialAllowed"`
+	IdentityRouterCount int                  `json:"identityRouterCount"`
+	ServiceRouterCount  int                  `json:"serviceRouterCount"`
+	CommonRouters       []*AdvisorEdgeRouter `json:"commonRouters"`
+}
+
+func MapAdvisorServiceReachabilityToApiEntity(entity *model.AdvisorServiceReachability) *AdvisorServiceReachability {
+
+	var commonRouters []*AdvisorEdgeRouter
+
+	for _, router := range entity.CommonRouters {
+		commonRouters = append(commonRouters, &AdvisorEdgeRouter{
+			EntityApiRef: NewEdgeRouterEntityRef(router.Router),
+			IsOnline:     router.IsOnline,
+		})
+	}
+
+	result := &AdvisorServiceReachability{
+		IdentityId:          entity.Identity.Id,
+		Identity:            NewIdentityEntityRef(entity.Identity),
+		ServiceId:           entity.Service.Id,
+		Service:             NewServiceEntityRef(entity.Service),
+		IsBindAllowed:       entity.IsBindAllowed,
+		IsDialAllowed:       entity.IsDialAllowed,
+		IdentityRouterCount: entity.IdentityRouterCount,
+		ServiceRouterCount:  entity.ServiceRouterCount,
+		CommonRouters:       commonRouters,
+	}
+
+	return result
+}

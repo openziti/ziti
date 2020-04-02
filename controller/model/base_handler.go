@@ -318,6 +318,24 @@ func (handler *baseHandler) queryRoleAttributes(index boltz.SetReadIndex, queryS
 	return results, qmd, nil
 }
 
+func (handler *baseHandler) iterateRelatedEntities(id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
+	return handler.GetDb().View(func(tx *bbolt.Tx) error {
+		return handler.iterateRelatedEntitiesInTx(tx, id, field, f)
+	})
+}
+
+func (handler *baseHandler) iterateRelatedEntitiesInTx(tx *bbolt.Tx, id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
+	cursor := handler.Store.GetRelatedEntitiesCursor(tx, id, field, true)
+	for cursor.IsValid() {
+		key := cursor.Current()
+		if err := f(tx, string(key)); err != nil {
+			return err
+		}
+		cursor.Next()
+	}
+	return nil
+}
+
 type AndFieldChecker struct {
 	first  boltz.FieldChecker
 	second boltz.FieldChecker

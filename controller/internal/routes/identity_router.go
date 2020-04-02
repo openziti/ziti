@@ -18,12 +18,14 @@ package routes
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"net/http"
 )
 
@@ -72,6 +74,10 @@ func (ir *IdentityRouter) Register(ae *env.AppEnv) {
 	ae.HandleGet(sr, serviceConfigUrl, ir.listServiceConfigs, permissions.IsAdmin())
 	ae.HandlePost(sr, serviceConfigUrl, ir.assignServiceConfigs, permissions.IsAdmin())
 	ae.HandleDelete(sr, serviceConfigUrl, ir.removeServiceConfigs, permissions.IsAdmin())
+
+	// policy advice URL
+	policyAdviceUrl := fmt.Sprintf("/{%s}/%s/{%s}", response.IdPropertyName, "policy-advice", response.SubIdPropertyName)
+	ae.HandleGet(sr, policyAdviceUrl, ir.getPolicyAdvice, permissions.IsAdmin())
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
@@ -184,4 +190,43 @@ func (ir *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.Requ
 		}
 		return ae.Handlers.Identity.RemoveServiceConfigs(id, modelServiceConfigs)
 	})
+}
+
+func (ir *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestContext) {
+	id, err := rc.GetIdFromRequest(ir.IdType)
+
+	if err != nil {
+		log := pfxlog.Logger()
+		logErr := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
+		log.WithField("property", response.IdPropertyName).Error(logErr)
+		rc.RequestResponder.RespondWithError(err)
+		return
+	}
+
+	serviceId, err := rc.GetSubIdFromRequest()
+
+	if err != nil {
+		log := pfxlog.Logger()
+		logErr := fmt.Errorf("could not find subId property: %v", response.SubIdPropertyName)
+		log.WithField("property", response.SubIdPropertyName).Error(logErr)
+		rc.RequestResponder.RespondWithError(err)
+		return
+	}
+
+	result, err := ae.Handlers.PolicyAdvisor.AnalyzeServiceReachability(id, serviceId)
+
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			rc.RequestResponder.RespondWithNotFound()
+			return
+		}
+
+		log := pfxlog.Logger()
+		log.WithField("cause", err).Error("could not convert list")
+		rc.RequestResponder.RespondWithError(err)
+		return
+	}
+
+	output := MapAdvisorServiceReachabilityToApiEntity(result)
+	rc.RequestResponder.RespondWithOk(output, nil)
 }
