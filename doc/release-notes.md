@@ -12,6 +12,9 @@ Ziti 0.13 includes the following:
   * Transit Routers now support enrolment via `ziti-router enroll`
   * Embedded Swagger/OpenAPI 2.0 endpoint
   * A small set of APIs accepted id or name. These have been changed to accept only id
+  * Fabric enhancements
+      * New Xlink framework encapsulating the router capabilities for creating overlay mesh links.
+      * Adjustable Xgress MTU size.
       
 ## Making Policies More User Friendly 
 ### Listing Role Attributes in Use
@@ -300,6 +303,51 @@ The main endpoint to retrieve the Swagger/Open API 2.0 specification is: `/specs
   1. Policies would accept entity references with names as well as ids. So you could use `@ssh`, for example when referencing the ssh service. These now also only accept ID
   
 In general allowing both values adds complexity to the server side code. Consuming code, such as user interfaces or the ziti cli, can do the name to id translation just as easily. 
+
+## Fabric Enhancements
+### Xlink Framework
+
+The new Xlink framework **requires** that the router configuration file is updated to `v: 3`.
+
+The `link` section of the router configuration is now structured like this:
+
+```
+link:
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:6002
+      advertise:        tls:127.0.0.1:6002
+      options:
+        outQueueSize:   16
+  dialers:
+    - binding:          transport
+```
+
+The `link/listeners/bind` address replaces the old `link/listener` address, and the `link/listeners/advertise` address replaces the old `link/advertise` address.
+
+**The router configuration MUST be updated to include `link/dialers` section with a `transport` binding (as in the above example) to include support for outbound link dialing.**
+
+Subsequent releases will include support for multiple Xlink listeners and dialers. 0.13 supports only a single listener and dialer to be configured.
+
+### Xgress MTU
+
+The Xgress listeners and dialers now support an `mtu` option in their `options` stanza:
+
+```
+listeners:
+  # basic ssh proxy
+  - binding:            proxy
+    address:            tcp:0.0.0.0:1122
+    service:            ssh
+    options:
+      mtu:              768
+      
+dialers:
+  - binding:            transport
+    options:
+      mtu:              512
+```
+This MTU controls the maximum size of the `Payload` packet sent across the data plane of the overlay.
 
 # Release 0.12
 ## Theme

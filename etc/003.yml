@@ -1,4 +1,4 @@
-v: 2
+v: 3
 
 identity:
   cert:                 etc/ca/intermediate/certs/003-client.cert.pem
@@ -25,6 +25,10 @@ forwarder:
 
 ctrl:
   endpoint:             tls:127.0.0.1:6262
+
+link:
+  dialers:
+    - binding:          transport
 
 dialers:
   - binding:            transport
