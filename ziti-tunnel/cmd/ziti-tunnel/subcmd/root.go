@@ -45,9 +45,10 @@ func init() {
 }
 
 var root = &cobra.Command{
-	Use:              filepath.Base(os.Args[0]),
-	Short:            "Ziti Tunnel",
-	PersistentPreRun: rootPreRun,
+	Use:               filepath.Base(os.Args[0]),
+	Short:             "Ziti Tunnel",
+	PersistentPreRun:  rootPreRun,
+	PersistentPostRun: rootPostRun,
 }
 
 var interceptor intercept.Interceptor
