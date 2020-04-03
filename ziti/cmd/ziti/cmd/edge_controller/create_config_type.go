@@ -30,27 +30,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createConfigOptions struct {
+type createConfigTypeOptions struct {
 	commonOptions
 }
 
-// newCreateConfigCmd creates the 'edge controller create service-policy' command
-func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createConfigOptions{
+// newCreateConfigTypeCmd creates the 'edge controller create service-policy' command
+func newCreateConfigTypeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createConfigTypeOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "config <name> <type> <JSON configuration data>",
-		Short: "creates a config managed by the Ziti Edge Controller",
-		Long:  "creates a config managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(3),
+		Use:   "config-type <name> <JSON schema>",
+		Short: "creates a config type managed by the Ziti Edge Controller",
+		Long:  "creates a config type managed by the Ziti Edge Controller",
+		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateConfig(options)
+			err := runCreateConfigType(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -63,33 +63,34 @@ func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 	return cmd
 }
 
-// runCreateConfig create a new config on the Ziti Edge Controller
-func runCreateConfig(o *createConfigOptions) error {
-	dataMap := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(o.Args[2]), &dataMap); err != nil {
-		fmt.Printf("Attempted to parse: %v\n", o.Args[1])
-		fmt.Printf("Failing parsing JSON: %+v\n", err)
-		return errors.Errorf("unable to parse data as json: %v", err)
-	}
+// runCreateConfigType create a new configType on the Ziti Edge Controller
+func runCreateConfigType(o *createConfigTypeOptions) error {
+	var schemaMap map[string]interface{}
 
-	configTypeId, err := mapNameToID("config-types", o.Args[1])
-	if err != nil {
-		return err
+	if len(o.Args) == 2 {
+		schemaMap = map[string]interface{}{}
+		if err := json.Unmarshal([]byte(o.Args[1]), &schemaMap); err != nil {
+			fmt.Printf("Attempted to parse: %v\n", o.Args[1])
+			fmt.Printf("Failing parsing JSON: %+v\n", err)
+			return errors.Errorf("unable to parse data as json: %v", err)
+		}
 	}
 
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, configTypeId, "type")
-	setJSONValue(entityData, dataMap, "data")
-	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
+	if schemaMap != nil {
+		setJSONValue(entityData, schemaMap, "schema")
+	}
+
+	result, err := createEntityOfType("config-types", entityData.String(), &o.commonOptions)
 
 	if err != nil {
 		panic(err)
 	}
 
-	configId := result.S("data", "id").Data()
+	configTypeId := result.S("data", "id").Data()
 
-	if _, err := fmt.Fprintf(o.Out, "%v\n", configId); err != nil {
+	if _, err := fmt.Fprintf(o.Out, "%v\n", configTypeId); err != nil {
 		panic(err)
 	}
 

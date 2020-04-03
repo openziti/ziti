@@ -74,13 +74,19 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
+
+	configs, err := mapNamesToIDs("configs", o.configs...)
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
 	if o.terminatorStrategy != "" {
 		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
 	}
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.configs, "configs")
+	setJSONValue(entityData, configs, "configs")
 	setJSONValue(entityData, o.tags, "tags")
 
 	result, err := createEntityOfType("services", entityData.String(), &o.commonOptions)

@@ -1,9 +1,9 @@
 v: 3
 
 identity:
-  cert:                 etc/ca/intermediate/certs/004-client.cert.pem
-  server_cert:          etc/ca/intermediate/certs/004-server.cert.pem
-  key:                  etc/ca/intermediate/private/004.key.pem
+  cert:                 etc/ca/intermediate/certs/003-client.cert.pem
+  server_cert:          etc/ca/intermediate/certs/003-server.cert.pem
+  key:                  etc/ca/intermediate/private/003.key.pem
   ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
 # Configure the forwarder options
@@ -16,14 +16,22 @@ forwarder:
   latencyProbeInterval: 1000
 
 #trace:
-#  path:                 004.trace
+#  path:                 003.trace
+
+#profile:
+#  memory:
+#    path:               003.memprof
+#    intervalMs:         5000
 
 ctrl:
   endpoint:             tls:127.0.0.1:6262
 
 link:
-  listeners:
-    - binding:          transport
-      bind:             tls:127.0.0.1:6004
   dialers:
-    - binding:          transport
+    - binding:          transwarp
+      bind:             :0
+
+dialers:
+  - binding:            transport
+    options:
+      mtu:              10240

@@ -29,7 +29,8 @@ ctrl:
 
 link:
   dialers:
-    - binding:          transport
+    - binding:          transwarp
+      bind:             :0
 
 listeners:
   # basic ssh proxy
@@ -37,7 +38,7 @@ listeners:
     address:            tcp:0.0.0.0:1122
     service:            ssh
     options:
-      mtu:              768
+      mtu:              10240
 
   # for iperf_tcp (iperf3)
   - binding:            proxy
