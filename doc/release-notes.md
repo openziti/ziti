@@ -387,17 +387,24 @@ missing an error will occur.
 Example router configuration:
 
 ```yaml
-v: 2
+v: 3
 
 identity:
-  cert:                 testdata/transit-router/transit-router-client.cert.pem
-  server_cert:          testdata/transit-router/transit-router-server.cert.pem
-  key:                  testdata/transit-router/transit-router.key.pem
-  ca:                   testdata/transit-router/transit-router-ca-chain.cert.pem
+  cert:                 etc/ca/intermediate/certs/001-client.cert.pem
+  server_cert:          etc/ca/intermediate/certs/001-server.cert.pem
+  key:                  etc/ca/intermediate/private/001.key.pem
+  ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
-ctrl:
-  endpoint:             tls:127.0.0.1:6262
+# Configure the forwarder options
+#
+forwarder:
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
+  latencyProbeInterval: 1000
 
+# Optional CSR section for transit router enrollment via `ziti-router enroll <config> -j <jwt>`
 csr:
   country: US
   province: NC
@@ -417,13 +424,57 @@ csr:
     uri:
       - "ziti://ziti-dev-gateway01/made/up/example"
 
-dialers:
-  - binding: udp
-  - binding: transport
+
+#trace:
+#  path:                 001.trace
+
+#profile:
+#  memory:
+#    path:               001.memprof
+#  cpu:
+#    path:               001.cpuprof
+
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+
+link:
+  dialers:
+    - binding:          transport
 
 listeners:
-  - binding: transport
-    address: tls:0.0.0.0:7099
+  # basic ssh proxy
+  - binding:            proxy
+    address:            tcp:0.0.0.0:1122
+    service:            ssh
+    options:
+      mtu:              768
+
+  # for iperf_tcp (iperf3)
+  - binding:            proxy
+    address:            tcp:0.0.0.0:7001
+    service:            iperf
+
+  # for iperf_udp (iperf3)
+  - binding:            proxy_udp
+    address:            udp:0.0.0.0:7001
+    service:            iperf_udp
+
+  # example xgress_transport
+  - binding:            transport
+    address:            tls:0.0.0.0:7002
+    options:
+      retransmission:   true
+      randomDrops:      true
+      drop1InN:         5000
+
+  # example xgress_udp
+  - binding:            transport_udp
+    address:            udp:0.0.0.0:7003
+    options:
+      retransmission:   true
+      randomDrops:      true
+      drop1InN:         5000
+
 ```
 
 ## Embedded Swagger/OpenAPI 2.0 endpoint
