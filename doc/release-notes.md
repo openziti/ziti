@@ -558,7 +558,7 @@ Ziti 0.12 includes the following:
  * Some deprecated endpoints are now being removed
  
 ## Terminators
-See https://github.com/netfoundry/ziti-fabric/wiki/Pluggable-Service-Terminators for a discussion of what serivice terminators are, the motivation for extracting them from services and the design for how they will work.
+See https://github.com/netfoundry/ziti-fabric/wiki/Pluggable-Service-Terminators for a discussion of what service terminators are, the motivation for extracting them from services and the design for how they will work.
 
 This release includes the following:
 
@@ -702,7 +702,7 @@ Example:
     Runtime     : go1.13
 
 # Release 0.11
-##Theme
+## Theme
 Ziti 0.11 includes the following: 
  
  * Ziti connections from Ziti SDK client to services hosted by SDK are encrypted end-to-end (no API changes)
@@ -1443,5 +1443,3 @@ Errors where there is the potential to report about multiple invalid field value
     }
 }
 ```
-
- 
