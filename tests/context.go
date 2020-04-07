@@ -267,6 +267,19 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	return ctx.transitRouterEntity
 }
 
+func (ctx *TestContext) createEnrollAndStartTransitRouter() {
+	ctx.createAndEnrollTransitRouter()
+	ctx.startTransitRouter()
+}
+
+func (ctx *TestContext) startTransitRouter() {
+	config, err := router.LoadConfig(TransitRouterConfFile)
+	ctx.req.NoError(err)
+	ctx.router = router.Create(config)
+
+	ctx.req.NoError(ctx.router.Start())
+}
+
 func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {
 	ctx.createAndEnrollEdgeRouter(roleAttributes...)
 
@@ -518,3 +531,58 @@ func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
 	ctx.setJsonValue(entityData, ids, "ids")
 	return entityData
 }
+
+func (ctx *TestContext) requireEntityNotEnrolled(name string, entity *gabs.Container) {
+	fingerprint, ok := entity.Path("fingerprint").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to not have a fingerprint, could not cast")
+	ctx.req.Empty(fingerprint, "expected "+name+" with isVerified=false to have an empty fingerprint")
+
+	token, ok := entity.Path("enrollmentToken").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment token, could not cast")
+	ctx.req.NotEmpty(token, "expected "+name+" with isVerified=false to have an enrollment token, was empty")
+
+	jwt, ok := entity.Path("enrollmentJwt").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment jwt, could not cast")
+	ctx.req.NotEmpty(jwt, "expected "+name+" with isVerified=false to have an enrollment jwt, was empty")
+
+	createdAtStr, ok := entity.Path("enrollmentCreatedAt").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment created at date, could not cast")
+	ctx.req.NotEmpty(createdAtStr, "expected "+name+" with isVerified=false to have an enrollment created at date string, was empty")
+
+	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	ctx.req.NoError(err, "expected "+name+" with isVerified=false to have a parsable created at date time string")
+	ctx.req.NotEmpty(createdAt, "expected "+name+" with isVerified=false to have an enrollment created at date, was empty")
+
+	expiresAtStr, ok := entity.Path("enrollmentExpiresAt").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
+	ctx.req.NotEmpty(expiresAtStr, "expected "+name+" with isVerified=false to have an enrollment expires at date string, was empty")
+
+	expiresAt, err := time.Parse(time.RFC3339, expiresAtStr)
+	ctx.req.NoError(err, "expected "+name+" with isVerified=false to have a parsable expires at date time string")
+
+	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
+	ctx.req.NotEmpty(expiresAt, "expected "+name+" with isVerified=false to have an enrollment expires at date, was empty")
+
+	ctx.req.True(expiresAt.After(createdAt), "expected "+name+" with isVerified=false to have an enrollment expires at date after the created at date")
+}
+
+func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Container) {
+	fingerprint, ok := entity.Path("fingerprint").Data().(string)
+	ctx.req.True(ok, "expected "+name+" with isVerified=true to have a fingerprint, could not cast")
+	ctx.req.NotEmpty(fingerprint, "expected "+name+" with isVerified=true to have a fingerprint, was empty")
+	ctx.req.False(strings.Contains(fingerprint, ":"), "fingerprint should not contain colons")
+	ctx.req.False(strings.ToLower(fingerprint) != fingerprint, "fingerprint should not contain uppercase characters")
+
+	token := entity.Path("enrollmentToken").Data()
+	ctx.req.Nil(token, "expected "+name+" with isVerified=true to have an nil enrollment token")
+
+	jwt := entity.Path("enrollmentJwt").Data()
+	ctx.req.Nil(jwt, "expected "+name+" with isVerified=true to have an nil enrollment jwt")
+
+	createdAt := entity.Path("enrollmentCreatedAt").Data()
+	ctx.req.Nil(createdAt, "expected "+name+" with isVerified=true to have an nil enrollment created at date")
+
+	expiresAt := entity.Path("enrollmentExpiresAt").Data()
+	ctx.req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
+}
+

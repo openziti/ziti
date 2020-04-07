@@ -28,6 +28,10 @@ import (
 func NewTransitRouterHandler(env Env) *TransitRouterHandler {
 	handler := &TransitRouterHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().TransitRouter),
+		allowedFields: boltz.MapFieldChecker{
+			persistence.FieldName: struct{}{},
+			boltz.FieldTags:       struct{}{},
+		},
 	}
 	handler.impl = handler
 	return handler
@@ -35,6 +39,7 @@ func NewTransitRouterHandler(env Env) *TransitRouterHandler {
 
 type TransitRouterHandler struct {
 	baseHandler
+	allowedFields boltz.FieldChecker
 }
 
 func (handler *TransitRouterHandler) Delete(id string) error {
@@ -97,12 +102,21 @@ func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRoute
 	return txRouter.Id, enrollmentId, nil
 }
 
-func (handler *TransitRouterHandler) Update(entity *TransitRouter) error {
-	return handler.updateEntity(entity, nil)
+func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllFields bool) error {
+	if allowAllFields {
+		return handler.updateEntity(entity, nil)
+	}
+
+	return handler.updateEntity(entity, handler.allowedFields)
+
 }
 
-func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.FieldChecker) error {
-	return handler.patchEntity(entity, checker)
+func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.FieldChecker, allowAllFields bool) error {
+	if allowAllFields {
+		return handler.patchEntity(entity, checker)
+	}
+	combinedChecker := &AndFieldChecker{first: handler.allowedFields, second: checker}
+	return handler.patchEntity(entity, combinedChecker)
 }
 
 func (handler *TransitRouterHandler) ReadOneByQuery(query string) (*TransitRouter, error) {

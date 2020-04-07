@@ -71,13 +71,13 @@ func (ir *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContex
 func (ir *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	transitRouterUpdate := &TransitRouterApi{}
 	Update(rc, ae.Schemes.TransitRouter.Put, ir.IdType, transitRouterUpdate, func(id string) error {
-		return ae.Handlers.TransitRouter.Update(transitRouterUpdate.ToModel(id))
+		return ae.Handlers.TransitRouter.Update(transitRouterUpdate.ToModel(id), false)
 	})
 }
 
 func (ir *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	transitRouterUpdate := &TransitRouterApi{}
 	Patch(rc, ae.Schemes.TransitRouter.Patch, ir.IdType, transitRouterUpdate, func(id string, fields JsonFields) error {
-		return ae.Handlers.TransitRouter.Patch(transitRouterUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Handlers.TransitRouter.Patch(transitRouterUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"), false)
 	})
 }

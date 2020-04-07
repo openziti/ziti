@@ -19,7 +19,10 @@
 package tests
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"testing"
+	"time"
 )
 
 func Test_TransitRouters(t *testing.T) {
@@ -33,6 +36,56 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.createAndEnrollTransitRouter()
 	})
 
+	t.Run("transit routers can be created, enrolled, and started", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ctx.createEnrollAndStartTransitRouter()
+	})
+
+	t.Run("transit routers can be created, enrolled, and listed", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ctx.AdminSession.requireQuery("transit-routers")
+	})
+
+	t.Run("transit routers can be listed with enrolled and un-enrolled states", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ctx.createAndEnrollTransitRouter()
+		_ = ctx.AdminSession.requireNewTransitRouter()
+
+		body := ctx.AdminSession.requireQuery("transit-routers")
+		ctx.logJson(body.Bytes())
+
+		t.Run("enrolled router is verified and has a fingerprint, un-enrolled router does not", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			routers := body.Path("data")
+
+			children, err := routers.Children()
+			ctx.req.NoError(err)
+
+			ctx.req.Len(children, 2, "two routers should have been returned")
+
+			router0IsVerified, ok := children[0].Path("isVerified").Data().(bool)
+			ctx.req.True(ok, "issue getting transit router 0 isVerified state")
+
+			router1IsVerified, ok := children[1].Path("isVerified").Data().(bool)
+			ctx.req.True(ok, "issue getting transit router 1 isVerified state")
+
+			ctx.req.True(router0IsVerified != router1IsVerified, "expected 1 enrolled transit router and 1 un-enrolled transit router")
+
+			if router0IsVerified {
+				ctx.requireEntityEnrolled("transit router 0", children[0])
+			} else {
+				ctx.requireEntityNotEnrolled("transit router 0", children[0])
+			}
+
+			if router1IsVerified {
+				ctx.requireEntityEnrolled("transit router 1", children[1])
+			} else {
+				ctx.requireEntityNotEnrolled("transit router 1", children[1])
+			}
+		})
+	})
+
 	t.Run("create transit router, then delete", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := ctx.AdminSession.requireNewTransitRouter()
@@ -43,5 +96,25 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := ctx.createAndEnrollTransitRouter()
 		ctx.AdminSession.requireDeleteEntity(router)
+	})
+
+	t.Run("can list transit routers created in fabric", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		fabTxRouter := &network.Router{
+			BaseEntity: models.BaseEntity{
+				Id:        "uMvqq",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Tags:      nil,
+			},
+			Fingerprint:        "f6fc1c03175f674f1f0b505a9ff930e5",
+			AdvertisedListener: "tls:127.0.0.1",
+		}
+		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)
+		ctx.req.NoError(err, "could not create router at fabric level")
+
+		body := ctx.AdminSession.requireQuery("transit-routers")
+		ctx.logJson(body.Bytes())
 	})
 }

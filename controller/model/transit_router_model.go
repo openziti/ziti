@@ -51,8 +51,10 @@ func (entity *TransitRouter) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Fingerprint:   entity.Fingerprint,
 		},
-		Name: entity.Name,
+		Name:       entity.Name,
+		IsVerified: entity.IsVerified,
 	}
 
 	return ret, nil
