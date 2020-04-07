@@ -17,6 +17,7 @@
 package model
 
 import (
+	"errors"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
@@ -103,6 +104,16 @@ func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRoute
 }
 
 func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllFields bool) error {
+	curEntity, err := handler.Read(entity.Id)
+
+	if err != nil {
+		return err
+	}
+
+	if curEntity.IsBase {
+		return errors.New("transit routers defined via fabric control cannot be updated")
+	}
+
 	if allowAllFields {
 		return handler.updateEntity(entity, nil)
 	}
@@ -112,6 +123,16 @@ func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllField
 }
 
 func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.FieldChecker, allowAllFields bool) error {
+	curEntity, err := handler.Read(entity.Id)
+
+	if err != nil {
+		return err
+	}
+
+	if curEntity.IsBase {
+		return errors.New("transit routers defined via fabric control cannot be updated")
+	}
+
 	if allowAllFields {
 		return handler.patchEntity(entity, checker)
 	}
