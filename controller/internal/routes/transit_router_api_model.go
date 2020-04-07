@@ -119,7 +119,7 @@ func MapTransitRouterToApiEntity(appEnv *env.AppEnv, context *response.RequestCo
 		enrollment := enrollments[0]
 
 		ret.EnrollmentExpiresAt = enrollment.ExpiresAt
-		ret.EnrollmentCreatedAt = &enrollment.CreatedAt
+		ret.EnrollmentCreatedAt = enrollment.IssuedAt
 		ret.EnrollmentJwt = &enrollment.Jwt
 		ret.EnrollmentToken = &enrollment.Token
 	}

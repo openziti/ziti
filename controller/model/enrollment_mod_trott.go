@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/xeipuuv/gojsonschema"
+	"strings"
 	"time"
 )
 
@@ -152,9 +153,9 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	cltFp := module.fingerprintGenerator.FromPem(cltPem)
 
 	txRouter.IsVerified = true
-	txRouter.Fingerprint = cltFp
+	txRouter.Fingerprint = strings.ToLower(strings.Replace(cltFp, ":", "", -1))
 
-	if err := module.env.GetHandlers().TransitRouter.Update(txRouter); err != nil {
+	if err := module.env.GetHandlers().TransitRouter.Update(txRouter, true); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 
