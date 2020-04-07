@@ -17,9 +17,9 @@
 package model
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -111,7 +111,7 @@ func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllField
 	}
 
 	if curEntity.IsBase {
-		return errors.New("transit routers defined via fabric control cannot be updated")
+		return apierror.NewFabricRouterCannotBeUpdate()
 	}
 
 	if allowAllFields {
@@ -130,7 +130,7 @@ func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.
 	}
 
 	if curEntity.IsBase {
-		return errors.New("transit routers defined via fabric control cannot be updated")
+		return apierror.NewFabricRouterCannotBeUpdate()
 	}
 
 	if allowAllFields {

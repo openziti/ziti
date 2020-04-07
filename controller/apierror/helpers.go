@@ -282,6 +282,14 @@ func NewAuthenticatorCannotBeUpdated() *ApiError {
 	}
 }
 
+func NewFabricRouterCannotBeUpdate() *ApiError{
+	return &ApiError{
+		Code:    RouterCanNotBeUpdatedCode,
+		Message: RouterCanNotBeUpdatedMessage,
+		Status:  RouterCanNotBeUpdatedStatus,
+	}
+}
+
 func NewAuthenticatorMethodMax() *ApiError {
 	return &ApiError{
 		Code:    AuthenticatorMethodMaxCode,

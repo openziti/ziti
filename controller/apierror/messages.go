@@ -166,6 +166,10 @@ const (
 	AuthenticatorCanNotBeUpdatedMessage string = "The authenticator cannot be updated in this fashion"
 	AuthenticatorCanNotBeUpdatedStatus  int    = http.StatusConflict
 
+	RouterCanNotBeUpdatedCode    string = "CAN_NOT_UPDATE_ROUTER"
+	RouterCanNotBeUpdatedMessage string = "The router was not added via the Edge API and cannot be updated"
+	RouterCanNotBeUpdatedStatus  int    = http.StatusConflict
+
 	AuthenticatorMethodMaxCode    string = "MAX_AUTHENTICATOR_METHODS_REACHED"
 	AuthenticatorMethodMaxMessage string = "The identity already has the maximum authenticators of the specified method"
 	AuthenticatorMethodMaxStatus  int    = http.StatusConflict
