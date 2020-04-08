@@ -50,7 +50,7 @@ so standard enrollment procedure should be followed.
 ## Running `ziti-probe`
 
 ```shell script
-$ ziti-probe -i <identity-file> run
+$ ziti-probe run <identity-file>
 ```
  #### What's happening?
  1. `ziti-probe` authenticates to Ziti controller with provided identity
