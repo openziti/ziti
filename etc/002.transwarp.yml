@@ -14,12 +14,15 @@ ctrl:
 
 link:
   listeners:
-    - binding:          transport
-      bind:             tls:127.0.0.1:6002
-      advertise:        tls:127.0.0.1:6002
-      options:
-        outQueueSize:   16
-  dialers:
-    - binding:          transport
-      options:
-        outQueueSize:   32
+    - binding:          transwarp
+      bind:             127.0.0.1:6002
+#  listeners:
+#    - binding:          transport
+#      bind:             tls:127.0.0.1:6002
+#      advertise:        tls:127.0.0.1:6002
+#      options:
+#        outQueueSize:   16
+#  dialers:
+#    - binding:          transport
+#      options:
+#        outQueueSize:   32

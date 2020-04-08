@@ -54,6 +54,7 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newDeleteAuthenticatorCmd("authenticator", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("ca", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("config", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("config-type", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("identity", runDeleteEntityOfType, newOptions()))

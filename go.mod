@@ -1,6 +1,6 @@
 module github.com/netfoundry/ziti-cmd
 
-go 1.13
+go 1.14
 
 // replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
 
@@ -21,14 +21,13 @@ require (
 	github.com/golang/protobuf v1.3.5
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
-	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/netfoundry/ziti-edge v0.12.19
-	github.com/netfoundry/ziti-fabric v0.11.6
-	github.com/netfoundry/ziti-foundation v0.9.1
-	github.com/netfoundry/ziti-sdk-golang v0.11.9
+	github.com/netfoundry/ziti-edge v0.13.2
+	github.com/netfoundry/ziti-fabric v0.11.12
+	github.com/netfoundry/ziti-foundation v0.9.7
+	github.com/netfoundry/ziti-sdk-golang v0.11.15
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
