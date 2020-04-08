@@ -7,11 +7,13 @@ import (
 	"github.com/netfoundry/ziti-foundation/metrics"
 	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -20,8 +22,8 @@ import (
 
 var runCmd = &cobra.Command{
 	Use:   "run <config>",
-	Short: "Auto-select interceptor",
-	Long:  "Provided for backwards compatibility with scripts that were coded around older ziti-tunnel versions.",
+	Short: "Runs ziti probe",
+	Long:  "runs ziti probe: captures latency to edge routers and submits them to probe-service",
 	Args:  cobra.MaximumNArgs(1),
 	Run:   theProbe.run,
 }
@@ -37,10 +39,11 @@ type probeCfg struct {
 	dbType string
 	interval int
 }
+
 var defaultConfig = probeCfg{
 	dbName:   "ziti",
 	dbType:   "influxdb",
-	interval: 60,
+	interval: 5 * 60, // 5 minutes
 }
 
 type probe struct{
@@ -85,11 +88,18 @@ func (p *probe) sendMetrics() {
 func (p *probe) run(cmd *cobra.Command, args []string) {
 
 	var err error
-	if len(args) != 0 {
-		_ = cmd.Flag("identity").Value.Set(args[0])
+	if len(args) == 0 {
+		log.Infof("loading ziti identity from env.ZITI_SDK_CONFIG[%s]", os.Getenv("ZITI_SDK_CONFIG"))
+		p.ctx = ziti.NewContext()
+	} else {
+		if cfg, err := config.NewFromFile(args[0]); err != nil {
+			log.Fatalf("failed to load config from file[%s]", args[0], err)
+		} else {
+			p.ctx = ziti.NewContextWithConfig(cfg)
+		}
+
 	}
 
-	p.ctx = ziti.NewContext()
 	_, _ = p.ctx.GetServices()
 
 	_, found := p.ctx.GetService("probe-service")
