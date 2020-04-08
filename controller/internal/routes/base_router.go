@@ -23,10 +23,11 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-edge/controller/schema"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"strings"
@@ -218,7 +219,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 	}
 
 	if !result.Valid() {
-		rr.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
+		rr.RespondWithValidationErrors(schema.NewValidationErrors(result))
 		return
 	}
 
@@ -234,7 +235,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 			return
 		}
 
-		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+		if sve, ok := err.(*schema.ValidationErrors); ok {
 			rr.RespondWithValidationErrors(sve)
 			return
 		}
@@ -358,7 +359,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, 
 		}
 
 		if !result.Valid() {
-			rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
+			rc.RequestResponder.RespondWithValidationErrors(schema.NewValidationErrors(result))
 			return
 		}
 	}
@@ -374,7 +375,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, 
 			return
 		}
 
-		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+		if sve, ok := err.(*schema.ValidationErrors); ok {
 			rc.RequestResponder.RespondWithValidationErrors(sve)
 			return
 		}
@@ -425,7 +426,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 	}
 
 	if !result.Valid() {
-		rc.RequestResponder.RespondWithValidationErrors(validation.NewSchemaValidationErrors(result))
+		rc.RequestResponder.RespondWithValidationErrors(schema.NewValidationErrors(result))
 		return
 	}
 
@@ -441,7 +442,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 			return
 		}
 
-		if sve, ok := err.(*validation.SchemaValidationErrors); ok {
+		if sve, ok := err.(*schema.ValidationErrors); ok {
 			rc.RequestResponder.RespondWithValidationErrors(sve)
 			return
 		}

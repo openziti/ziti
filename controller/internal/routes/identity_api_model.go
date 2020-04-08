@@ -151,8 +151,10 @@ func (e *IdentityApiList) PopulateLinks() {
 		self := e.GetSelfLink()
 		e.Links = &response.Links{
 			EntityNameSelf:             self,
-			EntityNameEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
-			EntityNameServicePolicy:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
+			EntityNameEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouterPolicy)),
+			EntityNameEdgeRouter:       response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
+			EntityNameServicePolicy:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServicePolicy)),
+			EntityNameService:          response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameService)),
 		}
 	}
 }

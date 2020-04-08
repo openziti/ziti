@@ -32,10 +32,11 @@ import (
 )
 
 type listener struct {
-	id          *identity.TokenId
-	factory     *Factory
-	options     *Options
-	bindHandler xgress.BindHandler
+	id               *identity.TokenId
+	factory          *Factory
+	options          *Options
+	bindHandler      xgress.BindHandler
+	underlayListener channel2.UnderlayListener
 }
 
 // newListener creates a new xgress edge listener
@@ -57,15 +58,18 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
-	chListener := channel2.NewClassicListener(listener.id, addr, listener.options.channelOptions.ConnectOptions)
-
-	if err := chListener.Listen(); err != nil {
+	listener.underlayListener = channel2.NewClassicListener(listener.id, addr, listener.options.channelOptions.ConnectOptions)
+	if err := listener.underlayListener.Listen(); err != nil {
 		return err
 	}
-	accepter := NewAccepter(listener, chListener, nil)
+	accepter := NewAccepter(listener, listener.underlayListener, nil)
 	go accepter.Run()
 
 	return nil
+}
+
+func (listener *listener) Close() error {
+	return listener.underlayListener.Close()
 }
 
 type ingressProxy struct {
@@ -121,6 +125,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	log.Debug("validating connection id")
 
 	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
+		proxy.sendStateClosed(connId, "session closed")
 		proxy.closeConn(connId)
 	})
 
@@ -204,6 +209,11 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 
 	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
+		defer proxy.listener.factory.hostedServices.Delete(token)
+		if err := xgress.RemoveTerminator(proxy.listener.factory, token); err != nil {
+			log.Errorf("failed to remove terminator %v (%v)", token, err)
+		}
+		proxy.sendStateClosed(connId, "session closed")
 		proxy.closeConn(connId)
 	})
 
@@ -290,6 +300,25 @@ func (proxy *ingressProxy) sendStateClosedReply(message string, req *channel2.Me
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
+
+	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
+	if err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		return
+	}
+
+	select {
+	case err = <-syncC:
+		if err != nil {
+			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
+		}
+	case <-time.After(time.Second * 5):
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
+	}
+}
+
+func (proxy *ingressProxy) sendStateClosed(connId uint32, message string) {
+	msg := edge.NewStateClosedMsg(connId, message)
 
 	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
 	if err != nil {

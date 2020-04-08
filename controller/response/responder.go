@@ -20,7 +20,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-edge/controller/schema"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"net/http"
 )
 
@@ -35,7 +36,7 @@ type RequestResponder interface {
 	RespondWithNotFound()
 	RespondWithOk(data interface{}, meta *Meta)
 	RespondWithUnauthorizedError(rc *RequestContext)
-	RespondWithValidationErrors(ves *validation.SchemaValidationErrors)
+	RespondWithValidationErrors(ves *schema.ValidationErrors)
 	RespondWithMethodNotAllowed()
 }
 
@@ -161,11 +162,11 @@ func (rr *RequestResponderImpl) RespondWithOk(data interface{}, meta *Meta) {
 	RespondWithOk(data, meta, rr.rc)
 }
 
-func (rr *RequestResponderImpl) RespondWithUnauthorizedError(rc *RequestContext) {
+func (rr *RequestResponderImpl) RespondWithUnauthorizedError(*RequestContext) {
 	rr.RespondWithApiError(apierror.NewUnauthorized())
 }
 
-func (rr *RequestResponderImpl) RespondWithValidationErrors(e *validation.SchemaValidationErrors) {
+func (rr *RequestResponderImpl) RespondWithValidationErrors(e *schema.ValidationErrors) {
 	rr.RespondWithApiError(&apierror.ApiError{
 		Code:    apierror.CouldNotValidateCode,
 		Message: apierror.CouldNotValidateMessage,

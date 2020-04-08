@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
@@ -29,6 +30,23 @@ import (
 type dialer struct {
 	factory *Factory
 	options *Options
+}
+
+func (dialer dialer) IsTerminatorValid(id string, destination string) bool {
+	destParts := strings.Split(destination, ":")
+	if len(destParts) != 2 {
+		return false
+	}
+
+	if destParts[0] != "hosted" {
+		return false
+	}
+
+	token := destParts[1]
+
+	log.Debug("looking up hosted service conn")
+	_, found := dialer.factory.hostedServices.Get(token)
+	return found
 }
 
 func newDialer(factory *Factory, options *Options) xgress.Dialer {

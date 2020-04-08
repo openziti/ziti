@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-edge/controller/schema"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/xeipuuv/gojsonschema"
 	"strings"
@@ -79,9 +79,9 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	}
 
 	if !result.Valid() {
-		var errs []*validation.SchemaValidationError
+		var errs []*schema.ValidationError
 		for _, re := range result.Errors() {
-			errs = append(errs, validation.NewValidationError(re))
+			errs = append(errs, schema.NewValidationError(re))
 		}
 		apiError := apierror.NewCouldNotValidate()
 

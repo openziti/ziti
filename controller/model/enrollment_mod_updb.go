@@ -21,7 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-edge/controller/schema"
 	"github.com/netfoundry/ziti-edge/crypto"
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-fabric/controller/models"
@@ -77,7 +77,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	}
 
 	if !result.Valid() {
-		return nil, validation.NewValidationError(result.Errors()[0])
+		return nil, schema.NewValidationError(result.Errors()[0])
 	}
 
 	password := ""

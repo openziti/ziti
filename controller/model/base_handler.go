@@ -20,11 +20,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/validation"
-	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -282,7 +281,9 @@ func (handler *baseHandler) readEntityByQuery(query string) (models.Entity, erro
 }
 
 func (handler *baseHandler) deleteEntity(id string) error {
-	return controllers.DeleteEntityById(handler.GetStore(), handler.GetDb(), id)
+	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		return handler.GetStore().DeleteById(boltz.NewMutateContext(tx), id)
+	})
 }
 
 func (handler *baseHandler) list(queryString string, resultHandler models.ListResultHandler) error {

@@ -18,9 +18,10 @@ package model
 
 import (
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/validation"
+	"github.com/netfoundry/ziti-edge/controller/schema"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -52,17 +53,17 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 	}
 
 	if configType, _ := handler.GetEnv().GetHandlers().ConfigType.readInTx(tx, entity.Type); configType != nil && len(configType.Schema) > 0 {
-		schema, err := configType.GetCompiledSchema()
+		compileSchema, err := configType.GetCompiledSchema()
 		if err != nil {
 			return nil, err
 		}
 		jsonLoader := gojsonschema.NewGoLoader(entity.Data)
-		result, err := schema.Validate(jsonLoader)
+		result, err := compileSchema.Validate(jsonLoader)
 		if err != nil {
 			return nil, err
 		}
 		if !result.Valid() {
-			return nil, validation.NewSchemaValidationErrors(result)
+			return nil, schema.NewValidationErrors(result)
 		}
 	}
 

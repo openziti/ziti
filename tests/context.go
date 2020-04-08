@@ -32,15 +32,20 @@ import (
 	"github.com/netfoundry/ziti-fabric/router"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
 	sdkconfig "github.com/netfoundry/ziti-sdk-golang/ziti/config"
 	sdkenroll "github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
+	"github.com/pkg/errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -168,13 +173,13 @@ func (ctx *TestContext) DefaultClient() *resty.Client {
 }
 
 func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *http.Transport) {
-	transport := ctx.Transport()
-	httpClient := ctx.HttpClient(transport)
+	clientTransport := ctx.Transport()
+	httpClient := ctx.HttpClient(clientTransport)
 	client := ctx.Client(httpClient)
 
 	client.SetHostURL("https://" + ctx.ApiHost)
 
-	return client, httpClient, transport
+	return client, httpClient, clientTransport
 
 }
 
@@ -282,7 +287,10 @@ func (ctx *TestContext) startTransitRouter() {
 
 func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {
 	ctx.createAndEnrollEdgeRouter(roleAttributes...)
+	ctx.startEdgeRouter()
+}
 
+func (ctx *TestContext) startEdgeRouter() {
 	config, err := router.LoadConfig(EdgeRouterConfFile)
 	ctx.req.NoError(err)
 	ctx.router = router.Create(config)
@@ -364,6 +372,9 @@ func (ctx *TestContext) teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.EdgeController.Shutdown()
 	ctx.fabricController.Shutdown()
+	if ctx.router != nil {
+		ctx.req.NoError(ctx.router.Shutdown())
+	}
 }
 
 func (ctx *TestContext) newRequest() *resty.Request {
@@ -586,3 +597,217 @@ func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Containe
 	ctx.req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
 }
 
+func (ctx *TestContext) wrapConn(conn net.Conn, err error) *testConn {
+	ctx.req.NoError(err)
+	return &testConn{
+		Conn: conn,
+		ctx:  ctx,
+	}
+}
+
+type testConn struct {
+	net.Conn
+	ctx *TestContext
+}
+
+func (conn *testConn) WriteString(val string, timeout time.Duration) {
+	conn.ctx.req.NoError(conn.SetWriteDeadline(time.Now().Add(timeout)))
+	defer func() { _ = conn.SetWriteDeadline(time.Time{}) }()
+
+	buf := []byte(val)
+	n, err := conn.Write(buf)
+	conn.ctx.req.NoError(err)
+	conn.ctx.req.Equal(n, len(buf))
+}
+
+func (conn *testConn) ReadString(maxSize int, timeout time.Duration) string {
+	conn.ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(timeout)))
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
+
+	buf := make([]byte, maxSize)
+	n, err := conn.Read(buf)
+	conn.ctx.req.NoError(err)
+	return string(buf[:n])
+}
+
+func (conn *testConn) ReadExpected(expected string, timeout time.Duration) {
+	val := conn.ReadString(len(expected)+1, timeout)
+	conn.ctx.req.Equal(expected, val)
+}
+
+func (conn *testConn) RequireClose() {
+	conn.ctx.req.NoError(conn.Close())
+}
+
+var testServerCounter uint64
+var testConnectionCounter uint64
+
+func newTestServer(listener net.Listener, dispatcher func(conn *testServerConn) error) *testServer {
+	idx := atomic.AddUint64(&testServerCounter, 1)
+	return &testServer{
+		idx:        idx,
+		listener:   listener,
+		errorC:     make(chan error, 10),
+		msgCount:   0,
+		dispatcher: dispatcher,
+		waiter:     &sync.WaitGroup{},
+	}
+}
+
+type testServer struct {
+	idx        uint64
+	listener   net.Listener
+	errorC     chan error
+	closed     concurrenz.AtomicBoolean
+	msgCount   uint32
+	dispatcher func(conn *testServerConn) error
+	waiter     *sync.WaitGroup
+}
+
+func (server *testServer) waitForDone(ctx *TestContext, timeout time.Duration) {
+	select {
+	case err, ok := <-server.errorC:
+		if ok {
+			ctx.req.NoError(err)
+		}
+	case <-time.After(timeout):
+		ctx.req.Fail("wait for done on test server timed out")
+	}
+}
+
+func (server *testServer) start() {
+	go server.acceptLoop()
+}
+
+func (server *testServer) close() error {
+	server.closed.Set(true)
+	return server.listener.Close()
+}
+
+func (server *testServer) acceptLoop() {
+	var err error
+	for !server.closed.Get() {
+		var conn net.Conn
+		conn, err = server.listener.Accept()
+		if conn != nil {
+			server.waiter.Add(1)
+			connId := atomic.AddUint64(&testConnectionCounter, 1)
+			go server.dispatch(&testServerConn{id: connId, Conn: conn, server: server})
+		} else {
+			break
+		}
+	}
+
+	// If server is closed, assume this error is just letting us know the listener was closed
+	if !server.closed.Get() {
+		if err != nil {
+			server.errorC <- err
+		}
+	}
+
+	waitDone := make(chan struct{})
+	go func() {
+		server.waiter.Wait()
+		close(waitDone)
+	}()
+
+	select {
+	case _, ok := <-waitDone:
+		if !ok {
+			fmt.Println("all connections closed")
+		}
+	case <-time.After(10 * time.Second):
+		fmt.Println("timed out waiting for all connections to close")
+	}
+
+	close(server.errorC)
+	fmt.Printf("%v: service exiting\n", server.idx)
+}
+
+func (server *testServer) dispatch(conn *testServerConn) {
+	defer func() {
+		fmt.Printf("marking waiter done to conn %v-%v\n", conn.server.idx, conn.id)
+		server.waiter.Done()
+	}()
+
+	defer func() {
+		val := recover()
+		if val != nil {
+			if err, ok := val.(error); ok {
+				fmt.Printf("panic from server.dispatch: %+v\n", err)
+				server.errorC <- err
+			}
+		}
+	}()
+
+	defer func() {
+		fmt.Printf("closing conn %v-%v\n", conn.server.idx, conn.id)
+		conn.RequireClose()
+	}()
+
+	fmt.Printf("beginnging dispatch to conn %v-%v\n", conn.server.idx, conn.id)
+	err := server.dispatcher(conn)
+	fmt.Printf("finished dispatch to conn %v-%v\n", conn.server.idx, conn.id)
+	if err != nil {
+		fmt.Printf("failure from server.dispatch: %+v\n", err)
+		server.errorC <- err
+	}
+}
+
+type testServerConn struct {
+	id uint64
+	net.Conn
+	server *testServer
+}
+
+func (conn *testServerConn) WriteString(val string, timeout time.Duration) {
+	err := conn.SetWriteDeadline(time.Now().Add(timeout))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = conn.SetWriteDeadline(time.Time{}) }()
+
+	buf := []byte(val)
+	n, err := conn.Write(buf)
+	if err != nil {
+		panic(fmt.Errorf("conn %v-%v timed out trying to write string %v (%w)", conn.server.idx, conn.id, val, err))
+	}
+	if n != len(buf) {
+		panic(errors.Errorf("conn %v-%v expected to write %v bytes, but only wrote %v", conn.server.idx, conn.id, len(buf), n))
+	}
+}
+
+func (conn *testServerConn) ReadString(maxSize int, timeout time.Duration) (string, bool) {
+	err := conn.SetReadDeadline(time.Now().Add(timeout))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
+
+	buf := make([]byte, maxSize)
+	n, err := conn.Read(buf)
+	if err != nil {
+		if err == io.EOF {
+			return "", true
+		}
+		panic(fmt.Errorf("conn %v-%v timed out trying to read (%w)", conn.server.idx, conn.id, err))
+	}
+	return string(buf[:n]), false
+}
+
+func (conn *testServerConn) ReadExpected(expected string, timeout time.Duration) {
+	val, eof := conn.ReadString(len(expected)+1, timeout)
+	if eof {
+		panic(errors.Errorf("expected to read string '%v', but got EOF", expected))
+	}
+	if val != expected {
+		panic(errors.Errorf("expected to read string '%v', but got '%v'", expected, val))
+	}
+}
+
+func (conn *testServerConn) RequireClose() {
+	err := conn.Close()
+	if err != nil {
+		panic(err)
+	}
+}

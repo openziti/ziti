@@ -2,10 +2,10 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"go.etcd.io/bbolt"
 	"sort"
 )

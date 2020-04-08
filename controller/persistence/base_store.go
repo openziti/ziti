@@ -18,13 +18,13 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/errorz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"

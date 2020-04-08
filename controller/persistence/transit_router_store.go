@@ -123,6 +123,7 @@ func (store *transitRouterStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldTransitRouterEnrollments, store.stores.enrollment)
+	store.MapSymbol(FieldName, boltz.NotNilStringMapper{})
 }
 
 func (store *transitRouterStoreImpl) initializeLinked() {

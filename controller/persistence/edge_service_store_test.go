@@ -95,6 +95,10 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 	ctx.RequireCreate(edgeService)
 	err := ctx.Create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type service already exists with id %v", edgeService.Id))
+
+	edgeService.Id = uuid.New().String()
+	err = ctx.Create(edgeService)
+	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on services store", edgeService.Name))
 }
 
 func (ctx *TestContext) testCreateServices(_ *testing.T) {

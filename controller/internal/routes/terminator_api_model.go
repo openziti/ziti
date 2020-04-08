@@ -42,7 +42,6 @@ func (i *TerminatorApi) ToModel(id string) *network.Terminator {
 	result.Router = stringz.OrEmpty(i.Router)
 	result.Binding = stringz.OrEmpty(i.Binding)
 	result.Address = stringz.OrEmpty(i.Address)
-
 	return result
 }
 
@@ -110,7 +109,7 @@ func MapTerminatorToApiList(ae *env.AppEnv, i *network.Terminator) (*TerminatorA
 		return nil, err
 	}
 
-	router, err := ae.Handlers.EdgeRouter.Read(i.Router)
+	router, err := ae.Handlers.TransitRouter.Read(i.Router)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +119,7 @@ func MapTerminatorToApiList(ae *env.AppEnv, i *network.Terminator) (*TerminatorA
 		ServiceId: i.Service,
 		Service:   NewServiceEntityRef(service),
 		RouterId:  i.Router,
-		Router:    NewEdgeRouterEntityRef(router),
+		Router:    NewTransitRouterEntityRef(router),
 		Binding:   i.Binding,
 		Address:   i.Address,
 	}

@@ -33,7 +33,7 @@ type TestContext struct {
 }
 
 func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
-	return "I'm a very legitimate", nil
+	return "I'm a very legitimate claim", nil
 }
 
 func (ctx *TestContext) GetHandlers() *Handlers {

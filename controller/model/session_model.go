@@ -17,18 +17,17 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/validation"
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"reflect"
-	"time"
-
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"reflect"
+	"time"
 )
 
 type Session struct {
