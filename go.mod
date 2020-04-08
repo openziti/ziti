@@ -25,8 +25,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/netfoundry/ziti-edge v0.13.4
-	github.com/netfoundry/ziti-fabric v0.11.13
+	github.com/netfoundry/ziti-edge v0.13.12
+	github.com/netfoundry/ziti-fabric v0.11.17
 	github.com/netfoundry/ziti-foundation v0.9.11
 	github.com/netfoundry/ziti-sdk-golang v0.11.22
 	github.com/pborman/uuid v1.2.0
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/viper v1.5.0
 	github.com/stretchr/testify v1.5.1
 	github.com/urfave/negroni v1.0.0
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	google.golang.org/grpc v1.25.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0

@@ -25,26 +25,36 @@ import (
 	"time"
 )
 
-var createTerminatorClient *mgmtClient
-var createTerminatorBinding string
+var updateTerminatorClient *mgmtClient
+var updateTerminatorBinding string
+var updateTerminatorRouter string
+var updateTerminatorAddress string
+var updateTerminatorCost int
+var updateTerminatorWeight uint8
+var updateTerminatorPrecedence string
 
 func init() {
-	createTerminator.Flags().StringVar(&createTerminatorBinding, "binding", "transport", "Terminator binding")
-	createTerminatorClient = NewMgmtClient(createTerminator)
-	createCmd.AddCommand(createTerminator)
+	updateTerminator.Flags().StringVar(&updateTerminatorBinding, "binding", "transport", "Terminator binding")
+	updateTerminator.Flags().StringVar(&updateTerminatorRouter, "router", "", "Terminator router")
+	updateTerminator.Flags().StringVar(&updateTerminatorAddress, "address", "", "Terminator address")
+	updateTerminator.Flags().IntVar(&updateTerminatorCost, "cost", 0, "Terminator cost")
+	updateTerminator.Flags().Uint8Var(&updateTerminatorWeight, "cost", 0, "Terminator weight")
+	updateTerminator.Flags().StringVar(&updateTerminatorPrecedence, "precedence", "", "Terminator precedence")
+	updateTerminatorClient = NewMgmtClient(updateTerminator)
+	updateCmd.AddCommand(updateTerminator)
 }
 
-var createTerminator = &cobra.Command{
-	Use:   "terminator <service> <router> <address>",
-	Short: "Create a new fabric service terminator",
+var updateTerminator = &cobra.Command{
+	Use:   "terminator <id>",
+	Short: "Update a fabric service terminator",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ch, err := createTerminatorClient.Connect(); err == nil {
+		if ch, err := updateTerminatorClient.Connect(); err == nil {
 			request := &mgmt_pb.CreateTerminatorRequest{
 				Terminator: &mgmt_pb.Terminator{
 					ServiceId: args[0],
 					RouterId:  args[1],
-					Binding:   createTerminatorBinding,
+					Binding:   updateTerminatorBinding,
 					Address:   args[2],
 				},
 			}
