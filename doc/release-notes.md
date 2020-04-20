@@ -1,6 +1,6 @@
-# Release 0.14
-
-Ziti 0.14 includes the following:
+# Release 0.13.3
+## Theme
+Ziti 0.13.3 includes the following:
 
   * Adds connect parameters for incoming channel2 connections (control, management, and SDK connections)
     * The options have internal defaults are needed only when connections
