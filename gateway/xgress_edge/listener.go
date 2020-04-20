@@ -57,7 +57,8 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
-	chListener := channel2.NewClassicListener(listener.id, addr)
+	chListener := channel2.NewClassicListener(listener.id, addr, listener.options.channelOptions.ConnectOptions)
+
 	if err := chListener.Listen(); err != nil {
 		return err
 	}
