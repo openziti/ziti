@@ -197,7 +197,7 @@ func LoadConfig(path string) (*Config, error) {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					config.Ctrl.Options = channel2.LoadOptions(submap)
 					if err := config.Ctrl.Options.Validate(); err != nil {
-						return nil, fmt.Errorf("error loading channel options for [ctrl/options]: %w", err)
+						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
 			}
@@ -229,7 +229,7 @@ func LoadConfig(path string) (*Config, error) {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					config.Mgmt.Options = channel2.LoadOptions(submap)
 					if err := config.Mgmt.Options.Validate(); err != nil {
-						return nil, fmt.Errorf("error loading channel options for [mgmt/options]: %w", err)
+						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
 					}
 				}
 			}
