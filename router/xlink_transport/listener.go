@@ -25,7 +25,9 @@ import (
 )
 
 func (self *listener) Listen() error {
-	self.listener = channel2.NewClassicListener(self.id, self.config.bind)
+	listener := channel2.NewClassicListener(self.id, self.config.bind, self.config.options.ConnectOptions)
+
+	self.listener = listener
 	if err := self.listener.Listen(); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}

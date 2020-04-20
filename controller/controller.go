@@ -70,7 +70,8 @@ func (c *Controller) Run() error {
 	/**
 	 * ctrl listener/accepter.
 	 */
-	c.ctrlListener = channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener)
+	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions)
+	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
 	}
@@ -81,7 +82,8 @@ func (c *Controller) Run() error {
 	/**
 	 * mgmt listener/accepter.
 	 */
-	c.mgmtListener = channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener)
+	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions)
+	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
 	}
