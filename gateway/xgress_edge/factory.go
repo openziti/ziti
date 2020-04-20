@@ -17,6 +17,7 @@
 package xgress_edge
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-edge/gateway/handler_edge_ctrl"
 	"github.com/netfoundry/ziti-edge/gateway/internal/apiproxy"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
@@ -135,10 +136,17 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 type Options struct {
 	xgress.Options
 	MaxOutOfOrderMsgs uint32
+	channelOptions    *channel2.Options
 }
 
 func (options *Options) load(data xgress.OptionsData) error {
 	options.Options = *xgress.LoadOptions(data)
+
+	options.channelOptions = channel2.LoadOptions(data)
+	if err := options.channelOptions.Validate(); err != nil {
+		return fmt.Errorf("error loading options for [edge/options]: %v", err)
+	}
+
 	options.MaxOutOfOrderMsgs = DefaultMaxOutOfOrderMsgs
 
 	if value, found := data["options"]; found {
