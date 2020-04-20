@@ -1,3 +1,56 @@
+# Release 0.13.3
+## Theme
+Ziti 0.13.3 includes the following:
+
+  * Adds connect parameters for incoming channel2 connections (control, management, and SDK connections)
+    * The options have internal defaults are needed only when connections
+
+## Connection Parameters
+
+A new set of options have been introduced for channel2 backed listeners. Channel2 is a library used to establish message based connections between a channel2 client and server.
+Most importantly this is used for control and management connections in the `ziti-controller` and for the SDK connections accepted in `ziti-router`. Setting these values to
+invalid values will result in errors during startup of the `ziti-controller` and `ziti-router`
+
+  * `maxQueuedConnects` - set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+  * `maxOutstandingConnects` - the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+  * `connectTimeoutMs` - the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+
+
+Example: `ziti-controller` configuration file:
+
+```
+# the endpoint that routers will connect to the controller over.
+ctrl:
+  listener:             tls:127.0.0.1:6262
+  options:
+    maxQueuedConnects:      50
+    maxOutstandingConnects: 100
+    connectTimeoutMs:       3000
+
+# the endpoint that management tools connect to the controller over.
+mgmt:
+  listener:             tls:127.0.0.1:10000
+  options:
+    maxQueuedConnects:      50
+    maxOutstandingConnects: 100
+    connectTimeoutMs:       3000
+```
+
+Example: `ziti-router` configuration file:
+
+```
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:3022
+    options:
+      # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
+      advertise: 127.0.0.1:3022
+      maxQueuedConnects:      50
+      maxOutstandingConnects: 100
+      connectTimeoutMs:       3000
+```
+
+
 # Release 0.13
 ## Theme
 Ziti 0.13 includes the following: 
