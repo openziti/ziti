@@ -201,7 +201,7 @@ func LoadConfig(path string) (*Config, error) {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
 					cfg.Ctrl.Options = channel2.LoadOptions(optionsMap)
 					if err := cfg.Ctrl.Options.Validate(); err != nil {
-						return nil, fmt.Errorf("error loading channel options for [ctrl/options]: %w", err)
+						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
 			}
