@@ -680,12 +680,12 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doReq
 	resp, err := doRequest(request, session.Host+"/"+entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
+		return nil, fmt.Errorf("unable to [%s] %v instance in Ziti Edge Controller at %v. Error: %v", request.Method, entityType, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, session.Host, resp.Status(), resp.String())
+		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
+			request.Method, entityType, session.Host, resp.Status(), resp.String())
 	}
 
 	if logJSON {

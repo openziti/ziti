@@ -31,6 +31,7 @@ import (
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
 	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
+	"github.com/netfoundry/ziti-foundation/util/term"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -53,6 +54,7 @@ type verifyCaOptions struct {
 
 	caKeyPath     string
 	caKeyPemBytes []byte
+	caKeyPassword string
 
 	isGenerateCert bool
 }
@@ -70,7 +72,7 @@ func newVerifyCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	}
 
 	cmd := &cobra.Command{
-		Use:   "ca <name> [ --cert <pemCertFile> | --cacert <signingCaCert> --cakey <signingCaKey>]",
+		Use:   "ca <name> ( --cert <pemCertFile> | --cacert <signingCaCert> --cakey <signingCaKey> [--password <caKeyPassword>])",
 		Short: "verifies a ca managed by the Ziti Edge Controller",
 		Long: "verifies a ca managed by the Ziti Edge Controller. If --cert is supplied, it is expected that it is a certificate with the " +
 			"common name set to the proper verificationToken value from the target CA. If not set, --cakey and --cacert can be provided to " +
@@ -124,8 +126,9 @@ func newVerifyCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVarP(&options.certPath, "cert", "c", "", "The path to a cert with the CN set as the verification token and signed by the target CA")
-	cmd.Flags().StringVarP(&options.caKeyPath, "cacert", "a", "", "The path to the CA cert that should be used to generate and sign a verification cert")
+	cmd.Flags().StringVarP(&options.caCertPath, "cacert", "a", "", "The path to the CA cert that should be used to generate and sign a verification cert")
 	cmd.Flags().StringVarP(&options.caKeyPath, "cakey", "k", "", "The path to the CA key that should be used to generate and sign a verification cert")
+	cmd.Flags().StringVarP(&options.caKeyPassword, "password", "p", "", "The password for the CA key if necessary")
 
 	return cmd
 }
@@ -139,7 +142,7 @@ func runValidateCa(options *verifyCaOptions) error {
 	}
 
 	if options.isGenerateCert {
-		jsonContainer, err := util.EdgeControllerRequest("ca/"+options.caId, options.Out, options.OutputJSONResponse, func(request *resty.Request, url string) (*resty.Response, error) { return request.Get(url) })
+		jsonContainer, err := util.EdgeControllerRequest("cas/"+options.caId, options.Out, options.OutputJSONResponse, func(request *resty.Request, url string) (*resty.Response, error) { return request.Get(url) })
 
 		if err != nil {
 			return fmt.Errorf("could not request ca [%s] (%v}", options.caId, err)
@@ -158,7 +161,7 @@ func runValidateCa(options *verifyCaOptions) error {
 		}
 	}
 
-	return util.EdgeControllerVerify("ca", options.caId, string(options.certPemBytes), options.Out, options.OutputJSONResponse)
+	return util.EdgeControllerVerify("cas", options.caId, string(options.certPemBytes), options.Out, options.OutputJSONResponse)
 }
 
 func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer, error) {
@@ -175,7 +178,6 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse ca cert (%v)", err)
 	}
-
 	keyBlocks := nfpem.DecodeAll(options.caKeyPemBytes)
 
 	if len(keyBlocks) == 0 {
@@ -183,7 +185,27 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 	}
 
 	caPrivateKeyBlock := keyBlocks[0]
-	signerInterface, err := x509.ParsePKCS8PrivateKey(caPrivateKeyBlock.Bytes)
+
+	if x509.IsEncryptedPEMBlock(caPrivateKeyBlock) {
+		if options.caKeyPassword == "" {
+			options.caKeyPassword, err = term.PromptPassword("enter the password for the supplied ca key file: ", false)
+			if err != nil {
+				return nil, nil, fmt.Errorf("could not retrieve password for encrypted CA key file (%v)", err)
+			}
+		}
+
+		caPrivateKeyBlock.Bytes, err = x509.DecryptPEMBlock(caPrivateKeyBlock, []byte(options.caKeyPassword))
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not decrypt CA private key (%v)", err)
+		}
+	}
+
+	var signerInterface crypto.Signer
+	if caPrivateKeyBlock.Type == "EC PRIVATE KEY" {
+		signerInterface, err = x509.ParseECPrivateKey(caPrivateKeyBlock.Bytes)
+	} else {
+		signerInterface, err = x509.ParsePKCS1PrivateKey(caPrivateKeyBlock.Bytes)
+	}
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse key file (%s)", err)
@@ -216,7 +238,7 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 		return nil, nil, fmt.Errorf("could not generate private key for verification certificate (%v)", err)
 	}
 
-	signedCertBytes, err := x509.CreateCertificate(rand.Reader, verificationCert, caCert, verificationKey.PublicKey, caKey)
+	signedCertBytes, err := x509.CreateCertificate(rand.Reader, verificationCert, caCert, verificationKey.Public(), caKey)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not sign verification certificate with CA (%v)", err)
@@ -225,7 +247,7 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 	verificationCert, _ = x509.ParseCertificate(signedCertBytes)
 
 	verificationBlock := &pem.Block{
-		Type:  "EC CERTIFICATE",
+		Type:  "CERTIFICATE",
 		Bytes: verificationCert.Raw,
 	}
 
@@ -233,26 +255,3 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 
 	return verificationCertPemBytes, verificationKey, nil
 }
-
-//func runCreateCa(options *createCaOptions) (err error) {
-//	data := gabs.New()
-//	setJSONValue(data, options.name, "name")
-//	setJSONValue(data, options.autoCaEnrollment, "isAutoCaEnrollmentEnabled")
-//	setJSONValue(data, options.ottCaEnrollment, "isOttCaEnrollmentEnabled")
-//	setJSONValue(data, options.authEnabled, "isAuthEnabled")
-//	setJSONValue(data, string(options.caPemBytes), "certPem")
-//
-//	result, err := createEntityOfType("cas", data.String(), &options.commonOptions)
-//
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	id := result.S("data", "id").Data()
-//
-//	if _, err = fmt.Fprintf(options.Out, "%v\n", id); err != nil {
-//		panic(err)
-//	}
-//
-//	return err
-//}
