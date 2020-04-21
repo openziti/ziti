@@ -52,7 +52,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 		"port":        int64(22),
 	})
 	err = ctx.Create(config)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type configTypes with id %v", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("configType with id %v not found", invalidId))
 
 	config = newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",

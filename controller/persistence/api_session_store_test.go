@@ -44,7 +44,7 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 
 	apiSession := NewApiSession(uuid.New().String())
 	err := ctx.Create(apiSession)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type identities with id %v", apiSession.IdentityId))
+	ctx.EqualError(err, fmt.Sprintf("identity with id %v not found", apiSession.IdentityId))
 
 	apiSession.IdentityId = ""
 	err = ctx.Create(apiSession)
