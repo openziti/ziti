@@ -32,8 +32,8 @@ func Test_TerminatorStore(t *testing.T) {
 	t.Run("test create invalid terminators", ctx.testCreateInvalidTerminators)
 	t.Run("test create/delete terminators", ctx.testCreateTerminators)
 	t.Run("test create/delete terminators", ctx.testLoadQueryTerminators)
-	t.Run("test update Services", ctx.testUpdateTerminators)
-	t.Run("test delete Services", ctx.testDeleteTerminators)
+	t.Run("test update terminators", ctx.testUpdateTerminators)
+	t.Run("test delete terminators", ctx.testDeleteTerminators)
 }
 
 func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
@@ -51,13 +51,13 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 	terminator.Service = uuid.New().String()
 	terminator.Router = router.Id
 	err = ctx.Create(terminator)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type services with id %v", terminator.Service))
+	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", terminator.Service))
 
 	terminator.Id = uuid.New().String()
 	terminator.Service = service.Id
 	terminator.Router = uuid.New().String()
 	err = ctx.Create(terminator)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type routers with id %v", terminator.Router))
+	ctx.EqualError(err, fmt.Sprintf("router with id %v not found", terminator.Router))
 }
 
 type terminatorTestEntities struct {
