@@ -55,7 +55,7 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 
 	session.ApiSessionId = "invalid-id"
 	err = ctx.Create(session)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type apiSessions with id %v", session.ApiSessionId))
+	ctx.EqualError(err, fmt.Sprintf("apiSession with id %v not found", session.ApiSessionId))
 
 	session.ApiSessionId = apiSession.Id
 	session.ServiceId = ""
@@ -64,7 +64,7 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 
 	session.ServiceId = "invalid-id"
 	err = ctx.Create(session)
-	ctx.EqualError(err, fmt.Sprintf("no entity of type services with id %v", session.ServiceId))
+	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", session.ServiceId))
 
 	session.ServiceId = service.Id
 	err = ctx.Create(session)
