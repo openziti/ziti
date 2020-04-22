@@ -1,9 +1,7 @@
 # if needed, initialize the controller
 ziti-controller edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
 
-# tail all the log files that will be created to see any issues
 mkdir -p ${ZITI_HOME}
-tail -F ${ZITI_HOME}/ziti-*log &
 
 # run the controller
 ziti-controller run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-controller.log" 2>&1 &

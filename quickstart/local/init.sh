@@ -99,5 +99,7 @@ export PS1="ZITI IS RUNNING: "
 echo "adding pki-functions to bash shell"
 . ${curdir}/pki-functions.sh
 
+alias zec='ziti edge controller'
+
 HERE
 )
