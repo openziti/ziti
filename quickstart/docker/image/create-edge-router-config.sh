@@ -1,6 +1,6 @@
 #!/bin/bash
 cat > ${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml <<HereDocForEdgeRouter
-v: 2
+v: 3
 
 identity:
   cert:                 ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_HOSTNAME}-router-client.cert

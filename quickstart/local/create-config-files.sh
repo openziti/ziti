@@ -13,7 +13,7 @@ default:
 " > $ZITI_HOME/identities.yml
 
 
-echo "v: 2
+echo "v: 3
 
 identity:
   cert:                 ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_BR_HOSTNAME}-client.cert
@@ -28,7 +28,7 @@ link:
   listener:             tls:${ZITI_ROUTER_BR_HOSTNAME}:6001
 " > $ZITI_HOME/${ZITI_ROUTER_BR_NAME}.yaml
 
-echo "v: 2
+echo "v: 3
 
 identity:
   cert:                 ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_BLUE_HOSTNAME}-client.cert
@@ -41,7 +41,7 @@ ctrl:
 " > $ZITI_HOME/${ZITI_ROUTER_BLUE_NAME}.yaml
 
 
-echo "v: 2
+echo "v: 3
 
 identity:
   cert:                 ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_RED_HOSTNAME}-client.cert
