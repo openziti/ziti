@@ -22,6 +22,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/biogo/store v0.0.0-20190426020002-884f370e325d h1:vu2gsANkGtqYaQNXhmAAiJ7b1eKTbX3/aPAvDCasBgE=
 github.com/biogo/store v0.0.0-20190426020002-884f370e325d/go.mod h1:Iev9Q3MErcn+w3UOJD/DkEzllvugfdx7bGcMOFhvr/4=
+github.com/cenkalti/backoff/v4 v4.0.2 h1:JIufpQLbh4DkbQoii76ItQIUFzevQSqOLZca4eamEDs=
+github.com/cenkalti/backoff/v4 v4.0.2/go.mod h1:eEew/i+1Q6OrCDZh3WiXYv3+nJwBASZ8Bog/87DQnVg=
 github.com/cheekybits/genny v1.0.0 h1:uGGa4nei+j20rOSeDeP5Of12XVm7TGUd4dJA9RDitfE=
 github.com/cheekybits/genny v1.0.0/go.mod h1:+tQajlRqAUrPI7DOSpB0XAqZYtQakVtB7wXkRAgjxjQ=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -175,8 +177,8 @@ github.com/netfoundry/ziti-fabric v0.11.14 h1:FUuEmPT+OukeWCp1GK3nrdKm3tymtj8Dzz
 github.com/netfoundry/ziti-fabric v0.11.14/go.mod h1:HFy/FBVb5huStmARMm+RzlFyBUmVJ4xFb4AKR7hjsyI=
 github.com/netfoundry/ziti-foundation v0.9.10 h1:23hd+ezEaRIa66JFYO5r0q0kCtU92L77IChBrMAFLjs=
 github.com/netfoundry/ziti-foundation v0.9.10/go.mod h1:s4O2kYpHcFzeMpS2hkNfD6W7Ce3RhsLw30Ruj4kBRu4=
-github.com/netfoundry/ziti-sdk-golang v0.11.18 h1:eYOwJ7kjeL6ZH5YrpG8ZbDKE9rLszwUdC30BETDAlPE=
-github.com/netfoundry/ziti-sdk-golang v0.11.18/go.mod h1:MjN9YDruRF7WUGQ8yDRb1bzWE3sd+GZR5jAgw3P2l1Q=
+github.com/netfoundry/ziti-sdk-golang v0.11.19 h1:S51dguEpsFSCzBOGqcpA9nOjB+Da0emImGx5j5Scsh8=
+github.com/netfoundry/ziti-sdk-golang v0.11.19/go.mod h1:vssbQcbl/iFNcxogPT+f+j+cBO0xl2Z+00c7WXeUcQQ=
 github.com/oleiade/reflections v1.0.0 h1:0ir4pc6v8/PJ0yw5AEtMddfXpWBXg9cnG7SgSoJuCgY=
 github.com/oleiade/reflections v1.0.0/go.mod h1:RbATFBbKYkVdqmSFtx13Bb/tVhR0lgOBXunWTZKeL4w=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
