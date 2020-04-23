@@ -49,6 +49,7 @@ func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
 	cmd.AddCommand(newVersionCmd(f, out, errOut))
 	cmd.AddCommand(newPolicyAdivsorCmd(f, out, errOut))
+	cmd.AddCommand(newVerifyCmd(f, out, errOut))
 	return cmd
 }
 
