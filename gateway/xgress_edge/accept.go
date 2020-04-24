@@ -17,6 +17,7 @@
 package xgress_edge
 
 import (
+	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
 	"github.com/netfoundry/ziti-edge/internal/cert"
@@ -102,7 +103,10 @@ func (accepter *Accepter) Run() {
 
 	for {
 		if _, err := channel2.NewChannel("edge", accepter.uListener, accepter.options); err != nil {
-			log.Errorf("error accepting (%s)", err)
+			log.Errorf("error accepting (%v)", err)
+			if errors.Is(err, channel2.ListenerClosedError) {
+				return
+			}
 		}
 	}
 

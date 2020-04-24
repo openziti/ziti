@@ -347,7 +347,8 @@ func (b *Broker) sendSessionDeletes(session *persistence.Session) {
 
 	if buf, err := proto.Marshal(sessionsRemoved); err == nil {
 		msg := channel2.NewMessage(SessionRemovedType, buf)
-		b.sendToAllEdgeRoutersForSession(session.Id, msg)
+		// can't use sendToAllEdgeRoutersForSession b/c the session is gone
+		b.sendToAllEdgeRouters(msg)
 	} else {
 		pfxlog.Logger().WithError(err).Error("error sending session removed, could not marshal message content")
 	}

@@ -38,6 +38,9 @@ func (handler *ServicePolicyHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *ServicePolicyHandler) Create(servicePolicy *ServicePolicy) (string, error) {
+	if err := servicePolicy.validatePolicyType(); err != nil {
+		return "", err
+	}
 	return handler.createEntity(servicePolicy)
 }
 
@@ -58,10 +61,16 @@ func (handler *ServicePolicyHandler) readInTx(tx *bbolt.Tx, id string) (*Service
 }
 
 func (handler *ServicePolicyHandler) Update(servicePolicy *ServicePolicy) error {
+	if err := servicePolicy.validatePolicyType(); err != nil {
+		return err
+	}
 	return handler.updateEntity(servicePolicy, nil)
 }
 
 func (handler *ServicePolicyHandler) Patch(servicePolicy *ServicePolicy, checker boltz.FieldChecker) error {
+	if err := servicePolicy.validatePolicyType(); checker.IsUpdated("type") && err != nil {
+		return err
+	}
 	return handler.patchEntity(servicePolicy, checker)
 }
 

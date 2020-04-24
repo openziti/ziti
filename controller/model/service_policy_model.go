@@ -19,9 +19,9 @@ package model
 import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/validation"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -37,12 +37,15 @@ type ServicePolicy struct {
 	ServiceRoles  []string
 }
 
-func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
+func (entity *ServicePolicy) validatePolicyType() error {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
-		return nil, validation.NewFieldError(msg, "policyType", entity.PolicyType)
+		return validation.NewFieldError(msg, "policyType", entity.PolicyType)
 	}
+	return nil
+}
 
+func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
 	policyType := persistence.PolicyTypeInvalid
 	if strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) {
 		policyType = persistence.PolicyTypeDial

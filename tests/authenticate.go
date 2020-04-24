@@ -30,6 +30,7 @@ import (
 	"github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-foundation/common/constants"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	"net/http"
@@ -228,6 +229,13 @@ func (request *authenticatedRequests) newAuthenticatedJsonRequest(body interface
 		SetBody(body)
 }
 
+func (request *authenticatedRequests) requireCreateSdkContext() (*identity, ziti.Context) {
+	identity := request.requireNewIdentityWithOtt(false)
+	config := request.testContext.enrollIdentity(identity.id)
+	context := ziti.NewContextWithConfig(config)
+	return identity, context
+}
+
 func (request *authenticatedRequests) requireCreateIdentity(name string, isAdmin bool, rolesAttributes ...string) string {
 	entityData := gabs.New()
 	request.testContext.setJsonValue(entityData, name, "name")
@@ -292,6 +300,19 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name st
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
 	request.requireCreateEntity(service)
+	return service
+}
+
+func (request *authenticatedRequests) requireNewServiceAccessibleToAll(terminatorStrategy string) *service {
+	request.requireNewServicePolicy("Dial", s("#all"), s("#all"))
+	request.requireNewServicePolicy("Bind", s("#all"), s("#all"))
+	request.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	request.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+
+	service := request.testContext.newService(nil, nil)
+	service.terminatorStrategy = terminatorStrategy
+	request.requireCreateEntity(service)
+
 	return service
 }
 
@@ -687,7 +708,6 @@ func (request *authenticatedRequests) getTransitRouterJwt(transitRouterId string
 }
 
 func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
-	request.testContext.enabledJsonLogging = true
 	jsonBody := request.requireQuery("identities/" + identityId)
 	data := request.testContext.requirePath(jsonBody, "data", "enrollment", "ott", "jwt")
 	return data.Data().(string)

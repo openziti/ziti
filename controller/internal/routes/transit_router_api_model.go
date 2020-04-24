@@ -18,7 +18,7 @@ func NewTransitRouterEntityRef(entity *model.TransitRouter) *EntityApiRef {
 	}
 
 	return &EntityApiRef{
-		Entity: EntityNameEdgeRouter,
+		Entity: EntityNameTransitRouter,
 		Id:     entity.Id,
 		Name:   &entity.Name,
 		Links:  links,
@@ -83,7 +83,7 @@ func (e TransitRouterApiList) BuildSelfLink(id string) *response.Link {
 	return NewTransitRouterLink(id)
 }
 
-func MapTransitRouterToApiEntity(appEnv *env.AppEnv, context *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {
+func MapTransitRouterToApiEntity(appEnv *env.AppEnv, _ *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {
 	txRouter, ok := entity.(*model.TransitRouter)
 
 	if !ok {

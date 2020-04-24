@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package validation
+package schema
 
 import (
 	"encoding/json"
@@ -22,43 +22,15 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-const (
-	maxFieldErrorValueLength = 20
-)
-
-type FieldError struct {
-	Reason     string
-	FieldName  string
-	FieldValue interface{}
+type ValidationErrors struct {
+	Errors []*ValidationError
 }
 
-func (fe FieldError) Error() string {
-	v := fe.FieldValue
-	if s, ok := fe.FieldValue.(string); ok {
-		if len(s) > maxFieldErrorValueLength {
-			v = s[0:maxFieldErrorValueLength] + "..."
-		}
-	}
-	return fmt.Sprintf("the value '%v' for '%s' is invalid: %s", v, fe.FieldName, fe.Reason)
-}
-
-func NewFieldError(reason, name string, value interface{}) *FieldError {
-	return &FieldError{
-		Reason:     reason,
-		FieldName:  name,
-		FieldValue: value,
-	}
-}
-
-type SchemaValidationErrors struct {
-	Errors []*SchemaValidationError
-}
-
-func (e SchemaValidationErrors) Error() string {
+func (e ValidationErrors) Error() string {
 	return fmt.Sprintf("schema validation failed")
 }
 
-func (e SchemaValidationErrors) MarshalJSON() ([]byte, error) {
+func (e ValidationErrors) MarshalJSON() ([]byte, error) {
 	if len(e.Errors) > 1 {
 		errMap := map[string]interface{}{
 			"Reason": "multiple validation errors occurred",
@@ -74,7 +46,7 @@ func (e SchemaValidationErrors) MarshalJSON() ([]byte, error) {
 	return nil, nil
 }
 
-type SchemaValidationError struct {
+type ValidationError struct {
 	Field   string                 `json:"field"`
 	Type    string                 `json:"type"`
 	Value   interface{}            `json:"value"`
@@ -82,12 +54,12 @@ type SchemaValidationError struct {
 	Details map[string]interface{} `json:"details"`
 }
 
-func (e SchemaValidationError) Error() string {
+func (e ValidationError) Error() string {
 	return fmt.Sprintf("%s is invalid: %s", e.Field, e.Message)
 }
 
-func NewValidationError(err gojsonschema.ResultError) *SchemaValidationError {
-	return &SchemaValidationError{
+func NewValidationError(err gojsonschema.ResultError) *ValidationError {
+	return &ValidationError{
 		Field:   err.Field(),
 		Type:    err.Type(),
 		Value:   err.Value(),
@@ -96,10 +68,10 @@ func NewValidationError(err gojsonschema.ResultError) *SchemaValidationError {
 	}
 }
 
-func NewSchemaValidationErrors(result *gojsonschema.Result) *SchemaValidationErrors {
-	var errs []*SchemaValidationError
+func NewValidationErrors(result *gojsonschema.Result) *ValidationErrors {
+	var errs []*ValidationError
 	for _, re := range result.Errors() {
 		errs = append(errs, NewValidationError(re))
 	}
-	return &SchemaValidationErrors{Errors: errs}
+	return &ValidationErrors{Errors: errs}
 }

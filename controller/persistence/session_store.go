@@ -17,15 +17,14 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/validation"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/netfoundry/ziti-foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 const (
