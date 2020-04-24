@@ -70,7 +70,11 @@ func (l *listener) LogContext() string {
 }
 
 func (l *listener) relay() {
-	defer l.close()
+	defer func() {
+		if err := l.Close(); err != nil {
+			logrus.Errorf("error closing packet connection (%v)", err)
+		}
+	}()
 
 	for {
 		buf := make([]byte, udp.MaxPacketSize)
@@ -139,12 +143,11 @@ func (l *listener) handleConnect(session xgress_udp.Session) {
 	}
 }
 
-func (l *listener) close() {
+func (l *listener) Close() error {
 	if l.conn != nil {
-		if err := l.conn.Close(); err != nil {
-			logrus.Errorf("error closing packet connection (%v)", err)
-		}
+		return l.conn.Close()
 	}
+	return nil
 }
 
 func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {

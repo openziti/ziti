@@ -26,10 +26,11 @@ import (
 
 func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, service string) xgress.Listener {
 	return &listener{
-		id:      id,
-		ctrl:    ctrl,
-		options: options,
-		service: service,
+		id:          id,
+		ctrl:        ctrl,
+		options:     options,
+		service:     service,
+		closeHelper: &xgress.CloseHelper{},
 	}
 }
 
@@ -40,7 +41,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	}
 
 	incomingPeers := make(chan transport.Connection)
-	go txAddress.MustListen("tcp", listener.id, incomingPeers)
+	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, incomingPeers))
 	go func() {
 		for {
 			select {
@@ -69,8 +70,13 @@ func (listener *listener) handleConnect(peer transport.Connection, bindHandler x
 }
 
 type listener struct {
-	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
-	options *xgress.Options
-	service string
+	id          *identity.TokenId
+	ctrl        xgress.CtrlChannel
+	options     *xgress.Options
+	service     string
+	closeHelper *xgress.CloseHelper
+}
+
+func (listener *listener) Close() error {
+	return listener.closeHelper.Close()
 }
