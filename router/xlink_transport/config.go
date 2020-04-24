@@ -59,6 +59,8 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		} else {
 			return nil, fmt.Errorf("invalid 'options' in listener config (%s)", reflect.TypeOf(value))
 		}
+	} else {
+		config.options = channel2.DefaultOptions()
 	}
 
 	return config, nil
