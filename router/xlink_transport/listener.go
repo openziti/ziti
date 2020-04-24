@@ -17,6 +17,7 @@
 package xlink_transport
 
 import (
+	"errors"
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -39,6 +40,10 @@ func (self *listener) GetAdvertisement() string {
 	return self.config.advertise.String()
 }
 
+func (self *listener) Close() error {
+	return self.listener.Close()
+}
+
 func (self *listener) acceptLoop() {
 	for {
 		ch, err := channel2.NewChannel("link", self.listener, self.config.options)
@@ -58,6 +63,9 @@ func (self *listener) acceptLoop() {
 
 			logrus.Infof("accepted link [%s]", "l/"+ch.Id().Token)
 
+		} else if errors.Is(err, channel2.ListenerClosedError) {
+			logrus.Errorf("link underlay acceptor closed")
+			return
 		} else {
 			logrus.Errorf("error creating link underlay (%v)", err)
 		}

@@ -29,6 +29,7 @@ type Factory interface {
 type Listener interface {
 	Listen() error
 	GetAdvertisement() string
+	Close() error
 }
 
 type Accepter interface {

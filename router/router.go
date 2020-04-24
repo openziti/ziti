@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
 	"github.com/netfoundry/ziti-fabric/router/handler_ctrl"
@@ -37,6 +38,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/metrics"
 	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-foundation/profiler"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/info"
 	"github.com/sirupsen/logrus"
 	"math/rand"
@@ -55,7 +57,10 @@ type Router struct {
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
+	xgressListeners []xgress.Listener
 	metricsRegistry metrics.Registry
+	shutdownC       chan struct{}
+	isShutdown      concurrenz.AtomicBoolean
 }
 
 func (self *Router) Channel() channel2.Channel {
@@ -69,6 +74,7 @@ func Create(config *Config) *Router {
 		config:          config,
 		forwarder:       forwarder.NewForwarder(metricsRegistry),
 		metricsRegistry: metricsRegistry,
+		shutdownC:       make(chan struct{}),
 	}
 }
 
@@ -103,6 +109,36 @@ func (self *Router) Start() error {
 	return nil
 }
 
+func (self *Router) Shutdown() error {
+	var errors []error
+	if self.isShutdown.CompareAndSwap(false, true) {
+		if err := self.ctrl.Close(); err != nil {
+			errors = append(errors, err)
+		}
+
+		close(self.shutdownC)
+
+		for _, xlinkListener := range self.xlinkListeners {
+			if err := xlinkListener.Close(); err != nil {
+				errors = append(errors, err)
+			}
+		}
+
+		for _, xgressListener := range self.xgressListeners {
+			if err := xgressListener.Close(); err != nil {
+				errors = append(errors, err)
+			}
+		}
+	}
+	if len(errors) == 0 {
+		return nil
+	}
+	if len(errors) == 1 {
+		return errors[0]
+	}
+	return network.MultipleErrors(errors)
+}
+
 func (self *Router) Run() error {
 	if err := self.Start(); err != nil {
 		return err
@@ -122,10 +158,10 @@ func (self *Router) showOptions() {
 
 func (self *Router) startProfiling() {
 	if self.config.Profile.Memory.Path != "" {
-		go profiler.NewMemory(self.config.Profile.Memory.Path, self.config.Profile.Memory.Interval).Run()
+		go profiler.NewMemoryWithShutdown(self.config.Profile.Memory.Path, self.config.Profile.Memory.Interval, self.shutdownC).Run()
 	}
 	if self.config.Profile.CPU.Path != "" {
-		if cpu, err := profiler.NewCPU(self.config.Profile.CPU.Path); err == nil {
+		if cpu, err := profiler.NewCPUWithShutdown(self.config.Profile.CPU.Path, self.shutdownC); err == nil {
 			go cpu.Run()
 		} else {
 			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
@@ -194,6 +230,7 @@ func (self *Router) startXgressListeners() {
 		if err != nil {
 			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.name, err)
 		}
+		self.xgressListeners = append(self.xgressListeners, listener)
 		if address, found := binding.options["address"]; found {
 			err = listener.Listen(address.(string),
 				handler_xgress.NewBindHandler(

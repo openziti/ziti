@@ -16,9 +16,13 @@
 
 package xgress_udp
 
-import "net"
+import (
+	"io"
+	"net"
+)
 
 type Listener interface {
+	io.Closer
 	WriteTo(data []byte, addr net.Addr) (int, error)
 	GetSession(sessionId string) (Session, bool)
 	DeleteSession(sessionId string)

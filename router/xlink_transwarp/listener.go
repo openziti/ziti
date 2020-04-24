@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/sirupsen/logrus"
 	"net"
 )
@@ -57,11 +58,16 @@ func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, p
 	}
 }
 
+func (self *listener) Close() error {
+	defer self.closed.Set(true)
+	return self.listener.Close()
+}
+
 /*
  * xlink_transwarp.listener
  */
 func (self *listener) listen() {
-	for {
+	for !self.closed.Get() {
 		if m, peer, err := readMessage(self.listener); err == nil {
 			if m.messageType == Hello {
 				if err := handleHello(m, self.listener, peer, self); err != nil {
@@ -89,4 +95,5 @@ type listener struct {
 	accepter  xlink.Accepter
 	forwarder xlink.Forwarder
 	peers     map[string]*impl
+	closed    concurrenz.AtomicBoolean
 }

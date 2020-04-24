@@ -38,6 +38,7 @@ type Address string
 
 type Listener interface {
 	Listen(address string, bindHandler BindHandler) error
+	Close() error
 }
 
 type Dialer interface {

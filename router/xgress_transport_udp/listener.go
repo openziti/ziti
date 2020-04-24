@@ -71,19 +71,21 @@ func (l *listener) LogContext() string {
 	return l.address
 }
 
-func (l *listener) close() {
-	logger := pfxlog.ContextLogger(l.address)
+func (l *listener) Close() error {
 	if l.conn != nil {
-		if err := l.conn.Close(); err != nil {
-			logger.Errorf("failure closing packet conn. (%v)", err)
-		}
+		return l.conn.Close()
 	}
+	return nil
 }
 
 func (l *listener) relayIncomingPackets() {
-	defer l.close()
-
 	logger := pfxlog.ContextLogger(l.address)
+
+	defer func() {
+		if err := l.Close(); err != nil {
+			logger.Errorf("failure closing packet conn. (%v)", err)
+		}
+	}()
 
 	for {
 		buf := make([]byte, udp.MaxPacketSize)
