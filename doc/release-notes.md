@@ -1,3 +1,40 @@
+# Release 0.13.7
+## Theme
+Ziti 0.13.7 includes the following:
+
+  * Improvements to sdk availability when hosting services
+  * Various bug fixes to related to terminators and transit routers
+  
+## SDK Resilience
+The golang sdk now has a new listen method on context, which takes listen options.
+
+```go
+type Context interface {
+	...
+	ListenWithOptions(serviceName string, options *edge.ListenOptions) (net.Listener, error)
+    ...
+}
+
+type ListenOptions struct {
+	Cost           uint16
+	ConnectTimeout time.Duration
+	MaxConnections int
+}
+```  
+
+The SDK now supports the following:
+
+  * Configuring connect timeout
+  * Allow establishing new session, if existing session goes away
+  * Allow establishing new API session, existing API session goes away
+  * If client doesn't have access to service, it should stop listening and return an error
+  * If client can't establish or re-establish API session, it should stop listening and return error
+  
+If paired with a ziti controller/routers which support terminator strategies for HA/HS, the following features are also supported:
+
+  * Handle listen to multiple edge routers.
+  * Allow configuring max number of connections to edge routers
+
 # Release 0.13.3
 ## Theme
 Ziti 0.13.3 includes the following:
