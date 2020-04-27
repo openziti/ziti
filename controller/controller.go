@@ -26,6 +26,11 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-fabric/controller/xctrl_example"
 	"github.com/netfoundry/ziti-fabric/controller/xmgmt"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/netfoundry/ziti-fabric/controller/xt_ha"
+	"github.com/netfoundry/ziti-fabric/controller/xt_random"
+	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
+	"github.com/netfoundry/ziti-fabric/controller/xt_weighted"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
@@ -156,6 +161,11 @@ func (c *Controller) registerComponents() error {
 	if err := c.RegisterXctrl(xctrl_example.NewExample()); err != nil {
 		return err
 	}
+
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 
 	return nil
 }

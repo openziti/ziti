@@ -14,11 +14,15 @@
 	limitations under the License.
 */
 
-package xt_hs_weighted
+package xt_smartrouting
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"math"
+)
+
+const (
+	Name = "smartrouting"
 )
 
 /**
@@ -34,7 +38,7 @@ func NewFactory() xt.Factory {
 type factory struct{}
 
 func (f factory) GetStrategyName() string {
-	return "smartrouting"
+	return Name
 }
 
 func (f factory) NewStrategy() xt.Strategy {

@@ -19,6 +19,7 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"testing"
@@ -28,6 +29,8 @@ import (
 func Test_TerminatorStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
+
+	xt.GlobalRegistry().RegisterFactory(&testStrategyFactory{})
 
 	t.Run("test create invalid terminators", ctx.testCreateInvalidTerminators)
 	t.Run("test create/delete terminators", ctx.testCreateTerminators)
@@ -40,20 +43,42 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 	ctx.NextTest(t)
 	defer ctx.cleanupAll()
 
-	terminator := &Terminator{}
-	err := ctx.Create(terminator)
-	ctx.EqualError(err, "cannot create terminator with blank id")
+	terminator := &Terminator{
+		Binding: uuid.New().String(),
+		Address: uuid.New().String(),
+		Service: uuid.New().String(),
+		Router:  uuid.New().String(),
+	}
+	err := ctx.Update(terminator)
+	ctx.EqualError(err, "cannot update terminator with blank id")
+
+	terminator.Binding = ""
+	err = ctx.Create(terminator)
+	ctx.EqualError(err, "the value '' for 'binding' is invalid: binding is required")
+
+	terminator.Binding = uuid.New().String()
+	terminator.Address = ""
+	err = ctx.Create(terminator)
+	ctx.EqualError(err, "the value '' for 'address' is invalid: address is required")
+
+	terminator.Router = ""
+	terminator.Address = uuid.New().String()
+	err = ctx.Create(terminator)
+	ctx.EqualError(err, "the value '' for 'router' is invalid: router is required")
+
+	terminator.Service = ""
+	terminator.Router = uuid.New().String()
+	err = ctx.Create(terminator)
+	ctx.EqualError(err, "the value '' for 'service' is invalid: service is required")
 
 	service := ctx.requireNewService()
 	router := ctx.requireNewRouter()
 
-	terminator.Id = uuid.New().String()
 	terminator.Service = uuid.New().String()
 	terminator.Router = router.Id
 	err = ctx.Create(terminator)
 	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", terminator.Service))
 
-	terminator.Id = uuid.New().String()
 	terminator.Service = service.Id
 	terminator.Router = uuid.New().String()
 	err = ctx.Create(terminator)
@@ -79,7 +104,6 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.router = ctx.requireNewRouter()
 
 	e.terminator = &Terminator{}
-	e.terminator.Id = uuid.New().String()
 	e.terminator.Service = e.service.Id
 	e.terminator.Router = e.router.Id
 	e.terminator.Binding = uuid.New().String()
@@ -89,17 +113,19 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.router2 = ctx.requireNewRouter()
 
 	e.terminator2 = &Terminator{}
-	e.terminator2.Id = uuid.New().String()
 	e.terminator2.Service = e.service.Id
 	e.terminator2.Router = e.router2.Id
+	e.terminator2.Binding = uuid.New().String()
+	e.terminator2.Address = uuid.New().String()
 	ctx.RequireCreate(e.terminator2)
 
 	e.service2 = ctx.requireNewService()
 
 	e.terminator3 = &Terminator{}
-	e.terminator3.Id = uuid.New().String()
 	e.terminator3.Service = e.service2.Id
 	e.terminator3.Router = e.router2.Id
+	e.terminator3.Binding = uuid.New().String()
+	e.terminator3.Address = uuid.New().String()
 	ctx.RequireCreate(e.terminator3)
 
 	return e
@@ -195,6 +221,8 @@ func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 	terminator.Address = uuid.New().String()
 	terminator.Tags = ctx.CreateTags()
 	ctx.RequireUpdate(terminator)
+
+	terminator.Service = e.service.Id // service should not be updated
 	ctx.ValidateUpdated(terminator)
 }
 
@@ -212,4 +240,27 @@ func (ctx *TestContext) testDeleteTerminators(t *testing.T) {
 
 	ctx.RequireDelete(e.service)
 	ctx.ValidateDeleted(e.terminator.Id)
+}
+
+type testStrategyFactory struct{}
+
+func (t testStrategyFactory) GetStrategyName() string {
+	return "smartrouting"
+}
+
+func (t testStrategyFactory) NewStrategy() xt.Strategy {
+	return &testStrategy{}
+}
+
+type testStrategy struct{}
+
+func (t testStrategy) Select(terminators []xt.WeightedTerminator, _ uint32) (xt.Terminator, error) {
+	return terminators[0], nil
+}
+
+func (t testStrategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+	return nil
+}
+
+func (t testStrategy) NotifyEvent(xt.TerminatorEvent) {
 }

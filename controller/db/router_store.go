@@ -22,7 +22,6 @@ import (
 )
 
 import (
-	"fmt"
 	"go.etcd.io/bbolt"
 )
 
@@ -57,7 +56,7 @@ type RouterStore interface {
 
 func newRouterStore(stores *stores) *routerStoreImpl {
 	notFoundErrorFactory := func(id string) error {
-		return fmt.Errorf("missing router '%s'", id)
+		return boltz.NewNotFoundError(boltz.GetSingularEntityType(EntityTypeRouters), "id", id)
 	}
 
 	store := &routerStoreImpl{
@@ -67,14 +66,18 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 		},
 	}
 	store.InitImpl(store)
-	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
-	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, stores.terminator)
 	return store
 }
 
 type routerStoreImpl struct {
 	baseStore
 	terminatorsSymbol boltz.EntitySetSymbol
+}
+
+func (store *routerStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
+	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
 }
 
 func (store *routerStoreImpl) initializeLinked() {
