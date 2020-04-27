@@ -55,6 +55,7 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 		Router:   h.router.Id,
 		Binding:  request.Binding,
 		Address:  request.Address,
+		Cost:     uint16(request.Cost),
 		PeerData: request.PeerData,
 	}
 

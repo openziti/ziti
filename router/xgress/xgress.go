@@ -43,6 +43,7 @@ type Listener interface {
 
 type Dialer interface {
 	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) error
+	IsTerminatorValid(id string, destination string) bool
 }
 
 type Factory interface {

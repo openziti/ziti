@@ -208,7 +208,7 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, binding string, address string, peerData map[uint32][]byte) error {
+func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, binding string, address string, peerData map[uint32][]byte, cost uint16) (string, error) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.CreateTerminatorRequest{
 		Id:        terminatorId,
@@ -216,31 +216,32 @@ func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, bind
 		Binding:   binding,
 		Address:   address,
 		PeerData:  peerData,
+		Cost:      uint32(cost),
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		log.Errorf("failed to marshal CreateTerminatorRequest message: (%v)", err)
-		return authError
+		return "", authError
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateTerminatorRequestType), bytes)
 	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
 		log.Errorf("failed to send CreateTerminatorRequest message: (%v)", err)
-		return authError
+		return "", authError
 	}
 
 	if responseMesg != nil && responseMesg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMesg)
 		if result.Success {
 			log.Debugf("successfully added service terminator [s/%s] for service [%v]", terminatorId, serviceId)
-			return nil
+			return result.Message, nil
 		}
 		log.Errorf("authentication failure: (%v)", result.Message)
-		return errors.New(result.Message)
+		return "", errors.New(result.Message)
 	} else {
 		log.Errorf("unexpected controller response, ContentType: (%v)", responseMesg.ContentType)
-		return authError
+		return "", authError
 	}
 }
 

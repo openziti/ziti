@@ -29,6 +29,10 @@ type dialer struct {
 	options *xgress.Options
 }
 
+func (txd *dialer) IsTerminatorValid(string, string) bool {
+	return true
+}
+
 func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.Dialer, error) {
 	txd := &dialer{
 		id:      id,

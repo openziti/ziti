@@ -1,12 +1,9 @@
 /*
 	Copyright NetFoundry, Inc.
-
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
 	You may obtain a copy of the License at
-
 	https://www.apache.org/licenses/LICENSE-2.0
-
 	Unless required by applicable law or agreed to in writing, software
 	distributed under the License is distributed on an "AS IS" BASIS,
 	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,16 +14,13 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/sequence"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
-	"time"
 )
 
 type Terminator struct {
@@ -35,7 +29,32 @@ type Terminator struct {
 	Router   string
 	Binding  string
 	Address  string
+	Cost     uint16
 	PeerData map[uint32][]byte
+}
+
+func (entity *Terminator) GetServiceId() string {
+	return entity.Service
+}
+
+func (entity *Terminator) GetRouterId() string {
+	return entity.Router
+}
+
+func (entity *Terminator) GetBinding() string {
+	return entity.Binding
+}
+
+func (entity *Terminator) GetAddress() string {
+	return entity.Address
+}
+
+func (entity *Terminator) GetCost() uint16 {
+	return entity.Cost
+}
+
+func (entity *Terminator) GetPeerData() map[uint32][]byte {
+	return entity.PeerData
 }
 
 func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -48,6 +67,7 @@ func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.E
 	entity.Binding = boltTerminator.Binding
 	entity.Address = boltTerminator.Address
 	entity.PeerData = boltTerminator.PeerData
+	entity.Cost = boltTerminator.Cost
 	entity.FillCommon(boltTerminator)
 	return nil
 }
@@ -59,6 +79,7 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		Router:        entity.Router,
 		Binding:       entity.Binding,
 		Address:       entity.Address,
+		Cost:          entity.Cost,
 		PeerData:      entity.PeerData,
 	}
 }
@@ -67,7 +88,6 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 	result := &TerminatorController{
 		baseController: newController(controllers, controllers.stores.Terminator),
 		store:          controllers.stores.Terminator,
-		sequence:       sequence.NewSequence(),
 	}
 	result.impl = result
 	return result
@@ -75,8 +95,7 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 
 type TerminatorController struct {
 	baseController
-	store    db.TerminatorStore
-	sequence *sequence.Sequence
+	store db.TerminatorStore
 }
 
 func (ctrl *TerminatorController) newModelEntity() boltEntitySink {
@@ -93,49 +112,36 @@ func (ctrl *TerminatorController) Create(s *Terminator) (string, error) {
 	return id, err
 }
 
-func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, e *Terminator) (string, error) {
-	if e.Id == "" {
-		var err error
-		e.Id, err = ctrl.sequence.NextHash()
-		if err != nil {
-			return "", err
-		}
-	}
-	if e.Binding == "" {
-		if strings.HasPrefix(e.Address, "udp:") {
-			e.Binding = "udp"
+func (ctrl *TerminatorController) checkBinding(terminator *Terminator) {
+	if terminator.Binding == "" {
+		if strings.HasPrefix(terminator.Address, "udp:") {
+			terminator.Binding = "udp"
 		} else {
-			e.Binding = "transport"
+			terminator.Binding = "transport"
 		}
 	}
-	if e.Address == "" {
-		return "", models.NewFieldError("required value is missing", "address", e.Binding)
-	}
-	if !ctrl.stores.Service.IsEntityPresent(ctx.Tx(), e.Service) {
-		return "", boltz.NewNotFoundError("service", "service", e.Service)
-	}
-	if e.Router == "" {
-		return "", errors.Errorf("router is required when creating terminator. id: %v, service: %v", e.Id, e.Service)
-	}
-	if !ctrl.stores.Router.IsEntityPresent(ctx.Tx(), e.Router) {
-		return "", boltz.NewNotFoundError("router", "router", e.Router)
-	}
-	e.CreatedAt = time.Now()
-	if err := ctrl.GetStore().Create(ctx, e.toBolt()); err != nil {
-		return "", err
-	}
-	return e.Id, nil
 }
 
-func (ctrl *TerminatorController) Update(s *Terminator) error {
+func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, terminator *Terminator) (string, error) {
+	ctrl.checkBinding(terminator)
+	boltTerminator := terminator.toBolt()
+	if err := ctrl.GetStore().Create(ctx, boltTerminator); err != nil {
+		return "", err
+	}
+	return boltTerminator.Id, nil
+}
+
+func (ctrl *TerminatorController) Update(terminator *Terminator) error {
 	return ctrl.db.Update(func(tx *bbolt.Tx) error {
-		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
+		ctrl.checkBinding(terminator)
+		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), terminator.toBolt(), nil)
 	})
 }
 
-func (ctrl *TerminatorController) Patch(s *Terminator, checker boltz.FieldChecker) error {
+func (ctrl *TerminatorController) Patch(terminator *Terminator, checker boltz.FieldChecker) error {
 	return ctrl.db.Update(func(tx *bbolt.Tx) error {
-		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), checker)
+		ctrl.checkBinding(terminator)
+		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), terminator.toBolt(), checker)
 	})
 }
 
@@ -160,5 +166,42 @@ func (ctrl *TerminatorController) readInTx(tx *bbolt.Tx, id string) (*Terminator
 }
 
 func (ctrl *TerminatorController) Delete(id string) error {
-	return controllers.DeleteEntityById(ctrl.GetStore(), ctrl.db, id)
+	return ctrl.db.Update(func(tx *bbolt.Tx) error {
+		return ctrl.store.DeleteById(boltz.NewMutateContext(tx), id)
+	})
+}
+
+func (ctrl *TerminatorController) Query(query string) (*TerminatorListResult, error) {
+	result := &TerminatorListResult{controller: ctrl}
+	if err := ctrl.list(query, result.collect); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+type TerminatorListResult struct {
+	controller *TerminatorController
+	Entities   []*Terminator
+	models.QueryMetaData
+}
+
+func (result *TerminatorListResult) collect(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
+	result.QueryMetaData = *qmd
+	for _, id := range ids {
+		terminator, err := result.controller.readInTx(tx, id)
+		if err != nil {
+			return err
+		}
+		result.Entities = append(result.Entities, terminator)
+	}
+	return nil
+}
+
+type RoutingTerminator struct {
+	Weight uint32
+	*Terminator
+}
+
+func (r *RoutingTerminator) GetRouteWeight() uint32 {
+	return r.Weight
 }

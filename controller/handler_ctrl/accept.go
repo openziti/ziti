@@ -69,6 +69,7 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 					continue
 				}
 				ctrlAccepter.network.ConnectRouter(r)
+				ctrlAccepter.network.ValidateTerminators(r)
 
 				log.Infof("accepted new router connection [r/%s]", r.Id)
 			}

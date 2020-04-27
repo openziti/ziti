@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/trace"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -56,6 +57,7 @@ type Network struct {
 	shutdownChan               chan struct{}
 	isShutdown                 concurrenz.AtomicBoolean
 	lock                       sync.Mutex
+	strategyRegistry           xt.Registry
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
@@ -79,6 +81,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		traceEventController:       trace.NewEventController(),
 		traceController:            trace.NewController(),
 		shutdownChan:               make(chan struct{}),
+		strategyRegistry:           xt.GlobalRegistry(),
 	}
 	network.metricsEventController.AddHandler(network)
 	network.AddCapability("ziti.fabric")
@@ -168,6 +171,44 @@ func (network *Network) ConnectRouter(r *Router) {
 
 	for _, h := range network.routerPresenceHandlers {
 		h.RouterConnected(r)
+	}
+}
+
+func (network *Network) ValidateTerminators(r *Router) {
+	result, err := network.Terminators.Query(fmt.Sprintf(`router.id = "%v" limit none`, r.Id))
+	if err != nil {
+		pfxlog.Logger().Errorf("failed to get termintors for router %v (%v)", r.Id, err)
+		return
+	}
+
+	pfxlog.Logger().Debugf("%v terminators on %v to validate", len(result.Entities), r.Id)
+	if len(result.Entities) == 0 {
+		return
+	}
+
+	var terminators []*ctrl_pb.Terminator
+
+	for _, terminator := range result.Entities {
+		terminators = append(terminators, &ctrl_pb.Terminator{
+			Id:      terminator.Id,
+			Binding: terminator.Binding,
+			Address: terminator.Address,
+		})
+	}
+
+	req := &ctrl_pb.ValidateTerminatorsRequest{
+		Terminators: terminators,
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		pfxlog.Logger().Errorf("unexpected error serializing ValidateTerminatorsRequest (%s)", err)
+		return
+	}
+
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_ValidateTerminatorsRequestType), body)
+	if err := r.Control.Send(msg); err != nil {
+		pfxlog.Logger().Errorf("unexpected error sending ValidateTerminatorsRequest (%s)", err)
 	}
 }
 
