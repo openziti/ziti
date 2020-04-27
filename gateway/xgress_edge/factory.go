@@ -159,6 +159,8 @@ func (options *Options) load(data xgress.OptionsData) error {
 			}
 			options.MaxOutOfOrderMsgs = uint32(iVal)
 		}
+	} else {
+		options.channelOptions = channel2.DefaultOptions()
 	}
 	return nil
 }
