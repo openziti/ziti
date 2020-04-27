@@ -46,10 +46,10 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	}
 
 	cmd := &cobra.Command{
-		Use:   "terminator <name> service router address",
-		Short: "creates an terminator managed by the Ziti Edge Controller",
-		Long:  "creates an terminator managed by the Ziti Edge Controller",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "terminator service router address",
+		Short: "creates a service terminator managed by the Ziti Edge Controller",
+		Long:  "creates a service terminator managed by the Ziti Edge Controller",
+		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

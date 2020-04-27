@@ -64,6 +64,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("transit-routers", runListTransitRouters, newOptions()))
 
 	cmd.AddCommand(newListCmdForEntityType("edge-router-role-attributes", runListEdgeRouterRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
@@ -383,12 +384,12 @@ func outputTerminators(o *commonOptions, children []*gabs.Container) error {
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
-		serviceId := entity.Path("serviceId").Data().(string)
-		routerId := entity.Path("routerId").Data().(string)
+		service := entity.Path("service.name").Data().(string)
+		router := entity.Path("router.id").Data().(string)
 		binding := entity.Path("binding").Data().(string)
 		address := entity.Path("address").Data().(string)
-		_, err := fmt.Fprintf(o.Out, "id: %v    serviceId: %v    routerId: %v    binding: %v    address: %v\n",
-			id, serviceId, routerId, binding, address)
+		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v\n",
+			id, service, router, binding, address)
 		if err != nil {
 			return err
 		}
@@ -643,6 +644,28 @@ func runListSessions(o *commonOptions) error {
 		serviceName, _ := entity.Path("service.name").Data().(string)
 		sessionType, _ := entity.Path("type").Data().(string)
 		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func runListTransitRouters(o *commonOptions) error {
+	children, err := listEntitiesWithOptions("transit-routers", o)
+
+	if err != nil {
+		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v\n", id, name); err != nil {
 			return err
 		}
 	}

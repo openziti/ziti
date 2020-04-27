@@ -35,7 +35,7 @@ func init() {
 }
 
 var createTerminator = &cobra.Command{
-	Use:   "terminator <serviceId> <router> <address>",
+	Use:   "terminator <service> <router> <address>",
 	Short: "Create a new fabric service terminator",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {

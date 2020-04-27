@@ -73,6 +73,11 @@ var streamCmd = &cobra.Command{
 	Short: "Stream fabric operational data",
 }
 
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update fabric components",
+}
+
 func Execute() {
 	if err := Root.Execute(); err != nil {
 		fmt.Printf("error: %s", err)

@@ -94,7 +94,11 @@ func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, optio
 
 // runDeleteEntityOfType implements the commands to delete various entity types
 func runDeleteEntityOfType(o *commonOptions, entityType string) error {
-	ids, err := mapNamesToIDs(entityType, o.Args[0])
+	var err error
+	ids := []string{o.Args[0]}
+	if entityType != "terminators" {
+		ids, err = mapNamesToIDs(entityType, o.Args[0])
+	}
 	if err != nil {
 		return err
 	}
