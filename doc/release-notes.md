@@ -53,18 +53,17 @@ If paired with a ziti controller/routers which support terminator strategies for
 ## Ziti CLI Verify CA Support
 
 Previous to this version the CLI was only capable of creating, editing,
-and deleting CAs. Verification of a CA to make it useful for auto CA
-enrollment and authentication required manually created HTTP requests
-and `openssl` signing commands to create a verification cert. With this
-version, the Ziti CLI can perform the HTTP requests and optionally
-generate the verification certificate if access to the CA's private
-key is possible.
+and deleting CAs. For a CA to be useful it must be verified. If not,
+it cannot be used for enrollment or authentication. The verification
+process requires HTTP requests and the creation of a signed verification
+certificate. The Ziti CLI can now perform all or part of this process.
+
 
 ### Example: No Existing Verification Cert
 This example is useful for situations where access to the CA's
 private key is possible. This command will fetch the CA's verification
 token from the Ziti Edge API, create a short lived (5 min) verification
-certificate, and verify the CA.
+certificate, and use it to verify the CA.
 
 This example includes the `--password` flag which is optional. If the
 `--password` flag is not included and the private key is encrypted
