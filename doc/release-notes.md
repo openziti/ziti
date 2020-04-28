@@ -35,6 +35,77 @@ If paired with a ziti controller/routers which support terminator strategies for
   * Handle listen to multiple edge routers.
   * Allow configuring max number of connections to edge routers
 
+# Release 0.13.6
+## Theme
+
+  * Fixes the `-n` flag being ignored for `ziti-enroll`
+
+# Release 0.13.5
+## Theme
+
+  * Adds ability to verify 3rd party CAs via the CLI in the Ziti Edge API
+
+## Ziti CLI Verify CA Support
+
+Previous to this version the CLI was only capable of creating, editing,
+and deleting CAs. Verification of a CA to make it useful for auto CA
+enrollment and authentication required manually created HTTP requests
+and `openssl` signing commands to create a verification cert. With this
+version, the Ziti CLI can perform the HTTP requests and optionally
+generate the verification certificate if access to the CA's private
+key is possible.
+
+### Example: No Existing Verification Cert
+This example is useful for situations where access to the CA's
+private key is possible. This command will fetch the CA's verification
+token from the Ziti Edge API, create a short lived (5 min) verification
+certificate, and verify the CA.
+
+This example includes the `--password` flag which is optional. If the
+`--password` flag is not included and the private key is encrypted
+the user will be prompted for the password.
+
+- `myCa` is the name or id of a CA that has already been created.
+- `ca.cert.pem` the CA's public x509 PEM formatted certificate
+- `ca.key.pem` the CA's private x509 PEM formatted key
+
+```
+$ ziti edge controller verify ca myCa --cacert ca.cert.pem --cakey ca.key.pem --password 1234
+```
+
+###  Example: Existing Verification Certificate
+This example is useful for situations where access to the signing CA's
+private key is not possible (off-site, coldstore, etc.). This example
+assumes that the appropriate `openssl` commands have been run to
+generate the verification script.
+
+- `myCa` is the name or id of a CA that has already been created.
+- `verificationCert.pem` is a PEM encoded x509 certificate that has the common name set to the verification token of `myCa`
+```
+$ ziti edge controller verify ca myCa --cert verificationCert.pem
+```
+
+### Command help:
+```
+$ ziti edge controller verify ca --help
+
+Usage:
+  ziti edge controller verify ca <name> ( --cert <pemCertFile> | --cacert
+  <signingCaCert> --cakey <signingCaKey> [--password <caKeyPassword>]) [flags]
+
+Flags:
+  -a, --cacert string     The path to the CA cert that should be used togenerate and sign a verification cert
+  -k, --cakey string      The path to the CA key that should be used to generate and sign a verification cert
+  -c, --cert string       The path to a cert with the CN set as the verification token and signed by the target CA
+  -h, --help              help for ca
+  -j, --output-json       Output the full JSON response from the Ziti Edge Controller
+  -p, --password string   The password for the CA key if necessary
+```
+
+# Release 0.13.4
+## Theme
+ * Updates `quickstart` scripts
+
 # Release 0.13.3
 ## Theme
 Ziti 0.13.3 includes the following:

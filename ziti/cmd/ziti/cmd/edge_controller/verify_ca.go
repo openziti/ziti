@@ -169,7 +169,7 @@ func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer
 	certBlocks := nfpem.PemToX509(string(options.caCertPemBytes))
 
 	if len(certBlocks) == 0 {
-		return nil, nil, errors.New("could not prase cert file, 0 PEM blocks detected1")
+		return nil, nil, errors.New("could not parse cert file, 0 PEM blocks detected1")
 	}
 
 	caCertBlock := certBlocks[0]
