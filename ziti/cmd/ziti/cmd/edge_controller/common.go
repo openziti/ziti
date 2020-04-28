@@ -32,7 +32,7 @@ func mapNameToID(entityType string, val string) (string, error) {
 
 	// Allow UUID formatted names to be recognized with a name: prefix
 	name := strings.TrimPrefix(val, "name:")
-	list, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
+	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
 	if err != nil {
 		return "", err
 	}
@@ -52,7 +52,7 @@ func mapNameToID(entityType string, val string) (string, error) {
 }
 
 func mapIdToName(entityType string, val string) (string, error) {
-	list, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil)
+	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +77,7 @@ func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 		} else {
 			// Allow UUID formatted names to be recognized with a name: prefix
 			name := strings.TrimPrefix(val, "name:")
-			list, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
+			list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
 			if err != nil {
 				return nil, err
 			}
