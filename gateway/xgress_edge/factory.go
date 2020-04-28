@@ -142,15 +142,15 @@ type Options struct {
 func (options *Options) load(data xgress.OptionsData) error {
 	options.Options = *xgress.LoadOptions(data)
 
-	options.channelOptions = channel2.LoadOptions(data)
-	if err := options.channelOptions.Validate(); err != nil {
-		return fmt.Errorf("error loading options for [edge/options]: %v", err)
-	}
-
 	options.MaxOutOfOrderMsgs = DefaultMaxOutOfOrderMsgs
 
 	if value, found := data["options"]; found {
 		data = value.(map[interface{}]interface{})
+
+		options.channelOptions = channel2.LoadOptions(data)
+		if err := options.channelOptions.Validate(); err != nil {
+			return fmt.Errorf("error loading options for [edge/options]: %v", err)
+		}
 
 		if value, found := data["maxOutOfOrderMsgs"]; found {
 			iVal, ok := value.(int)
@@ -159,6 +159,8 @@ func (options *Options) load(data xgress.OptionsData) error {
 			}
 			options.MaxOutOfOrderMsgs = uint32(iVal)
 		}
+	} else {
+		options.channelOptions = channel2.DefaultOptions()
 	}
 	return nil
 }
