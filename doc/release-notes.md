@@ -1,3 +1,8 @@
+# Release 0.13.8
+## Theme
+ * Fixes Ziti Edge Router ignoring connect options for SDK listener
+
+
 # Release 0.13.7
 ## Theme
 Ziti 0.13.7 includes the following:
