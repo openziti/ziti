@@ -71,7 +71,7 @@ func (manager *manager) run() {
 }
 
 func (manager *manager) GetWriteQueue(srcAddr net.Addr) WriteQueue {
-	pfxlog.Logger().Infof("Looking up address %v", srcAddr.String())
+	pfxlog.Logger().Debugf("Looking up address %v", srcAddr.String())
 	result := manager.connMap[srcAddr.String()]
 	if result == nil {
 		return nil
@@ -92,10 +92,10 @@ func (manager *manager) CreateWriteQueue(srcAddr net.Addr, service string, write
 		srcAddr:   srcAddr,
 		manager:   manager,
 		writeConn: writeConn,
-		lastUse:   time.Now(),
 	}
+	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
-	pfxlog.Logger().Infof("created new virtual UDP connection for %v", srcAddr.String())
+	pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("created new virtual UDP connection")
 	go tunnel.Run(manager.context, service, conn)
 	return conn, nil
 }
@@ -108,10 +108,8 @@ func (manager *manager) dropLRU() {
 	for _, value := range manager.connMap {
 		if oldest == nil {
 			oldest = value
-		} else {
-			if oldest.lastUse.After(value.lastUse) {
-				oldest = value
-			}
+		} else if oldest.GetLastUsed().After(value.GetLastUsed()) {
+			oldest = value
 		}
 	}
 	manager.close(oldest)
@@ -121,8 +119,8 @@ func (manager *manager) dropExpired() {
 	log := pfxlog.Logger()
 	now := time.Now()
 	for key, value := range manager.connMap {
-		if manager.expirationPolicy.IsExpired(now, value.lastUse) {
-			log.Infof("connection %v expired. removing from UDP vconn manager", key)
+		if manager.expirationPolicy.IsExpired(now, value.GetLastUsed()) {
+			log.WithField("udpConnId", key).Debug("connection expired. removing from UDP vconn manager")
 			manager.close(value)
 		}
 	}
