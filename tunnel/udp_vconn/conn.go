@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/mempool"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -31,7 +32,7 @@ type udpConn struct {
 	srcAddr   net.Addr
 	manager   *manager
 	writeConn UDPWriterTo
-	lastUse   time.Time
+	lastUse   atomic.Value
 	closed    bool
 }
 
@@ -40,6 +41,7 @@ func (conn *udpConn) Service() string {
 }
 
 func (conn *udpConn) Accept(buffer mempool.PooledBuffer) {
+	pfxlog.Logger().WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: queuing")
 	conn.readC <- buffer
 }
 
@@ -51,6 +53,15 @@ func (conn *udpConn) String() string {
 	return conn.service
 }
 
+func (conn *udpConn) markUsed() {
+	conn.lastUse.Store(time.Now())
+}
+
+func (conn *udpConn) GetLastUsed() time.Time {
+	val := conn.lastUse.Load()
+	return val.(time.Time)
+}
+
 func (conn *udpConn) WriteTo(w io.Writer) (n int64, err error) {
 	var bytesWritten int64
 	for {
@@ -60,9 +71,11 @@ func (conn *udpConn) WriteTo(w io.Writer) (n int64, err error) {
 			return bytesWritten, io.EOF
 		}
 
-		n, err := w.Write(buf.GetPayload())
+		payload := buf.GetPayload()
+		pfxlog.Logger().WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: %v bytes", len(payload))
+		n, err := w.Write(payload)
 		buf.Release()
-		conn.lastUse = time.Now()
+		conn.markUsed()
 		bytesWritten += int64(n)
 		if err != nil {
 			return bytesWritten, err
@@ -75,10 +88,10 @@ func (conn *udpConn) Read(b []byte) (n int, err error) {
 }
 
 func (conn *udpConn) Write(b []byte) (int, error) {
-	pfxlog.Logger().Infof("Received %v bytes from ziti to return to udp", len(b))
+	pfxlog.Logger().WithField("udpConnId", conn.srcAddr.String()).Debugf("ziti->udp: %v bytes", len(b))
 	// TODO: UDP chunking, MTU chunking?
 	n, err := conn.writeConn.WriteTo(b, conn.srcAddr)
-	conn.lastUse = time.Now()
+	conn.markUsed()
 	return n, err
 }
 
