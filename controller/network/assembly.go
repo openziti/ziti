@@ -37,7 +37,7 @@ func (network *Network) assemble() {
 
 				dial := &ctrl_pb.Dial{
 					Id:      missingLink.Id.Token,
-					Address: missingLink.Dst.AdvertisedListener.String(),
+					Address: missingLink.Dst.AdvertisedListener,
 				}
 				bytes, err := proto.Marshal(dial)
 				if err == nil {

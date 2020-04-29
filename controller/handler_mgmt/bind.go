@@ -18,8 +18,8 @@ package handler_mgmt
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/xmgmt"
 	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-fabric/xmgmt"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 

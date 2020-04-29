@@ -33,7 +33,7 @@ import (
 type Router struct {
 	models.BaseEntity
 	Fingerprint        string
-	AdvertisedListener transport.Address
+	AdvertisedListener string
 	Control            channel2.Channel
 	CostFactor         int
 	Connected          concurrenz.AtomicBoolean
@@ -64,13 +64,16 @@ func NewRouter(id, fingerprint string) *Router {
 }
 
 func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
-	return &Router{
+	r := &Router{
 		BaseEntity:         models.BaseEntity{Id: id},
 		Fingerprint:        fingerprint,
-		AdvertisedListener: advLstnr,
 		Control:            ctrl,
 		CostFactor:         1,
 	}
+	if advLstnr != nil {
+		r.AdvertisedListener = advLstnr.String()
+	}
+	return r
 }
 
 type RouterController struct {
@@ -105,7 +108,7 @@ func (ctrl *RouterController) markDisconnected(r *Router) {
 	ctrl.connected.Remove(r.Id)
 }
 
-func (ctrl *RouterController) isConnected(id string) bool {
+func (ctrl *RouterController) IsConnected(id string) bool {
 	return ctrl.connected.Has(id)
 }
 

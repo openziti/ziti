@@ -19,39 +19,40 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xlink"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
 type payloadHandler struct {
-	link      *forwarder.Link
+	link      xlink.Xlink
 	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
 }
 
-func newPayloadHandler(link *forwarder.Link, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *payloadHandler {
+func newPayloadHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *payloadHandler {
 	return &payloadHandler{link: link, ctrl: ctrl, forwarder: forwarder}
 }
 
-func (h *payloadHandler) ContentType() int32 {
+func (self *payloadHandler) ContentType() int32 {
 	return xgress.ContentTypePayloadType
 }
 
-func (h *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err == nil {
-		if err := h.forwarder.ForwardPayload(xgress.Address(h.link.Id.Token), payload); err != nil {
-			log.Debugf("unable to forward (%s)", err)
+		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
+			log.Debugf("unable to forward (%v)", err)
 		}
 		if payload.IsSessionEndFlagSet() {
-			if err := h.forwarder.EndSession(&identity.TokenId{Token: payload.GetSessionId()}); err != nil {
+			if err := self.forwarder.EndSession(&identity.TokenId{Token: payload.GetSessionId()}); err != nil {
 				pfxlog.ContextLogger(ch.Label()).Errorf("failed to end session [s/%s] (%s)", payload.GetSessionId(), err)
 			}
 		}
 	} else {
-		log.Errorf("unexpected error (%s)", err)
+		log.Errorf("unexpected error (%v)", err)
 	}
 }

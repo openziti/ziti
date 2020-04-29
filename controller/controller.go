@@ -23,11 +23,12 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/handler_ctrl"
 	"github.com/netfoundry/ziti-fabric/controller/handler_mgmt"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/xctrl"
-	"github.com/netfoundry/ziti-fabric/xctrl_example"
-	"github.com/netfoundry/ziti-fabric/xmgmt"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl"
+	"github.com/netfoundry/ziti-fabric/controller/xctrl_example"
+	"github.com/netfoundry/ziti-fabric/controller/xmgmt"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 )
 
 type Controller struct {
@@ -40,11 +41,15 @@ type Controller struct {
 
 	ctrlListener channel2.UnderlayListener
 	mgmtListener channel2.UnderlayListener
+
+	shutdownC  chan struct{}
+	isShutdown concurrenz.AtomicBoolean
 }
 
 func NewController(cfg *Config) (*Controller, error) {
 	c := &Controller{
-		config: cfg,
+		config:    cfg,
+		shutdownC: make(chan struct{}),
 	}
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
@@ -70,7 +75,8 @@ func (c *Controller) Run() error {
 	/**
 	 * ctrl listener/accepter.
 	 */
-	c.ctrlListener = channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener)
+	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions)
+	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
 	}
@@ -81,7 +87,8 @@ func (c *Controller) Run() error {
 	/**
 	 * mgmt listener/accepter.
 	 */
-	c.mgmtListener = channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener)
+	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions)
+	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
 	}
@@ -95,23 +102,27 @@ func (c *Controller) Run() error {
 }
 
 func (c *Controller) Shutdown() {
-	if c.ctrlListener != nil {
-		if err := c.ctrlListener.Close(); err != nil {
-			pfxlog.Logger().WithError(err).Error("failed to close ctrl channel listener")
+	if c.isShutdown.CompareAndSwap(false, true) {
+		close(c.shutdownC)
+
+		if c.ctrlListener != nil {
+			if err := c.ctrlListener.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to close ctrl channel listener")
+			}
 		}
-	}
 
-	if c.mgmtListener != nil {
-		if err := c.mgmtListener.Close(); err != nil {
-			pfxlog.Logger().WithError(err).Error("failed to close mgmt channel listener")
+		if c.mgmtListener != nil {
+			if err := c.mgmtListener.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to close mgmt channel listener")
+			}
 		}
-	}
 
-	c.network.Shutdown()
+		c.network.Shutdown()
 
-	if c.config.Db != nil {
-		if err := c.config.Db.Close(); err != nil {
-			pfxlog.Logger().WithError(err).Error("failed to close db")
+		if c.config.Db != nil {
+			if err := c.config.Db.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to close db")
+			}
 		}
 	}
 }
@@ -132,7 +143,7 @@ func (c *Controller) showOptions() error {
 
 func (c *Controller) startProfiling() {
 	if c.config.Profile.Memory.Path != "" {
-		go profiler.NewMemory(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval).Run()
+		go profiler.NewMemoryWithShutdown(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval, c.shutdownC).Run()
 	}
 }
 

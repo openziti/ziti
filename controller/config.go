@@ -24,7 +24,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/config"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
@@ -196,6 +196,9 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					config.Ctrl.Options = channel2.LoadOptions(submap)
+					if err := config.Ctrl.Options.Validate(); err != nil {
+						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
+					}
 				}
 			}
 
@@ -225,6 +228,9 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					config.Mgmt.Options = channel2.LoadOptions(submap)
+					if err := config.Mgmt.Options.Validate(); err != nil {
+						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
+					}
 				}
 			}
 		} else {
