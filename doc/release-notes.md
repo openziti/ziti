@@ -1,5 +1,17 @@
+# Release 0.13.10
+## Theme
+Ziti 0.13.10 includes the following:
+
+  * [When using index scanner, wrong count is returned when using skip](https://github.com/netfoundry/ziti-foundation/issues/62)
+  * fabric now includes migration to extract terminators from services
+  * more errors which were returning 500 now return appropriate 404 or 400 field errors
+  * terminators are now validated when routers connect, and invalid ones can be removed
+  * a potential race condition in UDP connection last time has been fixed and UDP connection logging has been tidied
+
 # Release 0.13.9
 ## Theme
+Ziti 0.13.9 includes the following:
+
  * Adds paging information to cli commands
  
  Example
@@ -14,6 +26,8 @@ results: 3-5 of 23
 
 # Release 0.13.8
 ## Theme
+Ziti 0.13.8 includes the following:
+
  * Fixes Ziti Edge Router ignoring connect options for SDK listener
 
 
