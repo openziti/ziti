@@ -1,3 +1,17 @@
+# Release 0.13.9
+## Theme
+ * Adds paging information to cli commands
+ 
+ Example
+ 
+ ```shell script
+$ ec list api-sessions "true sort by token skip 2 limit 3" 
+id: 37dd1463-e4e7-40de-9a63-f75486430361    token: 0b392a2f-47f8-4561-af63-93807ce70d93    identity: Default Admin
+id: 6fb5b488-debf-4212-9670-f250e31b3d4f    token: 15ae6b00-f123-458c-a121-5cf91983a2c2    identity: Default Admin
+id: 8aa4a074-b2c7-4d55-9f56-17199ab6ac11    token: 1b9418d8-b9a7-4e39-a876-7a9588f5e7ed    identity: Default Admin
+results: 3-5 of 23
+```
+
 # Release 0.13.8
 ## Theme
  * Fixes Ziti Edge Router ignoring connect options for SDK listener

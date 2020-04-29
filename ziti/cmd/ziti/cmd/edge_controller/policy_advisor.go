@@ -206,7 +206,7 @@ func runPolicyAdvisorForIdentities(o *policyAdvisorOptions) error {
 	done := false
 	for !done {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, err := filterEntitiesOfType("identities", filter, false, o.Out)
+		children, _, err := filterEntitiesOfType("identities", filter, false, o.Out)
 		if err != nil {
 			panic(err)
 		}
@@ -236,7 +236,7 @@ func runPolicyAdvisorForServices(o *policyAdvisorOptions) error {
 	done := false
 	for !done {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, err := filterEntitiesOfType("services", filter, false, o.Out)
+		children, _, err := filterEntitiesOfType("services", filter, false, o.Out)
 		if err != nil {
 			panic(err)
 		}
@@ -267,7 +267,7 @@ func runPolicyAdvisorForIdentity(identityId string, o *policyAdvisorOptions) err
 	for !done {
 		filter := "true limit 2"
 		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, err := filterSubEntitiesOfType("identities", "services", identityId, filter, &o.commonOptions)
+		children, _, err := filterSubEntitiesOfType("identities", "services", identityId, filter, &o.commonOptions)
 		if err != nil {
 			panic(err)
 		}
@@ -302,7 +302,7 @@ func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error
 	for !done {
 		filter := "true limit 2"
 		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, err := filterSubEntitiesOfType("services", "identities", serviceId, filter, &o.commonOptions)
+		children, _, err := filterSubEntitiesOfType("services", "identities", serviceId, filter, &o.commonOptions)
 		if err != nil {
 			panic(err)
 		}
