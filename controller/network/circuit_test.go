@@ -18,7 +18,10 @@ package network
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -35,10 +38,10 @@ func TestSimpleCircuit2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouter("r0", "", transportAddr, nil)
+	r0 := newRouterForTest("r0", "", transportAddr, nil)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouter("r1", "", transportAddr, nil)
+	r1 := newRouterForTest("r1", "", transportAddr, nil)
 	network.Routers.markConnected(r1)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
@@ -96,13 +99,13 @@ func TestTransitCircuit2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouter("r0", "", transportAddr, nil)
+	r0 := newRouterForTest("r0", "", transportAddr, nil)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouter("r1", "", transportAddr, nil)
+	r1 := newRouterForTest("r1", "", transportAddr, nil)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouter("r2", "", transportAddr, nil)
+	r2 := newRouterForTest("r2", "", transportAddr, nil)
 	network.Routers.markConnected(r2)
 
 	l0 := newLink(&identity.TokenId{Token: "l0"})
@@ -165,4 +168,17 @@ func TestTransitCircuit2(t *testing.T) {
 	assert.Equal(t, l1.Id.Token, rm2.Forwards[0].DstAddress)
 	assert.Equal(t, l1.Id.Token, rm2.Forwards[1].SrcAddress)
 	assert.Equal(t, circuit.EgressId, rm2.Forwards[1].DstAddress)
+}
+
+func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
+	r := &Router{
+		BaseEntity:  models.BaseEntity{Id: id},
+		Fingerprint: fingerprint,
+		Control:     ctrl,
+		CostFactor:  1,
+	}
+	if advLstnr != nil {
+		r.AdvertisedListener = advLstnr.String()
+	}
+	return r
 }

@@ -208,15 +208,15 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, binding string, address string, peerData map[uint32][]byte, cost uint16) (string, error) {
+func AddTerminator(ctrl CtrlChannel, serviceId string, binding string, address string, peerData map[uint32][]byte, staticCost uint16, precedence ctrl_pb.TerminatorPrecedence) (string, error) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.CreateTerminatorRequest{
-		Id:        terminatorId,
-		ServiceId: serviceId,
-		Binding:   binding,
-		Address:   address,
-		PeerData:  peerData,
-		Cost:      uint32(cost),
+		ServiceId:  serviceId,
+		Binding:    binding,
+		Address:    address,
+		PeerData:   peerData,
+		Cost:       uint32(staticCost),
+		Precedence: precedence,
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
@@ -234,8 +234,9 @@ func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, bind
 	if responseMesg != nil && responseMesg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMesg)
 		if result.Success {
-			log.Debugf("successfully added service terminator [s/%s] for service [%v]", terminatorId, serviceId)
-			return result.Message, nil
+			terminatorId := result.Message
+			log.Debugf("successfully added service terminator [t/%s] for service [%v]", terminatorId, serviceId)
+			return terminatorId, nil
 		}
 		log.Errorf("authentication failure: (%v)", result.Message)
 		return "", errors.New(result.Message)

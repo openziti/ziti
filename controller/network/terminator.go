@@ -16,6 +16,7 @@ package network
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -198,10 +199,19 @@ func (result *TerminatorListResult) collect(tx *bbolt.Tx, ids []string, qmd *mod
 }
 
 type RoutingTerminator struct {
-	Weight uint32
+	Cost  uint32
+	Stats xt.Stats
 	*Terminator
 }
 
-func (r *RoutingTerminator) GetRouteWeight() uint32 {
-	return r.Weight
+func (r *RoutingTerminator) GetPrecedence() xt.Precedence {
+	return r.Stats.GetPrecedence()
+}
+
+func (r *RoutingTerminator) GetTerminatorStats() xt.Stats {
+	return r.Stats
+}
+
+func (r *RoutingTerminator) GetRouteCost() uint32 {
+	return r.Cost
 }

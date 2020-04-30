@@ -293,5 +293,5 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 }
 
 func terminatorToString(request *CreateTerminatorRequest) string {
-	return fmt.Sprintf("{id=[%s]}", request.Id)
+	return fmt.Sprintf("{serviceId=[%s], binding=[%s], address=[%v]}", request.ServiceId, request.Binding, request.Address)
 }

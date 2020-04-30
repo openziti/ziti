@@ -22,9 +22,8 @@ import (
 )
 
 /**
-The random strategy uses a pure random selection from available terminators. It does not take an costs/weights
-or precedences into account. A slightly smarter implmementation would take precendence into account. However,
-for now this implementation exists a reference point that we can compare other strategies to.
+The random strategy uses a random selection from available terminators. It only picks from terminators which
+match the precedence of the first terminator, which is presumably of the highest available precedence.
 */
 
 func NewFactory() xt.Factory {
@@ -43,7 +42,8 @@ func (f factory) NewStrategy() xt.Strategy {
 
 type strategy struct{}
 
-func (s strategy) Select(terminators []xt.WeightedTerminator, totalWeight uint32) (xt.Terminator, error) {
+func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+	terminators = xt.GetRelatedTerminators(terminators)
 	count := len(terminators)
 	if count == 1 {
 		return terminators[0], nil

@@ -18,7 +18,9 @@ package xt_smartrouting
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/netfoundry/ziti-fabric/controller/xt_common"
 	"math"
+	"time"
 )
 
 const (
@@ -28,7 +30,8 @@ const (
 /**
 The smartrouting strategy relies purely on maninpulating costs and lets the smart routing algorithm pick the terminator.
 It increases costs by a small amount when a new session uses the terminator and drops it back down when the session
-finishes. It also increases the cost whenever a dial fails.
+finishes. It also increases the cost whenever a dial fails and decreases it whenever a dial succeeds. Dial successes
+will only reduce costs by the amount that failures have previously increased it.
 */
 
 func NewFactory() xt.Factory {
@@ -42,54 +45,31 @@ func (f factory) GetStrategyName() string {
 }
 
 func (f factory) NewStrategy() xt.Strategy {
-	return strategy{}
+	strategy := strategy{
+		CostVisitor: &xt_common.CostVisitor{
+			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
+			SessionCost:  2,
+		},
+	}
+	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
+	return strategy
 }
 
 type strategy struct {
-	xt.DefaultEventVisitor
+	*xt_common.CostVisitor
 }
 
-func (s strategy) Select(terminators []xt.WeightedTerminator, totalWeight uint32) (xt.Terminator, error) {
+func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 
 func (s strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(s)
+	event.Accept(s.CostVisitor)
 }
 
-func (s strategy) VisitDialFailed(event xt.TerminatorEvent) {
-	costs := xt.GlobalCosts()
-	cost := costs.GetPrecedenceCost(event.GetTerminator().GetId())
-	if cost > 0 {
-		nextCost := int(cost) + 20
-		if nextCost < 0 {
-			nextCost = 0
-		}
-		costs.SetPrecedenceCost(event.GetTerminator().GetId(), uint8(nextCost))
+func (s strategy) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
+	for _, t := range event.GetRemoved() {
+		s.FailureCosts.Clear(t.GetId())
 	}
-}
-
-var minDialSuccessCost = uint8(math.MaxUint8 / 2)
-
-func (s strategy) VisitDialSucceeded(event xt.TerminatorEvent) {
-	costs := xt.GlobalCosts()
-	cost := costs.GetPrecedenceCost(event.GetTerminator().GetId())
-	if cost < math.MaxUint8 && cost < minDialSuccessCost {
-		// If we have a high cost, potentially b/c of failures, don't increment
-		// cost here. Cost will be reduced when sesson ends and will let us
-		// shrink costs back down after dial failure
-		costs.SetPrecedenceCost(event.GetTerminator().GetId(), cost+1)
-	}
-}
-
-func (s strategy) VisitSessionEnded(event xt.TerminatorEvent) {
-	costs := xt.GlobalCosts()
-	cost := costs.GetPrecedenceCost(event.GetTerminator().GetId())
-	if cost < math.MaxUint8 {
-		costs.SetPrecedenceCost(event.GetTerminator().GetId(), cost-1)
-	}
-}
-
-func (s strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
 	return nil
 }

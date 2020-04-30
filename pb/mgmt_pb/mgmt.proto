@@ -23,6 +23,7 @@ enum ContentType {
     ListTerminatorsResponseType = 10053;
     GetTerminatorRequestType = 10054;
     GetTerminatorResponseType = 10055;
+    SetTerminatorCostRequestType = 10056;
 
     // Routers
     ListRoutersRequestType = 10010;
@@ -60,6 +61,19 @@ enum ContentType {
 //
 // --- Service ------------------------------------------------------------------------------------------------------ //
 //
+
+enum TerminatorPrecedence {
+    Default = 0;
+    Required = 1;
+    Failed = 2;
+}
+
+enum TerminatorChangeMask {
+    None = 0;
+    StaticCost = 1;
+    Precedence = 2;
+    DynamicCost = 4;
+}
 
 message Service {
     string id = 1;
@@ -124,6 +138,14 @@ message GetTerminatorRequest {
 
 message GetTerminatorResponse {
     Terminator terminator = 1;
+}
+
+message SetTerminatorCostRequest {
+    string terminatorId = 1;
+    TerminatorPrecedence precedence = 2;
+    uint32 staticCost = 3;
+    uint32 dynamicCost = 4;
+    int32 updateMask = 5;
 }
 
 //

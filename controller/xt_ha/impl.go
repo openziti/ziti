@@ -59,7 +59,7 @@ func (s strategy) VisitDialSucceeded(event xt.TerminatorEvent) {
 	atomic.StoreInt32(&s.failCount, 0)
 }
 
-func (s strategy) Select(terminators []xt.WeightedTerminator, _ uint32) (xt.Terminator, error) {
+func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 

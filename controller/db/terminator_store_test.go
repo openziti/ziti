@@ -254,7 +254,7 @@ func (t testStrategyFactory) NewStrategy() xt.Strategy {
 
 type testStrategy struct{}
 
-func (t testStrategy) Select(terminators []xt.WeightedTerminator, _ uint32) (xt.Terminator, error) {
+func (t testStrategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 

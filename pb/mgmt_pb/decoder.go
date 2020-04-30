@@ -238,6 +238,28 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
+	case int32(ContentType_SetTerminatorCostRequestType):
+		request := &SetTerminatorCostRequest{}
+		if err := proto.Unmarshal(msg.Body, request); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Set Terminator Weight Request")
+			meta["terminatorId"] = request.TerminatorId
+			meta["staticCost"] = request.StaticCost
+			meta["precedence"] = request.Precedence.String()
+			meta["dynamicCost"] = request.DynamicCost
+			meta["changeMask"] = request.UpdateMask
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
 		// router messages
 	case int32(ContentType_ListRoutersRequestType):
 		data, err := channel2.NewTraceMessageDecode(DECODER, "List Routers Request").MarshalTraceMessageDecode()

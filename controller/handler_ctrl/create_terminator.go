@@ -19,8 +19,8 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
-	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
@@ -47,19 +47,18 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
+
 	terminator := &network.Terminator{
-		BaseEntity: models.BaseEntity{
-			Id: request.Id,
-		},
 		Service:  request.ServiceId,
 		Router:   h.router.Id,
 		Binding:  request.Binding,
 		Address:  request.Address,
-		Cost:     uint16(request.Cost),
 		PeerData: request.PeerData,
+		Cost:     uint16(request.Cost),
 	}
 
 	if id, err := h.network.Terminators.Create(terminator); err == nil {
+		xt.GlobalCosts().SetPrecedence(id, request.GetXtPrecedence())
 		handler_common.SendSuccess(msg, ch, id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())

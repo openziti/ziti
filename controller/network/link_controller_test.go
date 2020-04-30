@@ -57,8 +57,8 @@ func TestLifecycle(t *testing.T) {
 func TestNeighbors(t *testing.T) {
 	linkController := newLinkController()
 
-	r0 := newRouter("r0", "", nil, nil)
-	r1 := newRouter("r1", "", nil, nil)
+	r0 := newRouterForTest("r0", "", nil, nil)
+	r1 := newRouterForTest("r1", "", nil, nil)
 	l0 := &Link{
 		Id:  &identity.TokenId{Token: "l0"},
 		Src: r0,

@@ -30,13 +30,19 @@ message SessionRequest {
     map<uint32, bytes> peerData = 3;
 }
 
+enum TerminatorPrecedence {
+    Default = 0;
+    Required = 1;
+    Failed = 2;
+}
+
 message CreateTerminatorRequest {
-    string id = 1;
     string serviceId = 2;
     string binding = 3;
     string address = 4;
     map<uint32, bytes> peerData = 5;
     uint32 cost = 6;
+    TerminatorPrecedence precedence = 7;
 }
 
 message RemoveTerminatorRequest {
