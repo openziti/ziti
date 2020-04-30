@@ -22,14 +22,18 @@ import (
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"github.com/spf13/cobra"
 	"io"
+	"math"
 )
 
 type createTerminatorOptions struct {
 	commonOptions
-	binding string
-	tags    map[string]string
+	binding    string
+	cost       int32
+	precedence string
+	tags       map[string]string
 }
 
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
@@ -63,7 +67,9 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to terminator definition")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Add tags to terminator definition")
+	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Set the terminator binding")
+	cmd.Flags().Int32VarP(&options.cost, "cost", "c", -1, "Set the terminator cost")
+	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed'")
 
 	return cmd
 }
@@ -86,6 +92,25 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	setJSONValue(entityData, o.binding, "binding")
 	setJSONValue(entityData, o.Args[2], "address")
 	setJSONValue(entityData, o.tags, "tags")
+	if o.cost > 0 {
+		if o.cost > math.MaxUint16 {
+			if _, err = fmt.Fprintf(o.Out, "Invalid cost %v. Must be positive number less than or equal to %v\n", o.cost, math.MaxUint16); err != nil {
+				panic(err)
+			}
+			return
+		}
+		setJSONValue(entityData, o.cost, "cost")
+	}
+	if o.precedence != "" {
+		validValues := []string{"default", "required", "failed"}
+		if !stringz.Contains(validValues, o.precedence) {
+			if _, err = fmt.Fprintf(o.Out, "Invalid precedence %v. Must be one of %+v\n", o.precedence, validValues); err != nil {
+				panic(err)
+			}
+			return
+		}
+		setJSONValue(entityData, o.precedence, "precedence")
+	}
 
 	result, err := createEntityOfType("terminators", entityData.String(), &o.commonOptions)
 

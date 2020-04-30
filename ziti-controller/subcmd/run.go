@@ -17,12 +17,12 @@
 package subcmd
 
 import (
+	"fmt"
 	"github.com/netfoundry/ziti-cmd/ziti/agent"
 	"github.com/netfoundry/ziti-edge/controller/server"
 	"github.com/netfoundry/ziti-fabric/controller"
 	"github.com/spf13/cobra"
 )
-
 
 func init() {
 	root.AddCommand(runCmd)
@@ -45,6 +45,7 @@ func run(cmd *cobra.Command, args []string) {
 
 		var c *controller.Controller
 		if c, err = controller.NewController(config); err != nil {
+			fmt.Printf("unable to create fabric controller %+v\n", err)
 			panic(err)
 		}
 
