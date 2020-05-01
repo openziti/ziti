@@ -97,7 +97,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetRequiredString(FieldTerminatorRouter, entity.Router)
 	ctx.SetRequiredString(FieldTerminatorBinding, entity.Binding)
 	ctx.SetRequiredString(FieldTerminatorAddress, entity.Address)
-	ctx.SetInt64(FieldTerminatorCost, int64(entity.Cost))
+	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 
 	_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
 	if entity.PeerData != nil {

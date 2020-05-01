@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
 	"go.etcd.io/bbolt"
+	"math"
 	"testing"
 	"time"
 )
@@ -108,6 +109,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator.Router = e.router.Id
 	e.terminator.Binding = uuid.New().String()
 	e.terminator.Address = uuid.New().String()
+	e.terminator.Cost = 0
 	ctx.RequireCreate(e.terminator)
 
 	e.router2 = ctx.requireNewRouter()
@@ -117,6 +119,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator2.Router = e.router2.Id
 	e.terminator2.Binding = uuid.New().String()
 	e.terminator2.Address = uuid.New().String()
+	e.terminator2.Cost = 100
 	ctx.RequireCreate(e.terminator2)
 
 	e.service2 = ctx.requireNewService()
@@ -126,6 +129,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator3.Router = e.router2.Id
 	e.terminator3.Binding = uuid.New().String()
 	e.terminator3.Address = uuid.New().String()
+	e.terminator3.Cost = math.MaxUint16
 	ctx.RequireCreate(e.terminator3)
 
 	return e
@@ -176,6 +180,7 @@ func (ctx *TestContext) testLoadQueryTerminators(t *testing.T) {
 		ctx.EqualValues(e.terminator.Router, loadedTerminator.Router)
 		ctx.EqualValues(e.terminator.Binding, loadedTerminator.Binding)
 		ctx.EqualValues(e.terminator.Address, loadedTerminator.Address)
+		ctx.EqualValues(e.terminator.Cost, loadedTerminator.Cost)
 
 		ids, _, err := ctx.stores.Terminator.QueryIdsf(tx, `service = "%v"`, e.service.Id)
 		ctx.NoError(err)

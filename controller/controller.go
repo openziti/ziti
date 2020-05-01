@@ -57,6 +57,8 @@ func NewController(cfg *Config) (*Controller, error) {
 		shutdownC: make(chan struct{}),
 	}
 
+	c.registerXts()
+
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
 		c.network = n
 	} else {
@@ -152,6 +154,13 @@ func (c *Controller) startProfiling() {
 	}
 }
 
+func (c *Controller) registerXts() {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
+}
+
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.network, c.xctrls)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.network)
@@ -161,11 +170,6 @@ func (c *Controller) registerComponents() error {
 	if err := c.RegisterXctrl(xctrl_example.NewExample()); err != nil {
 		return err
 	}
-
-	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 
 	return nil
 }
