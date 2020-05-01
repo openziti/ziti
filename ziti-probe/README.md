@@ -5,7 +5,8 @@ Ziti Probe
 
 ## Setup
 
-create config type for metric collection service with the following schema (this is optional)
+create `ziti-probe-config.v1` config type for metric collection service with the following schema
+ (this is optional)
 ```json
 {
   "$id": "http://ziti-edge.netfoundry.io/schemas/ziti-probe-config.v1.json",
@@ -17,6 +18,12 @@ create config type for metric collection service with the following schema (this
       "type":"string"
     },
     "dbName": {
+      "type": "string"
+    },
+    "dbUser": {
+      "type": "string"
+    },
+    "dbPassword": {
       "type": "string"
     },
     "interval": {
@@ -33,7 +40,9 @@ it wil be used to configure the service in the next step), This is optional
 {
   "dbType": "influxdb", // only influxdb is currently supported 
   "dbName": "ziti", // name of database in Influxdb, ziti is the default
-  "interval": 60 // how often metrics are uploaded (in seconds), 60 is the default
+  "dbUser": "superuser", // optional
+  "dbPassword": "supersecret", // optional
+  "interval": 60 // how often metrics are uploaded (in seconds), 300 (every 5 minutes) is the default
 }
 ```
 create service with a router termination

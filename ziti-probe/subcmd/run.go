@@ -8,6 +8,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
@@ -37,6 +38,8 @@ var log = pfxlog.Logger()
 type probeCfg struct {
 	dbName string
 	dbType string
+	dbUser string
+	dbPassword string
 	interval int
 }
 
@@ -55,7 +58,6 @@ type probe struct{
 }
 
 var theProbe = &probe{
-	cfg: &defaultConfig,
 	closer: make(chan interface{}),
 }
 
@@ -67,8 +69,8 @@ func (p *probe) sendMetrics() {
 	for {
 		select {
 		case <-time.After(time.Duration(p.cfg.interval) * time.Second):
-			message := p.latest.Load().(*metrics_pb.MetricsMessage)
-			if message == nil {
+			message, ok := p.latest.Load().(*metrics_pb.MetricsMessage)
+			if !ok  {
 				continue
 			}
 			bp, err := metrics.AsBatch(message)
@@ -95,23 +97,29 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
 		if cfg, err := config.NewFromFile(args[0]); err != nil {
 			log.Fatalf("failed to load config from file[%s]", args[0], err)
 		} else {
+			cfg.ConfigTypes = append(cfg.ConfigTypes, "ziti-probe-config.v1")
 			p.ctx = ziti.NewContextWithConfig(cfg)
 		}
 
 	}
 
-	_, _ = p.ctx.GetServices()
+	if _, err = p.ctx.GetServices(); err != nil {
+		log.Fatal("failed to load available services")
+	}
 
-	_, found := p.ctx.GetService("probe-service")
+	service, found := p.ctx.GetService("probe-service")
 	if !found {
 		log.Fatal("required service was not found")
 	}
 
-	p.indb, err = p.createInfluxDbClient()
+	p.cfg = getProbeConfig(service)
+
+	p.indb, err = p.createInfluxDbClient(p.cfg)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+
 	_, res, err := p.indb.Ping()
 	if err != nil {
 		log.Fatalf("failed to get server info", err)
@@ -129,7 +137,22 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
     p.ctx.Close()
 }
 
-func (p *probe) createInfluxDbClient() (*influxdb.Client, error)  {
+func getProbeConfig(service *edge.Service) *probeCfg {
+	cfg, found := service.Configs["ziti-probe-config.v1"]
+	if !found {
+		return &defaultConfig
+	}
+
+	return &probeCfg{
+		dbName:     cfg["dbName"].(string),
+		dbType:     cfg["dbType"].(string),
+		dbUser:     cfg["dbUser"].(string),
+		dbPassword: cfg["dbPassword"].(string),
+		interval:   int(cfg["interval"].(float64)),
+	}
+}
+
+func (p *probe) createInfluxDbClient(cfg *probeCfg) (*influxdb.Client, error) {
 
 	httpC := &http.Client{
 		Transport: &http.Transport{
@@ -143,6 +166,8 @@ func (p *probe) createInfluxDbClient() (*influxdb.Client, error)  {
 	config := influxdb.NewConfig()
 	u, _ := url.Parse("http://probe-service")
 	config.URL = *u
+	config.Username = cfg.dbUser
+	config.Password = cfg.dbPassword
 	clt, _ := influxdb.NewClient(config)
 
 	ic := reflect.ValueOf(clt)
