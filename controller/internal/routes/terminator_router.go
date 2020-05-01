@@ -20,6 +20,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 )
 
 func init() {
@@ -54,7 +55,11 @@ func (ir *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) 
 func (ir *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &TerminatorApi{}
 	Create(rc, rc.RequestResponder, ae.Schemes.Terminator.Post, apiEntity, (&TerminatorApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Terminator.Create(apiEntity.ToModel(""))
+		id, err := ae.Handlers.Terminator.Create(apiEntity.ToModel(""))
+		if err == nil && apiEntity.GetPrecedence() != nil {
+			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+		}
+		return id, err
 	})
 }
 
@@ -65,13 +70,21 @@ func (ir *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) 
 func (ir *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &TerminatorApi{}
 	Update(rc, ae.Schemes.Terminator.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Terminator.Update(apiEntity.ToModel(id))
+		err := ae.Handlers.Terminator.Update(apiEntity.ToModel(id))
+		if err == nil && apiEntity.GetPrecedence() != nil {
+			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+		}
+		return err
 	})
 }
 
 func (ir *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
 	apiEntity := &TerminatorApi{}
 	Patch(rc, ae.Schemes.Terminator.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Terminator.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+		err := ae.Handlers.Terminator.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+		if err == nil && apiEntity.GetPrecedence() != nil {
+			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+		}
+		return err
 	})
 }

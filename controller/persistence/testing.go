@@ -21,6 +21,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -60,6 +62,8 @@ type TestContext struct {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+
 	result := &TestContext{
 		BaseTestContext: *boltz.NewTestContext(t),
 	}

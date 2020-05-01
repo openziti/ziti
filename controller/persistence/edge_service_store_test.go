@@ -99,6 +99,12 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 	edgeService.Id = uuid.New().String()
 	err = ctx.Create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on services store", edgeService.Name))
+
+	edgeService.Id = uuid.New().String()
+	edgeService.Name = uuid.New().String()
+	edgeService.TerminatorStrategy = uuid.New().String()
+	err = ctx.Create(edgeService)
+	ctx.EqualError(err, fmt.Sprintf("terminatorStrategy with name %v not found", edgeService.TerminatorStrategy))
 }
 
 func (ctx *TestContext) testCreateServices(_ *testing.T) {

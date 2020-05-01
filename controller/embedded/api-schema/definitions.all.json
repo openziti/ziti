@@ -228,6 +228,30 @@
         "AnyOf",
         null
       ]
+    },
+    "terminator-cost": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "terminator-precedence": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "default",
+        "required",
+        "failed",
+        null
+      ]
     }
   }
 }

@@ -23,16 +23,38 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/response"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"strings"
 )
 
 const EntityNameTerminator = "terminators"
 
 type TerminatorApi struct {
-	Service *string `json:"service"`
-	Router  *string `json:"router"`
-	Binding *string `json:"binding"`
-	Address *string `json:"address"`
+	Service    *string `json:"service"`
+	Router     *string `json:"router"`
+	Binding    *string `json:"binding"`
+	Address    *string `json:"address"`
+	Cost       *int    `json:"cost"`
+	Precedence *string `json:"precedence"`
+}
+
+func (i *TerminatorApi) GetPrecedence() *xt.Precedence {
+	if i.Precedence == nil {
+		return nil
+	}
+
+	if strings.EqualFold("default", *i.Precedence) {
+		return &xt.Precedences.Default
+	}
+	if strings.EqualFold("required", *i.Precedence) {
+		return &xt.Precedences.Required
+	}
+	if strings.EqualFold("failed", *i.Precedence) {
+		return &xt.Precedences.Failed
+	}
+
+	return nil
 }
 
 func (i *TerminatorApi) ToModel(id string) *network.Terminator {
@@ -42,17 +64,23 @@ func (i *TerminatorApi) ToModel(id string) *network.Terminator {
 	result.Router = stringz.OrEmpty(i.Router)
 	result.Binding = stringz.OrEmpty(i.Binding)
 	result.Address = stringz.OrEmpty(i.Address)
+	if i.Cost != nil {
+		result.Cost = uint16(*i.Cost)
+	}
 	return result
 }
 
 type TerminatorApiList struct {
 	*env.BaseApi
-	ServiceId string        `json:"serviceId"`
-	Service   *EntityApiRef `json:"service"`
-	RouterId  string        `json:"routerId"`
-	Router    *EntityApiRef `json:"router"`
-	Binding   string        `json:"binding"`
-	Address   string        `json:"address"`
+	ServiceId   string        `json:"serviceId"`
+	Service     *EntityApiRef `json:"service"`
+	RouterId    string        `json:"routerId"`
+	Router      *EntityApiRef `json:"router"`
+	Binding     string        `json:"binding"`
+	Address     string        `json:"address"`
+	Cost        uint16        `json:"cost"`
+	DynamicCost uint16        `json:"dynamicCost"`
+	Precedence  string        `json:"precedence"`
 }
 
 func (c *TerminatorApiList) GetSelfLink() *response.Link {
@@ -115,13 +143,24 @@ func MapTerminatorToApiList(ae *env.AppEnv, i *network.Terminator) (*TerminatorA
 	}
 
 	ret := &TerminatorApiList{
-		BaseApi:   env.FromBaseModelEntity(i),
-		ServiceId: i.Service,
-		Service:   NewServiceEntityRef(service),
-		RouterId:  i.Router,
-		Router:    NewTransitRouterEntityRef(router),
-		Binding:   i.Binding,
-		Address:   i.Address,
+		BaseApi:     env.FromBaseModelEntity(i),
+		ServiceId:   i.Service,
+		Service:     NewServiceEntityRef(service),
+		RouterId:    i.Router,
+		Router:      NewTransitRouterEntityRef(router),
+		Binding:     i.Binding,
+		Address:     i.Address,
+		Cost:        i.Cost,
+		DynamicCost: xt.GlobalCosts().GetPrecedenceCost(i.Id),
+	}
+
+	precedence := xt.GlobalCosts().GetPrecedence(ret.Id)
+	if precedence.IsRequired() {
+		ret.Precedence = "required"
+	} else if precedence.IsFailed() {
+		ret.Precedence = "failed"
+	} else {
+		ret.Precedence = "default"
 	}
 
 	ret.PopulateLinks()

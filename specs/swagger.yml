@@ -5041,6 +5041,11 @@ definitions:
         type: string
       address:
         type: string
+      cost:
+        $ref: '#/definitions/terminatorCost'
+      precedence:
+        $ref: '#/definitions/terminatorPrecedence'
+
   terminatorCreate:
     type: object
     required:
@@ -5056,6 +5061,10 @@ definitions:
         type: string
       address:
         type: string
+      cost:
+        $ref: '#/definitions/terminatorCost'
+      precedence:
+        $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
   terminatorUpdate:
@@ -5075,6 +5084,10 @@ definitions:
         type: string
       address:
         type: string
+      cost:
+        $ref: '#/definitions/terminatorCost'
+      precedence:
+        $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
   terminatorPatch:
@@ -5088,6 +5101,10 @@ definitions:
         type: string
       address:
         type: string
+      cost:
+        $ref: '#/definitions/terminatorCost'
+      precedence:
+        $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
   ###################################################################
@@ -5258,3 +5275,14 @@ definitions:
     properties:
       name:
         type: string
+  terminatorCost:
+    type: integer
+    minimum: 0
+    maximum: 65535
+  terminatorPrecedence:
+    type: string
+    enum:
+      - default
+      - required
+      - failed
+

@@ -21,6 +21,7 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
 	"testing"
 	"time"
 )
@@ -31,7 +32,7 @@ func Test_Dataflow(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("default")
+	service := ctx.AdminSession.requireNewServiceAccessibleToAll(xt_smartrouting.Name)
 	fmt.Printf("service id: %v\n", service.id)
 
 	ctx.createEnrollAndStartEdgeRouter()

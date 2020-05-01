@@ -36,9 +36,9 @@ type localMessageSink struct {
 
 type localListener struct {
 	localMessageSink
-	token   string
-	service string
-	parent  *ingressProxy
+	terminatorId string
+	service      string
+	parent       *ingressProxy
 }
 
 func (conn *localMessageSink) newSink(connId uint32, options *Options) *localMessageSink {

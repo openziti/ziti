@@ -20,6 +20,12 @@
     "address": {
       "type": "string"
     },
+    "cost": {
+      "$ref": "definitions.all.json#/definitions/terminator-cost"
+    },
+    "precedence": {
+      "$ref": "definitions.all.json#/definitions/terminator-precedence"
+    },
     "tags": {
       "default": {},
       "$ref": "definitions.all.json#/definitions/tags-null"

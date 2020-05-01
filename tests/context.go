@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"github.com/netfoundry/ziti-edge/gateway/enroll"
 	"github.com/netfoundry/ziti-edge/gateway/xgress_edge"
+	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
 	"github.com/netfoundry/ziti-fabric/router"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/certtools"
@@ -473,10 +474,11 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 
 func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 	return &service{
-		name:           uuid.New().String(),
-		roleAttributes: roleAttributes,
-		configs:        configs,
-		tags:           nil,
+		name:               uuid.New().String(),
+		terminatorStrategy: xt_smartrouting.Name,
+		roleAttributes:     roleAttributes,
+		configs:            configs,
+		tags:               nil,
 	}
 }
 

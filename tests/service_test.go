@@ -154,7 +154,6 @@ func Test_Services(t *testing.T) {
 		ctx.req.True(data == nil || data.Data() == nil || (err == nil && len(children) == 0))
 	})
 
-	ctx.enabledJsonLogging = true
 	t.Run("lookup non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
@@ -173,7 +172,7 @@ func Test_Services(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		service.terminatorStrategy = uuid.New().String()
+		service.terminatorStrategy = "ha"
 		ctx.AdminSession.requireUpdateEntity(service)
 
 		result := ctx.AdminSession.requireQuery("services/" + service.id)
