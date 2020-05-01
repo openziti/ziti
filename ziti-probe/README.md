@@ -63,7 +63,8 @@ $ ziti-probe run <identity-file>
 ```
  #### What's happening?
  1. `ziti-probe` authenticates to Ziti controller with provided identity
- 1. it checks that `probe-service` is available and get configuration. If configuration is not assigned default values are used.
+ 1. it checks that `probe-service` is available and get configuration. 
+ If configuration is not assigned default values are used.
  1. it opens connections to all edge routers configured for `probe-service` (refer to ziti policies)
  1. each connection performs a round-trip latency probe to each of edge routers every 30 seconds
  1. `ziti-probe` then submits collected metrics to `probe-service`. 
