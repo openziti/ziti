@@ -72,7 +72,7 @@ const (
 )
 
 func init() {
-	pfxlog.Global(logrus.DebugLevel)
+	pfxlog.Global(logrus.InfoLevel)
 	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 
@@ -287,8 +287,16 @@ func (ctx *TestContext) startTransitRouter() {
 }
 
 func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {
+	ctx.shutdownRouter()
 	ctx.createAndEnrollEdgeRouter(roleAttributes...)
 	ctx.startEdgeRouter()
+}
+
+func (ctx *TestContext) shutdownRouter() {
+	if ctx.router != nil {
+		ctx.req.NoError(ctx.router.Shutdown())
+		ctx.router = nil
+	}
 }
 
 func (ctx *TestContext) startEdgeRouter() {

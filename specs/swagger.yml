@@ -1,7 +1,7 @@
 ---
 swagger: '2.0'
 info:
-  version: 0.13.0
+  version: 0.14.0
   title: Ziti Edge
   contact: {}
 host: demo.ziti.dev
@@ -4337,6 +4337,9 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/entityRef'
+      config:
+        type: object
+        description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
   serviceCreate:
     type: object
     required:
@@ -5045,6 +5048,8 @@ definitions:
         $ref: '#/definitions/terminatorCost'
       precedence:
         $ref: '#/definitions/terminatorPrecedence'
+      dynamicCost:
+        $ref: '#/definitions/terminatorCost'
 
   terminatorCreate:
     type: object

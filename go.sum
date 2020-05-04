@@ -173,10 +173,8 @@ github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/netfoundry/secretstream v0.1.1 h1:z6T7B5DuOtr9O+SmKaS9DzwOoGLYtgvyTzuPuR5FO7I=
 github.com/netfoundry/secretstream v0.1.1/go.mod h1:uasYkYSp0MmNSlKOWJ2sVzxPms8e58TS4ENq4yro86k=
-github.com/netfoundry/ziti-fabric v0.11.25 h1:rdwC06pR2kUDfOXlV90J4fC7rM+2pOlo2HfqI7n+sHk=
-github.com/netfoundry/ziti-fabric v0.11.25/go.mod h1:tjBrzHSWU8JOvjJAX1rebiIKWqXY0WF7oIQjO47UNNo=
-github.com/netfoundry/ziti-foundation v0.9.13 h1:S8wUIXHkRbTMrosfcxOqBy3yJm11tuUmnz383k3p8Zk=
-github.com/netfoundry/ziti-foundation v0.9.13/go.mod h1:s4O2kYpHcFzeMpS2hkNfD6W7Ce3RhsLw30Ruj4kBRu4=
+github.com/netfoundry/ziti-fabric v0.11.26 h1:G5eTWxo8EGvdzCHUMKBWV81t0V3OgUZU+6L6T8X9xBQ=
+github.com/netfoundry/ziti-fabric v0.11.26/go.mod h1:4+OZb9z3JrIDyG7vgSk3XGGdJvC5v8Fkvo5K4nAIQ/Y=
 github.com/netfoundry/ziti-foundation v0.9.14 h1:Cy48xmW768vQ+wVfBVO9Sy4YXwpN/FSgYhunNrx18kQ=
 github.com/netfoundry/ziti-foundation v0.9.14/go.mod h1:s4O2kYpHcFzeMpS2hkNfD6W7Ce3RhsLw30Ruj4kBRu4=
 github.com/netfoundry/ziti-sdk-golang v0.11.27 h1:1LoQw/gI8q/8TFk7Pc5LH81enJZRQu8/w3x5GpDNdAE=
