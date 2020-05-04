@@ -230,6 +230,8 @@ github.com/netfoundry/ziti-edge v0.14.0 h1:bIByEJP4leWgqEeazsXYwKBvQOXC+3TjJLQYu
 github.com/netfoundry/ziti-edge v0.14.0/go.mod h1:bNZMPFHvm/wdXRHIGmbqUR6vRcdRLBANpSY/cQOYcis=
 github.com/netfoundry/ziti-fabric v0.11.26 h1:G5eTWxo8EGvdzCHUMKBWV81t0V3OgUZU+6L6T8X9xBQ=
 github.com/netfoundry/ziti-fabric v0.11.26/go.mod h1:4+OZb9z3JrIDyG7vgSk3XGGdJvC5v8Fkvo5K4nAIQ/Y=
+github.com/netfoundry/ziti-fabric v0.11.27-0.20200504224129-499f480fc09b h1:JXhXsCv/4/DYV9UxUvrlTT3MLVDiY96/75JO5jIj+IU=
+github.com/netfoundry/ziti-fabric v0.11.27-0.20200504224129-499f480fc09b/go.mod h1:4+OZb9z3JrIDyG7vgSk3XGGdJvC5v8Fkvo5K4nAIQ/Y=
 github.com/netfoundry/ziti-foundation v0.9.14 h1:Cy48xmW768vQ+wVfBVO9Sy4YXwpN/FSgYhunNrx18kQ=
 github.com/netfoundry/ziti-foundation v0.9.14/go.mod h1:s4O2kYpHcFzeMpS2hkNfD6W7Ce3RhsLw30Ruj4kBRu4=
 github.com/netfoundry/ziti-sdk-golang v0.11.27 h1:1LoQw/gI8q/8TFk7Pc5LH81enJZRQu8/w3x5GpDNdAE=
