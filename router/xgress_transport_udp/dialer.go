@@ -46,6 +46,10 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	return nil
 }
 
+func (txd *dialer) IsTerminatorValid(string, string) bool {
+	return true
+}
+
 func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (*dialer, error) {
 	txd := &dialer{
 		id:      id,

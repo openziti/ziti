@@ -18,16 +18,17 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
-func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, error) {
+func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int64, error) {
 	if srcR == nil || dstR == nil {
-		return nil, errors.New("not routable (!srcR||!dstR)")
+		return nil, 0, errors.New("not routable (!srcR||!dstR)")
 	}
 
 	if srcR == dstR {
-		return []*Router{srcR}, nil
+		return []*Router{srcR}, 0, nil
 	}
 
 	dist := make(map[*Router]int64)
@@ -78,13 +79,13 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, err
 	routerPath = append(routerPath, dstR)
 
 	if routerPath[0] != srcR {
-		return nil, errors.New("not routable (~srcR)")
+		return nil, 0, fmt.Errorf("can't route from %v -> %v. source unreachable", srcR.Id, dstR.Id)
 	}
 	if routerPath[len(routerPath)-1] != dstR {
-		return nil, errors.New("not routable (~dstR)")
+		return nil, 0, fmt.Errorf("can't route from %v -> %v. destination unreachable", srcR.Id, dstR.Id)
 	}
 
-	return routerPath, nil
+	return routerPath, dist[dstR], nil
 }
 
 func minCost(q map[*Router]bool, dist map[*Router]int64) *Router {

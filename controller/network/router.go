@@ -17,12 +17,10 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
@@ -61,19 +59,6 @@ func NewRouter(id, fingerprint string) *Router {
 		BaseEntity:  models.BaseEntity{Id: id},
 		Fingerprint: fingerprint,
 	}
-}
-
-func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
-	r := &Router{
-		BaseEntity:         models.BaseEntity{Id: id},
-		Fingerprint:        fingerprint,
-		Control:            ctrl,
-		CostFactor:         1,
-	}
-	if advLstnr != nil {
-		r.AdvertisedListener = advLstnr.String()
-	}
-	return r
 }
 
 type RouterController struct {
@@ -142,8 +127,12 @@ func (ctrl *RouterController) Create(router *Router) error {
 }
 
 func (ctrl *RouterController) Delete(id string) error {
-	err := controllers.DeleteEntityById(ctrl.store, ctrl.db, id)
-	ctrl.cache.Remove(id)
+	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+		return ctrl.store.DeleteById(boltz.NewMutateContext(tx), id)
+	})
+	if err == nil {
+		ctrl.cache.Remove(id)
+	}
 	return err
 }
 

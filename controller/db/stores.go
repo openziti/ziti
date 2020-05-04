@@ -74,6 +74,10 @@ func InitStores(db boltz.Db) (*Stores, error) {
 
 	stores.buildStoreMap()
 
+	internalStores.terminator.initializeLocal()
+	internalStores.router.initializeLocal()
+	internalStores.service.initializeLocal()
+
 	internalStores.terminator.initializeLinked()
 	internalStores.router.initializeLinked()
 	internalStores.service.initializeLinked()

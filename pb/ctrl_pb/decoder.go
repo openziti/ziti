@@ -95,6 +95,24 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
+	case int32(ContentType_ValidateTerminatorsRequestType):
+		request := &ValidateTerminatorsRequest{}
+		if err := proto.Unmarshal(msg.Body, request); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Validate Terminators")
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
 	case int32(ContentType_SessionSuccessType):
 		meta := channel2.NewTraceMessageDecode(DECODER, "Session Success Response")
 		meta["sessionId"] = string(msg.Body)
@@ -275,5 +293,5 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 }
 
 func terminatorToString(request *CreateTerminatorRequest) string {
-	return fmt.Sprintf("{id=[%s]}", request.Id)
+	return fmt.Sprintf("{serviceId=[%s], binding=[%s], address=[%v]}", request.ServiceId, request.Binding, request.Address)
 }

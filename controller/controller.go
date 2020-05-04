@@ -26,6 +26,11 @@ import (
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-fabric/controller/xctrl_example"
 	"github.com/netfoundry/ziti-fabric/controller/xmgmt"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/netfoundry/ziti-fabric/controller/xt_ha"
+	"github.com/netfoundry/ziti-fabric/controller/xt_random"
+	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
+	"github.com/netfoundry/ziti-fabric/controller/xt_weighted"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
@@ -51,6 +56,8 @@ func NewController(cfg *Config) (*Controller, error) {
 		config:    cfg,
 		shutdownC: make(chan struct{}),
 	}
+
+	c.registerXts()
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
 		c.network = n
@@ -145,6 +152,13 @@ func (c *Controller) startProfiling() {
 	if c.config.Profile.Memory.Path != "" {
 		go profiler.NewMemoryWithShutdown(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval, c.shutdownC).Run()
 	}
+}
+
+func (c *Controller) registerXts() {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 }
 
 func (c *Controller) registerComponents() error {

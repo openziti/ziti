@@ -16,6 +16,8 @@
 
 package ctrl_pb
 
+import "github.com/netfoundry/ziti-fabric/controller/xt"
+
 func (request *InspectRequest) GetContentType() int32 {
 	return int32(ContentType_InspectRequestType)
 }
@@ -30,4 +32,14 @@ func (response *InspectResponse) AddValue(name, value string) {
 		Value: value,
 	}
 	response.Values = append(response.Values, newValue)
+}
+
+func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
+	if request.GetPrecedence() == TerminatorPrecedence_Failed {
+		return xt.Precedences.Failed
+	}
+	if request.GetPrecedence() == TerminatorPrecedence_Required {
+		return xt.Precedences.Required
+	}
+	return xt.Precedences.Default
 }

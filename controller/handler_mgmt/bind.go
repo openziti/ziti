@@ -52,6 +52,7 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newRemoveTerminatorHandler(network))
 	ch.AddReceiveHandler(newGetTerminatorHandler(network))
 	ch.AddReceiveHandler(newListTerminatorsHandler(network))
+	ch.AddReceiveHandler(newSetTerminatorCostHandler(network))
 
 	streamMetricHandler := newStreamMetricsHandler(network)
 	ch.AddReceiveHandler(streamMetricHandler)

@@ -17,7 +17,6 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -149,8 +148,12 @@ func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, erro
 }
 
 func (ctrl *ServiceController) Delete(id string) error {
-	err := controllers.DeleteEntityById(ctrl.store, ctrl.db, id)
-	ctrl.cache.Remove(id)
+	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+		return ctrl.store.DeleteById(boltz.NewMutateContext(tx), id)
+	})
+	if err == nil {
+		ctrl.cache.Remove(id)
+	}
 	return err
 }
 

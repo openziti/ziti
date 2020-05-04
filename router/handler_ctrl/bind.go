@@ -54,6 +54,7 @@ func NewBindHandler(id *identity.TokenId,
 func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers))
 	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder))
+	ch.AddReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
 	ch.AddReceiveHandler(newStartXgressHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
