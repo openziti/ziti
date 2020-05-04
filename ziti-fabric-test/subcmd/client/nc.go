@@ -32,7 +32,7 @@ import (
 
 func init() {
 	ncCmd.Flags().StringVarP(&ncCmdIdentity, "identityName", "i", "default", "dotzeet identity name")
-	ncCmd.Flags().StringVarP(&ncCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7001", "ingress endpoint address")
+	ncCmd.Flags().StringVarP(&ncCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7002", "ingress endpoint address")
 	subcmd.Root.AddCommand(ncCmd)
 }
 

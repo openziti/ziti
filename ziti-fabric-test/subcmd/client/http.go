@@ -34,7 +34,7 @@ import (
 
 func init() {
 	httpCmd.Flags().StringVarP(&httpCmdIdentity, "identityName", "i", "default", "dotzeet identity name")
-	httpCmd.Flags().StringVarP(&httpCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7001", "ingress endpoint address")
+	httpCmd.Flags().StringVarP(&httpCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7002", "ingress endpoint address")
 	httpCmd.Flags().StringVar(&httpCmdHost, "host", "", "optional host header")
 	httpCmd.Flags().BoolVar(&httpCmdInsecure, "insecure", false, "Disable SSL security checks")
 	subcmd.Root.AddCommand(httpCmd)
