@@ -2,7 +2,7 @@ module github.com/netfoundry/ziti-cmd
 
 go 1.14
 
-// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
 
 // replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
 
@@ -25,10 +25,10 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/netfoundry/ziti-edge v0.13.14-0.20200430205344-c36e02980496
-	github.com/netfoundry/ziti-fabric v0.11.24-0.20200430211107-c823315e11cd
-	github.com/netfoundry/ziti-foundation v0.9.13
-	github.com/netfoundry/ziti-sdk-golang v0.0.0-20200430180336-75a9bd5ccebd
+	github.com/netfoundry/ziti-edge v0.13.21
+	github.com/netfoundry/ziti-fabric v0.11.26
+	github.com/netfoundry/ziti-foundation v0.9.14
+	github.com/netfoundry/ziti-sdk-golang v0.11.27
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
