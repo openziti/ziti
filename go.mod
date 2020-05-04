@@ -2,7 +2,7 @@ module github.com/netfoundry/ziti-cmd
 
 go 1.14
 
-replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
 
 // replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
 
