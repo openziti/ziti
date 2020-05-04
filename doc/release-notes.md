@@ -1,12 +1,111 @@
-# Release 0.13.10
+# Release 0.14.0
 ## Theme
-Ziti 0.13.10 includes the following:
+Ziti 0.14.0 includes the following:
 
+### Features
+  * The first full implementation of high availability (HA) and horizontal scale (HS) services
+  
+### Fixes
   * [When using index scanner, wrong count is returned when using skip](https://github.com/netfoundry/ziti-foundation/issues/62)
   * fabric now includes migration to extract terminators from services
   * more errors which were returning 500 now return appropriate 404 or 400 field errors
   * terminators are now validated when routers connect, and invalid ones can be removed
   * a potential race condition in UDP connection last time has been fixed and UDP connection logging has been tidied
+  * Terminator precedence may now be specified in the golang SDK in the listen options when binding a service
+
+## HA/HS
+Ziti 0.12 extracted terminators from services. Services could have multiple terminators but only the first one would get used. Service have a `terminatorStrategy` field which was previously unused. Now the terminatorStrategy will determine how Ziti picks from multiple terminators to enable either HA or HS behavior.
+
+### Xt
+The fabric now includes a new framework called Xt (eXtensible Terminators) which allows defining terminator strategies and defines how terminator strategies and external components integrate with smart routing. The general flow of terminator selection goes as follows:
+
+  1. A client requests a new session for a service
+  1. Smart routing finds all the active terminators for the session (active meaning the terminator's router is connected)
+  1. Smart routing calculates a cost for each terminator then hands the service's terminator strategy a list of terminators and their costs ranked from lowest to highest
+  1. The strategy returns the terminator that should be used
+  1. A new session is created using that path. 
+  
+Strategies will often work by adjusting terminator costs. The selection algorithm the simply returns the lowest cost option presented by smart routing. 
+
+#### Costs
+There are a number of elements which feed the smart routing cost algorithm.
+
+##### Route Cost
+The cost of the route from the initiating route to the terminator router will be included in the terminator cost. This cost may be influenced by things such as link latencies and user determined link costs.
+
+##### Static Cost
+Each terminator has a static cost which can be set or updated when the terminator is created. SDK applications can set the terminator cost when they invoke the Listen operation.
+
+#### Precedence
+Each terminator has a precedence. There are three precedence levels: `required`, `default` and `failed`.
+  
+Smart routing will always rank terminators with higher precedence levels higher than terminators with lower precedence levers. So required terminators will always be first, default second and failed third. Precedence levels can be used to implement HA. The primary will be marked as required and the secondary as default. When the primary is determined to be down, either by some internal or external set of heuristics, it will be marked as Failed and new sessions will go to the secondary. When the primary recovers it can be bumped back up to Required.
+
+##### Dynamic Cost 
+Each terminator also has a dynamic cost that will move a terminator up and down relative to its precedence. This cost can be driven by stratagies or by external components. A strategy might use number of active of open sessions or dial successes and failures to drive the cost. 
+
+##### Cost API
+Costs can be set via the Costs API in Xt:
+
+```go
+package xt
+
+type Costs interface {
+	ClearCost(terminatorId string)
+	GetCost(terminatorId string) uint32
+	GetStats(terminatorId string) Stats
+	GetPrecedence(terminatorId string) Precedence
+	SetPrecedence(terminatorId string, precedence Precedence)
+	SetPrecedenceCost(terminatorId string, weight uint16)
+	UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16)
+	GetPrecedenceCost(terminatorId string) uint16
+}
+```
+
+Each terminator has an associated precedence and dynamic cost. This can be reduced to a single cost. The cost algorithm ensures terminators at difference precedence levels do not overlap. So a terminator which is marked failed, with dynamic cost 0, will always have a higher calculated cost than a terminator with default precedence and maximum value for dynamic cost. 
+
+#### Strategies
+Strategies must implement the following interface:
+
+```go
+package xt
+
+type Strategy interface {
+	Select(terminators []CostedTerminator) (Terminator, error)
+	HandleTerminatorChange(event StrategyChangeEvent) error
+	NotifyEvent(event TerminatorEvent)
+}
+```
+
+The `Select` method will be called by smart routing to pick terminators for a session. The session can react to terminator changes, such when a terminator is added to or removed from a service. The service is also notified via `NotifyEvent` whenever a session dial succeeds or fails and when a session for the service is ended.
+
+The fabric currently provides four strategy implementions.
+
+##### `smartrouting`
+This is the default strategy. It always uses the lowest cost terminator. It drives costs as follows:
+
+  * Cost is proportional to number of open sessions
+  * Dial failures drive the cost up
+  * Dial successes drive the cost down, but only as much as they were previously driven up by failures
+  
+##### `weighted`
+This strategy drives costs in the same way as the `smartrouting` strategy. However instead of always picking the lowest cost terminator it does a weighted random selection across all terminators of the highest precedence. If a terminator has double the cost of another terminator it should get picked approximately half as often. 
+   
+##### `random`
+This strategy does not change terminator weights. It does simple random selection across all terminators of the highest precedence. 
+
+##### `ha`
+This strategy assumes that one terminator will have `required` precedence and there will be a secondary terminator with `default` precedence. If three consecutive dials to the highest ranked terminator fail in a row it will be marked as failed. This will allow the secondary to take over. If the primary recovers it can be marked as required again via the APIs. 
+
+### API Changes
+The terminator endpoint now supports setting the static terminator cost and terminator precedence.
+
+    * Endpoint: /terminators
+        * Operations: PUT/POST/PATCH now take 
+            * cost, type uint16, default 0
+            * prededence, type string, default 'default', valid values: required, default, failed
+        * Operation: GET now returns staticCost, dynamicCost
+
 
 # Release 0.13.9
 ## Theme
