@@ -90,9 +90,11 @@ const (
 	InvalidEnrollMethodMessage string = "The supplied enrollment method is not valid"
 	InvalidEnrollMethodStatus  int    = http.StatusBadRequest
 
-	InvalidFilterCode    string = "INVALID_FILTER"
-	InvalidFilterMessage string = "The filter query supplied is invalid"
-	InvalidFilterStatus  int    = http.StatusBadRequest
+	StatusBadFilter                = 480
+	InvalidFilterCode       string = "INVALID_FILTER"
+	InvalidFilterMessage    string = "The filter query supplied is invalid"
+	httpStatusInvalidFilter        = StatusBadFilter
+	InvalidFilterStatus     int    = httpStatusInvalidFilter
 
 	InvalidPaginationCode    string = "INVALID_PAGINATION"
 	InvalidPaginationMessage string = "The pagination properties provided are invalid"

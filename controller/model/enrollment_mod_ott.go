@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -99,11 +100,15 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		return nil, err
 	}
 
+	content := &rest_model.EnrollmentCerts{
+		Cert: string(certPem),
+	}
+
 	return &EnrollmentResult{
 		Identity:      identity,
 		Authenticator: newAuthenticator,
-		Content:       certPem,
-		ContentType:   "application/x-pem-file",
+		Content:       content,
+		TextContent:   certPem,
 		Status:        200,
 	}, nil
 

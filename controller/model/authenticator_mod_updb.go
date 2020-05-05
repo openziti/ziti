@@ -18,8 +18,7 @@ package model
 
 import (
 	"encoding/base64"
-	"fmt"
-	"github.com/Jeffail/gabs"
+	"errors"
 	"github.com/openziti/edge/controller/apierror"
 	"net/http"
 )
@@ -43,33 +42,23 @@ func (handler *AuthModuleUpdb) CanHandle(method string) bool {
 }
 
 func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
-	jsonParsed, err := gabs.Consume(context.GetData())
-
-	if err != nil {
-		return "", &apierror.ApiError{
-			Code:    apierror.CouldNotParseBodyCode,
-			Message: apierror.CouldNotParseBodyMessage,
-			Cause:   err,
-			Status:  http.StatusBadRequest,
-		}
-	}
+	data := context.GetData()
 
 	username := ""
 	password := ""
 
-	if jsonParsed.Exists("username") {
-		username, _ = jsonParsed.Path("username").Data().(string)
+	if usernameVal := data["username"]; usernameVal != nil {
+		username = usernameVal.(string)
 	}
-
-	if jsonParsed.Exists("password") {
-		password, _ = jsonParsed.Path("password").Data().(string)
+	if passwordVal := data["password"]; passwordVal != nil {
+		password = passwordVal.(string)
 	}
 
 	if username == "" || password == "" {
 		return "", &apierror.ApiError{
 			Code:    apierror.CouldNotValidateCode,
 			Message: apierror.CouldNotValidateMessage,
-			Cause:   fmt.Errorf("username and password fields are required"),
+			Cause:   errors.New("username and password fields are required"),
 			Status:  http.StatusBadRequest,
 		}
 	}

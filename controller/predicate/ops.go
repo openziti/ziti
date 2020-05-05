@@ -36,6 +36,10 @@ type unaryOp struct {
 	value      interface{}
 }
 
+func (op unaryOp) Value() interface{} {
+	return op.value
+}
+
 type Between binaryOp
 
 func newBetween(identifier string, leftValue, rightValue interface{}) Between {

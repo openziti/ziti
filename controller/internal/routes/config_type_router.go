@@ -17,11 +17,12 @@
 package routes
 
 import (
-	"fmt"
+	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"net/http"
+	"github.com/openziti/edge/rest_server/operations/config"
 )
 
 func init() {
@@ -41,48 +42,94 @@ func NewConfigTypeRouter() *ConfigTypeRouter {
 	}
 }
 
-func (ir *ConfigTypeRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *ConfigTypeRouter) Register(ae *env.AppEnv) {
+	ae.Api.ConfigDeleteConfigTypeHandler = config.DeleteConfigTypeHandlerFunc(func(params config.DeleteConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
-	configsListHandler := ae.WrapHandler(ir.ListConfigs, permissions.IsAdmin())
-	sr.HandleFunc(configsUrl, configsListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(configsUrl+"/", configsListHandler).Methods(http.MethodGet)
-}
+	ae.Api.ConfigDetailConfigTypeHandler = config.DetailConfigTypeHandlerFunc(func(params config.DetailConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ConfigTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToApiEntity)
-}
+	ae.Api.ConfigListConfigTypesHandler = config.ListConfigTypesHandlerFunc(func(params config.ListConfigTypesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-func (ir *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToApiEntity, ir.IdType)
-}
+	ae.Api.ConfigUpdateConfigTypeHandler = config.UpdateConfigTypeHandlerFunc(func(params config.UpdateConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigTypeApi{}
-	Create(rc, rc.RequestResponder, ae.Schemes.ConfigType.Post, apiEntity, (&ConfigTypeApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.ConfigType.Create(apiEntity.ToModel(""))
+	ae.Api.ConfigCreateConfigTypeHandler = config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.ConfigPatchConfigTypeHandler = config.PatchConfigTypeHandlerFunc(func(params config.PatchConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ConfigListConfigsForConfigTypeHandler = config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ListConfigs(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }
 
-func (ir *ConfigTypeRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.ConfigType)
+func (r *ConfigTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToRestEntity)
 }
 
-func (ir *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigTypeApi{}
-	Update(rc, ae.Schemes.ConfigType.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.ConfigType.Update(apiEntity.ToModel(id))
+func (r *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToRestEntity)
+}
+
+func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigTypeParams) {
+	if params.Body.Schema != nil {
+		if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+			ctx := middleware.MatchedRouteFrom(rc.Request)
+			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+			return
+		}
+	}
+
+	Create(rc, rc, ConfigTypeLinkFactory, func() (string, error) {
+		return ae.Handlers.ConfigType.Create(MapCreateConfigTypeToModel(params.Body))
 	})
 }
 
-func (ir *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ConfigTypeApi{}
-	Patch(rc, ae.Schemes.ConfigType.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ConfigType.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags", "schema"))
+func (r *ConfigTypeRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.ConfigType)
+}
+
+func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigTypeParams) {
+	if params.Body.Schema != nil {
+		if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+			ctx := middleware.MatchedRouteFrom(rc.Request)
+			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+			return
+		}
+	}
+
+	Update(rc, func(id string) error {
+		return ae.Handlers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.Body))
 	})
 }
 
-func (ir *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ConfigType, ae.Handlers.Config, MapConfigToApiEntity)
+func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigTypeParams) {
+
+	if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+		ctx := middleware.MatchedRouteFrom(rc.Request)
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+		return
+	}
+	if params.Body.Schema == nil {
+		ctx := middleware.MatchedRouteFrom(rc.Request)
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body"))
+		return
+	}
+
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.Body), fields.FilterMaps("tags", "schema"))
+	})
+}
+
+func (r *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext, params config.ListConfigsForConfigTypeParams) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ConfigType, ae.Handlers.Config, MapConfigToRestEntity)
 }

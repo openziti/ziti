@@ -22,53 +22,25 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 )
 
 const EntityNameGeoRegion = "geo-regions"
 
-type GeoRegionApiList struct {
-	*env.BaseApi
-	Name *string `json:"name"`
-}
+var GeoRegionLinkFactory = NewBasicLinkFactory(EntityNameGeoRegion)
 
-func (GeoRegionApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameGeoRegion, id))
-}
-
-func (e *GeoRegionApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *GeoRegionApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
-	}
-}
-
-func (e *GeoRegionApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameGeoRegion,
-		Name:   e.Name,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func MapGeoRegionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.GeoRegion)
+func MapGeoRegionToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	geoRegion, ok := e.(*model.GeoRegion)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a geo region \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a GeoRegion \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapGeoRegionToApiList(i)
+	restModel, err := MapGeoRegionToRestModel(geoRegion)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -76,16 +48,14 @@ func MapGeoRegionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapGeoRegionToApiList(i *model.GeoRegion) (*GeoRegionApiList, error) {
-	ret := &GeoRegionApiList{
-		BaseApi: env.FromBaseModelEntity(i),
-		Name:    &i.Name,
+func MapGeoRegionToRestModel(geoRegion *model.GeoRegion) (*rest_model.GeoRegionDetail, error) {
+	ret := &rest_model.GeoRegionDetail{
+		BaseEntity: BaseEntityToRestModel(geoRegion, GeoRegionLinkFactory),
+		Name:       &geoRegion.Name,
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

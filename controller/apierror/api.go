@@ -18,6 +18,10 @@ package apierror
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/go-openapi/errors"
+	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/edge/rest_model"
 )
 
 type ApiError struct {
@@ -34,8 +38,69 @@ func (e ApiError) Error() string {
 	if e.Cause != nil && e.AppendCause {
 		s = s + ": " + e.Cause.Error()
 	}
-
 	return s
+}
+
+func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
+
+	ret := &rest_model.APIError{
+		Args:      nil,
+		Code:      e.Code,
+		Message:   e.Message,
+		RequestID: requestId,
+	}
+
+	if e.Cause != nil {
+		if causeApiError, ok := e.Cause.(*ApiError); ok {
+			//standard apierror
+			ret.Cause = &rest_model.APIErrorCause{
+				APIError: *causeApiError.ToRestModel(requestId),
+			}
+		} else if causeJsonSchemaError, ok := e.Cause.(*schema.ValidationErrors); ok {
+			//only possible from config type JSON schema validation
+			ret.Cause = &rest_model.APIErrorCause{
+				APIFieldError: rest_model.APIFieldError{
+					Field:  causeJsonSchemaError.Errors[0].Field,
+					Reason: causeJsonSchemaError.Errors[0].Error(),
+					Value:  fmt.Sprintf("%v", causeJsonSchemaError.Errors[0].Value),
+				},
+			}
+		} else if causeFieldErr, ok := e.Cause.(*FieldError); ok {
+			//authenticator modules and enrollment only
+			//todo: see if we can remove this by not using FieldError
+			ret.Cause = &rest_model.APIErrorCause{
+				APIFieldError: rest_model.APIFieldError{
+					Field:  causeFieldErr.FieldName,
+					Value:  fmt.Sprintf("%v", causeFieldErr.FieldValue),
+					Reason: causeFieldErr.Reason,
+				},
+			}
+			if ret.Code == InvalidFieldCode {
+				ret.Code = CouldNotValidateCode
+				ret.Message = CouldNotValidateMessage
+			}
+
+		} else if causeFieldErr, ok := e.Cause.(*errors.Validation); ok {
+			//open api validation errors
+			ret.Cause = &rest_model.APIErrorCause{
+				APIFieldError: rest_model.APIFieldError{
+					Field:  causeFieldErr.Name,
+					Reason: causeFieldErr.Error(),
+					Value:  fmt.Sprintf("%v", causeFieldErr.Value),
+				},
+			}
+		} else {
+			ret.Cause = &rest_model.APIErrorCause{
+				APIError: rest_model.APIError{
+					Code:    UnhandledCode,
+					Message: e.Cause.Error(),
+				},
+			}
+		}
+
+	}
+
+	return ret
 }
 
 type GenericCauseError struct {

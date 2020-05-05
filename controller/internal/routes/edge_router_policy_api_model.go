@@ -22,79 +22,88 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameEdgeRouterPolicy = "edge-router-policies"
 
-type EdgeRouterPolicyApi struct {
-	Tags            map[string]interface{} `json:"tags"`
-	Name            *string                `json:"name"`
-	Semantic        *string                `json:"semantic"`
-	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
-	IdentityRoles   []string               `json:"identityRoles"`
+var EdgeRouterPolicyLinkFactory = NewEdgeRouterPolicyLinkFactory()
+
+type EdgeRouterPolicyLinkFactoryImpl struct {
+	BasicLinkFactory
 }
 
-func (i *EdgeRouterPolicyApi) ToModel(id string) *model.EdgeRouterPolicy {
-	result := &model.EdgeRouterPolicy{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Semantic = stringz.OrEmpty(i.Semantic)
-	result.EdgeRouterRoles = i.EdgeRouterRoles
-	result.IdentityRoles = i.IdentityRoles
-	result.Tags = i.Tags
-	return result
-}
-
-type EdgeRouterPolicyApiList struct {
-	*env.BaseApi
-	Name            string   `json:"name"`
-	Semantic        string   `json:"semantic"`
-	EdgeRouterRoles []string `json:"edgeRouterRoles"`
-	IdentityRoles   []string `json:"identityRoles"`
-}
-
-func (c *EdgeRouterPolicyApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (EdgeRouterPolicyApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameEdgeRouterPolicy, id))
-}
-
-func (c *EdgeRouterPolicyApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf:       self,
-			EntityNameEdgeRouter: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
-			EntityNameIdentity:   response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
-		}
+func NewEdgeRouterPolicyLinkFactory() *EdgeRouterPolicyLinkFactoryImpl {
+	return &EdgeRouterPolicyLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameEdgeRouterPolicy),
 	}
 }
 
-func (c *EdgeRouterPolicyApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameEdgeRouterPolicy,
-		Name:   &c.Name,
-		Id:     c.Id,
-		Links:  c.Links,
-	}
+func (factory *EdgeRouterPolicyLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameEdgeRouter] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+	links[EntityNameIdentity] = factory.NewNestedLink(entity, EntityNameIdentity)
+
+	return links
 }
 
-func MapEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.EdgeRouterPolicy)
+func MapCreateEdgeRouterPolicyToModel(policy *rest_model.EdgeRouterPolicyCreate) *model.EdgeRouterPolicy {
+	ret := &model.EdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+		},
+		Name:            stringz.OrEmpty(policy.Name),
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		IdentityRoles:   policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapUpdateEdgeRouterPolicyToModel(id string, policy *rest_model.EdgeRouterPolicyUpdate) *model.EdgeRouterPolicy {
+	ret := &model.EdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:            stringz.OrEmpty(policy.Name),
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		IdentityRoles:   policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapPatchEdgeRouterPolicyToModel(id string, policy *rest_model.EdgeRouterPolicyPatch) *model.EdgeRouterPolicy {
+	ret := &model.EdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:            policy.Name,
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		IdentityRoles:   policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	policy, ok := e.(*model.EdgeRouterPolicy)
 
 	if !ok {
-		err := fmt.Errorf("entity is not an edge router policy \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a EdgeRouterPolicy \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapEdgeRouterPolicyToApiList(i)
+	restModel, err := MapEdgeRouterPolicyToRestModel(policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -102,19 +111,17 @@ func MapEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapEdgeRouterPolicyToApiList(i *model.EdgeRouterPolicy) (*EdgeRouterPolicyApiList, error) {
-	ret := &EdgeRouterPolicyApiList{
-		BaseApi:         env.FromBaseModelEntity(i),
-		Name:            i.Name,
-		Semantic:        i.Semantic,
-		EdgeRouterRoles: i.EdgeRouterRoles,
-		IdentityRoles:   i.IdentityRoles,
+func MapEdgeRouterPolicyToRestModel(policy *model.EdgeRouterPolicy) (*rest_model.EdgeRouterPolicyDetail, error) {
+	ret := &rest_model.EdgeRouterPolicyDetail{
+		BaseEntity:      BaseEntityToRestModel(policy, EdgeRouterPolicyLinkFactory),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		IdentityRoles:   policy.IdentityRoles,
+		Name:            &policy.Name,
+		Semantic:        rest_model.Semantic(policy.Semantic),
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

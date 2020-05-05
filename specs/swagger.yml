@@ -3083,6 +3083,7 @@ responses:
     schema:
       $ref: '#/definitions/createEnvelope'
   sessionCreateResponse:
+    description: The create request was successful and the resource has been added at the ollowing location.
     description: The create request was successful and the resource has been added at the following location.
     schema:
       $ref: '#/definitions/sessionCreateEnvelope'

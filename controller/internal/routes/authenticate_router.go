@@ -17,13 +17,17 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/authentication"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"time"
@@ -42,30 +46,24 @@ func NewAuthRouter() *AuthRouter {
 }
 
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
-	authHandler := ae.WrapHandler(ro.authHandler, permissions.Always())
-
-	ae.RootRouter.HandleFunc("/authenticate", authHandler).Methods("POST")
-	ae.RootRouter.HandleFunc("/authenticate/", authHandler).Methods("POST")
+	ae.Api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params) }, params.HTTPRequest, "", "", permissions.Always())
+	})
 }
 
-func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
-	authContext := &model.AuthContextHttp{}
-	err := authContext.FillFromHttpRequest(rc.Request)
+func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
 
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
+	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Body)
 
 	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
 	if identity == nil {
-		rc.RequestResponder.RespondWithUnauthorizedError(rc)
+		rc.RespondWithApiError(apierror.NewUnauthorized())
 		return
 	}
 
@@ -77,7 +75,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 		identity.SdkInfo = &model.SdkInfo{}
 	}
 
-	if dataMap := authContext.GetDataAsMap(); dataMap != nil {
+	if dataMap := authContext.GetData(); dataMap != nil {
 		shouldUpdate := false
 
 		if envInfoInterface := dataMap["envInfo"]; envInfoInterface != nil {
@@ -106,7 +104,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	}
 
 	token := uuid.New().String()
-	configTypes := mapConfigTypeNamesToIds(ae, authContext.GetDataStringSlice("configTypes"), identity.Id)
+	configTypes := map[string]struct{}{}
+
+	if params.Body != nil {
+		configTypes = mapConfigTypeNamesToIds(ae, params.Body.ConfigTypes, identity.Id)
+	}
+
 	pfxlog.Logger().Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	s := &model.ApiSession{
 		IdentityId:  identity.Id,
@@ -117,7 +120,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	sessionId, err := ae.Handlers.ApiSession.Create(s)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -125,22 +128,19 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 
 	if err != nil {
 		pfxlog.Logger().WithField("cause", err).Error("loading session by id resulted in an error")
-		rc.RequestResponder.RespondWithUnauthorizedError(rc)
+		rc.RespondWithApiError(apierror.NewUnauthorized())
 	}
 
-	currentSession, err := RenderCurrentSessionApiListEntity(session, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(session, ae.Config.SessionTimeoutDuration())
+	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	expiration := time.Now().Add(365 * 24 * time.Hour)
+	expiration := time.Time(*apiSession.ExpiresAt)
 	cookie := http.Cookie{Name: ae.AuthCookieName, Value: token, Expires: expiration}
+
 	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, session.Token)
 	http.SetCookie(rc.ResponseWriter, &cookie)
 
-	rc.RequestResponder.RespondWithOk(currentSession, nil)
+	rc.Respond(envelope, http.StatusOK)
 }
 
 func mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) map[string]struct{} {

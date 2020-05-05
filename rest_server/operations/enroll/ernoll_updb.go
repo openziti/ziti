@@ -57,7 +57,7 @@ func NewErnollUpdb(ctx *middleware.Context, handler ErnollUpdbHandler) *ErnollUp
 
 Enroll an identity vvia one-time-token
 
-Enrolls and identity via a one-time-token to establish an initial username and password combination.
+Enrolls an identity via a one-time-token to establish an initial username and password combination
 
 
 */

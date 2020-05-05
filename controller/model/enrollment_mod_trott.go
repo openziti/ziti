@@ -17,12 +17,10 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
-	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/openziti/edge/rest_model"
 	"strings"
 	"time"
 )
@@ -62,7 +60,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	txRouter, err := module.env.GetHandlers().TransitRouter.Read(*enrollment.TransitRouterId)
+	txRouter, _ := module.env.GetHandlers().TransitRouter.Read(*enrollment.TransitRouterId)
 
 	if txRouter == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
@@ -72,26 +70,6 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewEnrollmentExpired()
 	}
 	enrollData := context.GetDataAsMap()
-	result, err := module.env.GetSchemas().GetEnrollErPost().Validate(gojsonschema.NewGoLoader(enrollData))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !result.Valid() {
-		var errs []*schema.ValidationError
-		for _, re := range result.Errors() {
-			errs = append(errs, schema.NewValidationError(re))
-		}
-		apiError := apierror.NewCouldNotValidate()
-
-		if len(errs) > 0 {
-			apiError.Cause = errs[0]
-			apiError.AppendCause = true
-		}
-
-		return nil, apiError
-	}
 
 	sr, err := cert.ParseCsr([]byte(enrollData["serverCertCsr"].(string)))
 
@@ -163,21 +141,16 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, fmt.Errorf("could not delete enrollment: %s", err)
 	}
 
-	content, err := json.Marshal(&map[string]interface{}{
-		"serverCert": srvChain,
-		"cert":       string(cltPem),
-		"ca":         string(module.env.GetConfig().CaPems()),
-	})
-
-	if err != nil {
-		return nil, err
+	content := &rest_model.EnrollmentCerts{
+		Ca:         string(module.env.GetConfig().CaPems()),
+		Cert:       string(cltPem),
+		ServerCert: srvChain,
 	}
 
 	return &EnrollmentResult{
 		Identity:      nil,
 		Authenticator: nil,
 		Content:       content,
-		ContentType:   "application/json",
 		Status:        200,
 	}, nil
 }

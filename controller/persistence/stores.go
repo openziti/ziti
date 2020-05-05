@@ -55,8 +55,7 @@ type Stores struct {
 	Enrollment              EnrollmentStore
 	Authenticator           AuthenticatorStore
 
-	storeList []Store
-	storeMap  map[string]boltz.CrudStore
+	storeMap map[string]boltz.CrudStore
 }
 
 func (stores *Stores) buildStoreMap() {

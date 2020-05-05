@@ -17,9 +17,12 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/role_attributes"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -40,31 +43,46 @@ func NewRoleAttributesRouter() *RoleAttributesRouter {
 	return &RoleAttributesRouter{}
 }
 
-func (ir *RoleAttributesRouter) Register(ae *env.AppEnv) {
-	ae.HandleGet(ae.RootRouter, PathEdgeRouterRoleAttributes, ir.listEdgeRouterRoleAttributes, permissions.IsAdmin())
-	ae.HandleGet(ae.RootRouter, PathIdentityRoleAttributes, ir.listIdentityRoleAttributes, permissions.IsAdmin())
-	ae.HandleGet(ae.RootRouter, PathServiceRoleAttributes, ir.listServiceRoleAttributes, permissions.IsAdmin())
+func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
+	ae.Api.RoleAttributesListEdgeRouterRoleAttributesHandler = role_attributes.ListEdgeRouterRoleAttributesHandlerFunc(func(params role_attributes.ListEdgeRouterRoleAttributesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listEdgeRouterRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.RoleAttributesListIdentityRoleAttributesHandler = role_attributes.ListIdentityRoleAttributesHandlerFunc(func(params role_attributes.ListIdentityRoleAttributesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listIdentityRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.RoleAttributesListServiceRoleAttributesHandler = role_attributes.ListServiceRoleAttributesHandlerFunc(func(params role_attributes.ListServiceRoleAttributesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServiceRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
-func (ir *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listRoleAttributes(rc, ae.Handlers.EdgeRouter)
+func (r *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listRoleAttributes(rc, ae.Handlers.EdgeRouter)
 }
 
-func (ir *RoleAttributesRouter) listIdentityRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listRoleAttributes(rc, ae.Handlers.Identity)
+func (r *RoleAttributesRouter) listIdentityRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listRoleAttributes(rc, ae.Handlers.Identity)
 }
 
-func (ir *RoleAttributesRouter) listServiceRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listRoleAttributes(rc, ae.Handlers.EdgeService)
+func (r *RoleAttributesRouter) listServiceRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listRoleAttributes(rc, ae.Handlers.EdgeService)
 }
 
-func (ir *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, queryable roleAttributeQueryable) {
+func (r *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, queryable roleAttributeQueryable) {
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		results, qmd, err := queryable.QueryRoleAttributes(queryOptions.Predicate)
 		if err != nil {
 			return nil, err
 		}
-		return NewQueryResult(results, qmd), nil
+
+		var list rest_model.RoleAttributesList
+
+		for _, result := range results {
+			list = append(list, result)
+		}
+
+		return NewQueryResult(list, qmd), nil
 	})
 }
 

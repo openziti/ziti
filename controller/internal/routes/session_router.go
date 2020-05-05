@@ -17,11 +17,11 @@
 package routes
 
 import (
-	"github.com/michaelquigley/pfxlog"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/session"
 )
 
 func init() {
@@ -41,16 +41,25 @@ func NewSessionRouter() *SessionRouter {
 	}
 }
 
-func (ir *SessionRouter) Register(ae *env.AppEnv) {
-	registerCreateReadDeleteRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
-		Create:  permissions.IsAuthenticated(),
-		Read:    permissions.IsAuthenticated(),
-		Delete:  permissions.IsAuthenticated(),
-		Default: permissions.IsAdmin(),
+func (r *SessionRouter) Register(ae *env.AppEnv) {
+	ae.Api.SessionDeleteSessionHandler = session.DeleteSessionHandlerFunc(func(params session.DeleteSessionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.SessionDetailSessionHandler = session.DetailSessionHandlerFunc(func(params session.DetailSessionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.SessionListSessionsHandler = session.ListSessionsHandlerFunc(func(params session.ListSessionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.SessionCreateSessionHandler = session.CreateSessionHandlerFunc(func(params session.CreateSessionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
 
-func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Handlers.Session.GetStore())
@@ -62,7 +71,7 @@ func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		if err != nil {
 			return nil, err
 		}
-		sessions, err := MapSessionsToApiEntities(ae, rc, result.Sessions)
+		sessions, err := MapSessionsToRestEntities(ae, rc, result.Sessions)
 		if err != nil {
 			return nil, err
 		}
@@ -70,97 +79,26 @@ func (ir *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (ir *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (interface{}, error) {
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
 		if err != nil {
 			return nil, err
 		}
-		return MapSessionToApiEntity(ae, rc, service)
+		return MapSessionToRestEntity(ae, rc, service)
 	})
 }
 
-func (ir *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	Delete(rc, ir.IdType, func(rc *response.RequestContext, id string) error {
+func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	Delete(rc, func(rc *response.RequestContext, id string) error {
 		return ae.Handlers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId)
 	})
 }
 
-func (ir *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	//todo re-enable this check w/ a new auth table or allow any auth'ed session to have a short term NS cert
-	//if rc.Identity.AuthenticatorCert == nil {
-	//	rc.RequestResponder.RespondWithApiError(&response.ApiError{
-	//		Code:           response.NetworkSessionsRequireCertificateAuthCode,
-	//		Message:        response.NetworkSessionsRequireCertificateAuthMessage,
-	//		HttpStatusCode: http.StatusBadRequest,
-	//	})
-	//	return
-	//}
-
-	sessionCreate := &SessionApiPost{}
-	responder := &SessionRequestResponder{ae: ae, RequestResponder: rc.RequestResponder}
-	Create(rc, responder, ae.Schemes.Session.Post, sessionCreate, (&SessionApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Session.Create(sessionCreate.ToModel(rc))
+func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
+	responder := &SessionRequestResponder{ae: ae, Responder: rc}
+	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
+		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.ApiSession.Id, params.Body))
 	})
-}
-
-type SessionRequestResponder struct {
-	response.RequestResponder
-	ae *env.AppEnv
-}
-
-type SessionEdgeRouter struct {
-	Hostname *string           `json:"hostname"`
-	Name     *string           `json:"name"`
-	Urls     map[string]string `json:"urls"`
-}
-
-func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*SessionEdgeRouter, error) {
-	var edgeRouters []*SessionEdgeRouter
-
-	edgeRoutersForSession, err := ae.Handlers.EdgeRouter.ListForSession(ns.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, edgeRouter := range edgeRoutersForSession.EdgeRouters {
-		onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(edgeRouter.Id)
-
-		if onlineEdgeRouter != nil {
-			c := &SessionEdgeRouter{
-				Hostname: onlineEdgeRouter.Hostname,
-				Name:     &edgeRouter.Name,
-				Urls:     map[string]string{},
-			}
-
-			for p, url := range onlineEdgeRouter.EdgeRouterProtocols {
-				c.Urls[p] = url
-			}
-
-			pfxlog.Logger().Debugf("Returning %+v to %+v, with urls: %+v", edgeRouter, c, c.Urls)
-			edgeRouters = append(edgeRouters, c)
-		}
-	}
-
-	return edgeRouters, nil
-}
-
-func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link *response.Link) {
-	modelSession, err := nsr.ae.GetHandlers().Session.Read(id)
-	if err != nil {
-		nsr.RespondWithError(err)
-		return
-	}
-
-	apiSession, err := MapSessionToApiList(nsr.ae, modelSession)
-	if err != nil {
-		nsr.RespondWithError(err)
-		return
-	}
-	newSession := &NewSession{
-		SessionApiList: apiSession,
-		Token:          modelSession.Token,
-	}
-	nsr.RespondWithCreated(newSession, nil, link)
 }

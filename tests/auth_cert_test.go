@@ -103,7 +103,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 		resp, err := testClient.NewRequest().
-			SetHeader("Content-Type", "application/json").
+			SetHeader("content-type", "application/json").
 			Post("/authenticate?method=cert")
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
@@ -125,7 +125,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 	resp, err := testClient.NewRequest().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		Post("/authenticate?method=cert")
 
 	t.Run("returns without error", func(t *testing.T) {
@@ -182,7 +182,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
   "sdkInfo": {"type": "ziti-sdk-golang", "branch": "unknown", "version": "0.0.0", "revision": "unknown"}
 }`
 	resp, err := testClient.NewRequest().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(bodyJson).
 		Post("/authenticate?method=cert")
 
@@ -279,7 +279,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
   "sdkInfo": {"type": "updatedValueType", "branch": "updatedValueBranch", "version": "updatedValueVersion", "revision": "updatedValueRevision"}
 }`
 		authResp, err := testClient.NewRequest().
-			SetHeader("Content-Type", "application/json").
+			SetHeader("content-type", "application/json").
 			SetBody(secondInfo).
 			Post("/authenticate?method=cert")
 		r.NoError(err)
@@ -319,7 +319,7 @@ func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {
 
 	bodyJson := "i will not parse"
 	resp, err := testClient.NewRequest().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(bodyJson).
 		Post("/authenticate?method=cert")
 
@@ -343,7 +343,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoWithExtraProp
   "sdkInfo": {"type": "ziti-sdk-golang", "branch": "unknown", "version": "0.0.0", "revision": "unknown", "extraProp2":"extraVal2"},
   "extraProp3": "extraVal3"}`
 	resp, err := testClient.NewRequest().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(bodyJson).
 		Post("/authenticate?method=cert")
 
@@ -403,7 +403,7 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 	}
 
 	resp, err := testClient.NewRequest().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		Post("/authenticate?method=cert")
 
 	t.Run("returns without error", func(t *testing.T) {

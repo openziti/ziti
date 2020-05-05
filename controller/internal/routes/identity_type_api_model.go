@@ -22,70 +22,33 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 )
 
 const EntityNameIdentityType = "identity-types"
 
-type IdentityTypeApiList struct {
-	*env.BaseApi
-	Name *string `json:"name"`
-}
+var IdentityTypeLinkFactory = NewBasicLinkFactory(EntityNameIdentity)
 
-func (IdentityTypeApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameIdentityType, id))
-}
-
-func (e *IdentityTypeApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *IdentityTypeApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
-	}
-}
-
-func (e *IdentityTypeApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameIdentityType,
-		Name:   e.Name,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func MapIdentityTypeToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.IdentityType)
+func MapIdentityTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, identityTypeModel models.Entity) (interface{}, error) {
+	identityType, ok := identityTypeModel.(*model.IdentityType)
 
 	if !ok {
-		err := fmt.Errorf("entity is not an identity type \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not an identity type \"%s\"", identityTypeModel.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapIdentityTypeToApiList(i)
+	restModel := MapIdentityTypeToRestModel(identityType)
 
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapIdentityTypeToApiList(i *model.IdentityType) (*IdentityTypeApiList, error) {
-	ret := &IdentityTypeApiList{
-		BaseApi: env.FromBaseModelEntity(i),
-		Name:    &i.Name,
+func MapIdentityTypeToRestModel(identityType *model.IdentityType) *rest_model.IdentityTypeDetail {
+	ret := &rest_model.IdentityTypeDetail{
+		BaseEntity: BaseEntityToRestModel(identityType, IdentityLinkFactory),
+		Name:       identityType.Name,
 	}
-
-	ret.PopulateLinks()
-
-	return ret, nil
+	return ret
 }

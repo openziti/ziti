@@ -228,6 +228,7 @@ func (b *Broker) sendApiSessionCreates(apiSession *persistence.ApiSession) {
 	b.sendToAllEdgeRouters(channelMsg)
 }
 
+// todo: figure out why this isn't being used anymore; it is unused but there does not appear to be replacement functionality
 func (b *Broker) apiSessionUpdateEventHandler(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {

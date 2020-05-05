@@ -87,7 +87,7 @@ for the patch service edge router policy operation typically these are written t
 type PatchServiceEdgeRouterPolicyParams struct {
 
 	/*Body
-	  A service edge policy patch object
+	  A service edge router policy patch object
 
 	*/
 	Body *rest_model.ServiceEdgeRouterPolicyPatch

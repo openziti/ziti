@@ -17,9 +17,8 @@
 package response
 
 import (
-	"fmt"
+	"errors"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/openziti/edge/controller/model"
 	"net/http"
 )
@@ -35,47 +34,43 @@ const (
 )
 
 type RequestContext struct {
+	Responder
 	Id                uuid.UUID
 	ApiSession        *model.ApiSession
 	Identity          *model.Identity
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
-	RequestResponder  RequestResponder
 	EventLogger       EventLogger
+	SessionToken      string
+	entityId          string
+	entitySubId       string
+	Body              []byte
 }
 
 type EventLogger interface {
 	Log(actorType, actorId, eventType, entityType, entityId, formatString string, formatData []string, data map[interface{}]interface{})
 }
 
-func (rc *RequestContext) GetIdFromRequest(idType IdType) (string, error) {
-	vars := mux.Vars(rc.Request)
-
-	id, ok := vars[IdPropertyName]
-
-	if !ok {
-		return "", fmt.Errorf("id property '%s' not found in request", IdPropertyName)
-	}
-
-	//if idType == IdTypeUuid {
-	//	_, err := uuid.Parse(id)
-	//
-	//	if err != nil {
-	//		return "", apierror.NewInvalidUuid(id)
-	//	}
-	//}
-
-	return id, nil
+func (rc *RequestContext) SetEntityId(id string) {
+	rc.entityId = id
 }
 
-func (rc *RequestContext) GetSubIdFromRequest() (string, error) {
-	v := mux.Vars(rc.Request)
-	id, ok := v[SubIdPropertyName]
+func (rc *RequestContext) SetEntitySubId(id string) {
+	rc.entitySubId = id
+}
 
-	if !ok {
-		return "", fmt.Errorf("subId not found")
+func (rc *RequestContext) GetEntityId() (string, error) {
+	if rc.entityId == "" {
+		return "", errors.New("id not found")
+	}
+	return rc.entityId, nil
+}
+
+func (rc *RequestContext) GetEntitySubId() (string, error) {
+	if rc.entitySubId == "" {
+		return "", errors.New("subId not found")
 	}
 
-	return id, nil
+	return rc.entitySubId, nil
 }

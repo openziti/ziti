@@ -78,7 +78,7 @@ func NewCreateSessionOK() *CreateSessionOK {
 
 /*CreateSessionOK handles this case with default header values.
 
-The create request was successful and the resource has been added at the ollowing location.
+The create request was successful and the resource has been added at the following location.
 */
 type CreateSessionOK struct {
 	Payload *rest_model.SessionCreateEnvelope

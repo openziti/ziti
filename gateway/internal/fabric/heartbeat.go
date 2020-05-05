@@ -18,7 +18,6 @@ package fabric
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -31,8 +30,6 @@ const maxTokensPerMessage = 10000
 
 type heartbeatOperation struct {
 	ctrl channel2.Channel
-	id   uuid.UUID
-	name string
 	*runner.BaseOperation
 	tokenProvider TokenProvider
 }

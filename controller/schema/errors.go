@@ -27,7 +27,7 @@ type ValidationErrors struct {
 }
 
 func (e ValidationErrors) Error() string {
-	return fmt.Sprintf("schema validation failed")
+	return "schema validation failed"
 }
 
 func (e ValidationErrors) MarshalJSON() ([]byte, error) {

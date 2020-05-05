@@ -17,7 +17,6 @@
 package ip
 
 import (
-	"errors"
 	"fmt"
 	"net"
 )
@@ -41,7 +40,7 @@ func Decode(packet []byte) (net.IP, net.IP, int, []byte, error) {
 		l4Proto = int(h.Protocol())
 		payload = h.Payload()
 	default:
-		return nil, nil, 0, nil, errors.New(fmt.Sprintf("unsupported IP version %d", ipVersion))
+		return nil, nil, 0, nil, fmt.Errorf("unsupported IP version %d", ipVersion)
 	}
 
 	return src, dst, l4Proto, payload, nil

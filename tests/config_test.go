@@ -20,6 +20,7 @@ package tests
 
 import (
 	"math"
+	"net/http"
 	"testing"
 	"time"
 
@@ -65,7 +66,7 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		config := ctx.newConfig(uuid.New().String(), map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "type")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
@@ -198,16 +199,16 @@ func Test_Configs(t *testing.T) {
 
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
 		config.sendType = false
-		config.configType = configType2.id
+		config.configTypeId = configType2.id
 		ctx.AdminSession.requireUpdateEntity(config)
 
-		config.configType = configType.id
+		config.configTypeId = configType.id
 		ctx.AdminSession.validateEntityWithQuery(config)
 
-		config.configType = configType2.id
+		config.configTypeId = configType2.id
 		ctx.AdminSession.requirePatchEntity(config, "name", "type")
 
-		config.configType = configType.id
+		config.configTypeId = configType.id
 		ctx.AdminSession.validateEntityWithQuery(config)
 	})
 
@@ -223,7 +224,17 @@ func Test_Configs(t *testing.T) {
 		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + config.id))
 	})
 
-	t.Run("create with schema should pass", func(t *testing.T) {
+	t.Run("create config type with non-object schema should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ctx.testContextChanged(t)
+		resp := ctx.AdminSession.createEntityOfType("config-types", map[string]interface{}{
+			"name":   uuid.New().String(),
+			"schema": "not-object",
+		})
+		standardErrorJsonResponseTests(resp, apierror.CouldNotValidateCode, http.StatusBadRequest, t)
+	})
+
+	t.Run("create config type with schema should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
 		configType.schema = map[string]interface{}{

@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/geo_region"
 )
 
 func init() {
@@ -39,14 +41,21 @@ func NewGeoRegionRouter() *GeoRegionRouter {
 	}
 }
 
-func (ir *GeoRegionRouter) Register(ae *env.AppEnv) {
-	registerReadOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *GeoRegionRouter) Register(ae *env.AppEnv) {
+
+	ae.Api.GeoRegionDetailGeoRegionHandler = geo_region.DetailGeoRegionHandlerFunc(func(params geo_region.DetailGeoRegionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.GeoRegionListGeoRegionsHandler = geo_region.ListGeoRegionsHandlerFunc(func(params geo_region.ListGeoRegionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
-func (ir *GeoRegionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.GeoRegion, MapGeoRegionToApiEntity)
+func (r *GeoRegionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.GeoRegion, MapGeoRegionToRestEntity)
 }
 
-func (ir *GeoRegionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.GeoRegion, MapGeoRegionToApiEntity, ir.IdType)
+func (r *GeoRegionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.GeoRegion, MapGeoRegionToRestEntity)
 }

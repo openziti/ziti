@@ -91,7 +91,7 @@ func NewDnsServer(addr string) Resolver {
 
 	err := r.testSystemResolver()
 	if err != nil {
-		r.Cleanup()
+		_ = r.Cleanup()
 		log.Fatalf("system resolver test failed: %s\n\n"+resolverConfigHelp, err, addr)
 	}
 
@@ -110,15 +110,15 @@ func (r *resolver) testSystemResolver() error {
 
 	resolved, err := net.ResolveIPAddr("ip", resolverTestHostname)
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed to resolve %s: %s", resolverTestHostname, err))
+		return fmt.Errorf("failed to resolve %s: %v", resolverTestHostname, err)
 	}
 
 	// resolverTestIP = net.IP{19, 65, 28, 96} // force test failure by uncommenting
 	if !resolved.IP.Equal(resolverTestIP) {
-		return errors.New(fmt.Sprintf("unexpected resolved address %s", resolved.IP.String()))
+		return fmt.Errorf("unexpected resolved address %s", resolved.IP.String())
 	}
 
-	r.RemoveHostname(resolverTestHostname, resolverTestIP)
+	_ = r.RemoveHostname(resolverTestHostname, resolverTestIP)
 	return nil
 }
 

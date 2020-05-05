@@ -439,12 +439,12 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 }
 
 type config struct {
-	id         string
-	configType string
-	name       string
-	data       map[string]interface{}
-	tags       map[string]interface{}
-	sendType   bool
+	id           string
+	configTypeId string
+	name         string
+	data         map[string]interface{}
+	tags         map[string]interface{}
+	sendType     bool
 }
 
 func (entity *config) getId() string {
@@ -463,7 +463,7 @@ func (entity *config) toJson(isCreate bool, ctx *TestContext, fields ...string) 
 	entityData := gabs.New()
 	ctx.setValue(entityData, entity.name, fields, "name")
 	if isCreate || entity.sendType {
-		ctx.setValue(entityData, entity.configType, fields, "type")
+		ctx.setValue(entityData, entity.configTypeId, fields, "configTypeId")
 	}
 	ctx.setValue(entityData, entity.data, fields, "data")
 	ctx.setValue(entityData, entity.tags, fields, "tags")
@@ -475,7 +475,7 @@ func (entity *config) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.configType, path("type"))
+	ctx.pathEquals(c, entity.configTypeId, path("configTypeId"))
 	ctx.pathEquals(c, entity.data, path("data"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
@@ -659,6 +659,10 @@ func newTestCa(identityRoles ...string) *ca {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
+
+	if identityRoles == nil {
+		identityRoles = []string{}
+	}
 
 	return &ca{
 		name:                      uuid.New().String(),

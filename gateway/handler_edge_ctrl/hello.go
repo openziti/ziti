@@ -21,13 +21,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/build"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/gateway/internal/fabric"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 )
 
 type helloHandler struct {
-	sm                 fabric.StateManager
 	supportedProtocols []string
 	hostname           string
 }
@@ -63,7 +61,7 @@ func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			}
 			clientHelloMsg := channel2.NewMessage(env.ClientHelloType, clientHelloBuff)
 			clientHelloMsg.ReplyTo(msg)
-			ch.Send(clientHelloMsg)
+			_ = ch.Send(clientHelloMsg)
 			return
 		} else {
 			pfxlog.Logger().WithField("cause", err).Error("could not unmarshal server hello")

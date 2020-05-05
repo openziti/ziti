@@ -21,18 +21,15 @@ import "github.com/jinzhu/gorm"
 type Preloads map[string][]interface{}
 
 func (p Preloads) ApplyToQuery(q *gorm.DB) *gorm.DB {
-	if p != nil {
-		for f, c := range p {
-			if c == nil {
-				q = q.Preload(f)
-			} else {
-				// c[0] = query
-				// c[1..n] = binds for c[0]
-				q = q.Preload(f, c...)
-			}
-
+	for f, c := range p {
+		if c == nil {
+			q = q.Preload(f)
+		} else {
+			// c[0] = query
+			// c[1..n] = binds for c[0]
+			q = q.Preload(f, c...)
 		}
-	}
 
+	}
 	return q
 }

@@ -38,17 +38,17 @@ func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, error) {
 	addrs, err := net.LookupIP(hostname)
 	if err == nil {
 		if len(addrs) > 0 {
-			resolver.AddHostname(hostname, addrs[0].To4())
+			_ = resolver.AddHostname(hostname, addrs[0].To4())
 			return addrs[0], nil
 		}
 	} else {
 		log.Debugf("net.LookupIp(%s) failed: %s", hostname, err)
 	}
 
-	ip, err := utils.NextIP(net.IP{169, 254, 1, 1}, net.IP{169, 254, 254, 254})
+	ip, _ := utils.NextIP(net.IP{169, 254, 1, 1}, net.IP{169, 254, 254, 254})
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
-	resolver.AddHostname(hostname, ip)
+	_ = resolver.AddHostname(hostname, ip)
 	return ip, nil
 }

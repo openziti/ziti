@@ -19,10 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
-	"github.com/openziti/edge/controller/apierror"
-	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 type AuthProcessor interface {
@@ -54,112 +51,49 @@ func (registry *AuthProcessorRegistryImpl) GetByMethod(method string) AuthProces
 
 type AuthContext interface {
 	GetMethod() string
-	GetParameters() map[string]interface{}
-	GetData() interface{}
-	GetDataAsMap() map[string]interface{}
+	GetData() map[string]interface{}
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
 }
 
 type AuthContextHttp struct {
-	Method     string
-	Headers    map[string]interface{}
-	Parameters map[string]interface{}
-	Data       interface{}
-	Certs      []*x509.Certificate
+	Method  string
+	Data    map[string]interface{}
+	Certs   []*x509.Certificate
+	Headers map[string]interface{}
 }
 
-func (context *AuthContextHttp) GetMethod() string {
-	return context.Method
-}
-
-func (context *AuthContextHttp) GetParameters() map[string]interface{} {
-	return context.Parameters
-}
-
-func (context *AuthContextHttp) GetData() interface{} {
-	return context.Data
-}
-
-func (context *AuthContextHttp) GetDataAsMap() map[string]interface{} {
-	data, ok := context.Data.(map[string]interface{})
-
-	if !ok {
-		return nil
-	}
-
-	return data
-}
-
-func (context *AuthContextHttp) GetDataStringSlice(name string) []string {
-	var result []string
-	if data := context.GetDataAsMap(); data != nil {
-		if val, ok := data[name]; ok {
-			if slice, ok := val.([]interface{}); ok {
-				for _, elem := range slice {
-					if str, ok := elem.(string); ok {
-						result = append(result, str)
-					}
-				}
-			}
-		}
-	}
-	return result
-}
-
-func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
-	return context.Certs
-}
-
-func (context *AuthContextHttp) GetHeaders() map[string]interface{} {
-	return context.Headers
-}
-
-func (context *AuthContextHttp) FillFromHttpRequest(request *http.Request) error {
-	method := request.URL.Query().Get("method")
-	queryValues := request.URL.Query()
-	parameters := map[string]interface{}{}
-
-	for key, value := range queryValues {
-		parameters[key] = value
-	}
-
-	var authData interface{}
-	body, _ := ioutil.ReadAll(request.Body)
-
-	contentType := strings.Split(request.Header.Get("content-type"), ";")
-
-	switch contentType[0] {
-	case "application/json":
-		data := map[string]interface{}{}
-
-		if len(body) > 0 {
-
-			err := json.Unmarshal(body, &data)
-
-			if err != nil {
-				err = apierror.GetJsonParseError(err, body)
-				apiErr := apierror.NewCouldNotParseBody()
-				apiErr.Cause = err
-				apiErr.AppendCause = true
-				return apiErr
-			}
-			authData = data
-		}
-	default:
-		return apierror.NewInvalidContentType(contentType[0])
-	}
+func NewAuthContextHttp(request *http.Request, method string, data interface{}) AuthContext {
+	//TODO: this is a giant hack to not deal w/ removing the AuthContext layer
+	sigh, _ := json.Marshal(data)
+	mapData := map[string]interface{}{}
+	_ = json.Unmarshal(sigh, &mapData)
 
 	headers := map[string]interface{}{}
 	for h, v := range request.Header {
 		headers[h] = v
 	}
 
-	context.Method = method
-	context.Parameters = parameters
-	context.Data = authData
-	context.Certs = request.TLS.PeerCertificates
-	context.Headers = headers
+	return &AuthContextHttp{
+		Method:  method,
+		Data:    mapData,
+		Certs:   request.TLS.PeerCertificates,
+		Headers: headers,
+	}
+}
 
-	return nil
+func (context *AuthContextHttp) GetMethod() string {
+	return context.Method
+}
+
+func (context *AuthContextHttp) GetData() map[string]interface{} {
+	return context.Data
+}
+
+func (context *AuthContextHttp) GetHeaders() map[string]interface{} {
+	return context.Headers
+}
+
+func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
+	return context.Certs
 }

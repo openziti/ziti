@@ -18,7 +18,6 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -27,12 +26,6 @@ import (
 const (
 	FieldTransitRouterIsVerified  = "isVerified"
 	FieldTransitRouterEnrollments = "enrollments"
-
-	//old
-	FieldTransitRouterEnrollmentToken     = "enrollmentToken"
-	FieldTransitRouterEnrollmentJwt       = "enrollmentJwt"
-	FieldTransitRouterEnrollmentCreatedAt = "enrollmentCreatedAt"
-	FieldTransitRouterEnrollmentExpiresAt = "enrollmentExpiresAt"
 )
 
 type TransitRouter struct {
@@ -49,15 +42,6 @@ func (entity *TransitRouter) GetId() string {
 
 func (entity *TransitRouter) SetId(id string) {
 	entity.Id = id
-}
-
-func newTransitRouter(name string, roleAttributes ...string) *TransitRouter {
-	return &TransitRouter{
-		Router: db.Router{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
-		},
-		Name: name,
-	}
 }
 
 func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {

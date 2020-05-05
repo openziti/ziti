@@ -20,11 +20,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/gateway/internal/gateway"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
@@ -37,12 +38,6 @@ import (
 type apiPost struct {
 	ServerCertCsr string `json:"serverCertCsr"`
 	CertCsr       string `json:"certCsr"`
-}
-
-type apiResponse struct {
-	ServerCert string `json:"serverCert"`
-	CA         string `json:"ca"`
-	Cert       string `json:"cert"`
 }
 
 type Enroller interface {
@@ -161,11 +156,13 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error 
 
 	client.SetTLSClientConfig(tc)
 
-	resp, err := re.Send(client, ec.EnrolmentUrl(), er)
+	envelope, err := re.Send(client, ec.EnrolmentUrl(), er)
 
 	if err != nil {
 		return err
 	}
+
+	resp := envelope.Data
 
 	if resp.Cert == "" {
 		return fmt.Errorf("enrollment response did not contain a cert")
@@ -175,7 +172,7 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error 
 		return fmt.Errorf("enrollment response did not contain a server cert")
 	}
 
-	if resp.CA == "" {
+	if resp.Ca == "" {
 		return fmt.Errorf("enrollment response did not contain a CA chain")
 	}
 
@@ -186,7 +183,7 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error 
 	if err = ioutil.WriteFile(re.config.IdentityConfig.ServerCert, []byte(resp.ServerCert), 0600); err != nil {
 		return fmt.Errorf("unable to write server cert to [%s]: %s", re.config.IdentityConfig.ServerCert, err)
 	}
-	if err = ioutil.WriteFile(re.config.IdentityConfig.CA, []byte(resp.CA), 0600); err != nil {
+	if err = ioutil.WriteFile(re.config.IdentityConfig.CA, []byte(resp.Ca), 0600); err != nil {
 		return fmt.Errorf("unable to write CA certs to [%s]: %s", re.config.IdentityConfig.CA, err)
 	}
 
@@ -194,14 +191,20 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error 
 	return nil
 }
 
-func (re *RestEnroller) Send(client *resty.Client, enrollUrl string, e *apiPost) (*apiResponse, error) {
-	data := &apiResponse{}
-	apiResponse := response.NewApiResponseBody(data, nil)
+func (re *RestEnroller) Send(client *resty.Client, enrollUrl string, e *apiPost) (*rest_model.EnrollmentCertsEnvelope, error) {
+	envelope := rest_model.EnrollmentCertsEnvelope{}
 
 	resp, err := client.R().
 		SetBody(e).
-		SetResult(apiResponse).
 		Post(enrollUrl)
+
+	if err != nil {
+		return nil, err
+	}
+
+	body := resp.Body()
+
+	err = json.Unmarshal(body, &envelope)
 
 	if err != nil {
 		return nil, err
@@ -210,5 +213,5 @@ func (re *RestEnroller) Send(client *resty.Client, enrollUrl string, e *apiPost)
 		return nil, fmt.Errorf("enrollment failed recieved HTTP status [%s]: %s", resp.Status(), resp.Body())
 	}
 
-	return data, nil
+	return &envelope, nil
 }

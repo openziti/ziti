@@ -2,109 +2,88 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
-	"time"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameTransitRouter = "transit-routers"
 
-func NewTransitRouterEntityRef(entity *model.TransitRouter) *EntityApiRef {
-	links := &response.Links{
-		"self": NewTransitRouterLink(entity.Id),
-	}
+var TransitRouterLinkFactory = NewBasicLinkFactory(EntityNameTransitRouter)
 
-	return &EntityApiRef{
-		Entity: EntityNameTransitRouter,
-		Id:     entity.Id,
-		Name:   &entity.Name,
-		Links:  links,
-	}
-}
-
-func NewTransitRouterLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameTransitRouter, id))
-}
-
-type TransitRouterApi struct {
-	Name string                 `json:"name"`
-	Tags map[string]interface{} `json:"tags"`
-}
-
-func (i TransitRouterApi) ToModel(id string) *model.TransitRouter {
+func MapCreateTransitRouterToModel(router *rest_model.TransitRouterCreate) *model.TransitRouter {
 	ret := &model.TransitRouter{
-		BaseEntity: models.BaseEntity{
-			Tags: i.Tags,
-			Id:   id,
-		},
-		Name: i.Name,
+		BaseEntity: models.BaseEntity{},
+		Name:       stringz.OrEmpty(router.Name),
 	}
+
 	return ret
 }
 
-type TransitRouterApiList struct {
-	*env.BaseApi
-	Name                string     `json:"name"`
-	Fingerprint         string     `json:"fingerprint"`
-	IsVerified          bool       `json:"isVerified"`
-	IsOnline            bool       `json:"isOnline"`
-	EnrollmentToken     *string    `json:"enrollmentToken"`
-	EnrollmentJwt       *string    `json:"enrollmentJwt"`
-	EnrollmentCreatedAt *time.Time `json:"enrollmentCreatedAt"`
-	EnrollmentExpiresAt *time.Time `json:"enrollmentExpiresAt"`
-}
-
-func (e TransitRouterApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e TransitRouterApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
+func MapUpdateTransitRouterToModel(id string, router *rest_model.TransitRouterUpdate) *model.TransitRouter {
+	ret := &model.TransitRouter{
+		BaseEntity: models.BaseEntity{
+			Tags: router.Tags,
+			Id:   id,
+		},
+		Name: stringz.OrEmpty(router.Name),
 	}
+
+	return ret
 }
 
-func (e TransitRouterApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameTransitRouter,
-		Name:   nil,
-		Id:     e.Id,
-		Links:  e.Links,
+func MapPatchTransitRouterToModel(id string, router *rest_model.TransitRouterPatch) *model.TransitRouter {
+	ret := &model.TransitRouter{
+		BaseEntity: models.BaseEntity{
+			Tags: router.Tags,
+			Id:   id,
+		},
+		Name: router.Name,
 	}
+
+	return ret
 }
 
-func (e TransitRouterApiList) BuildSelfLink(id string) *response.Link {
-	return NewTransitRouterLink(id)
-}
-
-func MapTransitRouterToApiEntity(appEnv *env.AppEnv, _ *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {
-	txRouter, ok := entity.(*model.TransitRouter)
+func MapTransitRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	router, ok := e.(*model.TransitRouter)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a transit router \"%s\"", entity.GetId())
+		err := fmt.Errorf("entity is not a TransitRouter \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	ret := &TransitRouterApiList{
-		BaseApi:     env.FromBaseModelEntity(entity),
-		Name:        txRouter.Name,
-		Fingerprint: txRouter.Fingerprint,
-		IsVerified:  txRouter.IsVerified,
-		IsOnline:    appEnv.GetHandlers().Router.IsConnected(entity.GetId()),
+	restModel, err := MapTransitRouterToRestModel(ae, router)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
+}
+
+func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*rest_model.TransitRouterDetail, error) {
+	isConnected := ae.GetHandlers().Router.IsConnected(router.GetId())
+	ret := &rest_model.TransitRouterDetail{
+		BaseEntity:  BaseEntityToRestModel(router, TransitRouterLinkFactory),
+		Fingerprint: &router.Fingerprint,
+		IsOnline:    &isConnected,
+		IsVerified:  &router.IsVerified,
+		Name:        &router.Name,
 	}
 
-	if !txRouter.IsBase && !txRouter.IsVerified {
+	if !router.IsBase && !router.IsVerified {
 		var enrollments []*model.Enrollment
 
-		err := appEnv.GetHandlers().TransitRouter.CollectEnrollments(txRouter.Id, func(entity *model.Enrollment) error {
+		err := ae.GetHandlers().TransitRouter.CollectEnrollments(router.Id, func(entity *model.Enrollment) error {
 			enrollments = append(enrollments, entity)
 			return nil
 		})
@@ -114,17 +93,18 @@ func MapTransitRouterToApiEntity(appEnv *env.AppEnv, _ *response.RequestContext,
 		}
 
 		if len(enrollments) != 1 {
-			return nil, fmt.Errorf("expected enrollment not found for unverified transit router %s", txRouter.Id)
+			return nil, fmt.Errorf("expected enrollment not found for unverified transit router %s", router.Id)
 		}
 		enrollment := enrollments[0]
 
-		ret.EnrollmentExpiresAt = enrollment.ExpiresAt
-		ret.EnrollmentCreatedAt = enrollment.IssuedAt
+		expiresAt := strfmt.DateTime(*enrollment.ExpiresAt)
+		createdAt := strfmt.DateTime(*enrollment.IssuedAt)
+
+		ret.EnrollmentExpiresAt = &expiresAt
+		ret.EnrollmentCreatedAt = &createdAt
 		ret.EnrollmentJwt = &enrollment.Jwt
 		ret.EnrollmentToken = &enrollment.Token
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

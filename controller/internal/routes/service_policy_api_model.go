@@ -22,82 +22,91 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameServicePolicy = "service-policies"
 
-type ServicePolicyApi struct {
-	Tags          map[string]interface{} `json:"tags"`
-	Name          *string                `json:"name"`
-	PolicyType    *string                `json:"type"`
-	Semantic      *string                `json:"semantic"`
-	ServiceRoles  []string               `json:"serviceRoles"`
-	IdentityRoles []string               `json:"identityRoles"`
+var ServicePolicyLinkFactory = NewServicePolicyLinkFactory()
+
+type ServicePolicyLinkFactoryImpl struct {
+	BasicLinkFactory
 }
 
-func (i *ServicePolicyApi) ToModel(id string) *model.ServicePolicy {
-	result := &model.ServicePolicy{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.PolicyType = stringz.OrEmpty(i.PolicyType)
-	result.Semantic = stringz.OrEmpty(i.Semantic)
-	result.ServiceRoles = i.ServiceRoles
-	result.IdentityRoles = i.IdentityRoles
-	result.Tags = i.Tags
-	return result
-}
-
-type ServicePolicyApiList struct {
-	*env.BaseApi
-	Name          string   `json:"name"`
-	PolicyType    string   `json:"type"`
-	Semantic      string   `json:"semantic"`
-	ServiceRoles  []string `json:"serviceRoles"`
-	IdentityRoles []string `json:"identityRoles"`
-}
-
-func (c *ServicePolicyApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (ServicePolicyApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameServicePolicy, id))
-}
-
-func (c *ServicePolicyApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf:     self,
-			EntityNameService:  response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameService)),
-			EntityNameIdentity: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameIdentity)),
-		}
+func NewServicePolicyLinkFactory() *ServicePolicyLinkFactoryImpl {
+	return &ServicePolicyLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameServicePolicy),
 	}
 }
 
-func (c *ServicePolicyApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameServicePolicy,
-		Name:   &c.Name,
-		Id:     c.Id,
-		Links:  c.Links,
-	}
+func (factory *ServicePolicyLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
+	links[EntityNameIdentity] = factory.NewNestedLink(entity, EntityNameIdentity)
+
+	return links
 }
 
-func MapServicePolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.ServicePolicy)
+func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *model.ServicePolicy {
+	ret := &model.ServicePolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+		},
+		Name:          stringz.OrEmpty(policy.Name),
+		PolicyType:    string(policy.Type),
+		Semantic:      string(policy.Semantic),
+		ServiceRoles:  policy.ServiceRoles,
+		IdentityRoles: policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUpdate) *model.ServicePolicy {
+	ret := &model.ServicePolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:          stringz.OrEmpty(policy.Name),
+		PolicyType:    string(policy.Type),
+		Semantic:      string(policy.Semantic),
+		ServiceRoles:  policy.ServiceRoles,
+		IdentityRoles: policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapPatchServicePolicyToModel(id string, policy *rest_model.ServicePolicyPatch) *model.ServicePolicy {
+	ret := &model.ServicePolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:          policy.Name,
+		PolicyType:    string(policy.Type),
+		Semantic:      string(policy.Semantic),
+		ServiceRoles:  policy.ServiceRoles,
+		IdentityRoles: policy.IdentityRoles,
+	}
+
+	return ret
+}
+
+func MapServicePolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	policy, ok := e.(*model.ServicePolicy)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a service policy \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a ServicePolicy \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapServicePolicyToApiList(i)
+	restModel, err := MapServicePolicyToRestModel(policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -105,20 +114,18 @@ func MapServicePolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapServicePolicyToApiList(i *model.ServicePolicy) (*ServicePolicyApiList, error) {
-	ret := &ServicePolicyApiList{
-		BaseApi:       env.FromBaseModelEntity(i),
-		Name:          i.Name,
-		PolicyType:    i.PolicyType,
-		Semantic:      i.Semantic,
-		ServiceRoles:  i.ServiceRoles,
-		IdentityRoles: i.IdentityRoles,
+func MapServicePolicyToRestModel(policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
+	ret := &rest_model.ServicePolicyDetail{
+		BaseEntity:    BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
+		IdentityRoles: policy.IdentityRoles,
+		Name:          &policy.Name,
+		Semantic:      rest_model.Semantic(policy.Semantic),
+		ServiceRoles:  policy.ServiceRoles,
+		Type:          rest_model.DialBind(policy.PolicyType),
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

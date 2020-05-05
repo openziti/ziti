@@ -53,7 +53,7 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 	_, _ = body.SetP("invalid_password", "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
@@ -74,7 +74,7 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidUsername(t *testing.T) {
 	_, _ = body.SetP("admin", "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
@@ -95,7 +95,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 
 	resp, err := tests.ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
@@ -115,7 +115,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingUsername(t *testing.T) {
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
@@ -140,7 +140,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
 	resp, err := tests.ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 

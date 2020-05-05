@@ -23,176 +23,104 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameAuthenticator = "authenticators"
 
-type AuthenticatorProperties struct {
-	Username    *string `json:"username, omitempty"`
-	Password    *string `json:"password, omitempty"`
-	CertPem     *string `json:"certPem, omitempty"`
-	Fingerprint *string `json:"fingerprint, omitempty"`
+var AuthenticatorLinkFactory = NewAuthenticatorLinkFactory()
+
+type AuthenticatorLinkFactoryImpl struct {
+	BasicLinkFactory
 }
 
-type AuthenticatorCreateApi struct {
-	Method     *string `json:"method"`
-	IdentityId *string `json:"identityId"`
-	AuthenticatorProperties
-	Tags map[string]interface{} `json:"tags"`
+func NewAuthenticatorLinkFactory() *AuthenticatorLinkFactoryImpl {
+	return &AuthenticatorLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameAuthenticator),
+	}
 }
 
-func (i *AuthenticatorCreateApi) ToModel(id string) *model.Authenticator {
-	result := &model.Authenticator{}
-	result.Id = id
-	result.Method = stringz.OrEmpty(i.Method)
-	result.IdentityId = stringz.OrEmpty(i.IdentityId)
+func (factory *AuthenticatorLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	authenticator := entity.(*model.Authenticator)
 
-	if i.Username != nil || i.Password != nil {
-		result.Method = persistence.MethodAuthenticatorUpdb
-	} else {
-		result.Method = persistence.MethodAuthenticatorCert
+	links := factory.BasicLinkFactory.Links(entity)
+	if authenticator != nil {
+		links[EntityNameIdentity] = IdentityLinkFactory.SelfLinkFromId(authenticator.IdentityId)
 	}
 
-	switch result.Method {
-	case persistence.MethodAuthenticatorUpdb:
-		result.SubType = &model.AuthenticatorUpdb{
-			Authenticator: result,
-			Username:      stringz.OrEmpty(i.Username),
-			Password:      stringz.OrEmpty(i.Password),
-			Salt:          "",
-		}
-	case persistence.MethodAuthenticatorCert:
-		result.SubType = &model.AuthenticatorCert{
-			Authenticator: result,
-			Pem:           stringz.OrEmpty(i.CertPem),
-		}
+	return links
+}
+
+func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) *model.Authenticator {
+	//create is updb only right now
+	result := &model.Authenticator{
+		BaseEntity: models.BaseEntity{},
+		Method:     stringz.OrEmpty(in.Method),
+		IdentityId: stringz.OrEmpty(in.IdentityID),
+		SubType:    nil,
 	}
 
-	result.Tags = i.Tags
+	subType := &model.AuthenticatorUpdb{
+		Authenticator: result,
+		Username:      stringz.OrEmpty(in.Username),
+		Password:      stringz.OrEmpty(in.Password),
+		Salt:          "",
+	}
+
+	result.SubType = subType
+
 	return result
 }
 
-func (i *AuthenticatorCreateApi) FillFromMap(in map[string]interface{}) {
-	if val, ok := in["username"]; ok && val != nil {
-		username := val.(string)
-		i.Username = &username
+func MapUpdateAuthenticatorToModel(id string, in *rest_model.AuthenticatorUpdate) *model.Authenticator {
+	result := &model.Authenticator{
+		BaseEntity: models.BaseEntity{
+			Id:   id,
+			Tags: in.Tags,
+		},
+		Method: persistence.MethodAuthenticatorUpdb,
 	}
 
-	if val, ok := in["password"]; ok && val != nil {
-		password := val.(string)
-		i.Password = &password
+	result.SubType = &model.AuthenticatorUpdb{
+		Authenticator: result,
+		Username:      string(in.Username),
+		Password:      string(in.Password),
+		Salt:          "",
 	}
 
-	if val, ok := in["certPem"]; ok && val != nil {
-		certPem := val.(string)
-		i.CertPem = &certPem
-	}
-
-	if val, ok := in["tags"]; ok && val != nil {
-		tags := val.(map[string]interface{})
-		i.Tags = tags
-	}
-
-	if val, ok := in["identityId"]; ok && val != nil {
-		identityId := val.(string)
-		i.IdentityId = &identityId
-	}
-}
-
-type AuthenticatorUpdateApi struct {
-	AuthenticatorProperties
-	Tags map[string]interface{} `json:"tags"`
-}
-
-func (i *AuthenticatorUpdateApi) FillFromMap(in map[string]interface{}) {
-	if val, ok := in["username"]; ok && val != nil {
-		username := val.(string)
-		i.Username = &username
-	}
-
-	if val, ok := in["password"]; ok && val != nil {
-		password := val.(string)
-		i.Password = &password
-	}
-
-	if val, ok := in["certPem"]; ok && val != nil {
-		certPem := val.(string)
-		i.CertPem = &certPem
-	}
-
-	if val, ok := in["tags"]; ok && val != nil {
-		tags := val.(map[string]interface{})
-		i.Tags = tags
-	}
-}
-
-func (i *AuthenticatorUpdateApi) ToModel(id string) *model.Authenticator {
-	result := &model.Authenticator{}
-	result.Id = id
-
-	if i.Username != nil || i.Password != nil {
-		result.Method = persistence.MethodAuthenticatorUpdb
-	} else {
-		result.Method = persistence.MethodAuthenticatorCert
-	}
-
-	switch result.Method {
-	case persistence.MethodAuthenticatorUpdb:
-		result.SubType = &model.AuthenticatorUpdb{
-			Authenticator: result,
-			Username:      stringz.OrEmpty(i.Username),
-			Password:      stringz.OrEmpty(i.Password),
-			Salt:          "",
-		}
-	case persistence.MethodAuthenticatorCert:
-		result.SubType = &model.AuthenticatorCert{
-			Authenticator: result,
-			Pem:           stringz.OrEmpty(i.CertPem),
-		}
-	}
-
-	result.Tags = i.Tags
 	return result
 }
 
-type AuthenticatorApiList struct {
-	*env.BaseApi
-	Method     *string `json:"method"`
-	IdentityId *string `json:"identityId"`
-	*AuthenticatorProperties
-	Tags map[string]interface{} `json:"tags"`
-}
-
-func (c *AuthenticatorApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (AuthenticatorApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameAuthenticator, id))
-}
-
-func (c *AuthenticatorApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf:     self,
-			EntityNameIdentity: NewIdentityLink(*c.IdentityId),
-		}
+func MapPatchAuthenticatorToModel(id string, in *rest_model.AuthenticatorPatch) *model.Authenticator {
+	result := &model.Authenticator{
+		BaseEntity: models.BaseEntity{
+			Id:   id,
+			Tags: in.Tags,
+		},
+		Method: persistence.MethodAuthenticatorUpdb,
 	}
-}
 
-func (c *AuthenticatorApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameAuthenticator,
-		Id:     c.Id,
-		Links:  c.Links,
+	subType := &model.AuthenticatorUpdb{
+		Authenticator: result,
+		Salt:          "",
 	}
+
+	if in.Username != nil {
+		subType.Username = string(*in.Username)
+	}
+
+	if in.Password != nil {
+		subType.Password = string(*in.Password)
+	}
+
+	result.SubType = subType
+
+	return result
 }
 
-func MapAuthenticatorToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
+func MapAuthenticatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	i, ok := e.(*model.Authenticator)
 
 	if !ok {
@@ -202,7 +130,7 @@ func MapAuthenticatorToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 		return nil, err
 	}
 
-	al, err := MapAuthenticatorToApiList(i)
+	al, err := MapAuthenticatorToRestModel(ae, i)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -213,38 +141,39 @@ func MapAuthenticatorToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 	return al, nil
 }
 
-func MapAuthenticatorToApiList(i *model.Authenticator) (*AuthenticatorApiList, error) {
-	ret := &AuthenticatorApiList{
-		BaseApi:    env.FromBaseModelEntity(i),
+func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_model.AuthenticatorDetail, error) {
+
+	identity, err := ae.GetHandlers().Identity.Read(i.IdentityId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &rest_model.AuthenticatorDetail{
+		BaseEntity: BaseEntityToRestModel(i, AuthenticatorLinkFactory),
 		Method:     &i.Method,
-		IdentityId: &i.IdentityId,
-		Tags:       i.Tags,
+		IdentityID: &i.IdentityId,
+		Identity:   ToEntityRef(identity.Name, identity, IdentityLinkFactory),
 	}
 
 	switch i.Method {
 	case persistence.MethodAuthenticatorUpdb:
 		subType := i.SubType.(*model.AuthenticatorUpdb)
-		ret.AuthenticatorProperties = &AuthenticatorProperties{
-			Username: &subType.Username,
-		}
+		result.Username = subType.Username
 	case persistence.MethodAuthenticatorCert:
 		subType := i.SubType.(*model.AuthenticatorCert)
-		ret.AuthenticatorProperties = &AuthenticatorProperties{
-			CertPem:     &subType.Pem,
-			Fingerprint: &subType.Fingerprint,
-		}
+		result.CertPem = subType.Pem
+		result.Fingerprint = subType.Fingerprint
 	}
 
-	ret.PopulateLinks()
-
-	return ret, nil
+	return result, nil
 }
 
-func MapAuthenticatorsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Authenticator) ([]BaseApiEntity, error) {
-	apiEntities := make([]BaseApiEntity, 0)
+func MapAuthenticatorsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Authenticator) ([]interface{}, error) {
+	apiEntities := make([]interface{}, 0)
 
 	for _, e := range es {
-		al, err := MapAuthenticatorToApiEntity(ae, rc, e)
+		al, err := MapAuthenticatorToRestEntity(ae, rc, e)
 
 		if err != nil {
 			return nil, err

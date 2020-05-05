@@ -17,7 +17,6 @@
 package config
 
 import (
-	"github.com/openziti/foundation/identity/identity"
 	"bytes"
 	"crypto/sha1"
 	"encoding/pem"
@@ -25,6 +24,7 @@ import (
 	"fmt"
 	"github.com/gobuffalo/packr"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/identity/identity"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -393,7 +393,7 @@ func LoadFromMap(cfgmap map[interface{}]interface{}) (*Config, error) {
 		Enabled: false,
 	}
 
-	var edgeConfigMap map[interface{}]interface{} = nil
+	var edgeConfigMap map[interface{}]interface{}
 
 	if val, ok := cfgmap["edge"]; ok && val != nil {
 		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {

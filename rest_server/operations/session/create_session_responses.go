@@ -40,7 +40,7 @@ import (
 // CreateSessionOKCode is the HTTP code returned for type CreateSessionOK
 const CreateSessionOKCode int = 200
 
-/*CreateSessionOK The create request was successful and the resource has been added at the ollowing location.
+/*CreateSessionOK The create request was successful and the resource has been added at the following location.
 
 swagger:response createSessionOK
 */

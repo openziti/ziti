@@ -2085,7 +2085,7 @@ func init() {
     },
     "/enroll/updb": {
       "post": {
-        "description": "Enrolls and identity via a one-time-token to establish an initial username and password combination.\n",
+        "description": "Enrolls an identity via a one-time-token to establish an initial username and password combination\n",
         "tags": [
           "Enroll"
         ],
@@ -2940,7 +2940,7 @@ func init() {
         "operationId": "updateServiceEdgeRouterPolicy",
         "parameters": [
           {
-            "description": "A service edge policy update object",
+            "description": "A service edge router policy update object",
             "name": "Body",
             "in": "body",
             "required": true,
@@ -3005,7 +3005,7 @@ func init() {
         "operationId": "patchServiceEdgeRouterPolicy",
         "parameters": [
           {
-            "description": "A service edge policy patch object",
+            "description": "A service edge router policy patch object",
             "name": "Body",
             "in": "body",
             "required": true,
@@ -8232,7 +8232,7 @@ func init() {
       }
     },
     "sessionCreateResponse": {
-      "description": "The create request was successful and the resource has been added at the ollowing location.",
+      "description": "The create request was successful and the resource has been added at the following location.",
       "schema": {
         "$ref": "#/definitions/sessionCreateEnvelope"
       }
@@ -13691,7 +13691,7 @@ func init() {
     },
     "/enroll/updb": {
       "post": {
-        "description": "Enrolls and identity via a one-time-token to establish an initial username and password combination.\n",
+        "description": "Enrolls an identity via a one-time-token to establish an initial username and password combination\n",
         "tags": [
           "Enroll"
         ],
@@ -15903,7 +15903,7 @@ func init() {
         "operationId": "updateServiceEdgeRouterPolicy",
         "parameters": [
           {
-            "description": "A service edge policy update object",
+            "description": "A service edge router policy update object",
             "name": "Body",
             "in": "body",
             "required": true,
@@ -16129,7 +16129,7 @@ func init() {
         "operationId": "patchServiceEdgeRouterPolicy",
         "parameters": [
           {
-            "description": "A service edge policy patch object",
+            "description": "A service edge router policy patch object",
             "name": "Body",
             "in": "body",
             "required": true,
@@ -18378,7 +18378,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "The create request was successful and the resource has been added at the ollowing location.",
+            "description": "The create request was successful and the resource has been added at the following location.",
             "schema": {
               "$ref": "#/definitions/sessionCreateEnvelope"
             }
@@ -23757,7 +23757,7 @@ func init() {
       }
     },
     "sessionCreateResponse": {
-      "description": "The create request was successful and the resource has been added at the ollowing location.",
+      "description": "The create request was successful and the resource has been added at the following location.",
       "schema": {
         "$ref": "#/definitions/sessionCreateEnvelope"
       }

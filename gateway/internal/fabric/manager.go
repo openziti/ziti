@@ -137,7 +137,7 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_
 }
 
 func (sm *StateManagerImpl) AddSession(ns *edge_ctrl_pb.Session) {
-	pfxlog.Logger().Debugf("adding network session [%s] fingerprints [%s] Type [%v]", ns.Token, ns.CertFingerprints, ns.Type.String())
+	pfxlog.Logger().Debugf("adding network session [%s] fingerprints [%s] TypeId [%v]", ns.Token, ns.CertFingerprints, ns.Type.String())
 	sm.networkSessionsByToken.Store(ns.Token, ns)
 	sm.Emit(EventAddedNetworkSession, ns)
 }

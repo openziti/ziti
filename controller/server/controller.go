@@ -34,7 +34,6 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/handler_edge_ctrl"
 	_ "github.com/openziti/edge/controller/internal/routes"
-	"github.com/openziti/edge/controller/middleware"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/foundation/channel2"
@@ -73,39 +72,6 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 
 	ae := env.NewAppEnv(c.config)
 
-	// If SkipClean is false (which is the default), URL cleaning will happen (i.e. double slashes to single slashes)
-	// and gorilla will return 301s if cleaning is needed. This causes problems, as redirects are subsequently called
-	// with GET (instead of their original HTTP verb) by clients that support redirects.
-	// Skipping URL cleaning will result in 404s for poorly constructed URLs unless middleware is introduced to
-	// transparently clean the URL. Transparently cleaning URLs can create issues where client logic is written
-	// that is never corrected.
-	ae.RootRouter.SkipClean(true)
-
-	ae.RootRouter.Use(middleware.UseStatusWriter)
-	ae.RootRouter.Use(middleware.RequestDebugLogger)
-	ae.RootRouter.Use(middleware.SetResponseTypeToJson)
-
-	corsOpts := []handlers.CORSOption{
-		handlers.AllowedOrigins([]string{"*"}),
-		handlers.OptionStatusCode(200),
-		handlers.AllowedHeaders([]string{
-			"Content-Type",
-			"Accept",
-			constants.ZitiSession,
-		}),
-		handlers.AllowedMethods([]string{
-			http.MethodGet,
-			http.MethodHead,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete}),
-		handlers.AllowCredentials(),
-	}
-
-	as := newApiServer(c.config, ae.RootRouter)
-
-	as.corsOptions = corsOpts
 	pe, err := runner.NewRunner(policyMinFreq, policyMaxFreq, func(e error, enforcer runner.Operation) {
 		pfxlog.Logger().
 			WithField("cause", e).
@@ -118,7 +84,6 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 		return nil, fmt.Errorf("failed to create policy runner: %s", err)
 	}
 
-	c.apiServer = as
 	c.AppEnv = ae
 	c.policyEngine = pe
 
@@ -233,6 +198,48 @@ func (c *Controller) Run() {
 	for _, rf := range env.GetRouters() {
 		rf(c.AppEnv)
 	}
+
+	corsOpts := []handlers.CORSOption{
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.OptionStatusCode(200),
+		handlers.AllowedHeaders([]string{
+			"content-type",
+			"Accept",
+			constants.ZitiSession,
+		}),
+		handlers.AllowedMethods([]string{
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete}),
+		handlers.AllowCredentials(),
+	}
+
+	as := newApiServer(c.config, c.AppEnv.Api.Serve(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			rc := c.AppEnv.CreateRequestContext(rw, r)
+
+			env.AddRequestContextToHttpContext(r, rc)
+
+			err := c.AppEnv.FillRequestContext(rc)
+			if err != nil {
+				rc.RespondWithError(err)
+				return
+			}
+
+			//attempt to patch in cookie support, Swagger/Open API 2.0 doesn't support defining it
+			if r.Header.Get(c.AppEnv.AuthHeaderName) == "" {
+				r.Header.Set(c.AppEnv.AuthHeaderName, c.AppEnv.GetSessionTokenFromRequest(r))
+			}
+
+			handler.ServeHTTP(rw, r)
+		})
+	}))
+
+	as.corsOptions = corsOpts
+	c.apiServer = as
 
 	admin, err := c.AppEnv.Handlers.Identity.ReadDefaultAdmin()
 

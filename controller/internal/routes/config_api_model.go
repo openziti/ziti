@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 	"math"
@@ -29,86 +30,72 @@ import (
 
 const EntityNameConfig = "configs"
 
-type ConfigCreateApi struct {
-	Name *string                `json:"name"`
-	Type *string                `json:"type"`
-	Data map[string]interface{} `json:"data"`
-	Tags map[string]interface{} `json:"tags"`
-}
+var ConfigLinkFactory = NewBasicLinkFactory(EntityNameConfig)
 
-func (i *ConfigCreateApi) ToModel() *model.Config {
-	result := &model.Config{}
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Type = stringz.OrEmpty(i.Type)
-	result.Data = i.Data
-	result.Tags = i.Tags
-
-	narrowJsonTypes(result.Data)
-	return result
-}
-
-type ConfigUpdateApi struct {
-	Name *string                `json:"name"`
-	Data map[string]interface{} `json:"data"`
-	Tags map[string]interface{} `json:"tags"`
-}
-
-func (i *ConfigUpdateApi) ToModel(id string) *model.Config {
-	result := &model.Config{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Data = i.Data
-	result.Tags = i.Tags
-
-	narrowJsonTypes(result.Data)
-	return result
-}
-
-type ConfigApiList struct {
-	*env.BaseApi
-	Name string                 `json:"name"`
-	Type string                 `json:"type"`
-	Data map[string]interface{} `json:"data"`
-}
-
-func (c *ConfigApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (ConfigApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameConfig, id))
-}
-
-func (c *ConfigApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf: self,
-		}
+func MapCreateConfigToModel(config *rest_model.ConfigCreate) *model.Config {
+	ret := &model.Config{
+		BaseEntity: models.BaseEntity{
+			Tags: config.Tags,
+		},
+		Name:   stringz.OrEmpty(config.Name),
+		TypeId: stringz.OrEmpty(config.ConfigTypeID),
 	}
+
+	dataMap := config.Data.(map[string]interface{})
+	ret.Data = dataMap
+
+	narrowJsonTypes(ret.Data)
+
+	return ret
 }
 
-func (c *ConfigApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameConfig,
-		Name:   &c.Name,
-		Id:     c.Id,
-		Links:  c.Links,
+func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.Config {
+	ret := &model.Config{
+		BaseEntity: models.BaseEntity{
+			Tags: config.Tags,
+			Id:   id,
+		},
+		Name: stringz.OrEmpty(config.Name),
 	}
+
+	if dataMap, ok := config.Data.(map[string]interface{}); ok {
+		ret.Data = dataMap
+	}
+
+	narrowJsonTypes(ret.Data)
+
+	return ret
 }
 
-func MapConfigToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.Config)
+func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) *model.Config {
+	ret := &model.Config{
+		BaseEntity: models.BaseEntity{
+			Tags: config.Tags,
+			Id:   id,
+		},
+		Name: config.Name,
+	}
+
+	if dataMap, ok := config.Data.(map[string]interface{}); ok {
+		ret.Data = dataMap
+	}
+
+	narrowJsonTypes(ret.Data)
+
+	return ret
+}
+
+func MapConfigToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	config, ok := e.(*model.Config)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a configuration \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a Config \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapConfigToApiList(i)
+	al, err := MapConfigToRestModel(ae, config)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -119,21 +106,38 @@ func MapConfigToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.En
 	return al, nil
 }
 
-func MapConfigToApiList(i *model.Config) (*ConfigApiList, error) {
-	ret := &ConfigApiList{
-		BaseApi: env.FromBaseModelEntity(i),
-		Name:    i.Name,
-		Type:    i.Type,
-		Data:    i.Data,
+func MapConfigToRestModel(ae *env.AppEnv, config *model.Config) (*rest_model.ConfigDetail, error) {
+
+	configType, err := ae.Handlers.ConfigType.Read(config.TypeId)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not find type [%s]: %v", config.TypeId, err)
 	}
 
-	ret.PopulateLinks()
+	ret := &rest_model.ConfigDetail{
+		BaseEntity:   BaseEntityToRestModel(config, ConfigLinkFactory),
+		Data:         config.Data,
+		Name:         &config.Name,
+		ConfigType:   ToEntityRef(configType.Name, configType, ConfigTypeLinkFactory),
+		ConfigTypeID: &config.TypeId,
+	}
 
 	return ret, nil
 }
 
 func narrowJsonTypes(m map[string]interface{}) {
 	for k, v := range m {
+		if parsedNumber, ok := v.(ParsedNumber); ok {
+			//floats don't parse as int, try int fist, then float, else give up
+			if intVal, err := parsedNumber.Int64(); err == nil {
+				v = intVal
+				m[k] = intVal
+			} else if floatVal, err := parsedNumber.Float64(); err == nil {
+				v = floatVal
+				m[k] = floatVal
+			}
+		}
+
 		switch val := v.(type) {
 		case float64:
 			intVal := math.Trunc(val)
@@ -144,4 +148,10 @@ func narrowJsonTypes(m map[string]interface{}) {
 			narrowJsonTypes(val)
 		}
 	}
+}
+
+type ParsedNumber interface {
+	String() string
+	Float64() (float64, error)
+	Int64() (int64, error)
 }

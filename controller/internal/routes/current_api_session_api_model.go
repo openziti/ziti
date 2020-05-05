@@ -17,44 +17,28 @@
 package routes
 
 import (
+	"github.com/go-openapi/strfmt"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/foundation/util/stringz"
 	"time"
-
-	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/controller/response"
 )
 
 const EntityNameCurrentSession = "current-api-session"
 
-type CurrentSessionApiList struct {
-	*env.BaseApi
-	Token       *string       `json:"token"`
-	Identity    *EntityApiRef `json:"identity"`
-	ExpiresAt   *time.Time    `json:"expiresAt"`
-	ConfigTypes []string      `json:"configTypes"`
-}
+var CurrentApiSessionLinkFactory LinksFactory = NewBasicLinkFactory(EntityNameCurrentSession)
 
-func (CurrentSessionApiList) BuildSelfLink(_ string) *response.Link {
-	return response.NewLink("./" + EntityNameCurrentSession)
-}
-
-func (e *CurrentSessionApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *CurrentSessionApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
+func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
+	expiresAt := strfmt.DateTime(s.UpdatedAt.Add(sessionTimeout))
+	apiSession := &rest_model.CurrentAPISessionDetail{
+		APISessionDetail: rest_model.APISessionDetail{
+			BaseEntity:  BaseEntityToRestModel(s, CurrentApiSessionLinkFactory),
+			Identity:    ToEntityRef(s.Identity.Name, s.Identity, IdentityLinkFactory),
+			Token:       &s.Token,
+			ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
+		},
+		ExpiresAt: &expiresAt,
 	}
-}
 
-func (e *CurrentSessionApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameCurrentSession,
-		Name:   nil,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
+	return apiSession
 }

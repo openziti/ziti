@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/transit_router"
 )
 
 func init() {
@@ -39,45 +41,58 @@ func NewTransitRouterRouter() *TransitRouterRouter {
 	}
 }
 
-func (ir *TransitRouterRouter) Register(ae *env.AppEnv) {
-	_ = registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
-		Create:  permissions.IsAdmin(),
-		Read:    permissions.IsAdmin(),
-		Update:  permissions.IsAdmin(),
-		Delete:  permissions.IsAdmin(),
-		Default: permissions.IsAdmin(),
+func (r *TransitRouterRouter) Register(ae *env.AppEnv) {
+	ae.Api.TransitRouterDeleteTransitRouterHandler = transit_router.DeleteTransitRouterHandlerFunc(func(params transit_router.DeleteTransitRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TransitRouterDetailTransitRouterHandler = transit_router.DetailTransitRouterHandlerFunc(func(params transit_router.DetailTransitRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TransitRouterListTransitRoutersHandler = transit_router.ListTransitRoutersHandlerFunc(func(params transit_router.ListTransitRoutersParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.TransitRouterUpdateTransitRouterHandler = transit_router.UpdateTransitRouterHandlerFunc(func(params transit_router.UpdateTransitRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TransitRouterCreateTransitRouterHandler = transit_router.CreateTransitRouterHandlerFunc(func(params transit_router.CreateTransitRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.TransitRouterPatchTransitRouterHandler = transit_router.PatchTransitRouterHandlerFunc(func(params transit_router.PatchTransitRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
-func (ir *TransitRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.TransitRouter, MapTransitRouterToApiEntity)
+func (r *TransitRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.TransitRouter, MapTransitRouterToRestEntity)
 }
 
-func (ir *TransitRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.TransitRouter, MapTransitRouterToApiEntity, ir.IdType)
+func (r *TransitRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.TransitRouter, MapTransitRouterToRestEntity)
 }
 
-func (ir *TransitRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	transitRouterCreate := &TransitRouterApi{}
-	Create(rc, rc.RequestResponder, ae.Schemes.TransitRouter.Post, transitRouterCreate, (&TransitRouterApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.TransitRouter.Create(transitRouterCreate.ToModel(""))
+func (r *TransitRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params transit_router.CreateTransitRouterParams) {
+	Create(rc, rc, TransitRouterLinkFactory, func() (string, error) {
+		return ae.Handlers.TransitRouter.Create(MapCreateTransitRouterToModel(params.Body))
 	})
 }
 
-func (ir *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.TransitRouter)
+func (r *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.TransitRouter)
 }
 
-func (ir *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	transitRouterUpdate := &TransitRouterApi{}
-	Update(rc, ae.Schemes.TransitRouter.Put, ir.IdType, transitRouterUpdate, func(id string) error {
-		return ae.Handlers.TransitRouter.Update(transitRouterUpdate.ToModel(id), false)
+func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params transit_router.UpdateTransitRouterParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.TransitRouter.Update(MapUpdateTransitRouterToModel(params.ID, params.Body), false)
 	})
 }
 
-func (ir *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	transitRouterUpdate := &TransitRouterApi{}
-	Patch(rc, ae.Schemes.TransitRouter.Patch, ir.IdType, transitRouterUpdate, func(id string, fields JsonFields) error {
-		return ae.Handlers.TransitRouter.Patch(transitRouterUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"), false)
+func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params transit_router.PatchTransitRouterParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.TransitRouter.Patch(MapPatchTransitRouterToModel(params.ID, params.Body), fields.ConcatNestedNames().FilterMaps("tags"), false)
 	})
 }

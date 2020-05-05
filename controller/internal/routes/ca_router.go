@@ -21,15 +21,16 @@ import (
 	"encoding/pem"
 	"fmt"
 	jwt2 "github.com/dgrijalva/jwt-go"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/certificate_authority"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -50,63 +51,83 @@ func NewCaRouter() *CaRouter {
 	}
 }
 
-func (ir *CaRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *CaRouter) Register(ae *env.AppEnv) {
+	ae.Api.CertificateAuthorityDeleteCaHandler = certificate_authority.DeleteCaHandlerFunc(func(params certificate_authority.DeleteCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	idUrlWithoutSlash := fmt.Sprintf("/{%s}/verify", response.IdPropertyName)
-	idUrlWithSlash := fmt.Sprintf("/{%s}/verify/", response.IdPropertyName)
-	verifyHandler := ae.WrapHandler(ir.VerifyCert, permissions.IsAdmin())
-	sr.HandleFunc(idUrlWithoutSlash, verifyHandler).Methods(http.MethodPost)
-	sr.HandleFunc(idUrlWithSlash, verifyHandler).Methods(http.MethodPost)
+	ae.Api.CertificateAuthorityDetailCaHandler = certificate_authority.DetailCaHandlerFunc(func(params certificate_authority.DetailCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	getJwtWithSlash := fmt.Sprintf("/{%s}/jwt", response.IdPropertyName)
-	getJwtWithoutSlash := fmt.Sprintf("/{%s}/jwt/", response.IdPropertyName)
-	jwtHandler := ae.WrapHandler(ir.generateJwt, permissions.IsAdmin())
-	sr.HandleFunc(getJwtWithSlash, jwtHandler).Methods(http.MethodGet)
-	sr.HandleFunc(getJwtWithoutSlash, jwtHandler).Methods(http.MethodGet)
+	ae.Api.CertificateAuthorityListCasHandler = certificate_authority.ListCasHandlerFunc(func(params certificate_authority.ListCasParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.CertificateAuthorityUpdateCaHandler = certificate_authority.UpdateCaHandlerFunc(func(params certificate_authority.UpdateCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.CertificateAuthorityCreateCaHandler = certificate_authority.CreateCaHandlerFunc(func(params certificate_authority.CreateCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.CertificateAuthorityPatchCaHandler = certificate_authority.PatchCaHandlerFunc(func(params certificate_authority.PatchCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.CertificateAuthorityVerifyCaHandler = certificate_authority.VerifyCaHandlerFunc(func(params certificate_authority.VerifyCaParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.VerifyCert(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.CertificateAuthorityGetCaJwtHandler = certificate_authority.GetCaJwtHandlerFunc(func(params certificate_authority.GetCaJwtParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.generateJwt(ae, rc)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
 }
 
-func (ir *CaRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Ca, MapCaToApiEntity)
+func (r *CaRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.Ca, MapCaToRestEntity)
 }
 
-func (ir *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Ca, MapCaToApiEntity, ir.IdType)
+func (r *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.Ca, MapCaToRestEntity)
 }
 
-func (ir *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &CaApiCreate{}
-	Create(rc, rc.RequestResponder, ae.Schemes.Ca.Post, apiEntity, (&CaApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.Ca.Create(apiEntity.ToModel())
+func (r *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.CreateCaParams) {
+	Create(rc, rc, CaLinkFactory, func() (string, error) {
+		return ae.Handlers.Ca.Create(MapCreateCaToModel(params.Body))
 	})
 }
 
-func (ir *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.Ca)
+func (r *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.Ca)
 }
 
-func (ir *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &CaApiUpdate{}
-	Update(rc, ae.Schemes.Ca.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Ca.Update(apiEntity.ToModel(id))
+func (r *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.UpdateCaParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.Ca.Update(MapUpdateCaToModel(params.ID, params.Body))
 	})
 }
 
-func (ir *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &CaApiUpdate{}
-	Patch(rc, ae.Schemes.Ca.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Ca.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+func (r *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.PatchCaParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.Ca.Patch(MapPatchCaToModel(params.ID, params.Body), fields.FilterMaps("tags"))
 	})
 }
 
-func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
-	id, err := rc.GetIdFromRequest(ir.IdType)
+func (r *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.VerifyCaParams) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		err := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
 		log.Error(err)
-		rc.RequestResponder.RespondWithNotFound()
+		rc.RespondWithNotFound()
 		return
 	}
 
@@ -114,49 +135,49 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RespondWithNotFound()
 			return
 		}
 
 		log := pfxlog.Logger()
 		log.WithField("id", id).WithField("cause", err).
 			Errorf("could not load identity by id [%s]: %s", id, err)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
 	if ca == nil {
-		rc.RequestResponder.RespondWithNotFound()
+		rc.RespondWithNotFound()
 		return
 	}
 
 	if ca.IsVerified {
 
-		rc.RequestResponder.RespondWithApiError(apierror.NewCaAlreadyVerified())
+		rc.RespondWithApiError(apierror.NewCaAlreadyVerified())
 		return
 	}
 
-	body, err := ioutil.ReadAll(rc.Request.Body)
+	body := params.Certificate
 
-	if err != nil || len(body) == 0 {
-		rc.RequestResponder.RespondWithCouldNotParseBody(err)
+	if len(body) == 0 {
+		rc.RespondWithCouldNotParseBody(err)
 		return
 	}
 
-	der, _ := pem.Decode(body)
+	der, _ := pem.Decode([]byte(body))
 
 	if der == nil {
-		apiErr := apierror.NewCouldNotParseBody()
+		apiErr := apierror.NewCouldNotParseBody(nil)
 		apiErr.Cause = err
 		apiErr.AppendCause = true
-		rc.RequestResponder.RespondWithApiError(apiErr)
+		rc.RespondWithApiError(apiErr)
 		return
 	}
 
 	if der.Type != "CERTIFICATE" {
 		apiErr := apierror.NewExpectedPemBlockCertificate()
 		apiErr.Cause = fmt.Errorf("ecountered PEM block type %s", der.Type)
-		rc.RequestResponder.RespondWithApiError(apiErr)
+		rc.RespondWithApiError(apiErr)
 		return
 	}
 
@@ -166,12 +187,12 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 		apiErr := apierror.NewCouldNotParseDerBlock()
 		apiErr.AppendCause = true
 		apiErr.Cause = err
-		rc.RequestResponder.RespondWithApiError(apiErr)
+		rc.RespondWithApiError(apiErr)
 		return
 	}
 
 	if cert.Subject.CommonName != ca.VerificationToken {
-		rc.RequestResponder.RespondWithApiError(apierror.NewInvalidCommonName())
+		rc.RespondWithApiError(apierror.NewInvalidCommonName())
 		return
 	}
 
@@ -180,7 +201,7 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 	caCert, err := x509.ParseCertificate(caDer.Bytes)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -195,28 +216,28 @@ func (ir *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext) {
 	if err != nil {
 		apiErr := apierror.NewFailedCertificateValidation()
 		apiErr.Cause = err
-		rc.RequestResponder.RespondWithApiError(apiErr)
+		rc.RespondWithApiError(apiErr)
 		return
 	}
 
 	err = ae.Handlers.Ca.Verified(ca)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(nil, nil)
+	rc.RespondWithEmptyOk()
 }
 
-func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
-	id, getErr := rc.GetIdFromRequest(ir.IdType)
+func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
+	id, getErr := rc.GetEntityId()
 
 	if getErr != nil {
 		log := pfxlog.Logger()
 		err := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
 		log.Error(err)
-		rc.RequestResponder.RespondWithNotFound()
+		rc.RespondWithNotFound()
 		return
 	}
 
@@ -224,18 +245,18 @@ func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 
 	if loadErr != nil {
 		if boltz.IsErrNotFoundErr(loadErr) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RespondWithNotFound()
 			return
 		}
 
 		log := pfxlog.Logger()
 		log.Errorf("could not load identity by id \"%s\": %s", id, loadErr)
-		rc.RequestResponder.RespondWithError(loadErr)
+		rc.RespondWithError(loadErr)
 		return
 	}
 
 	if ca == nil {
-		rc.RequestResponder.RespondWithNotFound()
+		rc.RespondWithNotFound()
 		return
 	}
 
@@ -253,18 +274,18 @@ func (ir *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 	mapClaims, err := claims.ToMapClaims()
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(fmt.Errorf("could not convert CA enrollment claims to interface map: %s", err))
+		rc.RespondWithError(fmt.Errorf("could not convert CA enrollment claims to interface map: %s", err))
 		return
 	}
 
 	jwt, genErr := ae.EnrollmentJwtGenerator.Generate(ca.Id, ca.Id, mapClaims)
 
 	if genErr != nil {
-		rc.RequestResponder.RespondWithError(errors.New("could not generate claims"))
+		rc.RespondWithError(errors.New("could not generate claims"))
 		return
 	}
 
-	rc.ResponseWriter.Header().Set("Content-Type", "application/jwt")
+	rc.ResponseWriter.Header().Set("content-type", "application/jwt")
 	response.AddVersionHeader(rc.ResponseWriter)
 	rc.ResponseWriter.WriteHeader(http.StatusOK)
 	_, _ = rc.ResponseWriter.Write([]byte(jwt))

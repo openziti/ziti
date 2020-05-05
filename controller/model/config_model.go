@@ -30,29 +30,29 @@ import (
 
 type Config struct {
 	models.BaseEntity
-	Name string
-	Type string
-	Data map[string]interface{}
+	Name   string
+	TypeId string
+	Data   map[string]interface{}
 }
 
 func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
-	if entity.Type != "" {
-		providedType := entity.Type
+	if entity.TypeId != "" {
+		providedType := entity.TypeId
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
-		if !configTypeStore.IsEntityPresent(tx, entity.Type) {
+		if !configTypeStore.IsEntityPresent(tx, entity.TypeId) {
 			return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 		}
 	}
 
-	if entity.Type == "" {
+	if entity.TypeId == "" {
 		currentConfig, err := handler.GetEnv().GetHandlers().Config.readInTx(tx, entity.Id)
 		if err != nil {
 			return nil, err
 		}
-		entity.Type = currentConfig.Type
+		entity.TypeId = currentConfig.TypeId
 	}
 
-	if configType, _ := handler.GetEnv().GetHandlers().ConfigType.readInTx(tx, entity.Type); configType != nil && len(configType.Schema) > 0 {
+	if configType, _ := handler.GetEnv().GetHandlers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
 		compileSchema, err := configType.GetCompiledSchema()
 		if err != nil {
 			return nil, err
@@ -70,14 +70,14 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 	return &persistence.Config{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
-		Type:          entity.Type,
+		Type:          entity.TypeId,
 		Data:          entity.Data,
 	}, nil
 }
 
 func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
-	if entity.Type == "" {
-		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.Type)
+	if entity.TypeId == "" {
+		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
 	}
 	return entity.toBoltEntity(tx, handler)
 }
@@ -98,7 +98,7 @@ func (entity *Config) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) 
 
 	entity.FillCommon(boltConfig)
 	entity.Name = boltConfig.Name
-	entity.Type = boltConfig.Type
+	entity.TypeId = boltConfig.Type
 	entity.Data = boltConfig.Data
 	return nil
 }

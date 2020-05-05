@@ -75,7 +75,7 @@ func Test_ConfigTypes(t *testing.T) {
 			},
 		}
 		resp := ctx.AdminSession.createEntity(configType)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "schema")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "schema")
 	})
 
 	t.Run("create config type with schema should pass", func(t *testing.T) {

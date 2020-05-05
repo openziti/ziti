@@ -18,14 +18,13 @@ package model
 
 import (
 	"encoding/base64"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/crypto"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 type EnrollModuleUpdb struct {
@@ -70,21 +69,11 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 
 	data := ctx.GetDataAsMap()
 
-	result, err := module.env.GetSchemas().GetEnrollUpdbPost().Validate(gojsonschema.NewGoLoader(data))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !result.Valid() {
-		return nil, schema.NewValidationError(result.Errors()[0])
-	}
-
 	password := ""
 
 	val, ok := data["password"]
 	if !ok {
-		return nil, apierror.NewUnhandled()
+		return nil, apierror.NewUnhandled(errors.New("password expected for updb enrollment"))
 	}
 	password = val.(string)
 
@@ -115,8 +104,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	return &EnrollmentResult{
 		Identity:      identity,
 		Authenticator: newAuthenticator,
-		Content:       []byte("{}"),
-		ContentType:   "application/json",
+		Content:       map[string]interface{}{},
 		Status:        200,
 	}, nil
 

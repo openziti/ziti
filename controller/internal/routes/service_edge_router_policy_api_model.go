@@ -22,79 +22,87 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameServiceEdgeRouterPolicy = "service-edge-router-policies"
 
-type ServiceEdgeRouterPolicyApi struct {
-	Tags            map[string]interface{} `json:"tags"`
-	Name            *string                `json:"name"`
-	Semantic        *string                `json:"semantic"`
-	EdgeRouterRoles []string               `json:"edgeRouterRoles"`
-	ServiceRoles    []string               `json:"serviceRoles"`
+var ServiceEdgeRouterPolicyLinkFactory = NewServiceEdgeRouterPolicyLinkFactory()
+
+type ServiceEdgeRouterPolicyLinkFactoryImpl struct {
+	BasicLinkFactory
 }
 
-func (i *ServiceEdgeRouterPolicyApi) ToModel(id string) *model.ServiceEdgeRouterPolicy {
-	result := &model.ServiceEdgeRouterPolicy{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Semantic = stringz.OrEmpty(i.Semantic)
-	result.EdgeRouterRoles = i.EdgeRouterRoles
-	result.ServiceRoles = i.ServiceRoles
-	result.Tags = i.Tags
-	return result
-}
-
-type ServiceEdgeRouterPolicyApiList struct {
-	*env.BaseApi
-	Name            string   `json:"name"`
-	Semantic        string   `json:"semantic"`
-	EdgeRouterRoles []string `json:"edgeRouterRoles"`
-	ServiceRoles    []string `json:"serviceRoles"`
-}
-
-func (c *ServiceEdgeRouterPolicyApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (ServiceEdgeRouterPolicyApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameServiceEdgeRouterPolicy, id))
-}
-
-func (c *ServiceEdgeRouterPolicyApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf:       self,
-			EntityNameEdgeRouter: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
-			EntityNameService:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameService)),
-		}
+func NewServiceEdgeRouterPolicyLinkFactory() *ServiceEdgeRouterPolicyLinkFactoryImpl {
+	return &ServiceEdgeRouterPolicyLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameServiceEdgeRouterPolicy),
 	}
 }
 
-func (c *ServiceEdgeRouterPolicyApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameServiceEdgeRouterPolicy,
-		Name:   &c.Name,
-		Id:     c.Id,
-		Links:  c.Links,
-	}
+func (factory *ServiceEdgeRouterPolicyLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameEdgeRouter] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
+	return links
 }
 
-func MapServiceEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.ServiceEdgeRouterPolicy)
+func MapCreateServiceEdgeRouterPolicyToModel(policy *rest_model.ServiceEdgeRouterPolicyCreate) *model.ServiceEdgeRouterPolicy {
+	ret := &model.ServiceEdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+		},
+		Name:            stringz.OrEmpty(policy.Name),
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		ServiceRoles:    policy.ServiceRoles,
+	}
+
+	return ret
+}
+
+func MapUpdateServiceEdgeRouterPolicyToModel(id string, policy *rest_model.ServiceEdgeRouterPolicyUpdate) *model.ServiceEdgeRouterPolicy {
+	ret := &model.ServiceEdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:            stringz.OrEmpty(policy.Name),
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		ServiceRoles:    policy.ServiceRoles,
+	}
+
+	return ret
+}
+
+func MapPatchServiceEdgeRouterPolicyToModel(id string, policy *rest_model.ServiceEdgeRouterPolicyPatch) *model.ServiceEdgeRouterPolicy {
+	ret := &model.ServiceEdgeRouterPolicy{
+		BaseEntity: models.BaseEntity{
+			Tags: policy.Tags,
+			Id:   id,
+		},
+		Name:            policy.Name,
+		Semantic:        string(policy.Semantic),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		ServiceRoles:    policy.ServiceRoles,
+	}
+
+	return ret
+}
+
+func MapServiceEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	policy, ok := e.(*model.ServiceEdgeRouterPolicy)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a service edge router policy \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a ServiceEdgeRouterPolicy \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapServiceEdgeRouterPolicyToApiList(i)
+	restModel, err := MapServiceEdgeRouterPolicyToRestModel(policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -102,19 +110,17 @@ func MapServiceEdgeRouterPolicyToApiEntity(_ *env.AppEnv, _ *response.RequestCon
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapServiceEdgeRouterPolicyToApiList(i *model.ServiceEdgeRouterPolicy) (*ServiceEdgeRouterPolicyApiList, error) {
-	ret := &ServiceEdgeRouterPolicyApiList{
-		BaseApi:         env.FromBaseModelEntity(i),
-		Name:            i.Name,
-		Semantic:        i.Semantic,
-		EdgeRouterRoles: i.EdgeRouterRoles,
-		ServiceRoles:    i.ServiceRoles,
+func MapServiceEdgeRouterPolicyToRestModel(policy *model.ServiceEdgeRouterPolicy) (*rest_model.ServiceEdgeRouterPolicyDetail, error) {
+	ret := &rest_model.ServiceEdgeRouterPolicyDetail{
+		BaseEntity:      BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
+		EdgeRouterRoles: policy.EdgeRouterRoles,
+		Name:            &policy.Name,
+		Semantic:        rest_model.Semantic(policy.Semantic),
+		ServiceRoles:    policy.ServiceRoles,
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

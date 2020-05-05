@@ -18,15 +18,18 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/current_api_session"
+	"github.com/openziti/edge/rest_server/operations/identity"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-	"net/http"
 )
 
 func init() {
@@ -46,56 +49,97 @@ func NewIdentityRouter() *IdentityRouter {
 	}
 }
 
-func (ir *IdentityRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *IdentityRouter) Register(ae *env.AppEnv) {
 
-	currentIdentityRouter := ae.RootRouter.PathPrefix("/current-identity").Subrouter()
-	currentIdentityRouter.HandleFunc("", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
-	currentIdentityRouter.HandleFunc("/", ae.WrapHandler(detailCurrentUser, permissions.IsAuthenticated())).Methods(http.MethodGet)
+	//identity crud
+	ae.Api.IdentityDeleteIdentityHandler = identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityDetailIdentityHandler = identity.DetailIdentityHandlerFunc(func(params identity.DetailIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityListIdentitiesHandler = identity.ListIdentitiesHandlerFunc(func(params identity.ListIdentitiesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityUpdateIdentityHandler = identity.UpdateIdentityHandlerFunc(func(params identity.UpdateIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityCreateIdentityHandler = identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityPatchIdentityHandler = identity.PatchIdentityHandlerFunc(func(params identity.PatchIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	// current identity
+	ae.Api.CurrentAPISessionGetCurrentIdentityHandler = current_api_session.GetCurrentIdentityHandlerFunc(func(params current_api_session.GetCurrentIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(detailCurrentUser, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
 
 	// edge router policies list
-	edgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouterPolicy)
-	ae.HandleGet(sr, edgeRouterPolicyUrl, ir.listEdgeRouterPolicies, permissions.IsAdmin())
+	ae.Api.IdentityListIdentitysEdgeRouterPoliciesHandler = identity.ListIdentitysEdgeRouterPoliciesHandlerFunc(func(params identity.ListIdentitysEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
 	// edge routers list
-	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
-	ae.HandleGet(sr, edgeRouterUrl, ir.listEdgeRouters, permissions.IsAdmin())
+	ae.Api.IdentityListIdentityEdgeRoutersHandler = identity.ListIdentityEdgeRoutersHandlerFunc(func(params identity.ListIdentityEdgeRoutersParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
 	// service policies list
-	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	ae.HandleGet(sr, servicePolicyUrl, ir.listServicePolicies, permissions.IsAdmin())
+	ae.Api.IdentityListIdentityServicePoliciesHandler = identity.ListIdentityServicePoliciesHandlerFunc(func(params identity.ListIdentityServicePoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
 	// service list
-	serviceUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
-	ae.HandleGet(sr, serviceUrl, ir.listServices, permissions.IsAdmin())
+	ae.Api.IdentityListIdentityServicesHandler = identity.ListIdentityServicesHandlerFunc(func(params identity.ListIdentityServicesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
 	// service configs crud
-	serviceConfigUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentityServiceConfig)
-	ae.HandleGet(sr, serviceConfigUrl, ir.listServiceConfigs, permissions.IsAdmin())
-	ae.HandlePost(sr, serviceConfigUrl, ir.assignServiceConfigs, permissions.IsAdmin())
-	ae.HandleDelete(sr, serviceConfigUrl, ir.removeServiceConfigs, permissions.IsAdmin())
+	ae.Api.IdentityListIdentitysServiceConfigsHandler = identity.ListIdentitysServiceConfigsHandlerFunc(func(params identity.ListIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServiceConfigs, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityAssociateIdentitysServiceConfigsHandler = identity.AssociateIdentitysServiceConfigsHandlerFunc(func(params identity.AssociateIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.assignServiceConfigs(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityDisassociateIdentitysServiceConfigsHandler = identity.DisassociateIdentitysServiceConfigsHandlerFunc(func(params identity.DisassociateIdentitysServiceConfigsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.removeServiceConfigs(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
 	// policy advice URL
-	policyAdviceUrl := fmt.Sprintf("/{%s}/%s/{%s}", response.IdPropertyName, "policy-advice", response.SubIdPropertyName)
-	ae.HandleGet(sr, policyAdviceUrl, ir.getPolicyAdvice, permissions.IsAdmin())
+	ae.Api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
-	result, err := MapIdentityToApiEntity(ae, rc, rc.Identity)
+	result, err := MapIdentityToRestEntity(ae, rc, rc.Identity)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
-	rc.RequestResponder.RespondWithOk(result, nil)
+	rc.RespondWithOk(result, nil)
 }
 
-func (ir *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	roleFilters := rc.Request.URL.Query()["roleFilter"]
 	roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
 
 	if len(roleFilters) > 0 {
-		ListWithQueryF(ae, rc, ae.Handlers.EdgeRouter, MapIdentityToApiEntity, func(query ast.Query) (*models.EntityListResult, error) {
+		ListWithQueryF(ae, rc, ae.Handlers.EdgeRouter, MapIdentityToRestEntity, func(query ast.Query) (*models.EntityListResult, error) {
 			cursorProvider, err := ae.GetStores().Identity.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
 			if err != nil {
 				return nil, err
@@ -103,113 +147,133 @@ func (ir *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			return ae.Handlers.Identity.BasePreparedListIndexed(cursorProvider, query)
 		})
 	} else {
-		ListWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToApiEntity)
+		ListWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToRestEntity)
 	}
 }
 
-func (ir *IdentityRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToApiEntity, ir.IdType)
+func (r *IdentityRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToRestEntity)
 }
 
-func (ir *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := NewIdentityApiCreate()
-	Create(rc, rc.RequestResponder, ae.Schemes.Identity.Post, apiEntity, (&IdentityApiList{}).BuildSelfLink, func() (string, error) {
-		identity, enrollments := apiEntity.ToModel()
-		identityId, _, err := ae.Handlers.Identity.CreateWithEnrollments(identity, enrollments)
+func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) string {
+	//todo: Remove this, should be identityTypeId coming in through the API so we can defer this lookup and subsequent checks to the handlers
+	identityTypeId := ""
+	if identityType, err := ae.Handlers.IdentityType.ReadByName(string(identityType)); identityType != nil && err == nil {
+		identityTypeId = identityType.Id
+	}
+
+	return identityTypeId
+}
+
+func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params identity.CreateIdentityParams) {
+	Create(rc, rc, IdentityLinkFactory, func() (string, error) {
+		identityModel, enrollments := MapCreateIdentityToModel(params.Body, getIdentityTypeId(ae, params.Body.Type))
+		identityId, _, err := ae.Handlers.Identity.CreateWithEnrollments(identityModel, enrollments)
 		return identityId, err
 	})
 }
 
-func (ir *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.Identity)
+func (r *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.Identity)
 }
 
-func (ir *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &IdentityApiUpdate{}
-	Update(rc, ae.Schemes.Identity.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Identity.Update(apiEntity.ToModel(id))
+func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Body, getIdentityTypeId(ae, params.Body.Type)))
 	})
 }
 
-func (ir *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &IdentityApiUpdate{}
-	Patch(rc, ae.Schemes.Identity.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Identity.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Body, getIdentityTypeId(ae, params.Body.Type)), fields.FilterMaps("tags"))
 	})
 }
 
-func (ir *IdentityRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToApiEntity)
+func (r *IdentityRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.Identity, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
-func (ir *IdentityRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.Identity, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
+func (r *IdentityRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.Identity, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
-func (ir *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v")`
-	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeService, MapServiceToApiEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeService, MapServiceToRestEntity)
 }
 
-func (ir *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
-	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
-func (ir *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	listWithId(rc, ir.IdType, func(id string) ([]interface{}, error) {
-		configs, err := ae.Handlers.Identity.GetServiceConfigs(id)
+func (r *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+	listWithId(rc, func(id string) ([]interface{}, error) {
+		serviceConfigs, err := ae.Handlers.Identity.GetServiceConfigs(id)
 		if err != nil {
 			return nil, err
 		}
 		result := make([]interface{}, 0)
-		for _, config := range configs {
-			result = append(result, IdentityServiceConfig{Service: config.Service, Config: config.Config})
+		for _, serviceConfig := range serviceConfigs {
+			service, err := ae.Handlers.EdgeService.Read(serviceConfig.Service)
+			if err != nil {
+				continue
+			}
+
+			config, err := ae.Handlers.Config.Read(serviceConfig.Config)
+			if err != nil {
+				continue
+			}
+
+			result = append(result, rest_model.ServiceConfigDetail{
+				Config:    ToEntityRef(config.Name, config, ConfigLinkFactory),
+				ConfigID:  &config.Id,
+				Service:   ToEntityRef(service.Name, service, ServiceLinkFactory),
+				ServiceID: &service.Id,
+			})
 		}
 		return result, nil
 	})
 }
 
-func (ir *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	var serviceConfigList []IdentityServiceConfig
-	Update(rc, ae.Schemes.Identity.ServiceConfigs, ir.IdType, &serviceConfigList, func(id string) error {
+func (r *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.RequestContext, params identity.AssociateIdentitysServiceConfigsParams) {
+	Update(rc, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
-		for _, entity := range serviceConfigList {
-			modelServiceConfigs = append(modelServiceConfigs, entity.toModel())
+		for _, serviceConfig := range params.Body {
+			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
 		return ae.Handlers.Identity.AssignServiceConfigs(id, modelServiceConfigs)
 	})
 }
 
-func (ir *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	var serviceConfigList []IdentityServiceConfig
-	UpdateAllowEmptyBody(rc, ae.Schemes.Identity.ServiceConfigs, ir.IdType, &serviceConfigList, true, func(id string) error {
+func (r *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.RequestContext, params identity.DisassociateIdentitysServiceConfigsParams) {
+	UpdateAllowEmptyBody(rc, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
-		for _, entity := range serviceConfigList {
-			modelServiceConfigs = append(modelServiceConfigs, entity.toModel())
+		for _, serviceConfig := range params.Body {
+			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
 		return ae.Handlers.Identity.RemoveServiceConfigs(id, modelServiceConfigs)
 	})
 }
 
-func (ir *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestContext) {
-	id, err := rc.GetIdFromRequest(ir.IdType)
+func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestContext) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		logErr := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
 		log.WithField("property", response.IdPropertyName).Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	serviceId, err := rc.GetSubIdFromRequest()
+	serviceId, err := rc.GetEntitySubId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		logErr := fmt.Errorf("could not find subId property: %v", response.SubIdPropertyName)
 		log.WithField("property", response.SubIdPropertyName).Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -217,16 +281,16 @@ func (ir *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCo
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		log := pfxlog.Logger()
 		log.WithField("cause", err).Error("could not convert list")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	output := MapAdvisorServiceReachabilityToApiEntity(result)
-	rc.RequestResponder.RespondWithOk(output, nil)
+	output := MapAdvisorServiceReachabilityToRestEntity(result)
+	rc.RespondWithOk(output, nil)
 }

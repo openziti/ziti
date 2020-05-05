@@ -18,96 +18,52 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
-	"time"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameEnrollment = "enrollments"
 
-type EnrollmentApiList struct {
-	*env.BaseApi
-	Token         *string       `json:"token"`
-	Method        *string       `json:"method"`
-	ExpiresAt     *time.Time    `json:"expiresAt"`
-	Identity      *EntityApiRef `json:"identity"`
-	Details       interface{}   `json:"details"`
-	EdgeRouter    *EntityApiRef `json:"edgeRouter"`
-	TransitRouter *EntityApiRef `json:"transitRouter"`
-}
+var EnrollmentLinkFactory = NewBasicLinkFactory(EntityNameEnrollment)
 
-func (e *EnrollmentApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (EnrollmentApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameEnrollment, id))
-}
-
-func (e *EnrollmentApiList) PopulateLinks() {
-	if e.Links == nil {
-		self := e.GetSelfLink()
-		e.Links = &response.Links{
-			EntityNameSelf: self,
-		}
-	}
-}
-
-func (e *EnrollmentApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameEnrollment,
-		Name:   e.Method,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func NewEnrollmentApiList(ae *env.AppEnv, i *migration.Enrollment) (*EnrollmentApiList, error) {
-	baseApi := env.FromBaseDbEntity(&i.BaseDbEntity)
-
-	ret := &EnrollmentApiList{
-		BaseApi:   baseApi,
-		Method:    i.Method,
-		Token:     i.Token,
-		ExpiresAt: i.ExpiresAt,
-		Identity:  nil,
-		Details:   nil,
-	}
-
-	return ret, nil
-}
-
-func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {
-	enrollment, ok := entity.(*model.Enrollment)
+func MapEnrollmentToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	enrollment, ok := e.(*model.Enrollment)
 
 	if !ok {
-		err := fmt.Errorf("entity is not an enrollment \"%s\"", entity.GetId())
-		pfxlog.Logger().Error(err)
-		return nil, err
-	}
-
-	al, err := MapToEnrollmentApiList(appEnv, enrollment)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", entity.GetId(), err)
+		err := fmt.Errorf("entity is not a Enrollment \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+
+	restModel, err := MapEnrollmentToRestModel(ae, enrollment)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
 }
 
-func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*EnrollmentApiList, error) {
-	ret := &EnrollmentApiList{
-		BaseApi:   env.FromBaseModelEntity(enrollment),
-		Token:     &enrollment.Token,
-		Method:    &enrollment.Method,
-		ExpiresAt: enrollment.ExpiresAt,
+func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*rest_model.EnrollmentDetail, error) {
+	expiresAt := strfmt.DateTime(*enrollment.ExpiresAt)
+	ret := &rest_model.EnrollmentDetail{
+		BaseEntity:      BaseEntityToRestModel(enrollment, EnrollmentLinkFactory),
+		EdgeRouterID:    stringz.OrEmpty(enrollment.EdgeRouterId),
+		ExpiresAt:       &expiresAt,
+		IdentityID:      stringz.OrEmpty(enrollment.IdentityId),
+		Method:          &enrollment.Method,
+		Token:           &enrollment.Token,
+		TransitRouterID: stringz.OrEmpty(enrollment.TransitRouterId),
+		Username:        "",
 	}
 
 	if enrollment.IdentityId != nil {
@@ -115,7 +71,7 @@ func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*Enro
 		if err != nil {
 			return nil, err
 		}
-		ret.Identity = NewIdentityEntityRef(identity)
+		ret.Identity = ToEntityRef(identity.Name, identity, IdentityLinkFactory)
 	}
 
 	if enrollment.EdgeRouterId != nil {
@@ -123,7 +79,7 @@ func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*Enro
 		if err != nil {
 			return nil, err
 		}
-		ret.EdgeRouter = NewEdgeRouterEntityRef(edgeRouter)
+		ret.EdgeRouter = ToEntityRef(edgeRouter.Name, edgeRouter, EdgeRouterLinkFactory)
 	}
 
 	if enrollment.TransitRouterId != nil {
@@ -131,10 +87,8 @@ func MapToEnrollmentApiList(ae *env.AppEnv, enrollment *model.Enrollment) (*Enro
 		if err != nil {
 			return nil, err
 		}
-		ret.TransitRouter = NewTransitRouterEntityRef(transitRouter)
+		ret.TransitRouter = ToEntityRef(transitRouter.Name, transitRouter, TransitRouterLinkFactory)
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

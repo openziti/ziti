@@ -87,7 +87,7 @@ for the update service edge router policy operation typically these are written 
 type UpdateServiceEdgeRouterPolicyParams struct {
 
 	/*Body
-	  A service edge policy update object
+	  A service edge router policy update object
 
 	*/
 	Body *rest_model.ServiceEdgeRouterPolicyUpdate
