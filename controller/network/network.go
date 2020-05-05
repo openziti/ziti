@@ -474,11 +474,13 @@ func (network *Network) CreateCircuitWithPath(path []*Router) (*Circuit, error) 
 		return nil, err
 	}
 
-	return &Circuit{
+	circuit := &Circuit{
 		Path:      path,
 		IngressId: ingressId,
 		EgressId:  egressId,
-	}, nil
+	}
+	network.setLinks(circuit)
+	return circuit, nil
 }
 
 func (network *Network) UpdateCircuit(circuit *Circuit) (*Circuit, error) {
@@ -495,16 +497,18 @@ func (network *Network) UpdateCircuit(circuit *Circuit) (*Circuit, error) {
 		IngressId: circuit.IngressId,
 		EgressId:  circuit.EgressId,
 	}
+	network.setLinks(circuit2)
+	return circuit2, nil
+}
 
-	if len(path) > 1 {
-		for i := 0; i < len(path)-1; i++ {
-			if link, found := network.linkController.leastExpensiveLink(path[i], path[i+1]); found {
-				circuit2.Links = append(circuit2.Links, link)
+func (network *Network) setLinks(circuit *Circuit) {
+	if len(circuit.Path) > 1 {
+		for i := 0; i < len(circuit.Path)-1; i++ {
+			if link, found := network.linkController.leastExpensiveLink(circuit.Path[i], circuit.Path[i+1]); found {
+				circuit.Links = append(circuit.Links, link)
 			}
 		}
 	}
-
-	return circuit2, nil
 }
 
 func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
