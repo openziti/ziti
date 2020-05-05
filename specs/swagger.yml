@@ -4339,6 +4339,8 @@ definitions:
           $ref: '#/definitions/entityRef'
       config:
         type: object
+        additionalProperties:
+          type: object
         description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
   serviceCreate:
     type: object
