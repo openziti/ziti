@@ -277,3 +277,43 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 		return authError
 	}
 }
+
+func UpdateTerminator(ctrl CtrlChannel, terminatorId string, staticCost *uint16, precedence *ctrl_pb.TerminatorPrecedence) error {
+	log := pfxlog.Logger()
+	request := &ctrl_pb.UpdateTerminatorRequest{
+		TerminatorId:     terminatorId,
+		UpdateCost:       staticCost != nil,
+		UpdatePrecedence: precedence != nil,
+	}
+	if staticCost != nil {
+		request.Cost = uint32(*staticCost)
+	}
+	if precedence != nil {
+		request.Precedence = *precedence
+	}
+	bytes, err := proto.Marshal(request)
+	if err != nil {
+		log.Errorf("failed to marshal UpdateTerminatorRequest message: (%v)", err)
+		return authError
+	}
+
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UpdateTerminatorRequestType), bytes)
+	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
+	if err != nil {
+		log.Errorf("failed to send UpdateTerminatorRequest message: (%v)", err)
+		return authError
+	}
+
+	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
+		result := channel2.UnmarshalResult(responseMsg)
+		if result.Success {
+			log.Debugf("successfully updated service terminator [s/%s]", terminatorId)
+			return nil
+		}
+		log.Errorf("failure updating service terminator: (%v)", result.Message)
+		return errors.New(result.Message)
+	} else {
+		log.Errorf("unexpected controller response, ContentType: (%v)", responseMsg.ContentType)
+		return authError
+	}
+}

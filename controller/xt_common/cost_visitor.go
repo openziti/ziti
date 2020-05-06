@@ -30,15 +30,19 @@ func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
 			if visitor.SessionCost > credit {
 				increase := visitor.SessionCost - credit
 				if cost < (math.MaxUint16 - increase) {
+					// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, cost+increase)
 					return cost + increase
 				}
+				// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, math.MaxUint16)
 				return math.MaxUint16
 			}
 
 			decrease := credit - visitor.SessionCost
 			if decrease > cost {
+				// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, 0)
 				return 0
 			}
+			// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, cost-decrease)
 			return cost - decrease
 		})
 	}
@@ -46,9 +50,11 @@ func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
 
 func (visitor *CostVisitor) VisitSessionEnded(event xt.TerminatorEvent) {
 	xt.GlobalCosts().UpdatePrecedenceCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-		if cost > 0 {
-			return cost - 1
+		if cost > visitor.SessionCost {
+			// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, cost-1)
+			return cost - visitor.SessionCost
 		}
+		// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, 0)
 		return 0
 	})
 }

@@ -65,6 +65,9 @@ func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, erro
 	totalCost := float32(0)
 	for _, t := range terminators {
 		unbiasedCost := float32(t.GetPrecedence().Unbias(t.GetRouteCost()))
+		if unbiasedCost == 0 {
+			unbiasedCost = 1
+		}
 		costIdx = append(costIdx, unbiasedCost)
 		totalCost += unbiasedCost
 	}

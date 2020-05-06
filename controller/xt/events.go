@@ -101,6 +101,8 @@ func (event *defaultEvent) Accept(visitor EventVisitor) {
 		visitor.VisitDialFailed(event)
 	} else if event.eventType == eventTypeSucceeded {
 		visitor.VisitDialSucceeded(event)
+	} else if event.eventType == eventTypeSessionEnded {
+		visitor.VisitSessionEnded(event)
 	}
 }
 

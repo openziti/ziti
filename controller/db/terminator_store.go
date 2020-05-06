@@ -234,10 +234,5 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 		pfxlog.Logger().Debugf("could not find terminator %v for delete (%v)", id, err)
 	}
 
-	if err := store.baseStore.DeleteById(ctx, id); err != nil {
-		return err
-	}
-
-	xt.GlobalCosts().ClearCost(id)
-	return nil
+	return store.baseStore.DeleteById(ctx, id)
 }

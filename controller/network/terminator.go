@@ -91,6 +91,23 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 		store:          controllers.stores.Terminator,
 	}
 	result.impl = result
+
+	controllers.stores.Terminator.On(boltz.EventCreate, func(params ...interface{}) {
+		for _, entity := range params {
+			if terminator, ok := entity.(*db.Terminator); ok {
+				xt.GlobalCosts().TerminatorCreated(terminator.Id)
+			}
+		}
+	})
+
+	controllers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
+		for _, entity := range params {
+			if terminator, ok := entity.(*db.Terminator); ok {
+				xt.GlobalCosts().ClearCost(terminator.Id)
+			}
+		}
+	})
+
 	return result
 }
 
@@ -199,8 +216,8 @@ func (result *TerminatorListResult) collect(tx *bbolt.Tx, ids []string, qmd *mod
 }
 
 type RoutingTerminator struct {
-	Cost  uint32
-	Stats xt.Stats
+	RouteCost uint32
+	Stats     xt.Stats
 	*Terminator
 }
 
@@ -213,5 +230,5 @@ func (r *RoutingTerminator) GetTerminatorStats() xt.Stats {
 }
 
 func (r *RoutingTerminator) GetRouteCost() uint32 {
-	return r.Cost
+	return r.RouteCost
 }

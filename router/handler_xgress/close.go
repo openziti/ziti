@@ -36,20 +36,19 @@ func NewCloseHandler(ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *c
 
 func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	log := pfxlog.ContextLogger(x.Label())
-	log.Info("running")
-	defer log.Info("complete")
+	log.Debug("running")
+	defer log.Debug("complete")
 
 	// Send end of session payload
 	log.Debug("sending end of session payload")
 	if err := txc.forwarder.ForwardPayload(x.Address(), x.GetEndSession()); err != nil {
-		log.Errorf("error forwarding end session payload (%s)", err)
+		// ok that we couldn't forward close, as that means it was already closed
+		log.Debugf("error forwarding end session payload (%s)", err)
 	}
 
 	// Notify the forwarder that the session is ending
 	log.Debug("removing session from forwarder")
-	if err := txc.forwarder.EndSession(x.SessionId()); err != nil {
-		log.Errorf("error ending forwarder session (%s)", err)
-	}
+	txc.forwarder.EndSession(x.SessionId())
 
 	// Notify the controller of the xgress fault
 	fault := &ctrl_pb.Fault{Id: x.SessionId().Token}

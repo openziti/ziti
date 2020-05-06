@@ -48,9 +48,7 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 			log.Debugf("unable to forward (%v)", err)
 		}
 		if payload.IsSessionEndFlagSet() {
-			if err := self.forwarder.EndSession(&identity.TokenId{Token: payload.GetSessionId()}); err != nil {
-				pfxlog.ContextLogger(ch.Label()).Errorf("failed to end session [s/%s] (%s)", payload.GetSessionId(), err)
-			}
+			self.forwarder.EndSession(&identity.TokenId{Token: payload.GetSessionId()})
 		}
 	} else {
 		log.Errorf("unexpected error (%v)", err)

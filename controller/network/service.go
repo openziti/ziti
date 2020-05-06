@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -83,9 +84,9 @@ func (ctrl *ServiceController) newModelEntity() boltEntitySink {
 }
 
 func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
-	if len(params) > 0 {
-		if entity, ok := params[0].(*db.Terminator); ok {
-			ctrl.RemoveFromCache(entity.Service)
+	for _, entity := range params {
+		if terminator, ok := entity.(*db.Terminator); ok {
+			ctrl.RemoveFromCache(terminator.Service)
 		}
 	}
 }
@@ -158,5 +159,6 @@ func (ctrl *ServiceController) Delete(id string) error {
 }
 
 func (ctrl *ServiceController) RemoveFromCache(id string) {
+	pfxlog.Logger().Debugf("removed service from cache: %v", id)
 	ctrl.cache.Remove(id)
 }

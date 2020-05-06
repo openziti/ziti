@@ -53,7 +53,7 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	}
 
 	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
-		log.Infof("removed terminator [e/%s]", request.TerminatorId)
+		log.Infof("removed terminator [t/%s]", request.TerminatorId)
 		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())

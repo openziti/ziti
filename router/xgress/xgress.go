@@ -220,7 +220,7 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 	}()
 
 	if payload.IsSessionEndFlagSet() {
-		pfxlog.ContextLogger(self.Label()).Error("received end of session Payload")
+		pfxlog.ContextLogger(self.Label()).Debug("received end of session Payload")
 	}
 
 	if !self.closed.Get() {
@@ -290,7 +290,7 @@ func (self *Xgress) rx() {
 	log := pfxlog.ContextLogger(self.Label())
 
 	log.Debug("started")
-	defer log.Warn("exited")
+	defer log.Debug("exited")
 
 	defer func() {
 		if r := recover(); r != nil {

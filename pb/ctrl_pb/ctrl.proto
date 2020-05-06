@@ -22,6 +22,7 @@ enum ContentType {
     StartXgressType = 1015;
     SessionFailedType = 1016;
     ValidateTerminatorsRequestType = 1017;
+    UpdateTerminatorRequestType = 10018;
 }
 
 message SessionRequest {
@@ -57,6 +58,14 @@ message Terminator {
 
 message ValidateTerminatorsRequest {
     repeated Terminator terminators = 1;
+}
+
+message UpdateTerminatorRequest {
+    string terminatorId = 1;
+    bool updatePrecedence = 2;
+    bool updateCost = 3;
+    TerminatorPrecedence precedence = 4;
+    uint32 cost = 5;
 }
 
 message Dial {

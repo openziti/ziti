@@ -38,7 +38,7 @@ func (h *startXgressHandler) ContentType() int32 {
 
 func (h *startXgressHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	token := string(msg.Body)
-	pfxlog.Logger().Infof("attempting to start xgress for session %v", token)
+	pfxlog.Logger().Debugf("attempting to start xgress for session %v", token)
 	sessionId := &identity.TokenId{Token: token}
 	h.forwarder.StartDestinations(sessionId)
 }

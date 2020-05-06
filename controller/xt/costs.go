@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	failedMinCost  = math.MaxUint16 * 2
-	defaultMinCost = math.MaxUint16
+	unknownMinCost = math.MaxUint16 * 32
+	failedMinCost  = math.MaxUint16 * 8
+	defaultMinCost = math.MaxUint16 * 4
 	requireMinCost = 0
 )
 
@@ -36,31 +37,36 @@ func GlobalCosts() Costs {
 }
 
 type precedence struct {
+	name    string
 	minCost uint32
 	maxCost uint32
 }
 
-func (p precedence) Unbias(cost uint32) uint32 {
+func (p *precedence) String() string {
+	return p.name
+}
+
+func (p *precedence) Unbias(cost uint32) uint32 {
 	return cost - p.minCost
 }
 
-func (p precedence) IsFailed() bool {
+func (p *precedence) IsFailed() bool {
 	return p.minCost == failedMinCost
 }
 
-func (p precedence) IsDefault() bool {
+func (p *precedence) IsDefault() bool {
 	return p.minCost == defaultMinCost
 }
 
-func (p precedence) IsRequired() bool {
+func (p *precedence) IsRequired() bool {
 	return p.minCost == requireMinCost
 }
 
-func (p precedence) getMinCost() uint32 {
+func (p *precedence) getMinCost() uint32 {
 	return p.minCost
 }
 
-func (p precedence) getMaxCost() uint32 {
+func (p *precedence) getMaxCost() uint32 {
 	return p.maxCost
 }
 
@@ -78,18 +84,29 @@ var Precedences = struct {
 	// Failed means this terminator should only be used if all other terminators are also in a failed state
 	// Example: A strategy might move a terminator to Failed if three dials in a row fail
 	Failed Precedence
+
+	// Unknown means this terminator was likely recently removed and should not be used
+	unknown Precedence
 }{
-	Required: precedence{
+	Required: &precedence{
+		name:    "required",
 		minCost: requireMinCost,
 		maxCost: requireMinCost + (math.MaxUint16 - 1),
 	},
-	Default: precedence{
+	Default: &precedence{
+		name:    "default",
 		minCost: defaultMinCost,
 		maxCost: defaultMinCost + (math.MaxUint16 - 1),
 	},
-	Failed: precedence{
+	Failed: &precedence{
+		name:    "failed",
 		minCost: failedMinCost,
 		maxCost: failedMinCost + (math.MaxUint16 - 1),
+	},
+	unknown: &precedence{
+		name:    "unknown",
+		minCost: unknownMinCost,
+		maxCost: unknownMinCost + (math.MaxUint16 - 1),
 	},
 }
 
@@ -118,7 +135,7 @@ func (self *costs) ClearCost(terminatorId string) {
 func (self *costs) GetCost(terminatorId string) uint32 {
 	stats := self.getStats(terminatorId)
 	if stats == nil {
-		return 0
+		return Precedences.Default.getMinCost()
 	}
 	return stats.cost
 }
@@ -127,8 +144,8 @@ func (self *costs) GetStats(terminatorId string) Stats {
 	stats := self.getStats(terminatorId)
 	if stats == nil {
 		return &terminatorStats{
-			cost:           Precedences.Default.getMinCost(),
-			precedence:     Precedences.Default,
+			cost:           Precedences.unknown.getMinCost(),
+			precedence:     Precedences.unknown,
 			precedenceCost: 0,
 		}
 	}
@@ -179,6 +196,15 @@ func (self *costs) UpdatePrecedenceCost(terminatorId string, updateF func(uint16
 		}
 		stats := valueInMap.(*terminatorStats)
 		return self.newStats(stats.precedence, updateF(stats.precedenceCost))
+	})
+}
+
+func (self *costs) TerminatorCreated(terminatorId string) {
+	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		if !exist {
+			return self.newStats(Precedences.Default, 0)
+		}
+		return valueInMap
 	})
 }
 

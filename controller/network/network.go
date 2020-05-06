@@ -34,6 +34,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/sequence"
 	errors2 "github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"sort"
 	"strings"
 	"sync"
@@ -254,13 +255,7 @@ func (network *Network) LinkChanged(l *Link) {
 func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string) (*session, error) {
 	log := pfxlog.Logger()
 
-	// 1: Find Service
-	svc, err := network.Services.Read(serviceId)
-	if err != nil {
-		return nil, err
-	}
-
-	// 2: Allocate Session Identifier
+	// 1: Allocate Session Identifier
 	sessionIdHash, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
@@ -269,6 +264,12 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	retryCount := 0
 	for {
+		// 2: Find Service
+		svc, err := network.Services.Read(serviceId)
+		if err != nil {
+			return nil, err
+		}
+
 		// 3: select terminator
 		strategy, terminator, path, err := network.selectPath(srcR, svc)
 		if err != nil {
@@ -329,7 +330,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		network.sessionController.add(ss)
 		network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
 
-		log.Infof("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+		log.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
 	}
 }
@@ -343,13 +344,15 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
 
+	log := pfxlog.Logger()
+
 	for _, terminator := range svc.Terminators {
 		pathAndCost, found := paths[terminator.Router]
 		if !found {
 			dstR := network.Routers.getConnected(terminator.GetRouterId())
 			if dstR == nil {
 				err := errors2.Errorf("invalid terminating router %v on terminator %v", terminator.GetRouterId(), terminator.GetId())
-				pfxlog.Logger().Debugf("error while calculating path for service %v: %v", svc.Id, err)
+				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
 				continue
 			}
@@ -367,11 +370,11 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 
 		staticTerminatorCost := uint32(terminator.Cost)
 		terminatorStats := xt.GlobalCosts().GetStats(terminator.Id)
-		dynamicTerminatorCost := uint32(terminatorStats.GetCost())
+		dynamicTerminatorCost := terminatorStats.GetCost()
 		fullCost := pathAndCost.cost + dynamicTerminatorCost + staticTerminatorCost
 		costedTerminator := &RoutingTerminator{
 			Terminator: terminator,
-			Cost:       fullCost,
+			RouteCost:  fullCost,
 			Stats:      terminatorStats,
 		}
 		weightedTerminators = append(weightedTerminators, costedTerminator)
@@ -387,10 +390,24 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 	}
 
 	sort.Slice(weightedTerminators, func(i, j int) bool {
-		return weightedTerminators[i].GetRouteCost() > weightedTerminators[j].GetRouteCost()
+		return weightedTerminators[i].GetRouteCost() < weightedTerminators[j].GetRouteCost()
 	})
 
 	terminator, err := strategy.Select(weightedTerminators)
+
+	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		buf := strings.Builder{}
+		buf.WriteString("[")
+		if len(weightedTerminators) > 0 {
+			buf.WriteString(fmt.Sprintf("%v: %v", weightedTerminators[0].GetId(), weightedTerminators[0].GetRouteCost()))
+			for _, t := range weightedTerminators[1:] {
+				buf.WriteString(", ")
+				buf.WriteString(fmt.Sprintf("%v: %v", t.GetId(), t.GetRouteCost()))
+			}
+		}
+		buf.WriteString("]")
+		pfxlog.Logger().Infof("selected %v for path from %v", terminator.GetId(), buf.String())
+	}
 
 	if err != nil {
 		return nil, nil, nil, errors2.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
@@ -422,19 +439,17 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 			log.Warnf("failed to notify strategy %v of session end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
 		}
 
-		log.Infof("removed session [s/%s]", ss.Id.Token)
+		log.Debugf("removed session [s/%s]", ss.Id.Token)
 
 		return nil
 	}
-	return fmt.Errorf("invalid session (%s)", sessionId.Token)
+	return InvalidSessionError{sessionId: sessionId.Token}
 }
 
 func (network *Network) StartSessionEgress(sessionId *identity.TokenId) error {
-	log := pfxlog.Logger()
-
 	if ss, found := network.sessionController.get(sessionId); found {
 		terminatingRouter := ss.Circuit.Path[len(ss.Circuit.Path)-1]
-		log.Infof("started session egress [s/%s]", ss.Id.Token)
+		pfxlog.Logger().Debugf("started session egress [s/%s]", ss.Id.Token)
 		return sendStartXgress(terminatingRouter, sessionId)
 	}
 	return fmt.Errorf("invalid session (%s)", sessionId.Token)
@@ -764,4 +779,12 @@ func (e MultipleErrors) Error() string {
 		buf.WriteString(fmt.Sprintf(" %v: %v", idx, err))
 	}
 	return buf.String()
+}
+
+type InvalidSessionError struct {
+	sessionId string
+}
+
+func (err InvalidSessionError) Error() string {
+	return fmt.Sprintf("invalid session (%s)", err.sessionId)
 }

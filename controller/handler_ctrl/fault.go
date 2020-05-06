@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/network"
@@ -55,14 +56,24 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 
 		case ctrl_pb.FaultSubject_IngressFault:
 			if err := h.network.RemoveSession(&identity.TokenId{Token: fault.Id}, false); err != nil {
-				log.Errorf("error handling ingress fault (%s)", err)
+				invalidSessionErr := network.InvalidSessionError{}
+				if errors.As(err, &invalidSessionErr) {
+					log.Debugf("error handling ingress fault (%s)", err)
+				} else {
+					log.Errorf("error handling ingress fault (%s)", err)
+				}
 			} else {
 				log.Debugf("handled ingress fault for (%s)", fault.Id)
 			}
 
 		case ctrl_pb.FaultSubject_EgressFault:
 			if err := h.network.RemoveSession(&identity.TokenId{Token: fault.Id}, false); err != nil {
-				log.Errorf("error handling egress fault (%s)", err)
+				invalidSessionErr := network.InvalidSessionError{}
+				if errors.As(err, &invalidSessionErr) {
+					log.Debugf("error handling egress fault (%s)", err)
+				} else {
+					log.Errorf("error handling egress fault (%s)", err)
+				}
 			} else {
 				log.Debugf("handled egress fault for (%s)", fault.Id)
 			}

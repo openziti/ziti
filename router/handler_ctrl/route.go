@@ -57,7 +57,7 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 			response := channel2.NewResult(true, "")
 			response.ReplyTo(msg)
 			if err := rh.ctrl.Channel().Send(response); err == nil {
-				log.Infof("handled route for [s/%s]", route.SessionId)
+				log.Debugf("handled route for [s/%s]", route.SessionId)
 			} else {
 				log.Errorf("send response failed for [s/%s] (%s)", route.SessionId, err)
 			}

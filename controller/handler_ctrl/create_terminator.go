@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/controller/xt"
@@ -59,6 +60,7 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 
 	if id, err := h.network.Terminators.Create(terminator); err == nil {
 		xt.GlobalCosts().SetPrecedence(id, request.GetXtPrecedence())
+		pfxlog.Logger().Infof("created terminator [t/%s]", id)
 		handler_common.SendSuccess(msg, ch, id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())

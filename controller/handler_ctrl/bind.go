@@ -38,6 +38,7 @@ func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newSessionRequestHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newCreateTerminatorHandler(bindHandler.network, bindHandler.router))
 	ch.AddReceiveHandler(newRemoveTerminatorHandler(bindHandler.network))
+	ch.AddReceiveHandler(newUpdateTerminatorHandler(bindHandler.network))
 	ch.AddReceiveHandler(newLinkHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newFaultHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newMetricsHandler(bindHandler.network))

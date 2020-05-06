@@ -17,6 +17,7 @@
 package xt
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -63,6 +64,7 @@ type Strategy interface {
 }
 
 type Precedence interface {
+	fmt.Stringer
 	getMinCost() uint32
 	getMaxCost() uint32
 	IsFailed() bool
@@ -96,6 +98,7 @@ type Costs interface {
 	SetPrecedenceCost(terminatorId string, weight uint16)
 	UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16)
 	GetPrecedenceCost(terminatorId string) uint16
+	TerminatorCreated(terminatorId string)
 }
 
 type FailureCosts interface {

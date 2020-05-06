@@ -101,7 +101,7 @@ func (forwarder *Forwarder) StartDestinations(sessionId *identity.TokenId) {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				if xgressDest, ok := destination.(XgressDestination); ok && xgressDest.IsTerminator() {
 					xgressDest.Start()
-					pfxlog.Logger().Infof("started Xgress for session %v", sessionId.Token)
+					pfxlog.Logger().Debugf("started Xgress for session %v", sessionId.Token)
 				}
 			}
 		}
@@ -138,16 +138,15 @@ func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
 func (forwarder *Forwarder) Unroute(sessionId *identity.TokenId, now bool) {
 	if now {
 		forwarder.sessions.removeForwardTable(sessionId)
-		_ = forwarder.EndSession(sessionId)
+		forwarder.EndSession(sessionId)
 	} else {
 		go forwarder.unrouteTimeout(sessionId, 5000)
 	}
 }
 
-func (forwarder *Forwarder) EndSession(sessionId *identity.TokenId) error {
+func (forwarder *Forwarder) EndSession(sessionId *identity.TokenId) {
 	forwarder.UnregisterDestinations(sessionId)
 	forwarder.payloadBufferController.EndSession(sessionId)
-	return nil
 }
 
 func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
@@ -163,15 +162,12 @@ func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgre
 				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
 				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
-
 			} else {
 				return errors.New("no destination")
 			}
-
 		} else {
 			return errors.New("no destination address")
 		}
-
 	} else {
 		return errors.New("no forward table")
 	}
@@ -214,8 +210,8 @@ func (forwarder *Forwarder) Debug() string {
 //
 func (forwarder *Forwarder) unrouteTimeout(sessionId *identity.TokenId, ms int64) {
 	log := pfxlog.ContextLogger("s/" + sessionId.Token)
-	log.Info("scheduled")
-	defer log.Warn("timeout")
+	log.Debug("scheduled")
+	defer log.Debug("timeout")
 
 	for {
 		time.Sleep(time.Duration(ms) * time.Millisecond)
@@ -224,7 +220,7 @@ func (forwarder *Forwarder) unrouteTimeout(sessionId *identity.TokenId, ms int64
 			elapsedDelta := info.NowInMilliseconds() - ft.lastUsed
 			if elapsedDelta >= ms {
 				forwarder.sessions.removeForwardTable(sessionId)
-				_ = forwarder.EndSession(sessionId)
+				forwarder.EndSession(sessionId)
 				return
 			}
 

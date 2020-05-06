@@ -85,12 +85,12 @@ func (self *failureCosts) successWithCredit(terminatorId string, credit uint16) 
 	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		if !exist {
 			change = 0
-			return 0
+			return uint16(0)
 		}
 		currentCost := valueInMap.(uint16)
 		if currentCost < credit {
 			change = currentCost
-			return 0
+			return uint16(0)
 		}
 		change = credit
 		return currentCost - credit
