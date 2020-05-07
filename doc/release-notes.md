@@ -3,9 +3,10 @@
 Ziti 0.14.1 includes the following:
 
 ### Features
-Ability to set precedence/cost after Listen. This enables graceful shutdown or client side adaptive costing
+  * [Enable graceful shutdown of bound connections]https://github.com/netfoundry/ziti-edge/issues/149
 
 ### Fixes
+  * [Enrollments w/ 0 length bodies cause enrollment errors](https://github.com/netfoundry/ziti-edge/issues/150)
   * Fixed race condition in end-to-end encryption setup
   * Xt fixes
       * Fixed strategies missing session ended events
