@@ -145,15 +145,16 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 	switch contentType[0] {
 	case "application/json":
 		data := map[string]interface{}{}
+		if len(body) > 0 {
+			err := json.Unmarshal(body, &data)
 
-		err := json.Unmarshal(body, &data)
-
-		if err != nil {
-			err = apierror.GetJsonParseError(err, body)
-			apiErr := apierror.NewCouldNotParseBody()
-			apiErr.Cause = err
-			apiErr.AppendCause = true
-			return apiErr
+			if err != nil {
+				err = apierror.GetJsonParseError(err, body)
+				apiErr := apierror.NewCouldNotParseBody()
+				apiErr.Cause = err
+				apiErr.AppendCause = true
+				return apiErr
+			}
 		}
 		enrollData = data
 	case "text/plain":
