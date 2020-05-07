@@ -28,6 +28,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/sequencer"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"time"
@@ -86,8 +87,8 @@ func (proxy *ingressProxy) HandleClose(_ channel2.Channel) {
 	log.Debugf("closing")
 	listeners := proxy.listener.factory.hostedServices.cleanupServices(proxy)
 	for _, listener := range listeners {
-		if err := xgress.RemoveTerminator(proxy.listener.factory, listener.terminatorId); err != nil {
-			log.Warnf("failed to remove terminator on service %v for terminator %v on channel close", listener.service, listener.terminatorId)
+		if err := xgress.RemoveTerminator(proxy.listener.factory, listener.terminatorIdRef.Get()); err != nil {
+			log.Warnf("failed to remove terminator on service %v for terminator %v on channel close", listener.service, listener.terminatorIdRef.Get())
 		}
 	}
 	proxy.msgMux.Close()
@@ -220,14 +221,10 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		}
 	}
 
-	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, hostData, cost, precedence)
-
-	if err != nil {
-		proxy.sendStateClosedReply(err.Error(), req)
-		return
-	}
+	terminatorIdRef := &concurrenz.AtomicString{}
 
 	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
+		terminatorId := terminatorIdRef.Get()
 		defer proxy.listener.factory.hostedServices.Delete(token)
 		if err := xgress.RemoveTerminator(proxy.listener.factory, terminatorId); err != nil {
 			log.Errorf("failed to remove terminator %v (%v)", terminatorId, err)
@@ -251,12 +248,22 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 				}
 			},
 		},
-		terminatorId: terminatorId,
-		service:      ns.Service.Id,
-		parent:       proxy,
+		terminatorIdRef: terminatorIdRef,
+		service:         ns.Service.Id,
+		parent:          proxy,
 	}
 
 	proxy.listener.factory.hostedServices.Put(token, messageSink)
+
+	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, hostData, cost, precedence)
+	messageSink.terminatorIdRef.Set(terminatorId)
+
+	if err != nil {
+		messageSink.closeCB(messageSink.Id())
+		proxy.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
 	log.Debug("returning connection state CONNECTED to client")
 	proxy.sendStateConnectedReply(req, nil)
 }
@@ -286,7 +293,7 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	localListener, ok := proxy.listener.factory.hostedServices.Get(token)
 	if ok {
 		defer proxy.listener.factory.hostedServices.Delete(token)
-		if err := xgress.RemoveTerminator(proxy.listener.factory, localListener.terminatorId); err != nil {
+		if err := xgress.RemoveTerminator(proxy.listener.factory, localListener.terminatorIdRef.Get()); err != nil {
 			proxy.sendStateClosedReply(err.Error(), req)
 		} else {
 			proxy.sendStateClosedReply("unbind successful", req)
@@ -343,8 +350,8 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 		precedence = &updatedPrecedence
 	}
 
-	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorId, precedence, cost)
-	if err := xgress.UpdateTerminator(proxy.listener.factory, localListener.terminatorId, cost, precedence); err != nil {
+	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorIdRef.Get(), precedence, cost)
+	if err := xgress.UpdateTerminator(proxy.listener.factory, localListener.terminatorIdRef.Get(), cost, precedence); err != nil {
 		log.WithError(err).Error("failed to update bind")
 	}
 }

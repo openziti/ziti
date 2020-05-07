@@ -651,7 +651,6 @@ func (conn *testConn) RequireClose() {
 }
 
 var testServerCounter uint64
-var testConnectionCounter uint64
 
 func newTestServer(listener edge.Listener, dispatcher func(conn *testServerConn) error) *testServer {
 	idx := atomic.AddUint64(&testServerCounter, 1)
@@ -673,6 +672,7 @@ type testServer struct {
 	msgCount   uint32
 	dispatcher func(conn *testServerConn) error
 	waiter     *sync.WaitGroup
+	connIdGen  uint32
 }
 
 func (server *testServer) waitForDone(ctx *TestContext, timeout time.Duration) {
@@ -702,7 +702,7 @@ func (server *testServer) acceptLoop() {
 		conn, err = server.listener.Accept()
 		if conn != nil {
 			server.waiter.Add(1)
-			connId := atomic.AddUint64(&testConnectionCounter, 1)
+			connId := atomic.AddUint32(&server.connIdGen, 1)
 			go server.dispatch(&testServerConn{id: connId, Conn: conn, server: server})
 		} else {
 			break
@@ -766,7 +766,7 @@ func (server *testServer) dispatch(conn *testServerConn) {
 }
 
 type testServerConn struct {
-	id uint64
+	id uint32
 	net.Conn
 	server *testServer
 }
