@@ -1,3 +1,36 @@
+# Release 0.14.1
+## Theme
+Ziti 0.14.1 includes the following:
+
+### Features
+Ability to set precedence/cost after Listen. This enables graceful shutdown or client side adaptive costing
+
+### Fixes
+  * Fixed race condition in end-to-end encryption setup
+  * Xt fixes
+      * Fixed strategies missing session ended events
+      * Fixed costed terminator sorting
+      * Fixed race condition where terminators could be selected right after delete because they would have default cost. 
+      * Expanded space between precedence levels to ensure terminator static cost doesn't allow total costs to jump precedence boundary 
+      * Fixed type error in failure cost tracker
+  * Logging cleanup - many log statements that were error or info have been dropped to debug
+
+## Graceful SDK Hosted Application Shutdown
+The Golang SDK now returns an edge.Listener instead of a net.Listener from Listen
+
+```go
+type Listener interface {
+	net.Listener
+	UpdateCost(cost uint16) error
+	UpdatePrecedence(precedence Precedence) error
+	UpdateCostAndPrecedence(cost uint16, precedence Precedence) error
+}
+```
+
+This allows clients to set their precedence to `failed` when shutting down. This will allow them to gracefully finishing any outstanding requests while ensuring that no new requests will be routed to this application. This should allow for applications to do round-robin upgrades without service interruption to clients. It also allows clients to influence costs on the fly based on knowledge available to the application. 
+
+Support is currently limited to the Golang SDK, support in other SDKs will be forthcoming as it is prioritized. 
+
 # Release 0.14.0
 ## Theme
 Ziti 0.14.0 includes the following:
