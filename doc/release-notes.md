@@ -14,6 +14,7 @@ Ability to set precedence/cost after Listen. This enables graceful shutdown or c
       * Expanded space between precedence levels to ensure terminator static cost doesn't allow total costs to jump precedence boundary 
       * Fixed type error in failure cost tracker
   * Logging cleanup - many log statements that were error or info have been dropped to debug
+  * ziti-probe can now handle partial configs
 
 ## Graceful SDK Hosted Application Shutdown
 The Golang SDK now returns an edge.Listener instead of a net.Listener from Listen

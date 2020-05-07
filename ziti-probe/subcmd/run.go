@@ -29,6 +29,12 @@ var runCmd = &cobra.Command{
 	Run:   theProbe.run,
 }
 
+const (
+	DefaultDbName   = "ziti"
+	DefaultDbType   = "influxdb"
+	DefaultInterval = 5 * 60 // 5 minutes
+)
+
 func init() {
 	root.AddCommand(runCmd)
 }
@@ -36,23 +42,23 @@ func init() {
 var log = pfxlog.Logger()
 
 type probeCfg struct {
-	dbName string
-	dbType string
-	dbUser string
+	dbName     string
+	dbType     string
+	dbUser     string
 	dbPassword string
-	interval int
+	interval   int
 }
 
 var defaultConfig = probeCfg{
-	dbName:   "ziti",
-	dbType:   "influxdb",
-	interval: 5 * 60, // 5 minutes
+	dbName:   DefaultDbName,
+	dbType:   DefaultDbType,
+	interval: DefaultInterval,
 }
 
-type probe struct{
-	cfg *probeCfg
-	indb *influxdb.Client
-	ctx ziti.Context
+type probe struct {
+	cfg    *probeCfg
+	indb   *influxdb.Client
+	ctx    ziti.Context
 	latest atomic.Value
 	closer chan interface{}
 }
@@ -70,7 +76,7 @@ func (p *probe) sendMetrics() {
 		select {
 		case <-time.After(time.Duration(p.cfg.interval) * time.Second):
 			message, ok := p.latest.Load().(*metrics_pb.MetricsMessage)
-			if !ok  {
+			if !ok {
 				continue
 			}
 			bp, err := metrics.AsBatch(message)
@@ -134,7 +140,7 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
 	case <-p.closer:
 	}
 
-    p.ctx.Close()
+	p.ctx.Close()
 }
 
 func getProbeConfig(service *edge.Service) *probeCfg {
@@ -143,12 +149,47 @@ func getProbeConfig(service *edge.Service) *probeCfg {
 		return &defaultConfig
 	}
 
+	dbName := DefaultDbName
+	if val, found := cfg["dbName"]; found {
+		if str, ok := val.(string); ok {
+			dbName = str
+		}
+	}
+
+	dbType := DefaultDbType
+	if val, found := cfg["dbType"]; found {
+		if str, ok := val.(string); ok {
+			dbType = str
+		}
+	}
+
+	var dbUser string
+	if val, found := cfg["dbUser"]; found {
+		if str, ok := val.(string); ok {
+			dbUser = str
+		}
+	}
+
+	var dbPassword string
+	if val, found := cfg["dbPassword"]; found {
+		if str, ok := val.(string); ok {
+			dbPassword = str
+		}
+	}
+
+	interval := DefaultInterval
+	if val, found := cfg["interval"]; found {
+		if flt, ok := val.(float64); ok {
+			interval = int(flt)
+		}
+	}
+
 	return &probeCfg{
-		dbName:     cfg["dbName"].(string),
-		dbType:     cfg["dbType"].(string),
-		dbUser:     cfg["dbUser"].(string),
-		dbPassword: cfg["dbPassword"].(string),
-		interval:   int(cfg["interval"].(float64)),
+		dbName:     dbName,
+		dbType:     dbType,
+		dbUser:     dbUser,
+		dbPassword: dbPassword,
+		interval:   interval,
 	}
 }
 
@@ -156,7 +197,7 @@ func (p *probe) createInfluxDbClient(cfg *probeCfg) (*influxdb.Client, error) {
 
 	httpC := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func (c context.Context, network, addr string) (net.Conn, error) {
+			DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
 				log.Infof("connecting to %s:%s", network, addr)
 				return p.ctx.Dial("probe-service")
 			},
