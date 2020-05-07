@@ -37,7 +37,7 @@ type edgeBindHandler struct {
 
 func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 	log := pfxlog.Logger()
-	log.WithField("token", ch.Id()).Info("accepting edge connection")
+	log.WithField("token", ch.Id()).Debug("accepting edge connection")
 
 	fpg := cert.NewFingerprintGenerator()
 	proxy := &ingressProxy{
@@ -62,6 +62,11 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeUnbind,
 		Handler: proxy.processUnbind,
+	})
+
+	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+		Type:    edge.ContentTypeUpdateBind,
+		Handler: proxy.processUpdateBind,
 	})
 
 	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{

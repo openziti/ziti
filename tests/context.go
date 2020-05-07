@@ -36,6 +36,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	nfpem "github.com/netfoundry/ziti-foundation/util/pem"
 	sdkconfig "github.com/netfoundry/ziti-sdk-golang/ziti/config"
+	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	sdkenroll "github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	"io"
@@ -652,7 +653,7 @@ func (conn *testConn) RequireClose() {
 var testServerCounter uint64
 var testConnectionCounter uint64
 
-func newTestServer(listener net.Listener, dispatcher func(conn *testServerConn) error) *testServer {
+func newTestServer(listener edge.Listener, dispatcher func(conn *testServerConn) error) *testServer {
 	idx := atomic.AddUint64(&testServerCounter, 1)
 	return &testServer{
 		idx:        idx,
@@ -666,7 +667,7 @@ func newTestServer(listener net.Listener, dispatcher func(conn *testServerConn) 
 
 type testServer struct {
 	idx        uint64
-	listener   net.Listener
+	listener   edge.Listener
 	errorC     chan error
 	closed     concurrenz.AtomicBoolean
 	msgCount   uint32
@@ -724,42 +725,42 @@ func (server *testServer) acceptLoop() {
 	select {
 	case _, ok := <-waitDone:
 		if !ok {
-			fmt.Println("all connections closed")
+			pfxlog.Logger().Debugf("all connections closed")
 		}
 	case <-time.After(10 * time.Second):
-		fmt.Println("timed out waiting for all connections to close")
+		pfxlog.Logger().Warn("timed out waiting for all connections to close")
 	}
 
 	close(server.errorC)
-	fmt.Printf("%v: service exiting\n", server.idx)
+	pfxlog.Logger().Debugf("%v: service exiting", server.idx)
 }
 
 func (server *testServer) dispatch(conn *testServerConn) {
 	defer func() {
-		fmt.Printf("marking waiter done to conn %v-%v\n", conn.server.idx, conn.id)
 		server.waiter.Done()
 	}()
+
+	log := pfxlog.Logger()
 
 	defer func() {
 		val := recover()
 		if val != nil {
 			if err, ok := val.(error); ok {
-				fmt.Printf("panic from server.dispatch: %+v\n", err)
+				log.WithError(err).Error("panic from server.dispatch")
 				server.errorC <- err
 			}
 		}
 	}()
 
 	defer func() {
-		fmt.Printf("closing conn %v-%v\n", conn.server.idx, conn.id)
 		conn.RequireClose()
 	}()
 
-	fmt.Printf("beginnging dispatch to conn %v-%v\n", conn.server.idx, conn.id)
+	log.Debugf("beginnging dispatch to conn %v-%v", conn.server.idx, conn.id)
 	err := server.dispatcher(conn)
-	fmt.Printf("finished dispatch to conn %v-%v\n", conn.server.idx, conn.id)
+	log.Debugf("finished dispatch to conn %v-%v", conn.server.idx, conn.id)
 	if err != nil {
-		fmt.Printf("failure from server.dispatch: %+v\n", err)
+		log.WithError(err).Error("failure from server.dispatch")
 		server.errorC <- err
 	}
 }

@@ -110,7 +110,7 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	}
 
 	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
-	log.Infof("closing message sink, reason: %v", reason)
+	log.Debugf("closing message sink, reason: %v", reason)
 	if notify {
 		// Notify edge client of close
 		closeMsg := edge.NewStateClosedMsg(conn.Id(), "")

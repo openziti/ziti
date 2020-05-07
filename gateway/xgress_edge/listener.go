@@ -296,6 +296,59 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	}
 }
 
+func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
+	token := string(req.Body)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+
+	localListener, ok := proxy.listener.factory.hostedServices.Get(token)
+
+	if !ok {
+		log.Error("failed to update bind, no listener found")
+		return
+	}
+
+	sm := fabric.GetStateManager()
+	ns := sm.GetNetworkSession(token)
+
+	if ns == nil {
+		log.WithField("token", token).Error("session not found")
+		proxy.sendStateClosedReply("Invalid Session", req)
+		return
+	}
+
+	if _, found := proxy.fingerprints.HasAny(ns.CertFingerprints); !found {
+		log.WithField("token", token).
+			WithField("serviceFingerprints", ns.CertFingerprints).
+			WithField("clientFingerprints", proxy.fingerprints.Prints()).
+			Error("matching fingerprint not found")
+		proxy.sendStateClosedReply("Invalid Session", req)
+		return
+	}
+
+	var cost *uint16
+	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
+		updatedCost := binary.LittleEndian.Uint16(costBytes)
+		cost = &updatedCost
+	}
+
+	var precedence *ctrl_pb.TerminatorPrecedence
+	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+		edgePrecedence := precedenceData[0]
+		updatedPrecedence := ctrl_pb.TerminatorPrecedence_Default
+		if edgePrecedence == edge.PrecedenceRequired {
+			updatedPrecedence = ctrl_pb.TerminatorPrecedence_Required
+		} else if edgePrecedence == edge.PrecedenceFailed {
+			updatedPrecedence = ctrl_pb.TerminatorPrecedence_Failed
+		}
+		precedence = &updatedPrecedence
+	}
+
+	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorId, precedence, cost)
+	if err := xgress.UpdateTerminator(proxy.listener.factory, localListener.terminatorId, cost, precedence); err != nil {
+		log.WithError(err).Error("failed to update bind")
+	}
+}
+
 func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
