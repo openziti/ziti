@@ -100,7 +100,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 
 		if shouldUpdate {
 			if err := ae.GetHandlers().Identity.PatchInfo(identity); err != nil {
-				pfxlog.Logger().WithError(err).Error("failed to update sdk/env info on identity [%s] auth", identity.Id)
+				pfxlog.Logger().WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
 			}
 		}
 	}
