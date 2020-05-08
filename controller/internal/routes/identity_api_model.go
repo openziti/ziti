@@ -48,6 +48,8 @@ type IdentityApiList struct {
 	Authenticators map[string]interface{} `json:"authenticators"`
 	Enrollments    map[string]interface{} `json:"enrollment"` //per original API "enrollment" is correct
 	RoleAttributes []string               `json:"roleAttributes"`
+	EnvInfo        env.EnvInfo            `json:"envInfo"`
+	SdkInfo        env.SdkInfo            `json:"sdkInfo"`
 }
 
 type IdentityApiUpdate struct {
@@ -227,6 +229,8 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 		RoleAttributes: i.RoleAttributes,
 	}
 
+	fillInfo(ret, i.EnvInfo, i.SdkInfo)
+
 	err = ae.GetHandlers().Identity.CollectEnrollments(ret.Id, func(enrollmentModel *model.Enrollment) error {
 		var err error
 		ret.Enrollments[enrollmentModel.Method], err = MapToIdentityEnrollmentApiList(ae, enrollmentModel)
@@ -256,6 +260,30 @@ func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, 
 	ret.PopulateLinks()
 
 	return ret, nil
+}
+
+func fillInfo(identity *IdentityApiList, envInfo *model.EnvInfo, sdkInfo *model.SdkInfo) {
+	if envInfo != nil {
+		identity.EnvInfo = env.EnvInfo{
+			Arch:      envInfo.Arch,
+			Os:        envInfo.Os,
+			OsRelease: envInfo.OsRelease,
+			OsVersion: envInfo.OsVersion,
+		}
+	} else {
+		identity.EnvInfo = env.EnvInfo{}
+	}
+
+	if sdkInfo != nil {
+		identity.SdkInfo = env.SdkInfo{
+			Branch:   sdkInfo.Branch,
+			Revision: sdkInfo.Revision,
+			Type:     sdkInfo.Type,
+			Version:  sdkInfo.Version,
+		}
+	} else {
+		identity.SdkInfo = env.SdkInfo{}
+	}
 }
 
 func MapToIdentityAuthenticatorApiList(_ *env.AppEnv, authenticator *model.Authenticator) (interface{}, error) {

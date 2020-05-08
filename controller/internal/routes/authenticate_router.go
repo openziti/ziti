@@ -19,6 +19,7 @@ package routes
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/mitchellh/mapstructure"
 	"github.com/netfoundry/ziti-edge/controller/env"
 	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
 	"github.com/netfoundry/ziti-edge/controller/model"
@@ -66,6 +67,42 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext) {
 	if identity == nil {
 		rc.RequestResponder.RespondWithUnauthorizedError(rc)
 		return
+	}
+
+	if identity.EnvInfo == nil {
+		identity.EnvInfo = &model.EnvInfo{}
+	}
+
+	if identity.SdkInfo == nil {
+		identity.SdkInfo = &model.SdkInfo{}
+	}
+
+	if dataMap := authContext.GetDataAsMap(); dataMap != nil {
+		shouldUpdate := false
+
+		if envInfoInterface := dataMap["envInfo"]; envInfoInterface != nil {
+			if envInfo := envInfoInterface.(map[string]interface{}); envInfo != nil {
+				if err := mapstructure.Decode(envInfo, &identity.EnvInfo); err != nil {
+					pfxlog.Logger().WithError(err).Error("error processing env info")
+				}
+				shouldUpdate = true
+			}
+		}
+
+		if sdkInfoInterface := dataMap["sdkInfo"]; sdkInfoInterface != nil {
+			if sdkInfo := sdkInfoInterface.(map[string]interface{}); sdkInfo != nil {
+				if err := mapstructure.Decode(sdkInfo, &identity.SdkInfo); err != nil {
+					pfxlog.Logger().WithError(err).Error("error processing sdk info")
+				}
+				shouldUpdate = true
+			}
+		}
+
+		if shouldUpdate {
+			if err := ae.GetHandlers().Identity.PatchInfo(identity); err != nil {
+				pfxlog.Logger().WithError(err).Error("failed to update sdk/env info on identity [%s] auth", identity.Id)
+			}
+		}
 	}
 
 	token := uuid.New().String()
