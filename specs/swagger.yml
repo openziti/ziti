@@ -3565,6 +3565,28 @@ definitions:
       enrollment:
         properties: {}
         type: object
+      envInfo:
+        type: "object"
+        properties:
+          arch:
+            type: "string"
+          os:
+            type: "string"
+          osRelease:
+            type: "string"
+          osVersion:
+            type: "string"
+      sdkInfo:
+        type: "object"
+        properties:
+          branch:
+            type: "string"
+          revision:
+            type: "string"
+          type:
+            type: "string"
+          version:
+            type: "string"
   ###################################################################
   # Authenticator
   ##################################################################
