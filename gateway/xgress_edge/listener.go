@@ -333,9 +333,8 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 	}
 
 	var cost *uint16
-	if costBytes, hasCost := req.Headers[edge.CostHeader]; hasCost {
-		updatedCost := binary.LittleEndian.Uint16(costBytes)
-		cost = &updatedCost
+	if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
+		cost = &costVal
 	}
 
 	var precedence *ctrl_pb.TerminatorPrecedence
