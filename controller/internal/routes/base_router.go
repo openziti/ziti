@@ -226,7 +226,7 @@ func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojso
 	id, err := creator()
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rr.RespondWithNotFound()
+			rr.RespondWithNotFoundWithCause(err)
 			return
 		}
 
@@ -272,7 +272,7 @@ func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
@@ -310,7 +310,7 @@ func Delete(rc *response.RequestContext, idType response.IdType, deleteF ModelDe
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 		} else {
 			rc.RequestResponder.RespondWithError(err)
 		}
@@ -366,7 +366,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, 
 
 	if err = updateF(id); err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
@@ -433,7 +433,7 @@ func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response
 	err = patchF(id, jsonFields)
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
@@ -469,7 +469,7 @@ func listWithId(rc *response.RequestContext, idType response.IdType, f func(id s
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
@@ -569,7 +569,7 @@ func ListAssociations(rc *response.RequestContext, idType response.IdType, listF
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
