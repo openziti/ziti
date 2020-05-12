@@ -66,11 +66,19 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 
 // runCreateServiceEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
 func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) error {
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
+	if err != nil {
+		return err
+	}
 
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "identities")
+	if err != nil {
+		return err
+	}
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
+	setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+	setJSONValue(entityData, serviceRoles, "serviceRoles")
 	result, err := createEntityOfType("service-edge-router-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {

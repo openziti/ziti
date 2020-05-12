@@ -1,9 +1,16 @@
+# Release 0.14.2
+## Theme
+Ziti 0.14.2 includes the following:
+
+  * [can't create service policy with @ identity name](https://github.com/netfoundry/ziti-cmd/issues/93) 
+  * Fixes to connection setup timing 
+  
 # Release 0.14.1
 ## Theme
 Ziti 0.14.1 includes the following:
 
 ### Features
-  * [Enable graceful shutdown of bound connections]https://github.com/netfoundry/ziti-edge/issues/149
+  * [Enable graceful shutdown of bound connections](https://github.com/netfoundry/ziti-edge/issues/149)
 
 ### Fixes
   * [Enrollments w/ 0 length bodies cause enrollment errors](https://github.com/netfoundry/ziti-edge/issues/150)

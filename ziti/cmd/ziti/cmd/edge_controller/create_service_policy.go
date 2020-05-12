@@ -19,6 +19,7 @@ package edge_controller
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -73,11 +74,21 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
 	}
 
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	if err != nil {
+		return err
+	}
+
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities")
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, o.Args[1], "type")
-	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
-	setJSONValue(entityData, o.identityRoles, "identityRoles")
+	setJSONValue(entityData, serviceRoles, "serviceRoles")
+	setJSONValue(entityData, identityRoles, "identityRoles")
 	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {
@@ -91,4 +102,21 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	}
 
 	return err
+}
+
+func convertNamesToIds(roles []string, entityType string) ([]string, error) {
+	var result []string
+	for _, val := range roles {
+		if strings.HasPrefix(val, "@") {
+			idOrName := strings.TrimPrefix(val, "@")
+			id, err := mapNameToID(entityType, idOrName)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, "@"+id)
+		} else {
+			result = append(result, val)
+		}
+	}
+	return result, nil
 }
