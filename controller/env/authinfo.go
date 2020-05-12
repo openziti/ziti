@@ -16,10 +16,6 @@
 
 package env
 
-import (
-	"github.com/Jeffail/gabs"
-)
-
 type EnvInfo struct {
 	Arch      string `json:"arch"`
 	Os        string `json:"os"`
@@ -32,29 +28,4 @@ type SdkInfo struct {
 	Revision string `json:"revision"`
 	Type     string `json:"type"`
 	Version  string `json:"version"`
-}
-
-type Info struct {
-	EnvInfo *EnvInfo `json:"envInfo"`
-	SdkInfo *SdkInfo `json:"sdkInfo"`
-}
-
-func ParseInfoFromBody(body []byte) (map[interface{}]interface{}, error) {
-	container, err := gabs.ParseJSON(body)
-	if err != nil {
-		return nil, err
-	}
-	return ParseInfoFromContainer(container)
-}
-
-func ParseInfoFromContainer(container *gabs.Container) (map[interface{}]interface{}, error) {
-	info := map[interface{}]interface{}{}
-
-	envInfo := container.Search("envInfo")
-	sdkInfo := container.Search("sdkInfo")
-
-	info["envInfo"] = envInfo.Data()
-	info["sdkInfo"] = sdkInfo.Data()
-
-	return info, nil
 }

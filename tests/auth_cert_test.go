@@ -232,6 +232,84 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		_, err = data.ObjectP("data.identity")
 		r.NoError(err, "session token property in 'data.token' is empty")
 	})
+
+	t.Run("client info is set on the identity", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+		r := test.ctx.req
+
+		data, err := gabs.ParseJSON(resp.Body())
+
+		r.NoError(err)
+
+		r.True(data.ExistsP("data.identity.id"), "identity id not found")
+		identityId := data.Path("data.identity.id").Data().(string)
+		r.NotEmpty(identityId)
+
+		r.True(data.ExistsP("data.token"), "token not found")
+		token := data.Path("data.token").Data().(string)
+		r.NotEmpty(token)
+
+		resp, err := test.ctx.AdminSession.newRequest(test.ctx).Get("identities/" + identityId)
+		r.NoError(err)
+
+		r.Equal(http.StatusOK, resp.StatusCode())
+
+		identity, err := gabs.ParseJSON(resp.Body())
+		r.NoError(err)
+
+		sentInfo, err := gabs.ParseJSON([]byte(bodyJson))
+		r.NoError(err)
+
+		sentEnvInfo := sentInfo.Path("envInfo").Data().(map[string]interface{})
+		sentSdkInfo := sentInfo.Path("sdkInfo").Data().(map[string]interface{})
+
+		envInfo := identity.Path("data.envInfo").Data().(map[string]interface{})
+		r.Equal(sentEnvInfo, envInfo)
+
+		sdkInfo := identity.Path("data.sdkInfo").Data().(map[string]interface{})
+		r.Equal(sentSdkInfo, sdkInfo)
+	})
+
+	t.Run("client info is updated on the identity", func(t *testing.T) {
+		test.ctx.testContextChanged(t)
+		r := test.ctx.req
+
+		secondInfo := `{
+  "envInfo": {"os": "updatedValueOs", "arch": "updatedValueArch", "osRelease": "updatedValueRelease", "osVersion": "updatedValueOsRelease"},
+  "sdkInfo": {"type": "updatedValueType", "branch": "updatedValueBranch", "version": "updatedValueVersion", "revision": "updatedValueRevision"}
+}`
+		authResp, err := testClient.NewRequest().
+			SetHeader("Content-Type", "application/json").
+			SetBody(secondInfo).
+			Post("/authenticate?method=cert")
+		r.NoError(err)
+		r.Equal(http.StatusOK, authResp.StatusCode())
+
+		authData, err := gabs.ParseJSON(authResp.Body())
+		r.NoError(err)
+
+		identityId := authData.Path("data.identity.id").Data().(string)
+
+		resp, err := test.ctx.AdminSession.newRequest(test.ctx).Get("identities/" + identityId)
+		r.NoError(err)
+
+		r.Equal(http.StatusOK, resp.StatusCode())
+
+		identity, err := gabs.ParseJSON(resp.Body())
+		r.NoError(err)
+
+		sentInfo, err := gabs.ParseJSON([]byte(secondInfo))
+		r.NoError(err)
+
+		sentEnvInfo := sentInfo.Path("envInfo").Data().(map[string]interface{})
+		sentSdkInfo := sentInfo.Path("sdkInfo").Data().(map[string]interface{})
+
+		envInfo := identity.Path("data.envInfo").Data().(map[string]interface{})
+		r.Equal(sentEnvInfo, envInfo)
+
+		sdkInfo := identity.Path("data.sdkInfo").Data().(map[string]interface{})
+		r.Equal(sentSdkInfo, sdkInfo)
+	})
 }
 
 func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {

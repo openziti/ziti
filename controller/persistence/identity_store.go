@@ -34,6 +34,15 @@ const (
 	FieldIdentityEnrollments    = "enrollments"
 	FieldIdentityAuthenticators = "authenticators"
 	FieldIdentityServiceConfigs = "serviceConfigs"
+
+	FieldIdentityEnvInfoArch      = "envInfoArch"
+	FieldIdentityEnvInfoOs        = "envInfoOs"
+	FieldIdentityEnvInfoOsRelease = "envInfoRelease"
+	FieldIdentityEnvInfoOsVersion = "envInfoVersion"
+	FieldIdentitySdkInfoBranch    = "sdkInfoBranch"
+	FieldIdentitySdkInfoRevision  = "sdkInfoRevision"
+	FieldIdentitySdkInfoType      = "sdkInfoType"
+	FieldIdentitySdkInfoVersion   = "sdkInfoVersion"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -45,6 +54,20 @@ func newIdentity(name string, identityTypeId string, roleAttributes ...string) *
 	}
 }
 
+type EnvInfo struct {
+	Arch      string
+	Os        string
+	OsRelease string
+	OsVersion string
+}
+
+type SdkInfo struct {
+	Branch   string
+	Revision string
+	Type     string
+	Version  string
+}
+
 type Identity struct {
 	boltz.BaseExtEntity
 	Name           string
@@ -54,6 +77,8 @@ type Identity struct {
 	Enrollments    []string
 	Authenticators []string
 	RoleAttributes []string
+	SdkInfo        *SdkInfo
+	EnvInfo        *EnvInfo
 }
 
 type ServiceConfig struct {
@@ -72,6 +97,20 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
 	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+
+	entity.SdkInfo = &SdkInfo{
+		Branch:   bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
+		Revision: bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
+		Type:     bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
+		Version:  bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
+	}
+
+	entity.EnvInfo = &EnvInfo{
+		Arch:      bucket.GetStringWithDefault(FieldIdentityEnvInfoArch, ""),
+		Os:        bucket.GetStringWithDefault(FieldIdentityEnvInfoOs, ""),
+		OsRelease: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsRelease, ""),
+		OsVersion: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsVersion, ""),
+	}
 }
 
 func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
@@ -87,6 +126,21 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetLinkedIds(FieldIdentityEnrollments, entity.Enrollments)
 	ctx.SetLinkedIds(FieldIdentityAuthenticators, entity.Authenticators)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+
+	if entity.EnvInfo != nil {
+		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)
+		ctx.SetString(FieldIdentityEnvInfoOs, entity.EnvInfo.Os)
+		ctx.SetString(FieldIdentityEnvInfoOsRelease, entity.EnvInfo.OsRelease)
+		ctx.SetString(FieldIdentityEnvInfoOsVersion, entity.EnvInfo.OsVersion)
+	}
+
+	if entity.SdkInfo != nil {
+		ctx.SetString(FieldIdentitySdkInfoBranch, entity.SdkInfo.Branch)
+		ctx.SetString(FieldIdentitySdkInfoRevision, entity.SdkInfo.Revision)
+		ctx.SetString(FieldIdentitySdkInfoType, entity.SdkInfo.Type)
+		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
+
+	}
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {

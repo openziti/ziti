@@ -25,6 +25,20 @@ import (
 	"reflect"
 )
 
+type EnvInfo struct {
+	Arch      string
+	Os        string
+	OsRelease string
+	OsVersion string
+}
+
+type SdkInfo struct {
+	Branch   string
+	Revision string
+	Type     string
+	Version  string
+}
+
 type Identity struct {
 	models.BaseEntity
 	Name           string
@@ -32,6 +46,8 @@ type Identity struct {
 	IsDefaultAdmin bool
 	IsAdmin        bool
 	RoleAttributes []string
+	EnvInfo        *EnvInfo
+	SdkInfo        *SdkInfo
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -44,16 +60,80 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 		RoleAttributes: entity.RoleAttributes,
 	}
 
+	if entity.EnvInfo != nil {
+		boltEntity.EnvInfo = &persistence.EnvInfo{
+			Arch:      entity.EnvInfo.Arch,
+			Os:        entity.EnvInfo.Os,
+			OsRelease: entity.EnvInfo.OsRelease,
+			OsVersion: entity.EnvInfo.OsVersion,
+		}
+	}
+
+	if entity.SdkInfo != nil {
+		boltEntity.SdkInfo = &persistence.SdkInfo{
+			Branch:   entity.SdkInfo.Branch,
+			Revision: entity.SdkInfo.Revision,
+			Type:     entity.SdkInfo.Type,
+			Version:  entity.SdkInfo.Version,
+		}
+	}
+	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
+
 	return boltEntity, nil
 }
 
+
+func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *persistence.SdkInfo) {
+	if envInfo != nil {
+		identity.EnvInfo = &EnvInfo{
+			Arch:      envInfo.Arch,
+			Os:        envInfo.Os,
+			OsRelease: envInfo.OsRelease,
+			OsVersion: envInfo.OsVersion,
+		}
+	}
+
+	if sdkInfo != nil {
+		identity.SdkInfo = &SdkInfo{
+			Branch:   sdkInfo.Branch,
+			Revision: sdkInfo.Revision,
+			Type:     sdkInfo.Type,
+			Version:  sdkInfo.Version,
+		}
+	}
+}
+
+func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkInfo *SdkInfo) {
+	if envInfo != nil {
+		identity.EnvInfo = &persistence.EnvInfo{
+			Arch:      envInfo.Arch,
+			Os:        envInfo.Os,
+			OsRelease: envInfo.OsRelease,
+			OsVersion: envInfo.OsVersion,
+		}
+	}
+
+	if sdkInfo != nil {
+		identity.SdkInfo = &persistence.SdkInfo{
+			Branch:   sdkInfo.Branch,
+			Revision: sdkInfo.Revision,
+			Type:     sdkInfo.Type,
+			Version:  sdkInfo.Version,
+		}
+	}
+}
+
 func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
-	return &persistence.Identity{
+	boltEntity := &persistence.Identity{
 		Name:           entity.Name,
 		IdentityTypeId: entity.IdentityTypeId,
 		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
 		RoleAttributes: entity.RoleAttributes,
-	}, nil
+	}
+
+	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
+
+	return boltEntity, nil
 }
 
 func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
@@ -71,6 +151,8 @@ func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
+
+	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil
 }

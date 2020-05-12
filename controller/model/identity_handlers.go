@@ -420,3 +420,18 @@ func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]strin
 	index := handler.env.GetStores().Identity.GetRoleAttributesIndex()
 	return handler.queryRoleAttributes(index, queryString)
 }
+
+func (handler IdentityHandler) PatchInfo(identity *Identity) error {
+	checker := boltz.MapFieldChecker{
+		persistence.FieldIdentityEnvInfoArch:      struct{}{},
+		persistence.FieldIdentityEnvInfoOs:        struct{}{},
+		persistence.FieldIdentityEnvInfoOsRelease: struct{}{},
+		persistence.FieldIdentityEnvInfoOsVersion: struct{}{},
+		persistence.FieldIdentitySdkInfoBranch:    struct{}{},
+		persistence.FieldIdentitySdkInfoRevision:  struct{}{},
+		persistence.FieldIdentitySdkInfoType:      struct{}{},
+		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
+	}
+
+	return handler.Patch(identity, checker)
+}
