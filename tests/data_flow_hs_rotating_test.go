@@ -26,6 +26,7 @@ import (
 	"github.com/netfoundry/ziti-sdk-golang/ziti"
 	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"sync/atomic"
 	"testing"
@@ -213,7 +214,7 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 		conn := ctx.wrapConn(clientContext.Dial(service.name))
 		name := conn.ReadString(1024, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
-		fmt.Printf("%v: done\n", i+1)
+		log.Infof("%v: done", i+1)
 	}
 
 	close(doneC)
@@ -271,7 +272,7 @@ func (service *serverFirstRotatingService) Handle(conn *testServerConn) error {
 		}
 		service.closeCB()
 		logger.Debugf("%v-%v: sleeping", conn.server.idx, conn.id)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(time.Second)
 		logger.Debugf("%v-%v: exiting", conn.server.idx, conn.id)
 		return conn.server.close()
 	}

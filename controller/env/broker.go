@@ -489,7 +489,7 @@ func (b *Broker) getActiveFingerprints(sessionId string) ([]string, error) {
 
 	now := time.Now()
 	for _, c := range certs {
-		if now.After(c.ValidFrom) && now.Before(c.ValidTo) {
+		if (now.Equal(c.ValidFrom) || now.After(c.ValidFrom)) && now.Before(c.ValidTo) {
 			ret = append(ret, c.Fingerprint)
 		}
 	}

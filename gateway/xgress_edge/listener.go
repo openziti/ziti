@@ -158,8 +158,6 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		return
 	}
 
-	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
-
 	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
 	proxy.listener.bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, xgress.Initiator, x)
 	x.Start()
@@ -168,6 +166,8 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		pfxlog.Logger().WithField("connId", conn.Id()).WithError(err).Error("Failed to send start egress")
 		conn.close(true, "egress start failed")
 	}
+
+	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
 }
 
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
