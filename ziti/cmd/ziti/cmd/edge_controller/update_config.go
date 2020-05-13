@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"github.com/pkg/errors"
 
@@ -32,8 +33,9 @@ import (
 
 type updateConfigOptions struct {
 	commonOptions
-	name string
-	data string
+	name     string
+	data     string
+	jsonFile string
 }
 
 // newUpdateConfigCmd updates the 'edge controller update service-policy' command
@@ -62,6 +64,7 @@ func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&options.data, "data", "d", "", "Set the data of the config")
+	cmd.Flags().StringVarP(&options.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 
 	return cmd
@@ -76,15 +79,31 @@ func runUpdateConfig(o *updateConfigOptions) error {
 	entityData := gabs.New()
 	change := false
 
-	if len(o.name) > 0 {
+	if o.Cmd.Flags().Changed("name") {
 		setJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
-	if len(o.data) > 0 {
+	var jsonBytes []byte
+
+	if o.Cmd.Flags().Changed("data") {
+		jsonBytes = []byte(o.data)
+	}
+
+	if o.Cmd.Flags().Changed("json-file") {
+		if o.Cmd.Flags().Changed("data") {
+			return errors.New("only one of --data and --json-file is allowed")
+		}
+		var err error
+		if jsonBytes, err = ioutil.ReadFile(o.jsonFile); err != nil {
+			return fmt.Errorf("failed to read config json file %v: %w", o.jsonFile, err)
+		}
+	}
+
+	if len(jsonBytes) > 0 {
 		dataMap := map[string]interface{}{}
-		if err := json.Unmarshal([]byte(o.data), &dataMap); err != nil {
-			fmt.Printf("Attempted to parse: %v\n", o.data)
+		if err := json.Unmarshal(jsonBytes, &dataMap); err != nil {
+			fmt.Printf("Attempted to parse: %v\n", string(jsonBytes))
 			fmt.Printf("Failing parsing JSON: %+v\n", err)
 			return errors.Errorf("unable to parse data as json: %v", err)
 		}
