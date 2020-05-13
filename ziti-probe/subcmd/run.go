@@ -101,7 +101,7 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
 		p.ctx = ziti.NewContext()
 	} else {
 		if cfg, err := config.NewFromFile(args[0]); err != nil {
-			log.Fatalf("failed to load config from file[%s]", args[0], err)
+			log.WithError(err).Fatalf("failed to load config from file[%s]", args[0])
 		} else {
 			cfg.ConfigTypes = append(cfg.ConfigTypes, "ziti-probe-config.v1")
 			p.ctx = ziti.NewContextWithConfig(cfg)
@@ -128,7 +128,7 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
 
 	_, res, err := p.indb.Ping()
 	if err != nil {
-		log.Fatalf("failed to get server info", err)
+		log.WithError(err).Fatal("failed to get server info")
 	}
 	log.Info("connected to influx version = ", res)
 
