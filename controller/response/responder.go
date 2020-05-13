@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/schema"
 	"github.com/netfoundry/ziti-foundation/validation"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -34,6 +35,7 @@ type RequestResponder interface {
 	RespondWithCreated(data interface{}, meta *Meta, link *Link)
 	RespondWithError(e error)
 	RespondWithNotFound()
+	RespondWithNotFoundWithCause(e error)
 	RespondWithOk(data interface{}, meta *Meta)
 	RespondWithUnauthorizedError(rc *RequestContext)
 	RespondWithValidationErrors(ves *schema.ValidationErrors)
@@ -54,6 +56,14 @@ func NewRequestResponder(rc *RequestContext) RequestResponder {
 
 func (rr *RequestResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
 	log := pfxlog.Logger()
+
+	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		logger := log
+		if apiError.Cause != nil {
+			logger = logger.WithError(apiError.Cause)
+		}
+		logger.Debugf("returning api error, status: %v, code: %v, msg: %v", apiError.Status, apiError.Code, apiError.Message)
+	}
 
 	urlVars := mux.Vars(rr.rc.Request)
 	args := map[string]interface{}{
@@ -147,6 +157,15 @@ func (rr *RequestResponderImpl) RespondWithNotFound() {
 		Code:    apierror.NotFoundCode,
 		Message: apierror.NotFoundMessage,
 		Status:  apierror.NotFoundStatus,
+	})
+}
+
+func (rr *RequestResponderImpl) RespondWithNotFoundWithCause(e error) {
+	rr.RespondWithApiError(&apierror.ApiError{
+		Code:    apierror.NotFoundCode,
+		Message: apierror.NotFoundMessage,
+		Status:  apierror.NotFoundStatus,
+		Cause:   e,
 	})
 }
 

@@ -217,7 +217,7 @@ func (ir *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCo
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFound()
+			rc.RequestResponder.RespondWithNotFoundWithCause(err)
 			return
 		}
 
