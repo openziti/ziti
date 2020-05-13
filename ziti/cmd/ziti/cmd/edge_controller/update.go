@@ -41,7 +41,12 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newUpdateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateConfigCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCaCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateIdentityCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServiceCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServicePolicyCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(f, out, errOut))
 
 	return cmd
 }
