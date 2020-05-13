@@ -56,20 +56,20 @@ func Test_HSRotatingDataflow(t *testing.T) {
 		testClientFirstWithStrategy(ctx, "weighted")
 	})
 
-	t.Run("test server first smart routing", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testServerFirstWithStrategy(ctx, "smartrouting")
-	})
-
-	t.Run("test server first random", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testServerFirstWithStrategy(ctx, "random")
-	})
-
-	t.Run("test server first weighted", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testServerFirstWithStrategy(ctx, "weighted")
-	})
+	//t.Run("test server first smart routing", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//	testServerFirstWithStrategy(ctx, "smartrouting")
+	//})
+	//
+	//t.Run("test server first random", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//	testServerFirstWithStrategy(ctx, "random")
+	//})
+	//
+	//t.Run("test server first weighted", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//	testServerFirstWithStrategy(ctx, "weighted")
+	//})
 }
 
 func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
