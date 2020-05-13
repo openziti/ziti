@@ -1,9 +1,51 @@
+# Release 0.14.2
+## Theme
+Ziti 0.14.2 includes the following:
+  
+  * CLI enhancements
+      * [can't create service policy with @ identity name](https://github.com/netfoundry/ziti-cmd/issues/93) 
+      * [Add CLI commands to allow updating policies and role attributes](https://github.com/netfoundry/ziti-cmd/issues/94)
+      * [CLI: read config/config-type JSON from file](https://github.com/netfoundry/ziti-cmd/issues/90)
+  * [Not found errors for assigned/related ids do not say which resource was not found](https://github.com/netfoundry/ziti-edge/issues/148)
+  * Fixes to connection setup timing 
+
+## CLI Updates
+### Names in Policy Roles
+Polices can now be created from the CLI using @name. This was previously supported natively in the REST APIs, however it was stripped out for consistency. The CLI now supports this by looking up names and replacing them with IDS when they are entered. When policies are listed they will show names instead of IDs now as well.
+
+```shell script
+$ ziti edge controller create service-policy test-names Dial -i '#all' -s '@ssh'
+Found services with id db9488ba-d0af-455b-9503-c6df88f228ff for name ssh
+ba233791-8fde-44ba-9509-948275e3e3bb
+
+$ ziti edge controller list service-policies 'name="test-names"'
+id: ba233791-8fde-44ba-9509-948275e3e3bb    name: test-names    type: Dial    service roles: [@ssh]    identity roles: [#all]
+results: 1-1 of 1 
+```
+
+### New Update Commands
+There are now update commands which allow updating role attributes on edge-routers, identities and services and roles on all three policy types.
+
+All the update commands also allow changing the entity and policy names.
+
+```shell script
+$ ziti edge controller update identity jsmith-laptop -a us-east,sales
+$ ziti edge controller update service-policy sales-na -s o365,mattermost
+```
+
+### Breaking Change to CLI commands
+The shorthands for some policy flags have changed
+
+  * The shorthand for create edge-router-policy `--edge-router-roles` is now `-e`. It was `-r`
+  * The shorthand for create service-edge-router-policy `--edge-router-roles` is now `-e`. It was `-r`
+  * The shorthand for create service-policy `--service-roles` is now `-s`. It was `-r`
+
 # Release 0.14.1
 ## Theme
 Ziti 0.14.1 includes the following:
 
 ### Features
-  * [Enable graceful shutdown of bound connections]https://github.com/netfoundry/ziti-edge/issues/149
+  * [Enable graceful shutdown of bound connections](https://github.com/netfoundry/ziti-edge/issues/149)
 
 ### Fixes
   * [Enrollments w/ 0 length bodies cause enrollment errors](https://github.com/netfoundry/ziti-edge/issues/150)

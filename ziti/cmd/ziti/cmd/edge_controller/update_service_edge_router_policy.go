@@ -29,28 +29,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type updateIdentityOptions struct {
+type updateServiceEdgeRouterPolicyOptions struct {
 	commonOptions
-	name           string
-	roleAttributes []string
+	name            string
+	edgeRouterRoles []string
+	serviceRoles    []string
 }
 
-func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &updateIdentityOptions{
+func newUpdateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &updateServiceEdgeRouterPolicyOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "identity <idOrName>",
-		Short: "updates a identity managed by the Ziti Edge Controller",
-		Long:  "updates a identity managed by the Ziti Edge Controller",
+		Use:   "service-edge-router-policy <idOrName>",
+		Short: "updates a service edge router policy managed by the Ziti Edge Controller",
+		Long:  "updates a service edge router policy managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runUpdateIdentity(options)
+			err := runUpdateServiceEdgeRouterPolicy(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -58,20 +59,30 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router policy")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
-		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
+	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the service edge router policy")
+	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the service edge router policy")
 
 	return cmd
 }
 
-// runUpdateIdentity update a new identity on the Ziti Edge Controller
-func runUpdateIdentity(o *updateIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0])
+func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) error {
+	id, err := mapNameToID("service-edge-router-policies", o.Args[0])
 	if err != nil {
 		return err
 	}
+
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
+	if err != nil {
+		return err
+	}
+
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	change := false
 
@@ -80,8 +91,13 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	if o.Cmd.Flags().Changed("edge-router-roles") {
+		setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("service-roles") {
+		setJSONValue(entityData, serviceRoles, "serviceRoles")
 		change = true
 	}
 
@@ -89,6 +105,6 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("service-edge-router-policies/%v", id), entityData.String(), &o.commonOptions)
 	return err
 }

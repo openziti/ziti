@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
@@ -27,29 +29,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createEdgeRouterPolicyOptions struct {
+type updateEdgeRouterPolicyOptions struct {
 	commonOptions
+	name            string
 	edgeRouterRoles []string
 	identityRoles   []string
 }
 
-// newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
-func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createEdgeRouterPolicyOptions{
+func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &updateEdgeRouterPolicyOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edge-router-policy <name>",
-		Short: "creates an edge-router-policy managed by the Ziti Edge Controller",
-		Long:  "creates an edge-router-policy managed by the Ziti Edge Controller",
+		Use:   "edge-router-policy <idOrName>",
+		Short: "updates an edge router policy managed by the Ziti Edge Controller",
+		Long:  "updates an edge router policy managed by the Ziti Edge Controller",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateEdgeRouterPolicy(options)
+			err := runUpdateEdgeRouterPolicy(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -57,15 +59,20 @@ func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the new edge router policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new edge router policy")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router policy")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the edge router policy")
+	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the edge router policy")
 
 	return cmd
 }
 
-// runCreateEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
-func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
+func runUpdateEdgeRouterPolicy(o *updateEdgeRouterPolicyOptions) error {
+	id, err := mapNameToID("edge-router-policies", o.Args[0])
+	if err != nil {
+		return err
+	}
+
 	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
 	if err != nil {
 		return err
@@ -77,20 +84,27 @@ func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, identityRoles, "identityRoles")
-	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.commonOptions)
+	change := false
 
-	if err != nil {
-		panic(err)
+	if o.Cmd.Flags().Changed("name") {
+		setJSONValue(entityData, o.name, "name")
+		change = true
 	}
 
-	edgeRouterPolicyId := result.S("data", "id").Data()
-
-	if _, err := fmt.Fprintf(o.Out, "%v\n", edgeRouterPolicyId); err != nil {
-		panic(err)
+	if o.Cmd.Flags().Changed("edge-router-roles") {
+		setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+		change = true
 	}
 
+	if o.Cmd.Flags().Changed("identity-roles") {
+		setJSONValue(entityData, identityRoles, "identityRoles")
+		change = true
+	}
+
+	if !change {
+		return errors.New("no change specified. must specify at least one attribute to change")
+	}
+
+	_, err = patchEntityOfType(fmt.Sprintf("edge-router-policies/%v", id), entityData.String(), &o.commonOptions)
 	return err
 }

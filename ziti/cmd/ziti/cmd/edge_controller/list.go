@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/Jeffail/gabs"
 	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
@@ -414,9 +415,18 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container, pagi
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		identityRoles := entity.Path("identityRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
+
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		if err != nil {
+			return err
+		}
+
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
 		if err != nil {
 			return err
 		}
@@ -516,9 +526,15 @@ func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Containe
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		serviceRoles := entity.Path("serviceRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		if err != nil {
+			return err
+		}
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
 		if err != nil {
 			return err
 		}
@@ -544,15 +560,44 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingI
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
 		policyType, _ := entity.Path("type").Data().(string)
-		identityRoles := entity.Path("identityRoles").String()
-		serviceRoles := entity.Path("serviceRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v\n", id, name, policyType, serviceRoles, identityRoles)
+
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		if err != nil {
+			return err
+		}
+
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v\n", id, name, policyType, serviceRoles, identityRoles)
 		if err != nil {
 			return err
 		}
 	}
 	pagingInfo.output(o)
 	return nil
+}
+
+func mapRoleIdsToNames(c *gabs.Container, path string, entityType string) ([]string, error) {
+	values := c.Path(path).Data().([]interface{})
+
+	var result []string
+	for _, val := range values {
+		str := val.(string)
+		if strings.HasPrefix(str, "@") {
+			id := strings.TrimPrefix(str, "@")
+			name, err := mapIdToName(entityType, id)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, "@"+name)
+		} else {
+			result = append(result, str)
+		}
+	}
+	return result, nil
 }
 
 // runListIdentities implements the command to list identities

@@ -24,21 +24,22 @@ import (
 )
 
 func mapNameToID(entityType string, val string) (string, error) {
-	// If we can parse it as a UUID, treat it as such
-	_, err := uuid.Parse(val)
-	if err == nil {
+	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("id=\"%s\"", val), false, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if len(list) > 0 {
 		return val, nil
 	}
 
-	// Allow UUID formatted names to be recognized with a name: prefix
-	name := strings.TrimPrefix(val, "name:")
-	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
+	list, _, err = filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", val), false, nil)
 	if err != nil {
 		return "", err
 	}
 
 	if len(list) < 1 {
-		return "", errors.Errorf("no %v found for name %v", entityType, val)
+		return "", errors.Errorf("no %v found with id or name %v", entityType, val)
 	}
 
 	if len(list) > 1 {
