@@ -1,6 +1,9 @@
 version: "~> 1.0"
 
-gobuild_args: -v -timeout 20m --tags apitests
+gobuild_args: -v --tags apitests
+
+script:
+  - go test -v -timeout 20m ./... --tags apitests
 
 #script:
 #  - set -e
