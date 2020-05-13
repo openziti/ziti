@@ -8,7 +8,7 @@ go 1.14
 
 // replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
 
-replace github.com/netfoundry/ziti-edge => ../ziti-edge
+// replace github.com/netfoundry/ziti-edge => ../ziti-edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
