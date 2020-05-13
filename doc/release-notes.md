@@ -1,9 +1,11 @@
 # Release 0.14.2
 ## Theme
 Ziti 0.14.2 includes the following:
-
-  * [can't create service policy with @ identity name](https://github.com/netfoundry/ziti-cmd/issues/93) 
-  * [Add CLI commands to allow updating policies and role attributes](https://github.com/netfoundry/ziti-cmd/issues/94)
+  
+  * CLI enhancements
+      * [can't create service policy with @ identity name](https://github.com/netfoundry/ziti-cmd/issues/93) 
+      * [Add CLI commands to allow updating policies and role attributes](https://github.com/netfoundry/ziti-cmd/issues/94)
+      * [CLI: read config/config-type JSON from file](https://github.com/netfoundry/ziti-cmd/issues/90)
   * Fixes to connection setup timing 
 
 ## CLI Updates
