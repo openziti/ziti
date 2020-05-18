@@ -83,6 +83,10 @@ func (ir *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext
 			fields.AddField("salt")
 		}
 
+		if fields.IsUpdated("certPem") {
+			fields.AddField("fingerprint")
+		}
+
 		return ae.Handlers.Authenticator.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
 	})
 }

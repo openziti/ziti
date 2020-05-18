@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 4
+	CurrentDbVersion = 6
 	FieldVersion     = "version"
 )
 
@@ -67,9 +67,15 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.createEnrollmentsForEdgeRouters(step)
 		return 5
 	}
-	// current version
+
 	if step.CurrentVersion == 5 {
-		return 5
+		m.fixIdentityBuckets(step)
+		return 6
+	}
+
+	// current version
+	if step.CurrentVersion == 6 {
+		return 6
 	}
 
 	step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))

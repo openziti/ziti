@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-edge/controller/apierror"
 	"github.com/netfoundry/ziti-edge/controller/persistence"
 	"github.com/netfoundry/ziti-edge/crypto"
+	cert2 "github.com/netfoundry/ziti-edge/internal/cert"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -175,6 +176,10 @@ func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
 		updb.Salt = hashResult.Salt
 	}
 
+	if cert := authenticator.ToCert(); cert != nil && cert.Pem != "" {
+		cert.Fingerprint = cert2.NewFingerprintGenerator().FromPem([]byte(cert.Pem))
+	}
+
 	return handler.updateEntity(authenticator, handler)
 }
 
@@ -222,6 +227,16 @@ func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker 
 				hashResult := handler.HashPassword(updb.Password)
 				updb.Password = hashResult.Password
 				updb.Salt = hashResult.Salt
+			}
+		}
+	}
+
+	if authenticator.Method == persistence.MethodAuthenticatorCert {
+		if cert := authenticator.ToCert(); cert != nil {
+			if checker.IsUpdated("certPem") {
+				if cert.Fingerprint = cert2.NewFingerprintGenerator().FromPem([]byte(cert.Pem)); cert.Fingerprint == "" {
+					return apierror.NewCouldNotParsePem()
+				}
 			}
 		}
 	}

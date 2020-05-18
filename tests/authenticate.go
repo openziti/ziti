@@ -297,6 +297,26 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name st
 	return id, request.testContext.completeOttEnrollment(id)
 }
 
+func (request *authenticatedRequests) requireCreateIdentityOttEnrollmentUnfinished(name string, isAdmin bool, rolesAttributes ...string) string {
+	entityData := gabs.New()
+	request.testContext.setJsonValue(entityData, name, "name")
+	request.testContext.setJsonValue(entityData, "User", "type")
+	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
+	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
+
+	enrollments := map[string]interface{}{
+		"ott": true,
+	}
+	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
+
+	entityJson := entityData.String()
+	resp := request.createEntityOfType("identities", entityJson)
+	request.testContext.req.Equal(http.StatusCreated, resp.StatusCode())
+	id := request.testContext.getEntityId(resp.Body())
+	request.testContext.req.NotEmpty(id)
+	return id
+}
+
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
 	request.requireCreateEntity(service)

@@ -69,7 +69,14 @@ type defaultFingerprintGenerator struct{}
 func firstCertBlock(pemBytes []byte) (*pem.Block, []byte) {
 	var block *pem.Block
 	for len(pemBytes) > 0 {
+		pemLength := len(pemBytes)
 		block, pemBytes = pem.Decode(pemBytes)
+
+		if pemLength == len(pemBytes) {
+			//pem isn't parsing, we received not blocks, pemBytes should shrink on each Decode()
+			return nil, nil
+		}
+
 		if block == nil {
 			continue
 		}
