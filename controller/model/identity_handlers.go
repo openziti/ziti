@@ -185,7 +185,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 }
 
 func (handler IdentityHandler) IsUpdated(field string) bool {
-	return field != "Authenticators" && field != "Enrollments" && field != "IsDefaultAdmin"
+	return field != persistence.FieldIdentityAuthenticators && field != persistence.FieldIdentityEnrollments && field != persistence.FieldIdentityIsDefaultAdmin
 }
 
 func (handler *IdentityHandler) Read(id string) (*Identity, error) {

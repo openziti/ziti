@@ -74,7 +74,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 		r.NotEmpty(certAuth.Pem, "cert authenticator pem was empty/blank")
 	})
 
-	t.Run("cert authenticators with no blank pem is stored on authenticate", func(t *testing.T) {
+	t.Run("cert authenticators with blank pem is stored on authenticate", func(t *testing.T) {
 		r := require.New(t)
 		authenticator, err := test.ctx.EdgeController.AppEnv.Handlers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
