@@ -1,3 +1,13 @@
+# Release 0.14.3
+## Theme
+Ziti 0.14.3 includes the following:
+  * Fixes for orphaned enrollments/authenticators post identity PUT
+
+## Orphaned Enrollments/Authenticators
+When updating an identity via PUT it was possible to clear the authenticators and enrollments associated with the identity making
+it impossible to authenticate as that identity or complete enrollment. This release removes failed enrollments, associates orphaned
+authenticators with their target identities, addresses the root cause, and adds regression tests.
+
 # Release 0.14.2
 ## Theme
 Ziti 0.14.2 includes the following:
