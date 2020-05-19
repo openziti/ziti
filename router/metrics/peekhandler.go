@@ -148,7 +148,7 @@ func NewXgressPeekHandler(registry metrics.Registry) xgress.PeekHandler {
 	ingressRxBytesMeter := registry.Meter("ingress.rx.bytesrate")
 	ingressRxMsgMeter := registry.Meter("ingress.rx.msgrate")
 	egressTxBytesMeter := registry.Meter("egress.tx.bytesrate")
-	egressTxMsgMeter := registry.Meter("egress.tx.Msgrate")
+	egressTxMsgMeter := registry.Meter("egress.tx.msgrate")
 	egressRxBytesMeter := registry.Meter("egress.rx.bytesrate")
 	egressRxMsgMeter := registry.Meter("egress.rx.msgrate")
 
