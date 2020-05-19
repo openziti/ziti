@@ -36,7 +36,6 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xlink_transwarp"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/metrics"
-	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
 	"github.com/netfoundry/ziti-foundation/profiler"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/info"
@@ -68,7 +67,7 @@ func (self *Router) Channel() channel2.Channel {
 }
 
 func Create(config *Config) *Router {
-	metricsRegistry := metrics.NewRegistry(metrics_pb.MetricsSourceType_Internal, config.Id.Token, make(map[string]string), time.Second*15, nil)
+	metricsRegistry := metrics.NewRegistry(config.Id.Token, make(map[string]string), time.Second*15, nil)
 
 	return &Router{
 		config:          config,
