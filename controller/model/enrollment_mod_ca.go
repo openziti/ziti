@@ -110,21 +110,44 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 	}
 
 	identityId := uuid.New().String()
-	identityName := ""
+	requestedName := ""
 
 	if context.GetDataAsMap() != nil {
 		if dataName, ok := context.GetDataAsMap()["name"]; ok {
-			identityName = dataName.(string)
+			requestedName = dataName.(string)
 		}
 	}
 
-	if identityName == "" {
-		identityName = fmt.Sprintf("%s.%s", enrollmentCa.Name, identityId)
+	if requestedName == "" {
+		requestedName = identityId
 	}
+
+	formatter := NewIdentityNameFormatter(enrollmentCa, enrollmentCert, requestedName, identityId)
+	nameFormat := enrollmentCa.IdentityNameFormat
+
+	if nameFormat == "" {
+		nameFormat = DefaultCaIdentityNameFormat
+	}
+
+	identityName := formatter.Format(nameFormat)
 
 	identType, err := module.env.GetHandlers().IdentityType.ReadByName("Device")
 	if err != nil {
 		return nil, err
+	}
+
+	identityNameIsValid := false
+	suffixCount := 0
+	for !identityNameIsValid {
+		//check for name collisions append 4 digit incrementing number to end till ok
+		entity, _ := module.env.GetHandlers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, persistence.FieldName, identityName))
+
+		if entity != nil {
+			suffixCount = suffixCount + 1
+			identityName = identityName + fmt.Sprintf("%06d", suffixCount)
+		} else {
+			identityNameIsValid = true
+		}
 	}
 
 	identity := &Identity{
@@ -162,4 +185,14 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		ContentType:   "text/plain",
 		Status:        200,
 	}, nil
+}
+
+func NewIdentityNameFormatter(ca *Ca, clientCert *x509.Certificate, identityName, identityId string) *Formatter {
+	return NewFormatter(map[string]string{
+		FormatSymbolCaName:        ca.Name,
+		FormatSymbolCaId:          ca.Id,
+		FormatSymbolCommonName:    clientCert.Subject.CommonName,
+		FormatSymbolRequestedName: identityName,
+		FormatSymbolIdentityId:    identityId,
+	})
 }

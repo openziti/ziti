@@ -31,6 +31,9 @@
       "default": null,
       "$ref": "definitions.all.json#/definitions/arrayOfString-null"
     },
+    "identityNameFormat": {
+      "type": "string"
+    },
     "tags": {
       "$ref": "definitions.all.json#/definitions/tags-null"
     }

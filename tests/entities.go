@@ -609,6 +609,7 @@ func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.name, path("name"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
+
 type ca struct {
 	id                        string
 	name                      string                 `json:"name"`
@@ -617,6 +618,7 @@ type ca struct {
 	isOttCaEnrollmentEnabled  bool                   `json:"isOttCaEnrollmentEnabled"`
 	certPem                   string                 `json:"certPem"`
 	identityRoles             []string               `json:"identityRoles"`
+	identityNameFormat        string                 `json:"identityNameFormat"`
 	tags                      map[string]interface{} `json:"tags"`
 
 	privateKey crypto.Signer     `json:"-"` //utility property, not used in API calls
@@ -665,6 +667,7 @@ func newTestCa(identityRoles ...string) *ca {
 		isOttCaEnrollmentEnabled:  true,
 		certPem:                   caPEM.String(),
 		identityRoles:             identityRoles,
+		identityNameFormat:        "[caName]-[commonName]-[requestedName]",
 		tags:                      map[string]interface{}{},
 		privateKey:                key,
 		publicCert:                caCert,
@@ -691,6 +694,7 @@ func (entity ca) toJson(create bool, ctx *TestContext, fields ...string) string 
 	ctx.setValue(entityData, entity.isAuthEnabled, fields, "isAuthEnabled")
 	ctx.setValue(entityData, entity.identityRoles, fields, "identityRoles")
 	ctx.setValue(entityData, entity.tags, fields, "tags")
+	ctx.setValue(entityData, entity.identityNameFormat, fields, "identityNameFormat")
 
 	if create {
 		ctx.setValue(entityData, entity.certPem, fields, "certPem")
@@ -710,6 +714,7 @@ func (entity ca) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.isAuthEnabled, path("isAuthEnabled"))
 	ctx.pathEquals(c, entity.isAutoCaEnrollmentEnabled, path("isAutoCaEnrollmentEnabled"))
 	ctx.pathEquals(c, entity.isOttCaEnrollmentEnabled, path("isOttCaEnrollmentEnabled"))
+	ctx.pathEquals(c, entity.identityNameFormat, path("identityNameFormat"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
