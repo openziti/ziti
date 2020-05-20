@@ -58,7 +58,7 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 }
 
 func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
-	log := pfxlog.Logger().WithField("sessionId", sessionId.Token)
+	log := pfxlog.Logger().WithField("token", sessionId.Token)
 	destParts := strings.Split(destination, ":")
 	if len(destParts) != 2 {
 		return fmt.Errorf("destination '%v' format is incorrect", destination)
