@@ -132,8 +132,8 @@ func Test_CA(t *testing.T) {
 	t.Run("identities from auto enrollment identity name collisions add numbers to the end", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		firstExpectedName := "singular.name.not.great"
-		secondExpectedName := "singular.name.not.great000001"
+		firstExpectedName := "some.static.name.no.replacements"
+		secondExpectedName := "some.static.name.no.replacements000001"
 
 		//create CA
 		ca := newTestCa()
