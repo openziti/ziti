@@ -100,7 +100,7 @@ func (proxy *ingressProxy) ContentType() int32 {
 
 func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).WithField("token", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
