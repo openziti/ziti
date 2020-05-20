@@ -26,7 +26,7 @@ require (
 	github.com/google/go-cmp v0.4.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/gorm v1.9.11
 	github.com/kataras/go-events v0.0.3-0.20170604004442-17d67be645c3
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
