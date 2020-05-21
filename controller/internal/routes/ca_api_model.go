@@ -36,6 +36,7 @@ type CaApiUpdate struct {
 	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
 	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
 	IdentityRoles             []string               `json:"identityRoles"`
+	IdentityNameFormat        *string                `json:"identityNameFormat"`
 }
 
 func (i *CaApiUpdate) ToModel(id string) *model.Ca {
@@ -49,6 +50,7 @@ func (i *CaApiUpdate) ToModel(id string) *model.Ca {
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
 	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
 	result.IdentityRoles = i.IdentityRoles
+	result.IdentityNameFormat = stringz.OrEmpty(i.IdentityNameFormat)
 	return result
 }
 
@@ -60,6 +62,7 @@ type CaApiCreate struct {
 	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
 	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
 	IdentityRoles             []string               `json:"identityRoles"`
+	IdentityNameFormat        *string                `json:"identityNameFormat"`
 }
 
 func (i *CaApiCreate) ToModel() *model.Ca {
@@ -71,6 +74,7 @@ func (i *CaApiCreate) ToModel() *model.Ca {
 	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
 	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
 	result.IdentityRoles = i.IdentityRoles
+	result.IdentityNameFormat = stringz.OrEmpty(i.IdentityNameFormat)
 	return result
 }
 
@@ -85,6 +89,7 @@ type CaApiList struct {
 	IsOttCaEnrollmentEnabled  *bool    `json:"isOttCaEnrollmentEnabled"`
 	IsAuthEnabled             *bool    `json:"isAuthEnabled"`
 	IdentityRoles             []string `json:"identityRoles"`
+	IdentityNameFormat        *string  `json:"identityNameFormat"`
 }
 
 func (CaApiList) BuildSelfLink(id string) *response.Link {
@@ -157,6 +162,7 @@ func MapCaToApiList(i *model.Ca) (*CaApiList, error) {
 		IsAutoCaEnrollmentEnabled: &i.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  &i.IsOttCaEnrollmentEnabled,
 		IdentityRoles:             i.IdentityRoles,
+		IdentityNameFormat:        &i.IdentityNameFormat,
 	}
 
 	ret.PopulateLinks()

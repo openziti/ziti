@@ -41,6 +41,9 @@ func (handler *CaHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *CaHandler) Create(caModel *Ca) (string, error) {
+	if caModel.IdentityNameFormat == "" {
+		caModel.IdentityNameFormat = DefaultCaIdentityNameFormat
+	}
 	return handler.createEntity(caModel)
 }
 
@@ -66,14 +69,25 @@ func (handler *CaHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldCaIsAutoCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsOttCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled) ||
-		strings.EqualFold(field, persistence.FieldIdentityRoles)
+		strings.EqualFold(field, persistence.FieldIdentityRoles) ||
+		strings.EqualFold(field, persistence.FieldCaIdentityNameFormat)
 }
 
 func (handler *CaHandler) Update(ca *Ca) error {
+	if ca.IdentityNameFormat == "" {
+		ca.IdentityNameFormat = DefaultCaIdentityNameFormat
+	}
+
 	return handler.updateEntity(ca, handler)
 }
 
 func (handler *CaHandler) Patch(ca *Ca, checker boltz.FieldChecker) error {
+	if checker.IsUpdated(persistence.FieldCaIdentityNameFormat) {
+		if ca.IdentityNameFormat == "" {
+			ca.IdentityNameFormat = DefaultCaIdentityNameFormat
+		}
+	}
+
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
 	return handler.patchEntity(ca, combinedChecker)
 }
@@ -114,4 +128,41 @@ func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *m
 		result.Cas = append(result.Cas, entity)
 	}
 	return nil
+}
+
+const (
+	//Identity Name Formatting
+	FormatSentinelStart       = "["
+	FormatSentinelEnd         = "]"
+	FormatSymbolCaName        = "caName"
+	FormatSymbolCaId          = "caId"
+	FormatSymbolCommonName    = "commonName"
+	FormatSymbolRequestedName = "requestedName"
+	FormatSymbolIdentityId    = "identityId"
+
+	//ex: $caName$ - $commonName$
+	DefaultCaIdentityNameFormat = FormatSentinelStart + FormatSymbolCaName + FormatSentinelEnd + "-" + FormatSentinelStart + FormatSymbolCommonName + FormatSentinelEnd
+)
+
+type Formatter struct {
+	symbolValues  map[string]string
+	sentinelStart string
+	sentinelEnd   string
+}
+
+func NewFormatter(symbols map[string]string) *Formatter {
+	return &Formatter{
+		symbolValues:  symbols,
+		sentinelStart: FormatSentinelStart,
+		sentinelEnd:   FormatSentinelEnd,
+	}
+}
+
+func (formatter *Formatter) Format(name string) string {
+	for symbol, value := range formatter.symbolValues {
+		searchSymbol := formatter.sentinelStart + symbol + formatter.sentinelEnd
+		name = strings.Replace(name, searchSymbol, value, -1)
+	}
+
+	return name
 }

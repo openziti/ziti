@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	//Fields
 	FieldCaFingerprint               = "fingerprint"
 	FieldCaCertPem                   = "certPem"
 	FieldCaIsVerified                = "isVerified"
@@ -30,6 +31,7 @@ const (
 	FieldCaIsAutoCaEnrollmentEnabled = "isAutoCaEnrollmentEnabled"
 	FieldCaIsOttCaEnrollmentEnabled  = "isOttCaEnrollmentEnabled"
 	FieldCaIsAuthEnabled             = "isAuthEnabled"
+	FieldCaIdentityNameFormat        = "identityNameFormat"
 )
 
 type Ca struct {
@@ -43,6 +45,7 @@ type Ca struct {
 	IsOttCaEnrollmentEnabled  bool
 	IsAuthEnabled             bool
 	IdentityRoles             []string
+	IdentityNameFormat        string
 }
 
 func (entity *Ca) GetName() string {
@@ -60,6 +63,8 @@ func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.IsOttCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsOttCaEnrollmentEnabled, false)
 	entity.IsAuthEnabled = bucket.GetBoolWithDefault(FieldCaIsAuthEnabled, false)
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
+	entity.IdentityNameFormat = bucket.GetStringWithDefault(FieldCaIdentityNameFormat, "")
+
 }
 
 func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
@@ -73,6 +78,7 @@ func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldCaIsOttCaEnrollmentEnabled, entity.IsOttCaEnrollmentEnabled)
 	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
 	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
+	ctx.SetString(FieldCaIdentityNameFormat, entity.IdentityNameFormat)
 }
 
 func (entity *Ca) GetEntityType() string {

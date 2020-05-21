@@ -429,6 +429,29 @@ func (ctx *TestContext) completeCaAutoEnrollment(certAuth *certAuthenticator) {
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
 }
 
+func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthenticator, name string) {
+	trans := ctx.Transport()
+	trans.TLSClientConfig.Certificates = []cryptoTls.Certificate{
+		{
+			Certificate: [][]byte{certAuth.cert.Raw},
+			PrivateKey:  certAuth.key,
+		},
+	}
+	client := ctx.Client(ctx.HttpClient(trans))
+	client.SetHostURL("https://" + ctx.ApiHost)
+
+	body := gabs.New()
+	_, _ = body.SetP(name, "name")
+
+	resp, err := client.NewRequest().
+		SetHeader("content-type", "application/json").
+		SetBody(body.String()).
+		Post("enroll?method=ca")
+	ctx.req.NoError(err)
+	ctx.logJson(resp.Body())
+	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+}
+
 func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthenticator {
 	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 
