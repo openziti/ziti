@@ -1,7 +1,44 @@
+# Release 0.14.4
+## Theme
+Ziti 0.14.4 includes the following:
+
+### Features
+
+  * Ziti Edge API
+    * [CA Identity Name Format](https://github.com/netfoundry/ziti-edge/issues/147)
+
+## Ziti Edge API
+### CA Identity Name Format
+
+A new field, `identityNameFormat`,has been added to all certificate authority elements (`GET /cas`) that is available for all CRUD operations.
+This field is optional and defaults to `[caName] - [commonName]`. All existing CAs will also default to `[caName] - [commonName]`.
+
+The field, `identityNameFormat`, may contain any text and optionally include the following strings that are
+replaced with described values:
+
+* `[caId]` - the id of the CA used for auto enrollment
+* `[caName]` - the name of the CA used for auto enrollment
+* `[commonName]` - the common name supplied by the enrolling cert
+* `[identityName]` - the name supplied during enrollment (if any, defaults to `[idenittyId]` if the `name` field is blank during enrollment)
+* `[identityId]` - id of the resulting identity
+
+The default, `[caName] - [commonName]`, would result in the following for a CA named "myCa" with an enrolling certificate with the common name "laptop01":
+
+```
+myCa - laptop01
+```
+
+#### Identity Name Collisions
+
+If an `identityNameFormat` results in a name collision during enrollment, an incrementing number will be appended to the resulting identity name. If this is not desired,
+define an `identityNameFormat` that does not collide by using the above replacement strings and ensuring the resulting values (i.e. from`commonName`) are unique.
+
 # Release 0.14.3
 ## Theme
 Ziti 0.14.3 includes the following:
-  * Fixes for orphaned enrollments/authenticators post identity PUT
+
+### Fixes
+  * [orphaned enrollments/authenticators post identity PUT](https://github.com/netfoundry/ziti-edge/issues/158)
 
 ## Orphaned Enrollments/Authenticators
 When updating an identity via PUT it was possible to clear the authenticators and enrollments associated with the identity making
