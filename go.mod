@@ -31,7 +31,7 @@ require (
 	github.com/kataras/go-events v0.0.3-0.20170604004442-17d67be645c3
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
-	github.com/mdlayher/netlink v1.0.0
+	github.com/mdlayher/netlink v1.1.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.0
