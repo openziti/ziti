@@ -6,7 +6,9 @@ Ziti 0.14.4 includes the following:
 
   * Ziti Edge API
     * [CA Identity Name Format](https://github.com/netfoundry/ziti-edge/issues/147)
-
+  * [Remove sourceType from metrics](https://github.com/netfoundry/ziti-foundation/issues/68)
+  * Fix name of metric from `egress.tx.Msgrate` to `egress.tx.msgrate`
+  
 ## Ziti Edge API
 ### CA Identity Name Format
 
