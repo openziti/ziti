@@ -33,7 +33,7 @@ require (
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/mdlayher/netlink v1.0.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/miekg/dns v1.1.22
+	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.0
 	github.com/netfoundry/ziti-fabric v0.11.32
 	github.com/netfoundry/ziti-foundation v0.10.0
