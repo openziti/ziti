@@ -20,8 +20,8 @@ This guide can be used to run all of the Ziti applications via command line or i
 
 1. Checkout the `ziti` repository from `github.com/openziti/ziti`
     - `git clone https://github.com/openziti/ziti.git`
-2. Change into the `ziti-cmd` dirrectory
-    - `cd ziti-cmd`
+2. Change into the `ziti` dirrectory
+    - `cd ziti`
 3. Build
     - `go build ./ziti-controller`
     - `go build ./ziti-router`
@@ -145,5 +145,5 @@ to explore the Ziti Fabric capabilities via the `ziti-fabric` executable.
 
 If the controller was started with the Edge functionality enabled the Ziti Edge API can be explored. A POSTMAN collection
 can be found in `github.com/openziti/edge/controller/postman` and the Ziti SDK can be found in 
-`netfoundry/ziti-sdk-golang`. 
+`netfoundry/sdk-golang`. 
  Additionally the `ziti-enroller` and `ziti-tunnel` command in this repository contain reference implementations. 

@@ -10,10 +10,10 @@ v: 3
 db:                     ${ZITI_DATA}/db/ctrl.db
 
 identity:
-  cert:                 ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert:          ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key:                  ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/private/ctrl.key.pem
-  ca:                   ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert:                 ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert:          ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
+  key:                  ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
+  ca:                   ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
@@ -75,8 +75,8 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller. 
     signingCert:
-      cert: ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}/ziti-cmd/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/intermediate.cert.pem
+      key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/intermediate.key.decrypted.pem
     edgeIdentity:
       # (optional, defaults to 5) The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
