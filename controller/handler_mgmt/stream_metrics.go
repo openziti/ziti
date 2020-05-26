@@ -20,12 +20,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/handler_common"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/metrics"
-	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
+	"github.com/openziti/fabric/controller/handler_common"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/metrics/metrics_pb"
 	"regexp"
 )
 

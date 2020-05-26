@@ -17,9 +17,9 @@
 package xctrl
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/config"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/config"
+	"github.com/openziti/foundation/storage/boltz"
 )
 
 type Xctrl interface {

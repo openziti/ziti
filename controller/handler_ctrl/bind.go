@@ -17,10 +17,10 @@
 package handler_ctrl
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/channel2"
 )
 
 type bindHandler struct {

@@ -18,8 +18,8 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/transport"
 	"reflect"
 )
 

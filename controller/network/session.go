@@ -17,8 +17,8 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/orcaman/concurrent-map"
 )
 

@@ -1,7 +1,7 @@
 package xt_common
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xt"
 	"math"
 )
 

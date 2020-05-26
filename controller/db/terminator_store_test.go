@@ -19,8 +19,8 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"math"
 	"testing"

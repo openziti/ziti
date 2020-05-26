@@ -18,8 +18,8 @@ package handler_xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/openziti/fabric/router/forwarder"
+	"github.com/openziti/fabric/router/xgress"
 )
 
 type receiveHandler struct {

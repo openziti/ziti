@@ -17,8 +17,8 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/util/sequence"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/sequence"
 	"github.com/orcaman/concurrent-map"
 	"math"
 )

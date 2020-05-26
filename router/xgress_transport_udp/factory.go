@@ -17,8 +17,8 @@
 package xgress_transport_udp
 
 import (
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/identity/identity"
 )
 
 func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {

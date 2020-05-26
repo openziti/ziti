@@ -19,10 +19,10 @@ package db
 import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/sequence"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/sequence"
 	"go.etcd.io/bbolt"
 )
 

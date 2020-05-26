@@ -3,7 +3,7 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"testing"
 )

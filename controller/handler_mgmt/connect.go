@@ -18,8 +18,8 @@ package handler_mgmt
 
 import (
 	"crypto/x509"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/foundation/channel2"
 )
 
 type ConnectHandler struct {

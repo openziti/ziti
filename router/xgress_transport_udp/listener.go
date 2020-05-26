@@ -19,10 +19,10 @@ package xgress_transport_udp
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-fabric/router/xgress_udp"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport/udp"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/xgress_udp"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport/udp"
 	"net"
 	"time"
 )

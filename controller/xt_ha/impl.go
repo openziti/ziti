@@ -17,7 +17,7 @@
 package xt_ha
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xt"
 	"sync/atomic"
 )
 

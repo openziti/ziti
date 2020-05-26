@@ -18,9 +18,9 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/foundation/channel2"
 )
 
 type CtrlAccepter struct {

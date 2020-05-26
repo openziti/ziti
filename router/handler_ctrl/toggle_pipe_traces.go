@@ -19,11 +19,11 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	trace_pb "github.com/netfoundry/ziti-foundation/trace/pb"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	trace_pb "github.com/openziti/foundation/trace/pb"
 )
 
 func newTraceHandler(appId *identity.TokenId, controller trace.Controller) *traceHandler {

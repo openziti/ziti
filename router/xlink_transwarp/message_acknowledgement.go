@@ -19,7 +19,7 @@ package xlink_transwarp
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/openziti/fabric/router/xgress"
 )
 
 /*

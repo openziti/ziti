@@ -16,7 +16,7 @@
 
 package xgress_proxy
 
-import "github.com/netfoundry/ziti-foundation/transport"
+import "github.com/openziti/foundation/transport"
 
 type proxyXgressConnection struct {
 	transport.Connection

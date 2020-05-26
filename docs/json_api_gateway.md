@@ -2,7 +2,7 @@
 
 Launch the `ziti-fabric-gw` like this:
 
-    $ bin/ziti-fabric-gw run src/github.com/netfoundry/ziti-fabric/fabric/etc/gw.yml
+    $ bin/ziti-fabric-gw run src/github.com/openziti/fabric/fabric/etc/gw.yml
 
 Client access like this:
 
@@ -49,8 +49,8 @@ Client access like this:
 To use `ziti-fabric-gw` with a plain HTTP listener (without TLS), comment out the `certPath` and `keyPath` lines in `gw.yml`:
 
     # Comment out the following lines to disable the TLS listener
-    #certPath:         src/github.com/netfoundry/ziti-fabric/fabric/etc/ca/intermediate/certs/mgmt-gw.cert.pem
-    #keyPath:          src/github.com/netfoundry/ziti-fabric/fabric/etc/ca/intermediate/private/mgmt-gw.key.pem
+    #certPath:         src/github.com/openziti/fabric/fabric/etc/ca/intermediate/certs/mgmt-gw.cert.pem
+    #keyPath:          src/github.com/openziti/fabric/fabric/etc/ca/intermediate/private/mgmt-gw.key.pem
 
 And then the listener can be accessed with plain HTTP:
 

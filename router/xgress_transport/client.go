@@ -18,9 +18,9 @@ package xgress_transport
 
 import (
 	"errors"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 )
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error

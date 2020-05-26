@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
 	"time"
 )

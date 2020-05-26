@@ -17,8 +17,8 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/info"
 )
 
 type Link struct {

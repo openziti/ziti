@@ -17,7 +17,7 @@
 package xgress_transport
 
 import (
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/foundation/transport"
 )
 
 type transportXgresscConn struct {

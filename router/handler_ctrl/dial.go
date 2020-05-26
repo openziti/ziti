@@ -19,11 +19,11 @@ package handler_ctrl
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 )
 

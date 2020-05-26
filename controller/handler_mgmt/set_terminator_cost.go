@@ -19,12 +19,12 @@ package handler_mgmt
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/netfoundry/ziti-fabric/controller/handler_common"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/handler_common"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/storage/boltz"
 	"math"
 )
 

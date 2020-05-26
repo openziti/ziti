@@ -19,10 +19,10 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/metrics"
-	"github.com/netfoundry/ziti-foundation/metrics/metrics_pb"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/metrics/metrics_pb"
 )
 
 type metricsHandler struct {
