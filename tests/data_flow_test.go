@@ -21,7 +21,7 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
+	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"testing"
 	"time"
 )

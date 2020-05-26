@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 	"net/http"
 )
 

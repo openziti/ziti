@@ -19,8 +19,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

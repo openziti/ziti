@@ -21,9 +21,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/internal/cert"
 	"net/http"
 )
 

@@ -28,10 +28,10 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/config"
-	"github.com/netfoundry/ziti-edge/controller/packrsource"
-	"github.com/netfoundry/ziti-edge/migration/certOLD"
-	"github.com/netfoundry/ziti-edge/migration/updbOLD"
+	"github.com/openziti/edge/controller/config"
+	"github.com/openziti/edge/controller/packrsource"
+	"github.com/openziti/edge/migration/certOLD"
+	"github.com/openziti/edge/migration/updbOLD"
 	"net/url"
 )
 

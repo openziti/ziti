@@ -19,9 +19,9 @@ package intercept
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"math"
 	"net"

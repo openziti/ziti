@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

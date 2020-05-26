@@ -17,8 +17,8 @@
 package udp_vconn
 
 import (
-	"github.com/netfoundry/ziti-foundation/util/mempool"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/foundation/util/mempool"
+	"github.com/openziti/sdk-golang/ziti"
 	"net"
 	"time"
 )

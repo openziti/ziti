@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/openziti/fabric/controller/network"
 )
 
 type Handlers struct {

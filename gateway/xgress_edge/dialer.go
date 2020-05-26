@@ -19,9 +19,9 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"

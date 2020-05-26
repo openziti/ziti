@@ -19,7 +19,7 @@ package predicate
 import (
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
-	"github.com/netfoundry/ziti-edge/controller/zitiql"
+	"github.com/openziti/edge/controller/zitiql"
 	"gopkg.in/Masterminds/squirrel.v1"
 	"regexp"
 	"runtime"

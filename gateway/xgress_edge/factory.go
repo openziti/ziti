@@ -18,14 +18,14 @@ package xgress_edge
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/gateway/handler_edge_ctrl"
-	"github.com/netfoundry/ziti-edge/gateway/internal/apiproxy"
-	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
-	"github.com/netfoundry/ziti-edge/gateway/internal/gateway"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/edge/gateway/handler_edge_ctrl"
+	"github.com/openziti/edge/gateway/internal/apiproxy"
+	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/gateway/internal/gateway"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"math"
 )

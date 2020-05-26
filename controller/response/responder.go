@@ -19,9 +19,9 @@ package response
 import (
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/schema"
-	"github.com/netfoundry/ziti-foundation/validation"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/foundation/validation"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )

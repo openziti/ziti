@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/internal/version"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/internal/version"
 	"net/http"
 )
 

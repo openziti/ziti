@@ -17,10 +17,10 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/migration"
 
 	"fmt"
 	"github.com/michaelquigley/pfxlog"

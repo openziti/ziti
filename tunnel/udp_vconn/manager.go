@@ -19,9 +19,9 @@ package udp_vconn
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel"
-	"github.com/netfoundry/ziti-foundation/util/mempool"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/foundation/util/mempool"
+	"github.com/openziti/sdk-golang/ziti"
 	"io"
 	"net"
 	"time"

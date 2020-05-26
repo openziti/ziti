@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/foundation/util/stringz"
 	"net/url"
 	"sort"
 	"testing"

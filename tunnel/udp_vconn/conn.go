@@ -19,7 +19,7 @@ package udp_vconn
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/util/mempool"
+	"github.com/openziti/foundation/util/mempool"
 	"io"
 	"net"
 	"sync/atomic"

@@ -18,9 +18,9 @@ package udp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
-	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/udp_vconn"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

@@ -21,7 +21,7 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-foundation/common/constants"
+	"github.com/openziti/foundation/common/constants"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"

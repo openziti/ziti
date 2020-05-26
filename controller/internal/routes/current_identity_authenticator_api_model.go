@@ -17,8 +17,8 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 type AuthenticatorSelfUpdateApi struct {

@@ -17,7 +17,7 @@
 package intercept
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/entities"
 	"io"
 	"net"
 	"os"
@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/sdk-golang/ziti"
 )
 
 func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {

@@ -20,15 +20,15 @@ package tun
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/tcp"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/udp"
-	"github.com/netfoundry/ziti-edge/tunnel/router"
-	"github.com/netfoundry/ziti-edge/tunnel/utils"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/edge/tunnel/intercept/protocols"
+	"github.com/openziti/edge/tunnel/intercept/protocols/tcp"
+	"github.com/openziti/edge/tunnel/intercept/protocols/udp"
+	"github.com/openziti/edge/tunnel/router"
+	"github.com/openziti/edge/tunnel/utils"
+	"github.com/openziti/sdk-golang/ziti"
 	"net"
 )
 

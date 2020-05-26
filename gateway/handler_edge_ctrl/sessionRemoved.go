@@ -19,10 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
-	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/foundation/channel2"
 )
 
 type sessionRemovedHandler struct {

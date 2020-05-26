@@ -17,7 +17,7 @@
 package udp
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/ip"
+	"github.com/openziti/edge/tunnel/intercept/protocols/ip"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

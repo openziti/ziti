@@ -21,7 +21,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/predicate"
+	"github.com/openziti/edge/controller/predicate"
 	"gopkg.in/Masterminds/squirrel.v1"
 	"reflect"
 	"time"

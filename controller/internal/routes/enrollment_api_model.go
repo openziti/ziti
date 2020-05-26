@@ -19,11 +19,11 @@ package routes
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
-	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/migration"
+	"github.com/openziti/fabric/controller/models"
 	"time"
 )
 

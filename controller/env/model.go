@@ -17,9 +17,9 @@
 package env
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
-	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/migration"
+	"github.com/openziti/fabric/controller/models"
 	"time"
 )
 

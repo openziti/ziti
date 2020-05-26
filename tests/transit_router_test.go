@@ -19,8 +19,8 @@
 package tests
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"github.com/netfoundry/ziti-fabric/controller/network"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"testing"
 	"time"
 )

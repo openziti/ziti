@@ -20,13 +20,13 @@ package tests
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/foundation/util/stringz"
 	"net/url"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 
 	"github.com/google/uuid"
 )

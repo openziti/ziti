@@ -18,10 +18,10 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/netfoundry/ziti-foundation/validation"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"

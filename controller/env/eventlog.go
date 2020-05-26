@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/migration"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/migration"
 )
 
 type DefaultEventLogger struct {

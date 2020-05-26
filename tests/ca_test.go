@@ -4,7 +4,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/model"
+	"github.com/openziti/edge/controller/model"
 	"net/http"
 	"sort"
 	"testing"

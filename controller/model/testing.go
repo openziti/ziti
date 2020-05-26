@@ -19,10 +19,10 @@ package model
 import (
 	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-edge/controller/config"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/internal/cert"
-	"github.com/netfoundry/ziti-edge/internal/jwt"
+	"github.com/openziti/edge/controller/config"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/internal/jwt"
 	"testing"
 )
 

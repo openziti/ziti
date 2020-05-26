@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 
 	"github.com/google/uuid"
 )

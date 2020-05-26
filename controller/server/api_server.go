@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/config"
+	"github.com/openziti/edge/controller/config"
 	"io"
 	"log"
 	"net/http"

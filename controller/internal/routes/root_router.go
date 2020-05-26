@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/response"
 	"net/http"
 )
 

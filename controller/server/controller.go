@@ -26,21 +26,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netfoundry/ziti-edge/controller/internal/policy"
+	"github.com/openziti/edge/controller/internal/policy"
 
 	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
-	edgeconfig "github.com/netfoundry/ziti-edge/controller/config"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/handler_edge_ctrl"
-	_ "github.com/netfoundry/ziti-edge/controller/internal/routes"
-	"github.com/netfoundry/ziti-edge/controller/middleware"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/runner"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/common/constants"
-	"github.com/netfoundry/ziti-foundation/config"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	edgeconfig "github.com/openziti/edge/controller/config"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/handler_edge_ctrl"
+	_ "github.com/openziti/edge/controller/internal/routes"
+	"github.com/openziti/edge/controller/middleware"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/runner"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/foundation/config"
+	"github.com/openziti/foundation/storage/boltz"
 )
 
 type Controller struct {

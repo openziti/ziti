@@ -19,8 +19,8 @@ package routes
 import (
 	"time"
 
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/response"
 )
 
 const EntityNameCurrentSession = "current-api-session"

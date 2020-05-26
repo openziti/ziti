@@ -1,8 +1,8 @@
 package xgress_edge
 
 import (
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

@@ -22,12 +22,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"reflect"
 	"strings"
 
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"

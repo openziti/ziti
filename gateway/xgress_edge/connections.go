@@ -20,11 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/gateway/internal/fabric"
-	"github.com/netfoundry/ziti-edge/internal/cert"
-	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"time"
 )
 

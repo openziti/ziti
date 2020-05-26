@@ -17,10 +17,10 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/response"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/controller/response"
 	"go.etcd.io/bbolt"
 
 	"github.com/Jeffail/gabs"
