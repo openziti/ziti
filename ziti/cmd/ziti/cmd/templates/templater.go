@@ -24,7 +24,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"

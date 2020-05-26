@@ -24,15 +24,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/edge_controller"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge_controller"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 
-	"github.com/netfoundry/ziti-cmd/common/version"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

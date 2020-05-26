@@ -17,8 +17,8 @@
 package loop2
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
+	"github.com/openziti/foundation/util/info"
 	"bytes"
 	"crypto/sha512"
 	"encoding/binary"

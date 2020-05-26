@@ -21,11 +21,11 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
-	"github.com/netfoundry/ziti-cmd/ziti/pki/pki"
-	"github.com/netfoundry/ziti-cmd/ziti/pki/store"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/pki/pki"
+	"github.com/openziti/ziti/ziti/pki/store"
 )
 
 // PKICreateCSROptions the options for the create spring command

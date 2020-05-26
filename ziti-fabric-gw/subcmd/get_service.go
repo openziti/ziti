@@ -21,8 +21,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"net/http"
 	"time"
 )

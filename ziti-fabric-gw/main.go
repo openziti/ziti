@@ -18,11 +18,11 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-gw/subcmd"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-foundation/transport/quic"
-	"github.com/netfoundry/ziti-foundation/transport/tcp"
-	"github.com/netfoundry/ziti-foundation/transport/tls"
+	"github.com/openziti/ziti/ziti-fabric-gw/subcmd"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/transport/quic"
+	"github.com/openziti/foundation/transport/tcp"
+	"github.com/openziti/foundation/transport/tls"
 	"github.com/sirupsen/logrus"
 )
 

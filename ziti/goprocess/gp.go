@@ -24,7 +24,7 @@ import (
 
 	goversion "rsc.io/goversion/version"
 
-	"github.com/netfoundry/ziti-cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/util"
 	ps "github.com/keybase/go-ps"
 )
 

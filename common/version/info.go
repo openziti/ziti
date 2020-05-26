@@ -17,7 +17,7 @@
 package version
 
 import (
-	"github.com/netfoundry/ziti-edge/build"
+	"github.com/openziti/edge/build"
 	"runtime"
 )
 

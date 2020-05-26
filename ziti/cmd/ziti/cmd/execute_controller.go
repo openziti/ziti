@@ -22,11 +22,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/viper"
 )
 

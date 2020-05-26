@@ -17,8 +17,8 @@
 package cmd
 
 import (
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"fmt"
 	"github.com/spf13/viper"
 	"gopkg.in/AlecAivazis/survey.v1"

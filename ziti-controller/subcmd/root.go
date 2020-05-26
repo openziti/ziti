@@ -17,7 +17,7 @@
 package subcmd
 
 import (
-	edgeSubCmd "github.com/netfoundry/ziti-edge/controller/subcmd"
+	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"

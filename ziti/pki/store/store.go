@@ -21,7 +21,7 @@ import (
 	"crypto/x509/pkix"
 	"math/big"
 
-	"github.com/netfoundry/ziti-cmd/ziti/pki/certificate"
+	"github.com/openziti/ziti/ziti/pki/certificate"
 )
 
 // Store reprents a way to store a Certificate Authority.

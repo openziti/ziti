@@ -111,7 +111,7 @@ mgmt:
 # Configure any additional handlers for metrics data in the controller. In the current configuration, there is only
 # an `influxdb` handler, which will store metrics data as InfluxDB series.
 #
-# See `github.com/netfoundry/ziti-fabric/metrics` for more information on extending the controller with additional
+# See `github.com/openziti/fabric/metrics` for more information on extending the controller with additional
 # metrics handlers.
 #
 #metrics:

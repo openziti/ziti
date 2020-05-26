@@ -17,7 +17,7 @@
 package util
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"io"
 	"os"
 )

@@ -19,8 +19,8 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 

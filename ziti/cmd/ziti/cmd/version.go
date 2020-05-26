@@ -19,16 +19,16 @@ package cmd
 import (
 	"fmt"
 	"github.com/blang/semver"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
 	// "strings"
 
-	"github.com/netfoundry/ziti-cmd/common/version"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/common/version"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 
 	"github.com/spf13/cobra"
 )

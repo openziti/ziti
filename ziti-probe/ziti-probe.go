@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-cmd/ziti-probe/subcmd"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
+	"github.com/openziti/ziti/ziti-probe/subcmd"
+	"github.com/openziti/foundation/util/debugz"
 	"github.com/sirupsen/logrus"
 )
 

@@ -20,9 +20,9 @@ import (
 	"io"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 

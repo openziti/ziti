@@ -19,10 +19,10 @@ package cmd
 import (
 	"io"
 
-	"github.com/netfoundry/ziti-cmd/ziti/ansible"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/ansible"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
 )
 

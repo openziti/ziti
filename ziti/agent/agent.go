@@ -35,8 +35,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netfoundry/ziti-cmd/ziti/signal"
-	"github.com/netfoundry/ziti-cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/signal"
+	"github.com/openziti/ziti/ziti/util"
 	"github.com/kardianos/osext"
 )
 

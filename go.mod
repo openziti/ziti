@@ -1,14 +1,14 @@
-module github.com/netfoundry/ziti-cmd
+module github.com/openziti/ziti
 
 go 1.14
 
-// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+// replace github.com/openziti/foundation => ../ziti-foundation
 
-// replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+// replace github.com/openziti/fabric => ../ziti-fabric
 
-// replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
+// replace github.com/openziti/sdk-golang => ../ziti-sdk-golang
 
-// replace github.com/netfoundry/ziti-edge => ../ziti-edge
+// replace github.com/openziti/edge => ../ziti-edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -20,15 +20,15 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
 	github.com/google/uuid v1.1.1
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/netfoundry/ziti-edge v0.14.16
-	github.com/netfoundry/ziti-fabric v0.11.31
-	github.com/netfoundry/ziti-foundation v0.9.17
-	github.com/netfoundry/ziti-sdk-golang v0.11.33
+	github.com/openziti/edge v0.14.27
+	github.com/openziti/fabric v0.11.34
+	github.com/openziti/foundation v0.10.3
+	github.com/openziti/sdk-golang v0.11.40
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -36,8 +36,8 @@ require (
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil v2.19.11+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
-	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/cobra v0.0.5
+	github.com/sirupsen/logrus v1.6.0
+	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.5.0
 	github.com/stretchr/testify v1.5.1
@@ -46,6 +46,6 @@ require (
 	google.golang.org/grpc v1.25.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 	rsc.io/goversion v1.2.0
 )

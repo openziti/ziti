@@ -18,8 +18,8 @@ package subcmd
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/proxy"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/edge/tunnel/intercept/proxy"
 	"github.com/spf13/cobra"
 	"math"
 	"net"

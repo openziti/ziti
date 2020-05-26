@@ -19,7 +19,7 @@ package edge_controller
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/util/errorz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"io"
 	"net/url"
@@ -27,10 +27,10 @@ import (
 	"strings"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 

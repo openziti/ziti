@@ -17,7 +17,7 @@
 package loop3
 
 import (
-	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/openziti/foundation/util/info"
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
 	"math/rand"

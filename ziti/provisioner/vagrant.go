@@ -17,7 +17,7 @@
 package provisioner
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/vagrantutil"
+	"github.com/openziti/ziti/ziti/vagrantutil"
 	"fmt"
 	"io/ioutil"
 	"os"

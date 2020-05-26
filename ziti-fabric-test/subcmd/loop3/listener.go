@@ -17,10 +17,10 @@
 package loop3
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/loop3/pb"
-	"github.com/netfoundry/ziti-foundation/identity/dotziti"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	"github.com/openziti/foundation/identity/dotziti"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 )
