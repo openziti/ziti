@@ -17,7 +17,7 @@
 package predicate
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/zitiql"
+	"github.com/openziti/edge/controller/zitiql"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/Masterminds/squirrel.v1"
 	"testing"

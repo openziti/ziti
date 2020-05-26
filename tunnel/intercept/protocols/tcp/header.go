@@ -18,7 +18,7 @@ package tcp
 
 import (
 	"encoding/binary"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/protocols/ip"
+	"github.com/openziti/edge/tunnel/intercept/protocols/ip"
 )
 
 const (

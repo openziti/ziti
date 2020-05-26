@@ -17,11 +17,11 @@
 package routes
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/openziti/fabric/controller/models"
 	"reflect"
 	"testing"
 
-	"github.com/netfoundry/ziti-edge/controller/model"
+	"github.com/openziti/edge/controller/model"
 )
 
 func TestServiceApiCreate_ToModelService(t *testing.T) {

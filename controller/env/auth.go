@@ -20,10 +20,10 @@ import (
 	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-edge/migration"
+	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/migration"
 	"net/http"
 )
 

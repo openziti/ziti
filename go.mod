@@ -1,12 +1,12 @@
-module github.com/netfoundry/ziti-edge
+module github.com/openziti/edge
 
 go 1.14
 
-// replace github.com/netfoundry/ziti-foundation => ../ziti-foundation
+// replace github.com/openziti/foundation => ../foundation
 
-// replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+// replace github.com/openziti/fabric => ../fabric
 
-// replace github.com/netfoundry/ziti-sdk-golang => ../ziti-sdk-golang
+// replace github.com/openziti/sdk-golang => ../sdk-golang
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -35,14 +35,14 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.0
-	github.com/netfoundry/ziti-fabric v0.11.32
-	github.com/netfoundry/ziti-foundation v0.10.0
-	github.com/netfoundry/ziti-sdk-golang v0.11.35
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
+	github.com/openziti/fabric v0.11.34
+	github.com/openziti/foundation v0.10.3
+	github.com/openziti/sdk-golang v0.11.40
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/cobra v0.0.5
+	github.com/sirupsen/logrus v1.6.0
+	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.4
@@ -51,5 +51,5 @@ require (
 	gopkg.in/Masterminds/squirrel.v1 v1.0.0-20170825200431-a6b93000bd21
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 )

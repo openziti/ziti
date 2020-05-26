@@ -21,7 +21,7 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti"
 	"sync/atomic"
 	"testing"
 	"time"

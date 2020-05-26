@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/netfoundry/ziti-edge/migration"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/edge/migration"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 )
 

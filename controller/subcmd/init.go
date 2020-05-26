@@ -19,9 +19,9 @@ package subcmd
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/server"
-	"github.com/netfoundry/ziti-fabric/controller"
-	"github.com/netfoundry/ziti-foundation/util/term"
+	"github.com/openziti/edge/controller/server"
+	"github.com/openziti/fabric/controller"
+	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"

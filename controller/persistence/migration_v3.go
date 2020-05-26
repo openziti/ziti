@@ -16,7 +16,7 @@
 
 package persistence
 
-import "github.com/netfoundry/ziti-foundation/storage/boltz"
+import "github.com/openziti/foundation/storage/boltz"
 
 func (m *Migrations) createServicePoliciesV3(step *boltz.MigrationStep) {
 	appwanIds, _, err := m.stores.Appwan.QueryIds(step.Ctx.Tx(), "true")

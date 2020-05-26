@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/entities"
+	"github.com/openziti/edge/controller/entities"
 	"net/http"
 )
 

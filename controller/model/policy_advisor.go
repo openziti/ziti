@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 )
 

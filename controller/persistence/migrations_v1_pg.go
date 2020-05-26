@@ -19,14 +19,14 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/storage/boltz"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/predicate"
-	"github.com/netfoundry/ziti-edge/migration"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
+	"github.com/openziti/edge/controller/predicate"
+	"github.com/openziti/edge/migration"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 var queryOptionsListAll = &migration.QueryOptions{

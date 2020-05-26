@@ -17,7 +17,7 @@
 package config
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/foundation/identity/identity"
 	"bytes"
 	"crypto/sha1"
 	"encoding/pem"

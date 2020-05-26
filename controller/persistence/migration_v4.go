@@ -18,8 +18,8 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 	"math"
 )
 

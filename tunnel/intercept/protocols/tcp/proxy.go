@@ -18,9 +18,9 @@ package tcp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"

@@ -19,12 +19,12 @@ package model
 import (
 	"encoding/base64"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/controller/schema"
-	"github.com/netfoundry/ziti-edge/crypto"
-	"github.com/netfoundry/ziti-edge/internal/cert"
-	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/edge/crypto"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/xeipuuv/gojsonschema"
 )
 

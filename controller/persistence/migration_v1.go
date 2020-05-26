@@ -16,7 +16,7 @@
 
 package persistence
 
-import "github.com/netfoundry/ziti-foundation/storage/boltz"
+import "github.com/openziti/foundation/storage/boltz"
 
 func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	versionBucket := boltz.GetOrCreatePath(step.Ctx.Tx(), boltz.RootBucket)

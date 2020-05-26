@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/netfoundry/ziti-edge/controller/model"
+	"github.com/openziti/edge/controller/model"
 	"net/http"
 )
 

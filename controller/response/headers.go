@@ -18,8 +18,8 @@ package response
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/build"
-	version3 "github.com/netfoundry/ziti-edge/internal/version"
+	"github.com/openziti/edge/build"
+	version3 "github.com/openziti/edge/internal/version"
 	"net/http"
 )
 

@@ -18,17 +18,17 @@ package proxy
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/entities"
 	"net"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
-	"github.com/netfoundry/ziti-edge/tunnel/udp_vconn"
-	"github.com/netfoundry/ziti-foundation/transport/udp"
-	"github.com/netfoundry/ziti-foundation/util/mempool"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/edge/tunnel/udp_vconn"
+	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/mempool"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 )
 

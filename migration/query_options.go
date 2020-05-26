@@ -18,7 +18,7 @@ package migration
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/netfoundry/ziti-edge/controller/predicate"
+	"github.com/openziti/edge/controller/predicate"
 )
 
 type QueryOptions struct {

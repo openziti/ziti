@@ -19,8 +19,8 @@ package persistence
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )

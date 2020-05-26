@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"

@@ -17,7 +17,7 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

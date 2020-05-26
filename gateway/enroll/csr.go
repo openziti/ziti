@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/netfoundry/ziti-edge/gateway/internal/gateway"
+	"github.com/openziti/edge/gateway/internal/gateway"
 )
 
 type Csr struct {

@@ -19,9 +19,9 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/schema"
-	"github.com/netfoundry/ziti-edge/internal/cert"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/edge/internal/cert"
 	"github.com/xeipuuv/gojsonschema"
 	"strings"
 	"time"

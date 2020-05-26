@@ -18,9 +18,9 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/util/stringz"
-	"github.com/netfoundry/ziti-foundation/validation"
+	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"strings"
 )

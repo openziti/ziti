@@ -18,7 +18,7 @@ package persistence
 
 import (
 
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/boltz"
 )
 
 func (m *Migrations) createEnrollmentsForEdgeRouters(step *boltz.MigrationStep) {

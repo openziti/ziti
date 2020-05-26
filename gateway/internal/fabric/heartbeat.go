@@ -20,10 +20,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/pb/edge_ctrl_pb"
-	"github.com/netfoundry/ziti-edge/runner"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/edge/runner"
+	"github.com/openziti/foundation/channel2"
 	"time"
 )
 

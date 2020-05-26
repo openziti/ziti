@@ -19,13 +19,13 @@ package routes
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/internal/permissions"
-	"github.com/netfoundry/ziti-edge/controller/model"
-	"github.com/netfoundry/ziti-edge/controller/response"
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 	"net/http"
 )
 

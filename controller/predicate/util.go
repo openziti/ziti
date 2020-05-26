@@ -19,7 +19,7 @@ package predicate
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/netfoundry/ziti-edge/controller/zitiql"
+	"github.com/openziti/edge/controller/zitiql"
 	"gopkg.in/Masterminds/squirrel.v1"
 	"regexp"
 	"strings"

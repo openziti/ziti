@@ -19,10 +19,10 @@ package model
 import (
 	"encoding/pem"
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/internal/cert"
-	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/models"
 )
 
 type EnrollModuleOtt struct {

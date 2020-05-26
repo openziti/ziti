@@ -19,8 +19,8 @@ package policy
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/runner"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/runner"
 	"time"
 )
 

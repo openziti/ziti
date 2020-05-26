@@ -20,7 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/kataras/go-events"
-	"github.com/netfoundry/ziti-edge/controller/predicate"
+	"github.com/openziti/edge/controller/predicate"
 	"github.com/pkg/errors"
 	"gopkg.in/Masterminds/squirrel.v1"
 	"reflect"

@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/netfoundry/ziti-edge/controller/env"
-	"github.com/netfoundry/ziti-edge/controller/persistence"
-	"github.com/netfoundry/ziti-edge/runner"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/runner"
 	"go.etcd.io/bbolt"
 )
 

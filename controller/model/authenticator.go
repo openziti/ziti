@@ -19,7 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
-	"github.com/netfoundry/ziti-edge/controller/apierror"
+	"github.com/openziti/edge/controller/apierror"
 	"io/ioutil"
 	"net/http"
 	"strings"

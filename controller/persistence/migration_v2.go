@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/google/uuid"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/foundation/storage/boltz"
 )
 
 func (m *Migrations) createEdgeRouterPoliciesV2(step *boltz.MigrationStep) {

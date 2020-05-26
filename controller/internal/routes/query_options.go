@@ -19,9 +19,9 @@ package routes
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/controller/predicate"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/edge/controller/predicate"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 )
 
 const (

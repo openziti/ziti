@@ -20,7 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/gateway/internal/gateway"
+	"github.com/openziti/edge/gateway/internal/gateway"
 	"net/http"
 	"net/http/httputil"
 	"net/url"

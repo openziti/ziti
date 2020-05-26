@@ -17,8 +17,8 @@
 package model
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
 )

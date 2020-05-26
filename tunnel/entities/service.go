@@ -2,7 +2,7 @@ package entities
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/openziti/sdk-golang/ziti/edge"
 )
 
 const (
