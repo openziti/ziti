@@ -21,9 +21,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/storage/boltz"
 	"time"
 )
 

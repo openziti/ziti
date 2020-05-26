@@ -18,10 +18,10 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 	"github.com/sirupsen/logrus"
 )
 

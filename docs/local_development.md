@@ -4,13 +4,13 @@ If you're going to be working on the Ziti fabric, or just want to track the late
 
 First, install the golang environment for your platform. Visit http://golang.org to download your installer.
 
-As of this update, we're currently using version `1.13` of golang.
+As of this update, we're currently using version `1.14` of golang.
 
 Make sure that `go` is in your path:
 
 ```
 $ go version
-go version go1.13.4 linux/amd64
+go version go1.14.3 linux/amd64
 ```
 
 Consider using a separate directory to contain the `GOPATH` for your `ziti-fabric` development (instead of just using `~/go`). I like to put mine in `~/local/ziti-fabric`, but you can root it wherever you'd like. This will contain the dependent package sources, and built binaries.
@@ -18,8 +18,8 @@ Consider using a separate directory to contain the `GOPATH` for your `ziti-fabri
 Essentially:
 
 ```
-mkdir -p ~/local/ziti-fabric
-export GOPATH=~/local/ziti-fabric
+mkdir -p ~/local/ziti
+export GOPATH=~/local/ziti
 ```
 
 Include `GOPATH/bin` in your shell's `PATH`:
@@ -33,21 +33,21 @@ When you've got your `GOPATH` ready, you'll want to clone the repositories. I li
 ```
 mkdir ~/repos
 cd ~/repos
-git clone https://github.com/netfoundry/ziti-cmd.git
-git clone https://github.com/netfoundry/ziti-fabric.git
+git clone https://github.com/openziti/ziti.git
+git clone https://github.com/openziti/fabric.git
 ```
 
 We're going to need to update the `go.mod` file in the root of `ziti-cmd`, using the `replace` directive to point the `ziti-cmd` build at our local `ziti-fabric` development tree.
 
 ```
-cd ~/repos/ziti-cmd
+cd ~/repos/ziti
 vi go.mod
 ```
 
 The top of the file should look like this:
 
 ```
-module github.com/netfoundry/ziti-cmd
+module github.com/openziti/ziti
 
 go 1.13
 
@@ -57,11 +57,11 @@ require (
 We're going to add a `replace` line, like this:
 
 ```
-module github.com/netfoundry/ziti-cmd
+module github.com/openziti/ziti
 
 go 1.13
 
-replace github.com/netfoundry/ziti-fabric => ../ziti-fabric
+replace github.com/openziti/fabric => ../fabric
 
 require (
 ```
@@ -71,13 +71,13 @@ With that change made, you can alter the contents of your local clone of `ziti-f
 Build the tree:
 
 ```
-$ cd ~/repos/ziti-cmd
+$ cd ~/repos/ziti
 $ go install ./...
 ```
 
 The binaries will be placed in `$GOPATH/bin`.
 
-The development configuration files live in `ziti-fabric/etc`, and contain relative paths, which expect the executables to be started from the root of `ziti-fabric` (ensure that `~/local/ziti-fabric/bin` (`$GOPATH/bin`) is in your shell's `PATH`).
+The development configuration files live in `fabric/etc`, and contain relative paths, which expect the executables to be started from the root of `ziti-fabric` (ensure that `~/local/ziti-fabric/bin` (`$GOPATH/bin`) is in your shell's `PATH`).
 
 ```
 $ cd ~repos/ziti-cmd
@@ -91,7 +91,7 @@ You'll want to open a number of terminal windows. All commands are executed rela
 ### Launch The Controller
 
 ```
-$ cd ~repos/ziti-cmd
+$ cd ~repos/ziti
 $ ziti-controller run etc/ctrl.yml
 ```
 
@@ -175,7 +175,7 @@ $ ziti-fabric-test loop2 listener
 Launch a `loop2` dialer (begin generating load):
 
 ```
-$ ziti-fabric-test loop2 dialer src/github.com/netfoundry/ziti-fabric/fabric/etc/loop2/10-ambient.loop2.yml
+$ ziti-fabric-test loop2 dialer src/github.com/openziti/fabric/fabric/etc/loop2/10-ambient.loop2.yml
 ```
     
 Take a look at the various `loop2` scenario configurations in `etc/loop2` for examples illustrating different workloads.

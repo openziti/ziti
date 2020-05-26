@@ -17,10 +17,10 @@
 package db
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-fabric/controller/xt_smartrouting"
-	"github.com/netfoundry/ziti-foundation/storage/ast"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

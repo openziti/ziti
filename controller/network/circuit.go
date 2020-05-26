@@ -18,8 +18,8 @@ package network
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/identity/identity"
 )
 
 type Circuit struct {

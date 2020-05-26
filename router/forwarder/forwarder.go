@@ -19,13 +19,13 @@ package forwarder
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/metrics"
-	"github.com/netfoundry/ziti-foundation/util/info"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/util/info"
 	"time"
 )
 

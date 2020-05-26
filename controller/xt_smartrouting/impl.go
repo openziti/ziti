@@ -17,8 +17,8 @@
 package xt_smartrouting
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-fabric/controller/xt_common"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xt_common"
 	"math"
 	"time"
 )

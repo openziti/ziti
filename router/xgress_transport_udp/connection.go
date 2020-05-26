@@ -17,8 +17,8 @@
 package xgress_transport_udp
 
 import (
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/transport/udp"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/transport/udp"
 	"net"
 )
 

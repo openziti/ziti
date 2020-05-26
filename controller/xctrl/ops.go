@@ -17,8 +17,8 @@
 package xctrl
 
 import (
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/channel2"
 	"time"
 )
 

@@ -17,7 +17,7 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

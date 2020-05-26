@@ -18,9 +18,9 @@ package metrics
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
 	"time"
 )
 

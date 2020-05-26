@@ -17,7 +17,7 @@
 package router
 
 import (
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
+	"github.com/openziti/fabric/router/forwarder"
 	"time"
 )
 

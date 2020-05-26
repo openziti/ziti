@@ -16,7 +16,7 @@
 
 package ctrl_pb
 
-import "github.com/netfoundry/ziti-fabric/controller/xt"
+import "github.com/openziti/fabric/controller/xt"
 
 func (request *InspectRequest) GetContentType() int32 {
 	return int32(ContentType_InspectRequestType)

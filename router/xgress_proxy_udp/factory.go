@@ -18,7 +18,7 @@ package xgress_proxy_udp
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
+	"github.com/openziti/fabric/router/xgress"
 )
 
 func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {

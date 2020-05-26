@@ -17,8 +17,8 @@
 package xmgmt
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/config"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/config"
 )
 
 type Xmgmt interface {

@@ -2,7 +2,7 @@ package handler_common
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/foundation/channel2"
 )
 
 func SendSuccess(request *channel2.Message, ch channel2.Channel, message string) {

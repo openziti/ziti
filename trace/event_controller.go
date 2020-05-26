@@ -19,9 +19,9 @@ package trace
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/trace/pb"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/trace/pb"
 )
 
 // EventHandler is for types wishing to receive trace messages

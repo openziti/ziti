@@ -17,7 +17,7 @@
 package ctrl_msg
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
+	"github.com/openziti/foundation/channel2"
 )
 
 const (

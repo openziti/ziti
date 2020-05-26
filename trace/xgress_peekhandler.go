@@ -18,10 +18,10 @@ package trace
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	trace_pb "github.com/netfoundry/ziti-foundation/trace/pb"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	trace_pb "github.com/openziti/foundation/trace/pb"
 	"sync/atomic"
 	"time"
 )

@@ -16,7 +16,7 @@
 
 package trace
 
-import tracepb "github.com/netfoundry/ziti-foundation/trace/pb"
+import tracepb "github.com/openziti/foundation/trace/pb"
 
 type Filter interface {
 	Accept(event *tracepb.ChannelMessage) bool

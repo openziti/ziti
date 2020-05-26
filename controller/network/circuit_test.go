@@ -17,12 +17,12 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-foundation/transport/tcp"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

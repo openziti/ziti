@@ -14,10 +14,10 @@
 package network
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/db"
-	"github.com/netfoundry/ziti-fabric/controller/models"
-	"github.com/netfoundry/ziti-fabric/controller/xt"
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"

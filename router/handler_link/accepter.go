@@ -1,14 +1,14 @@
 package handler_link
 
 import (
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	metrics2 "github.com/netfoundry/ziti-fabric/router/metrics"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-fabric/router/xlink_transport"
-	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/metrics"
+	"github.com/openziti/fabric/router/forwarder"
+	metrics2 "github.com/openziti/fabric/router/metrics"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/fabric/router/xlink_transport"
+	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
 )
 
 func NewChannelAccepter(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwarder.Options, mr metrics.Registry) xlink_transport.ChannelAccepter {

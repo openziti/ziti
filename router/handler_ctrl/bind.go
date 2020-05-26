@@ -17,13 +17,13 @@
 package handler_ctrl
 
 import (
-	"github.com/netfoundry/ziti-fabric/controller/xctrl"
-	"github.com/netfoundry/ziti-fabric/router/forwarder"
-	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"github.com/netfoundry/ziti-fabric/router/xlink"
-	"github.com/netfoundry/ziti-fabric/trace"
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/router/forwarder"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
 )
 
 type bindHandler struct {
