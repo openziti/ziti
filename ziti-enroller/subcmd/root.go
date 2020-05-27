@@ -107,8 +107,9 @@ func processEnrollment() error {
 		return fmt.Errorf("the output path must not be the same as the jwt path")
 	}
 
-	tokenStr, _ := ioutil.ReadFile(jwtpath)
+	tokenBytes, _ := ioutil.ReadFile(jwtpath)
 
+	tokenStr := strings.TrimSpace(string(tokenBytes))
 	pfxlog.Logger().Debugf("jwt to parse: %s", tokenStr)
 	tkn, _, err := enroll.ParseToken(string(tokenStr))
 
