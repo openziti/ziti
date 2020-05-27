@@ -5,8 +5,8 @@ Ziti 0.14.5 includes the following:
 ### Features
 
   * Ziti Edge API
-    * [CA Identity Name Format](https://github.com/netfoundry/ziti-edge/issues/147)
-  * [Remove sourceType from metrics](https://github.com/netfoundry/ziti-foundation/issues/68)
+    * [CA Identity Name Format](https://github.com/openziti/edge/issues/147)
+  * [Remove sourceType from metrics](https://github.com/openziti/foundation/issues/68)
   * Fix name of metric from `egress.tx.Msgrate` to `egress.tx.msgrate`
   
 ## Ziti Edge API
@@ -48,7 +48,7 @@ Ziti 0.14.4 includes the following:
 Ziti 0.14.3 includes the following:
 
 ### Fixes
-  * [orphaned enrollments/authenticators post identity PUT](https://github.com/netfoundry/ziti-edge/issues/158)
+  * [orphaned enrollments/authenticators post identity PUT](https://github.com/openziti/edge/issues/158)
 
 ## Orphaned Enrollments/Authenticators
 When updating an identity via PUT it was possible to clear the authenticators and enrollments associated with the identity making
