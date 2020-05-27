@@ -1,6 +1,6 @@
-# Release 0.14.4
+# Release 0.14.5
 ## Theme
-Ziti 0.14.4 includes the following:
+Ziti 0.14.5 includes the following:
 
 ### Features
 
@@ -34,6 +34,14 @@ myCa - laptop01
 
 If an `identityNameFormat` results in a name collision during enrollment, an incrementing number will be appended to the resulting identity name. If this is not desired,
 define an `identityNameFormat` that does not collide by using the above replacement strings and ensuring the resulting values (i.e. from`commonName`) are unique.
+
+# Release 0.14.4
+## Theme
+Ziti 0.14.4 includes the following:
+
+### Misc
+
+  * Migration to github.com/openziti
 
 # Release 0.14.3
 ## Theme
