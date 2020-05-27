@@ -10,25 +10,10 @@ env:
 
 stages:
   - name: "Build and Test"
-    if: branch != update-dependency or type = pull_request
-  - name: "Update Dependency"
-    if: branch = update-dependency and type == api
   - name: "Tag and Publish"
-    if: branch != update-dependency or type = pull_request
 
 jobs:
   include:
-    - stage: "Update Dependency"
-      os: linux
-      arch: amd64
-      env: GOX_OS=linux
-      script:
-        - set -e
-        - ziti-ci configure-git
-        - ziti-ci update-go-dependency
-        - go test ./...
-        - ziti-ci complete-update-go-dependency
-
     - stage: "Build and Test"
       os: linux
       arch: arm64
