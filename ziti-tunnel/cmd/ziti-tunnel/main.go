@@ -18,8 +18,8 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-cmd/ziti-tunnel/cmd/ziti-tunnel/subcmd"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
+	"github.com/openziti/ziti/ziti-tunnel/cmd/ziti-tunnel/subcmd"
+	"github.com/openziti/foundation/util/debugz"
 	"github.com/sirupsen/logrus"
 )
 

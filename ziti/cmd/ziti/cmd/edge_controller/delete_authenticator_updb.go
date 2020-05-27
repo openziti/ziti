@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 )
-import cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type deleteUpdbOptions struct {
 	commonOptions

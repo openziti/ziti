@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"os"

@@ -22,7 +22,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/foundation/transport"
 	"bytes"
 )
 

@@ -18,13 +18,13 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-cmd/common/version"
-	"github.com/netfoundry/ziti-cmd/ziti-router/subcmd"
-	"github.com/netfoundry/ziti-edge/build"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-foundation/transport/quic"
-	"github.com/netfoundry/ziti-foundation/transport/tcp"
-	"github.com/netfoundry/ziti-foundation/transport/tls"
+	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/ziti-router/subcmd"
+	"github.com/openziti/edge/build"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/transport/quic"
+	"github.com/openziti/foundation/transport/tcp"
+	"github.com/openziti/foundation/transport/tls"
 	"github.com/sirupsen/logrus"
 )
 

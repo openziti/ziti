@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 )
 

@@ -20,9 +20,9 @@ package subcmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tun"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/edge/tunnel/intercept/tproxy"
+	"github.com/openziti/edge/tunnel/intercept/tun"
 	"github.com/spf13/cobra"
 )
 

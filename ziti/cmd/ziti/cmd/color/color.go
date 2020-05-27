@@ -17,7 +17,7 @@
 package color
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/fatih/color"
 	"sort"
 )

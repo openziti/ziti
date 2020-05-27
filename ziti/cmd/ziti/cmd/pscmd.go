@@ -28,8 +28,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/netfoundry/ziti-cmd/ziti/signal"
-	"github.com/netfoundry/ziti-cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/signal"
+	"github.com/openziti/ziti/ziti/util"
 )
 
 var pscmds = map[string](func(addr net.TCPAddr, params []string) error){

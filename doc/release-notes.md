@@ -13,10 +13,10 @@ authenticators with their target identities, addresses the root cause, and adds 
 Ziti 0.14.2 includes the following:
   
   * CLI enhancements
-      * [can't create service policy with @ identity name](https://github.com/netfoundry/ziti-cmd/issues/93) 
-      * [Add CLI commands to allow updating policies and role attributes](https://github.com/netfoundry/ziti-cmd/issues/94)
-      * [CLI: read config/config-type JSON from file](https://github.com/netfoundry/ziti-cmd/issues/90)
-  * [Not found errors for assigned/related ids do not say which resource was not found](https://github.com/netfoundry/ziti-edge/issues/148)
+      * [can't create service policy with @ identity name](https://github.com/openziti/ziti/issues/93) 
+      * [Add CLI commands to allow updating policies and role attributes](https://github.com/openziti/ziti/issues/94)
+      * [CLI: read config/config-type JSON from file](https://github.com/openziti/ziti/issues/90)
+  * [Not found errors for assigned/related ids do not say which resource was not found](https://github.com/openziti/edge/issues/148)
   * Fixes to connection setup timing 
 
 ## CLI Updates
@@ -55,10 +55,10 @@ The shorthands for some policy flags have changed
 Ziti 0.14.1 includes the following:
 
 ### Features
-  * [Enable graceful shutdown of bound connections](https://github.com/netfoundry/ziti-edge/issues/149)
+  * [Enable graceful shutdown of bound connections](https://github.com/openziti/edge/issues/149)
 
 ### Fixes
-  * [Enrollments w/ 0 length bodies cause enrollment errors](https://github.com/netfoundry/ziti-edge/issues/150)
+  * [Enrollments w/ 0 length bodies cause enrollment errors](https://github.com/openziti/edge/issues/150)
   * Fixed race condition in end-to-end encryption setup
   * Xt fixes
       * Fixed strategies missing session ended events
@@ -93,7 +93,7 @@ Ziti 0.14.0 includes the following:
   * The first full implementation of high availability (HA) and horizontal scale (HS) services
   
 ### Fixes
-  * [When using index scanner, wrong count is returned when using skip](https://github.com/netfoundry/ziti-foundation/issues/62)
+  * [When using index scanner, wrong count is returned when using skip](https://github.com/openziti/foundation/issues/62)
   * fabric now includes migration to extract terminators from services
   * more errors which were returning 500 now return appropriate 404 or 400 field errors
   * terminators are now validated when routers connect, and invalid ones can be removed
@@ -937,7 +937,7 @@ Ziti 0.12 includes the following:
  * Some deprecated endpoints are now being removed
  
 ## Terminators
-See https://github.com/netfoundry/ziti-fabric/wiki/Pluggable-Service-Terminators for a discussion of what service terminators are, the motivation for extracting them from services and the design for how they will work.
+See https://github.com/openziti/fabric/wiki/Pluggable-Service-Terminators for a discussion of what service terminators are, the motivation for extracting them from services and the design for how they will work.
 
 This release includes the following:
 

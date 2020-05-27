@@ -21,9 +21,9 @@ package main
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"

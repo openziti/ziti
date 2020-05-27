@@ -17,9 +17,9 @@
 package trace
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/trace"
-	"github.com/netfoundry/ziti-foundation/trace/pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/trace"
+	"github.com/openziti/foundation/trace/pb"
 	"encoding/json"
 	"errors"
 	"fmt"

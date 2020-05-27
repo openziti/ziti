@@ -17,7 +17,7 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/common/version"
+	"github.com/openziti/ziti/common/version"
 	"fmt"
 	"github.com/spf13/cobra"
 )

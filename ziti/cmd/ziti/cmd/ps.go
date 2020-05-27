@@ -26,10 +26,10 @@ import (
 	"strconv"
 	"strings"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
-	"github.com/netfoundry/ziti-cmd/ziti/goprocess"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/goprocess"
 )
 
 // PsOptions contains the command line options

@@ -17,7 +17,7 @@
 package common
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
 	"io"
 )

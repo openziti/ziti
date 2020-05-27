@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-enroller/subcmd"
+	"github.com/openziti/ziti/ziti-enroller/subcmd"
 )
 
 func main() {

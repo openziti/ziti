@@ -27,9 +27,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/netfoundry/ziti-cmd/ziti/pki/certificate"
-	"github.com/netfoundry/ziti-cmd/ziti/pki/store"
-	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/openziti/ziti/ziti/pki/certificate"
+	"github.com/openziti/ziti/ziti/pki/store"
+	"github.com/openziti/foundation/identity/certtools"
 )
 
 const (

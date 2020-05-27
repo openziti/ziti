@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"gopkg.in/AlecAivazis/survey.v1"
 )
 

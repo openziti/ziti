@@ -32,7 +32,7 @@ import (
 
 	"crypto/x509"
 
-	"github.com/netfoundry/ziti-cmd/ziti/pki/certificate"
+	"github.com/openziti/ziti/ziti/pki/certificate"
 )
 
 // Predifined directory names.

@@ -17,7 +17,7 @@
 package trace
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric/subcmd"
+	"github.com/openziti/ziti/ziti-fabric/subcmd"
 	"github.com/spf13/cobra"
 )
 

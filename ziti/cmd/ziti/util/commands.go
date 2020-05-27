@@ -24,7 +24,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 )
 
 const (

@@ -19,11 +19,11 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/common/version"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )
 

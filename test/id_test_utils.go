@@ -17,7 +17,7 @@
 package test
 
 import (
-	"github.com/netfoundry/ziti-foundation/identity/identity"
+	"github.com/openziti/foundation/identity/identity"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"

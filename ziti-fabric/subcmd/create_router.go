@@ -17,9 +17,9 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/identity/certtools"
 	"crypto/sha1"
 	"errors"
 	"fmt"

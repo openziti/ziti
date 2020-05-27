@@ -20,7 +20,7 @@ package subcmd
 
 import (
 	"fmt"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
+	"github.com/openziti/edge/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
 

@@ -21,10 +21,10 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/templates"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 )
 
 const (
