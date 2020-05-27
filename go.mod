@@ -2,13 +2,13 @@ module github.com/openziti/ziti
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../ziti-foundation
+// replace github.com/openziti/foundation => ../foundation
 
-// replace github.com/openziti/fabric => ../ziti-fabric
+// replace github.com/openziti/fabric => ../fabric
 
-// replace github.com/openziti/sdk-golang => ../ziti-sdk-golang
+// replace github.com/openziti/sdk-golang => ../sdk-golang
 
-// replace github.com/openziti/edge => ../ziti-edge
+// replace github.com/openziti/edge => ../edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
