@@ -21,7 +21,7 @@ replaced with described values:
 * `[caId]` - the id of the CA used for auto enrollment
 * `[caName]` - the name of the CA used for auto enrollment
 * `[commonName]` - the common name supplied by the enrolling cert
-* `[identityName]` - the name supplied during enrollment (if any, defaults to `[idenittyId]` if the `name` field is blank during enrollment)
+* `[identityName]` - the name supplied during enrollment (if any, defaults to `[identityId]` if the `name` field is blank during enrollment)
 * `[identityId]` - id of the resulting identity
 
 The default, `[caName] - [commonName]`, would result in the following for a CA named "myCa" with an enrolling certificate with the common name "laptop01":
