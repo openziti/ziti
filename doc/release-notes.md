@@ -1,3 +1,12 @@
+# Release 0.14.7
+## Theme
+Ziti 0.14.7 includes the following:
+  
+* [Add CLI support for updating terminators](https://github.com/openziti/ziti/issues/106)
+* [Add CLI support for managing identity service config overrides](https://github.com/openziti/ziti/issues/105)
+
+NOTE: 0.14.6 was released with the same code as 0.14.5 due to CI re-running
+
 # Release 0.14.5
 ## Theme
 Ziti 0.14.5 includes the following:

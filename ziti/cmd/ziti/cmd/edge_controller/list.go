@@ -92,6 +92,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-routers", outputEdgeRouters, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", outputServicePolicies, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "services", outputServices, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-configs", outputServiceConfigs, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
@@ -502,6 +503,25 @@ func outputServices(o *commonOptions, children []*gabs.Container, pagingInfo *pa
 		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
 		roleAttributes := entity.Path("roleAttributes").String()
 		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    terminator strategy: %v    role attributes: %v\n", id, name, terminatorStrategy, roleAttributes)
+		if err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+	return nil
+}
+
+func outputServiceConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		service, _ := entity.Path("service").Data().(string)
+		serviceName, _ := mapIdToName("services", service)
+		config, _ := entity.Path("config").Data().(string)
+		configName, _ := mapIdToName("configs", config)
+		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
 		if err != nil {
 			return err
 		}
