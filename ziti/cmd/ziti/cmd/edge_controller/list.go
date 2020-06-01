@@ -92,6 +92,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-routers", outputEdgeRouters, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", outputServicePolicies, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "services", outputServices, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-configs", outputServiceConfigs, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
@@ -180,7 +181,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 // newListServicesCmd creates the list command for the given entity type
 func newListServicesCmd(options *commonOptions) *cobra.Command {
 	var asIdentity string
-	var configTypes string
+	var configTypes []string
 	var roleFilters []string
 	var roleSemantic string
 
@@ -203,7 +204,7 @@ func newListServicesCmd(options *commonOptions) *cobra.Command {
 
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVar(&asIdentity, "as-identity", "", "Allow admins to see services as they would be seen by a different identity")
-	cmd.Flags().StringVar(&configTypes, "config-types", "", "Override which config types to view on services")
+	cmd.Flags().StringSliceVar(&configTypes, "config-types", nil, "Override which config types to view on services")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
 
@@ -467,7 +468,7 @@ func outputTerminators(o *commonOptions, children []*gabs.Container, pagingInfo 
 	return nil
 }
 
-func runListServices(asIdentity string, configTypes string, roleFilters []string, roleSemantic string, options *commonOptions) error {
+func runListServices(asIdentity string, configTypes []string, roleFilters []string, roleSemantic string, options *commonOptions) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -475,8 +476,13 @@ func runListServices(asIdentity string, configTypes string, roleFilters []string
 	if asIdentity != "" {
 		params.Add("asIdentity", asIdentity)
 	}
-	if configTypes != "" {
-		params.Add("configTypes", configTypes)
+
+	if configTypes, err := mapNamesToIDs("config-types", configTypes...); err != nil {
+		return err
+	} else {
+		for _, configType := range configTypes {
+			params.Add("configTypes", configType)
+		}
 	}
 	for _, roleFilter := range roleFilters {
 		params.Add("roleFilter", roleFilter)
@@ -502,6 +508,25 @@ func outputServices(o *commonOptions, children []*gabs.Container, pagingInfo *pa
 		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
 		roleAttributes := entity.Path("roleAttributes").String()
 		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    terminator strategy: %v    role attributes: %v\n", id, name, terminatorStrategy, roleAttributes)
+		if err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+	return nil
+}
+
+func outputServiceConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		service, _ := entity.Path("service").Data().(string)
+		serviceName, _ := mapIdToName("services", service)
+		config, _ := entity.Path("config").Data().(string)
+		configName, _ := mapIdToName("configs", config)
+		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
 		if err != nil {
 			return err
 		}

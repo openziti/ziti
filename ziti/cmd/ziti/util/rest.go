@@ -24,10 +24,10 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/blang/semver"
+	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
-	"github.com/openziti/foundation/common/constants"
 	"gopkg.in/resty.v1"
 	"io"
 	"net/http"
@@ -577,7 +577,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 }
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
-func EdgeControllerUpdate(entityType string, body string, out io.Writer, put bool, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logJSON bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -589,26 +589,19 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, put boo
 		client.SetRootCertificate(session.Cert)
 	}
 
-	request := client.
+	resp, err := client.
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.Token).
-		SetBody(body)
-
-	var err error
-	var resp *resty.Response
-	if put {
-		resp, err = request.Put(session.Host + "/" + entityType)
-	} else {
-		resp, err = request.Patch(session.Host + "/" + entityType)
-	}
+		SetBody(body).
+		Execute(method, session.Host+"/"+entityType)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
+		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
 			entityType, session.Host, resp.Status(), resp.String())
 	}
 

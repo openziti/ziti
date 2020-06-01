@@ -17,27 +17,30 @@
 package edge_controller
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
 	"math"
 )
 
-type createTerminatorOptions struct {
+type updateTerminatorOptions struct {
 	commonOptions
+	router     string
+	address    string
 	binding    string
 	cost       int32
 	precedence string
 }
 
-// newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
-func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createTerminatorOptions{
+func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &updateTerminatorOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
@@ -48,14 +51,13 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	}
 
 	cmd := &cobra.Command{
-		Use:   "terminator service router address",
-		Short: "creates a service terminator managed by the Ziti Edge Controller",
-		Long:  "creates a service terminator managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(3),
+		Use:   "terminator <id>",
+		Short: "updates a service terminator",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runCreateTerminator(options)
+			err := runUpdateTerminator(options)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -64,61 +66,61 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Set the terminator binding")
+	cmd.Flags().StringVar(&options.router, "router", "", "Set the terminator router")
+	cmd.Flags().StringVar(&options.address, "address", "", "Set the terminator address")
+	cmd.Flags().StringVar(&options.binding, "binding", "", "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
 
 	return cmd
 }
 
-// runCreateTerminator implements the command to create a Terminator
-func runCreateTerminator(o *createTerminatorOptions) (err error) {
+// runUpdateTerminator implements the command to update a Terminator
+func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := mapNameToID("services", o.Args[0])
+
+	router, err := mapNameToID("edge-routers", o.router)
 	if err != nil {
-		return err
+		router = o.router // might be a pure fabric router, id might not be UUID
 	}
 
-	router, err := mapNameToID("edge-routers", o.Args[1])
-	if err != nil {
-		router = o.Args[1] // might be a pure fabric router, id might not be UUID
+	change := false
+	if o.Cmd.Flags().Changed("router") {
+		setJSONValue(entityData, router, "router")
+		change = true
 	}
 
-	setJSONValue(entityData, service, "service")
-	setJSONValue(entityData, router, "router")
-	setJSONValue(entityData, o.binding, "binding")
-	setJSONValue(entityData, o.Args[2], "address")
-	if o.cost > 0 {
+	if o.Cmd.Flags().Changed("binding") {
+		setJSONValue(entityData, o.binding, "binding")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("address") {
+		setJSONValue(entityData, o.address, "address")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("cost") {
 		if o.cost > math.MaxUint16 {
-			if _, err = fmt.Fprintf(o.Out, "Invalid cost %v. Must be positive number less than or equal to %v\n", o.cost, math.MaxUint16); err != nil {
-				panic(err)
-			}
-			return
+			return errors2.Errorf("Invalid cost %v. Must be positive number less than or equal to %v", o.cost, math.MaxUint16)
 		}
 		setJSONValue(entityData, o.cost, "cost")
+		change = true
 	}
-	if o.precedence != "" {
+
+	if o.Cmd.Flags().Changed("precedence") {
 		validValues := []string{"default", "required", "failed"}
 		if !stringz.Contains(validValues, o.precedence) {
-			if _, err = fmt.Fprintf(o.Out, "Invalid precedence %v. Must be one of %+v\n", o.precedence, validValues); err != nil {
-				panic(err)
-			}
-			return
+			return errors2.Errorf("Invalid precedence %v. Must be one of %+v", o.precedence, validValues)
 		}
 		setJSONValue(entityData, o.precedence, "precedence")
+		change = true
 	}
 
-	result, err := createEntityOfType("terminators", entityData.String(), &o.commonOptions)
-
-	if err != nil {
-		panic(err)
+	if !change {
+		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	TerminatorId := result.S("data", "id").Data()
-
-	if _, err = fmt.Fprintf(o.Out, "%v\n", TerminatorId); err != nil {
-		panic(err)
-	}
-
+	_, err = patchEntityOfType(fmt.Sprintf("terminators/%v", o.Args[0]), entityData.String(), &o.commonOptions)
 	return err
 }

@@ -44,24 +44,34 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newUpdateEdgeRouterCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateIdentityCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateIdentityConfigsCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateServiceCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateServicePolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateTerminatorCmd(f, out, errOut))
 
 	return cmd
 }
 
 func putEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-	return updateEntityOfType(entityType, body, options, true)
+	return updateEntityOfType(entityType, body, options, resty.MethodPut)
 }
 
 func patchEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-	return updateEntityOfType(entityType, body, options, false)
+	return updateEntityOfType(entityType, body, options, resty.MethodPatch)
+}
+
+func postEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, resty.MethodPost)
+}
+
+func deleteEntityOfTypeWithBody(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, resty.MethodDelete)
 }
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
-func updateEntityOfType(entityType string, body string, options *commonOptions, put bool) (*gabs.Container, error) {
-	return util.EdgeControllerUpdate(entityType, body, options.Out, put, options.OutputJSONResponse)
+func updateEntityOfType(entityType string, body string, options *commonOptions, method string) (*gabs.Container, error) {
+	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONResponse)
 }
 
 func doRequest(entityType string, options *commonOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {

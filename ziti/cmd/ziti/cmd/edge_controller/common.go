@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"os"
 	"strings"
 )
 
@@ -48,7 +49,9 @@ func mapNameToID(entityType string, val string) (string, error) {
 
 	entity := list[0]
 	entityId, _ := entity.Path("id").Data().(string)
-	fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
+	if val, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", val) {
+		fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
+	}
 	return entityId, nil
 }
 
@@ -86,7 +89,9 @@ func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 			for _, entity := range list {
 				entityId, _ := entity.Path("id").Data().(string)
 				result = append(result, entityId)
-				fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
+				if val, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", val) {
+					fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
+				}
 			}
 		}
 	}
