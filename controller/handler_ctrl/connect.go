@@ -63,7 +63,10 @@ func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []
 	}
 
 	if r, err := h.network.GetRouter(id); err == nil {
-		if r.Fingerprint != fingerprint {
+		if r.Fingerprint == nil {
+			return errors.New("router enrollment incomplete")
+		}
+		if *r.Fingerprint != fingerprint {
 			return errors.New("unenrolled router")
 		}
 	} else {

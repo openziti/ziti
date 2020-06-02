@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/util/stringz"
 	"reflect"
 )
 
@@ -57,7 +58,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 
 				responseR := &mgmt_pb.Router{
 					Id:          router.Id,
-					Fingerprint: router.Fingerprint,
+					Fingerprint: stringz.OrEmpty(router.Fingerprint),
 				}
 
 				if connR := h.network.GetConnectedRouter(router.Id); connR != nil {
