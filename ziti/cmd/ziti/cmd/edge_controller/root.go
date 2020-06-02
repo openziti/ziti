@@ -30,6 +30,7 @@ import (
 func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
 	cmd.AddCommand(newCmdEdgeController(f, out, errOut))
+	populateEdgeCommands(f, out, errOut, cmd)
 	return cmd
 }
 
@@ -42,6 +43,12 @@ type commonOptions struct {
 // newCmdEdgeController creates a command object for the "edge controller" command
 func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("controller", "Interact with a Ziti Edge Controller")
+	populateEdgeCommands(f, out, errOut, cmd)
+	return cmd
+}
+
+func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
+
 	cmd.AddCommand(newCreateCmd(f, out, errOut))
 	cmd.AddCommand(newDeleteCmd(f, out, errOut))
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
