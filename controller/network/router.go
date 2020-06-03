@@ -30,7 +30,7 @@ import (
 
 type Router struct {
 	models.BaseEntity
-	Fingerprint        string
+	Fingerprint        *string
 	AdvertisedListener string
 	Control            channel2.Channel
 	CostFactor         int
@@ -57,7 +57,7 @@ func (entity *Router) toBolt() *db.Router {
 func NewRouter(id, fingerprint string) *Router {
 	return &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
-		Fingerprint: fingerprint,
+		Fingerprint: &fingerprint,
 	}
 }
 

@@ -32,17 +32,17 @@ const (
 
 type Router struct {
 	boltz.BaseExtEntity
-	Fingerprint string
+	Fingerprint *string
 }
 
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
-	entity.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
+	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldRouterFingerprint, entity.Fingerprint)
+	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
 }
 
 func (entity *Router) GetEntityType() string {

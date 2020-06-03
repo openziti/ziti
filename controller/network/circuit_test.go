@@ -173,7 +173,7 @@ func TestTransitCircuit2(t *testing.T) {
 func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
 	r := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
-		Fingerprint: fingerprint,
+		Fingerprint: &fingerprint,
 		Control:     ctrl,
 		CostFactor:  1,
 	}
