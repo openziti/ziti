@@ -1,3 +1,10 @@
+# Release 0.14.8
+## Theme
+Ziti 0.14.8 includes the following:
+  
+* [Move ziti edge controller commands to ziti edge](https://github.com/openziti/ziti/issues/108)
+    * Note: for now `ziti edge` and `ziti edge controller` will both have edge controller related commands. `ziti edge controller` is deprecated and will be removed in a future release. Please update your scripts.
+
 # Release 0.14.7
 ## Theme
 Ziti 0.14.7 includes the following:
