@@ -111,7 +111,16 @@ paths:
                       fGhfRyAZYRdvT1sB+Eb4b5A2zEZqsTc9IwFOhnI4ZilPoZ5s2xejqrVw3GSvovEh
                       dprrQmvxuh+VQ23y/+/4z9b2xWyDu2zVveB4whqPe2rkgxJrEl4GfLk2DW+dN6j8
                       3Zl4lPoUZYwzkC6raCaHyFlAoaTbqz0H6rvVJYxJPS6UoQAxAA=='
-
+  '/':
+    get:
+      summary: Returns version information
+      security: []
+      tags:
+        - Informational
+      operationId: listRoot
+      responses:
+        '200':
+          $ref: '#/responses/listVersion'
   '/version':
     get:
       summary: Returns version information
@@ -251,7 +260,7 @@ paths:
       parameters:
         - name: Body
           in: body
-          required: true
+          required: false
           schema:
             $ref: '#/definitions/authenticate'
       responses:
@@ -287,7 +296,7 @@ paths:
         - ztSession: []
       tags:
         - Authenticator
-      operationId: createAuthenticators
+      operationId: createAuthenticator
       parameters:
         - name: Body
           in: body
@@ -398,23 +407,23 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: listCA
+        - Certificate Authority
+      operationId: listCas
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
         - $ref: '#/parameters/filter'
       responses:
         '200':
-          $ref: '#/responses/listCAs'
+          $ref: '#/responses/listCas'
     post:
       summary: Creates a CA
       description: Creates a CA in an unverified state. Requires admin access.
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: createCA
+        - Certificate Authority
+      operationId: createCa
 
       parameters:
         - name: Body
@@ -439,11 +448,11 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: detailCA
+        - Certificate Authority
+      operationId: detailCa
       responses:
         '200':
-          $ref: '#/responses/detailCA'
+          $ref: '#/responses/detailCa'
         '404':
           $ref: '#/responses/notFoundResponse'
         '401':
@@ -454,8 +463,8 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: updateCA
+        - Certificate Authority
+      operationId: updateCa
       parameters:
         - name: Body
           in: body
@@ -478,8 +487,8 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: patchCA
+        - Certificate Authority
+      operationId: patchCa
       parameters:
         - name: Body
           in: body
@@ -504,8 +513,8 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
-      operationId: deleteCA
+        - Certificate Authority
+      operationId: deleteCa
       responses:
         '200':
           $ref: '#/responses/deleteResponse'
@@ -524,7 +533,8 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
+        - Certificate Authority
+      operationId: getCaJwt
       produces:
         - 'application/jwt'
       responses:
@@ -554,7 +564,8 @@ paths:
       security:
         - ztSession: []
       tags:
-        - CA
+        - Certificate Authority
+      operationId: verifyCa
       consumes:
         - 'text/plain'
       parameters:
@@ -585,7 +596,7 @@ paths:
         - ztSession: []
       tags:
         - Config
-      operationId: listConfigType
+      operationId: listConfigTypes
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -723,7 +734,7 @@ paths:
         - ztSession: []
       tags:
         - Config
-      operationId: listConfig
+      operationId: listConfigs
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -856,7 +867,18 @@ paths:
           $ref: '#/responses/detailCurrentAPISession'
         401:
           $ref: '#/responses/unauthorizedResponse'
-
+    delete:
+      summary: Logout
+      description: Terminates the current API session
+      security:
+        - ztSession: []
+      tags:
+        - CurrentAPI Session
+      responses:
+        200:
+          $ref: '#/responses/emptyResponse'
+        401:
+          $ref: '#/responses/unauthorizedResponse'
   '/current-identity':
     get:
       summary: Return the current identity
@@ -923,7 +945,7 @@ paths:
           required: true
           description: 'An authenticator put object'
           schema:
-            $ref: '#/definitions/authenticatorUpdate'
+            $ref: '#/definitions/authenticatorUpdateWithCurrent'
       responses:
         '200':
           $ref: '#/responses/updateResponse'
@@ -949,7 +971,7 @@ paths:
           required: true
           description: An authenticator patch object
           schema:
-            $ref: '#/definitions/authenticatorPatch'
+            $ref: '#/definitions/authenticatorPatchWithCurrent'
       responses:
         '200':
           $ref: '#/responses/patchResponse'
@@ -1094,8 +1116,11 @@ paths:
       summary: List edge routers a policy affects
       description: |
         Retrieves a list of edge routers an edge router policy resources affects; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
       tags:
         - Edge Router Policy
+      operationId: listEdgeRouterPolicyEdgeRouters
       responses:
         '200':
           $ref: '#/responses/listEdgeRouters'
@@ -1110,8 +1135,11 @@ paths:
       summary: List identities an edge router policy affects
       description: |
         Retrieves a list of identities an edge router policy resources affects; supports filtering, sorting, and pagination. Requires admin access.
+      security:
+        - ztSession: []
       tags:
         - Edge Router Policy
+      operationId: listEdgeRouterPolicyIdentities
       responses:
         '200':
           $ref: '#/responses/listIdentities'
@@ -1295,7 +1323,7 @@ paths:
         - ztSession: []
       tags:
         - Edge Router
-      operationId: listEdgeRouterServicePolicies
+      operationId: listEdgeRouterServiceEdgeRouterPolicies
       responses:
         '200':
           $ref: '#/responses/listServicePolicies'
@@ -1326,6 +1354,29 @@ paths:
   ###################################################################
   # Enroll - Identity
   ##################################################################
+  '/enroll':
+    parameters:
+      - $ref: '#/parameters/token-optional'
+    post:
+      summary: Legacy enrollment endpoint
+      description: endpoint defers to the logic in the more specific `enroll/*` endpoints
+      operationId: enroll
+      tags:
+        - Enroll
+      consumes:
+        - application/pkcs10
+        - application/json
+        - application/x-pem-file
+        - text/plain
+      produces:
+        #default to PEM for older clients that do not properly set/inspect accept/content-type headers
+        - application/x-pem-file
+        - application/json
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
   '/enroll/ca':
     post:
       summary: Enroll an identity with a pre-exchanged certificate
@@ -1335,11 +1386,14 @@ paths:
         Certificate Authority that has been added and verified (See POST /cas and POST /cas/{id}/verify).
 
         During this process no CSRs are requires as the client should already be in possession of a valid certificate.
+      operationId: enrollCa
       tags:
         - Enroll
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
   '/enroll/ott':
     parameters:
       - $ref: '#/parameters/token'
@@ -1349,6 +1403,7 @@ paths:
         Enroll an identity via a one-time-token which is supplied via a query string parameter. This enrollment method
         expects a PEM encoded CSRs to be provided for fulfillment. It is up to the enrolling identity to manage the
         private key backing the CSR request.
+      operationId: enrollOtt
       tags:
         - Enroll
       consumes:
@@ -1358,6 +1413,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/zitiSignedCert'
+        '404':
+          $ref: '#/responses/notFoundResponse'
   '/enroll/ottca':
     parameters:
       - $ref: '#/parameters/token'
@@ -1370,6 +1427,7 @@ paths:
         CA auto enrollment except that is required the identity to be pre-created.
 
         As the client certificat has been pre-exchanged there is no CSR input to this enrollment method.
+      operationId: enrollOttCa
       tags:
         - Enroll
       responses:
@@ -1382,11 +1440,14 @@ paths:
       summary: Enroll an identity vvia one-time-token
       description: |
         Enrolls and identity via a one-time-token to establish an initial username and password combination.
+      operationId: ernollUpdb
       tags:
         - Enroll
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
   ###################################################################
   # Enroll - Routers
   ##################################################################
@@ -1397,6 +1458,7 @@ paths:
       summary: Enroll an edge-router
       description: |
         Enrolls an edge-router via a one-time-token to establish a certificate based identity.
+      operationId: enrollErOtt
       tags:
         - Enroll
       responses:
@@ -1472,7 +1534,7 @@ paths:
         - ztSession: []
       tags:
         - Geo Region
-      operationId: listGeoRegion
+      operationId: listGeoRegions
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -1674,7 +1736,7 @@ paths:
           required: true
           description: An identity patch object
           schema:
-            $ref: '#/definitions/serviceConfigs'
+            $ref: '#/definitions/serviceConfigsAssignList'
       security:
         - ztSession: []
       tags:
@@ -1695,10 +1757,10 @@ paths:
       parameters:
         - name: Body
           in: body
-          required: true
-          description: An identity patch object
+          required: false
+          description: An array of service and config id pairs to remove
           schema:
-            $ref: '#/definitions/serviceConfigs'
+            $ref: '#/definitions/serviceConfigsAssignList'
       security:
         - ztSession: []
       tags:
@@ -1807,7 +1869,7 @@ paths:
         - ztSession: []
       tags:
         - Identity
-      operationId: listIdentityType
+      operationId: listIdentityTypes
       parameters:
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -1911,7 +1973,7 @@ paths:
           required: true
           description: A service edge policy update object
           schema:
-            $ref: '#/definitions/serviceEdgePolicyUpdate'
+            $ref: '#/definitions/serviceEdgeRouterPolicyUpdate'
       responses:
         '200':
           $ref: '#/responses/updateResponse'
@@ -1935,7 +1997,7 @@ paths:
           required: true
           description: A service edge policy patch object
           schema:
-            $ref: '#/definitions/serviceEdgePolicyPatch'
+            $ref: '#/definitions/serviceEdgeRouterPolicyPatch'
       responses:
         '200':
           $ref: '#/responses/patchResponse'
@@ -2473,7 +2535,7 @@ paths:
             $ref: '#/definitions/sessionCreate'
       responses:
         '200':
-          $ref: '#/responses/createResponse'
+          $ref: '#/responses/sessionCreateResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
         '401':
@@ -2866,6 +2928,11 @@ parameters:
     format: uuid
     in: query
     required: true
+  token-optional:
+    name: token
+    type: string
+    format: uuid
+    in: query
   authMethod:
     name: method
     in: query
@@ -3014,7 +3081,11 @@ responses:
   createResponse:
     description: The create request was successful and the resource has been added at the following location
     schema:
-      $ref: '#/definitions/create'
+      $ref: '#/definitions/createEnvelope'
+  sessionCreateResponse:
+    description: The create request was successful and the resource has been added at the ollowing location.
+    schema:
+      $ref: '#/definitions/sessionCreateEnvelope'
   ###################################################################
   # Current Session
   ##################################################################
@@ -3108,14 +3179,14 @@ responses:
   ###################################################################
   # Certificate Authority
   ##################################################################
-  listCAs:
+  listCas:
     description: A list of Certificate Authorities (CAs)
     schema:
-      $ref: '#/definitions/listCAsEnvelope'
-  detailCA:
+      $ref: '#/definitions/listCasEnvelope'
+  detailCa:
     description: A singular Certificate Authority (CA) resource
     schema:
-      $ref: '#/definitions/detailCAEnvelope'
+      $ref: '#/definitions/detailCaEnvelope'
   ###################################################################
   # Config-Types
   ##################################################################
@@ -3186,7 +3257,7 @@ responses:
   erottResponse:
     description: A response containing the edge routers signed certificates (server chain, server cert, CAs).
     schema:
-      $ref: '#/definitions/erott'
+      $ref: '#/definitions/enrollmentCertsEnvelope'
   ###################################################################
   # Edge Routers
   ##################################################################
@@ -3347,6 +3418,7 @@ responses:
     description: A single transit router
     schema:
       $ref: '#/definitions/detailTransitRouterEnvelope'
+
 #######################################################################################################################
 #
 # Definitions - In & Out Models Only
@@ -3356,6 +3428,28 @@ definitions:
   ###################################################################
   # Shared Definitions
   ##################################################################
+  baseEntity:
+    description: Fields shared by all Edge API entities
+    type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - _links
+      - tags
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
   link:
     description: A link to another resource
     type: object
@@ -3372,6 +3466,7 @@ definitions:
   links:
     description: A map of named links
     type: object
+    x-omitempty: false
     additionalProperties:
       $ref: '#/definitions/link'
   entityRef:
@@ -3389,27 +3484,35 @@ definitions:
   tags:
     description: 'A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean'
     type: object
-    additionalProperties: true
-    properties: {}
+    x-omitempty: false
+    additionalProperties: {
+      type: object
+    }
   attributes:
     description: A set of strings used to loosly couple this resource to policies
     type: array
+    x-omitempty: false
     items:
       type: string
   roles:
     type: array
+    x-omitempty: false
     items:
       type: string
   semantic:
     type: string
     enum:
       - AllOf
-      - OneOf
+      - AnyOf
   dialBind:
     type: string
     enum:
       - Dial
       - Bind
+  dialBindArray:
+    type: array
+    items:
+      $ref: '#/definitions/dialBind'
   ###################################################################
   # Authentication
   ##################################################################
@@ -3417,10 +3520,20 @@ definitions:
     type: string
     minLength: 5
     maxLength: 100
+  password-nullable:
+    type: string
+    minLength: 5
+    maxLength: 100
+    x-nullable: true
   username:
     type: string
     minLength: 4
     maxLength: 100
+  username-nullable:
+    type: string
+    minLength: 4
+    maxLength: 100
+    x-nullable: true
   authenticate:
     type: object
     description: A generic authenticate object meant for use with the /authenticate path. Required fields depend on authentication method.
@@ -3445,39 +3558,58 @@ definitions:
   apiSessionDetail:
     description: An API Session object
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      token:
-        type: string
-      identity:
-        allOf:
-          - $ref: '#/definitions/entityRef'
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - token
+          - identity
+          - identityId
+          - configTypes
+        properties:
+          token:
+            type: string
+          identity:
+            $ref: '#/definitions/entityRef'
+          identityId:
+            type: string
+          configTypes:
+            type: array
+            items:
+              type: string
+  currentApiSessionDetail:
+    description: An API Session object for the current API session
+    type: object
+    allOf:
+      - $ref: '#/definitions/apiSessionDetail'
+      - type: object
+        required:
+          - expiresAt
+        properties:
+          expiresAt:
+            type: string
+            format: date-time
   ###################################################################
   # Identities
   ##################################################################
+  identityType:
+    type: string
+    enum:
+      - User
+      - Device
+      - Service
   identityCreate:
     description: An identity to create
     type: object
+    required:
+      - name
+      - type
+      - isAdmin
     properties:
       name:
         type: string
       type:
-        type: string
-        enum:
-          - User
-          - Device
-          - Service
+        $ref: '#/definitions/identityType'
       isAdmin:
         type: boolean
       enrollment:
@@ -3490,6 +3622,8 @@ definitions:
           ottca:
             type: string
             format: uuid
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
   identityUpdate:
@@ -3498,18 +3632,15 @@ definitions:
       - type
       - name
       - isAdmin
-      - tags
     properties:
       name:
         type: string
       type:
-        type: string
-        enum:
-          - User
-          - Device
-          - Service
+        $ref: '#/definitions/identityType'
       isAdmin:
         type: boolean
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
   identityPatch:
@@ -3518,13 +3649,13 @@ definitions:
       name:
         type: string
       type:
-        type: string
-        enum:
-          - User
-          - Device
-          - Service
+        $ref: '#/definitions/identityType'
       isAdmin:
         type: boolean
+      roleAttributes:
+        $ref: '#/definitions/attributes'
+      tags:
+        $ref: '#/definitions/tags'
   identityList:
     description: A list of identities
     type: array
@@ -3533,66 +3664,93 @@ definitions:
   identityDetail:
     description: Detail of a specific identity
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/entityRef'
-      isDefaultAdmin:
-        type: boolean
-      isAdmin:
-        type: boolean
-      authenticators:
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - type
+          - typeId
+          - isDefaultAdmin
+          - isAdmin
+          - authenticators
+          - enrollment
+          - envInfo
+          - sdkInfo
+          - roleAttributes
         properties:
-          updb:
-            properties:
-              username:
-                type: string
-            type: object
-        type: object
-      enrollment:
-        properties: {}
-        type: object
-      envInfo:
-        type: "object"
-        properties:
-          arch:
-            type: "string"
-          os:
-            type: "string"
-          osRelease:
-            type: "string"
-          osVersion:
-            type: "string"
-      sdkInfo:
-        type: "object"
-        properties:
-          branch:
-            type: "string"
-          revision:
-            type: "string"
+          name:
+            type: string
           type:
-            type: "string"
-          version:
-            type: "string"
+            $ref: '#/definitions/entityRef'
+          typeId:
+            type: string
+          isDefaultAdmin:
+            type: boolean
+          isAdmin:
+            type: boolean
+          authenticators:
+            $ref: '#/definitions/identityAuthenticators'
+          enrollment:
+            $ref: '#/definitions/identityEnrollments'
+          envInfo:
+            $ref: '#/definitions/envInfo'
+          sdkInfo:
+            $ref: '#/definitions/sdkInfo'
+          roleAttributes:
+            $ref: '#/definitions/attributes'
+  identityAuthenticators:
+    type: object
+    properties:
+      updb:
+        properties:
+          username:
+            type: string
+        type: object
+      cert:
+        type: object
+        properties:
+          fingerprint:
+            type: string
+  identityEnrollments:
+    type: object
+    properties:
+      updb:
+        type: object
+        properties:
+          token:
+            type: string
+          jwt:
+            type: string
+      ott:
+        type: object
+        properties:
+          token:
+            type: string
+          jwt:
+            type: string
+      ottca:
+        type: object
+        properties:
+          token:
+            type: string
+          jwt:
+            type: string
+          caId:
+            type: string
+          ca:
+            $ref: '#/definitions/entityRef'
   ###################################################################
   # Authenticator
   ##################################################################
   authenticatorCreate:
     description: Creates an authenticator for a specific identity which can be used for API authentication
     type: object
+    required:
+      - username
+      - password
+      - method
+      - identityId
     properties:
       username:
         type: string
@@ -3612,29 +3770,30 @@ definitions:
     description: An array of authenticator resources
     type: array
     items:
-      $ref: '#/definitions/apiSessionDetail'
+      $ref: '#/definitions/authenticatorDetail'
   authenticatorDetail:
     description: A singular authenticator resource
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      method:
-        type: string
-      identityId:
-        type: string
-      certPem:
-        type: string
-      fingerprint:
-        type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - method
+          - identityId
+          - identity
+        properties:
+          method:
+            type: string
+          identityId:
+            type: string
+          identity:
+            $ref: '#/definitions/entityRef'
+          certPem:
+            type: string
+          fingerprint:
+            type: string
+          username:
+            type: string
   authenticatorUpdate:
     description: All of the fields on an authenticator that will be updated
     type: object
@@ -3646,14 +3805,40 @@ definitions:
         $ref: '#/definitions/username'
       password:
         $ref: '#/definitions/password'
+      tags:
+        $ref: '#/definitions/tags'
   authenticatorPatch:
     description: All of the fields on an authenticator that may be updated
     type: object
     properties:
       username:
-        $ref: '#/definitions/username'
+        $ref: '#/definitions/username-nullable'
       password:
-        $ref: '#/definitions/password'
+        $ref: '#/definitions/password-nullable'
+      tags:
+        $ref: '#/definitions/tags'
+  authenticatorUpdateWithCurrent:
+    description: All of the fields on an authenticator that will be updated
+    type: object
+    allOf:
+      - $ref: '#/definitions/authenticatorUpdate'
+      - type: object
+        required:
+          - currentPassword
+        properties:
+          currentPassword:
+            $ref: '#/definitions/password'
+  authenticatorPatchWithCurrent:
+    description: All of the fields on an authenticator that may be updated
+    type: object
+    allOf:
+      - $ref: '#/definitions/authenticatorPatch'
+      - type: object
+        required:
+          - currentPassword
+        properties:
+          currentPassword:
+            $ref: '#/definitions/password'
   ###################################################################
   # Certificate Authorities
   ##################################################################
@@ -3665,88 +3850,55 @@ definitions:
   caDetail:
     description: A Certificate Authority (CA) resource
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      fingerprint:
-        type: string
-      certPem:
-        type: string
-      isVerified:
-        type: boolean
-        example: false
-      verificationToken:
-        type: string
-        format: uuid
-      isAutoCaEnrollmentEnabled:
-        type: boolean
-        example: true
-      isOttCaEnrollmentEnabled:
-        type: boolean
-        example: true
-      isAuthEnabled:
-        type: boolean
-        example: true
-      identityRoles:
-        $ref: '#/definitions/roles'
-      identityNameFormat:
-        type: string
-    example:
-      id: c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c
-      createdAt: '2020-03-10T15:20:40.4301069Z'
-      updatedAt: '2020-03-10T15:20:40.4301069Z'
-      _links:
-        jwt:
-          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c/jwt'
-          method: GET
-        self:
-          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c'
-        verify:
-          href: './cas/c0db0ec1-f0ac-461e-8dbf-0597ad33dd8c/verify'
-          method: POST
-      tags:
-        externalId: '1234567489'
-      name: Test 3rd Party External CA-505d3728-6c4b-473b-8050-4862f8cf997c
-      fingerprint: 95:F1:95:C3:6D:B0:1E:4A:70:63:A7:E3:AB:8E:B2:B1:B4:10:BD:DB
-      certPem: |-
-        -----BEGIN CERTIFICATE-----
-        MIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT
-        AlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk
-        TmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy
-        NTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D
-        MRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg
-        RXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z
-        Iaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/
-        3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh
-        MB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG
-        uc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB
-        hjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms
-        kllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE
-        1ZG1zveyMvsYsH04C9FndE6w2MLvlA==
-        -----END CERTIFICATE-----
-      isVerified: false
-      verificationToken: 53065a7d-a535-4072-86a2-dd55b71f779c
-      isAutoCaEnrollmentEnabled: true
-      isOttCaEnrollmentEnabled: true
-      isAuthEnabled: true
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - fingerprint
+          - certPem
+          - isVerified
+          - isAutoCaEnrollmentEnabled
+          - isOttCaEnrollmentEnabled
+          - isAuthEnabled
+          - identityRoles
+          - identityNameFormat
+        properties:
+          name:
+            type: string
+          fingerprint:
+            type: string
+          certPem:
+            type: string
+          isVerified:
+            type: boolean
+            example: false
+          verificationToken:
+            type: string
+            format: uuid
+          isAutoCaEnrollmentEnabled:
+            type: boolean
+            example: true
+          isOttCaEnrollmentEnabled:
+            type: boolean
+            example: true
+          isAuthEnabled:
+            type: boolean
+            example: true
+          identityRoles:
+            $ref: '#/definitions/roles'
+          identityNameFormat:
+            type: string
   caCreate:
     description: A create Certificate Authority (CA) object
     type: object
     required:
       - name
       - certPem
+      - isAutoCaEnrollmentEnabled
+      - isOttCaEnrollmentEnabled
+      - isAuthEnabled
+      - identityRoles
     properties:
       name:
         type: string
@@ -3769,29 +3921,6 @@ definitions:
         type: string
       tags:
         $ref: '#/definitions/tags'
-    example:
-      name: Test 3rd Party External CA
-      isAutoCaEnrollmentEnabled: true
-      isAuthEnabled: true
-      isOttCaEnrollmentEnabled: true
-      certPem: |-
-        -----BEGIN CERTIFICATE-----
-        MIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT
-        AlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk
-        TmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy
-        NTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D
-        MRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg
-        RXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z
-        Iaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/
-        3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh
-        MB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG
-        uc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB
-        hjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms
-        kllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE
-        1ZG1zveyMvsYsH04C9FndE6w2MLvlA==
-        -----END CERTIFICATE-----
-      tags:
-        externalId: '1234567489'
   caUpdate:
     type: object
     required:
@@ -3799,6 +3928,7 @@ definitions:
       - isAutoCaEnrollmentEnabled
       - isOttCaEnrollmentEnabled
       - isAuthEnabled
+      - identityRoles
     properties:
       name:
         type: string
@@ -3850,34 +3980,25 @@ definitions:
   configTypeDetail:
     description: A config-type resource
     type: object
-    properties:
-      id:
-        type: string
-        example: cea49285-6c07-42cf-9f52-09a9b115c783
-      createdAt:
-        type: string
-        format: date-time
-        example: 2020-02-06T18:50:32.7812998Z
-      updatedAt:
-        type: string
-        format: date-time
-        example: 2020-02-06T18:50:32.7812998Z
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-        example: ziti-tunneler-server.v1
-      schema:
-        description: A JSON schema to enforce configuration against
-        type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - schema
+        properties:
+          name:
+            type: string
+            example: ziti-tunneler-server.v1
+          schema:
+            description: A JSON schema to enforce configuration against
+            type: object
+            additionalProperties: true
   configTypeCreate:
     type: object
     description: A config-type create object
     required:
       - name
-      - schema
     properties:
       tags:
         $ref: '#/definitions/tags'
@@ -3887,12 +4008,12 @@ definitions:
       schema:
         description: A JSON schema to enforce configuration against
         type: object
+        additionalProperties: true
   configTypeUpdate:
     description: A config-type update object
     type: object
     required:
       - name
-      - schema
     properties:
       tags:
         $ref: '#/definitions/tags'
@@ -3902,6 +4023,7 @@ definitions:
       schema:
         description: A JSON schema to enforce configuration against
         type: object
+        additionalProperties: true
   configTypePatch:
     description: A config-type patch object
     type: object
@@ -3914,6 +4036,7 @@ definitions:
       schema:
         description: A JSON schema to enforce configuration against
         type: object
+        additionalProperties: true
   ###################################################################
   # Configs
   ##################################################################
@@ -3925,32 +4048,30 @@ definitions:
   configDetail:
     description: A config resource
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/entityRef'
-      data:
-        type: object
-        description: The data section of a config is based on the schema of its type
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - configTypeId
+          - configType
+          - data
+        properties:
+          name:
+            type: string
+          configTypeId:
+            type: string
+          configType:
+            $ref: '#/definitions/entityRef'
+          data:
+            type: object
+            description: The data section of a config is based on the schema of its type
   configCreate:
     type: object
     description: A config create object
     required:
       - name
-      - type
+      - configTypeId
       - data
     properties:
       tags:
@@ -3958,11 +4079,13 @@ definitions:
       name:
         type: string
         example: default.ziti-tunneler-server.v1
-      type:
+      configTypeId:
         type: string
         description: The id of a config-type that the data section will match
       data:
         type: object
+        x-nullable: false
+        additionalProperties: true
         description: Data payload is defined by the schema of the config-type defined in the type parameter
     example:
       name: test-config
@@ -3984,6 +4107,8 @@ definitions:
         example: default.ziti-tunneler-server.v1
       data:
         type: object
+        x-nullable: false
+        additionalProperties: true
         description: Data payload is defined by the schema of the config-type defined in the type parameter
     example:
       name: example-config-name
@@ -4001,6 +4126,7 @@ definitions:
         example: default.ziti-tunneler-server.v1
       data:
         type: object
+        additionalProperties: true
         description: Data payload is defined by the schema of the config-type defined in the type parameter
     example:
       name: example-config-name
@@ -4016,31 +4142,40 @@ definitions:
       An enrollment object. Enrolments are tied to identities and portentially a CA. Depending on the
       method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
       use the username field, but not vice versa.
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      token:
-        type: string
-      method:
-        type: string
-      expiresAt:
-        type: string
-      identity:
-        $ref: '#/definitions/entityRef'
-      username:
-        type: string
-      details:
-        type: object
-        additionalProperties:
-          type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - token
+          - method
+          - expiresAt
+          - details
+        properties:
+          token:
+            type: string
+          method:
+            type: string
+          expiresAt:
+            type: string
+            format: 'date-time'
+          identityId:
+            type: string
+          identity:
+            $ref: '#/definitions/entityRef'
+          edgeRouterId:
+            type: string
+          edgeRouter:
+            $ref: '#/definitions/entityRef'
+          transitRouterId:
+            type: string
+          transitRouter:
+            $ref: '#/definitions/entityRef'
+          username:
+            type: string
+          details:
+            type: object
+            additionalProperties:
+              type: string
     example:
       id: 624fa53f-7629-4a7a-9e38-c1f4ce322c1d
       createdAt: '0001-01-01T00:00:00Z'
@@ -4086,7 +4221,6 @@ definitions:
     type: object
     required:
       - name
-      - tags
     properties:
       name:
         type: string
@@ -4112,41 +4246,47 @@ definitions:
   edgeRouterDetail:
     description: A detail edge router resource
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      isVerified:
-        type: boolean
-      isOnline:
-        type: boolean
-      enrollmentToken:
-        type: string
-      enrollmentJwt:
-        type: string
-      enrollmentCreatedAt:
-        type: string
-        format: date-time
-      enrollmentExpiresAt:
-        type: string
-        format: date-time
-      hostname:
-        type: string
-      supportedProtocols:
-        additionalProperties:
-          type: string
-        type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - isVerified
+          - isOnline
+          - hostname
+          - supportedProtocols
+          - roleAttributes
+        properties:
+          name:
+            type: string
+          isVerified:
+            type: boolean
+          isOnline:
+            type: boolean
+          enrollmentToken:
+            type: string
+            x-nullable: true
+          enrollmentJwt:
+            type: string
+            x-nullable: true
+          enrollmentCreatedAt:
+            type: string
+            format: date-time
+            x-nullable: true
+          enrollmentExpiresAt:
+            type: string
+            format: date-time
+            x-nullable: true
+          hostname:
+            type: string
+          supportedProtocols:
+            additionalProperties:
+              type: string
+            type: object
+          roleAttributes:
+            $ref: '#/definitions/attributes'
+          fingerprint:
+            type: string
     example:
       id: b0766b8d-bd1a-4d28-8415-639b29d3c83d
       createdAt: '2020-03-16T17:13:31.5807454Z'
@@ -4208,8 +4348,6 @@ definitions:
       tags:
         $ref: '#/definitions/tags'
   edgeRouterPolicyPatch:
-    required:
-      - name
     properties:
       name:
         type: string
@@ -4227,31 +4365,27 @@ definitions:
       $ref: '#/definitions/edgeRouterPolicyDetail'
   edgeRouterPolicyDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      semantic:
-        $ref: '#/definitions/semantic'
-      edgeRouterRoles:
-        type: array
-        items:
-          type: string
-      identityRoles:
-        type: array
-        items:
-          type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - semantic
+          - edgeRouterRoles
+          - identityRoles
+        properties:
+          name:
+            type: string
+          semantic:
+            $ref: '#/definitions/semantic'
+          edgeRouterRoles:
+            type: array
+            items:
+              type: string
+          identityRoles:
+            type: array
+            items:
+              type: string
   ###################################################################
   # Service Policies
   ##################################################################
@@ -4261,29 +4395,26 @@ definitions:
       $ref: '#/definitions/servicePolicyDetail'
   servicePolicyDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/dialBind'
-      semantic:
-        $ref: '#/definitions/semantic'
-      serviceRoles:
-        $ref: '#/definitions/roles'
-      identityRoles:
-        $ref: '#/definitions/roles'
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - type
+          - semantic
+          - serviceRoles
+          - identityRoles
+        properties:
+          name:
+            type: string
+          type:
+            $ref: '#/definitions/dialBind'
+          semantic:
+            $ref: '#/definitions/semantic'
+          serviceRoles:
+            $ref: '#/definitions/roles'
+          identityRoles:
+            $ref: '#/definitions/roles'
   servicePolicyCreate:
     type: object
     required:
@@ -4307,9 +4438,6 @@ definitions:
     required:
       - name
       - type
-      - semantic
-      - serviceRoles
-      - identityRoles
     properties:
       tags:
         $ref: '#/definitions/tags'
@@ -4325,9 +4453,6 @@ definitions:
         $ref: '#/definitions/roles'
   servicePolicyPatch:
     type: object
-    required:
-      - name
-      - type
     properties:
       tags:
         $ref: '#/definitions/tags'
@@ -4350,35 +4475,35 @@ definitions:
       $ref: '#/definitions/serviceDetail'
   serviceDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      terminatorStrategy:
-        type: string
-      roleAttributes:
-        $ref: '#/definitions/attributes'
-      permissions:
-        $ref: '#/definitions/dialBind'
-      configs:
-        type: array
-        items:
-          $ref: '#/definitions/entityRef'
-      config:
-        type: object
-        additionalProperties:
-          type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - terminatorStrategy
+          - roleAttributes
+          - permissions
+          - configs
+          - config
+        properties:
+          name:
+            type: string
+          terminatorStrategy:
+            type: string
+          roleAttributes:
+            $ref: '#/definitions/attributes'
+          permissions:
+            $ref: '#/definitions/dialBindArray'
+          configs:
+            type: array
+            items:
+              type: string
+          config:
+            type: object
+            additionalProperties:
+              type: object
+              additionalProperties:
+                type: object
         description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
   serviceCreate:
     type: object
@@ -4403,9 +4528,6 @@ definitions:
     type: object
     required:
       - name
-      - terminatorStrategy
-      - roleAttributes
-      - configs
     properties:
       name:
         type: string
@@ -4447,21 +4569,14 @@ definitions:
       $ref: '#/definitions/geoRegionDetail'
   geoRegionDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
   ###################################################################
   # Identity-Types
   ##################################################################
@@ -4471,21 +4586,12 @@ definitions:
       $ref: '#/definitions/identityDetail'
   identityTypeDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        properties:
+          name:
+            type: string
   ###################################################################
   # Service Configs
   ##################################################################
@@ -4495,9 +4601,18 @@ definitions:
       $ref: '#/definitions/serviceConfigDetail'
   serviceConfigDetail:
     type: object
+    required:
+      - serviceId
+      - service
+      - configId
+      - config
     properties:
+      serviceId:
+        type: string
       service:
         $ref: '#/definitions/entityRef'
+      configId:
+        type: string
       config:
         $ref: '#/definitions/entityRef'
     example:
@@ -4515,17 +4630,20 @@ definitions:
         _links:
           self:
             href: "./identities/13347602-ba34-4ff7-8082-e533ba945744"
-  serviceConfig:
+  serviceConfigAssign:
     type: object
+    required:
+      - serviceId
+      - configId
     properties:
-      service:
+      serviceId:
         type: string
-      config:
+      configId:
         type: string
-  serviceConfigs:
+  serviceConfigsAssignList:
     type: array
     items:
-      $ref: '#/definitions/serviceConfig'
+      $ref: '#/definitions/serviceConfigAssign'
   ###################################################################
   # Service Edge Router Policies
   ##################################################################
@@ -4535,27 +4653,23 @@ definitions:
       $ref: '#/definitions/serviceEdgeRouterPolicyDetail'
   serviceEdgeRouterPolicyDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      semantic:
-        $ref: '#/definitions/semantic'
-      edgeRouterRoles:
-        $ref: '#/definitions/roles'
-      serviceRoles:
-        $ref: '#/definitions/roles'
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - semantic
+          - edgeRouterRoles
+          - serviceRoles
+        properties:
+          name:
+            type: string
+          semantic:
+            $ref: '#/definitions/semantic'
+          edgeRouterRoles:
+            $ref: '#/definitions/roles'
+          serviceRoles:
+            $ref: '#/definitions/roles'
   serviceEdgeRouterPolicyCreate:
     type: object
     required:
@@ -4571,14 +4685,10 @@ definitions:
         $ref: '#/definitions/roles'
       serviceRoles:
         $ref: '#/definitions/roles'
-  serviceEdgePolicyUpdate:
+  serviceEdgeRouterPolicyUpdate:
     type: object
     required:
       - name
-      - tags
-      - semantic
-      - edgeRouterRoles
-      - serviceRoles
     properties:
       tags:
         $ref: '#/definitions/tags'
@@ -4590,7 +4700,7 @@ definitions:
         $ref: '#/definitions/roles'
       serviceRoles:
         $ref: '#/definitions/roles'
-  serviceEdgePolicyPatch:
+  serviceEdgeRouterPolicyPatch:
     type: object
     properties:
       tags:
@@ -4621,29 +4731,34 @@ definitions:
       $ref: '#/definitions/sessionDetail'
   sessionDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      type:
-        $ref: '#/definitions/dialBind'
-      apiSession:
-        $ref: '#/definitions/entityRef'
-      service:
-        $ref: '#/definitions/entityRef'
-      sessionEdgeRouters:
-        type: array
-        items:
-          $ref: '#/definitions/sessionEdgeRouter'
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - type
+          - apiSessionId
+          - apiSession
+          - serviceId
+          - service
+          - token
+          - edgeRouters
+        properties:
+          type:
+            $ref: '#/definitions/dialBind'
+          token:
+            type: string
+          apiSessionId:
+            type: string
+          apiSession:
+            $ref: '#/definitions/entityRef'
+          serviceId:
+            type: string
+          service:
+            $ref: '#/definitions/entityRef'
+          edgeRouters:
+            type: array
+            items:
+              $ref: '#/definitions/sessionEdgeRouter'
   sessionEdgeRouter:
     type: object
     properties:
@@ -4657,6 +4772,9 @@ definitions:
           type: string
   apiErrorEnvelope:
     type: object
+    required:
+      - meta
+      - error
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4677,15 +4795,19 @@ definitions:
         type: string
       cause:
         $ref: '#/definitions/apiErrorCause'
-  apiErrorCause:
+  apiFieldError:
     type: object
     properties:
-      code:
+      reason:
         type: string
-      message:
+      field:
         type: string
-      cause:
+      value:
         type: string
+  apiErrorCause:
+    allOf:
+      - $ref: '#/definitions/apiFieldError'
+      - $ref: '#/definitions/apiError'
   apiErrorArgs:
     type: object
     properties:
@@ -4696,6 +4818,9 @@ definitions:
         type: object
   empty:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4703,27 +4828,59 @@ definitions:
         type: object
         example: {}
   meta:
+    type: object
     properties:
       filterableFields:
         type: array
         items:
           type: string
+        x-omitempty: true
       pagination:
         $ref: '#/definitions/pagination'
-    type: object
-  create:
+      apiEnrolmentVersion:
+        type: string
+      apiVersion:
+        type: string
+  createEnvelope:
     type: object
     properties:
       meta:
-        properties: {}
-        type: object
+        $ref: '#/definitions/meta'
       data:
+        $ref: '#/definitions/createLocation'
+  createLocation:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/links'
+      id:
+        type: string
+  sessionCreateEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionCreateLocation'
+  enrollmentCertsEnvelope:
+    type: object
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/enrollmentCerts'
+  sessionCreateLocation:
+    type: object
+    allOf:
+      - $ref: '#/definitions/createLocation'
+      - type: object
         properties:
-          _links:
-            $ref: '#/definitions/links'
-          id:
+          token:
             type: string
-        type: object
+          edgeRouters:
+            type: array
+            items:
+              $ref: '#/definitions/sessionEdgeRouter'
   version:
     type: object
     properties:
@@ -4743,7 +4900,7 @@ definitions:
     type: object
     additionalProperties:
       type: integer
-  erott:
+  enrollmentCerts:
     type: object
     properties:
       serverCert:
@@ -4757,25 +4914,37 @@ definitions:
         description: A PEM encoded set of CA certificates to trust
   currentAPISessionDetailEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
-        $ref: '#/definitions/apiSessionDetail'
+        $ref: '#/definitions/currentApiSessionDetail'
   currentIdentityDetailEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/identityDetail'
   listAPISessionsEnvelope:
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/apiSessionList'
   detailAPISessionEnvelope:
+    required:
+      - meta
+      - data
     type: object
     properties:
       meta:
@@ -4791,20 +4960,29 @@ definitions:
         $ref: '#/definitions/authenticatorList'
   detailAuthenticatorEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/authenticatorDetail'
-  listCAsEnvelope:
+  listCasEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/caList'
-  detailCAEnvelope:
+  detailCaEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4812,6 +4990,9 @@ definitions:
         $ref: '#/definitions/caDetail'
   listConfigTypesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4819,12 +5000,19 @@ definitions:
         $ref: '#/definitions/configTypeList'
   detailConfigTypeEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/configTypeDetail'
   listConfigsEnvelope:
+    type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4832,6 +5020,9 @@ definitions:
         $ref: '#/definitions/configList'
   detailConfigEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4839,6 +5030,9 @@ definitions:
         $ref: '#/definitions/configDetail'
   listVersionEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4846,6 +5040,9 @@ definitions:
         $ref: '#/definitions/version'
   listSummaryCountsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4853,6 +5050,9 @@ definitions:
         $ref: '#/definitions/listSummaryCounts'
   listEnrollmentsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4860,6 +5060,9 @@ definitions:
         $ref: '#/definitions/enrollmentList'
   detailEnrollmentEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4867,6 +5070,9 @@ definitions:
         $ref: '#/definitions/enrollmentDetail'
   listEdgeRoutersEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4874,6 +5080,9 @@ definitions:
         $ref: '#/definitions/edgeRouterList'
   detailedEdgeRouterEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4881,6 +5090,9 @@ definitions:
         $ref: '#/definitions/edgeRouterDetail'
   listEdgeRouterPoliciesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4888,6 +5100,9 @@ definitions:
         $ref: '#/definitions/edgeRouterPolicyList'
   detailEdgeRouterPolicyEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4895,6 +5110,9 @@ definitions:
         $ref: '#/definitions/edgeRouterPolicyDetail'
   listServicePoliciesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4902,6 +5120,9 @@ definitions:
         $ref: '#/definitions/servicePolicyList'
   detailServicePolicyEnvelop:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4909,6 +5130,9 @@ definitions:
         $ref: '#/definitions/servicePolicyDetail'
   listServicesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4916,6 +5140,9 @@ definitions:
         $ref: '#/definitions/serviceList'
   detailServiceEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4923,6 +5150,9 @@ definitions:
         $ref: '#/definitions/serviceDetail'
   listIdentitiesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4930,6 +5160,9 @@ definitions:
         $ref: '#/definitions/identityList'
   detailIdentityEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4937,6 +5170,9 @@ definitions:
         $ref: '#/definitions/identityDetail'
   listGeoRegionsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4944,6 +5180,9 @@ definitions:
         $ref: '#/definitions/geoRegionList'
   detailGeoRegionEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4951,6 +5190,9 @@ definitions:
         $ref: '#/definitions/geoRegionDetail'
   listIdentityTypesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4958,6 +5200,9 @@ definitions:
         $ref: '#/definitions/identityTypeList'
   detailIdentityTypeEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4965,6 +5210,9 @@ definitions:
         $ref: '#/definitions/identityTypeDetail'
   listServiceConfigsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4972,6 +5220,9 @@ definitions:
         $ref: '#/definitions/serviceConfigList'
   listServiceEdgeRouterPoliciesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4979,6 +5230,9 @@ definitions:
         $ref: '#/definitions/serviceEdgeRouterPolicyList'
   detailServiceEdgePolicyEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4986,6 +5240,9 @@ definitions:
         $ref: '#/definitions/serviceEdgeRouterPolicyDetail'
   listSessionsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -4993,6 +5250,9 @@ definitions:
         $ref: '#/definitions/sessionList'
   detailSessionEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5032,15 +5292,21 @@ definitions:
     properties:
       limit:
         type: number
+        format: int64
       offset:
         type: number
+        format: int64
       totalCount:
         type: number
+        format: int64
   ###################################################################
   # Terminators
   ##################################################################
   listTerminatorsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5048,6 +5314,9 @@ definitions:
         $ref: '#/definitions/terminatorList'
   detailTerminatorEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5059,37 +5328,38 @@ definitions:
       $ref: '#/definitions/terminatorDetail'
   terminatorDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      serviceId:
-        type: string
-      service:
-        $ref: '#/definitions/entityRef'
-      routerId:
-        type: string
-      router:
-        $ref: '#/definitions/entityRef'
-      binding:
-        type: string
-      address:
-        type: string
-      cost:
-        $ref: '#/definitions/terminatorCost'
-      precedence:
-        $ref: '#/definitions/terminatorPrecedence'
-      dynamicCost:
-        $ref: '#/definitions/terminatorCost'
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - serviceId
+          - service
+          - routerId
+          - router
+          - binding
+          - address
+          - cost
+          - precedence
+          - dynamicCost
+        properties:
+          serviceId:
+            type: string
+          service:
+            $ref: '#/definitions/entityRef'
+          routerId:
+            type: string
+          router:
+            $ref: '#/definitions/entityRef'
+          binding:
+            type: string
+          address:
+            type: string
+          cost:
+            $ref: '#/definitions/terminatorCost'
+          precedence:
+            $ref: '#/definitions/terminatorPrecedence'
+          dynamicCost:
+            $ref: '#/definitions/terminatorCost'
 
   terminatorCreate:
     type: object
@@ -5118,8 +5388,6 @@ definitions:
       - service
       - router
       - address
-      - binding
-      - tags
     properties:
       service:
         type: string
@@ -5157,6 +5425,9 @@ definitions:
   ##################################################################
   listSpecsEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5164,6 +5435,9 @@ definitions:
         $ref: '#/definitions/specList'
   detailSpecEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5171,6 +5445,9 @@ definitions:
         $ref: '#/definitions/specDetail'
   detailSpecBodyEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5182,26 +5459,22 @@ definitions:
       $ref: '#/definitions/specDetail'
   specDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
   specBodyDetail:
     type: string
 
   listRoleAttributesEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5216,6 +5489,9 @@ definitions:
 
   getIdentityPolicyAdviceEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5239,14 +5515,14 @@ definitions:
         type: "boolean"
       identityRouterCount:
         type: "number"
+        format: int32
       serviceRouterCount:
         type: "number"
+        format: int32
       commonRouters:
         type: "array"
         items:
-          type: "object"
-          items:
-            $ref: '#/definitions/routerEntityRef'
+          $ref: '#/definitions/routerEntityRef'
 
   routerEntityRef:
     type: object
@@ -5262,6 +5538,9 @@ definitions:
   ##################################################################
   listTransitRoutersEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5269,6 +5548,9 @@ definitions:
         $ref: '#/definitions/transitRouterList'
   detailTransitRouterEnvelope:
     type: object
+    required:
+      - meta
+      - data
     properties:
       meta:
         $ref: '#/definitions/meta'
@@ -5280,27 +5562,37 @@ definitions:
       $ref: '#/definitions/transitRouterDetail'
   transitRouterDetail:
     type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-      _links:
-        $ref: '#/definitions/links'
-      tags:
-        $ref: '#/definitions/tags'
-      name:
-        type: string
-      fingerprint:
-        type: string
-      isVerified:
-        type: boolean
-      isOnline:
-        type: boolean
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - isVerified
+          - isOnline
+          - fingerprint
+        properties:
+          name:
+            type: string
+          fingerprint:
+            type: string
+          isVerified:
+            type: boolean
+          isOnline:
+            type: boolean
+          enrollmentToken:
+            type: string
+            x-nullable: true
+          enrollmentJwt:
+            type: string
+            x-nullable: true
+          enrollmentCreatedAt:
+            type: string
+            format: date-time
+            x-nullable: true
+          enrollmentExpiresAt:
+            type: string
+            format: date-time
+            x-nullable: true
   transitRouterCreate:
     type: object
     required:
@@ -5308,6 +5600,8 @@ definitions:
     properties:
       name:
         type: string
+      tags:
+        $ref: '#/definitions/tags'
   transitRouterUpdate:
     type: object
     required:
@@ -5315,19 +5609,25 @@ definitions:
     properties:
       name:
         type: string
+      tags:
+        $ref: '#/definitions/tags'
   transitRouterPatch:
     type: object
     properties:
       name:
         type: string
+      tags:
+        $ref: '#/definitions/tags'
   terminatorCost:
     type: integer
     minimum: 0
     maximum: 65535
+    x-nullable: true
   terminatorPrecedence:
     type: string
     enum:
       - default
       - required
       - failed
+
 
