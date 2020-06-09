@@ -1439,7 +1439,7 @@ paths:
     post:
       summary: Enroll an identity vvia one-time-token
       description: |
-        Enrolls and identity via a one-time-token to establish an initial username and password combination.
+        Enrolls an identity via a one-time-token to establish an initial username and password combination
       operationId: ernollUpdb
       tags:
         - Enroll
@@ -1971,7 +1971,7 @@ paths:
         - name: Body
           in: body
           required: true
-          description: A service edge policy update object
+          description: A service edge router policy update object
           schema:
             $ref: '#/definitions/serviceEdgeRouterPolicyUpdate'
       responses:
@@ -1995,7 +1995,7 @@ paths:
         - name: Body
           in: body
           required: true
-          description: A service edge policy patch object
+          description: A service edge router policy patch object
           schema:
             $ref: '#/definitions/serviceEdgeRouterPolicyPatch'
       responses:
@@ -3083,7 +3083,7 @@ responses:
     schema:
       $ref: '#/definitions/createEnvelope'
   sessionCreateResponse:
-    description: The create request was successful and the resource has been added at the ollowing location.
+    description: The create request was successful and the resource has been added at the following location.
     schema:
       $ref: '#/definitions/sessionCreateEnvelope'
   ###################################################################
