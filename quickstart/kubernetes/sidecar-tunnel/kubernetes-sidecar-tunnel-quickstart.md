@@ -6,7 +6,7 @@ container.
 
 ## Overview
 
-The [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html)
+The [Ziti Network Quickstart](https://openziti.github.io/ziti/quickstarts/networks-overview.html)
 walked you through standing up a Ziti instance and accessing a Ziti service from your workstation with 
 `ziti-tunnel`. In this guide we'll deploy the same `ziti-tunnel` client, but instead of running it from the
 command line we will deploy it in a sidecar container in a Kubernetes Pod.
@@ -14,7 +14,7 @@ command line we will deploy it in a sidecar container in a Kubernetes Pod.
 This guide also demonstrates `ziti-tunnel`'s internal DNS server, which allows us to access Ziti services
 by hostname instead of IP address.
 
-[Here's some detail on how the various intercept modes work on Linux](https://netfoundry.github.io/ziti-doc/ziti/clients/linux.html)
+[Here's some detail on how the various intercept modes work on Linux](https://openziti.github.io/ziti/clients/linux.html)
 
 
 ### Solution Overview
@@ -24,7 +24,7 @@ by hostname instead of IP address.
 
 ## Prerequisites
 
-- Complete the [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html). This guide
+- Complete the [Ziti Network Quickstart](https://openziti.github.io/ziti/quickstarts/networks-overview.html). This guide
   uses the Ziti Controller and Ziti Edge Router that are created in the Ziti Quickstart.
 - Admin-level access to a Kubernetes cluster via `kubectl`.
 

@@ -99,6 +99,6 @@ The Ziti project welcomes contributions including, but not limited to, code, doc
         * [ziti-sdk-nodejs] (https://github.com/openziti/ziti-sdk-nodejs): NodeJS SDK
         * [sdk-golang] (https://github.com/openziti/sdk-golang): Go SDK
     * [ziti-doc](https://github.com/openziti/ziti-doc): Documention (which you are currently reading)
-* A [Discourse forum](https://netfoundry.discourse.group/) is available 
+* A [Discourse forum](https://openziti.discourse.group/) is available 
 
 Ziti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). Netfoundry continues to fund and contribute to Ziti. 
