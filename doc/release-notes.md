@@ -1153,7 +1153,7 @@ Ziti 0.11 includes the following:
 ## End-to-end Encryption
 
 Client and Hosting SDK instances setup end-to-end channels using secure key exchange and [AEAD](https://en.wikipedia.org/wiki/Authenticated_encryption) streams.
-Read more about on https://netfoundry.github.io/ziti-doc (_coming soon_)
+Read more about on https://openziti.github.io (_coming soon_)
 
 # Releaes 0.10
 ## Theme
