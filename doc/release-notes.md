@@ -7,6 +7,8 @@ Ziti 0.14.11 includes the following:
 * Misc Fixes
   * PEM decoding returns error when not able to decode
   * Ziti enrolment capabilities now supports `plain/text`, `application/x-pem-file`, and `application/json` response `accept` and `content-types`
+* CLI Change
+  * ziti-tunnel has learned a new subcommand `enroll`. Usage is identical to the existing `ziti-enroller`
 
 # Release 0.14.10
 Ziti 0.14.10 includes the following:
