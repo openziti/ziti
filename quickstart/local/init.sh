@@ -102,6 +102,7 @@ echo "adding pki-functions to bash shell"
 
 alias zec='ziti edge controller'
 alias zlogin='ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"'
+alias psz='ps -ef | grep ziti'
 
 echo "generating env file"
 for f in $(env); do if [[ $f = ZITI_* ]]; then echo "export $f" >> make-env.sh ; fi; done
