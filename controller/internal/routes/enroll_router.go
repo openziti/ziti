@@ -129,7 +129,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 }
 
 func (ro *EnrollRouter) Respond(rc *response.RequestContext, enrollmentResult *model.EnrollmentResult) error {
-	rc.ResponseWriter.Header().Add("content-type", enrollmentResult.ContentType)
+	rc.ResponseWriter.Header().Set("content-type", enrollmentResult.ContentType)
 
 	contentType := strings.Split(enrollmentResult.ContentType, ";")
 

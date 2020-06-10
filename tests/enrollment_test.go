@@ -31,6 +31,7 @@ import (
 	"github.com/google/uuid"
 	"math/big"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -91,6 +92,12 @@ func Test_enrollment(t *testing.T) {
 			ctx.req.NoError(err)
 
 			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+
+			contentTypeHeaders := resp.Header().Values("content-type")
+			ctx.req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
+
+			contentType := strings.Split(contentTypeHeaders[0], ";")[0]
+			ctx.req.Equal(contentType, "text/plain")
 		})
 
 		t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
@@ -114,6 +121,12 @@ func Test_enrollment(t *testing.T) {
 			ctx.req.NoError(err)
 
 			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+
+			contentTypeHeaders := resp.Header().Values("content-type")
+			ctx.req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
+
+			contentType := strings.Split(contentTypeHeaders[0], ";")[0]
+			ctx.req.Equal(contentType, "text/plain")
 		})
 
 		t.Run("can enroll with a name", func(t *testing.T) {
@@ -138,6 +151,12 @@ func Test_enrollment(t *testing.T) {
 				ctx.req.NoError(err)
 
 				ctx.req.Equal(http.StatusOK, resp.StatusCode())
+
+				contentTypeHeaders := resp.Header().Values("content-type")
+				ctx.req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
+
+				contentType := strings.Split(contentTypeHeaders[0], ";")[0]
+				ctx.req.Equal(contentType, "text/plain")
 			})
 		})
 
