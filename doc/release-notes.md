@@ -1,12 +1,32 @@
-# Release 0.14.8
-## Theme
-Ziti 0.14.8 includes the following:
+# Release 0.14.11
+Ziti 0.14.11 includes the following:
+
+* [Ziti-Tunnel - Bind terminators are only created during startup](https://github.com/openziti/sdk-golang/issues/56)
+* [Close on one side of connection doesn't propagate to other side](https://github.com/openziti/edge/issues/189)
+* [Simplify sequencer close logic](https://github.com/openziti/foundation/issues/81)
+* Misc Fixes
+  * PEM decoding returns error when not able to decode
+  * Ziti enrolment capabilities now supports `plain/text`, `application/x-pem-file`, and `application/json` response `accept` and `content-types`
+* CLI Change
+  * ziti-tunnel has learned a new subcommand `enroll`. Usage is identical to the existing `ziti-enroller`
+
+# Release 0.14.10
+Ziti 0.14.10 includes the following:
+
+* Doc updates
+
+# Release 0.14.9
+Ziti 0.14.9 includes the following:
   
 * [Move ziti edge controller commands to ziti edge](https://github.com/openziti/ziti/issues/108)
     * Note: for now `ziti edge` and `ziti edge controller` will both have edge controller related commands. `ziti edge controller` is deprecated and will be removed in a future release. Please update your scripts.
 
+# Release 0.14.8
+Ziti 0.14.8 includes the following:
+
+* Doc updates
+
 # Release 0.14.7
-## Theme
 Ziti 0.14.7 includes the following:
   
 * [Add CLI support for updating terminators](https://github.com/openziti/ziti/issues/106)
