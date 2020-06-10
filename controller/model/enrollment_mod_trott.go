@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
-	"strings"
 	"time"
 )
 
@@ -131,7 +130,6 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	cltFp := module.fingerprintGenerator.FromPem(cltPem)
 
 	txRouter.IsVerified = true
-	cltFp = strings.ToLower(strings.Replace(cltFp, ":", "", -1))
 	txRouter.Fingerprint = &cltFp
 
 	if err := module.env.GetHandlers().TransitRouter.Update(txRouter, true); err != nil {

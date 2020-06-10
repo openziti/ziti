@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"github.com/google/uuid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -122,7 +123,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
-	store.symbolEdgeRouters = store.AddFkSetSymbol(EntityTypeEdgeRouters, store.stores.edgeRouter)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) initializeLinked() {

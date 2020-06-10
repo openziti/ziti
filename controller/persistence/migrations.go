@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 6
+	CurrentDbVersion = 7
 	FieldVersion     = "version"
 )
 
@@ -68,6 +68,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 6 {
 		m.fixIdentityBuckets(step)
+	}
+
+	if step.CurrentVersion < 7 {
+		m.moveEdgeRoutersUnderFabricRouters(step)
 	}
 
 	// current version

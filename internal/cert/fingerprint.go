@@ -119,8 +119,7 @@ func (fpg *defaultFingerprintGenerator) FromCerts(certs []*x509.Certificate) Fin
 }
 
 func (fpg *defaultFingerprintGenerator) FromRaw(raw []byte) string {
-	rawFingerprint := sha1.Sum(raw)
-	return fpg.toHex(rawFingerprint[:])
+	return fmt.Sprintf("%x", sha1.Sum(raw))
 }
 
 func (fpg *defaultFingerprintGenerator) toHex(f []byte) string {

@@ -21,8 +21,6 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/fabric/controller/network"
-	"strings"
 	"time"
 )
 
@@ -143,7 +141,6 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	}
 
 	cltFp := module.fingerprintGenerator.FromPem(cltPem)
-
 	edgeRouter.IsVerified = true
 	edgeRouter.Fingerprint = &cltFp
 	if err := module.env.GetHandlers().EdgeRouter.Update(edgeRouter, false); err != nil {
@@ -152,10 +149,6 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	if err := module.env.GetHandlers().Enrollment.Delete(enrollment.Id); err != nil {
 		return nil, fmt.Errorf("could not delete enrollment: %s", err)
-	}
-
-	if err := module.createRouter(cr.Subject.CommonName, cltFp); err != nil {
-		return nil, err
 	}
 
 	content := &rest_model.EnrollmentCerts{
@@ -170,10 +163,4 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		Content:       content,
 		Status:        200,
 	}, nil
-}
-
-func (module *EnrollModuleEr) createRouter(commonName string, fingerprint string) error {
-	fgp := strings.Replace(strings.ToLower(fingerprint), ":", "", -1)
-	r := network.NewRouter(commonName, fgp)
-	return module.env.GetHostController().GetNetwork().CreateRouter(r)
 }
