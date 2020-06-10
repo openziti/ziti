@@ -137,7 +137,6 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		seq:        sequencer.NewSingleWriterSeq(proxy.listener.options.MaxOutOfOrderMsgs),
 		closeCB: func(connId uint32) {
 			removeListener()
-			proxy.closeConn(connId)
 		},
 	}
 
@@ -240,7 +239,6 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 			seq:        sequencer.NewSingleWriterSeq(proxy.listener.options.MaxOutOfOrderMsgs),
 			closeCB: func(connId uint32) {
 				removeListener()
-				proxy.closeConn(connId)
 			},
 			newSinkCB: func(conn *localMessageSink) {
 				if err := proxy.msgMux.AddMsgSink(conn); err != nil {
@@ -402,6 +400,7 @@ func (proxy *ingressProxy) sendStateClosedReply(message string, req *channel2.Me
 
 func (proxy *ingressProxy) sendStateClosed(connId uint32, message string) {
 	msg := edge.NewStateClosedMsg(connId, message)
+	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Debug("sending state closed message")
 
 	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
 	if err != nil {

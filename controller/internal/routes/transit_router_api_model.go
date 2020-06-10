@@ -48,7 +48,7 @@ func (i TransitRouterApi) ToModel(id string) *model.TransitRouter {
 type TransitRouterApiList struct {
 	*env.BaseApi
 	Name                string     `json:"name"`
-	Fingerprint         string     `json:"fingerprint"`
+	Fingerprint         *string    `json:"fingerprint"`
 	IsVerified          bool       `json:"isVerified"`
 	IsOnline            bool       `json:"isOnline"`
 	EnrollmentToken     *string    `json:"enrollmentToken"`

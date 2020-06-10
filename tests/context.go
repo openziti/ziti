@@ -74,8 +74,10 @@ const (
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
+	pfxlog.SetPrefix("github.com/openziti/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
+
+	os.Setenv("ZITI_TRACE_ENABLED", "true")
 
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
@@ -578,9 +580,8 @@ func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
 }
 
 func (ctx *TestContext) requireEntityNotEnrolled(name string, entity *gabs.Container) {
-	fingerprint, ok := entity.Path("fingerprint").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to not have a fingerprint, could not cast")
-	ctx.req.Empty(fingerprint, "expected "+name+" with isVerified=false to have an empty fingerprint")
+	fingerprint := entity.Path("fingerprint").Data()
+	ctx.req.Nil(fingerprint, "expected "+name+" with isVerified=false to have an empty fingerprint")
 
 	token, ok := entity.Path("enrollmentToken").Data().(string)
 	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment token, could not cast")
@@ -631,16 +632,26 @@ func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Containe
 	ctx.req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
 }
 
-func (ctx *TestContext) wrapConn(conn net.Conn, err error) *testConn {
+func (ctx *TestContext) wrapNetConn(conn net.Conn, err error) *testConn {
+	ctx.req.NoError(err)
+	serviceConn, ok := conn.(edge.ServiceConn)
+	ctx.req.True(ok)
+	return &testConn{
+		ServiceConn: serviceConn,
+		ctx:         ctx,
+	}
+}
+
+func (ctx *TestContext) wrapConn(conn edge.ServiceConn, err error) *testConn {
 	ctx.req.NoError(err)
 	return &testConn{
-		Conn: conn,
-		ctx:  ctx,
+		ServiceConn: conn,
+		ctx:         ctx,
 	}
 }
 
 type testConn struct {
-	net.Conn
+	edge.ServiceConn
 	ctx *TestContext
 }
 

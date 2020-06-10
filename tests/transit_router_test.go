@@ -51,6 +51,8 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.createAndEnrollTransitRouter()
 		_ = ctx.AdminSession.requireNewTransitRouter()
 
+		ctx.enabledJsonLogging = true
+
 		body := ctx.AdminSession.requireQuery("transit-routers")
 		ctx.logJson(body.Bytes())
 
@@ -101,6 +103,7 @@ func Test_TransitRouters(t *testing.T) {
 	t.Run("can list transit routers created in fabric", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
+		fp := "f6fc1c03175f674f1f0b505a9ff930e5"
 		fabTxRouter := &network.Router{
 			BaseEntity: models.BaseEntity{
 				Id:        "uMvqq",
@@ -108,7 +111,7 @@ func Test_TransitRouters(t *testing.T) {
 				UpdatedAt: time.Now(),
 				Tags:      nil,
 			},
-			Fingerprint:        "f6fc1c03175f674f1f0b505a9ff930e5",
+			Fingerprint:        &fp,
 			AdvertisedListener: "tls:127.0.0.1",
 		}
 		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)

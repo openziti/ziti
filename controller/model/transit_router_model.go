@@ -29,12 +29,12 @@ import (
 type TransitRouter struct {
 	models.BaseEntity
 	Name        string
-	Fingerprint string
+	Fingerprint *string
 	IsVerified  bool
 	IsBase      bool
 }
 
-func (entity *TransitRouter) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -47,7 +47,7 @@ func (entity *TransitRouter) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler
 	return boltEntity, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),

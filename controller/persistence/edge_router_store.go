@@ -90,7 +90,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldEdgeRouterFingerprint, entity.Fingerprint)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
-	ctx.SetStringP(FieldEdgeRouterCluster, entity.ClusterId)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
