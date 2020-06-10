@@ -31,9 +31,6 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.createGeoRegionsV1(step)
 	m.createIdentityTypesV1(step)
 
-	if m.dbStores != nil {
-		m.upgradeToV1FromPG(step)
-	}
 	return 1
 }
 

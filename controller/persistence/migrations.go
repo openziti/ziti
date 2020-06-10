@@ -17,7 +17,6 @@
 package persistence
 
 import (
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 )
@@ -28,14 +27,12 @@ const (
 )
 
 type Migrations struct {
-	stores   *Stores
-	dbStores *migration.Stores
+	stores *Stores
 }
 
-func RunMigrations(db boltz.Db, stores *Stores, dbStores *migration.Stores) error {
+func RunMigrations(db boltz.Db, stores *Stores) error {
 	migrations := &Migrations{
-		stores:   stores,
-		dbStores: dbStores,
+		stores: stores,
 	}
 
 	mm := boltz.NewMigratorManager(db)

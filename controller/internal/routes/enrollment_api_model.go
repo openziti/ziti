@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/fabric/controller/models"
 	"time"
 )
@@ -65,21 +64,6 @@ func (e *EnrollmentApiList) ToEntityApiRef() *EntityApiRef {
 		Id:     e.Id,
 		Links:  e.Links,
 	}
-}
-
-func NewEnrollmentApiList(ae *env.AppEnv, i *migration.Enrollment) (*EnrollmentApiList, error) {
-	baseApi := env.FromBaseDbEntity(&i.BaseDbEntity)
-
-	ret := &EnrollmentApiList{
-		BaseApi:   baseApi,
-		Method:    i.Method,
-		Token:     i.Token,
-		ExpiresAt: i.ExpiresAt,
-		Identity:  nil,
-		Details:   nil,
-	}
-
-	return ret, nil
 }
 
 func MapEnrollmentToApiEntity(appEnv *env.AppEnv, context *response.RequestContext, entity models.Entity) (BaseApiEntity, error) {

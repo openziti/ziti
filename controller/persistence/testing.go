@@ -106,7 +106,7 @@ func (ctx *TestContext) Init() {
 	ctx.stores, err = NewBoltStores(dbProvider)
 	ctx.NoError(err)
 
-	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores, nil))
+	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))
 }
 
 func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles []string, serviceRoles []string) *ServicePolicy {
@@ -120,7 +120,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles 
 	ctx.RequireCreate(entity)
 	return entity
 }
-
+ 
 func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
 	identity := &Identity{
 		BaseExtEntity: *boltz.NewExtEntity(uuid.New().String(), nil),

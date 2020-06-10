@@ -20,10 +20,6 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
-
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 )
 
 func init() {
@@ -34,31 +30,6 @@ func init() {
 type EnrollmentRouter struct {
 	BasePath string
 	IdType   response.IdType
-}
-
-func (ir *EnrollmentRouter) ToApiDetailEntity(ae *env.AppEnv, rc *response.RequestContext, e migration.BaseDbModel) (BaseApiEntity, error) {
-	return ir.ToApiListEntity(ae, rc, e)
-}
-
-func (ir *EnrollmentRouter) ToApiListEntity(ae *env.AppEnv, rc *response.RequestContext, e migration.BaseDbModel) (BaseApiEntity, error) {
-	i, ok := e.(*migration.Enrollment)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a cluster \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	al, err := NewEnrollmentApiList(ae, i)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
 }
 
 func NewEnrollmentRouter() *EnrollmentRouter {

@@ -22,17 +22,11 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/predicate"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/fabric/controller/models"
 	"net/http"
 	"strconv"
 )
-
-type ToBaseModelConverter interface {
-	ToBaseModel() migration.BaseDbModel
-}
 
 type CrudRouter interface {
 	List(ae *env.AppEnv, rc *response.RequestContext)
@@ -86,11 +80,11 @@ func GetModelQueryOptionsFromRequest(r *http.Request) (*QueryOptions, error) {
 	}, nil
 }
 
-func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
+func GetRequestPaging(r *http.Request) (*Paging, error) {
 	l := r.URL.Query().Get("limit")
 	o := r.URL.Query().Get("offset")
 
-	var p *predicate.Paging
+	var p *Paging
 
 	if l != "" {
 		i, err := strconv.ParseInt(l, 10, 64)
@@ -103,7 +97,7 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 				AppendCause: true,
 			}
 		}
-		p = &predicate.Paging{}
+		p = &Paging{}
 		p.Limit = i
 	}
 
@@ -119,71 +113,12 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 			}
 		}
 		if p == nil {
-			p = &predicate.Paging{}
+			p = &Paging{}
 		}
 		p.Offset = i
 	}
 
 	return p, nil
-}
-
-func GetRequestPredicate(r *http.Request, imap *predicate.IdentifierMap) (*predicate.Predicate, error) {
-	var p *predicate.Predicate
-
-	f := r.URL.Query().Get("filter")
-	if f != "" {
-		whereClause, errs := predicate.ParseWhereClause(f, imap)
-
-		if len(errs) > 0 {
-			return nil, &apierror.ApiError{
-				Cause:   errs[0],
-				Code:    apierror.InvalidFilterCode,
-				Message: apierror.InvalidFilterMessage,
-				Status:  http.StatusBadRequest,
-			}
-		}
-		p = &predicate.Predicate{
-			Clause: whereClause,
-		}
-	}
-
-	return p, nil
-}
-
-func GetRequestSort(r *http.Request, imap *predicate.IdentifierMap) (*predicate.Sort, error) {
-	s := r.URL.Query().Get("sort")
-
-	so, err := predicate.ParseOrderBy(s, imap)
-
-	if err != nil {
-		return nil, &apierror.ApiError{
-			Code:        apierror.InvalidSortCode,
-			Message:     apierror.InvalidSortMessage,
-			Cause:       err,
-			AppendCause: true,
-			Status:      http.StatusBadRequest,
-		}
-	}
-
-	return so, nil
-}
-
-type ApiCreater interface {
-	Create(ae *env.AppEnv, rc *response.RequestContext) (migration.BaseDbModel, error)
-}
-
-type ApiUpdater interface {
-	Update(ae *env.AppEnv, rc *response.RequestContext, existing migration.BaseDbModel) (migration.BaseDbModel, error)
-}
-
-type ApiPatcher interface {
-	Patch(ae *env.AppEnv, rc *response.RequestContext, existing migration.BaseDbModel) (migration.BaseDbModel, error)
-}
-
-type Associater interface {
-	Add(parent migration.BaseDbModel, child []migration.BaseDbModel) error
-	Remove(parent migration.BaseDbModel, child []migration.BaseDbModel) error
-	Set(parent migration.BaseDbModel, child []migration.BaseDbModel) error
 }
 
 type EntityApiRef struct {

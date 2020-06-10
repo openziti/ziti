@@ -46,7 +46,6 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
@@ -72,7 +71,6 @@ type AppEnv struct {
 	RootRouter              *mux.Router
 	CurrentIdentityRouter   *mux.Router
 	RequestResponderFactory response.RequestResponderFactory
-	ModelHandlers           *migration.ModelHandlers
 	AuthRegistry            model.AuthRegistry
 	EnrollRegistry          model.EnrollmentRegistry
 	Broker                  *Broker
@@ -189,8 +187,6 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 	// This path is relative to source location of this file
 	embedded := packr.NewBox("../embedded")
 
-	c.Persistence.AddMigrationBox(&embedded)
-
 	ae := &AppEnv{
 		Config:   c,
 		Embedded: &embedded,
@@ -202,7 +198,6 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 		AuthHeaderName:          constants.ZitiSession,
 		RootRouter:              mux.NewRouter(),
 		RequestResponderFactory: response.NewRequestResponder,
-		ModelHandlers:           migration.GetModelHandlers(),
 		AuthRegistry:            &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:          &model.EnrollmentRegistryImpl{},
 	}
@@ -238,16 +233,9 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 func (ae *AppEnv) InitPersistence() error {
 	var err error
 
-	db := InitPersistence(&ae.Config.Persistence)
-	var dbStores *migration.Stores
-	if db != nil {
-		dbWithPreload := db.New().Set("gorm:auto_preload", true)
-		dbStores = migration.NewGormStores(db, dbWithPreload)
-	}
-
 	ae.BoltStores, err = persistence.NewBoltStores(ae.HostController.GetNetwork())
 	if err == nil {
-		err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores, dbStores)
+		err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores)
 	}
 
 	if err == nil {

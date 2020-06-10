@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/migration"
 )
 
 type DefaultEventLogger struct {
@@ -42,7 +41,7 @@ func (el *DefaultEventLogger) Log(actorType, actorId, eventType, entityType, ent
 		fmtInt = append(fmtInt, fd)
 	}
 
-	pm := migration.PropertyMap{}
+	pm := map[string]interface{}{}
 
 	for k, v := range data {
 		ks := k.(string)

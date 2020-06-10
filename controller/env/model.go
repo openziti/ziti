@@ -18,7 +18,6 @@ package env
 
 import (
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/fabric/controller/models"
 	"time"
 )
@@ -29,19 +28,6 @@ type BaseApi struct {
 	UpdatedAt *time.Time             `json:"updatedAt"`
 	Links     *response.Links        `json:"_links"`
 	Tags      map[string]interface{} `json:"tags"`
-}
-
-func FromBaseDbEntity(entity *migration.BaseDbEntity) *BaseApi {
-	var tags map[string]interface{}
-	if entity.Tags != nil {
-		tags = *entity.Tags
-	}
-	return &BaseApi{
-		Id:        entity.ID,
-		UpdatedAt: entity.UpdatedAt,
-		CreatedAt: entity.CreatedAt,
-		Tags:      tags,
-	}
 }
 
 func FromBaseModelEntity(entity models.Entity) *BaseApi {
