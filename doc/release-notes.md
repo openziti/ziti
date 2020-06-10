@@ -156,6 +156,9 @@ Ziti 0.14.0 includes the following:
   * a potential race condition in UDP connection last time has been fixed and UDP connection logging has been tidied
   * Terminator precedence may now be specified in the golang SDK in the listen options when binding a service
 
+### CLI Change
+  * ziti-tunnel has learned a new subcommand `enroll`. Usage is identical to the existing `ziti-enroller`
+
 ## HA/HS
 Ziti 0.12 extracted terminators from services. Services could have multiple terminators but only the first one would get used. Service have a `terminatorStrategy` field which was previously unused. Now the terminatorStrategy will determine how Ziti picks from multiple terminators to enable either HA or HS behavior.
 
