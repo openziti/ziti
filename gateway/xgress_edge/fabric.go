@@ -131,7 +131,7 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
 	// to terminate
 	log.Debug("closing channel sequencer, which should cause xgress to close")
-	conn.seq.CloseByProducer()
+	conn.seq.Close()
 }
 
 func (conn *localMessageSink) Accept(event *edge.MsgEvent) {
