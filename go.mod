@@ -10,14 +10,9 @@ go 1.14
 
 require (
 	github.com/Jeffail/gabs v1.4.0
-	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/achanda/go-sysctl v0.0.0-20160222034550-6be7678c45d2
-	github.com/antlr/antlr4 v0.0.0-20191115170859-54daca92f7b0
 	github.com/coreos/go-iptables v0.4.5
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v1.13.1 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-openapi/errors v0.19.4
 	github.com/go-openapi/loads v0.19.5
@@ -34,16 +29,12 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.4
 	github.com/jessevdk/go-flags v1.4.0
-	github.com/jinzhu/gorm v1.9.12
 	github.com/kataras/go-events v0.0.3-0.20170604004442-17d67be645c3
-	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
-	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/mdlayher/netlink v1.1.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.0
 	github.com/oleiade/reflections v1.0.0 // indirect
-	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/openziti/fabric v0.11.39
 	github.com/openziti/foundation v0.11.1
 	github.com/openziti/sdk-golang v0.12.2
@@ -56,8 +47,6 @@ require (
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
-	gopkg.in/Masterminds/squirrel.v1 v1.0.0-20170825200431-a6b93000bd21
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/yaml.v2 v2.3.0
 )

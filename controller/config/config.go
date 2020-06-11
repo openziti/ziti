@@ -17,17 +17,14 @@
 package config
 
 import (
-	"github.com/openziti/foundation/identity/identity"
 	"bytes"
 	"crypto/sha1"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/gobuffalo/packr"
 	"github.com/michaelquigley/pfxlog"
-	"gopkg.in/yaml.v2"
+	"github.com/openziti/foundation/identity/identity"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,24 +38,6 @@ const (
 	enrollmentDurationMin     = 5
 	enrollmentDurationDefault = 1440
 )
-
-type Db struct {
-	ConnectionUrl string `yaml:"connectionUrl"`
-	DbName        string `yaml:"dbName"`
-}
-
-type Persistence struct {
-	boxes    []*packr.Box
-	Postgres *Db `yaml:"postgres"`
-}
-
-func (p *Persistence) AddMigrationBox(b *packr.Box) {
-	p.boxes = append(p.boxes, b)
-}
-
-func (p *Persistence) GetBoxes() []*packr.Box {
-	return p.boxes
-}
 
 type Enrollment struct {
 	SigningCert       identity.Identity
@@ -88,7 +67,6 @@ type Config struct {
 	Enabled            bool
 	Api                Api
 	Enrollment         Enrollment
-	Persistence        Persistence
 	caPems             [][]byte
 	caPemsBuf          []byte
 	caPemsOnce         sync.Once
@@ -365,29 +343,6 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 	return nil
 }
 
-func (c *Config) loadPersistenceSection(edgeConfigMap map[interface{}]interface{}) error {
-	c.Persistence = Persistence{Postgres: &Db{}}
-
-	if value, found := edgeConfigMap["persistence"]; found {
-		submap := value.(map[interface{}]interface{})
-
-		if value, found := submap["connectionUrl"]; found {
-			c.Persistence.Postgres.ConnectionUrl = value.(string)
-		} else {
-			return errors.New("required configuration value [edge.persistence.connectionUrl] missing")
-		}
-
-		if value, found := submap["dbName"]; found {
-			c.Persistence.Postgres.DbName = value.(string)
-		} else {
-			return errors.New("required configuration value [edge.persistence.dbName] missing")
-		}
-
-	} //no longer required
-
-	return nil
-}
-
 func LoadFromMap(cfgmap map[interface{}]interface{}) (*Config, error) {
 	edgeConfig := &Config{
 		Enabled: false,
@@ -423,30 +378,5 @@ func LoadFromMap(cfgmap map[interface{}]interface{}) (*Config, error) {
 		return nil, err
 	}
 
-	if err = edgeConfig.loadPersistenceSection(edgeConfigMap); err != nil {
-		return nil, err
-	}
-
 	return edgeConfig, nil
-}
-
-func LoadFromFile(path string) (*Config, error) {
-	c := map[interface{}]interface{}{}
-
-	f, err := os.Open(path)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-
-	d := yaml.NewDecoder(f)
-	err = d.Decode(c)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return LoadFromMap(c)
 }

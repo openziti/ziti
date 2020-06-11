@@ -19,7 +19,6 @@ package routes
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/predicate"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 )
@@ -34,7 +33,7 @@ const (
 type QueryOptions struct {
 	Predicate string
 	Sort      string
-	Paging    *predicate.Paging
+	Paging    *Paging
 }
 
 func (qo *QueryOptions) String() string {
@@ -47,7 +46,7 @@ func (qo *QueryOptions) String() string {
 func (qo *QueryOptions) ValidateAndCorrect() {
 	// Sort limit is handled in ScanEntityImpl.NewScanner
 	if qo.Paging == nil {
-		qo.Paging = &predicate.Paging{
+		qo.Paging = &Paging{
 			Limit:  LimitDefault,
 			Offset: OffsetDefault,
 		}
@@ -119,4 +118,17 @@ func (qo *QueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
 	}
 
 	return query, nil
+}
+
+type Paging struct {
+	Offset    int64
+	Limit     int64
+	ReturnAll bool
+}
+
+func (paging *Paging) String() string {
+	if paging == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("[Paging Offset: '%v', Limit: '%v', ReturnAll: '%v']", paging.Offset, paging.Limit, paging.ReturnAll)
 }
