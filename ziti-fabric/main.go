@@ -18,18 +18,18 @@ package main
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti-fabric/subcmd"
-	_ "github.com/openziti/ziti/ziti-fabric/subcmd/trace"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/quic"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/openziti/foundation/transport/tls"
+	"github.com/openziti/ziti/ziti-fabric/subcmd"
+	_ "github.com/openziti/ziti/ziti-fabric/subcmd/trace"
 	"github.com/sirupsen/logrus"
 )
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("github.com/netfoundry/")
+	pfxlog.SetPrefix("github.com/openziti/")
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})

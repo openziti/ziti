@@ -30,7 +30,7 @@ import (
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("github.com/netfoundry/")
+	pfxlog.SetPrefix("github.com/openziti/")
 }
 
 func init() {
