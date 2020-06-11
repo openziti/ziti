@@ -1,3 +1,13 @@
+# Release 0.14.13
+Ziti 0.14.13 includes the following:
+
+* Ensure version information gets updated on non linux-amd64 builds
+
+# Release 0.14.12
+Ziti 0.14.12 includes the following:
+
+* Fix the logging prefix to be github.com/openziti
+
 # Release 0.14.11
 Ziti 0.14.11 includes the following:
 

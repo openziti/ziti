@@ -22,7 +22,7 @@ jobs:
       script:
         - set -e
         - sudo dpkg --add-architecture armhf
-        - sudo apt-get update -yq 
+        - sudo apt-get update -yq
         - |-
           sudo apt-get -yq install \
             crossbuild-essential-armhf \
@@ -30,6 +30,7 @@ jobs:
         - pip install --upgrade --user pip
         - pip install --user awscli
         - go get github.com/mitchellh/gox
+        - ziti-ci generate-build-info common/version/info_generated.go version
         - CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os="$GOX_OS" -arch=arm -output=$GOX_OUTPUT ./...
         - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
@@ -41,6 +42,7 @@ jobs:
         - pip install --upgrade pip
         - pip install awscli
         - go get github.com/mitchellh/gox
+        - ziti-ci generate-build-info common/version/info_generated.go version
         - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
         - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
@@ -53,6 +55,7 @@ jobs:
         - python -m pip install --upgrade pip
         - pip install awscli
         - go get github.com/mitchellh/gox
+        - ziti-ci generate-build-info common/version/info_generated.go version
         - CGO_ENABLED=true gox -os="$GOX_OS" -arch=$TRAVIS_CPU_ARCH -output=$GOX_OUTPUT ./...
         - aws s3 sync release/ s3://ziti-cmd-build-tmp/$TRAVIS_BUILD_ID
 
