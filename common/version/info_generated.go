@@ -3,9 +3,9 @@
 package version
 
 const (
-	Version   = "v0.9.0"
-	Revision  = "ea556fc18740"
-	Branch    = "travis-build"
-	BuildUser = "Paul Lorenz"
-	BuildDate = "2020-02-11 16:09:08"
+	Version   = "v0.14.13"
+	Revision  = "95e78d4bc64b"
+	Branch    = "master"
+	BuildUser = "Travis CI User"
+	BuildDate = "2020-06-11 16:03:13"
 )
