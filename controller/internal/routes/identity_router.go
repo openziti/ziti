@@ -217,11 +217,13 @@ func (r *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.Request
 		for _, serviceConfig := range serviceConfigs {
 			service, err := ae.Handlers.EdgeService.Read(serviceConfig.Service)
 			if err != nil {
+				pfxlog.Logger().Debug("listing service configs for identity [%s] could not find service [%s]: %v", id, serviceConfig.Service, err)
 				continue
 			}
 
 			config, err := ae.Handlers.Config.Read(serviceConfig.Config)
 			if err != nil {
+				pfxlog.Logger().Debug("listing service configs for identity [%s] could not find config [%s]: %v", id, serviceConfig.Config, err)
 				continue
 			}
 

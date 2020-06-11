@@ -178,12 +178,12 @@ type AppMiddleware func(*AppEnv, http.Handler) http.Handler
 type authorizer struct {
 }
 
-func (a authorizer) Authorize(request *http.Request, principle interface{}) error {
-	//principle is an API Session
-	_, ok := principle.(*model.ApiSession)
+func (a authorizer) Authorize(request *http.Request, principal interface{}) error {
+	//principal is an API Session
+	_, ok := principal.(*model.ApiSession)
 
 	if !ok {
-		pfxlog.Logger().Error("principle expected to be an ApiSession and was not")
+		pfxlog.Logger().Error("principal expected to be an ApiSession and was not")
 		return apierror.NewUnauthorized()
 	}
 
@@ -325,8 +325,8 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	api.ApplicationPkcs10Consumer = noOpConsumer
 
 	api.ApplicationXPemFileProducer = &TextProducer{}
-	api.ZtSessionAuth = func(token string) (principle interface{}, err error) {
-		principle, err = ae.GetHandlers().ApiSession.ReadByToken(token)
+	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
+		principal, err = ae.GetHandlers().ApiSession.ReadByToken(token)
 
 		if err != nil {
 			if !boltz.IsErrNotFoundErr(err) {
@@ -336,7 +336,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			return nil, apierror.NewUnauthorized()
 		}
 
-		return principle, nil
+		return principal, nil
 	}
 
 	sm := getJwtSigningMethod(c.Api.Identity.ServerCert())
