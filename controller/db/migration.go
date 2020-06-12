@@ -12,18 +12,23 @@ import (
 const CurrentDbVersion = 2
 
 func (stores *stores) migrate(step *boltz.MigrationStep) int {
-	if step.CurrentVersion == 0 {
-		stores.migrateToV1(step)
-		return 1
-	}
-	if step.CurrentVersion == 1 {
-		stores.extractTerminators(step)
-		return 2
+	if step.CurrentVersion > CurrentDbVersion {
+		step.SetError(errors.Errorf("unsupported fabric datastore version: %v", step.CurrentVersion))
+		return 0
 	}
 
-	if step.CurrentVersion == 2 {
-		return 2
+	if step.CurrentVersion < 1 {
+		stores.migrateToV1(step)
 	}
+
+	if step.CurrentVersion < 2 {
+		stores.extractTerminators(step)
+	}
+
+	if step.CurrentVersion <= CurrentDbVersion {
+		return CurrentDbVersion
+	}
+
 	step.SetError(errors.Errorf("unsupported fabric datastore version: %v", step.CurrentVersion))
 	return 0
 }

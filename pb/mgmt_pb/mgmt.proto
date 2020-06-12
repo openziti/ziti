@@ -56,6 +56,9 @@ enum ContentType {
     // Inspect
     InspectRequestType = 10048;
     InspectResponseType = 10049;
+
+    // Snapshot db
+    SnapshotDbRequestType = 10070;
 }
 
 //

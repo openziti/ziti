@@ -71,13 +71,18 @@ func (db *Db) Snapshot(tx *bbolt.Tx) error {
 		}
 	} else {
 		pfxlog.Logger().Infof("bolt db backup already made: %v", path)
+		return nil
 	}
 
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err = file.Close(); err != nil {
+			pfxlog.Logger().Errorf("failed to close backup database file %v (%v)", path, err)
+		}
+	}()
 
 	_, err = tx.WriteTo(file)
 	if err != nil {

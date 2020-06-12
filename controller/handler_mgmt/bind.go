@@ -69,6 +69,8 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newTogglePipeTracesHandler(network))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), ch, network.GetTraceController(), network.GetTraceEventController()))
 
+	ch.AddReceiveHandler(newSnapshotDbHandler(network))
+
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts {
 		if err := ch.Bind(x); err != nil {

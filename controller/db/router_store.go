@@ -62,7 +62,7 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 	store := &routerStoreImpl{
 		baseStore: baseStore{
 			stores:    stores,
-			BaseStore: boltz.NewBaseStore(nil, EntityTypeRouters, notFoundErrorFactory, boltz.RootBucket),
+			BaseStore: boltz.NewBaseStore(EntityTypeRouters, notFoundErrorFactory, boltz.RootBucket),
 		},
 	}
 	store.InitImpl(store)

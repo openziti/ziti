@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/foundation/util/sequence"
 	errors2 "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.etcd.io/bbolt"
 	"sort"
 	"strings"
 	"sync"
@@ -60,6 +61,7 @@ type Network struct {
 	isShutdown                 concurrenz.AtomicBoolean
 	lock                       sync.Mutex
 	strategyRegistry           xt.Registry
+	lastSnapshot               time.Time
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
@@ -84,6 +86,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		traceController:            trace.NewController(),
 		shutdownChan:               make(chan struct{}),
 		strategyRegistry:           xt.GlobalRegistry(),
+		lastSnapshot:               time.Now().Add(-time.Hour),
 	}
 	network.metricsEventController.AddHandler(network)
 	network.AddCapability("ziti.fabric")
@@ -743,6 +746,23 @@ func (network *Network) showOptions() {
 
 func (network *Network) GetServiceCache() Cache {
 	return network.Services
+}
+
+func (network *Network) SnapshotDatabase() error {
+	network.lock.Lock()
+	defer network.lock.Unlock()
+
+	if network.lastSnapshot.Add(time.Minute).After(time.Now()) {
+		return errors.New("may snapshot database at most once per minute")
+	}
+	pfxlog.Logger().Info("snapshotting database")
+	err := network.GetDb().View(func(tx *bbolt.Tx) error {
+		return network.GetDb().Snapshot(tx)
+	})
+	if err == nil {
+		network.lastSnapshot = time.Now()
+	}
+	return err
 }
 
 type Cache interface {

@@ -80,7 +80,7 @@ func newServiceStore(stores *stores) *serviceStoreImpl {
 	store := &serviceStoreImpl{
 		baseStore: baseStore{
 			stores:    stores,
-			BaseStore: boltz.NewBaseStore(nil, EntityTypeServices, notFoundErrorFactory, boltz.RootBucket),
+			BaseStore: boltz.NewBaseStore(EntityTypeServices, notFoundErrorFactory, boltz.RootBucket),
 		},
 	}
 	store.InitImpl(store)
