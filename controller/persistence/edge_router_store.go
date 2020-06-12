@@ -29,7 +29,6 @@ import (
 const (
 	FieldEdgeRouterFingerprint = "fingerprint"
 	FieldEdgeRouterCertPEM     = "certPem"
-	FieldEdgeRouterCluster     = "cluster"
 	FieldEdgeRouterIsVerified  = "isVerified"
 	FieldEdgeRouterHostname    = "hostname"
 	FieldEdgeRouterProtocols   = "protocols"
@@ -49,7 +48,6 @@ func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
 type EdgeRouter struct {
 	boltz.BaseExtEntity
 	Name                string
-	ClusterId           *string
 	IsVerified          bool
 	Fingerprint         *string
 	CertPem             *string
@@ -65,14 +63,11 @@ type EdgeRouter struct {
 	EnrollmentExpiresAt *time.Time
 }
 
-var edgeRouterFieldMappings = map[string]string{FieldEdgeRouterCluster: "clusterId"}
-
 func (entity *EdgeRouter) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetString(FieldEdgeRouterFingerprint)
 	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
-	entity.ClusterId = bucket.GetString(FieldEdgeRouterCluster)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
 
 	//old v4, migrations only
@@ -83,8 +78,6 @@ func (entity *EdgeRouter) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 }
 
 func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
-	ctx.WithFieldOverrides(edgeRouterFieldMappings)
-
 	entity.SetBaseValues(ctx)
 	store := ctx.Store.(*edgeRouterStoreImpl)
 	ctx.SetString(FieldName, entity.Name)

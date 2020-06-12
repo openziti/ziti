@@ -48,24 +48,23 @@ func newBaseStore(stores *stores, entityType string) *baseStore {
 	singularEntityType := boltz.GetSingularEntityType(entityType)
 	return &baseStore{
 		stores: stores,
-		BaseStore: boltz.NewBaseStore(nil, entityType, func(id string) error {
+		BaseStore: boltz.NewBaseStore(entityType, func(id string) error {
 			return boltz.NewNotFoundError(singularEntityType, "id", id)
 		}, boltz.RootBucket),
 	}
 }
 
-func newChildBaseStore(stores *stores, parent boltz.CrudStore, entityType string) *baseStore {
-	singularEntityType := boltz.GetSingularEntityType(entityType)
+func newChildBaseStore(stores *stores, parent boltz.CrudStore) *baseStore {
 	return &baseStore{
 		stores: stores,
-		BaseStore: boltz.NewBaseStore(parent, entityType, func(id string) error {
-			return boltz.NewNotFoundError(singularEntityType, "id", id)
+		BaseStore: boltz.NewChildBaseStore(parent, func(id string) error {
+			return boltz.NewNotFoundError(parent.GetSingularEntityType(), "id", id)
 		}, EdgeBucket),
 	}
 }
 
-func newExtendedBaseStore(stores *stores, parent boltz.CrudStore, entityType string) *baseStore {
-	store := newChildBaseStore(stores, parent, entityType)
+func newExtendedBaseStore(stores *stores, parent boltz.CrudStore) *baseStore {
+	store := newChildBaseStore(stores, parent)
 	store.BaseStore.Extended()
 	return store
 }
