@@ -41,6 +41,8 @@ func Test_HSRotatingDataflow(t *testing.T) {
 
 	ctx.createEnrollAndStartEdgeRouter()
 
+	t.Skip("disabled GH-198")
+
 	t.Run("test client first smart routing", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		testClientFirstWithStrategy(ctx, "smartrouting")
