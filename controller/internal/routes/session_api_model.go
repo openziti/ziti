@@ -135,7 +135,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 				restModel.Urls[p] = url
 			}
 
-			pfxlog.Logger().Infof("Returning %+v to %+v, with urls: %+v", edgeRouter, restModel, restModel.Urls)
+			pfxlog.Logger().Debugf("Returning %+v to %+v, with urls: %+v", edgeRouter, restModel, restModel.Urls)
 			edgeRouters = append(edgeRouters, restModel)
 		}
 	}

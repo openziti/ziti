@@ -27,9 +27,9 @@ import (
 
 func Test_TransitRouters(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("transit routers can be created and enrolled", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -62,17 +62,17 @@ func Test_TransitRouters(t *testing.T) {
 			routers := body.Path("data")
 
 			children, err := routers.Children()
-			ctx.req.NoError(err)
+			ctx.Req.NoError(err)
 
-			ctx.req.Len(children, 2, "two routers should have been returned")
+			ctx.Req.Len(children, 2, "two routers should have been returned")
 
 			router0IsVerified, ok := children[0].Path("isVerified").Data().(bool)
-			ctx.req.True(ok, "issue getting transit router 0 isVerified state")
+			ctx.Req.True(ok, "issue getting transit router 0 isVerified state")
 
 			router1IsVerified, ok := children[1].Path("isVerified").Data().(bool)
-			ctx.req.True(ok, "issue getting transit router 1 isVerified state")
+			ctx.Req.True(ok, "issue getting transit router 1 isVerified state")
 
-			ctx.req.True(router0IsVerified != router1IsVerified, "expected 1 enrolled transit router and 1 un-enrolled transit router")
+			ctx.Req.True(router0IsVerified != router1IsVerified, "expected 1 enrolled transit router and 1 un-enrolled transit router")
 
 			if router0IsVerified {
 				ctx.requireEntityEnrolled("transit router 0", children[0])
@@ -115,7 +115,7 @@ func Test_TransitRouters(t *testing.T) {
 			AdvertisedListener: "tls:127.0.0.1",
 		}
 		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)
-		ctx.req.NoError(err, "could not create router at fabric level")
+		ctx.Req.NoError(err, "could not create router at fabric level")
 
 		body := ctx.AdminSession.requireQuery("transit-routers")
 		ctx.logJson(body.Bytes())

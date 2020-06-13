@@ -29,9 +29,9 @@ import (
 
 func Test_EdgeRouter(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -72,23 +72,23 @@ func Test_EdgeRouter(t *testing.T) {
 		ctx.AdminSession.requireNewEdgeRouter()
 
 		list := ctx.AdminSession.requireList("edge-router-role-attributes")
-		ctx.req.True(len(list) >= 5)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+		ctx.Req.True(len(list) >= 5)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
 
 		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
 		list = ctx.AdminSession.requireList("edge-router-role-attributes?filter=" + filter)
-		ctx.req.Equal(4, len(list))
+		ctx.Req.Equal(4, len(list))
 
 		expected := []string{role1, role3, role4, role5}
 		sort.Strings(expected)
-		ctx.req.Equal(expected, list)
+		ctx.Req.Equal(expected, list)
 
 		edgeRouter.roleAttributes = nil
 		ctx.AdminSession.requireUpdateEntity(edgeRouter)
 		list = ctx.AdminSession.requireList("edge-router-role-attributes")
-		ctx.req.True(len(list) >= 4)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
-		ctx.req.False(stringz.Contains(list, role5))
+		ctx.Req.True(len(list) >= 4)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.Req.False(stringz.Contains(list, role5))
 	})
 
 	t.Run("newly created edge routers that is deleted", func(t *testing.T) {

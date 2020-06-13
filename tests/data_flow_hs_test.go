@@ -29,22 +29,22 @@ import (
 
 func Test_HSDataflow(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("weighted")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("weighted")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	_, hostContext1 := ctx.AdminSession.requireCreateSdkContext()
-	listener1, err := hostContext1.Listen(service.name)
-	ctx.req.NoError(err)
+	_, hostContext1 := ctx.AdminSession.RequireCreateSdkContext()
+	listener1, err := hostContext1.Listen(service.Name)
+	ctx.Req.NoError(err)
 
-	_, hostContext2 := ctx.AdminSession.requireCreateSdkContext()
-	listener2, err := hostContext2.Listen(service.name)
-	ctx.req.NoError(err)
+	_, hostContext2 := ctx.AdminSession.RequireCreateSdkContext()
+	listener2, err := hostContext2.Listen(service.Name)
+	ctx.Req.NoError(err)
 
 	serverHandler := func(conn *testServerConn) error {
 		for {
@@ -72,12 +72,12 @@ func Test_HSDataflow(t *testing.T) {
 	server1.start()
 	server2.start()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	for i := 0; i < 100; i++ {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
 		name := uuid.New().String()
 		conn.WriteString(name, time.Second)
@@ -86,16 +86,16 @@ func Test_HSDataflow(t *testing.T) {
 	}
 
 	for i := 0; i < 2; i++ {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		conn.WriteString("quit", time.Second)
 		conn.ReadExpected("ok", time.Second)
 
 		if server1.closed.Get() {
 			server1.waitForDone(ctx, 5*time.Second)
-			ctx.req.True(atomic.LoadUint32(&server1.msgCount) > 25)
+			ctx.Req.True(atomic.LoadUint32(&server1.msgCount) > 25)
 		} else {
 			server2.waitForDone(ctx, 5*time.Second)
-			ctx.req.True(atomic.LoadUint32(&server2.msgCount) > 25)
+			ctx.Req.True(atomic.LoadUint32(&server2.msgCount) > 25)
 		}
 	}
 }

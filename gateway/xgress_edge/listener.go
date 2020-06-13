@@ -224,7 +224,11 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 
 	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
 		terminatorId := terminatorIdRef.Get()
-		defer proxy.listener.factory.hostedServices.Delete(token)
+		defer func() {
+			log.Debugf("removing listener for terminator %v, token: %v", terminatorId, token)
+			proxy.listener.factory.hostedServices.Delete(token)
+		}()
+		log.Debugf("removing terminator %v for token: %v", terminatorId, token)
 		if err := xgress.RemoveTerminator(proxy.listener.factory, terminatorId); err != nil {
 			log.Errorf("failed to remove terminator %v (%v)", terminatorId, err)
 		}
@@ -255,6 +259,8 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 
 	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, hostData, cost, precedence)
 	messageSink.terminatorIdRef.Set(terminatorId)
+
+	log.Debugf("registered listener for terminator %v, token: %v", terminatorId, token)
 
 	if err != nil {
 		messageSink.closeCB(messageSink.Id())
@@ -291,6 +297,8 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	localListener, ok := proxy.listener.factory.hostedServices.Get(token)
 	if ok {
 		defer proxy.listener.factory.hostedServices.Delete(token)
+
+		log.Debugf("removing terminator %v for token: %v", localListener.terminatorIdRef.Get(), token)
 		if err := xgress.RemoveTerminator(proxy.listener.factory, localListener.terminatorIdRef.Get()); err != nil {
 			proxy.sendStateClosedReply(err.Error(), req)
 		} else {
