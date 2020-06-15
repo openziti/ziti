@@ -19,17 +19,11 @@ package routes
 import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/controller/predicate"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/migration"
 	"github.com/openziti/fabric/controller/models"
 	"net/http"
 	"strconv"
 )
-
-type ToBaseModelConverter interface {
-	ToBaseModel() migration.BaseDbModel
-}
 
 type CrudRouter interface {
 	List(ae *env.AppEnv, rc *response.RequestContext)
@@ -83,11 +77,11 @@ func GetModelQueryOptionsFromRequest(r *http.Request) (*QueryOptions, error) {
 	}, nil
 }
 
-func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
+func GetRequestPaging(r *http.Request) (*Paging, error) {
 	l := r.URL.Query().Get("limit")
 	o := r.URL.Query().Get("offset")
 
-	var p *predicate.Paging
+	var p *Paging
 
 	if l != "" {
 		i, err := strconv.ParseInt(l, 10, 64)
@@ -100,7 +94,7 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 				AppendCause: true,
 			}
 		}
-		p = &predicate.Paging{}
+		p = &Paging{}
 		p.Limit = i
 	}
 
@@ -116,30 +110,12 @@ func GetRequestPaging(r *http.Request) (*predicate.Paging, error) {
 			}
 		}
 		if p == nil {
-			p = &predicate.Paging{}
+			p = &Paging{}
 		}
 		p.Offset = i
 	}
 
 	return p, nil
-}
-
-type ApiCreater interface {
-	Create(ae *env.AppEnv, rc *response.RequestContext) (migration.BaseDbModel, error)
-}
-
-type ApiUpdater interface {
-	Update(ae *env.AppEnv, rc *response.RequestContext, existing migration.BaseDbModel) (migration.BaseDbModel, error)
-}
-
-type ApiPatcher interface {
-	Patch(ae *env.AppEnv, rc *response.RequestContext, existing migration.BaseDbModel) (migration.BaseDbModel, error)
-}
-
-type Associater interface {
-	Add(parent migration.BaseDbModel, child []migration.BaseDbModel) error
-	Remove(parent migration.BaseDbModel, child []migration.BaseDbModel) error
-	Set(parent migration.BaseDbModel, child []migration.BaseDbModel) error
 }
 
 type RouteEventContext struct {

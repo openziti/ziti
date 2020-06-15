@@ -16,7 +16,10 @@
 
 package persistence
 
-import "github.com/openziti/foundation/storage/boltz"
+import (
+	"github.com/openziti/foundation/storage/boltz"
+	"math"
+)
 
 func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	versionBucket := boltz.GetOrCreatePath(step.Ctx.Tx(), boltz.RootBucket)
@@ -30,11 +33,9 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 
 	m.createGeoRegionsV1(step)
 	m.createIdentityTypesV1(step)
+	m.createInitialTunnelerConfigTypes(step)
 
-	if m.dbStores != nil {
-		m.upgradeToV1FromPG(step)
-	}
-	return 1
+	return CurrentDbVersion
 }
 
 var geoRegionsV1 = map[string]string{
@@ -79,4 +80,70 @@ func (m *Migrations) createIdentityTypesV1(step *boltz.MigrationStep) {
 			Name:          name,
 		}))
 	}
+}
+
+var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
+var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
+
+func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
+	clientConfigTypeV1 := &ConfigType{
+		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
+		Name:          "ziti-tunneler-client.v1",
+		Schema: map[string]interface{}{
+			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
+			"type":                 "object",
+			"additionalProperties": false,
+			"required": []interface{}{
+				"hostname",
+				"port",
+			},
+			"properties": map[string]interface{}{
+				// TODO: Add protocol list here, so we know which protocols to listen on
+				"hostname": map[string]interface{}{
+					"type": "string",
+				},
+				"port": map[string]interface{}{
+					"type":    "integer",
+					"minimum": float64(0),
+					"maximum": float64(math.MaxUint16),
+				},
+			},
+		},
+	}
+	step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
+
+	serverConfigTypeV1 := &ConfigType{
+		BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
+		Name:          "ziti-tunneler-server.v1",
+		Schema: map[string]interface{}{
+			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
+			"type":                 "object",
+			"additionalProperties": false,
+			"required": []interface{}{
+				"hostname",
+				"port",
+			},
+			"properties": map[string]interface{}{
+				"protocol": map[string]interface{}{
+					"type": []interface{}{
+						"string",
+						"null",
+					},
+					"enum": []interface{}{
+						"tcp",
+						"udp",
+					},
+				},
+				"hostname": map[string]interface{}{
+					"type": "string",
+				},
+				"port": map[string]interface{}{
+					"type":    "integer",
+					"minimum": float64(0),
+					"maximum": float64(math.MaxUint16),
+				},
+			},
+		},
+	}
+	step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
 }

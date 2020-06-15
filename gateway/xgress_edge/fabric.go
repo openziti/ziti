@@ -99,7 +99,11 @@ func (conn *localMessageSink) WritePayload(p []byte, headers map[uint8][]byte) (
 
 func (conn *localMessageSink) Close() error {
 	conn.close(true, "close called")
+	return nil
+}
 
+func (conn *localMessageSink) HandleMuxClose() error {
+	conn.close(false, "channel closed")
 	return nil
 }
 
@@ -113,6 +117,7 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	log.Debugf("closing message sink, reason: %v", reason)
 	if notify {
 		// Notify edge client of close
+		log.Debug("sennding closed to SDK client")
 		closeMsg := edge.NewStateClosedMsg(conn.Id(), "")
 		if err := conn.SendState(closeMsg); err != nil {
 			log.WithError(err).Warn("unable to send close msg to edge client")
@@ -125,6 +130,7 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	// When nextSeq is closed, GetNext in Read() will return a nil.
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
 	// to terminate
+	log.Debug("closing channel sequencer, which should cause xgress to close")
 	conn.seq.Close()
 }
 

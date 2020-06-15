@@ -105,7 +105,7 @@ func (ctx *TestContext) Init() {
 	ctx.stores, err = NewBoltStores(dbProvider)
 	ctx.NoError(err)
 
-	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores, nil))
+	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))
 }
 
 func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles []string, serviceRoles []string) *ServicePolicy {
@@ -160,12 +160,10 @@ func (ctx *TestContext) cleanupAll() {
 		ctx.stores.Session,
 		ctx.stores.ApiSession,
 		ctx.stores.EdgeRouterPolicy,
-		ctx.stores.Appwan,
 		ctx.stores.Service,
 		ctx.stores.EdgeService,
 		ctx.stores.Identity,
 		ctx.stores.EdgeRouter,
-		ctx.stores.Cluster,
 		ctx.stores.Config,
 	}
 	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {

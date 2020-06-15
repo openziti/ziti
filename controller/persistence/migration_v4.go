@@ -20,79 +20,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-	"math"
 )
 
 const (
 	FieldServiceDnsHostname = "dnsHostname"
 	FieldServiceDnsPort     = "dnsPort"
 )
-
-var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
-var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
-
-func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
-	clientConfigTypeV1 := &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
-		Name:          "ziti-tunneler-client.v1",
-		Schema: map[string]interface{}{
-			"$id":                  "http://ziti-edge.netfoundry.io/schemas/ziti-tunneler-client.v1.config.json",
-			"type":                 "object",
-			"additionalProperties": false,
-			"required": []interface{}{
-				"hostname",
-				"port",
-			},
-			"properties": map[string]interface{}{
-				// TODO: Add protocol list here, so we know which protocols to listen on
-				"hostname": map[string]interface{}{
-					"type": "string",
-				},
-				"port": map[string]interface{}{
-					"type":    "integer",
-					"minimum": float64(0),
-					"maximum": float64(math.MaxUint16),
-				},
-			},
-		},
-	}
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
-
-	serverConfigTypeV1 := &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
-		Name:          "ziti-tunneler-server.v1",
-		Schema: map[string]interface{}{
-			"$id":                  "http://ziti-edge.netfoundry.io/schemas/ziti-tunneler-server.v1.config.json",
-			"type":                 "object",
-			"additionalProperties": false,
-			"required": []interface{}{
-				"hostname",
-				"port",
-			},
-			"properties": map[string]interface{}{
-				"protocol": map[string]interface{}{
-					"type": []interface{}{
-						"string",
-						"null",
-					},
-					"enum": []interface{}{
-						"tcp",
-						"udp",
-					},
-				},
-				"hostname": map[string]interface{}{
-					"type": "string",
-				},
-				"port": map[string]interface{}{
-					"type":    "integer",
-					"minimum": float64(0),
-					"maximum": float64(math.MaxUint16),
-				},
-			},
-		},
-	}
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
-}
 
 func (m *Migrations) createInitialTunnelerConfigs(step *boltz.MigrationStep) {
 	ids, _, err := m.stores.EdgeService.QueryIds(step.Ctx.Tx(), "true")

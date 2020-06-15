@@ -584,7 +584,11 @@ func (b *Broker) GetOnlineEdgeRouter(id string) *model.EdgeRouter {
 
 func (b *Broker) RouterConnected(r *network.Router) {
 	go func() {
-		fp := formatFingerprint(r.Fingerprint)
+		if r.Fingerprint == nil {
+			return
+		}
+
+		fp := formatFingerprint(*r.Fingerprint)
 		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
 
 		// not an edge router
@@ -661,7 +665,10 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fing
 
 func (b *Broker) RouterDisconnected(r *network.Router) {
 	go func() {
-		fp := formatFingerprint(r.Fingerprint)
+		if r.Fingerprint == nil {
+			return
+		}
+		fp := formatFingerprint(*r.Fingerprint)
 		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
 
 		// not an edge router
