@@ -37,7 +37,7 @@ require (
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/openziti/fabric v0.11.40
 	github.com/openziti/foundation v0.11.2
-	github.com/openziti/sdk-golang v0.12.2
+	github.com/openziti/sdk-golang v0.13.3
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7
