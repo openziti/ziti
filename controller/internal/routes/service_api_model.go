@@ -22,135 +22,90 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameService = "services"
 
-type ServiceApiCreate struct {
-	Name               *string                `json:"name"`
-	TerminatorStrategy *string                `json:"terminatorStrategy"`
-	Tags               map[string]interface{} `json:"tags"`
-	RoleAttributes     []string               `json:"roleAttributes"`
-	Configs            []string               `json:"configs"`
+var ServiceLinkFactory = NewServiceLinkFactory()
+
+type ServiceLinkFactoryIml struct {
+	BasicLinkFactory
 }
 
-func (i *ServiceApiCreate) ToModel() *model.Service {
-	result := &model.Service{}
-	result.Name = stringz.OrEmpty(i.Name)
-	result.TerminatorStrategy = stringz.OrEmpty(i.TerminatorStrategy)
-	result.RoleAttributes = i.RoleAttributes
-	result.Tags = i.Tags
-	result.Configs = i.Configs
-	return result
-}
-
-type ServiceApiUpdate struct {
-	Name               *string                `json:"name"`
-	TerminatorStrategy *string                `json:"terminatorStrategy"`
-	Tags               map[string]interface{} `json:"tags"`
-	RoleAttributes     []string               `json:"roleAttributes"`
-	Configs            []string               `json:"configs"`
-}
-
-func (i *ServiceApiUpdate) ToModel(id string) *model.Service {
-	result := &model.Service{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.TerminatorStrategy = stringz.OrEmpty(i.TerminatorStrategy)
-	result.Tags = i.Tags
-	result.RoleAttributes = i.RoleAttributes
-	result.Configs = i.Configs
-	return result
-}
-
-func NewServiceEntityRef(s *model.Service) *EntityApiRef {
-	links := &response.Links{
-		"self": NewServiceLink(s.Id),
-	}
-
-	return &EntityApiRef{
-		Entity: EntityNameService,
-		Id:     s.Id,
-		Name:   &s.Name,
-		Links:  links,
+func NewServiceLinkFactory() *ServiceLinkFactoryIml {
+	return &ServiceLinkFactoryIml{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameService),
 	}
 }
 
-func NewServiceLink(sessionId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameService, sessionId))
+func (factory *ServiceLinkFactoryIml) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameServiceEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameServiceEdgeRouterPolicy)
+	links[EntityNameServicePolicy] = factory.NewNestedLink(entity, EntityNameServicePolicy)
+	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
+	links[EntityNameConfig] = factory.NewNestedLink(entity, EntityNameConfig)
+
+	return links
 }
 
-type ServiceApiList struct {
-	*env.BaseApi
-	Name               *string                           `json:"name"`
-	TerminatorStrategy *string                           `json:"terminatorStrategy"`
-	RoleAttributes     []string                          `json:"roleAttributes"`
-	Permissions        []string                          `json:"permissions"`
-	Configs            []string                          `json:"configs"`
-	Config             map[string]map[string]interface{} `json:"config"`
-}
-
-func (e *ServiceApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (ServiceApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameService, id))
-}
-
-func (e *ServiceApiList) PopulateLinks() {
-	if e.Links == nil {
-		self := e.GetSelfLink()
-		e.Links = &response.Links{
-			EntityNameSelf:                    self,
-			EntityNameServiceEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServiceEdgeRouterPolicy)),
-			EntityNameServicePolicy:           response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServicePolicy)),
-			EntityNameTerminator:              response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameTerminator)),
-			EntityNameConfig:                  response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameConfig)),
-		}
-	}
-}
-
-func (e *ServiceApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameService,
-		Name:   e.Name,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func MapServicesToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]BaseApiEntity, error) {
-	// can't use modelToApi b/c it require list of network.Entity
-	apiEntities := make([]BaseApiEntity, 0)
-
-	for _, e := range es {
-		al, err := MapToServiceApiList(ae, rc, e)
-
-		if err != nil {
-			return nil, err
-		}
-
-		apiEntities = append(apiEntities, al)
+func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
+	ret := &model.Service{
+		BaseEntity: models.BaseEntity{
+			Tags: service.Tags,
+		},
+		Name:               stringz.OrEmpty(service.Name),
+		TerminatorStrategy: service.TerminatorStrategy,
+		RoleAttributes:     service.RoleAttributes,
+		Configs:            service.Configs,
 	}
 
-	return apiEntities, nil
+	return ret
 }
 
-func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.ServiceDetail)
+func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
+	ret := &model.Service{
+		BaseEntity: models.BaseEntity{
+			Tags: service.Tags,
+			Id:   id,
+		},
+		Name:               stringz.OrEmpty(service.Name),
+		TerminatorStrategy: service.TerminatorStrategy,
+		RoleAttributes:     service.RoleAttributes,
+		Configs:            service.Configs,
+	}
+
+	return ret
+}
+
+func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
+	ret := &model.Service{
+		BaseEntity: models.BaseEntity{
+			Tags: service.Tags,
+			Id:   id,
+		},
+		Name:               service.Name,
+		TerminatorStrategy: service.TerminatorStrategy,
+		RoleAttributes:     service.RoleAttributes,
+		Configs:            service.Configs,
+	}
+
+	return ret
+}
+
+func MapServiceToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	service, ok := e.(*model.ServiceDetail)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a service \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a Service \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapToServiceApiList(ae, rc, i)
+	restModel, err := MapServiceToRestModel(service)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -158,20 +113,39 @@ func MapServiceToApiEntity(ae *env.AppEnv, rc *response.RequestContext, e models
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapToServiceApiList(_ *env.AppEnv, _ *response.RequestContext, i *model.ServiceDetail) (*ServiceApiList, error) {
-	ret := &ServiceApiList{
-		BaseApi:            env.FromBaseModelEntity(i),
-		Name:               &i.Name,
-		TerminatorStrategy: &i.TerminatorStrategy,
-		RoleAttributes:     i.RoleAttributes,
-		Permissions:        i.Permissions,
-		Configs:            i.Configs,
-		Config:             i.Config,
+func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]interface{}, error) {
+	// can't use modelToApi b/c it require list of network.Entity
+	restModel := make([]interface{}, 0)
+
+	for _, e := range es {
+		al, err := MapServiceToRestEntity(ae, rc, e)
+
+		if err != nil {
+			return nil, err
+		}
+
+		restModel = append(restModel, al)
 	}
 
-	ret.PopulateLinks()
+	return restModel, nil
+}
+
+func MapServiceToRestModel(service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
+	ret := &rest_model.ServiceDetail{
+		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
+		Name:               &service.Name,
+		TerminatorStrategy: &service.TerminatorStrategy,
+		RoleAttributes:     service.RoleAttributes,
+		Configs:            service.Configs,
+		Config:             service.Config,
+	}
+
+	for _, permission := range service.Permissions {
+		ret.Permissions = append(ret.Permissions, rest_model.DialBind(permission))
+	}
+
 	return ret, nil
 }

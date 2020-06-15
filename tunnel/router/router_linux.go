@@ -118,7 +118,6 @@ func nlAddrReq(localPrefix, peerPrefix *net.IPNet, ifName string, t netlink.Head
 		Data: append(ifmBytes, attrBytes...),
 	}
 
-
 	_, err = c.Execute(req)
 	if err != nil {
 		var nlErr *netlink.OpError

@@ -32,7 +32,7 @@ func Test_StandardErrorMessages(t *testing.T) {
 
 	t.Run("405 method not allowed returns a standard error", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(`{}`).Post("/")
+		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(`{}`).Post("/version")
 		req.NoError(err)
 		standardErrorJsonResponseTests(resp, apierror.MethodNotAllowedCode, apierror.MethodNotAllowedStatus, t)
 	})

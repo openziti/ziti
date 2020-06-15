@@ -71,19 +71,6 @@ func (handler *EdgeRouterPolicyHandler) Delete(id string) error {
 }
 
 type EdgeRouterPolicyListResult struct {
-	handler            *EdgeRouterPolicyHandler
 	EdgeRouterPolicies []*EdgeRouterPolicy
 	models.QueryMetaData
-}
-
-func (result *EdgeRouterPolicyListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.EdgeRouterPolicies = append(result.EdgeRouterPolicies, entity)
-	}
-	return nil
 }

@@ -280,159 +280,159 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			ctx.req.Empty(session)
 		})
 	})
-
-	//cert
-	t.Run("can create cert authenticator for a different identity", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		//used to receive a cert that can be tested with
-		unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-		ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-
-		identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), false)
-
-		body := gabs.New()
-		_, _ = body.Set(identityId, "identityId")
-		_, _ = body.Set("cert", "method")
-		_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
-
-		ctx.req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusCreated, t)
-
-		t.Run("and the new authenticator can be used for authentication", func(t *testing.T) {
-			req := require.New(t)
-
-			session, err := unusedCertAuth.Authenticate(ctx)
-
-			req.NoError(err)
-			req.NotEmpty(session.id)
-
-		})
-	})
-
-	t.Run("cannot create a cert authenticator for an identity with an existing cert authenticator", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-
-		body := gabs.New()
-		_, _ = body.Set(identityId, "identityId")
-		_, _ = body.Set("cert", "method")
-		_, _ = body.Set("doesnotmatter", "certPem")
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
-
-		ctx.req.NoError(err)
-		standardErrorJsonResponseTests(resp, apierror.AuthenticatorMethodMaxCode, apierror.AuthenticatorMethodMaxStatus, t)
-	})
-
-	t.Run("can update cert authenticator for a different identity", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		//used to receive a cert that can be tested with
-		unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-		ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-
-		identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-
-		result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-		ctx.req.NoError(err)
-
-		resultBody, err := gabs.ParseJSON(result.Body())
-		ctx.req.NoError(err)
-
-		idContainer := resultBody.Path("data").Index(0).Path("id")
-		ctx.req.NotEmpty(idContainer)
-
-		authenticatorId := idContainer.Data().(string)
-		ctx.req.NotEmpty(authenticatorId)
-
-		body := gabs.New()
-		_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Put("/authenticators/" + authenticatorId)
-
-		ctx.req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
-
-		t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
-			ctx.testContextChanged(t)
-
-			session, err := unusedCertAuth.Authenticate(ctx)
-			ctx.req.NoError(err)
-			ctx.req.NotEmpty(session)
-		})
-	})
-
-	t.Run("can patch cert authenticator for a different identity", func(t *testing.T) {
-		ctx.testContextChanged(t)
-
-		//used to receive a cert that can be tested with
-		unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-		ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-
-		identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-
-		result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-		ctx.req.NoError(err)
-
-		resultBody, err := gabs.ParseJSON(result.Body())
-		ctx.req.NoError(err)
-
-		idContainer := resultBody.Path("data").Index(0).Path("id")
-		ctx.req.NotEmpty(idContainer)
-
-		authenticatorId := idContainer.Data().(string)
-		ctx.req.NotEmpty(authenticatorId)
-
-		body := gabs.New()
-		_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Patch("/authenticators/" + authenticatorId)
-
-		ctx.req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
-
-		t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
-			ctx.testContextChanged(t)
-
-			session, err := unusedCertAuth.Authenticate(ctx)
-			ctx.req.NoError(err)
-			ctx.req.NotEmpty(session)
-		})
-	})
-
-	t.Run("can delete cert authenticator for a different identity", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		identityId, authenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-
-		result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-		ctx.req.NoError(err)
-
-		resultBody, err := gabs.ParseJSON(result.Body())
-		ctx.req.NoError(err)
-
-		idContainer := resultBody.Path("data").Index(0).Path("id")
-		ctx.req.NotEmpty(idContainer)
-
-		authenticatorId := idContainer.Data().(string)
-		ctx.req.NotEmpty(authenticatorId)
-
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete("/authenticators/" + authenticatorId)
-
-		ctx.req.NoError(err)
-
-		standardJsonResponseTests(resp, http.StatusOK, t)
-
-		t.Run("identity can not longer authenticate", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			session, err := authenticator.Authenticate(ctx)
-
-			ctx.req.Error(err)
-			ctx.req.Empty(session)
-		})
-	})
+	//
+	////cert
+	//t.Run("can create cert authenticator for a different identity", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//
+	//	//used to receive a cert that can be tested with
+	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
+	//
+	//	identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), false)
+	//
+	//	body := gabs.New()
+	//	_, _ = body.Set(identityId, "identityId")
+	//	_, _ = body.Set("cert", "method")
+	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
+	//
+	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
+	//
+	//	ctx.req.NoError(err)
+	//	standardJsonResponseTests(resp, http.StatusCreated, t)
+	//
+	//	t.Run("and the new authenticator can be used for authentication", func(t *testing.T) {
+	//		req := require.New(t)
+	//
+	//		session, err := unusedCertAuth.Authenticate(ctx)
+	//
+	//		req.NoError(err)
+	//		req.NotEmpty(session.id)
+	//
+	//	})
+	//})
+	//
+	//t.Run("cannot create a cert authenticator for an identity with an existing cert authenticator", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//
+	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//
+	//	body := gabs.New()
+	//	_, _ = body.Set(identityId, "identityId")
+	//	_, _ = body.Set("cert", "method")
+	//	_, _ = body.Set("doesnotmatter", "certPem")
+	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
+	//
+	//	ctx.req.NoError(err)
+	//	standardErrorJsonResponseTests(resp, apierror.AuthenticatorMethodMaxCode, apierror.AuthenticatorMethodMaxStatus, t)
+	//})
+	//
+	//t.Run("can update cert authenticator for a different identity", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//
+	//	//used to receive a cert that can be tested with
+	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
+	//
+	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//
+	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
+	//	ctx.req.NoError(err)
+	//
+	//	resultBody, err := gabs.ParseJSON(result.Body())
+	//	ctx.req.NoError(err)
+	//
+	//	idContainer := resultBody.Path("data").Index(0).Path("id")
+	//	ctx.req.NotEmpty(idContainer)
+	//
+	//	authenticatorId := idContainer.Data().(string)
+	//	ctx.req.NotEmpty(authenticatorId)
+	//
+	//	body := gabs.New()
+	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
+	//
+	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Put("/authenticators/" + authenticatorId)
+	//
+	//	ctx.req.NoError(err)
+	//	standardJsonResponseTests(resp, http.StatusOK, t)
+	//
+	//	t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
+	//		ctx.testContextChanged(t)
+	//
+	//		session, err := unusedCertAuth.Authenticate(ctx)
+	//		ctx.req.NoError(err)
+	//		ctx.req.NotEmpty(session)
+	//	})
+	//})
+	//
+	//t.Run("can patch cert authenticator for a different identity", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//
+	//	//used to receive a cert that can be tested with
+	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
+	//
+	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//
+	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
+	//	ctx.req.NoError(err)
+	//
+	//	resultBody, err := gabs.ParseJSON(result.Body())
+	//	ctx.req.NoError(err)
+	//
+	//	idContainer := resultBody.Path("data").Index(0).Path("id")
+	//	ctx.req.NotEmpty(idContainer)
+	//
+	//	authenticatorId := idContainer.Data().(string)
+	//	ctx.req.NotEmpty(authenticatorId)
+	//
+	//	body := gabs.New()
+	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
+	//
+	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Patch("/authenticators/" + authenticatorId)
+	//
+	//	ctx.req.NoError(err)
+	//	standardJsonResponseTests(resp, http.StatusOK, t)
+	//
+	//	t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
+	//		ctx.testContextChanged(t)
+	//
+	//		session, err := unusedCertAuth.Authenticate(ctx)
+	//		ctx.req.NoError(err)
+	//		ctx.req.NotEmpty(session)
+	//	})
+	//})
+	//
+	//t.Run("can delete cert authenticator for a different identity", func(t *testing.T) {
+	//	ctx.testContextChanged(t)
+	//	identityId, authenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	//
+	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
+	//	ctx.req.NoError(err)
+	//
+	//	resultBody, err := gabs.ParseJSON(result.Body())
+	//	ctx.req.NoError(err)
+	//
+	//	idContainer := resultBody.Path("data").Index(0).Path("id")
+	//	ctx.req.NotEmpty(idContainer)
+	//
+	//	authenticatorId := idContainer.Data().(string)
+	//	ctx.req.NotEmpty(authenticatorId)
+	//
+	//	resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete("/authenticators/" + authenticatorId)
+	//
+	//	ctx.req.NoError(err)
+	//
+	//	standardJsonResponseTests(resp, http.StatusOK, t)
+	//
+	//	t.Run("identity can not longer authenticate", func(t *testing.T) {
+	//		ctx.testContextChanged(t)
+	//		session, err := authenticator.Authenticate(ctx)
+	//
+	//		ctx.req.Error(err)
+	//		ctx.req.Empty(session)
+	//	})
+	//})
 }
 
 func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
@@ -541,8 +541,10 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 		req := require.New(t)
 		resp, err := updbNonAdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "application/json").
-			SetBody(map[string]interface{}{
-				"certPem": "",
+			SetBody(map[string]string{
+				"currentPassword": "assdfasdf",
+				"password":        "asdfasdf",
+				"username":        "asdfasdf",
 			}).
 			Put("/authenticators/" + uuid.New().String())
 		req.NoError(err)
@@ -678,7 +680,12 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		t.Run("for update if the authenticator id is for another identity", func(t *testing.T) {
 			//access updb's authenticator from cert identity
-			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "newPassword":"456789", "username":"username123456"}`).
+			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789", "username":"username123456"}`).
+				SetBody(map[string]string{
+					"currentPassword": "assdfasdf",
+					"password":        "asdfasdf",
+					"username":        "asdfasdf",
+				}).
 				Put("/current-identity/authenticators/" + authenticatorId)
 
 			req.NoError(err)
@@ -688,7 +695,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		t.Run("for update if the authenticator id is made up", func(t *testing.T) {
 			//access updb's authenticator from cert identity
-			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "newPassword":"456789", "username":"username123456"}`).
+			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789", "username":"username123456"}`).
 				Put("/current-identity/authenticators/" + uuid.New().String())
 
 			req.NoError(err)
@@ -698,7 +705,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		t.Run("for patch if the authenticator id is for another identity", func(t *testing.T) {
 			//access updb's authenticator from cert identity
-			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "newPassword":"456789"}`).
+			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789"}`).
 				Patch("/current-identity/authenticators/" + authenticatorId)
 
 			req.NoError(err)
@@ -708,7 +715,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		t.Run("for patch if the authenticator id is made up", func(t *testing.T) {
 			//access updb's authenticator from cert identity
-			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "newPassword":"456789"}`).
+			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789"}`).
 				Patch("/current-identity/authenticators/" + uuid.New().String())
 
 			req.NoError(err)
@@ -758,7 +765,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		newUsername := uuid.New().String()
 		newPassword := uuid.New().String()
 
-		body := fmt.Sprintf(`{"username":"%s", "newPassword":"%s", "currentPassword":"%s"}`, newUsername, newPassword, auth.Password)
+		body := fmt.Sprintf(`{"username":"%s", "password":"%s", "currentPassword":"%s"}`, newUsername, newPassword, auth.Password)
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Put("/current-identity/authenticators/" + authId)
 
@@ -802,7 +809,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		newUsername := uuid.New().String()
 		newPassword := uuid.New().String()
 
-		body := fmt.Sprintf(`{"username":"%s", "newPassword":"%s", "currentPassword":"%s"}`, newUsername, newPassword, uuid.New().String())
+		body := fmt.Sprintf(`{"username":"%s", "password":"%s", "currentPassword":"%s"}`, newUsername, newPassword, uuid.New().String())
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Put("/current-identity/authenticators/" + authId)
 
@@ -842,7 +849,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		newPassword := uuid.New().String()
 
-		body := fmt.Sprintf(`{"newPassword":"%s", "currentPassword":"%s"}`, newPassword, auth.Password)
+		body := fmt.Sprintf(`{"password":"%s", "currentPassword":"%s"}`, newPassword, auth.Password)
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Patch("/current-identity/authenticators/" + authId)
 
@@ -884,7 +891,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		newPassword := uuid.New().String()
 
-		body := fmt.Sprintf(`{"newPassword":"%s", "currentPassword":"%s"}`, newPassword, uuid.New().String())
+		body := fmt.Sprintf(`{"password":"%s", "currentPassword":"%s"}`, newPassword, uuid.New().String())
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Patch("/current-identity/authenticators/" + authId)
 
@@ -922,8 +929,11 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		_, err = uuid.Parse(authId)
 		req.NoError(err)
 
-		resp, err := authSession.newAuthenticatedJsonRequest(`{"certPem": "something"}`).
-			Put("/current-identity/authenticators/" + authId)
+		resp, err := authSession.newAuthenticatedJsonRequest(map[string]string{
+			"currentPassword": "assdfasdf",
+			"password":        "asdfasdf",
+			"username":        "asdfasdf",
+		}).Put("/current-identity/authenticators/" + authId)
 
 		req.NoError(err)
 
@@ -950,8 +960,11 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		_, err = uuid.Parse(authId)
 		req.NoError(err)
 
-		resp, err := authSession.newAuthenticatedJsonRequest(`{ "certPem": "something"}`).
-			Patch("/current-identity/authenticators/" + authId)
+		resp, err := authSession.newAuthenticatedJsonRequest(map[string]string{
+			"currentPassword": "assdfasdf",
+			"password":        "asdfasdf",
+			"username":        "asdfasdf",
+		}).Patch("/current-identity/authenticators/" + authId)
 
 		req.NoError(err)
 

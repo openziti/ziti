@@ -264,7 +264,7 @@ func (a *Client) EnrollOttCa(params *EnrollOttCaParams) (*EnrollOttCaOK, error) 
 /*
   ErnollUpdb enrolls an identity vvia one time token
 
-  Enrolls and identity via a one-time-token to establish an initial username and password combination.
+  Enrolls an identity via a one-time-token to establish an initial username and password combination
 
 */
 func (a *Client) ErnollUpdb(params *ErnollUpdbParams) (*ErnollUpdbOK, error) {

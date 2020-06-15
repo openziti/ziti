@@ -57,7 +57,7 @@ type UpdateServiceEdgeRouterPolicyParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A service edge policy update object
+	/*A service edge router policy update object
 	  Required: true
 	  In: body
 	*/

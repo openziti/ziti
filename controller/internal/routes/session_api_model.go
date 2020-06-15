@@ -23,100 +23,41 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameSession = "sessions"
 
-type SessionApiPost struct {
-	ServiceId *string                `json:"serviceId"`
-	Type      *string                `json:"type"`
-	Tags      map[string]interface{} `json:"tags"`
-}
+var SessionLinkFactory = NewBasicLinkFactory(EntityNameApiSession)
 
-func (i *SessionApiPost) ToModel(rc *response.RequestContext) *model.Session {
-	sessionType := "Dial"
-	if i.Type != nil {
-		sessionType = *i.Type
-	}
-	return &model.Session{
+func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCreate) *model.Session {
+	ret := &model.Session{
 		BaseEntity: models.BaseEntity{
-			Tags: i.Tags,
+			Tags: session.Tags,
 		},
 		Token:        uuid.New().String(),
-		ServiceId:    *i.ServiceId,
-		ApiSessionId: rc.ApiSession.Id,
-		Type:         sessionType,
-	}
-}
-
-type NewSession struct {
-	*SessionApiList
-	Token string `json:"token"`
-}
-
-type SessionApiList struct {
-	*env.BaseApi
-	Type        string               `json:"type"`
-	ApiSession  *EntityApiRef        `json:"apiSession"`
-	Service     *EntityApiRef        `json:"service"`
-	EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
-}
-
-func (SessionApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameSession, id))
-}
-
-func (e *SessionApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *SessionApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
-	}
-}
-
-func (e *SessionApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameSession,
-		Name:   nil,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func MapSessionsToApiEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Session) ([]BaseApiEntity, error) {
-	// can't use modelToApi b/c it require list of network.Entity
-	apiEntities := make([]BaseApiEntity, 0)
-
-	for _, e := range es {
-		al, err := MapSessionToApiEntity(ae, rc, e)
-
-		if err != nil {
-			return nil, err
-		}
-
-		apiEntities = append(apiEntities, al)
+		ApiSessionId: apiSessionId,
+		ServiceId:    session.ServiceID,
+		Type:         string(session.Type),
+		SessionCerts: nil,
 	}
 
-	return apiEntities, nil
+	return ret
 }
 
-func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.Session)
+func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	session, ok := e.(*model.Session)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a session \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a Session \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapSessionToApiList(ae, i)
+	restModel, err := MapSessionToRestModel(ae, session)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -124,34 +65,80 @@ func MapSessionToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapSessionToApiList(ae *env.AppEnv, i *model.Session) (*SessionApiList, error) {
-	service, err := ae.Handlers.EdgeService.Read(i.ServiceId)
+func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionDetail, error) {
+	service, err := ae.Handlers.EdgeService.Read(sessionModel.ServiceId)
 	if err != nil {
 		return nil, err
 	}
 
-	edgeRouters, err := getSessionEdgeRouters(ae, i)
+	edgeRouters, err := getSessionEdgeRouters(ae, sessionModel)
 	if err != nil {
 		return nil, err
 	}
 
-	apiSession, err := ae.Handlers.ApiSession.Read(i.ApiSessionId)
+	apiSession, err := ae.Handlers.ApiSession.Read(sessionModel.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := &SessionApiList{
-		BaseApi:     env.FromBaseModelEntity(i),
-		Type:        i.Type,
-		Service:     NewServiceEntityRef(service),
-		ApiSession:  NewApiSessionEntityRef(apiSession),
-		EdgeRouters: edgeRouters,
+	ret := &rest_model.SessionDetail{
+		BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
+		APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
+		APISessionID: &apiSession.Id,
+		Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
+		ServiceID:    &service.Id,
+		EdgeRouters:  edgeRouters,
+		Type:         rest_model.DialBind(sessionModel.Type),
+		Token:        &sessionModel.Token,
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
+}
+
+func MapSessionsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, sessions []*model.Session) ([]interface{}, error) {
+	var ret []interface{}
+	for _, session := range sessions {
+		restEntity, err := MapSessionToRestEntity(ae, rc, session)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, restEntity)
+	}
+
+	return ret, nil
+}
+
+func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.SessionEdgeRouter, error) {
+	var edgeRouters []*rest_model.SessionEdgeRouter
+
+	edgeRoutersForSession, err := ae.Handlers.EdgeRouter.ListForSession(ns.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, edgeRouter := range edgeRoutersForSession.EdgeRouters {
+		onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(edgeRouter.Id)
+
+		if onlineEdgeRouter != nil {
+			restModel := &rest_model.SessionEdgeRouter{
+				Hostname: stringz.OrEmpty(onlineEdgeRouter.Hostname),
+				Name:     edgeRouter.Name,
+				Urls:     map[string]string{},
+			}
+
+			for p, url := range onlineEdgeRouter.EdgeRouterProtocols {
+				restModel.Urls[p] = url
+			}
+
+			pfxlog.Logger().Infof("Returning %+v to %+v, with urls: %+v", edgeRouter, restModel, restModel.Urls)
+			edgeRouters = append(edgeRouters, restModel)
+		}
+	}
+
+	return edgeRouters, nil
 }

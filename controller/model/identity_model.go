@@ -82,7 +82,6 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 	return boltEntity, nil
 }
 
-
 func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *persistence.SdkInfo) {
 	if envInfo != nil {
 		identity.EnvInfo = &EnvInfo{

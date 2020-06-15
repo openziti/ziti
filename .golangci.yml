@@ -1,0 +1,4 @@
+run:
+  deadline: 8m
+  skip-dirs:
+    - controller/zitiql

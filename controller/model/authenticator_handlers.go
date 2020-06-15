@@ -18,6 +18,7 @@ package model
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
@@ -195,7 +196,7 @@ func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorS
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
-		return apierror.NewUnhandled()
+		return apierror.NewUnhandled(errors.New("authenticator does not match identity id for update"))
 	}
 
 	updbAuth := authenticator.ToUpdb()
@@ -261,7 +262,7 @@ func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSe
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
-		return apierror.NewUnhandled()
+		return apierror.NewUnhandled(errors.New("authenticator does not match identity id for patch"))
 	}
 
 	updbAuth := authenticator.ToUpdb()

@@ -17,13 +17,12 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/foundation/util/stringz"
-	"time"
-
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/current_api_session"
 	"net/http"
 )
 
@@ -39,54 +38,28 @@ func NewCurrentSessionRouter() *CurrentSessionRouter {
 	return &CurrentSessionRouter{}
 }
 
-func (ir *CurrentSessionRouter) Register(ae *env.AppEnv) {
-	detailHandler := ae.WrapHandler(ir.Detail, permissions.IsAuthenticated())
-	deleteHandler := ae.WrapHandler(ir.Delete, permissions.IsAuthenticated())
+func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
+	ae.Api.CurrentAPISessionGetCurrentAPISessionHandler = current_api_session.GetCurrentAPISessionHandlerFunc(func(params current_api_session.GetCurrentAPISessionParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(router.Detail, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
 
-	prefixWithOutSlash := "/" + EntityNameCurrentSession
-	prefixWithSlash := prefixWithOutSlash + "/"
-
-	ae.RootRouter.HandleFunc(prefixWithOutSlash, detailHandler).Methods(http.MethodGet)
-	ae.RootRouter.HandleFunc(prefixWithSlash, detailHandler).Methods(http.MethodGet)
-
-	ae.RootRouter.HandleFunc(prefixWithOutSlash, deleteHandler).Methods(http.MethodDelete)
-	ae.RootRouter.HandleFunc(prefixWithSlash, deleteHandler).Methods(http.MethodDelete)
+	ae.Api.CurrentAPISessionDeleteCurrentAPISessionHandler = current_api_session.DeleteCurrentAPISessionHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
 }
 
-func (ir *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	apiSession, err := RenderCurrentSessionApiListEntity(rc.ApiSession, ae.Config.SessionTimeoutDuration())
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	apiSession.PopulateLinks()
-	rc.RequestResponder.RespondWithOk(apiSession, nil)
+func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	apiSession := MapToCurrentApiSessionRestModel(rc.ApiSession, ae.Config.SessionTimeoutDuration())
+	rc.Respond(rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}, http.StatusOK)
 }
 
-func (ir *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	err := ae.GetHandlers().ApiSession.Delete(rc.ApiSession.Id)
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(nil, nil)
-}
-
-func RenderCurrentSessionApiListEntity(s *model.ApiSession, sessionTimeout time.Duration) (*CurrentSessionApiList, error) {
-	expiresAt := s.UpdatedAt.Add(sessionTimeout)
-
-	ret := &CurrentSessionApiList{
-		BaseApi:     env.FromBaseModelEntity(s),
-		Token:       &s.Token,
-		ExpiresAt:   &expiresAt,
-		Identity:    NewIdentityEntityRef(s.Identity),
-		ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
-	}
-
-	ret.PopulateLinks()
-
-	return ret, nil
+	rc.RespondWithEmptyOk()
 }

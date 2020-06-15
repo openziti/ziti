@@ -43,13 +43,16 @@ func (handler *EnrollmentHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
-	method := ""
+	method := ctx.GetMethod()
 
-	if method = ctx.GetMethod(); method == persistence.MethodEnrollCa {
+	if method == persistence.MethodEnrollCa {
 		return method, nil
 	}
 
-	enrollment, err := handler.ReadByToken(ctx.GetToken())
+	token := ctx.GetToken()
+
+	// token present, assumes all other enrollment methods
+	enrollment, err := handler.ReadByToken(token)
 
 	if err != nil {
 		return "", err

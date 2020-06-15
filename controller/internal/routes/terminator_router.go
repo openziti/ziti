@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/terminator"
 	"github.com/openziti/fabric/controller/xt"
 )
 
@@ -40,50 +42,75 @@ func NewTerminatorRouter() *TerminatorRouter {
 	}
 }
 
-func (ir *TerminatorRouter) Register(ae *env.AppEnv) {
-	registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *TerminatorRouter) Register(ae *env.AppEnv) {
+	ae.Api.TerminatorDeleteTerminatorHandler = terminator.DeleteTerminatorHandlerFunc(func(params terminator.DeleteTerminatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TerminatorDetailTerminatorHandler = terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TerminatorListTerminatorsHandler = terminator.ListTerminatorsHandlerFunc(func(params terminator.ListTerminatorsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.TerminatorUpdateTerminatorHandler = terminator.UpdateTerminatorHandlerFunc(func(params terminator.UpdateTerminatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.TerminatorCreateTerminatorHandler = terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.TerminatorPatchTerminatorHandler = terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
-func (ir *TerminatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToApiEntity)
+func (r *TerminatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
 }
 
-func (ir *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToApiEntity, ir.IdType)
+func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
 }
 
-func (ir *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &TerminatorApi{}
-	Create(rc, rc.RequestResponder, ae.Schemes.Terminator.Post, apiEntity, (&TerminatorApiList{}).BuildSelfLink, func() (string, error) {
-		id, err := ae.Handlers.Terminator.Create(apiEntity.ToModel(""))
-		if err == nil && apiEntity.GetPrecedence() != nil {
-			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
+	Create(rc, rc, TerminatorLinkFactory, func() (string, error) {
+		id, err := ae.Handlers.Terminator.Create(MapCreateTerminatorToModel(params.Body))
+		if err == nil {
+			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
+				xt.GlobalCosts().SetPrecedence(id, *precedence)
+			}
 		}
 		return id, err
 	})
 }
 
-func (ir *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.Terminator)
+func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.Terminator)
 }
 
-func (ir *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &TerminatorApi{}
-	Update(rc, ae.Schemes.Terminator.Put, ir.IdType, apiEntity, func(id string) error {
-		err := ae.Handlers.Terminator.Update(apiEntity.ToModel(id))
-		if err == nil && apiEntity.GetPrecedence() != nil {
-			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
+	Update(rc, func(id string) error {
+		err := ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Body))
+		if err == nil {
+			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
+				xt.GlobalCosts().SetPrecedence(id, *precedence)
+			}
 		}
 		return err
 	})
 }
 
-func (ir *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &TerminatorApi{}
-	Patch(rc, ae.Schemes.Terminator.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		err := ae.Handlers.Terminator.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
-		if err == nil && apiEntity.GetPrecedence() != nil {
-			xt.GlobalCosts().SetPrecedence(id, *apiEntity.GetPrecedence())
+func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		err := ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+		if err == nil {
+			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
+				xt.GlobalCosts().SetPrecedence(id, *precedence)
+			}
 		}
 		return err
 	})

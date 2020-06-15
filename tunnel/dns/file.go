@@ -17,23 +17,23 @@
 package dns
 
 import (
-	"sync"
+	"bufio"
+	"fmt"
 	"net"
 	"os"
-	"fmt"
-	"bufio"
+	"sync"
 )
 
 const hostFormat = "%s\t%s\t# NetFoundry"
 
 type hostFile struct {
-	path string
+	path  string
 	mutex sync.Mutex
 }
 
 func NewHostFile(path string) Resolver {
 	return &hostFile{
-		path: path,
+		path:  path,
 		mutex: sync.Mutex{},
 	}
 }
@@ -49,7 +49,7 @@ func isHostPresent(hostname string, ip net.IP, f *os.File) bool {
 	return false
 }
 
-func (h hostFile) AddHostname(hostname string, ip net.IP) error {
+func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	f, err := os.OpenFile(h.path, os.O_RDWR, 0600)
@@ -72,12 +72,12 @@ func (h hostFile) AddHostname(hostname string, ip net.IP) error {
 	return nil
 }
 
-func (h hostFile) RemoveHostname(s string, ip net.IP) error {
+func (h *hostFile) RemoveHostname(s string, ip net.IP) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	return nil
 }
 
-func (h hostFile) Cleanup() error {
+func (h *hostFile) Cleanup() error {
 	return nil
 }

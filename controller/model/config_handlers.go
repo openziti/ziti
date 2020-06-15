@@ -77,19 +77,6 @@ func (handler *ConfigHandler) Delete(id string) error {
 }
 
 type ConfigListResult struct {
-	handler *ConfigHandler
 	Configs []*Config
 	models.QueryMetaData
-}
-
-func (result *ConfigListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
-	result.QueryMetaData = *queryMetaData
-	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
-		if err != nil {
-			return err
-		}
-		result.Configs = append(result.Configs, entity)
-	}
-	return nil
 }

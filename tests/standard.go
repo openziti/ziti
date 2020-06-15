@@ -23,12 +23,14 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
+	"strings"
 	"testing"
 )
 
 func standardJsonResponseTests(response *resty.Response, expectedStatusCode int, t *testing.T) {
 	t.Run("response has content type application/json", func(t *testing.T) {
-		require.New(t).Equal("application/json", response.Header().Get("content-type"))
+		parts := strings.Split(response.Header().Get("content-type"), ";")
+		require.New(t).Equal("application/json", parts[0])
 	})
 
 	t.Run("response is parsable", func(t *testing.T) {
@@ -101,7 +103,8 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 
 func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode string, expectedStatusCode int, t *testing.T) {
 	t.Run("response has content type application/json", func(t *testing.T) {
-		require.New(t).Equal("application/json", response.Header().Get("content-type"))
+		parts := strings.Split(response.Header().Get("content-type"), ";")
+		require.New(t).Equal("application/json", parts[0])
 	})
 
 	t.Run("response is parsable", func(t *testing.T) {
@@ -154,9 +157,6 @@ func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode 
 		data, err := gabs.ParseJSON(body)
 		r.NoError(err)
 
-		r.True(data.ExistsP("error.args"), "missing 'error.args' property for error response")
-		r.True(data.ExistsP("error.cause"), "missing 'error.cause' property for error response")
-		r.True(data.ExistsP("error.causeMessage"), "missing 'error.causeMessage' property for error response")
 		r.True(data.ExistsP("error.code"), "missing 'error.code' property for error response")
 		r.True(data.ExistsP("error.message"), "missing 'error.message' property for error response")
 		r.True(data.ExistsP("error.requestId"), "missing 'error.requestId' property for error response")

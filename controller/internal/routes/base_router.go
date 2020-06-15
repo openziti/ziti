@@ -24,28 +24,19 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/validation"
-	"github.com/xeipuuv/gojsonschema"
-	"io/ioutil"
+	"net/http"
+	"reflect"
 	"strings"
 )
 
 const (
 	EntityNameSelf = "self"
 )
-
-func unmarshal(body []byte, in interface{}) error {
-	err := json.Unmarshal(body, in)
-
-	if err != nil {
-		err = apierror.GetJsonParseError(err, body)
-	}
-
-	return err
-}
 
 type JsonFields map[string]bool
 
@@ -111,8 +102,8 @@ func getJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
 	}
 }
 
-func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]BaseApiEntity, error) {
-	apiEntities := make([]BaseApiEntity, 0)
+func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]interface{}, error) {
+	apiEntities := make([]interface{}, 0)
 
 	for _, e := range es {
 		al, err := mapper(ae, rc, e)
@@ -134,7 +125,21 @@ func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.
 type queryF func(query ast.Query) (*models.EntityListResult, error)
 
 func ListWithQueryF(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, qf queryF) {
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	ListWithQueryFAndCollector(ae, rc, lister, mapper, defaultToListEnvelope, qf)
+}
+
+func defaultToListEnvelope(data []interface{}, meta *rest_model.Meta) interface{} {
+	return rest_model.Empty{
+		Data: data,
+		Meta: meta,
+	}
+}
+
+type ApiListEnvelopeFactory func(data []interface{}, meta *rest_model.Meta) interface{}
+type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) interface{}
+
+func ListWithQueryFAndCollector(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, toEnvelope ApiListEnvelopeFactory, qf queryF) {
+	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
 		query, err := queryOptions.getFullQuery(lister.GetStore())
@@ -159,12 +164,16 @@ func ListWithQueryF(ae *env.AppEnv, rc *response.RequestContext, lister models.E
 type modelListF func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error)
 
 func List(rc *response.RequestContext, f modelListF) {
+	ListWithEnvelopeFactory(rc, defaultToListEnvelope, f)
+}
+
+func ListWithEnvelopeFactory(rc *response.RequestContext, toEnvelope ApiListEnvelopeFactory, f modelListF) {
 	qo, err := GetModelQueryOptionsFromRequest(rc.Request)
 
 	if err != nil {
 		log := pfxlog.Logger()
 		log.WithField("cause", err).Error("could not build query options")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -173,82 +182,75 @@ func List(rc *response.RequestContext, f modelListF) {
 	if err != nil {
 		log := pfxlog.Logger()
 		log.WithField("cause", err).Error("could not convert list")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
 	if result.Result == nil {
-		result.Result = []BaseApiEntity{}
+		result.Result = []interface{}{}
 	}
 
-	meta := &response.Meta{
-		"pagination": map[string]interface{}{
-			"limit":      result.Limit,
-			"offset":     result.Offset,
-			"totalCount": result.Count,
+	meta := &rest_model.Meta{
+		Pagination: &rest_model.Pagination{
+			Limit:      result.Limit,
+			Offset:     result.Offset,
+			TotalCount: result.Count,
 		},
-		"filterableFields": result.FilterableFields,
+		FilterableFields: result.FilterableFields,
 	}
 
-	rc.RequestResponder.RespondWithOk(result.Result, meta)
+	switch reflect.TypeOf(result.Result).Kind() {
+	case reflect.Slice:
+		slice := reflect.ValueOf(result.Result)
+
+		//noinspection GoPreferNilSlice
+		elements := []interface{}{}
+		for i := 0; i < slice.Len(); i++ {
+			elem := slice.Index(i)
+			elements = append(elements, elem.Interface())
+		}
+
+		envelope := toEnvelope(elements, meta)
+		rc.Respond(envelope, http.StatusOK)
+	default:
+		envelope := toEnvelope([]interface{}{result.Result}, meta)
+		rc.Respond(envelope, http.StatusOK)
+	}
 }
 
 type ModelCreateF func() (string, error)
 
-func Create(rc *response.RequestContext, rr response.RequestResponder, sc *gojsonschema.Schema, in interface{}, lb LinkBuilder, creator ModelCreateF) {
-	var body []byte
-	var err error
+func Create(rc *response.RequestContext, _ response.Responder, linkFactory CreateLinkFactory, creator ModelCreateF) {
+	CreateWithResponder(rc, rc, linkFactory, creator)
+}
 
-	if body, err = ioutil.ReadAll(rc.Request.Body); err != nil {
-		rr.RespondWithCouldNotReadBody(err)
-		return
-	}
-
-	if err = unmarshal(body, in); err != nil {
-		rr.RespondWithCouldNotParseBody(err)
-		return
-	}
-
-	il := gojsonschema.NewBytesLoader(body)
-
-	result, err := sc.Validate(il)
-
-	if err != nil {
-		rr.RespondWithError(err)
-		return
-	}
-
-	if !result.Valid() {
-		rr.RespondWithValidationErrors(schema.NewValidationErrors(result))
-		return
-	}
-
+func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, linkFactory CreateLinkFactory, creator ModelCreateF) {
 	id, err := creator()
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rr.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		if fe, ok := err.(*validation.FieldError); ok {
-			rr.RespondWithFieldError(fe)
+			rc.RespondWithFieldError(fe)
 			return
 		}
 
 		if sve, ok := err.(*schema.ValidationErrors); ok {
-			rr.RespondWithValidationErrors(sve)
+			rc.RespondWithValidationErrors(sve)
 			return
 		}
 
-		rr.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rr.RespondWithCreatedId(id, lb(id))
+	rsp.RespondWithCreatedId(id, linkFactory.SelfLinkFromId(id))
 }
 
-func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever, mapper ModelToApiMapper, idType response.IdType) {
-	Detail(rc, idType, func(rc *response.RequestContext, id string) (interface{}, error) {
+func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever, mapper ModelToApiMapper) {
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		entity, err := loader.BaseLoad(id)
 		if err != nil {
 			return nil, err
@@ -259,12 +261,12 @@ func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, loader model
 
 type ModelDetailF func(rc *response.RequestContext, id string) (interface{}, error)
 
-func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF) {
-	id, err := rc.GetIdFromRequest(idType)
+func Detail(rc *response.RequestContext, f ModelDetailF) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		pfxlog.Logger().Error(err)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -272,16 +274,16 @@ func Detail(rc *response.RequestContext, idType response.IdType, f ModelDetailF)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		pfxlog.Logger().WithField("id", id).WithError(err).Error("could not load entity by id")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(apiEntity, nil)
+	rc.RespondWithOk(apiEntity, nil)
 }
 
 type ModelDeleteF func(rc *response.RequestContext, id string) error
@@ -290,19 +292,19 @@ type DeleteHandler interface {
 	Delete(id string) error
 }
 
-func DeleteWithHandler(rc *response.RequestContext, idType response.IdType, deleteHandler DeleteHandler) {
-	Delete(rc, idType, func(rc *response.RequestContext, id string) error {
+func DeleteWithHandler(rc *response.RequestContext, deleteHandler DeleteHandler) {
+	Delete(rc, func(rc *response.RequestContext, id string) error {
 		return deleteHandler.Delete(id)
 	})
 }
 
-func Delete(rc *response.RequestContext, idType response.IdType, deleteF ModelDeleteF) {
-	id, err := rc.GetIdFromRequest(idType)
+func Delete(rc *response.RequestContext, deleteF ModelDeleteF) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		log.Error(err)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -310,158 +312,104 @@ func Delete(rc *response.RequestContext, idType response.IdType, deleteF ModelDe
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 		} else {
-			rc.RequestResponder.RespondWithError(err)
+			rc.RespondWithError(err)
 		}
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(nil, nil)
+	rc.RespondWithEmptyOk()
 }
 
 type ModelUpdateF func(id string) error
 
-func Update(rc *response.RequestContext, sc *gojsonschema.Schema, idType response.IdType, in interface{}, updateF ModelUpdateF) {
-	UpdateAllowEmptyBody(rc, sc, idType, in, false, updateF)
+func Update(rc *response.RequestContext, updateF ModelUpdateF) {
+	UpdateAllowEmptyBody(rc, updateF)
 }
 
-func UpdateAllowEmptyBody(rc *response.RequestContext, sc *gojsonschema.Schema, idType response.IdType, in interface{}, emptyBodyAllowed bool, updateF ModelUpdateF) {
-	id, err := rc.GetIdFromRequest(idType)
+func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		log.Error(err)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(fmt.Errorf("error during update, retrieving id: %v", err))
 		return
-	}
-
-	var body []byte
-
-	if body, err = ioutil.ReadAll(rc.Request.Body); err != nil {
-		rc.RequestResponder.RespondWithCouldNotReadBody(err)
-		return
-	}
-
-	if len(body) > 0 || !emptyBodyAllowed {
-		if err = unmarshal(body, in); err != nil {
-			rc.RequestResponder.RespondWithCouldNotParseBody(err)
-			return
-		}
-
-		il := gojsonschema.NewBytesLoader(body)
-
-		result, err := sc.Validate(il)
-
-		if err != nil {
-			rc.RequestResponder.RespondWithError(err)
-			return
-		}
-
-		if !result.Valid() {
-			rc.RequestResponder.RespondWithValidationErrors(schema.NewValidationErrors(result))
-			return
-		}
 	}
 
 	if err = updateF(id); err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		if fe, ok := err.(*validation.FieldError); ok {
-			rc.RequestResponder.RespondWithFieldError(fe)
+			rc.RespondWithFieldError(fe)
 			return
 		}
 
 		if sve, ok := err.(*schema.ValidationErrors); ok {
-			rc.RequestResponder.RespondWithValidationErrors(sve)
+			rc.RespondWithValidationErrors(sve)
 			return
 		}
 
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(nil, nil)
+	rc.RespondWithEmptyOk()
 }
 
 type ModelPatchF func(id string, fields JsonFields) error
 
-func Patch(rc *response.RequestContext, sc *gojsonschema.Schema, idType response.IdType, in interface{}, patchF ModelPatchF) {
-	id, err := rc.GetIdFromRequest(idType)
+func Patch(rc *response.RequestContext, patchF ModelPatchF) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		log.Error(err)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(fmt.Errorf("error during patch, retrieving id: %v", err))
 		return
 	}
 
-	var body []byte
-
-	if body, err = ioutil.ReadAll(rc.Request.Body); err != nil {
-		rc.RequestResponder.RespondWithCouldNotReadBody(err)
-		return
-	}
-
-	if err = unmarshal(body, in); err != nil {
-		rc.RequestResponder.RespondWithCouldNotParseBody(err)
-		return
-	}
-
-	jsonFields, err := getFields(body)
+	jsonFields, err := getFields(rc.Body)
 	if err != nil {
-		rc.RequestResponder.RespondWithCouldNotParseBody(err)
-	}
-
-	il := gojsonschema.NewBytesLoader(body)
-
-	result, err := sc.Validate(il)
-
-	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
-		return
-	}
-
-	if !result.Valid() {
-		rc.RequestResponder.RespondWithValidationErrors(schema.NewValidationErrors(result))
-		return
+		rc.RespondWithCouldNotParseBody(err)
 	}
 
 	err = patchF(id, jsonFields)
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		if fe, ok := err.(*validation.FieldError); ok {
-			rc.RequestResponder.RespondWithFieldError(fe)
+			rc.RespondWithFieldError(fe)
 			return
 		}
 
 		if sve, ok := err.(*schema.ValidationErrors); ok {
-			rc.RequestResponder.RespondWithValidationErrors(sve)
+			rc.RespondWithValidationErrors(sve)
 			return
 		}
 
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
-	rc.RequestResponder.RespondWithOk(nil, nil)
+	rc.RespondWithEmptyOk()
 }
 
-func listWithId(rc *response.RequestContext, idType response.IdType, f func(id string) ([]interface{}, error)) {
-	id, err := rc.GetIdFromRequest(idType)
+func listWithId(rc *response.RequestContext, f func(id string) ([]interface{}, error)) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		logErr := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
 		log.WithField("property", response.IdPropertyName).Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -469,35 +417,35 @@ func listWithId(rc *response.RequestContext, idType response.IdType, f func(id s
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		log := pfxlog.Logger()
 		log.WithField("id", id).WithError(err).Error("could not load associations by id")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
 	count := len(results)
 
-	meta := &response.Meta{
-		"pagination": map[string]interface{}{
-			"limit":      count,
-			"offset":     0,
-			"totalCount": count,
+	meta := &rest_model.Meta{
+		FilterableFields: []string{},
+		Pagination: &rest_model.Pagination{
+			Limit:      int64(count),
+			Offset:     0,
+			TotalCount: int64(count),
 		},
-		"filterableFields": []string{},
 	}
 
-	rc.RequestResponder.RespondWithOk(results, meta)
+	rc.RespondWithOk(results, meta)
 }
 
 // type ListAssocF func(string, func(models.Entity)) error
 type listAssocF func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error)
 
-func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, filterTemplate string, entityController models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociations(rc, idType, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, filterTemplate string, entityController models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(entityController.GetStore())
 		if err != nil {
 			return nil, err
@@ -526,8 +474,8 @@ func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, idT
 	})
 }
 
-func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, idType response.IdType, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociations(rc, idType, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
 		query, err := queryOptions.getFullQuery(associationLoader.GetStore())
@@ -549,14 +497,14 @@ func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, idT
 	})
 }
 
-func ListAssociations(rc *response.RequestContext, idType response.IdType, listF listAssocF) {
-	id, err := rc.GetIdFromRequest(idType)
+func ListAssociations(rc *response.RequestContext, listF listAssocF) {
+	id, err := rc.GetEntityId()
 
 	if err != nil {
 		log := pfxlog.Logger()
 		logErr := fmt.Errorf("could not find id property: %v", response.IdPropertyName)
 		log.WithField("property", response.IdPropertyName).Error(logErr)
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -569,28 +517,28 @@ func ListAssociations(rc *response.RequestContext, idType response.IdType, listF
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
-			rc.RequestResponder.RespondWithNotFoundWithCause(err)
+			rc.RespondWithNotFoundWithCause(err)
 			return
 		}
 
 		log := pfxlog.Logger()
 		log.WithField("cause", err).Error("could not convert list")
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 		return
 	}
 
 	if result.Result == nil {
-		result.Result = []BaseApiEntity{}
+		result.Result = []interface{}{}
 	}
 
-	meta := &response.Meta{
-		"pagination": map[string]interface{}{
-			"limit":      result.Limit,
-			"offset":     result.Offset,
-			"totalCount": result.Count,
+	meta := &rest_model.Meta{
+		Pagination: &rest_model.Pagination{
+			Limit:      result.Limit,
+			Offset:     result.Offset,
+			TotalCount: result.Count,
 		},
-		"filterableFields": result.FilterableFields,
+		FilterableFields: result.FilterableFields,
 	}
 
-	rc.RequestResponder.RespondWithOk(result.Result, meta)
+	rc.RespondWithOk(result.Result, meta)
 }

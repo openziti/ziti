@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -30,97 +31,87 @@ import (
 
 const EntityNameTerminator = "terminators"
 
-type TerminatorApi struct {
-	Service    *string `json:"service"`
-	Router     *string `json:"router"`
-	Binding    *string `json:"binding"`
-	Address    *string `json:"address"`
-	Cost       *int    `json:"cost"`
-	Precedence *string `json:"precedence"`
-}
+var TerminatorLinkFactory = NewBasicLinkFactory(EntityNameTerminator)
 
-func (i *TerminatorApi) GetPrecedence() *xt.Precedence {
-	if i.Precedence == nil {
+func GetPrecedence(precedence *rest_model.TerminatorPrecedence) *xt.Precedence {
+	if precedence == nil {
 		return nil
 	}
 
-	if strings.EqualFold("default", *i.Precedence) {
+	if strings.EqualFold("default", string(*precedence)) {
 		return &xt.Precedences.Default
 	}
-	if strings.EqualFold("required", *i.Precedence) {
+	if strings.EqualFold("required", string(*precedence)) {
 		return &xt.Precedences.Required
 	}
-	if strings.EqualFold("failed", *i.Precedence) {
+	if strings.EqualFold("failed", string(*precedence)) {
 		return &xt.Precedences.Failed
 	}
 
 	return nil
 }
 
-func (i *TerminatorApi) ToModel(id string) *network.Terminator {
-	result := &network.Terminator{}
-	result.Id = id
-	result.Service = stringz.OrEmpty(i.Service)
-	result.Router = stringz.OrEmpty(i.Router)
-	result.Binding = stringz.OrEmpty(i.Binding)
-	result.Address = stringz.OrEmpty(i.Address)
-	if i.Cost != nil {
-		result.Cost = uint16(*i.Cost)
+func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *network.Terminator {
+	ret := &network.Terminator{
+		BaseEntity: models.BaseEntity{
+			Tags: terminator.Tags,
+		},
+		Service: stringz.OrEmpty(terminator.Service),
+		Router:  stringz.OrEmpty(terminator.Router),
+		Binding: terminator.Binding,
+		Address: stringz.OrEmpty(terminator.Address),
 	}
-	return result
-}
-
-type TerminatorApiList struct {
-	*env.BaseApi
-	ServiceId   string        `json:"serviceId"`
-	Service     *EntityApiRef `json:"service"`
-	RouterId    string        `json:"routerId"`
-	Router      *EntityApiRef `json:"router"`
-	Binding     string        `json:"binding"`
-	Address     string        `json:"address"`
-	Cost        uint16        `json:"cost"`
-	DynamicCost uint16        `json:"dynamicCost"`
-	Precedence  string        `json:"precedence"`
-}
-
-func (c *TerminatorApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (TerminatorApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameTerminator, id))
-}
-
-func (c *TerminatorApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf: self,
-		}
+	if terminator.Cost != nil {
+		ret.Cost = uint16(*terminator.Cost)
 	}
+	return ret
 }
 
-func (c *TerminatorApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameTerminator,
-		Name:   nil,
-		Id:     c.Id,
-		Links:  c.Links,
+func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpdate) *network.Terminator {
+	ret := &network.Terminator{
+		BaseEntity: models.BaseEntity{
+			Tags: terminator.Tags,
+			Id:   id,
+		},
+		Service: stringz.OrEmpty(terminator.Service),
+		Router:  stringz.OrEmpty(terminator.Router),
+		Binding: terminator.Binding,
+		Address: stringz.OrEmpty(terminator.Address),
 	}
+	if terminator.Cost != nil {
+		ret.Cost = uint16(*terminator.Cost)
+	}
+	return ret
 }
 
-func MapTerminatorToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*network.Terminator)
+func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *network.Terminator {
+	ret := &network.Terminator{
+		BaseEntity: models.BaseEntity{
+			Tags: terminator.Tags,
+			Id:   id,
+		},
+		Service: terminator.Service,
+		Router:  terminator.Router,
+		Binding: terminator.Binding,
+		Address: terminator.Address,
+	}
+	if terminator.Cost != nil {
+		ret.Cost = uint16(*terminator.Cost)
+	}
+	return ret
+}
+
+func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	terminator, ok := e.(*network.Terminator)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a terminator \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a Terminator \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapTerminatorToApiList(ae, i)
+	restModel, err := MapTerminatorToRestModel(ae, terminator)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -128,33 +119,38 @@ func MapTerminatorToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e mode
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapTerminatorToApiList(ae *env.AppEnv, i *network.Terminator) (*TerminatorApiList, error) {
-	service, err := ae.Handlers.EdgeService.Read(i.Service)
+func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
+
+	service, err := ae.Handlers.EdgeService.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := ae.Handlers.TransitRouter.Read(i.Router)
+	router, err := ae.Handlers.TransitRouter.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := &TerminatorApiList{
-		BaseApi:     env.FromBaseModelEntity(i),
-		ServiceId:   i.Service,
-		Service:     NewServiceEntityRef(service),
-		RouterId:    i.Router,
-		Router:      NewTransitRouterEntityRef(router),
-		Binding:     i.Binding,
-		Address:     i.Address,
-		Cost:        i.Cost,
-		DynamicCost: xt.GlobalCosts().GetPrecedenceCost(i.Id),
+	ret := &rest_model.TerminatorDetail{
+		BaseEntity: BaseEntityToRestModel(terminator, TerminatorLinkFactory),
+		ServiceID:  &terminator.Service,
+		Service:    ToEntityRef(service.Name, service, ServiceLinkFactory),
+		RouterID:   &terminator.Router,
+		Router:     ToEntityRef(router.Name, router, TransitRouterLinkFactory),
+		Binding:    &terminator.Binding,
+		Address:    &terminator.Address,
 	}
 
-	precedence := xt.GlobalCosts().GetPrecedence(ret.Id)
+	cost := rest_model.TerminatorCost(int64(terminator.Cost))
+	ret.Cost = &cost
+
+	dynamicCost := rest_model.TerminatorCost(xt.GlobalCosts().GetPrecedenceCost(terminator.Id))
+	ret.DynamicCost = &dynamicCost
+
+	precedence := xt.GlobalCosts().GetPrecedence(*ret.ID)
 	if precedence.IsRequired() {
 		ret.Precedence = "required"
 	} else if precedence.IsFailed() {
@@ -162,8 +158,6 @@ func MapTerminatorToApiList(ae *env.AppEnv, i *network.Terminator) (*TerminatorA
 	} else {
 		ret.Precedence = "default"
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

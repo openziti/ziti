@@ -37,7 +37,8 @@ func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.R
 	knownServices := make(map[string]*entities.Service)
 	log := pfxlog.Logger()
 
-	sig := make(chan os.Signal)
+	//signal.Notify expects a buffered chan of at least 1
+	sig := make(chan os.Signal, 1)
 	signal.Notify(sig)
 
 	if pollRate < time.Second {

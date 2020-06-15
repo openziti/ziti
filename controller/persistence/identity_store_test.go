@@ -33,6 +33,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		serverConfigTypeId = string(ctx.stores.ConfigType.GetNameIndex().Read(tx, []byte("ziti-tunneler-server.v1")))
 		return nil
 	})
+	ctx.NoError(err)
 
 	config := newConfig(uuid.New().String(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "foo.yourcompany.com",
@@ -59,6 +60,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		ctx.EqualError(err, fmt.Sprintf("multiple service configs provided for identity %v of config type %v", identity.Id, clientConfigTypeId))
 		return nil
 	})
+	ctx.NoError(err)
 
 	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
@@ -79,6 +81,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 
 		return nil
 	})
+	ctx.NoError(err)
 
 	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		err := ctx.stores.Identity.RemoveServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
@@ -91,6 +94,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		ctx.Equal(0, len(identityServices))
 		return nil
 	})
+	ctx.NoError(err)
 
 	ctx.RequireDelete(config)
 	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
@@ -98,6 +102,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		ctx.Equal(0, len(serviceConfigs))
 		return nil
 	})
+	ctx.NoError(err)
 
 	ctx.RequireCreate(config)
 
@@ -113,6 +118,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		ctx.True(ok)
 		ctx.Equal(2, len(serviceMap))
 		_, ok = serviceMap[config.Type]
+		ctx.True(ok)
 		_, ok = serviceMap[config3.Type]
 		ctx.True(ok)
 
@@ -131,6 +137,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 
 		return nil
 	})
+	ctx.NoError(err)
 
 	ctx.RequireDelete(identity)
 

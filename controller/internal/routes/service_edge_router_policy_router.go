@@ -17,11 +17,11 @@
 package routes
 
 import (
-	"fmt"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"net/http"
+	"github.com/openziti/edge/rest_server/operations/service_edge_router_policy"
 )
 
 func init() {
@@ -41,60 +41,76 @@ func NewServiceEdgeRouterPolicyRouter() *ServiceEdgeRouterPolicyRouter {
 	}
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *ServiceEdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
+	// CRUD
+	ae.Api.ServiceEdgeRouterPolicyDeleteServiceEdgeRouterPolicyHandler = service_edge_router_policy.DeleteServiceEdgeRouterPolicyHandlerFunc(func(params service_edge_router_policy.DeleteServiceEdgeRouterPolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
-	identityUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
+	ae.Api.ServiceEdgeRouterPolicyDetailServiceEdgeRouterPolicyHandler = service_edge_router_policy.DetailServiceEdgeRouterPolicyHandlerFunc(func(params service_edge_router_policy.DetailServiceEdgeRouterPolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	edgeRoutersListHandler := ae.WrapHandler(ir.ListEdgeRouters, permissions.IsAdmin())
-	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions.IsAdmin())
+	ae.Api.ServiceEdgeRouterPolicyListServiceEdgeRouterPoliciesHandler = service_edge_router_policy.ListServiceEdgeRouterPoliciesHandlerFunc(func(params service_edge_router_policy.ListServiceEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-	//gets
-	sr.HandleFunc(edgeRouterUrl, edgeRoutersListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(edgeRouterUrl+"/", edgeRoutersListHandler).Methods(http.MethodGet)
+	ae.Api.ServiceEdgeRouterPolicyUpdateServiceEdgeRouterPolicyHandler = service_edge_router_policy.UpdateServiceEdgeRouterPolicyHandlerFunc(func(params service_edge_router_policy.UpdateServiceEdgeRouterPolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	sr.HandleFunc(identityUrl, servicesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(identityUrl+"/", servicesListHandler).Methods(http.MethodGet)
-}
+	ae.Api.ServiceEdgeRouterPolicyCreateServiceEdgeRouterPolicyHandler = service_edge_router_policy.CreateServiceEdgeRouterPolicyHandlerFunc(func(params service_edge_router_policy.CreateServiceEdgeRouterPolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-func (ir *ServiceEdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity)
-}
+	ae.Api.ServiceEdgeRouterPolicyPatchServiceEdgeRouterPolicyHandler = service_edge_router_policy.PatchServiceEdgeRouterPolicyHandlerFunc(func(params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ServiceEdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity, ir.IdType)
-}
+	//Additional Lists
+	ae.Api.ServiceEdgeRouterPolicyListServiceEdgeRouterPolicyEdgeRoutersHandler = service_edge_router_policy.ListServiceEdgeRouterPolicyEdgeRoutersHandlerFunc(func(params service_edge_router_policy.ListServiceEdgeRouterPolicyEdgeRoutersParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListEdgeRouters, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ServiceEdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServiceEdgeRouterPolicyApi{}
-	Create(rc, rc.RequestResponder, ae.Schemes.ServiceEdgeRouterPolicy.Post, apiEntity, (&ServiceEdgeRouterPolicyApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Create(apiEntity.ToModel(""))
+	ae.Api.ServiceEdgeRouterPolicyListServiceEdgeRouterPolicyServicesHandler = service_edge_router_policy.ListServiceEdgeRouterPolicyServicesHandlerFunc(func(params service_edge_router_policy.ListServiceEdgeRouterPolicyServicesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.ServiceEdgeRouterPolicy)
+func (r *ServiceEdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServiceEdgeRouterPolicyApi{}
-	Update(rc, ae.Schemes.ServiceEdgeRouterPolicy.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Update(apiEntity.ToModel(id))
+func (r *ServiceEdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+}
+
+func (r *ServiceEdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.CreateServiceEdgeRouterPolicyParams) {
+	Create(rc, rc, ServiceEdgeRouterPolicyLinkFactory, func() (string, error) {
+		return ae.Handlers.ServiceEdgeRouterPolicy.Create(MapCreateServiceEdgeRouterPolicyToModel(params.Body))
 	})
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServiceEdgeRouterPolicyApi{}
-	Patch(rc, ae.Schemes.ServiceEdgeRouterPolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+func (r *ServiceEdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.ServiceEdgeRouterPolicy)
+}
+
+func (r *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.UpdateServiceEdgeRouterPolicyParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Body))
 	})
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+func (r *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.ServiceEdgeRouterPolicy.Patch(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+	})
 }
 
-func (ir *ServiceEdgeRouterPolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeService, MapServiceToApiEntity)
+func (r *ServiceEdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
+}
+
+func (r *ServiceEdgeRouterPolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeService, MapServiceToRestEntity)
 }

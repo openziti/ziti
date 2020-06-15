@@ -25,10 +25,12 @@ import (
 	"crypto/rand"
 	cryptoTls "crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge/gateway/enroll"
 	"github.com/openziti/edge/gateway/xgress_edge"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
@@ -391,7 +393,7 @@ func (ctx *TestContext) teardown() {
 
 func (ctx *TestContext) newRequest() *resty.Request {
 	return ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json")
+		SetHeader("content-type", "application/json")
 }
 
 func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
@@ -425,6 +427,7 @@ func (ctx *TestContext) completeCaAutoEnrollment(certAuth *certAuthenticator) {
 
 	resp, err := client.NewRequest().
 		SetBody("{}").
+		SetHeader("content-type", "application/x-pem-file").
 		Post("enroll?method=ca")
 	ctx.req.NoError(err)
 	ctx.logJson(resp.Body())
@@ -467,7 +470,7 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	ctx.req.NoError(err)
 
 	request, err := certtools.NewCertRequest(map[string]string{
-		"C": "US", "O": "NetFoundry-APi-Test", "CN": identityId,
+		"C": "US", "O": "NetFoundry-API-Test", "CN": identityId,
 	}, nil)
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
@@ -478,20 +481,25 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	resp, err := ctx.newRequest().
 		SetBody(csrPem).
 		SetHeader("content-type", "application/x-pem-file").
+		SetHeader("accept", "application/json").
 		Post("enroll?token=" + token)
 	ctx.req.NoError(err)
 	ctx.logJson(resp.Body())
 	ctx.req.Equal(http.StatusOK, resp.StatusCode())
 
-	certPem := string(resp.Body())
-	certs := nfpem.PemToX509(certPem)
+	envelope := &rest_model.EnrollmentCertsEnvelope{}
+
+	err = json.Unmarshal(resp.Body(), envelope)
+	ctx.req.NoError(err)
+
+	certs := nfpem.PemToX509(envelope.Data.Cert)
 
 	ctx.req.NotEmpty(certs)
 
 	return &certAuthenticator{
 		cert:    certs[0],
 		key:     privateKey,
-		certPem: certPem,
+		certPem: envelope.Data.Cert,
 	}
 }
 
@@ -528,10 +536,10 @@ func (ctx *TestContext) newTerminator(serviceId, routerId, binding, address stri
 
 func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *config {
 	return &config{
-		name:       uuid.New().String(),
-		configType: configType,
-		data:       data,
-		tags:       nil,
+		name:         uuid.New().String(),
+		configTypeId: configType,
+		data:         data,
+		tags:         nil,
 	}
 }
 

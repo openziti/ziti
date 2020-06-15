@@ -22,71 +22,73 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
 
 const EntityNameConfigType = "config-types"
 
-type ConfigTypeApi struct {
-	Name   *string                `json:"name"`
-	Schema map[string]interface{} `json:"schema"`
-	Tags   map[string]interface{} `json:"tags"`
-}
+var ConfigTypeLinkFactory = NewBasicLinkFactory(EntityNameConfigType)
 
-func (i *ConfigTypeApi) ToModel(id string) *model.ConfigType {
-	result := &model.ConfigType{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Schema = i.Schema
-	result.Tags = i.Tags
-	return result
-}
-
-type ConfigTypeApiList struct {
-	*env.BaseApi
-	Name   string                 `json:"name"`
-	Schema map[string]interface{} `json:"schema"`
-}
-
-func (c *ConfigTypeApiList) GetSelfLink() *response.Link {
-	return c.BuildSelfLink(c.Id)
-}
-
-func (ConfigTypeApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameConfigType, id))
-}
-
-func (c *ConfigTypeApiList) PopulateLinks() {
-	if c.Links == nil {
-		self := c.GetSelfLink()
-		c.Links = &response.Links{
-			EntityNameSelf: self,
-		}
+func MapCreateConfigTypeToModel(configType *rest_model.ConfigTypeCreate) *model.ConfigType {
+	ret := &model.ConfigType{
+		BaseEntity: models.BaseEntity{
+			Tags: configType.Tags,
+		},
+		Name: stringz.OrEmpty(configType.Name),
 	}
-}
 
-func (c *ConfigTypeApiList) ToEntityApiRef() *EntityApiRef {
-	c.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameConfigType,
-		Name:   &c.Name,
-		Id:     c.Id,
-		Links:  c.Links,
+	if schemaMap, ok := configType.Schema.(map[string]interface{}); ok {
+		ret.Schema = schemaMap
 	}
+
+	return ret
 }
 
-func MapConfigTypeToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.ConfigType)
+func MapUpdateConfigTypeToModel(id string, configType *rest_model.ConfigTypeUpdate) *model.ConfigType {
+	ret := &model.ConfigType{
+		BaseEntity: models.BaseEntity{
+			Tags: configType.Tags,
+			Id:   id,
+		},
+		Name: stringz.OrEmpty(configType.Name),
+	}
+
+	if schemaMap, ok := configType.Schema.(map[string]interface{}); ok {
+		ret.Schema = schemaMap
+	}
+
+	return ret
+}
+
+func MapPatchConfigTypeToModel(id string, configType *rest_model.ConfigTypePatch) *model.ConfigType {
+	ret := &model.ConfigType{
+		BaseEntity: models.BaseEntity{
+			Tags: configType.Tags,
+			Id:   id,
+		},
+		Name: configType.Name,
+	}
+
+	if schemaMap, ok := configType.Schema.(map[string]interface{}); ok {
+		ret.Schema = schemaMap
+	}
+
+	return ret
+}
+
+func MapConfigTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	configType, ok := e.(*model.ConfigType)
 
 	if !ok {
-		err := fmt.Errorf("entity is not a configuration type \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not a ConfigType \"%s\"", e.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapConfigTypeToApiList(i)
+	restModel, err := MapConfigTypeToRestModel(configType)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -94,17 +96,15 @@ func MapConfigTypeToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e model
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapConfigTypeToApiList(i *model.ConfigType) (*ConfigTypeApiList, error) {
-	ret := &ConfigTypeApiList{
-		BaseApi: env.FromBaseModelEntity(i),
-		Name:    i.Name,
-		Schema:  i.Schema,
+func MapConfigTypeToRestModel(configType *model.ConfigType) (*rest_model.ConfigTypeDetail, error) {
+	ret := &rest_model.ConfigTypeDetail{
+		BaseEntity: BaseEntityToRestModel(configType, ConfigTypeLinkFactory),
+		Name:       &configType.Name,
+		Schema:     configType.Schema,
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }

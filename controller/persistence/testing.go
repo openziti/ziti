@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"math/rand"
 	"testing"
 )
 
@@ -154,17 +153,6 @@ func (ctx *TestContext) getRelatedIds(entity boltz.Entity, field string) []strin
 	})
 	ctx.NoError(err)
 	return result
-}
-
-func (ctx *TestContext) createTags() map[string]interface{} {
-	return map[string]interface{}{
-		"hello":             uuid.New().String(),
-		uuid.New().String(): "hello",
-		"count":             rand.Int63(),
-		"enabled":           rand.Int()%2 == 0,
-		uuid.New().String(): int32(27),
-		"markerKey":         nil,
-	}
 }
 
 func (ctx *TestContext) cleanupAll() {

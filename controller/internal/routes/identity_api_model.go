@@ -18,11 +18,13 @@ package routes
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 )
@@ -34,170 +36,110 @@ const (
 
 type PermissionsApi []string
 
-type IdentityTypeApi struct {
-	Id   *string `json:"id"`
-	Name *string `json:"name"`
-}
+var IdentityLinkFactory = NewIdentityLinkFactory(NewBasicLinkFactory(EntityNameIdentity))
 
-type IdentityApiList struct {
-	*env.BaseApi
-	Name           *string                `json:"name"`
-	Type           *EntityApiRef          `json:"type"`
-	IsDefaultAdmin *bool                  `json:"isDefaultAdmin"`
-	IsAdmin        *bool                  `json:"isAdmin"`
-	Authenticators map[string]interface{} `json:"authenticators"`
-	Enrollments    map[string]interface{} `json:"enrollment"` //per original API "enrollment" is correct
-	RoleAttributes []string               `json:"roleAttributes"`
-	EnvInfo        env.EnvInfo            `json:"envInfo"`
-	SdkInfo        env.SdkInfo            `json:"sdkInfo"`
-}
-
-type IdentityApiUpdate struct {
-	Tags           map[string]interface{} `json:"tags"`
-	Name           *string                `json:"name"`
-	Type           *string                `json:"type"`
-	IsAdmin        *bool                  `json:"isAdmin"`
-	RoleAttributes []string               `json:"roleAttributes"`
-}
-
-func (i IdentityApiUpdate) ToModel(id string) *model.Identity {
-	result := &model.Identity{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	result.IsAdmin = boolOrFalse(i.IsAdmin)
-	result.IsDefaultAdmin = false
-	result.IdentityTypeId = stringz.OrEmpty(i.Type)
-	result.RoleAttributes = i.RoleAttributes
-	result.Tags = i.Tags
-	return result
-}
-
-type IdentityApiCreate struct {
-	Tags           map[string]interface{} `json:"tags"`
-	Enrollment     map[string]interface{} `json:"enrollment"`
-	Name           *string                `json:"name"`
-	Type           *string                `json:"type"`
-	IsAdmin        *bool                  `json:"isAdmin"`
-	RoleAttributes []string               `json:"roleAttributes"`
-}
-
-func NewIdentityApiCreate() *IdentityApiCreate {
-	f := false
-	return &IdentityApiCreate{
-		IsAdmin: &f,
+func NewIdentityLinkFactory(selfFactory *BasicLinkFactory) *IdentityLinkFactoryImpl {
+	return &IdentityLinkFactoryImpl{
+		BasicLinkFactory: *selfFactory,
 	}
 }
 
-func (i *IdentityApiCreate) ToModel() (*model.Identity, []*model.Enrollment) {
-	identity := &model.Identity{}
-	identity.Name = stringz.OrEmpty(i.Name)
-	identity.IdentityTypeId = stringz.OrEmpty(i.Type)
-	identity.IsDefaultAdmin = false
-	identity.IsAdmin = boolOrFalse(i.IsAdmin)
-	identity.RoleAttributes = i.RoleAttributes
-	identity.Tags = i.Tags
+type IdentityLinkFactoryImpl struct {
+	BasicLinkFactory
+}
 
+func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+
+	return links
+}
+
+func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeId string) (*model.Identity, []*model.Enrollment) {
 	var enrollments []*model.Enrollment
-	if caId, ok := i.Enrollment[persistence.MethodEnrollOttCa]; ok {
-		caId := caId.(string)
-		enrollment := &model.Enrollment{
-			Method: persistence.MethodEnrollOttCa,
-			CaId:   &caId,
-		}
-		enrollments = append(enrollments, enrollment)
+
+	ret := &model.Identity{
+		BaseEntity: models.BaseEntity{
+			Tags: identity.Tags,
+		},
+		Name:           stringz.OrEmpty(identity.Name),
+		IdentityTypeId: identityTypeId,
+		IsDefaultAdmin: false,
+		IsAdmin:        *identity.IsAdmin,
+		RoleAttributes: identity.RoleAttributes,
 	}
 
-	if _, ok := i.Enrollment[persistence.MethodEnrollOtt]; ok {
-		enrollments = append(enrollments, &model.Enrollment{
-			Method: persistence.MethodEnrollOtt,
-		})
-	}
-
-	if val, ok := i.Enrollment[persistence.MethodEnrollUpdb]; ok {
-		username := val.(string)
-		enrollments = append(enrollments, &model.Enrollment{
-			Method:   persistence.MethodEnrollUpdb,
-			Username: &username,
-		})
-	}
-
-	return identity, enrollments
-}
-
-func boolOrFalse(b *bool) bool {
-	if b == nil {
-		return false
-	}
-
-	return *b
-}
-
-type AuthenticatorUpdbApi struct {
-	Username string `json:"username"`
-}
-
-type AuthenticatorCertApi struct {
-	Fingerprint string `json:"fingerprint"`
-}
-
-func (e *IdentityApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (IdentityApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameIdentity, id))
-}
-
-func (e *IdentityApiList) PopulateLinks() {
-	if e.Links == nil {
-		self := e.GetSelfLink()
-		e.Links = &response.Links{
-			EntityNameSelf:             self,
-			EntityNameEdgeRouterPolicy: response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouterPolicy)),
-			EntityNameEdgeRouter:       response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameEdgeRouter)),
-			EntityNameServicePolicy:    response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameServicePolicy)),
-			EntityNameService:          response.NewLink(fmt.Sprintf(self.Href + "/" + EntityNameService)),
+	if identity.Enrollment != nil {
+		if identity.Enrollment.Ott {
+			enrollments = append(enrollments, &model.Enrollment{
+				BaseEntity: models.BaseEntity{},
+				Method:     persistence.MethodEnrollOtt,
+				Token:      uuid.New().String(),
+			})
+		} else if identity.Enrollment.Ottca != "" {
+			caId := identity.Enrollment.Ottca.String()
+			enrollments = append(enrollments, &model.Enrollment{
+				BaseEntity: models.BaseEntity{},
+				Method:     persistence.MethodEnrollOttCa,
+				Token:      uuid.New().String(),
+				CaId:       &caId,
+			})
+		} else if identity.Enrollment.Updb != "" {
+			username := identity.Enrollment.Updb
+			enrollments = append(enrollments, &model.Enrollment{
+				BaseEntity: models.BaseEntity{},
+				Method:     persistence.MethodEnrollUpdb,
+				Token:      uuid.New().String(),
+				Username:   &username,
+			})
 		}
 	}
+
+	return ret, enrollments
 }
 
-func (e *IdentityApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameIdentity,
-		Name:   e.Name,
-		Id:     e.Id,
-		Links:  e.Links,
+func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, identityTypeId string) *model.Identity {
+	ret := &model.Identity{
+		BaseEntity: models.BaseEntity{
+			Tags: identity.Tags,
+			Id:   id,
+		},
+		Name:           stringz.OrEmpty(identity.Name),
+		IdentityTypeId: identityTypeId,
+		IsAdmin:        *identity.IsAdmin,
+		RoleAttributes: identity.RoleAttributes,
 	}
+
+	return ret
 }
 
-func NewIdentityEntityRef(s *model.Identity) *EntityApiRef {
-	links := &response.Links{
-		"self": NewIdentityLink(s.Id),
+func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, identityTypeId string) *model.Identity {
+	ret := &model.Identity{
+		BaseEntity: models.BaseEntity{
+			Tags: identity.Tags,
+			Id:   id,
+		},
+		Name:           identity.Name,
+		IdentityTypeId: identityTypeId,
+		IsAdmin:        identity.IsAdmin,
+		RoleAttributes: identity.RoleAttributes,
 	}
 
-	return &EntityApiRef{
-		Id:     s.Id,
-		Name:   &s.Name,
-		Links:  links,
-		Entity: EntityNameIdentity,
-	}
+	return ret
 }
 
-func NewIdentityLink(identityId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameIdentity, identityId))
-}
-
-func MapIdentityToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.Identity)
+func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	identity, ok := e.(*model.Identity)
 
 	if !ok {
-		err := fmt.Errorf("entity is not an identity \"%s\"", e.GetId())
-		pfxlog.Logger().Error(err)
+		err := fmt.Errorf("entity is not a Identity \"%s\"", e.GetId())
+		log := pfxlog.Logger()
+		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapToIdentityApiList(ae, i)
+	restModel, err := MapIdentityToRestModel(ae, identity)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -205,186 +147,135 @@ func MapIdentityToApiEntity(ae *env.AppEnv, _ *response.RequestContext, e models
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapToIdentityApiList(ae *env.AppEnv, i *model.Identity) (*IdentityApiList, error) {
-	identityType, err := ae.Handlers.IdentityType.Read(i.IdentityTypeId)
-	if err != nil {
-		return nil, err
-	}
-	it, err := MapIdentityTypeToApiEntity(nil, nil, identityType)
+func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_model.IdentityDetail, error) {
+
+	identityType, err := ae.Handlers.IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil {
 		return nil, err
 	}
-	ret := &IdentityApiList{
-		BaseApi:        env.FromBaseModelEntity(i),
-		Name:           &i.Name,
-		Type:           it.ToEntityApiRef(),
-		IsDefaultAdmin: &i.IsDefaultAdmin,
-		IsAdmin:        &i.IsAdmin,
-		Authenticators: map[string]interface{}{},
-		Enrollments:    map[string]interface{}{},
-		RoleAttributes: i.RoleAttributes,
+
+	ret := &rest_model.IdentityDetail{
+		BaseEntity:     BaseEntityToRestModel(identity, IdentityLinkFactory),
+		IsAdmin:        &identity.IsAdmin,
+		IsDefaultAdmin: &identity.IsDefaultAdmin,
+		Name:           &identity.Name,
+		RoleAttributes: identity.RoleAttributes,
+		Type:           ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
+		TypeID:         &identityType.Id,
 	}
+	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 
-	fillInfo(ret, i.EnvInfo, i.SdkInfo)
+	ret.Authenticators = &rest_model.IdentityAuthenticators{}
+	if err = ae.GetHandlers().Identity.CollectAuthenticators(identity.Id, func(entity *model.Authenticator) error {
+		if entity.Method == persistence.MethodAuthenticatorUpdb {
+			ret.Authenticators.Updb = &rest_model.IdentityAuthenticatorsUpdb{
+				Username: entity.ToUpdb().Username,
+			}
+		}
 
-	err = ae.GetHandlers().Identity.CollectEnrollments(ret.Id, func(enrollmentModel *model.Enrollment) error {
-		var err error
-		ret.Enrollments[enrollmentModel.Method], err = MapToIdentityEnrollmentApiList(ae, enrollmentModel)
-		if err != nil {
-			return err
+		if entity.Method == persistence.MethodAuthenticatorCert {
+			ret.Authenticators.Cert = &rest_model.IdentityAuthenticatorsCert{
+				Fingerprint: entity.ToCert().Fingerprint,
+			}
 		}
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	err = ae.GetHandlers().Identity.CollectAuthenticators(ret.Id, func(authenticator *model.Authenticator) error {
-		var err error
-		ret.Authenticators[authenticator.Method], err = MapToIdentityAuthenticatorApiList(ae, authenticator)
-		if err != nil {
-			return err
+	ret.Enrollment = &rest_model.IdentityEnrollments{}
+	if err := ae.GetHandlers().Identity.CollectEnrollments(identity.Id, func(entity *model.Enrollment) error {
+		if entity.Method == persistence.MethodEnrollUpdb {
+			ret.Enrollment.Updb = &rest_model.IdentityEnrollmentsUpdb{
+				Jwt:   entity.Jwt,
+				Token: entity.Token,
+			}
 		}
-		return nil
-	})
 
-	if err != nil {
+		if entity.Method == persistence.MethodEnrollOtt {
+			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
+				Jwt:   entity.Jwt,
+				Token: entity.Token,
+			}
+		}
+
+		if entity.Method == persistence.MethodEnrollOttCa {
+			ca, err := ae.Handlers.Ca.Read(*entity.CaId)
+
+			if err != nil {
+				return err
+			}
+
+			ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
+				Ca:    ToEntityRef(ca.Name, ca, CaLinkFactory),
+				CaID:  ca.Id,
+				Jwt:   entity.Jwt,
+				Token: entity.Token,
+			}
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }
 
-func fillInfo(identity *IdentityApiList, envInfo *model.EnvInfo, sdkInfo *model.SdkInfo) {
+func fillInfo(identity *rest_model.IdentityDetail, envInfo *model.EnvInfo, sdkInfo *model.SdkInfo) {
 	if envInfo != nil {
-		identity.EnvInfo = env.EnvInfo{
+		identity.EnvInfo = &rest_model.EnvInfo{
 			Arch:      envInfo.Arch,
 			Os:        envInfo.Os,
 			OsRelease: envInfo.OsRelease,
 			OsVersion: envInfo.OsVersion,
 		}
 	} else {
-		identity.EnvInfo = env.EnvInfo{}
+		identity.EnvInfo = &rest_model.EnvInfo{}
 	}
 
 	if sdkInfo != nil {
-		identity.SdkInfo = env.SdkInfo{
+		identity.SdkInfo = &rest_model.SdkInfo{
 			Branch:   sdkInfo.Branch,
 			Revision: sdkInfo.Revision,
 			Type:     sdkInfo.Type,
 			Version:  sdkInfo.Version,
 		}
 	} else {
-		identity.SdkInfo = env.SdkInfo{}
+		identity.SdkInfo = &rest_model.SdkInfo{}
 	}
 }
 
-func MapToIdentityAuthenticatorApiList(_ *env.AppEnv, authenticator *model.Authenticator) (interface{}, error) {
-	var ret map[string]interface{}
-	switch authenticator.Method {
-	case persistence.MethodAuthenticatorCert:
-		cert := authenticator.ToCert()
-		ret = map[string]interface{}{
-			"fingerprint": cert.Fingerprint,
-			"cert":        cert.Pem,
-		}
-	case persistence.MethodAuthenticatorUpdb:
-		updb := authenticator.ToUpdb()
-		ret = map[string]interface{}{
-			"username": updb.Username,
-		}
-	default:
-		return nil, fmt.Errorf("unknown authenticator method %s", authenticator.Method)
+func MapServiceConfigToModel(config rest_model.ServiceConfigAssign) model.ServiceConfig {
+	return model.ServiceConfig{
+		Service: stringz.OrEmpty(config.ServiceID),
+		Config:  stringz.OrEmpty(config.ConfigID),
 	}
-
-	return ret, nil
 }
+func MapAdvisorServiceReachabilityToRestEntity(entity *model.AdvisorServiceReachability) *rest_model.PolicyAdvice {
 
-func MapToIdentityEnrollmentApiList(_ *env.AppEnv, enrollment *model.Enrollment) (map[string]interface{}, error) {
-	var ret map[string]interface{}
-	switch enrollment.Method {
-	case persistence.MethodEnrollOtt:
-		ret = map[string]interface{}{
-			"token":     enrollment.Token,
-			"jwt":       enrollment.Jwt,
-			"issuedAt":  enrollment.IssuedAt,
-			"expiresAt": enrollment.ExpiresAt,
-		}
-	case persistence.MethodEnrollUpdb:
-		ret = map[string]interface{}{
-			"token":     enrollment.Token,
-			"jwt":       enrollment.Jwt,
-			"issuedAt":  enrollment.IssuedAt,
-			"expiresAt": enrollment.ExpiresAt,
-		}
-	case persistence.MethodEnrollOttCa:
-		ret = map[string]interface{}{
-			"token":     enrollment.Token,
-			"jwt":       enrollment.Jwt,
-			"issuedAt":  enrollment.IssuedAt,
-			"expiresAt": enrollment.ExpiresAt,
-			"caId":      enrollment.CaId,
-		}
-	default:
-		return nil, fmt.Errorf("unknown enollment method %s", enrollment.Method)
-	}
-
-	return ret, nil
-}
-
-type IdentityServiceConfig struct {
-	Service string `json:"service"`
-	Config  string `json:"config"`
-}
-
-func (entity IdentityServiceConfig) toModel() model.ServiceConfig {
-	return model.ServiceConfig{Config: entity.Config, Service: entity.Service}
-}
-
-type AdvisorEdgeRouter struct {
-	*EntityApiRef
-	IsOnline bool `json:"isOnline"`
-}
-
-type AdvisorServiceReachability struct {
-	IdentityId          string               `json:"identityId"`
-	Identity            *EntityApiRef        `json:"identity"`
-	ServiceId           string               `json:"serviceId"`
-	Service             *EntityApiRef        `json:"service"`
-	IsBindAllowed       bool                 `json:"isBindAllowed"`
-	IsDialAllowed       bool                 `json:"isDialAllowed"`
-	IdentityRouterCount int                  `json:"identityRouterCount"`
-	ServiceRouterCount  int                  `json:"serviceRouterCount"`
-	CommonRouters       []*AdvisorEdgeRouter `json:"commonRouters"`
-}
-
-func MapAdvisorServiceReachabilityToApiEntity(entity *model.AdvisorServiceReachability) *AdvisorServiceReachability {
-
-	var commonRouters []*AdvisorEdgeRouter
+	var commonRouters []*rest_model.RouterEntityRef
 
 	for _, router := range entity.CommonRouters {
-		commonRouters = append(commonRouters, &AdvisorEdgeRouter{
-			EntityApiRef: NewEdgeRouterEntityRef(router.Router),
-			IsOnline:     router.IsOnline,
+		commonRouters = append(commonRouters, &rest_model.RouterEntityRef{
+			EntityRef: *ToEntityRef(router.Router.Name, router.Router, EdgeRouterLinkFactory),
+			IsOnline:  router.IsOnline,
 		})
 	}
 
-	result := &AdvisorServiceReachability{
-		IdentityId:          entity.Identity.Id,
-		Identity:            NewIdentityEntityRef(entity.Identity),
-		ServiceId:           entity.Service.Id,
-		Service:             NewServiceEntityRef(entity.Service),
+	result := &rest_model.PolicyAdvice{
+		IdentityID:          entity.Identity.Id,
+		Identity:            ToEntityRef(entity.Identity.Name, entity.Identity, IdentityLinkFactory),
+		ServiceID:           entity.Service.Id,
+		Service:             ToEntityRef(entity.Service.Name, entity.Service, ServiceLinkFactory),
 		IsBindAllowed:       entity.IsBindAllowed,
 		IsDialAllowed:       entity.IsDialAllowed,
-		IdentityRouterCount: entity.IdentityRouterCount,
-		ServiceRouterCount:  entity.ServiceRouterCount,
+		IdentityRouterCount: int32(entity.IdentityRouterCount),
+		ServiceRouterCount:  int32(entity.ServiceRouterCount),
 		CommonRouters:       commonRouters,
 	}
 

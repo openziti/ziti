@@ -63,14 +63,6 @@ type ClientConn struct {
 	log         *logrus.Entry
 }
 
-type tcpSeq uint32
-
-/* comparison functions to deal with sequence wrapping */
-func (n tcpSeq) lt(o tcpSeq) bool  { return int32(n-o) < 0 }
-func (n tcpSeq) leq(o tcpSeq) bool { return int32(n-o) <= 0 }
-func (n tcpSeq) gt(o tcpSeq) bool  { return int32(n-o) > 0 }
-func (n tcpSeq) geq(o tcpSeq) bool { return int32(n-o) >= 0 }
-
 func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.ReadWriter, tunMTU uint) (*ClientConn, error) {
 	srcAddr, err := net.ResolveTCPAddr("tcp", clientAddr)
 	if err != nil {

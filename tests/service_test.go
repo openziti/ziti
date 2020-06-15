@@ -270,21 +270,21 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		session.validateEntityWithQuery(service)
 	}
 
-	configs1 := []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.id, Config: config5.id}}
+	configs1 := []serviceConfig{{ServiceId: service4.id, ConfigId: config1.id}, {ServiceId: service4.id, ConfigId: config5.id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs1...)
-	configs1 = []serviceConfig{{Service: service4.id, Config: config1.id}, {Service: service4.id, Config: config5.id}}
+	configs1 = []serviceConfig{{ServiceId: service4.id, ConfigId: config1.id}, {ServiceId: service4.id, ConfigId: config5.id}}
 	sort.Sort(sortableServiceConfigSlice(configs1))
 	currentConfigs := ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
 	ctx.req.Equal(configs1, currentConfigs)
 
-	configs2 := []serviceConfig{{Service: service1.id, Config: config5.id}, {Service: service3.id, Config: config1.id}, {Service: service3.id, Config: config4.id}}
+	configs2 := []serviceConfig{{ServiceId: service1.id, ConfigId: config5.id}, {ServiceId: service3.id, ConfigId: config1.id}, {ServiceId: service3.id, ConfigId: config4.id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs2...)
 	checkConfigs := []serviceConfig{
-		{Service: service4.id, Config: config1.id},
-		{Service: service4.id, Config: config5.id},
-		{Service: service1.id, Config: config5.id},
-		{Service: service3.id, Config: config1.id},
-		{Service: service3.id, Config: config4.id},
+		{ServiceId: service4.id, ConfigId: config1.id},
+		{ServiceId: service4.id, ConfigId: config5.id},
+		{ServiceId: service1.id, ConfigId: config5.id},
+		{ServiceId: service3.id, ConfigId: config1.id},
+		{ServiceId: service3.id, ConfigId: config4.id},
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
@@ -300,12 +300,12 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		service.configs = map[string]*config{}
 	}
 
-	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{Service: service1.id, Config: config5.id}, serviceConfig{Service: service3.id, Config: config1.id})
+	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{ServiceId: service1.id, ConfigId: config5.id}, serviceConfig{ServiceId: service3.id, ConfigId: config1.id})
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
 	checkConfigs = []serviceConfig{
-		{Service: service4.id, Config: config1.id},
-		{Service: service4.id, Config: config5.id},
-		{Service: service3.id, Config: config4.id},
+		{ServiceId: service4.id, ConfigId: config1.id},
+		{ServiceId: service4.id, ConfigId: config5.id},
+		{ServiceId: service3.id, ConfigId: config4.id},
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
 	ctx.req.Equal(checkConfigs, currentConfigs)
@@ -353,7 +353,7 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 
 	service := ctx.newService(nil, s(config1.id, config2.id))
 	resp := ctx.AdminSession.createEntity(service)
-	ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.InvalidFieldCode, "configs")
+	ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "configs")
 }
 
 func Test_ServiceRoleAttributes(t *testing.T) {

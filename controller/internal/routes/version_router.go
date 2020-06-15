@@ -17,12 +17,13 @@
 package routes
 
 import (
-	"github.com/Jeffail/gabs"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/build"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/informational"
 	"runtime"
 )
 
@@ -42,31 +43,24 @@ func NewVersionRouter() *VersionRouter {
 }
 
 func (ir *VersionRouter) Register(ae *env.AppEnv) {
+	ae.Api.InformationalListVersionHandler = informational.ListVersionHandlerFunc(func(params informational.ListVersionParams) middleware.Responder {
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
+	})
 
-	listHandler := ae.WrapHandler(ir.List, permissions.Always())
-
-	ae.RootRouter.HandleFunc(ir.BasePath, listHandler).Methods("GET")
-	ae.RootRouter.HandleFunc(ir.BasePath+"/", listHandler).Methods("GET")
+	ae.Api.InformationalListRootHandler = informational.ListRootHandlerFunc(func(params informational.ListRootParams) middleware.Responder {
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
+	})
 }
 
 func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	data := gabs.New()
+
 	buildInfo := build.GetBuildInfo()
-	if _, err := data.SetP(buildInfo.GetVersion(), "version"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
+	data := rest_model.Version{
+		BuildDate:      buildInfo.GetBuildDate(),
+		Revision:       buildInfo.GetRevision(),
+		RuntimeVersion: runtime.Version(),
+		Version:        buildInfo.GetVersion(),
 	}
 
-	if _, err := data.SetP(buildInfo.GetRevision(), "revision"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
-	}
-
-	if _, err := data.SetP(buildInfo.GetBuildDate(), "buildDate"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
-	}
-
-	if _, err := data.SetP(runtime.Version(), "runtimeVersion"); err != nil {
-		pfxlog.Logger().WithField("cause", err).Panic("could not set value by path")
-	}
-
-	rc.RequestResponder.RespondWithOk(data.Data(), nil)
+	rc.RespondWithOk(data, nil)
 }

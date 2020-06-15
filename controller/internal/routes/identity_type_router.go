@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/identity"
 )
 
 func init() {
@@ -39,14 +41,22 @@ func NewIdentityTypeRouter() *IdentityTypeRouter {
 	}
 }
 
-func (ir *IdentityTypeRouter) Register(ae *env.AppEnv) {
-	registerReadOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *IdentityTypeRouter) Register(ae *env.AppEnv) {
+
+	ae.Api.IdentityDetailIdentityTypeHandler = identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.IdentityListIdentityTypesHandler = identity.ListIdentityTypesHandlerFunc(func(params identity.ListIdentityTypesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
 }
 
-func (ir *IdentityTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToApiEntity)
+func (r *IdentityTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToRestEntity)
 }
 
-func (ir *IdentityTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToApiEntity, ir.IdType)
+func (r *IdentityTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToRestEntity)
 }

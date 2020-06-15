@@ -18,25 +18,42 @@ package routes
 
 import (
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/models"
 )
 
-type AuthenticatorSelfUpdateApi struct {
-	Username        *string                `json:"username, omitempty"`
-	NewPassword     *string                `json:"newPassword, omitempty"`
-	CurrentPassword *string                `json:"currentPassword, omitempty"`
-	Tags            map[string]interface{} `json:"tags"`
-}
-
-func (i *AuthenticatorSelfUpdateApi) ToModel(id, identityId string) *model.AuthenticatorSelf {
+func MapUpdateAuthenticatorWithCurrentToModel(id, identityId string, authenticator *rest_model.AuthenticatorUpdateWithCurrent) *model.AuthenticatorSelf {
 	ret := &model.AuthenticatorSelf{
-		CurrentPassword: stringz.OrEmpty(i.CurrentPassword),
-		NewPassword:     stringz.OrEmpty(i.NewPassword),
+		BaseEntity: models.BaseEntity{
+			Tags: authenticator.Tags,
+			Id:   id,
+		},
+		CurrentPassword: string(authenticator.CurrentPassword),
+		NewPassword:     string(authenticator.Password),
 		IdentityId:      identityId,
-		Username:        stringz.OrEmpty(i.Username),
+		Username:        string(authenticator.Username),
 	}
 
-	ret.Id = id
+	return ret
+}
+
+func MapPatchAuthenticatorWithCurrentToModel(id, identityId string, authenticator *rest_model.AuthenticatorPatchWithCurrent) *model.AuthenticatorSelf {
+	ret := &model.AuthenticatorSelf{
+		BaseEntity: models.BaseEntity{
+			Tags: authenticator.Tags,
+			Id:   id,
+		},
+		CurrentPassword: string(authenticator.CurrentPassword),
+		IdentityId:      identityId,
+	}
+
+	if authenticator.Password != nil {
+		ret.NewPassword = string(*authenticator.Password)
+	}
+
+	if authenticator.Username != nil {
+		ret.Username = string(*authenticator.Username)
+	}
 
 	return ret
 }

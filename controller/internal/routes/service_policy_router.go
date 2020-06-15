@@ -17,11 +17,11 @@
 package routes
 
 import (
-	"fmt"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"net/http"
+	"github.com/openziti/edge/rest_server/operations/service_policy"
 )
 
 func init() {
@@ -41,60 +41,76 @@ func NewServicePolicyRouter() *ServicePolicyRouter {
 	}
 }
 
-func (ir *ServicePolicyRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *ServicePolicyRouter) Register(ae *env.AppEnv) {
+	//CRUD
+	ae.Api.ServicePolicyDeleteServicePolicyHandler = service_policy.DeleteServicePolicyHandlerFunc(func(params service_policy.DeleteServicePolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	serviceUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameService)
-	identityUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentity)
+	ae.Api.ServicePolicyDetailServicePolicyHandler = service_policy.DetailServicePolicyHandlerFunc(func(params service_policy.DetailServicePolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	servicesListHandler := ae.WrapHandler(ir.ListServices, permissions.IsAdmin())
-	identitiesListHandler := ae.WrapHandler(ir.ListIdentities, permissions.IsAdmin())
+	ae.Api.ServicePolicyListServicePoliciesHandler = service_policy.ListServicePoliciesHandlerFunc(func(params service_policy.ListServicePoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-	//gets
-	sr.HandleFunc(serviceUrl, servicesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(serviceUrl+"/", servicesListHandler).Methods(http.MethodGet)
+	ae.Api.ServicePolicyUpdateServicePolicyHandler = service_policy.UpdateServicePolicyHandlerFunc(func(params service_policy.UpdateServicePolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	sr.HandleFunc(identityUrl, identitiesListHandler).Methods(http.MethodGet)
-	sr.HandleFunc(identityUrl+"/", identitiesListHandler).Methods(http.MethodGet)
-}
+	ae.Api.ServicePolicyCreateServicePolicyHandler = service_policy.CreateServicePolicyHandlerFunc(func(params service_policy.CreateServicePolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-func (ir *ServicePolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
-}
+	ae.Api.ServicePolicyPatchServicePolicyHandler = service_policy.PatchServicePolicyHandlerFunc(func(params service_policy.PatchServicePolicyParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ServicePolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity, ir.IdType)
-}
+	//Additional Lists
+	ae.Api.ServicePolicyListServicePolicyServicesHandler = service_policy.ListServicePolicyServicesHandlerFunc(func(params service_policy.ListServicePolicyServicesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListServices, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-func (ir *ServicePolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServicePolicyApi{}
-	Create(rc, rc.RequestResponder, ae.Schemes.ServicePolicy.Post, apiEntity, (&ServicePolicyApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.ServicePolicy.Create(apiEntity.ToModel(""))
+	ae.Api.ServicePolicyListServicePolicyIdentitiesHandler = service_policy.ListServicePolicyIdentitiesHandlerFunc(func(params service_policy.ListServicePolicyIdentitiesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
-func (ir *ServicePolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.ServicePolicy)
+func (r *ServicePolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
-func (ir *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServicePolicyApi{}
-	Update(rc, ae.Schemes.ServicePolicy.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.ServicePolicy.Update(apiEntity.ToModel(id))
+func (r *ServicePolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
+}
+
+func (r *ServicePolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_policy.CreateServicePolicyParams) {
+	Create(rc, rc, ServicePolicyLinkFactory, func() (string, error) {
+		return ae.Handlers.ServicePolicy.Create(MapCreateServicePolicyToModel(params.Body))
 	})
 }
 
-func (ir *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &ServicePolicyApi{}
-	Patch(rc, ae.Schemes.ServicePolicy.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.ServicePolicy.Patch(apiEntity.ToModel(id), fields.FilterMaps("tags"))
+func (r *ServicePolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.ServicePolicy)
+}
+
+func (r *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_policy.UpdateServicePolicyParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.ServicePolicy.Update(MapUpdateServicePolicyToModel(params.ID, params.Body))
 	})
 }
 
-func (ir *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServicePolicy, ae.Handlers.EdgeService, MapServiceToApiEntity)
+func (r *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_policy.PatchServicePolicyParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.ServicePolicy.Patch(MapPatchServicePolicyToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+	})
 }
 
-func (ir *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToApiEntity)
+func (r *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.EdgeService, MapServiceToRestEntity)
+}
+
+func (r *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToRestEntity)
 }

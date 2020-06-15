@@ -17,13 +17,15 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/rest_server/operations/informational"
 	"go.etcd.io/bbolt"
 
-	"github.com/Jeffail/gabs"
 	"reflect"
 )
 
@@ -42,16 +44,15 @@ func NewSummaryRouter() *SummaryRouter {
 	}
 }
 
-func (ir *SummaryRouter) Register(ae *env.AppEnv) {
+func (r *SummaryRouter) Register(ae *env.AppEnv) {
+	ae.Api.InformationalListSummaryHandler = informational.ListSummaryHandlerFunc(func(params informational.ListSummaryParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-	listHandler := ae.WrapHandler(ir.List, permissions.Always())
-
-	ae.RootRouter.HandleFunc(ir.BasePath, listHandler).Methods("GET")
-	ae.RootRouter.HandleFunc(ir.BasePath+"/", listHandler).Methods("GET")
 }
 
-func (ir *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	data := gabs.New()
+func (r *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	data := rest_model.ListSummaryCounts{}
 
 	v := reflect.ValueOf(ae.BoltStores).Elem()
 
@@ -71,18 +72,15 @@ func (ir *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				if err != nil {
 					return err
 				}
-
-				if _, err = data.SetP(count, store.GetEntityType()); err != nil {
-					return err
-				}
+				data[store.GetEntityType()] = count
 			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		rc.RequestResponder.RespondWithError(err)
+		rc.RespondWithError(err)
 	} else {
-		rc.RequestResponder.RespondWithOk(data.Data(), nil)
+		rc.RespondWithOk(data, nil)
 	}
 }

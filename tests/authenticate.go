@@ -70,7 +70,7 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 	client.SetHostURL("https://" + ctx.ApiHost)
 
 	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		Post("/authenticate?method=cert")
 
 	if err != nil {
@@ -126,7 +126,7 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 	}
 
 	resp, err := ctx.DefaultClient().R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("/authenticate?method=password")
 
@@ -456,7 +456,7 @@ func (request *authenticatedRequests) requireRemoveAssociation(url string, ids .
 	request.testContext.req.Equal(http.StatusOK, httpStatus)
 }
 
-func (request *authenticatedRequests) createEntityOfType(entityType string, body string) *resty.Response {
+func (request *authenticatedRequests) createEntityOfType(entityType string, body interface{}) *resty.Response {
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(body).
 		Post("/" + entityType)
@@ -467,8 +467,8 @@ func (request *authenticatedRequests) createEntityOfType(entityType string, body
 }
 
 type serviceConfig struct {
-	Service string `json:"service"`
-	Config  string `json:"config"`
+	ServiceId string `json:"serviceId"`
+	ConfigId  string `json:"configId"`
 }
 
 type sortableServiceConfigSlice []serviceConfig
@@ -478,7 +478,7 @@ func (s sortableServiceConfigSlice) Len() int {
 }
 
 func (s sortableServiceConfigSlice) Less(i, j int) bool {
-	return s[i].Service < s[j].Service || (s[i].Service == s[j].Service && s[i].Config < s[j].Config)
+	return s[i].ServiceId < s[j].ServiceId || (s[i].ServiceId == s[j].ServiceId && s[i].ConfigId < s[j].ConfigId)
 }
 
 func (s sortableServiceConfigSlice) Swap(i, j int) {
@@ -508,11 +508,11 @@ func (request *authenticatedRequests) listIdentityServiceConfigs(identityId stri
 	}
 	var result []serviceConfig
 	for _, child := range children {
-		service := request.testContext.requireString(child, "service")
-		config := request.testContext.requireString(child, "config")
+		service := request.testContext.requireString(child, "serviceId")
+		config := request.testContext.requireString(child, "configId")
 		result = append(result, serviceConfig{
-			Service: service,
-			Config:  config,
+			ServiceId: service,
+			ConfigId:  config,
 		})
 	}
 	sort.Sort(sortableServiceConfigSlice(result))

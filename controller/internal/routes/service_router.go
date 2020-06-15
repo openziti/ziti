@@ -18,7 +18,9 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/rest_server/operations/service"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"strings"
@@ -45,35 +47,57 @@ func NewServiceRouter() *ServiceRouter {
 	}
 }
 
-func (ir *ServiceRouter) Register(ae *env.AppEnv) {
-	sr := registerCrudRouter(ae, ae.RootRouter, ir.BasePath, ir, &crudResolvers{
-		Create:  permissions.IsAdmin(),
-		Read:    permissions.IsAuthenticated(),
-		Update:  permissions.IsAdmin(),
-		Delete:  permissions.IsAdmin(),
-		Default: permissions.IsAdmin(),
+func (r *ServiceRouter) Register(ae *env.AppEnv) {
+	ae.Api.ServiceDeleteServiceHandler = service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	serviceEdgeRouterPolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServiceEdgeRouterPolicy)
-	ae.HandleGet(sr, serviceEdgeRouterPolicyUrl, ir.listServiceEdgeRouterPolicies, permissions.IsAdmin())
+	ae.Api.ServiceDetailServiceHandler = service.DetailServiceHandlerFunc(func(params service.DetailServiceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated()) //filter restricted
+	})
 
-	edgeRouterUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameEdgeRouter)
-	ae.HandleGet(sr, edgeRouterUrl, ir.listEdgeRouters, permissions.IsAdmin())
+	ae.Api.ServiceListServicesHandler = service.ListServicesHandlerFunc(func(params service.ListServicesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated()) //filter restricted
+	})
 
-	servicePolicyUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameServicePolicy)
-	ae.HandleGet(sr, servicePolicyUrl, ir.listServicePolicies, permissions.IsAdmin())
+	ae.Api.ServiceUpdateServiceHandler = service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	identityUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameIdentity)
-	ae.HandleGet(sr, identityUrl, ir.listIdentities, permissions.IsAdmin())
+	ae.Api.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 
-	configsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameConfig)
-	ae.HandleGet(sr, configsUrl, ir.listConfigs, permissions.IsAdmin())
+	ae.Api.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 
-	terminatorsUrl := fmt.Sprintf("/{%s}/%s", response.IdPropertyName, EntityNameTerminator)
-	ae.HandleGet(sr, terminatorsUrl, ir.listTerminators, permissions.IsAdmin())
+	ae.Api.ServiceListServiceServiceEdgeRouterPoliciesHandler = service.ListServiceServiceEdgeRouterPoliciesHandlerFunc(func(params service.ListServiceServiceEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServiceEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ServiceListServiceEdgeRoutersHandler = service.ListServiceEdgeRoutersHandlerFunc(func(params service.ListServiceEdgeRoutersParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listEdgeRouters, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ServiceListServiceServicePoliciesHandler = service.ListServiceServicePoliciesHandlerFunc(func(params service.ListServiceServicePoliciesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listServicePolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ServiceListServiceIdentitiesHandler = service.ListServiceIdentitiesHandlerFunc(func(params service.ListServiceIdentitiesParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ServiceListServiceConfigHandler = service.ListServiceConfigHandlerFunc(func(params service.ListServiceConfigParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listConfigs, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.ServiceListServiceTerminatorsHandler = service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listTerminators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
-func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		identity := rc.Identity
@@ -104,7 +128,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		roleFilters := rc.Request.URL.Query()["roleFilter"]
 		roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
 
-		var apiEntities []BaseApiEntity
+		var apiEntities []interface{}
 		var qmd *models.QueryMetaData
 		if rc.Identity.IsAdmin && len(roleFilters) > 0 {
 			cursorProvider, err := ae.GetStores().EdgeService.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
@@ -118,7 +142,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				return nil, err
 			}
 
-			apiEntities, err = modelToApi(ae, rc, MapServiceToApiEntity, result.GetEntities())
+			apiEntities, err = modelToApi(ae, rc, MapServiceToRestEntity, result.GetEntities())
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +153,7 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				pfxlog.Logger().Errorf("error executing list query: %+v", err)
 				return nil, err
 			}
-			apiEntities, err = MapServicesToApiEntities(ae, rc, result.Services)
+			apiEntities, err = MapServicesToRestEntity(ae, rc, result.Services)
 			if err != nil {
 				return nil, err
 			}
@@ -139,68 +163,65 @@ func (ir *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	})
 }
 
-func (ir *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (interface{}, error) {
-		service, err := ae.Handlers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
+	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
+		svc, err := ae.Handlers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
 		if err != nil {
 			return nil, err
 		}
-		return MapServiceToApiEntity(ae, rc, service)
+		return MapServiceToRestEntity(ae, rc, svc)
 	})
 }
 
-func (ir *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext) {
-	serviceCreate := &ServiceApiCreate{}
-	Create(rc, rc.RequestResponder, ae.Schemes.Service.Post, serviceCreate, (&ServiceApiList{}).BuildSelfLink, func() (string, error) {
-		return ae.Handlers.EdgeService.Create(serviceCreate.ToModel())
+func (r *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service.CreateServiceParams) {
+	Create(rc, rc, ServiceLinkFactory, func() (string, error) {
+		return ae.Handlers.EdgeService.Create(MapCreateServiceToModel(params.Body))
 	})
 }
 
-func (ir *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.EdgeService)
+func (r *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.EdgeService)
 }
 
-func (ir *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	serviceUpdate := &ServiceApiUpdate{}
-	Update(rc, ae.Schemes.Service.Put, ir.IdType, serviceUpdate, func(id string) error {
-		return ae.Handlers.EdgeService.Update(serviceUpdate.ToModel(id))
+func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service.UpdateServiceParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Body))
 	})
 }
 
-func (ir *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	serviceUpdate := &ServiceApiUpdate{}
-	Patch(rc, ae.Schemes.Service.Patch, ir.IdType, serviceUpdate, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeService.Patch(serviceUpdate.ToModel(id), fields.ConcatNestedNames().FilterMaps("tags"))
+func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service.PatchServiceParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Body), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
-func (ir *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listAssociations(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToApiEntity)
+func (r *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listAssociations(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
-func (ir *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listAssociations(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToApiEntity)
+func (r *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listAssociations(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
-func (ir *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listAssociations(ae, rc, ae.Handlers.Config, MapConfigToApiEntity)
+func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listAssociations(ae, rc, ae.Handlers.Config, MapConfigToRestEntity)
 }
 
-func (ir *ServiceRouter) listTerminators(ae *env.AppEnv, rc *response.RequestContext) {
-	ir.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToApiEntity)
+func (r *ServiceRouter) listTerminators(ae *env.AppEnv, rc *response.RequestContext) {
+	r.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
 }
 
-func (ir *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(ae, rc, ir.IdType, ae.Handlers.EdgeService, associationLoader, mapper)
+func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.EdgeService, associationLoader, mapper)
 }
 
-func (ir *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.Identity, MapIdentityToApiEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.Identity, MapIdentityToRestEntity)
 }
 
-func (ir *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, ir.IdType, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToApiEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
 }

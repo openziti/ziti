@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/api_session"
 )
 
 func init() {
@@ -27,30 +29,40 @@ func init() {
 	env.AddRouter(r)
 }
 
-type ApiSessionRouter struct {
+type ApiSessionHandler struct {
 	BasePath string
 	IdType   response.IdType
 }
 
-func NewApiSessionRouter() *ApiSessionRouter {
-	return &ApiSessionRouter{
+func NewApiSessionRouter() *ApiSessionHandler {
+	return &ApiSessionHandler{
 		BasePath: "/" + EntityNameApiSession,
 		IdType:   response.IdTypeUuid,
 	}
 }
 
-func (ir *ApiSessionRouter) Register(ae *env.AppEnv) {
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (ir *ApiSessionHandler) Register(ae *env.AppEnv) {
+	ae.Api.APISessionDeleteAPISessionsHandler = api_session.DeleteAPISessionsHandlerFunc(func(params api_session.DeleteAPISessionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(ir.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.APISessionDetailAPISessionsHandler = api_session.DetailAPISessionsHandlerFunc(func(params api_session.DetailAPISessionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(ir.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.APISessionListAPISessionsHandler = api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
-func (ir *ApiSessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToApiEntity)
+func (ir *ApiSessionHandler) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToRestInterface)
 }
 
-func (ir *ApiSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToApiEntity, ir.IdType)
+func (ir *ApiSessionHandler) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToRestInterface)
 }
 
-func (ir *ApiSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.ApiSession)
+func (ir *ApiSessionHandler) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.ApiSession)
 }

@@ -57,7 +57,7 @@ func (config *Config) LoadConfigFromMapForEnrollment(configMap map[interface{}]i
 	//enrollment config loading is more lax on where the CSR section lives (i.e. under edge: or at the root level)
 
 	if val, ok := configMap["edge"]; ok && val != nil {
-		var edgeConfigMap map[interface{}]interface{} = nil
+		var edgeConfigMap map[interface{}]interface{}
 		config.Enabled = true
 		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {
 			return fmt.Errorf("expected map as edge configuration")

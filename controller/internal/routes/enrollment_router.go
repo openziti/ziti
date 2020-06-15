@@ -17,9 +17,11 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/enrollment"
 )
 
 func init() {
@@ -39,18 +41,29 @@ func NewEnrollmentRouter() *EnrollmentRouter {
 	}
 }
 
-func (ir *EnrollmentRouter) Register(ae *env.AppEnv) {
-	registerReadDeleteOnlyRouter(ae, ae.RootRouter, ir.BasePath, ir, permissions.IsAdmin())
+func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
+
+	ae.Api.EnrollmentDeleteEnrollmentHandler = enrollment.DeleteEnrollmentHandlerFunc(func(params enrollment.DeleteEnrollmentParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.EnrollmentDetailEnrollmentHandler = enrollment.DetailEnrollmentHandlerFunc(func(params enrollment.DetailEnrollmentParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.Api.EnrollmentListEnrollmentsHandler = enrollment.ListEnrollmentsHandlerFunc(func(params enrollment.ListEnrollmentsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
-func (ir *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Enrollment, MapEnrollmentToApiEntity)
+func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	ListWithHandler(ae, rc, ae.Handlers.Enrollment, MapEnrollmentToRestEntity)
 }
 
-func (ir *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapEnrollmentToApiEntity, ir.IdType)
+func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapEnrollmentToRestEntity)
 }
 
-func (ir *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ir.IdType, ae.Handlers.Enrollment)
+func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
+	DeleteWithHandler(rc, ae.Handlers.Enrollment)
 }

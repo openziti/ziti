@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
+	"github.com/go-openapi/runtime"
 	"github.com/openziti/edge/controller/apierror"
 	"io/ioutil"
 	"net/http"
@@ -28,8 +29,9 @@ import (
 type EnrollmentResult struct {
 	Identity      *Identity
 	Authenticator *Authenticator
-	Content       []byte
-	ContentType   string
+	Content       interface{}
+	TextContent   []byte
+	Producer      runtime.Producer
 	Status        int
 }
 
@@ -80,10 +82,6 @@ type EnrollmentContextHttp struct {
 	Method     string
 }
 
-func (context *EnrollmentContextHttp) GetMethod() string {
-	return context.Method
-}
-
 func (context *EnrollmentContextHttp) GetToken() string {
 	return context.Token
 }
@@ -104,6 +102,10 @@ func (context *EnrollmentContextHttp) GetDataAsMap() map[string]interface{} {
 	}
 
 	return data
+}
+
+func (context *EnrollmentContextHttp) GetMethod() string {
+	return context.Method
 }
 
 func (context *EnrollmentContextHttp) GetDataAsByteArray() []byte {
@@ -128,15 +130,16 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 	queryValues := request.URL.Query()
 	parameters := map[string]interface{}{}
 
-	method := queryValues.Get("method")
-
 	for key, value := range queryValues {
 		parameters[key] = value
 
 		if key == "token" && len(value) >= 1 {
 			context.Token = value[0]
+		} else if key == "method" {
+			context.Method = value[0]
 		}
 	}
+
 	var enrollData interface{}
 	body, _ := ioutil.ReadAll(request.Body)
 
@@ -150,8 +153,7 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 
 			if err != nil {
 				err = apierror.GetJsonParseError(err, body)
-				apiErr := apierror.NewCouldNotParseBody()
-				apiErr.Cause = err
+				apiErr := apierror.NewCouldNotParseBody(err)
 				apiErr.AppendCause = true
 				return apiErr
 			}
@@ -172,7 +174,6 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 		headers[h] = v
 	}
 
-	context.Method = method
 	context.Parameters = parameters
 	context.Data = enrollData
 	context.Certs = request.TLS.PeerCertificates

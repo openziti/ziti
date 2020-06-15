@@ -45,6 +45,10 @@ func (advisor *PolicyAdvisor) AnalyzeServiceReachability(identityId, serviceId s
 
 	permissions, err := advisor.getServicePermissions(identityId, serviceId)
 
+	if err != nil {
+		return nil, err
+	}
+
 	edgeRouters, err := advisor.getIdentityEdgeRouters(identityId)
 	if err != nil {
 		return nil, err

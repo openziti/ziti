@@ -34,18 +34,17 @@ var test = `
 
 func Test_getFields(t *testing.T) {
 	assert := require.New(t)
-	test2 := ServiceApiCreate{
-		RoleAttributes:     []string{"foo", "bar"},
-		Name:               strPtr("Foo"),
-		TerminatorStrategy: strPtr("default"),
-		Configs:            []string{"ssh-config", "ssh-server-config"},
-		Tags: map[string]interface{}{
+	test2 := map[string]interface{}{
+		"roleAttributes":     []string{"foo", "bar"},
+		"name":               "Foo",
+		"terminatorStrategy": "default",
+		"configs": []string{"ssh-config", "ssh-server-config"},
+		"tags": map[string]interface{}{
 			"foo": "bar",
 			"nested": map[string]interface{}{
 				"go": true,
 			},
-		},
-	}
+		}}
 
 	test2Bytes, err := json.Marshal(test2)
 	assert.NoError(err)

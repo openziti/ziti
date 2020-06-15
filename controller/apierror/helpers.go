@@ -28,18 +28,20 @@ func NewNotFound() *ApiError {
 	}
 }
 
-func NewUnhandled() *ApiError {
+func NewUnhandled(cause error) *ApiError {
 	return &ApiError{
 		Code:    UnhandledCode,
 		Message: UnhandledMessage,
 		Status:  UnhandledStatus,
+		Cause:   cause,
 	}
 }
-func NewCouldNotParseBody() *ApiError {
+func NewCouldNotParseBody(err error) *ApiError {
 	return &ApiError{
 		Code:    CouldNotParseBodyCode,
 		Message: CouldNotParseBodyMessage,
 		Status:  CouldNotParseBodyStatus,
+		Cause:   err,
 	}
 }
 
@@ -51,11 +53,13 @@ func NewInvalidContentType(contentType string) *ApiError {
 	}
 }
 
-func NewCouldNotReadBody() *ApiError {
+func NewCouldNotReadBody(err error) *ApiError {
 	return &ApiError{
-		Code:    CouldNotReadBodyCode,
-		Message: CouldNotReadBodyMessage,
-		Status:  CouldNotReadBodyStatus,
+		Code:        CouldNotReadBodyCode,
+		Message:     CouldNotReadBodyMessage,
+		Status:      CouldNotReadBodyStatus,
+		Cause:       err,
+		AppendCause: false,
 	}
 }
 func NewInvalidField() *ApiError {
@@ -129,11 +133,13 @@ func NewInvalidEnrollMethod() *ApiError {
 		Status:  InvalidEnrollMethodStatus,
 	}
 }
-func NewInvalidFilter() *ApiError {
+func NewInvalidFilter(cause error) *ApiError {
 	return &ApiError{
-		Code:    InvalidFilterCode,
-		Message: InvalidFilterMessage,
-		Status:  InvalidFilterStatus,
+		Code:        InvalidFilterCode,
+		Message:     InvalidFilterMessage,
+		Status:      InvalidFilterStatus,
+		Cause:       cause,
+		AppendCause: true,
 	}
 }
 func NewInvalidPagination() *ApiError {
@@ -157,11 +163,12 @@ func NewInvalidSort() *ApiError {
 		Status:  InvalidSortStatus,
 	}
 }
-func NewCouldNotValidate() *ApiError {
+func NewCouldNotValidate(err error) *ApiError {
 	return &ApiError{
 		Code:    CouldNotValidateCode,
 		Message: CouldNotValidateMessage,
 		Status:  CouldNotValidateStatus,
+		Cause:   err,
 	}
 }
 func NewUnauthorized() *ApiError {
@@ -282,7 +289,7 @@ func NewAuthenticatorCannotBeUpdated() *ApiError {
 	}
 }
 
-func NewFabricRouterCannotBeUpdate() *ApiError{
+func NewFabricRouterCannotBeUpdate() *ApiError {
 	return &ApiError{
 		Code:    RouterCanNotBeUpdatedCode,
 		Message: RouterCanNotBeUpdatedMessage,
@@ -295,5 +302,13 @@ func NewAuthenticatorMethodMax() *ApiError {
 		Code:    AuthenticatorMethodMaxCode,
 		Message: AuthenticatorMethodMaxMessage,
 		Status:  AuthenticatorMethodMaxStatus,
+	}
+}
+
+func NewMethodNotAllowed() *ApiError {
+	return &ApiError{
+		Code:    MethodNotAllowedCode,
+		Message: MethodNotAllowedMessage,
+		Status:  MethodNotAllowedStatus,
 	}
 }

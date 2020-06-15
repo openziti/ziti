@@ -18,99 +18,49 @@ package routes
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/stringz"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/stringz"
 )
 
 const (
 	EntityNameApiSession = "api-sessions"
 )
 
-func NewApiSessionEntityRef(s *model.ApiSession) *EntityApiRef {
-	links := &response.Links{
-		"self": NewApiSessionLink(s.Id),
-	}
+var ApiSessionLinkFactory = NewBasicLinkFactory(EntityNameApiSession)
 
-	return &EntityApiRef{
-		Entity: EntityNameApiSession,
-		Id:     s.Id,
-		Name:   nil,
-		Links:  links,
-	}
-}
-
-func NewApiSessionLink(sessionId string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameApiSession, sessionId))
-}
-
-type ApiSessionApiList struct {
-	*env.BaseApi
-	Token       *string       `json:"token"`
-	Identity    *EntityApiRef `json:"identity"`
-	ConfigTypes []string      `json:"configTypes"`
-}
-
-func (ApiSessionApiList) BuildSelfLink(id string) *response.Link {
-	return NewApiSessionLink(id)
-}
-
-func (e *ApiSessionApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *ApiSessionApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
-	}
-}
-
-func (e *ApiSessionApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameApiSession,
-		Name:   nil,
-		Id:     e.Id,
-		Links:  e.Links,
-	}
-}
-
-func MapApiSessionToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
-	i, ok := e.(*model.ApiSession)
+func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, apiSessionEntity models.Entity) (interface{}, error) {
+	apiSession, ok := apiSessionEntity.(*model.ApiSession)
 
 	if !ok {
-		err := fmt.Errorf("entity is not an ApiSession \"%s\"", e.GetId())
+		err := fmt.Errorf("entity is not an ApiSession \"%s\"", apiSessionEntity.GetId())
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
 
-	al, err := MapApiSessionToApiList(i)
+	restModel, err := MapApiSessionToRestModel(apiSession)
 
 	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", apiSessionEntity.GetId(), err)
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err
 	}
-	return al, nil
+	return restModel, nil
 }
 
-func MapApiSessionToApiList(i *model.ApiSession) (*ApiSessionApiList, error) {
-	ret := &ApiSessionApiList{
-		BaseApi:     env.FromBaseModelEntity(i),
-		Token:       &i.Token,
-		Identity:    NewIdentityEntityRef(i.Identity),
-		ConfigTypes: stringz.SetToSlice(i.ConfigTypes),
+func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
+	ret := &rest_model.APISessionDetail{
+		BaseEntity:  BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
+		IdentityID:  &apiSession.IdentityId,
+		Identity:    ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+		Token:       &apiSession.Token,
+		ConfigTypes: stringz.SetToSlice(apiSession.ConfigTypes),
 	}
-
-	ret.PopulateLinks()
-
 	return ret, nil
 }

@@ -348,7 +348,7 @@ func LoadFromMap(cfgmap map[interface{}]interface{}) (*Config, error) {
 		Enabled: false,
 	}
 
-	var edgeConfigMap map[interface{}]interface{} = nil
+	var edgeConfigMap map[interface{}]interface{}
 
 	if val, ok := cfgmap["edge"]; ok && val != nil {
 		if edgeConfigMap, ok = val.(map[interface{}]interface{}); !ok {

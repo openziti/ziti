@@ -17,28 +17,21 @@
 package env
 
 import (
+	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
-	"github.com/openziti/foundation/common/constants"
-	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/util/mirror"
-	"github.com/pkg/errors"
-	"io/ioutil"
-	"net/http"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"sync"
-
 	jwt2 "github.com/dgrijalva/jwt-go"
+	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
+	openApiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/gobuffalo/packr"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
-	edgeconfig "github.com/openziti/edge/controller/config"
+	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/middleware"
 	"github.com/openziti/edge/controller/model"
@@ -46,35 +39,38 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/edge/rest_server"
+	"github.com/openziti/edge/rest_server/operations"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
+	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/xeipuuv/gojsonschema"
-	"gopkg.in/oleiade/reflections.v1"
+	"io"
+	"io/ioutil"
+	"net/http"
 )
 
 type AppEnv struct {
-	BoltStores              *persistence.Stores
-	Handlers                *model.Handlers
-	Embedded                *packr.Box
-	Schemes                 *Schemes
-	Config                  *edgeconfig.Config
-	EnrollmentJwtGenerator  jwt.EnrollmentGenerator
-	Versions                *config.Versions
-	AuthHeaderName          string
-	AuthCookieName          string
-	ApiServerCsrSigner      cert.Signer
-	ApiClientCsrSigner      cert.Signer
-	ControlClientCsrSigner  cert.Signer
-	FingerprintGenerator    cert.FingerprintGenerator
-	RootRouter              *mux.Router
-	CurrentIdentityRouter   *mux.Router
-	RequestResponderFactory response.RequestResponderFactory
-	AuthRegistry            model.AuthRegistry
-	EnrollRegistry          model.EnrollmentRegistry
-	Broker                  *Broker
-	HostController          HostController
+	BoltStores             *persistence.Stores
+	Handlers               *model.Handlers
+	Embedded               *packr.Box
+	Config                 *edgeConfig.Config
+	EnrollmentJwtGenerator jwt.EnrollmentGenerator
+	Versions               *config.Versions
+	AuthHeaderName         string
+	AuthCookieName         string
+	ApiServerCsrSigner     cert.Signer
+	ApiClientCsrSigner     cert.Signer
+	ControlClientCsrSigner cert.Signer
+	FingerprintGenerator   cert.FingerprintGenerator
+	AuthRegistry           model.AuthRegistry
+	EnrollRegistry         model.EnrollmentRegistry
+	Broker                 *Broker
+	HostController         HostController
+	Api                    *operations.ZitiEdgeAPI
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -89,15 +85,11 @@ func (ae *AppEnv) GetHostController() model.HostController {
 	return ae.HostController
 }
 
-func (ae *AppEnv) GetSchemas() model.Schemas {
-	return ae.Schemes
-}
-
 func (ae *AppEnv) GetHandlers() *model.Handlers {
 	return ae.Handlers
 }
 
-func (ae *AppEnv) GetConfig() *edgeconfig.Config {
+func (ae *AppEnv) GetConfig() *edgeConfig.Config {
 	return ae.Config
 }
 
@@ -181,8 +173,124 @@ type AppHandler func(ae *AppEnv, rc *response.RequestContext)
 
 type AppMiddleware func(*AppEnv, http.Handler) http.Handler
 
-func NewAppEnv(c *edgeconfig.Config) *AppEnv {
+type authorizer struct {
+}
 
+func (a authorizer) Authorize(request *http.Request, principal interface{}) error {
+	//principal is an API Session
+	_, ok := principal.(*model.ApiSession)
+
+	if !ok {
+		pfxlog.Logger().Error("principal expected to be an ApiSession and was not")
+		return apierror.NewUnauthorized()
+	}
+
+	rc, err := GetRequestContextFromHttpContext(request)
+
+	if rc == nil || err != nil {
+		pfxlog.Logger().WithError(err).Error("attempting to retrieve request context failed")
+		return apierror.NewUnauthorized()
+	}
+
+	if rc.Identity == nil {
+		return apierror.NewUnauthorized()
+	}
+
+	return nil
+}
+
+func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
+	rc.SessionToken = ae.GetSessionTokenFromRequest(rc.Request)
+	logger := pfxlog.Logger()
+	_, err := uuid.Parse(rc.SessionToken)
+
+	if err != nil {
+		logger.WithError(err).Debug("failed to parse session id")
+		rc.SessionToken = ""
+	} else {
+		logger.Tracef("authorizing request using session id '%v'", rc.SessionToken)
+	}
+
+	if rc.SessionToken != "" {
+		rc.ApiSession, err = ae.GetHandlers().ApiSession.ReadByToken(rc.SessionToken)
+		if err != nil {
+			logger.WithError(err).Debugf("looking up API session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
+			rc.ApiSession = nil
+			rc.SessionToken = ""
+		}
+	}
+
+	//updates updatedAt for session timeouts
+	if rc.ApiSession != nil {
+		err := ae.GetHandlers().ApiSession.Update(rc.ApiSession)
+		if err == nil {
+			//re-read session to get new updatedAt
+			rc.ApiSession, _ = ae.GetHandlers().ApiSession.Read(rc.ApiSession.Id)
+		} else {
+			logger.WithError(err).Errorf("could not update API session to extend timeout for token %s", rc.SessionToken)
+		}
+	}
+
+	if rc.ApiSession != nil {
+		rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				apiErr := apierror.NewUnauthorized()
+				apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
+				apiErr.AppendCause = true
+				return apiErr
+			} else {
+				return err
+			}
+		}
+	}
+
+	if rc.Identity != nil {
+		rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+
+		if rc.Identity.IsAdmin {
+			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
+		}
+	}
+	return nil
+}
+
+type TextProducer struct{}
+
+func (p TextProducer) Produce(writer io.Writer, i interface{}) error {
+	if buffer, ok := i.([]byte); ok {
+		_, err := writer.Write(buffer)
+		return err
+	} else if reader, ok := i.(io.Reader); ok {
+		buffer, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write(buffer)
+		return err
+	} else if buffer, ok := i.(string); ok {
+		_, err := writer.Write([]byte(buffer))
+		return err
+	} else if apiError, ok := i.(*apierror.ApiError); ok {
+		output := fmt.Sprintf("CODE: %s\nMESSAGE: %s\nNote: cannot render additional information for this content-type", apiError.Code, apiError.Message)
+		_, err := writer.Write([]byte(output))
+		return err
+	} else if _, ok := i.(error); ok {
+		//don't attempt to render random error information, may leak sensitive information
+		_, err := writer.Write([]byte("an error has occurred, more detail cannot be displayed in this content type"))
+		return err
+	} else {
+		return fmt.Errorf("unsupported type for text producer: %T", i)
+	}
+}
+
+func NewAppEnv(c *edgeConfig.Config) *AppEnv {
+	swaggerSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
+	if err != nil {
+		pfxlog.Logger().Fatalln(err)
+	}
+	api := operations.NewZitiEdgeAPI(swaggerSpec)
+	api.ServeError = ServeError
 	// See README.md in /ziti/edge/embedded for details
 	// This path is relative to source location of this file
 	embedded := packr.NewBox("../embedded")
@@ -194,18 +302,37 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
-		AuthCookieName:          constants.ZitiSession,
-		AuthHeaderName:          constants.ZitiSession,
-		RootRouter:              mux.NewRouter(),
-		RequestResponderFactory: response.NewRequestResponder,
-		AuthRegistry:            &model.AuthProcessorRegistryImpl{},
-		EnrollRegistry:          &model.EnrollmentRegistryImpl{},
+		AuthCookieName: constants.ZitiSession,
+		AuthHeaderName: constants.ZitiSession,
+		AuthRegistry:   &model.AuthProcessorRegistryImpl{},
+		EnrollRegistry: &model.EnrollmentRegistryImpl{},
+		Api:            api,
 	}
 
-	ae.RootRouter.NotFoundHandler = NewNotFoundHandler(ae)
-	ae.RootRouter.MethodNotAllowedHandler = NewMethodNotAllowedHandler(ae)
+	api.APIAuthorizer = authorizer{}
 
-	ae.CurrentIdentityRouter = ae.RootRouter.PathPrefix("/current-identity").Subrouter()
+	noOpConsumer := runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+		return nil //do nothing
+	})
+
+	//enrollment consumer, leave content unread, allow modules to read
+	api.ApplicationXPemFileConsumer = noOpConsumer
+	api.ApplicationPkcs10Consumer = noOpConsumer
+
+	api.ApplicationXPemFileProducer = &TextProducer{}
+	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
+		principal, err = ae.GetHandlers().ApiSession.ReadByToken(token)
+
+		if err != nil {
+			if !boltz.IsErrNotFoundErr(err) {
+				pfxlog.Logger().WithError(err).Errorf("encountered error checking for session that was not expected; returning masking unauthorized response")
+			}
+
+			return nil, apierror.NewUnauthorized()
+		}
+
+		return principal, nil
+	}
 
 	sm := getJwtSigningMethod(c.Api.Identity.ServerCert())
 	key := c.Api.Identity.ServerCert().PrivateKey
@@ -215,10 +342,6 @@ func NewAppEnv(c *edgeconfig.Config) *AppEnv {
 	ae.ApiClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ApiServerCsrSigner = cert.NewServerSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ControlClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
-
-	ae.Schemes = &Schemes{}
-
-	err := ae.LoadSchemas()
 
 	ae.FingerprintGenerator = cert.NewFingerprintGenerator()
 
@@ -271,7 +394,7 @@ func getJwtSigningMethod(cert *tls.Certificate) jwt2.SigningMethod {
 	return sm
 }
 
-func (ae *AppEnv) getSessionTokenFromRequest(r *http.Request) string {
+func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
 	token := r.Header.Get(ae.AuthHeaderName)
 
 	if token == "" {
@@ -283,121 +406,57 @@ func (ae *AppEnv) getSessionTokenFromRequest(r *http.Request) string {
 	return token
 }
 
-func (ae *AppEnv) WrapHandler(f AppHandler, prs ...permissions.Resolver) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		rid := uuid.New()
+func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
+	rid := uuid.New()
 
-		sw, ok := w.(*middleware.StatusWriter)
+	sw, ok := rw.(*middleware.StatusWriter)
 
-		if ok {
-			rid = sw.RequestId
-		}
-
-		rc := &response.RequestContext{
-			Id:                rid,
-			Identity:          nil,
-			ApiSession:        nil,
-			ActivePermissions: []string{},
-			ResponseWriter:    w,
-			Request:           r,
-			EventLogger:       &DefaultEventLogger{Ae: ae},
-		}
-
-		rc.RequestResponder = ae.RequestResponderFactory(rc)
-
-		sessionToken := ae.getSessionTokenFromRequest(r)
-		log := pfxlog.Logger()
-		_, err := uuid.Parse(sessionToken)
-
-		if err != nil {
-			log.WithError(err).Debug("failed to parse session id")
-			sessionToken = ""
-		} else {
-			log.Tracef("authorizing request using session id '%v'", sessionToken)
-		}
-
-		if sessionToken != "" {
-			rc.ApiSession, err = ae.GetHandlers().ApiSession.ReadByToken(sessionToken)
-
-			if err != nil {
-				//don't error on "not found", just an un-authed session, rely on permissions below
-				//error on anything else as we  failed to work with the store
-				if !boltz.IsErrNotFoundErr(err) {
-					log.WithError(err).Debug("error requesting session")
-					rc.RequestResponder.RespondWithError(err)
-					return
-				}
-			}
-		}
-
-		//updates updatedAt for session timeouts
-		if rc.ApiSession != nil {
-			err := ae.GetHandlers().ApiSession.Update(rc.ApiSession)
-			if err != nil && !boltz.IsErrNotFoundErr(err) {
-				log.WithError(err).Debug("failed to update session activity")
-				rc.RequestResponder.RespondWithError(err)
-				return
-			}
-			//re-read session to get new updatedAt
-			rc.ApiSession, _ = ae.GetHandlers().ApiSession.Read(rc.ApiSession.Id)
-		}
-
-		if rc.ApiSession != nil {
-			rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
-			if err != nil {
-				if boltz.IsErrNotFoundErr(err) {
-					apiErr := apierror.NewUnauthorized()
-					apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
-					apiErr.AppendCause = true
-					rc.RequestResponder.RespondWithApiError(apiErr)
-				} else {
-					rc.RequestResponder.RespondWithError(err)
-				}
-				return
-			}
-		}
-
-		if rc.Identity != nil {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
-
-			if rc.Identity.IsAdmin {
-				rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
-			}
-		}
-
-		for _, pr := range prs {
-			if !pr.IsAllowed(rc.ActivePermissions...) {
-				rc.RequestResponder.RespondWithUnauthorizedError(rc)
-				return
-			}
-		}
-
-		f(ae, rc)
+	if ok {
+		rid = sw.RequestId
 	}
-}
 
-func (ae *AppEnv) WrapMiddleware(f AppMiddleware) mux.MiddlewareFunc {
-	return func(h http.Handler) http.Handler {
-		return f(ae, h)
+	body, _ := ioutil.ReadAll(r.Body)
+	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+	requestContext := &response.RequestContext{
+		Id:                rid,
+		Body:              body,
+		Identity:          nil,
+		ApiSession:        nil,
+		ActivePermissions: []string{},
+		ResponseWriter:    rw,
+		Request:           r,
+		EventLogger:       &DefaultEventLogger{Ae: ae},
 	}
+
+	requestContext.Responder = response.NewResponder(requestContext)
+
+	return requestContext
 }
 
-func (ae *AppEnv) HandleGet(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
-	handler := ae.WrapHandler(f, prs...)
-	router.HandleFunc(path, handler).Methods(http.MethodGet)
-	router.HandleFunc(path+"/", handler).Methods(http.MethodGet)
+//use own type to avoid collisions
+type ContextKey string
+
+const EdgeContextKey = ContextKey("edgeContext")
+
+func AddRequestContextToHttpContext(r *http.Request, rc *response.RequestContext) {
+	ctx := context.WithValue(r.Context(), EdgeContextKey, rc)
+	*r = *r.WithContext(ctx)
 }
 
-func (ae *AppEnv) HandlePost(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
-	handler := ae.WrapHandler(f, prs...)
-	router.HandleFunc(path, handler).Methods(http.MethodPost)
-	router.HandleFunc(path+"/", handler).Methods(http.MethodPost)
-}
+func GetRequestContextFromHttpContext(r *http.Request) (*response.RequestContext, error) {
+	val := r.Context().Value(EdgeContextKey)
+	if val == nil {
+		return nil, fmt.Errorf("value for key %s no found in context", EdgeContextKey)
+	}
 
-func (ae *AppEnv) HandleDelete(router *mux.Router, path string, f AppHandler, prs ...permissions.Resolver) {
-	handler := ae.WrapHandler(f, prs...)
-	router.HandleFunc(path, handler).Methods(http.MethodDelete)
-	router.HandleFunc(path+"/", handler).Methods(http.MethodDelete)
+	requestContext := val.(*response.RequestContext)
+
+	if requestContext == nil {
+		return nil, fmt.Errorf("value for key %s is not a request context", EdgeContextKey)
+	}
+
+	return requestContext, nil
 }
 
 func (ae *AppEnv) GetEmbeddedFileContent(filePath string) (string, error) {
@@ -416,137 +475,28 @@ func (ae *AppEnv) GetEmbeddedFileContent(filePath string) (string, error) {
 	return string(fileContents), err
 }
 
-func (ae *AppEnv) LoadSchemas() error {
-	// add custom format checkers
-	gojsonschema.FormatCheckers.Add("uuid", gojsonschema.UUIDFormatChecker{})
+func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestContext), request *http.Request, entityId string, entitySubId string, permissions ...permissions.Resolver) openApiMiddleware.Responder {
+	return openApiMiddleware.ResponderFunc(func(writer http.ResponseWriter, producer runtime.Producer) {
 
-	defContent, err := ae.GetEmbeddedFileContent("api-schema/definitions.all.json")
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defLoader := gojsonschema.NewStringLoader(defContent)
-
-	return ae.Embedded.WalkPrefix("api-schema/entities/", func(s string, f packr.File) error {
-		if err != nil {
-			panic(err.Error())
-		}
-		fileName := filepath.Base(s)
-
-		fileNameParts := strings.Split(fileName, ".")
-
-		if len(fileNameParts) < 3 {
-			return fmt.Errorf("schema file name '%s' is invalid, ensture <entity.method>.<ext> format and packing", fileName)
-		}
-
-		entityName := fileNameParts[0]
-		entityPropertyName := kebabToCamelCase(entityName)
-		method := kebabToCamelCase(fileNameParts[1])
-
-		schemaContent, err := ioutil.ReadAll(f)
+		rc, err := GetRequestContextFromHttpContext(request)
 
 		if err != nil {
-			panic(err)
+			pfxlog.Logger().WithError(err).Error("could not retrieve request context")
+			response.RespondWithError(writer, uuid.New(), producer, err)
+			return
 		}
 
-		entitySchemaLoader := gojsonschema.NewStringLoader(string(schemaContent))
+		rc.SetProducer(producer)
+		rc.SetEntityId(entityId)
+		rc.SetEntitySubId(entitySubId)
 
-		schemaLoader := gojsonschema.NewSchemaLoader()
-
-		if err := schemaLoader.AddSchemas(defLoader); err != nil {
-			pfxlog.Logger().WithField("cause", err).Panic("error adding definitions schema")
-		}
-
-		schema, err := schemaLoader.Compile(entitySchemaLoader)
-
-		if err != nil {
-			pfxlog.Logger().WithField("cause", err).Panic("error compiling schema")
-		}
-
-		if hasProp, _ := reflections.HasField(ae.Schemes, entityPropertyName); !hasProp {
-			return fmt.Errorf("found schema with property name '%s' from file '%s', no matching schema property", entityPropertyName, fileName)
-		}
-		entitySchema, err := reflections.GetField(ae.Schemes, entityPropertyName)
-
-		if entitySchema == nil || reflect.ValueOf(entitySchema).IsNil() {
-			if err := mirror.InitializeStructField(ae.Schemes, entityPropertyName); err != nil {
-				return errors.Errorf("found schema with property name '%s', unable to initialized: %v", entityPropertyName, err)
-			}
-			entitySchema, err = reflections.GetField(ae.Schemes, entityPropertyName)
-		}
-
-		if err != nil {
-			return err
-		}
-
-		err = reflections.SetField(entitySchema, method, schema)
-
-		if err != nil {
-			return fmt.Errorf("found schema with property name '%s', could not set methods '%s'", entityPropertyName, method)
-		}
-
-		return nil
-	})
-}
-
-func kebabToCamelCase(kebab string) (camelCase string) {
-	isToUpper := true
-	for _, runeValue := range kebab {
-		if isToUpper {
-			camelCase += strings.ToUpper(string(runeValue))
-			isToUpper = false
-		} else {
-			if runeValue == '-' {
-				isToUpper = true
-			} else {
-				camelCase += string(runeValue)
+		for _, permission := range permissions {
+			if !permission.IsAllowed(rc.ActivePermissions...) {
+				rc.RespondWithApiError(apierror.NewUnauthorized())
+				return
 			}
 		}
-	}
-	return
-}
 
-type NotFoundHandler struct {
-	appEnv      *AppEnv
-	handler     func(http.ResponseWriter, *http.Request)
-	handlerOnce sync.Once
-}
-
-func (handler *NotFoundHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	handler.handlerOnce.Do(func() {
-		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
-			rc.RequestResponder.RespondWithNotFound()
-		})
+		responderFunc(ae, rc)
 	})
-
-	handler.handler(rw, r)
-}
-
-func NewNotFoundHandler(ae *AppEnv) http.Handler {
-	return &NotFoundHandler{
-		appEnv: ae,
-	}
-}
-
-type MethodNotAllowedHandler struct {
-	appEnv      *AppEnv
-	handler     func(http.ResponseWriter, *http.Request)
-	handlerOnce sync.Once
-}
-
-func (handler *MethodNotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	handler.handlerOnce.Do(func() {
-		handler.handler = handler.appEnv.WrapHandler(func(ae *AppEnv, rc *response.RequestContext) {
-			rc.RequestResponder.RespondWithMethodNotAllowed()
-		})
-	})
-
-	handler.handler(rw, r)
-}
-
-func NewMethodNotAllowedHandler(ae *AppEnv) http.Handler {
-	return &MethodNotAllowedHandler{
-		appEnv: ae,
-	}
 }

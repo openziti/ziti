@@ -17,179 +17,149 @@
 package response
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-openapi/runtime"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/edge/internal/version"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/validation"
-	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
-type RequestResponder interface {
-	RespondWithFieldError(err *validation.FieldError)
+//todo: rename to Responder, remove old Responder and RequestResponder
+type Responder interface {
+	Respond(data interface{}, httpStatus int)
+	RespondWithOk(data interface{}, meta *rest_model.Meta)
+	RespondWithEmptyOk()
+	RespondWithError(err error)
 	RespondWithApiError(apiError *apierror.ApiError)
-	RespondWithCouldNotParseBody(e error)
-	RespondWithCouldNotReadBody(e error)
-	RespondWithCreatedId(id string, link *Link)
-	RespondWithCreated(data interface{}, meta *Meta, link *Link)
-	RespondWithError(e error)
+	SetProducer(producer runtime.Producer)
+	GetProducer() runtime.Producer
+	RespondWithCouldNotReadBody(err error)
+	RespondWithCouldNotParseBody(err error)
+	RespondWithValidationErrors(errors *schema.ValidationErrors)
 	RespondWithNotFound()
-	RespondWithNotFoundWithCause(e error)
-	RespondWithOk(data interface{}, meta *Meta)
-	RespondWithUnauthorizedError(rc *RequestContext)
-	RespondWithValidationErrors(ves *schema.ValidationErrors)
-	RespondWithMethodNotAllowed()
+	RespondWithNotFoundWithCause(cause error)
+	RespondWithFieldError(fe *validation.FieldError)
+	RespondWithCreatedId(id string, link rest_model.Link)
 }
 
-type RequestResponderFactory func(rc *RequestContext) RequestResponder
-
-type RequestResponderImpl struct {
-	rc *RequestContext
+func NewResponder(rc *RequestContext) *ResponderImpl {
+	return &ResponderImpl{rc: rc, producer: runtime.JSONProducer()}
 }
 
-func NewRequestResponder(rc *RequestContext) RequestResponder {
-	return &RequestResponderImpl{
-		rc: rc,
-	}
+type ResponderImpl struct {
+	rc       *RequestContext
+	producer runtime.Producer
 }
 
-func (rr *RequestResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
-	log := pfxlog.Logger()
+func (responder *ResponderImpl) SetProducer(producer runtime.Producer) {
+	responder.producer = producer
+}
 
-	if logrus.IsLevelEnabled(logrus.DebugLevel) {
-		logger := log
-		if apiError.Cause != nil {
-			logger = logger.WithError(apiError.Cause)
-		}
-		logger.Debugf("returning api error, status: %v, code: %v, msg: %v", apiError.Status, apiError.Code, apiError.Message)
+func (responder *ResponderImpl) GetProducer() runtime.Producer {
+	return responder.producer
+}
+
+func (responder *ResponderImpl) RespondWithCouldNotReadBody(err error) {
+	responder.RespondWithApiError(apierror.NewCouldNotReadBody(err))
+}
+
+func (responder *ResponderImpl) RespondWithCouldNotParseBody(err error) {
+	responder.RespondWithApiError(apierror.NewCouldNotParseBody(err))
+}
+
+func (responder *ResponderImpl) RespondWithValidationErrors(errors *schema.ValidationErrors) {
+	responder.RespondWithApiError(apierror.NewCouldNotValidate(errors))
+}
+
+func (responder *ResponderImpl) RespondWithNotFound() {
+	responder.RespondWithApiError(apierror.NewNotFound())
+}
+
+func (responder *ResponderImpl) RespondWithNotFoundWithCause(cause error) {
+	apiErr := apierror.NewNotFound()
+	apiErr.Cause = cause
+	responder.RespondWithApiError(apiErr)
+}
+
+func (responder *ResponderImpl) RespondWithFieldError(fe *validation.FieldError) {
+	responder.RespondWithApiError(apierror.NewField(apierror.NewFieldError(fe.Reason, fe.FieldName, fe.FieldValue)))
+}
+
+func (responder *ResponderImpl) RespondWithCreatedId(id string, link rest_model.Link) {
+	createEnvelope := &rest_model.CreateEnvelope{
+		Data: &rest_model.CreateLocation{
+			Links: rest_model.Links{
+				"self": link,
+			},
+			ID: id,
+		},
+		Meta: &rest_model.Meta{},
 	}
 
-	urlVars := mux.Vars(rr.rc.Request)
-	args := map[string]interface{}{
-		"urlVars": urlVars,
-	}
+	responder.Respond(createEnvelope, http.StatusCreated)
+}
 
-	rsp, err := NewErrorResponse(apiError, args)
+func (responder *ResponderImpl) RespondWithEmptyOk() {
+	responder.Respond(&rest_model.Empty{Data: map[string]interface{}{}, Meta: &rest_model.Meta{}}, http.StatusOK)
+}
+
+func (responder *ResponderImpl) RespondWithOk(data interface{}, meta *rest_model.Meta) {
+	responder.Respond(&rest_model.Empty{
+		Data: data,
+		Meta: meta,
+	}, http.StatusOK)
+}
+
+func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
+	Respond(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), data, httpStatus)
+}
+
+func (responder *ResponderImpl) RespondWithError(err error) {
+	RespondWithError(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), err)
+}
+
+func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
+	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), apiError)
+}
+
+func Respond(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, data interface{}, httpStatus int) {
+	w.WriteHeader(httpStatus)
+
+	err := producer.Produce(w, data)
 
 	if err != nil {
-		log.WithField("cause", err).Error("could not create responder")
-		return
+		pfxlog.Logger().WithError(err).WithField("requestId", requestId).Error("could not respond, producer errored")
+	}
+}
+
+func RespondWithError(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, err error) {
+	var apiError *apierror.ApiError
+	var ok bool
+
+	if apiError, ok = err.(*apierror.ApiError); !ok {
+		apiError = apierror.NewUnhandled(err)
 	}
 
-	err = rsp.Respond(rr.rc)
+	RespondWithApiError(w, requestId, producer, apiError)
+}
+
+func RespondWithApiError(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, apiError *apierror.ApiError) {
+	data := &rest_model.APIErrorEnvelope{
+		Error: apiError.ToRestModel(requestId.String()),
+		Meta: &rest_model.Meta{
+			APIEnrolmentVersion: version.GetApiVersion(),
+			APIVersion:          version.GetApiEnrollmentVersion(),
+		},
+	}
+
+	w.WriteHeader(apiError.Status)
+	err := producer.Produce(w, data)
 
 	if err != nil {
-		log.WithField("cause", err).Error("could not respond")
-		return
+		pfxlog.Logger().WithError(err).WithField("requestId", requestId).Error("could not respond with error, producer errored")
 	}
-}
-
-func (rr *RequestResponderImpl) RespondWithFieldError(err *validation.FieldError) {
-	rr.RespondWithApiError(apierror.NewField(apierror.NewFieldError(err.Reason, err.FieldName, err.FieldValue)))
-}
-
-func (rr *RequestResponderImpl) RespondWithCouldNotParseBody(e error) {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.CouldNotParseBodyCode,
-		Message: apierror.CouldNotParseBodyMessage,
-		Cause:   e,
-		Status:  http.StatusBadRequest,
-	})
-}
-
-func (rr *RequestResponderImpl) RespondWithCouldNotReadBody(e error) {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.CouldNotReadBodyCode,
-		Message: apierror.CouldNotReadBodyMessage,
-		Cause:   e,
-		Status:  http.StatusBadRequest,
-	})
-}
-
-func (rr *RequestResponderImpl) RespondWithCreatedId(id string, link *Link) {
-	RespondWithSimpleCreated(id, link, rr.rc)
-}
-
-func (rr *RequestResponderImpl) RespondWithCreated(data interface{}, meta *Meta, link *Link) {
-	RespondWithCreated(data, meta, link, rr.rc)
-}
-
-func (rr *RequestResponderImpl) RespondWithError(e error) {
-	apiErr, ok := e.(*apierror.ApiError)
-
-	if ok {
-		rr.RespondWithApiError(apiErr)
-		return
-	}
-
-	log := pfxlog.Logger()
-	log.WithField("cause", e).Errorf("unhandled error: %+v", e)
-	vars := mux.Vars(rr.rc.Request)
-
-	args := map[string]interface{}{
-		"cause":   e,
-		"urlVars": vars,
-	}
-
-	rsp, err := NewErrorResponse(&apierror.ApiError{
-		Code:    apierror.UnhandledCode,
-		Message: apierror.UnhandledMessage,
-		Status:  http.StatusInternalServerError,
-		Cause:   e,
-	}, args)
-
-	if err != nil {
-		log.WithField("cause", err).Error("could not create responder")
-		return
-	}
-
-	err = rsp.Respond(rr.rc)
-
-	if err != nil {
-		log.WithField("cause", err).Error("could not respond")
-		return
-	}
-}
-
-func (rr *RequestResponderImpl) RespondWithNotFound() {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.NotFoundCode,
-		Message: apierror.NotFoundMessage,
-		Status:  apierror.NotFoundStatus,
-	})
-}
-
-func (rr *RequestResponderImpl) RespondWithNotFoundWithCause(e error) {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.NotFoundCode,
-		Message: apierror.NotFoundMessage,
-		Status:  apierror.NotFoundStatus,
-		Cause:   e,
-	})
-}
-
-func (rr *RequestResponderImpl) RespondWithMethodNotAllowed() {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.MethodNotAllowedCode,
-		Message: apierror.MethodNotAllowedMessage,
-		Status:  apierror.MethodNotAllowedStatus,
-	})
-}
-
-func (rr *RequestResponderImpl) RespondWithOk(data interface{}, meta *Meta) {
-	RespondWithOk(data, meta, rr.rc)
-}
-
-func (rr *RequestResponderImpl) RespondWithUnauthorizedError(*RequestContext) {
-	rr.RespondWithApiError(apierror.NewUnauthorized())
-}
-
-func (rr *RequestResponderImpl) RespondWithValidationErrors(e *schema.ValidationErrors) {
-	rr.RespondWithApiError(&apierror.ApiError{
-		Code:    apierror.CouldNotValidateCode,
-		Message: apierror.CouldNotValidateMessage,
-		Cause:   e,
-		Status:  http.StatusBadRequest,
-	})
 }

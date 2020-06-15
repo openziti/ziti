@@ -37,7 +37,6 @@ type Env interface {
 	GetApiServerCsrSigner() cert.Signer
 	GetControlClientCsrSigner() cert.Signer
 	GetHostController() HostController
-	GetSchemas() Schemas
 	IsEdgeRouterOnline(id string) bool
 }
 

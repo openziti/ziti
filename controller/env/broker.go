@@ -228,6 +228,7 @@ func (b *Broker) sendApiSessionCreates(apiSession *persistence.ApiSession) {
 	b.sendToAllEdgeRouters(channelMsg)
 }
 
+// todo: use this once cert rolling happens
 func (b *Broker) apiSessionUpdateEventHandler(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {

@@ -17,10 +17,12 @@
 package routes
 
 import (
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_server/operations/current_api_session"
 	"github.com/openziti/foundation/storage/boltz"
 )
 
@@ -41,11 +43,25 @@ func NewCurrentIdentityAuthenticatorRouter() *CurrentIdentityAuthenticatorRouter
 	}
 }
 
-func (ir *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
-	registerReadUpdateRouter(ae, ae.CurrentIdentityRouter, ir.BasePath, ir, permissions.IsAuthenticated())
+func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
+	ae.Api.CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler = current_api_session.DetailCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.DetailCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.CurrentAPISessionListCurrentIdentityAuthenticatorsHandler = current_api_session.ListCurrentIdentityAuthenticatorsHandlerFunc(func(params current_api_session.ListCurrentIdentityAuthenticatorsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.CurrentAPISessionUpdateCurrentIdentityAuthenticatorHandler = current_api_session.UpdateCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.UpdateCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.CurrentAPISessionPatchCurrentIdentityAuthenticatorHandler = current_api_session.PatchCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.PatchCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
 }
 
-func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+func (r *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Handlers.Authenticator.GetStore())
 		if err != nil {
@@ -58,7 +74,7 @@ func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.
 			return nil, err
 		}
 
-		apiAuthenticators, err := MapAuthenticatorsToApiEntities(ae, rc, result.Authenticators)
+		apiAuthenticators, err := MapAuthenticatorsToRestEntities(ae, rc, result.Authenticators)
 		if err != nil {
 			return nil, err
 		}
@@ -66,8 +82,8 @@ func (ir *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.
 	})
 }
 
-func (ir *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	Detail(rc, ir.IdType, func(rc *response.RequestContext, id string) (entity interface{}, err error) {
+func (r *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
+	Detail(rc, func(rc *response.RequestContext, id string) (entity interface{}, err error) {
 		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity.Id, id)
 		if err != nil {
 			return nil, err
@@ -77,7 +93,7 @@ func (ir *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *respons
 			return nil, boltz.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
 		}
 
-		apiAuthenticator, err := MapAuthenticatorToApiList(authenticator)
+		apiAuthenticator, err := MapAuthenticatorToRestModel(ae, authenticator)
 
 		if err != nil {
 			return nil, err
@@ -87,16 +103,14 @@ func (ir *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *respons
 	})
 }
 
-func (ir *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &AuthenticatorSelfUpdateApi{}
-	Update(rc, ae.Schemes.AuthenticatorSelf.Put, ir.IdType, apiEntity, func(id string) error {
-		return ae.Handlers.Authenticator.UpdateSelf(apiEntity.ToModel(id, rc.Identity.Id))
+func (r *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.UpdateCurrentIdentityAuthenticatorParams) {
+	Update(rc, func(id string) error {
+		return ae.Handlers.Authenticator.UpdateSelf(MapUpdateAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Body))
 	})
 }
 
-func (ir *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext) {
-	apiEntity := &AuthenticatorSelfUpdateApi{}
-	Patch(rc, ae.Schemes.AuthenticatorSelf.Patch, ir.IdType, apiEntity, func(id string, fields JsonFields) error {
-		return ae.Handlers.Authenticator.PatchSelf(apiEntity.ToModel(id, rc.Identity.Id), fields.FilterMaps("tags"))
+func (r *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.PatchCurrentIdentityAuthenticatorParams) {
+	Patch(rc, func(id string, fields JsonFields) error {
+		return ae.Handlers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Body), fields.FilterMaps("tags"))
 	})
 }

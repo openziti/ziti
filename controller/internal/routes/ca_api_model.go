@@ -18,119 +18,103 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
-	"net/http"
 )
 
 const EntityNameCa = "cas"
 
-type CaApiUpdate struct {
-	Tags                      map[string]interface{} `json:"tags"`
-	Name                      *string                `json:"name"`
-	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
-	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
-	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
-	IdentityRoles             []string               `json:"identityRoles"`
-	IdentityNameFormat        *string                `json:"identityNameFormat"`
+var CaLinkFactory = NewCaLinkFactory()
+
+type CaLinkFactoryImpl struct {
+	BasicLinkFactory
 }
 
-func (i *CaApiUpdate) ToModel(id string) *model.Ca {
-	result := &model.Ca{}
-	result.Id = id
-	result.Name = stringz.OrEmpty(i.Name)
-	if i.Tags != nil {
-		result.Tags = i.Tags
-	}
-	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
-	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
-	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
-	result.IdentityRoles = i.IdentityRoles
-	result.IdentityNameFormat = stringz.OrEmpty(i.IdentityNameFormat)
-	return result
-}
-
-type CaApiCreate struct {
-	Tags                      map[string]interface{} `json:"tags"`
-	Name                      *string                `json:"name"`
-	CertPem                   *string                `json:"certPem"`
-	IsAutoCaEnrollmentEnabled *bool                  `json:"isAutoCaEnrollmentEnabled"`
-	IsOttCaEnrollmentEnabled  *bool                  `json:"isOttCaEnrollmentEnabled"`
-	IsAuthEnabled             *bool                  `json:"isAuthEnabled"`
-	IdentityRoles             []string               `json:"identityRoles"`
-	IdentityNameFormat        *string                `json:"identityNameFormat"`
-}
-
-func (i *CaApiCreate) ToModel() *model.Ca {
-	result := &model.Ca{}
-	result.Name = stringz.OrEmpty(i.Name)
-	result.Tags = i.Tags
-	result.CertPem = stringz.OrEmpty(i.CertPem)
-	result.IsAutoCaEnrollmentEnabled = i.IsAutoCaEnrollmentEnabled != nil && *i.IsAutoCaEnrollmentEnabled
-	result.IsOttCaEnrollmentEnabled = i.IsOttCaEnrollmentEnabled != nil && *i.IsOttCaEnrollmentEnabled
-	result.IsAuthEnabled = i.IsAuthEnabled != nil && *i.IsAuthEnabled
-	result.IdentityRoles = i.IdentityRoles
-	result.IdentityNameFormat = stringz.OrEmpty(i.IdentityNameFormat)
-	return result
-}
-
-type CaApiList struct {
-	*env.BaseApi
-	Name                      *string  `json:"name"`
-	Fingerprint               *string  `json:"fingerprint"`
-	CertPem                   *string  `json:"certPem"`
-	IsVerified                *bool    `json:"isVerified"`
-	VerificationToken         *string  `json:"verificationToken"`
-	IsAutoCaEnrollmentEnabled *bool    `json:"isAutoCaEnrollmentEnabled"`
-	IsOttCaEnrollmentEnabled  *bool    `json:"isOttCaEnrollmentEnabled"`
-	IsAuthEnabled             *bool    `json:"isAuthEnabled"`
-	IdentityRoles             []string `json:"identityRoles"`
-	IdentityNameFormat        *string  `json:"identityNameFormat"`
-}
-
-func (CaApiList) BuildSelfLink(id string) *response.Link {
-	return response.NewLink(fmt.Sprintf("./%s/%s", EntityNameCa, id))
-}
-
-func (e *CaApiList) GetSelfLink() *response.Link {
-	return e.BuildSelfLink(e.Id)
-}
-
-func (e *CaApiList) PopulateLinks() {
-	if e.Links == nil {
-		e.Links = &response.Links{
-			EntityNameSelf: e.GetSelfLink(),
-		}
-
-		if !*e.IsVerified {
-			vl := response.NewLink(fmt.Sprintf("%s/verify", (*e.Links)[EntityNameSelf].Href))
-			vl.Method = http.MethodPost
-			(*e.Links)["verify"] = vl
-		}
-
-		if *e.IsAutoCaEnrollmentEnabled {
-			jl := response.NewLink(fmt.Sprintf("%s/jwt", (*e.Links)[EntityNameSelf].Href))
-			jl.Method = http.MethodGet
-			(*e.Links)["jwt"] = jl
-		}
+func NewCaLinkFactory() *CaLinkFactoryImpl {
+	return &CaLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameCa),
 	}
 }
 
-func (e *CaApiList) ToEntityApiRef() *EntityApiRef {
-	e.PopulateLinks()
-	return &EntityApiRef{
-		Entity: EntityNameCa,
-		Name:   e.Name,
-		Id:     e.Id,
-		Links:  e.Links,
+func (factory *CaLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	ca := entity.(*model.Ca)
+
+	links := factory.BasicLinkFactory.Links(entity)
+	if ca != nil {
+		if !ca.IsVerified {
+			links["verify"] = factory.NewNestedLink(entity, "verify")
+		}
+
+		if ca.IsAutoCaEnrollmentEnabled {
+			links["jwt"] = factory.NewNestedLink(entity, "jwt")
+		}
 	}
+
+	return links
 }
 
-func MapCaToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (BaseApiEntity, error) {
+func MapCreateCaToModel(ca *rest_model.CaCreate) *model.Ca {
+	ret := &model.Ca{
+		BaseEntity: models.BaseEntity{
+			Tags: ca.Tags,
+		},
+		Name:                      stringz.OrEmpty(ca.Name),
+		Fingerprint:               "",
+		CertPem:                   stringz.OrEmpty(ca.CertPem),
+		IsVerified:                false,
+		VerificationToken:         uuid.New().String(),
+		IsAutoCaEnrollmentEnabled: ca.IsAutoCaEnrollmentEnabled != nil && *ca.IsAutoCaEnrollmentEnabled,
+		IsOttCaEnrollmentEnabled:  ca.IsOttCaEnrollmentEnabled != nil && *ca.IsOttCaEnrollmentEnabled,
+		IsAuthEnabled:             ca.IsAuthEnabled != nil && *ca.IsAuthEnabled,
+		IdentityRoles:             ca.IdentityRoles,
+		IdentityNameFormat:        ca.IdentityNameFormat,
+	}
+
+	return ret
+}
+
+func MapUpdateCaToModel(id string, ca *rest_model.CaUpdate) *model.Ca {
+	ret := &model.Ca{
+		BaseEntity: models.BaseEntity{
+			Tags: ca.Tags,
+			Id:   id,
+		},
+		Name:                      stringz.OrEmpty(ca.Name),
+		IsAutoCaEnrollmentEnabled: ca.IsAutoCaEnrollmentEnabled != nil && *ca.IsAutoCaEnrollmentEnabled,
+		IsOttCaEnrollmentEnabled:  ca.IsOttCaEnrollmentEnabled != nil && *ca.IsOttCaEnrollmentEnabled,
+		IsAuthEnabled:             ca.IsAuthEnabled != nil && *ca.IsAuthEnabled,
+		IdentityRoles:             ca.IdentityRoles,
+		IdentityNameFormat:        ca.IdentityNameFormat,
+	}
+
+	return ret
+}
+
+func MapPatchCaToModel(id string, ca *rest_model.CaPatch) *model.Ca {
+	ret := &model.Ca{
+		BaseEntity: models.BaseEntity{
+			Tags: ca.Tags,
+			Id:   id,
+		},
+		Name:                      ca.Name,
+		IsAutoCaEnrollmentEnabled: ca.IsAutoCaEnrollmentEnabled,
+		IsOttCaEnrollmentEnabled:  ca.IsOttCaEnrollmentEnabled,
+		IsAuthEnabled:             ca.IsAuthEnabled,
+		IdentityRoles:             ca.IdentityRoles,
+		IdentityNameFormat:        ca.IdentityNameFormat,
+	}
+
+	return ret
+}
+
+func MapCaToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	i, ok := e.(*model.Ca)
 
 	if !ok {
@@ -140,7 +124,7 @@ func MapCaToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity
 		return nil, err
 	}
 
-	al, err := MapCaToApiList(i)
+	al, err := MapCaToRestModel(i)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -150,22 +134,21 @@ func MapCaToApiEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity
 	}
 	return al, nil
 }
-func MapCaToApiList(i *model.Ca) (*CaApiList, error) {
-	ret := &CaApiList{
-		BaseApi:                   env.FromBaseModelEntity(i),
-		Name:                      &i.Name,
-		VerificationToken:         &i.VerificationToken,
-		IsVerified:                &i.IsVerified,
+
+func MapCaToRestModel(i *model.Ca) (*rest_model.CaDetail, error) {
+	ret := &rest_model.CaDetail{
+		BaseEntity:                BaseEntityToRestModel(i, CaLinkFactory),
 		CertPem:                   &i.CertPem,
 		Fingerprint:               &i.Fingerprint,
+		IdentityRoles:             i.IdentityRoles,
+		IdentityNameFormat:        &i.IdentityNameFormat,
 		IsAuthEnabled:             &i.IsAuthEnabled,
 		IsAutoCaEnrollmentEnabled: &i.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  &i.IsOttCaEnrollmentEnabled,
-		IdentityRoles:             i.IdentityRoles,
-		IdentityNameFormat:        &i.IdentityNameFormat,
+		IsVerified:                &i.IsVerified,
+		Name:                      &i.Name,
+		VerificationToken:         strfmt.UUID(i.VerificationToken),
 	}
-
-	ret.PopulateLinks()
 
 	return ret, nil
 }
