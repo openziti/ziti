@@ -96,7 +96,7 @@ type eventLogStoreImpl struct {
 }
 
 func (store *eventLogStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Cluster{}
+	return &EventLog{}
 }
 
 func (store *eventLogStoreImpl) initializeLocal() {

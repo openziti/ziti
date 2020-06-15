@@ -35,9 +35,7 @@ type Stores struct {
 	Terminator db.TerminatorStore
 
 	ApiSession              ApiSessionStore
-	Appwan                  AppwanStore
 	Ca                      CaStore
-	Cluster                 ClusterStore
 	Config                  ConfigStore
 	ConfigType              ConfigTypeStore
 	EdgeRouter              EdgeRouterStore
@@ -94,9 +92,7 @@ type stores struct {
 	Terminator db.TerminatorStore
 
 	apiSession              *apiSessionStoreImpl
-	appwan                  *appwanStoreImpl
 	ca                      *caStoreImpl
-	cluster                 *clusterStoreImpl
 	config                  *configStoreImpl
 	configType              *configTypeStoreImpl
 	edgeRouter              *edgeRouterStoreImpl
@@ -127,9 +123,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 	internalStores.apiSession = newApiSessionStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
-	internalStores.appwan = newAppwanStore(internalStores)
 	internalStores.ca = newCaStore(internalStores)
-	internalStores.cluster = newClusterStore(internalStores)
 	internalStores.config = newConfigsStore(internalStores)
 	internalStores.configType = newConfigTypesStore(internalStores)
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
@@ -153,9 +147,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Service:    dbProvider.GetStores().Service,
 
 		ApiSession:              internalStores.apiSession,
-		Appwan:                  internalStores.appwan,
 		Ca:                      internalStores.ca,
-		Cluster:                 internalStores.cluster,
 		Config:                  internalStores.config,
 		ConfigType:              internalStores.configType,
 		EdgeRouter:              internalStores.edgeRouter,
@@ -177,7 +169,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 	// The Index store is used for querying indexes. It's a convenient store with only a single value (id), which
 	// is only ever queried using an index set cursor
-	externalStores.Index = boltz.NewBaseStore(nil, "invalid", func(id string) error {
+	externalStores.Index = boltz.NewBaseStore("invalid", func(id string) error {
 		return errors.Errorf("should never happen")
 	})
 	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
