@@ -27,12 +27,6 @@ import (
 const (
 	FieldTransitRouterIsVerified  = "isVerified"
 	FieldTransitRouterEnrollments = "enrollments"
-
-	//old
-	FieldTransitRouterEnrollmentToken     = "enrollmentToken"
-	FieldTransitRouterEnrollmentJwt       = "enrollmentJwt"
-	FieldTransitRouterEnrollmentCreatedAt = "enrollmentCreatedAt"
-	FieldTransitRouterEnrollmentExpiresAt = "enrollmentExpiresAt"
 )
 
 type TransitRouter struct {
@@ -86,7 +80,7 @@ func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
 }
 
 func (entity *TransitRouter) GetEntityType() string {
-	return EntityTypeTransitRouters
+	return db.EntityTypeRouters
 }
 
 func (entity *TransitRouter) GetName() string {
@@ -101,7 +95,7 @@ type TransitRouterStore interface {
 
 func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
 	store := &transitRouterStoreImpl{
-		baseStore: newExtendedBaseStore(stores, stores.Router, EntityTypeTransitRouters),
+		baseStore: newExtendedBaseStore(stores, stores.Router),
 	}
 	store.InitImpl(store)
 	return store

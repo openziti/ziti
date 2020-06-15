@@ -34,10 +34,6 @@ type EdgeService struct {
 	Configs        []string
 }
 
-const (
-	FieldServiceClusters = "clusters"
-)
-
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	return &EdgeService{
 		Service: db.Service{
@@ -63,7 +59,6 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 
 	entity.SetBaseValues(ctx)
 	store := ctx.Store.(*edgeServiceStoreImpl)
-	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
@@ -94,7 +89,7 @@ type EdgeServiceStore interface {
 
 func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
 	store := &edgeServiceStoreImpl{
-		baseStore: newChildBaseStore(stores, stores.Service, EntityTypeServices),
+		baseStore: newChildBaseStore(stores, stores.Service),
 	}
 	store.InitImpl(store)
 	return store
@@ -128,7 +123,6 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
-	store.symbolClusters = store.AddFkSetSymbol(FieldServiceClusters, store.stores.cluster)
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
@@ -152,7 +146,6 @@ func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []
 }
 
 func (store *edgeServiceStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolClusters, store.stores.cluster.symbolServices)
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolServices)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolServices)
 	store.AddLinkCollection(store.symbolConfigs, store.stores.config.symbolServices)

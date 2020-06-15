@@ -120,7 +120,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles 
 	ctx.RequireCreate(entity)
 	return entity
 }
- 
+
 func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
 	identity := &Identity{
 		BaseExtEntity: *boltz.NewExtEntity(uuid.New().String(), nil),
@@ -172,12 +172,10 @@ func (ctx *TestContext) cleanupAll() {
 		ctx.stores.Session,
 		ctx.stores.ApiSession,
 		ctx.stores.EdgeRouterPolicy,
-		ctx.stores.Appwan,
 		ctx.stores.Service,
 		ctx.stores.EdgeService,
 		ctx.stores.Identity,
 		ctx.stores.EdgeRouter,
-		ctx.stores.Cluster,
 		ctx.stores.Config,
 	}
 	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
