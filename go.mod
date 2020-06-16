@@ -28,7 +28,7 @@ require (
 	github.com/openziti/edge v0.14.35
 	github.com/openziti/fabric v0.11.40
 	github.com/openziti/foundation v0.11.2
-	github.com/openziti/sdk-golang v0.13.3
+	github.com/openziti/sdk-golang v0.13.4
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
