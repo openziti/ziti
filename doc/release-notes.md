@@ -2,6 +2,7 @@
 Ziti 0.15.0 includes the following:
 
 * cosmetic changes to the ziti-enroller binary
+* cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
 
 # Release 0.14.13
 Ziti 0.14.13 includes the following:
