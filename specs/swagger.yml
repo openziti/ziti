@@ -1,11 +1,11 @@
 ---
 swagger: '2.0'
 info:
-  version: 0.14.0
+  version: 0.15.0
   title: Ziti Edge
   contact: {}
 host: demo.ziti.dev
-basePath: /
+basePath: /edge/v1
 schemes:
   - https
 consumes:
@@ -5289,6 +5289,10 @@ definitions:
       type: string
   pagination:
     type: object
+    required:
+      - limit
+      - offset
+      - totalCount
     properties:
       limit:
         type: number

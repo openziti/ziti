@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,6 +59,10 @@ const (
 	policyMaxFreq     = 1 * time.Hour
 	policyAppWanFreq  = 1 * time.Second
 	policySessionFreq = 5 * time.Second
+
+	restApiBase          = "/edge/"
+	restApiBaseUrlV1     = "/edge/v1"
+	restApiBaseUrlLatest = restApiBaseUrlV1
 )
 
 func NewController(cfg config.Configurable) (*Controller, error) {
@@ -217,7 +222,7 @@ func (c *Controller) Run() {
 		handlers.AllowCredentials(),
 	}
 
-	as := newApiServer(c.config, c.AppEnv.Api.Serve(func(handler http.Handler) http.Handler {
+	apiHandler := c.AppEnv.Api.Serve(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rc := c.AppEnv.CreateRequestContext(rw, r)
 
@@ -236,6 +241,16 @@ func (c *Controller) Run() {
 
 			handler.ServeHTTP(rw, r)
 		})
+	})
+
+	as := newApiServer(c.config, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		//if not edge prefix, translate to "/edge/v<latest>"
+		if !strings.HasPrefix(request.URL.Path, restApiBase) {
+			request.URL.Path = restApiBaseUrlLatest + request.URL.Path
+		}
+
+		//let the OpenApi http router take over
+		apiHandler.ServeHTTP(writer, request)
 	}))
 
 	as.corsOptions = corsOpts

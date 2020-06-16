@@ -28,8 +28,8 @@
 //  Schemes:
 //    https
 //  Host: demo.ziti.dev
-//  BasePath: /
-//  Version: 0.14.0
+//  BasePath: /edge/v1
+//  Version: 0.15.0
 //  Contact:
 //
 //  Consumes:

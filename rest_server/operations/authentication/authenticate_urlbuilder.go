@@ -67,7 +67,7 @@ func (o *AuthenticateURL) Build() (*url.URL, error) {
 
 	_basePath := o._basePath
 	if _basePath == "" {
-		_basePath = "/"
+		_basePath = "/edge/v1"
 	}
 	_result.Path = golangswaggerpaths.Join(_basePath, _path)
 

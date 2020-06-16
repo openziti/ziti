@@ -55,10 +55,10 @@ func init() {
   "info": {
     "title": "Ziti Edge",
     "contact": {},
-    "version": "0.14.0"
+    "version": "0.15.0"
   },
   "host": "demo.ziti.dev",
-  "basePath": "/",
+  "basePath": "/edge/v1",
   "paths": {
     "/": {
       "get": {
@@ -6689,6 +6689,11 @@ func init() {
     },
     "pagination": {
       "type": "object",
+      "required": [
+        "limit",
+        "offset",
+        "totalCount"
+      ],
       "properties": {
         "limit": {
           "type": "number",
@@ -8299,10 +8304,10 @@ func init() {
   "info": {
     "title": "Ziti Edge",
     "contact": {},
-    "version": "0.14.0"
+    "version": "0.15.0"
   },
   "host": "demo.ziti.dev",
-  "basePath": "/",
+  "basePath": "/edge/v1",
   "paths": {
     "/": {
       "get": {
@@ -22213,6 +22218,11 @@ func init() {
     },
     "pagination": {
       "type": "object",
+      "required": [
+        "limit",
+        "offset",
+        "totalCount"
+      ],
       "properties": {
         "limit": {
           "type": "number",

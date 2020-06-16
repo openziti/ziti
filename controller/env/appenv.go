@@ -289,6 +289,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
 	}
+
 	api := operations.NewZitiEdgeAPI(swaggerSpec)
 	api.ServeError = ServeError
 	// See README.md in /ziti/edge/embedded for details
@@ -318,6 +319,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	//enrollment consumer, leave content unread, allow modules to read
 	api.ApplicationXPemFileConsumer = noOpConsumer
 	api.ApplicationPkcs10Consumer = noOpConsumer
+
 
 	api.ApplicationXPemFileProducer = &TextProducer{}
 	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
