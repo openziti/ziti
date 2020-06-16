@@ -64,7 +64,7 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			mapApiVersionToRestModel(controller.RestApiV1, controller.RestApiBaseUrlV1),
 		},
 	}
-	rc.RespondWithOk(data, nil)
+	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 
 func mapApiVersionToRestModel(version, path string) *rest_model.APIVersion {
