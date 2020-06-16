@@ -20,6 +20,7 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"github.com/openziti/edge/controller"
 	"net/http"
 	"os"
 	"os/signal"
@@ -59,10 +60,6 @@ const (
 	policyMaxFreq     = 1 * time.Hour
 	policyAppWanFreq  = 1 * time.Second
 	policySessionFreq = 5 * time.Second
-
-	restApiBase          = "/edge/"
-	restApiBaseUrlV1     = "/edge/v1"
-	restApiBaseUrlLatest = restApiBaseUrlV1
 )
 
 func NewController(cfg config.Configurable) (*Controller, error) {
@@ -245,8 +242,8 @@ func (c *Controller) Run() {
 
 	as := newApiServer(c.config, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		//if not edge prefix, translate to "/edge/v<latest>"
-		if !strings.HasPrefix(request.URL.Path, restApiBase) {
-			request.URL.Path = restApiBaseUrlLatest + request.URL.Path
+		if !strings.HasPrefix(request.URL.Path, controller.RestApiBase) {
+			request.URL.Path = controller.RestApiBaseUrlLatest + request.URL.Path
 		}
 
 		//let the OpenApi http router take over

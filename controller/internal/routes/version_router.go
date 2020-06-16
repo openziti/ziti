@@ -19,6 +19,7 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/build"
+	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
@@ -53,14 +54,23 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-
 	buildInfo := build.GetBuildInfo()
 	data := rest_model.Version{
 		BuildDate:      buildInfo.GetBuildDate(),
 		Revision:       buildInfo.GetRevision(),
 		RuntimeVersion: runtime.Version(),
 		Version:        buildInfo.GetVersion(),
+		APIVersions: []*rest_model.APIVersion{
+			mapApiVersionToRestModel(controller.RestApiV1, controller.RestApiBaseUrlV1),
+		},
+	}
+	rc.RespondWithOk(data, nil)
+}
+
+func mapApiVersionToRestModel(version, path string) *rest_model.APIVersion {
+	return &rest_model.APIVersion{
+		Path:    &path,
+		Version: &version,
 	}
 
-	rc.RespondWithOk(data, nil)
 }
