@@ -4609,6 +4609,21 @@ func init() {
         "$ref": "#/definitions/apiSessionDetail"
       }
     },
+    "apiVersion": {
+      "type": "object",
+      "required": [
+        "path",
+        "version"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
     "attributes": {
       "description": "A set of strings used to loosly couple this resource to policies",
       "type": "array",
@@ -7662,6 +7677,12 @@ func init() {
     "version": {
       "type": "object",
       "properties": {
+        "apiVersions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiVersion"
+          }
+        },
         "buildDate": {
           "type": "string",
           "example": "2020-02-11 16:09:08"
@@ -20138,6 +20159,21 @@ func init() {
         "$ref": "#/definitions/apiSessionDetail"
       }
     },
+    "apiVersion": {
+      "type": "object",
+      "required": [
+        "path",
+        "version"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
     "attributes": {
       "description": "A set of strings used to loosly couple this resource to policies",
       "type": "array",
@@ -23192,6 +23228,12 @@ func init() {
     "version": {
       "type": "object",
       "properties": {
+        "apiVersions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiVersion"
+          }
+        },
         "buildDate": {
           "type": "string",
           "example": "2020-02-11 16:09:08"

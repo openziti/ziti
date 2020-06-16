@@ -30,39 +30,35 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
-// Version version
+// APIVersion api version
 //
-// swagger:model version
-type Version struct {
+// swagger:model apiVersion
+type APIVersion struct {
 
-	// api versions
-	APIVersions []*APIVersion `json:"apiVersions"`
-
-	// build date
-	BuildDate string `json:"buildDate,omitempty"`
-
-	// revision
-	Revision string `json:"revision,omitempty"`
-
-	// runtime version
-	RuntimeVersion string `json:"runtimeVersion,omitempty"`
+	// path
+	// Required: true
+	Path *string `json:"path"`
 
 	// version
-	Version string `json:"version,omitempty"`
+	// Required: true
+	Version *string `json:"version"`
 }
 
-// Validate validates this version
-func (m *Version) Validate(formats strfmt.Registry) error {
+// Validate validates this api version
+func (m *APIVersion) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateAPIVersions(formats); err != nil {
+	if err := m.validatePath(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateVersion(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -72,33 +68,26 @@ func (m *Version) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
+func (m *APIVersion) validatePath(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.APIVersions) { // not required
-		return nil
+	if err := validate.Required("path", "body", m.Path); err != nil {
+		return err
 	}
 
-	for i := 0; i < len(m.APIVersions); i++ {
-		if swag.IsZero(m.APIVersions[i]) { // not required
-			continue
-		}
+	return nil
+}
 
-		if m.APIVersions[i] != nil {
-			if err := m.APIVersions[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("apiVersions" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
+func (m *APIVersion) validateVersion(formats strfmt.Registry) error {
 
+	if err := validate.Required("version", "body", m.Version); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *Version) MarshalBinary() ([]byte, error) {
+func (m *APIVersion) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -106,8 +95,8 @@ func (m *Version) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *Version) UnmarshalBinary(b []byte) error {
-	var res Version
+func (m *APIVersion) UnmarshalBinary(b []byte) error {
+	var res APIVersion
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
