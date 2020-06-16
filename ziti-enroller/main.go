@@ -18,8 +18,15 @@ package main
 
 import (
 	"github.com/openziti/ziti/ziti-enroller/subcmd"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:               true,
+		DisableTimestamp:          true,
+		TimestampFormat:           "",
+		PadLevelText:              true,
+	})
 	subcmd.Execute()
 }
