@@ -30,8 +30,10 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Pagination pagination
@@ -40,17 +42,64 @@ import (
 type Pagination struct {
 
 	// limit
-	Limit int64 `json:"limit,omitempty"`
+	// Required: true
+	Limit *int64 `json:"limit"`
 
 	// offset
-	Offset int64 `json:"offset,omitempty"`
+	// Required: true
+	Offset *int64 `json:"offset"`
 
 	// total count
-	TotalCount int64 `json:"totalCount,omitempty"`
+	// Required: true
+	TotalCount *int64 `json:"totalCount"`
 }
 
 // Validate validates this pagination
 func (m *Pagination) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateLimit(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOffset(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTotalCount(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Pagination) validateLimit(formats strfmt.Registry) error {
+
+	if err := validate.Required("limit", "body", m.Limit); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Pagination) validateOffset(formats strfmt.Registry) error {
+
+	if err := validate.Required("offset", "body", m.Offset); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Pagination) validateTotalCount(formats strfmt.Registry) error {
+
+	if err := validate.Required("totalCount", "body", m.TotalCount); err != nil {
+		return err
+	}
+
 	return nil
 }
 

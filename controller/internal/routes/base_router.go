@@ -192,9 +192,9 @@ func ListWithEnvelopeFactory(rc *response.RequestContext, toEnvelope ApiListEnve
 
 	meta := &rest_model.Meta{
 		Pagination: &rest_model.Pagination{
-			Limit:      result.Limit,
-			Offset:     result.Offset,
-			TotalCount: result.Count,
+			Limit:      &result.Limit,
+			Offset:     &result.Offset,
+			TotalCount: &result.Count,
 		},
 		FilterableFields: result.FilterableFields,
 	}
@@ -429,12 +429,16 @@ func listWithId(rc *response.RequestContext, f func(id string) ([]interface{}, e
 
 	count := len(results)
 
+	limit := int64(count)
+	offset := int64(0)
+	totalCount := int64(count)
+
 	meta := &rest_model.Meta{
 		FilterableFields: []string{},
 		Pagination: &rest_model.Pagination{
-			Limit:      int64(count),
-			Offset:     0,
-			TotalCount: int64(count),
+			Limit:      &limit,
+			Offset:     &offset,
+			TotalCount: &totalCount,
 		},
 	}
 
@@ -533,9 +537,9 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 
 	meta := &rest_model.Meta{
 		Pagination: &rest_model.Pagination{
-			Limit:      result.Limit,
-			Offset:     result.Offset,
-			TotalCount: result.Count,
+			Limit:      &result.Limit,
+			Offset:     &result.Offset,
+			TotalCount: &result.Count,
 		},
 		FilterableFields: result.FilterableFields,
 	}

@@ -66,7 +66,7 @@ const (
 	DefaultHost string = "demo.ziti.dev"
 	// DefaultBasePath is the default BasePath
 	// found in Meta (info) section of spec file
-	DefaultBasePath string = "/"
+	DefaultBasePath string = "/edge/v1"
 )
 
 // DefaultSchemes are the default schemes found in Meta (info) section of spec file
