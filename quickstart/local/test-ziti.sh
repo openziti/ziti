@@ -22,7 +22,7 @@ ziti edge controller create config zcatconfig ziti-tunneler-client.v1 '{ "hostna
 ziti edge controller create service zcatsvc --configs zcatconfig
 ziti edge controller create terminator zcatsvc "${ZITI_EDGE_ROUTER_NAME}" tcp:localhost:7256
 
-ziti edge controller create config iperfsvcconfig ziti-tunneler-client.v1 '{ "hostname" : "iperf3.ziti", "port" : 5201 }'
+ziti edge controller create config iperfsvcconfig ziti-tunneler-client.v1 '{ "hostname" : "iperf3.ziti", "port" : 15000 }'
 ziti edge controller create service iperfsvc --configs iperfsvcconfig 
 ziti edge controller create terminator iperfsvc "${ZITI_EDGE_ROUTER_NAME}" tcp:localhost:5201
 
