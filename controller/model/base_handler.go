@@ -17,9 +17,9 @@
 package model
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -147,7 +147,7 @@ func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntit
 		return "", errors.Errorf("can't create %v with nil value", handler.Store.GetEntityType())
 	}
 	if modelEntity.GetId() == "" {
-		modelEntity.SetId(uuid.New().String())
+		modelEntity.SetId(eid.New())
 	}
 
 	boltEntity, err := modelEntity.toBoltEntityForCreate(ctx.Tx(), handler.impl)

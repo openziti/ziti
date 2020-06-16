@@ -18,9 +18,9 @@ package model
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -165,11 +165,11 @@ func (handler *EdgeRouterHandler) QueryRoleAttributes(queryString string) ([]str
 
 func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, enrollment *Enrollment) (string, string, error) {
 	if edgeRouter.Id == "" {
-		edgeRouter.Id = uuid.New().String()
+		edgeRouter.Id = eid.New()
 	}
 
 	if enrollment.Id == "" {
-		enrollment.Id = uuid.New().String()
+		enrollment.Id = eid.New()
 	}
 
 	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {

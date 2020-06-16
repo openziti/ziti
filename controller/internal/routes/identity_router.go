@@ -45,7 +45,6 @@ type IdentityRouter struct {
 func NewIdentityRouter() *IdentityRouter {
 	return &IdentityRouter{
 		BasePath: "/" + EntityNameIdentity,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

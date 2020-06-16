@@ -5,11 +5,10 @@ package tests
 import (
 	"fmt"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/eid"
 	"net/http"
 	"sort"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func Test_CA(t *testing.T) {
@@ -20,8 +19,8 @@ func Test_CA(t *testing.T) {
 
 	t.Run("identity attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		ca := newTestCa(role1, role2)
 		ca.id = ctx.AdminSession.requireCreateEntity(ca)
 		ctx.AdminSession.validateEntityWithQuery(ca)
@@ -30,12 +29,12 @@ func Test_CA(t *testing.T) {
 
 	t.Run("identity attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		ca := newTestCa(role1, role2)
 		ca.id = ctx.AdminSession.requireCreateEntity(ca)
 
-		role3 := uuid.New().String()
+		role3 := eid.New()
 		ca.identityRoles = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(ca)
 		ctx.AdminSession.validateEntityWithLookup(ca)
@@ -43,8 +42,8 @@ func Test_CA(t *testing.T) {
 
 	t.Run("identity name format should default if not specified", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		ca := newTestCa(role1, role2)
 
 		ca.identityNameFormat = ""
@@ -59,8 +58,8 @@ func Test_CA(t *testing.T) {
 
 	t.Run("identities from auto enrollment inherit CA identity roles", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		ca := newTestCa(role1, role2)
 		ca.id = ctx.AdminSession.requireCreateEntity(ca)
 
@@ -71,7 +70,7 @@ func Test_CA(t *testing.T) {
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
-		clientAuthenticator := ca.CreateSignedCert(uuid.New().String())
+		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
 		resp, err := ctx.AdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
@@ -108,7 +107,7 @@ func Test_CA(t *testing.T) {
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
-		clientAuthenticator := ca.CreateSignedCert(uuid.New().String())
+		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
 		resp, err := ctx.AdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
@@ -157,7 +156,7 @@ func Test_CA(t *testing.T) {
 		ctx.req.Equal(http.StatusOK, resp.StatusCode())
 
 		//first firstIdentity, no issues
-		firstClientAuthenticator := ca.CreateSignedCert(uuid.New().String())
+		firstClientAuthenticator := ca.CreateSignedCert(eid.New())
 		ctx.completeCaAutoEnrollment(firstClientAuthenticator)
 
 		firstEnrolledSession, err := firstClientAuthenticator.Authenticate(ctx)
@@ -168,7 +167,7 @@ func Test_CA(t *testing.T) {
 		ctx.req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
 
 		//second firstIdentity that collides, becomes
-		secondClientAuthenticator := ca.CreateSignedCert(uuid.New().String())
+		secondClientAuthenticator := ca.CreateSignedCert(eid.New())
 		ctx.completeCaAutoEnrollment(secondClientAuthenticator)
 
 		secondEnrolledSession, err := secondClientAuthenticator.Authenticate(ctx)
@@ -193,7 +192,7 @@ func Test_CA(t *testing.T) {
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
-		clientAuthenticator := ca.CreateSignedCert(uuid.New().String())
+		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
 		resp, err := ctx.AdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").

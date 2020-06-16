@@ -18,7 +18,6 @@ package response
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/model"
 	"net/http"
 )
@@ -26,16 +25,13 @@ import (
 type IdType int
 
 const (
-	IdTypeString IdType = iota
-	IdTypeUuid
-
 	IdPropertyName    = "id"
 	SubIdPropertyName = "subId"
 )
 
 type RequestContext struct {
 	Responder
-	Id                uuid.UUID
+	Id                string
 	ApiSession        *model.ApiSession
 	Identity          *model.Identity
 	ActivePermissions []string

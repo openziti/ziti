@@ -38,7 +38,6 @@ type ConfigTypeRouter struct {
 func NewConfigTypeRouter() *ConfigTypeRouter {
 	return &ConfigTypeRouter{
 		BasePath: "/" + EntityNameConfigType,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

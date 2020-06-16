@@ -19,7 +19,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	edgeRouter2 := ctx.requireNewEdgeRouter()
 	identity := ctx.requireNewIdentity(false)
 	service := ctx.requireNewService()
-	service.RoleAttributes = []string{uuid.New().String()}
+	service.RoleAttributes = []string{eid.NewId()}
 	ctx.NoError(ctx.handlers.EdgeService.Update(service))
 
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
@@ -28,7 +28,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
-	serp := ctx.requireNewServiceNewEdgeRouterPolicy(ss("@"+service.Id), ss("#"+uuid.New().String()))
+	serp := ctx.requireNewServiceNewEdgeRouterPolicy(ss("@"+service.Id), ss("#"+eid.NewId()))
 
 	// should not be accessible if we limit to a role no one has
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))

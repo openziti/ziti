@@ -20,13 +20,12 @@ package tests
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"net/url"
 	"sort"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func Test_Identity(t *testing.T) {
@@ -37,8 +36,8 @@ func Test_Identity(t *testing.T) {
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
 		identity.id = ctx.AdminSession.requireCreateEntity(identity)
 		ctx.AdminSession.validateEntityWithQuery(identity)
@@ -47,12 +46,12 @@ func Test_Identity(t *testing.T) {
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
 		identity.id = ctx.AdminSession.requireCreateEntity(identity)
 
-		role3 := uuid.New().String()
+		role3 := eid.New()
 		identity.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(identity)
 		ctx.AdminSession.validateEntityWithLookup(identity)
@@ -95,16 +94,16 @@ func Test_Identity(t *testing.T) {
 
 	t.Run("update (PUT) an identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		enrolledId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+		enrolledId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 		enrolledIdentity := ctx.AdminSession.requireQuery("identities/" + enrolledId)
 
-		unenrolledId := ctx.AdminSession.requireCreateIdentityOttEnrollmentUnfinished(uuid.New().String(), false)
+		unenrolledId := ctx.AdminSession.requireCreateIdentityOttEnrollmentUnfinished(eid.New(), false)
 		unenrolledIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
 
 		t.Run("should not alter authenticators", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			updateContent := gabs.New()
-			_, _ = updateContent.SetP(uuid.New().String(), "name")
+			_, _ = updateContent.SetP(eid.New(), "name")
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
@@ -126,7 +125,7 @@ func Test_Identity(t *testing.T) {
 		t.Run("should not alter enrollments", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			updateContent := gabs.New()
-			_, _ = updateContent.SetP(uuid.New().String(), "name")
+			_, _ = updateContent.SetP(eid.New(), "name")
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
@@ -147,10 +146,10 @@ func Test_Identity(t *testing.T) {
 
 		t.Run("should not allow isDefaultAdmin to be altered", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), true)
+			identityId := ctx.AdminSession.requireCreateIdentity(eid.New(), true)
 
 			updateContent := gabs.New()
-			_, _ = updateContent.SetP(uuid.New().String(), "name")
+			_, _ = updateContent.SetP(eid.New(), "name")
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(true, "isAdmin")
@@ -168,9 +167,9 @@ func Test_Identity(t *testing.T) {
 
 		t.Run("can update", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), true)
+			identityId := ctx.AdminSession.requireCreateIdentity(eid.New(), true)
 
-			newName := uuid.New().String()
+			newName := eid.New()
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(newName, "name")
 			_, _ = updateContent.SetP("Device", "type")

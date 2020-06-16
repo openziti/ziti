@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"sort"
 	"testing"
 )
@@ -35,7 +35,7 @@ func Test_ApiSession(t *testing.T) {
 		configType1 := ctx.AdminSession.requireCreateNewConfigType()
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 		auth.ConfigTypes = s(configType1.id, configType2.name)
 

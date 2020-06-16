@@ -19,10 +19,10 @@ package model
 import (
 	"encoding/base64"
 	"errors"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 )
@@ -84,7 +84,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 
 	newAuthenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{
-			Id: uuid.New().String(),
+			Id: eid.New(),
 		},
 		Method:     persistence.MethodAuthenticatorUpdb,
 		IdentityId: *enrollment.IdentityId,

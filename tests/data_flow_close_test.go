@@ -20,7 +20,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"io"
 	"testing"
@@ -69,7 +69,7 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.wrapConn(clientContext.Dial(service.name))
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
@@ -124,7 +124,7 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.wrapConn(clientContext.Dial(service.name))
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
@@ -182,10 +182,10 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.wrapConn(clientContext.Dial(service.name))
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
-	name = uuid.New().String()
+	name = eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 }
@@ -228,7 +228,7 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 	}()
 
 	conn := ctx.wrapNetConn(listener.Accept())
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
@@ -284,7 +284,7 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 	}()
 
 	conn := ctx.wrapNetConn(listener.Accept())
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 

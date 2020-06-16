@@ -44,7 +44,7 @@ func Test_EdgeServiceStore(t *testing.T) {
 
 func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 	fabricService := &db.Service{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.NewId()},
 	}
 
 	ctx.RequireCreate(fabricService)
@@ -60,7 +60,7 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 
 	edgeService := &EdgeService{
 		Service: *fabricService,
-		Name:    uuid.New().String(),
+		Name:    eid.NewId(),
 	}
 
 	ctx.RequireCreate(edgeService)
@@ -87,22 +87,22 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 
 	edgeService := &EdgeService{
 		Service: db.Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.NewId()},
 		},
-		Name: uuid.New().String(),
+		Name: eid.NewId(),
 	}
 
 	ctx.RequireCreate(edgeService)
 	err := ctx.Create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type service already exists with id %v", edgeService.Id))
 
-	edgeService.Id = uuid.New().String()
+	edgeService.Id = eid.NewId()
 	err = ctx.Create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on services store", edgeService.Name))
 
-	edgeService.Id = uuid.New().String()
-	edgeService.Name = uuid.New().String()
-	edgeService.TerminatorStrategy = uuid.New().String()
+	edgeService.Id = eid.NewId()
+	edgeService.Name = eid.NewId()
+	edgeService.TerminatorStrategy = eid.NewId()
 	err = ctx.Create(edgeService)
 	ctx.EqualError(err, fmt.Sprintf("terminatorStrategy with name %v not found", edgeService.TerminatorStrategy))
 }
@@ -112,9 +112,9 @@ func (ctx *TestContext) testCreateServices(_ *testing.T) {
 
 	edgeService := &EdgeService{
 		Service: db.Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.NewId()},
 		},
-		Name: uuid.New().String(),
+		Name: eid.NewId(),
 	}
 	ctx.RequireCreate(edgeService)
 	ctx.ValidateBaseline(edgeService)
@@ -135,21 +135,21 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 
 	apiSession1 := NewApiSession(identity1.Id)
 
-	role := uuid.New().String()
+	role := eid.NewId()
 
 	ctx.RequireCreate(apiSession1)
 	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss(roleRef(role)))
 
 	service1 := &EdgeService{
 		Service: db.Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.NewId()},
 		},
-		Name:           uuid.New().String(),
+		Name:           eid.NewId(),
 		RoleAttributes: []string{role},
 	}
 
 	ctx.RequireCreate(service1)
-	service2 := ctx.requireNewService(uuid.New().String())
+	service2 := ctx.requireNewService(eid.NewId())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
 	ctx.RequireCreate(session1)
@@ -223,7 +223,7 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 
 		tags := ctx.CreateTags()
 		now := time.Now()
-		service.Name = uuid.New().String()
+		service.Name = eid.NewId()
 		service.UpdatedAt = earlier
 		service.CreatedAt = now
 		service.Tags = tags

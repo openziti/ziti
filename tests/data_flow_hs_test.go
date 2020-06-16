@@ -20,7 +20,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"sync/atomic"
 	"testing"
@@ -79,7 +79,7 @@ func Test_HSDataflow(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		conn := ctx.wrapConn(clientContext.Dial(service.name))
 
-		name := uuid.New().String()
+		name := eid.New()
 		conn.WriteString(name, time.Second)
 		conn.ReadExpected("hello, "+name, time.Second)
 		conn.RequireClose()

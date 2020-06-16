@@ -19,14 +19,13 @@
 package tests
 
 import (
+	"github.com/openziti/edge/eid"
 	"math"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/openziti/edge/controller/apierror"
-
-	"github.com/google/uuid"
 )
 
 func Test_Configs(t *testing.T) {
@@ -35,7 +34,7 @@ func Test_Configs(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	identityRole := uuid.New().String()
+	identityRole := eid.New()
 	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
 	t.Run("create without name should fail", func(t *testing.T) {
@@ -64,7 +63,7 @@ func Test_Configs(t *testing.T) {
 
 	t.Run("create with invalid config type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		config := ctx.newConfig(uuid.New().String(), map[string]interface{}{"port": 22})
+		config := ctx.newConfig(eid.New(), map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "type")
 	})
@@ -112,7 +111,7 @@ func Test_Configs(t *testing.T) {
 
 	t.Run("lookup non-existent config as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + uuid.New().String()))
+		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + eid.New()))
 	})
 
 	t.Run("lookup config as non-admin should fail", func(t *testing.T) {
@@ -149,7 +148,7 @@ func Test_Configs(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		newName := uuid.New().String()
+		newName := eid.New()
 		config.name = newName
 		config.data = map[string]interface{}{"foo": "bar"}
 		config.tags = map[string]interface{}{"baz": "bam"}
@@ -162,7 +161,7 @@ func Test_Configs(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
+		config.name = eid.New()
 		config.data = map[string]interface{}{"foo": "bar"}
 		config.tags = map[string]interface{}{"baz": "bam"}
 		ctx.AdminSession.requirePatchEntity(config, "data")
@@ -173,7 +172,7 @@ func Test_Configs(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
+		config.name = eid.New()
 		config.data = map[string]interface{}{"bim": "bam"}
 		config.tags = map[string]interface{}{"enlightened": false}
 		ctx.AdminSession.requirePatchEntity(config, "tags")
@@ -184,7 +183,7 @@ func Test_Configs(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
+		config.name = eid.New()
 		config.data = map[string]interface{}{"bim": "bom"}
 		config.tags = map[string]interface{}{"enlightened": true}
 		ctx.AdminSession.requirePatchEntity(config, "name", "data", "tags")
@@ -228,7 +227,7 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.testContextChanged(t)
 		resp := ctx.AdminSession.createEntityOfType("config-types", map[string]interface{}{
-			"name":   uuid.New().String(),
+			"name":   eid.New(),
 			"schema": "not-object",
 		})
 		standardErrorJsonResponseTests(resp, apierror.CouldNotValidateCode, http.StatusBadRequest, t)

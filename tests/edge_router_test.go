@@ -19,12 +19,11 @@
 package tests
 
 import (
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"net/url"
 	"sort"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func Test_EdgeRouter(t *testing.T) {
@@ -35,8 +34,8 @@ func Test_EdgeRouter(t *testing.T) {
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		edgeRouter := newTestEdgeRouter(role1, role2)
 		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
 		ctx.AdminSession.validateEntityWithQuery(edgeRouter)
@@ -45,12 +44,12 @@ func Test_EdgeRouter(t *testing.T) {
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		edgeRouter := newTestEdgeRouter(role1, role2)
 		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
 
-		role3 := uuid.New().String()
+		role3 := eid.New()
 		edgeRouter.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(edgeRouter)
 		ctx.AdminSession.validateEntityWithLookup(edgeRouter)

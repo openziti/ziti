@@ -37,7 +37,6 @@ type TransitRouterRouter struct {
 func NewTransitRouterRouter() *TransitRouterRouter {
 	return &TransitRouterRouter{
 		BasePath: "/" + EntityNameTransitRouter,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

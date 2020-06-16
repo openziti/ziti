@@ -21,8 +21,8 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/eid"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
@@ -34,8 +34,8 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	_, _ = ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
-	_, _ = ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	_, _ = ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
+	_, _ = ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 
 	t.Run("can list authenticators", func(t *testing.T) {
 		req := require.New(t)
@@ -79,9 +79,9 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	t.Run("can create updb authenticator for a different identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), false)
-		username := uuid.New().String()
-		password := uuid.New().String()
+		identityId := ctx.AdminSession.requireCreateIdentity(eid.New(), false)
+		username := eid.New()
+		password := eid.New()
 
 		body := gabs.New()
 		_, _ = body.Set(identityId, "identityId")
@@ -113,10 +113,10 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	t.Run("cannot create a updb authenticator for an identity with an existing updb authenticator", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		identityId, _ := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		identityId, _ := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
-		username := uuid.New().String()
-		password := uuid.New().String()
+		username := eid.New()
+		password := eid.New()
 
 		body := gabs.New()
 		_, _ = body.Set(identityId, "identityId")
@@ -133,7 +133,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	t.Run("can update updb authenticator for a different identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		identityId, _ := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		identityId, _ := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 		result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
 		ctx.req.NoError(err)
@@ -147,8 +147,8 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		authenticatorId := idContainer.Data().(string)
 		ctx.req.NotEmpty(authenticatorId)
 
-		newUsername := uuid.New().String()
-		newPassword := uuid.New().String()
+		newUsername := eid.New()
+		newPassword := eid.New()
 
 		body := gabs.New()
 		_, _ = body.Set(newUsername, "username")
@@ -177,7 +177,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	t.Run("can patch updb authenticator for a different identity", func(t *testing.T) {
 		t.Run("when patching username only", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 			result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
 			ctx.req.NoError(err)
@@ -191,7 +191,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			authenticatorId := idContainer.Data().(string)
 			ctx.req.NotEmpty(authenticatorId)
 
-			newUsername := uuid.New().String()
+			newUsername := eid.New()
 
 			body := gabs.New()
 			_, _ = body.Set(newUsername, "username")
@@ -214,7 +214,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 		t.Run("when patching password only", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 			result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
 			ctx.req.NoError(err)
@@ -228,7 +228,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			authenticatorId := idContainer.Data().(string)
 			ctx.req.NotEmpty(authenticatorId)
 
-			newPassword := uuid.New().String()
+			newPassword := eid.New()
 
 			body := gabs.New()
 			_, _ = body.Set(newPassword, "password")
@@ -252,7 +252,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 	})
 	t.Run("can delete updb authenticator for a different identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		identityId, authenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 		result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
 		ctx.req.NoError(err)
@@ -280,159 +280,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			ctx.req.Empty(session)
 		})
 	})
-	//
-	////cert
-	//t.Run("can create cert authenticator for a different identity", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//
-	//	//used to receive a cert that can be tested with
-	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-	//
-	//	identityId := ctx.AdminSession.requireCreateIdentity(uuid.New().String(), false)
-	//
-	//	body := gabs.New()
-	//	_, _ = body.Set(identityId, "identityId")
-	//	_, _ = body.Set("cert", "method")
-	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-	//
-	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
-	//
-	//	ctx.req.NoError(err)
-	//	standardJsonResponseTests(resp, http.StatusCreated, t)
-	//
-	//	t.Run("and the new authenticator can be used for authentication", func(t *testing.T) {
-	//		req := require.New(t)
-	//
-	//		session, err := unusedCertAuth.Authenticate(ctx)
-	//
-	//		req.NoError(err)
-	//		req.NotEmpty(session.id)
-	//
-	//	})
-	//})
-	//
-	//t.Run("cannot create a cert authenticator for an identity with an existing cert authenticator", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//
-	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//
-	//	body := gabs.New()
-	//	_, _ = body.Set(identityId, "identityId")
-	//	_, _ = body.Set("cert", "method")
-	//	_, _ = body.Set("doesnotmatter", "certPem")
-	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Post("/authenticators")
-	//
-	//	ctx.req.NoError(err)
-	//	standardErrorJsonResponseTests(resp, apierror.AuthenticatorMethodMaxCode, apierror.AuthenticatorMethodMaxStatus, t)
-	//})
-	//
-	//t.Run("can update cert authenticator for a different identity", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//
-	//	//used to receive a cert that can be tested with
-	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-	//
-	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//
-	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-	//	ctx.req.NoError(err)
-	//
-	//	resultBody, err := gabs.ParseJSON(result.Body())
-	//	ctx.req.NoError(err)
-	//
-	//	idContainer := resultBody.Path("data").Index(0).Path("id")
-	//	ctx.req.NotEmpty(idContainer)
-	//
-	//	authenticatorId := idContainer.Data().(string)
-	//	ctx.req.NotEmpty(authenticatorId)
-	//
-	//	body := gabs.New()
-	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-	//
-	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Put("/authenticators/" + authenticatorId)
-	//
-	//	ctx.req.NoError(err)
-	//	standardJsonResponseTests(resp, http.StatusOK, t)
-	//
-	//	t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
-	//		ctx.testContextChanged(t)
-	//
-	//		session, err := unusedCertAuth.Authenticate(ctx)
-	//		ctx.req.NoError(err)
-	//		ctx.req.NotEmpty(session)
-	//	})
-	//})
-	//
-	//t.Run("can patch cert authenticator for a different identity", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//
-	//	//used to receive a cert that can be tested with
-	//	unusedIdentityId, unusedCertAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//	ctx.AdminSession.deleteEntityOfType("identity", unusedIdentityId)
-	//
-	//	identityId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//
-	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-	//	ctx.req.NoError(err)
-	//
-	//	resultBody, err := gabs.ParseJSON(result.Body())
-	//	ctx.req.NoError(err)
-	//
-	//	idContainer := resultBody.Path("data").Index(0).Path("id")
-	//	ctx.req.NotEmpty(idContainer)
-	//
-	//	authenticatorId := idContainer.Data().(string)
-	//	ctx.req.NotEmpty(authenticatorId)
-	//
-	//	body := gabs.New()
-	//	_, _ = body.Set(unusedCertAuth.certPem, "certPem")
-	//
-	//	resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(body.String()).Patch("/authenticators/" + authenticatorId)
-	//
-	//	ctx.req.NoError(err)
-	//	standardJsonResponseTests(resp, http.StatusOK, t)
-	//
-	//	t.Run("newly updated cert can be used for authentication", func(t *testing.T) {
-	//		ctx.testContextChanged(t)
-	//
-	//		session, err := unusedCertAuth.Authenticate(ctx)
-	//		ctx.req.NoError(err)
-	//		ctx.req.NotEmpty(session)
-	//	})
-	//})
-	//
-	//t.Run("can delete cert authenticator for a different identity", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//	identityId, authenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-	//
-	//	result, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-	//	ctx.req.NoError(err)
-	//
-	//	resultBody, err := gabs.ParseJSON(result.Body())
-	//	ctx.req.NoError(err)
-	//
-	//	idContainer := resultBody.Path("data").Index(0).Path("id")
-	//	ctx.req.NotEmpty(idContainer)
-	//
-	//	authenticatorId := idContainer.Data().(string)
-	//	ctx.req.NotEmpty(authenticatorId)
-	//
-	//	resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete("/authenticators/" + authenticatorId)
-	//
-	//	ctx.req.NoError(err)
-	//
-	//	standardJsonResponseTests(resp, http.StatusOK, t)
-	//
-	//	t.Run("identity can not longer authenticate", func(t *testing.T) {
-	//		ctx.testContextChanged(t)
-	//		session, err := authenticator.Authenticate(ctx)
-	//
-	//		ctx.req.Error(err)
-	//		ctx.req.Empty(session)
-	//	})
-	//})
+
 }
 
 func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
@@ -441,14 +289,14 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	updbNonAdminUserId, updbNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+	updbNonAdminUserId, updbNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 	updbNonAdminSession, err := updbNonAdminUserAuthenticator.Authenticate(ctx)
 
 	if err != nil {
 		ctx.req.NoError(err, "expected no error during non-admin updb authentication")
 	}
 
-	certNonAdminUserId, certNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	certNonAdminUserId, certNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 	certNonAdminUserSession, err := certNonAdminUserAuthenticator.Authenticate(ctx)
 
 	if err != nil {
@@ -477,8 +325,8 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			SetBody(map[string]interface{}{
 				"identityId": certNonAdminUserId,
 				"method":     "updb",
-				"password":   uuid.New().String(),
-				"username":   uuid.New().String(),
+				"password":   eid.New(),
+				"username":   eid.New(),
 			}).
 			Post("/authenticators")
 		req.NoError(err)
@@ -491,10 +339,10 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := updbNonAdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "application/json").
 			SetBody(map[string]interface{}{
-				"password": uuid.New().String(),
-				"username": uuid.New().String(),
+				"password": eid.New(),
+				"username": eid.New(),
 			}).
-			Put("/authenticators/" + uuid.New().String())
+			Put("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
@@ -505,9 +353,9 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := updbNonAdminSession.newAuthenticatedRequest().
 			SetHeader("content-type", "application/json").
 			SetBody(map[string]interface{}{
-				"password": uuid.New().String(),
+				"password": eid.New(),
 			}).
-			Patch("/authenticators/" + uuid.New().String())
+			Patch("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
@@ -515,7 +363,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 
 	t.Run("cannot delete updb authenticator for a different identity, receives unauthorized", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := updbNonAdminSession.newAuthenticatedRequest().Delete("/authenticators/" + uuid.New().String())
+		resp, err := updbNonAdminSession.newAuthenticatedRequest().Delete("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
@@ -528,8 +376,8 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			SetBody(map[string]interface{}{
 				"identityId": updbNonAdminUserId,
 				"method":     "updb",
-				"password":   uuid.New().String(),
-				"username":   uuid.New().String(),
+				"password":   eid.New(),
+				"username":   eid.New(),
 			}).
 			Post("/authenticators")
 		req.NoError(err)
@@ -546,7 +394,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 				"password":        "asdfasdf",
 				"username":        "asdfasdf",
 			}).
-			Put("/authenticators/" + uuid.New().String())
+			Put("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
@@ -558,14 +406,14 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			SetBody(map[string]interface{}{
 				"certPem": "",
 			}).
-			Patch("/authenticators/" + uuid.New().String())
+			Patch("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
 	})
 	t.Run("cannot delete cert authenticator for a different identity, receives unauthorized", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := updbNonAdminSession.newAuthenticatedRequest().Delete("/authenticators/" + uuid.New().String())
+		resp, err := updbNonAdminSession.newAuthenticatedRequest().Delete("/authenticators/" + eid.New())
 		req.NoError(err)
 
 		standardErrorJsonResponseTests(resp, apierror.UnauthorizedCode, http.StatusUnauthorized, t)
@@ -578,14 +426,14 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	_, updbNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+	_, updbNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 	updbNonAdminSession, err := updbNonAdminUserAuthenticator.Authenticate(ctx)
 
 	if err != nil {
 		ctx.req.NoError(err, "expected no error during non-admin updb authentication")
 	}
 
-	_, certNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+	_, certNonAdminUserAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 	certNonAdminUserSession, err := certNonAdminUserAuthenticator.Authenticate(ctx)
 
 	if err != nil {
@@ -655,13 +503,11 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authenticatorId, ok := updbAuthenticatorListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authenticatorId)
-		_, err = uuid.Parse(authenticatorId)
-		req.NoError(err)
 
 		t.Run("for read if the authenticator id is made up", func(t *testing.T) {
 			req := require.New(t)
 
-			resp, err := updbNonAdminSession.newAuthenticatedRequest().Get("current-identity/authenticators/" + uuid.New().String())
+			resp, err := updbNonAdminSession.newAuthenticatedRequest().Get("current-identity/authenticators/" + eid.New())
 
 			req.NoError(err)
 
@@ -696,7 +542,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		t.Run("for update if the authenticator id is made up", func(t *testing.T) {
 			//access updb's authenticator from cert identity
 			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789", "username":"username123456"}`).
-				Put("/current-identity/authenticators/" + uuid.New().String())
+				Put("/current-identity/authenticators/" + eid.New())
 
 			req.NoError(err)
 
@@ -716,7 +562,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		t.Run("for patch if the authenticator id is made up", func(t *testing.T) {
 			//access updb's authenticator from cert identity
 			resp, err := certNonAdminUserSession.newAuthenticatedJsonRequest(`{"currentPassword": "123456", "password":"456789"}`).
-				Patch("/current-identity/authenticators/" + uuid.New().String())
+				Patch("/current-identity/authenticators/" + eid.New())
 
 			req.NoError(err)
 
@@ -726,7 +572,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 	t.Run("can not delete as it isn't supported", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := certNonAdminUserSession.newAuthenticatedRequest().Delete("/current-identity/authenticators/" + uuid.New().String())
+		resp, err := certNonAdminUserSession.newAuthenticatedRequest().Delete("/current-identity/authenticators/" + eid.New())
 
 		req.NoError(err)
 
@@ -746,7 +592,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -759,11 +605,9 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
-		newUsername := uuid.New().String()
-		newPassword := uuid.New().String()
+		newUsername := eid.New()
+		newPassword := eid.New()
 
 		body := fmt.Sprintf(`{"username":"%s", "password":"%s", "currentPassword":"%s"}`, newUsername, newPassword, auth.Password)
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
@@ -779,7 +623,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 			auth.Username = newUsername
 			auth.Password = newPassword
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
@@ -790,7 +634,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -803,13 +647,11 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
-		newUsername := uuid.New().String()
-		newPassword := uuid.New().String()
+		newUsername := eid.New()
+		newPassword := eid.New()
 
-		body := fmt.Sprintf(`{"username":"%s", "password":"%s", "currentPassword":"%s"}`, newUsername, newPassword, uuid.New().String())
+		body := fmt.Sprintf(`{"username":"%s", "password":"%s", "currentPassword":"%s"}`, newUsername, newPassword, eid.New())
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Put("/current-identity/authenticators/" + authId)
 
@@ -820,7 +662,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		t.Run("a non-admin can authenticate with the original updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
@@ -831,7 +673,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -844,10 +686,8 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
-		newPassword := uuid.New().String()
+		newPassword := eid.New()
 
 		body := fmt.Sprintf(`{"password":"%s", "currentPassword":"%s"}`, newPassword, auth.Password)
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
@@ -862,7 +702,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			auth.Password = newPassword
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
@@ -873,7 +713,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -886,12 +726,10 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
-		newPassword := uuid.New().String()
+		newPassword := eid.New()
 
-		body := fmt.Sprintf(`{"password":"%s", "currentPassword":"%s"}`, newPassword, uuid.New().String())
+		body := fmt.Sprintf(`{"password":"%s", "currentPassword":"%s"}`, newPassword, eid.New())
 		resp, err := authSession.newAuthenticatedJsonRequest(body).
 			Patch("/current-identity/authenticators/" + authId)
 
@@ -902,7 +740,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		t.Run("a non-admin can authenticate with original updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
+			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
@@ -913,7 +751,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -926,8 +764,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
 		resp, err := authSession.newAuthenticatedJsonRequest(map[string]string{
 			"currentPassword": "assdfasdf",
@@ -944,7 +780,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		req := require.New(t)
 		ctx.testContextChanged(t)
 
-		_, auth := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+		_, auth := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 		authSession, err := auth.Authenticate(ctx)
 		req.NoError(err)
 
@@ -957,8 +793,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 		authId, ok := authListBody.Search("data").Index(0).Path("id").Data().(string)
 		req.True(ok)
 		req.NotEmpty(authId)
-		_, err = uuid.Parse(authId)
-		req.NoError(err)
 
 		resp, err := authSession.newAuthenticatedJsonRequest(map[string]string{
 			"currentPassword": "assdfasdf",

@@ -37,7 +37,6 @@ type EnrollmentRouter struct {
 func NewEnrollmentRouter() *EnrollmentRouter {
 	return &EnrollmentRouter{
 		BasePath: "/" + EntityNameEnrollment,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

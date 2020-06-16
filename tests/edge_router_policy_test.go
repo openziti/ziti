@@ -19,9 +19,8 @@
 package tests
 
 import (
+	"github.com/openziti/edge/eid"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func Test_EdgeRouterPolicy(t *testing.T) {
@@ -30,10 +29,10 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 	ctx.startServer()
 	ctx.requireAdminLogin()
 
-	edgeRouterRole1 := uuid.New().String()
-	edgeRouterRole2 := uuid.New().String()
-	identityRole1 := uuid.New().String()
-	identityRole2 := uuid.New().String()
+	edgeRouterRole1 := eid.New()
+	edgeRouterRole2 := eid.New()
+	identityRole1 := eid.New()
+	identityRole2 := eid.New()
 
 	edgeRouter1 := ctx.AdminSession.requireNewEdgeRouter(edgeRouterRole1)
 	edgeRouter2 := ctx.AdminSession.requireNewEdgeRouter(edgeRouterRole1, edgeRouterRole2)

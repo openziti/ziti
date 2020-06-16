@@ -18,8 +18,8 @@ func Test_IdentityStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
-	service := ctx.requireNewService(uuid.New().String())
-	identity := ctx.requireNewIdentity(uuid.New().String(), false)
+	service := ctx.requireNewService(eid.NewId())
+	identity := ctx.requireNewIdentity(eid.NewId(), false)
 
 	clientConfigTypeId := ""
 	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
@@ -35,19 +35,19 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	config := newConfig(uuid.New().String(), clientConfigTypeId, map[string]interface{}{
+	config := newConfig(eid.NewId(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "foo.yourcompany.com",
 		"port":     int64(22),
 	})
 	ctx.RequireCreate(config)
 
-	config2 := newConfig(uuid.New().String(), clientConfigTypeId, map[string]interface{}{
+	config2 := newConfig(eid.NewId(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "bar.yourcompany.com",
 		"port":     int64(23),
 	})
 	ctx.RequireCreate(config2)
 
-	config3 := newConfig(uuid.New().String(), serverConfigTypeId, map[string]interface{}{
+	config3 := newConfig(eid.NewId(), serverConfigTypeId, map[string]interface{}{
 		"hostname": "baz.yourcompany.com",
 		"port":     int64(24),
 	})

@@ -28,7 +28,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"math/big"
 	"net/http"
 	"strings"
@@ -72,7 +72,7 @@ func Test_enrollment(t *testing.T) {
 
 			t.Run("can enroll without a name and a 0 length body", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+uuid.New().String())
+				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
@@ -100,7 +100,7 @@ func Test_enrollment(t *testing.T) {
 
 			t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+uuid.New().String())
+				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
@@ -130,7 +130,7 @@ func Test_enrollment(t *testing.T) {
 			t.Run("can enroll with a name", func(t *testing.T) {
 				t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+uuid.New().String())
+					cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 					ctx.req.NoError(err)
 
 					restClient, _, transport := ctx.NewClientComponents()
@@ -143,7 +143,7 @@ func Test_enrollment(t *testing.T) {
 
 					resp, err := restClient.R().
 						SetHeader("content-type", "application/json").
-						SetBody(`{"name": "` + uuid.New().String() + `"}`).
+						SetBody(`{"name": "` + eid.New() + `"}`).
 						Post("enroll?method=ca")
 
 					ctx.req.NoError(err)

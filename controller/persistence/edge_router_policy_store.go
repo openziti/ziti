@@ -1,7 +1,7 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -12,7 +12,7 @@ import (
 
 func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
 	return &EdgeRouterPolicy{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
 	}
 }

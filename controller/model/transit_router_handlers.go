@@ -17,10 +17,10 @@
 package model
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -64,7 +64,7 @@ func (handler *TransitRouterHandler) Create(entity *TransitRouter) (string, erro
 func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRouter, enrollment *Enrollment) (string, string, error) {
 
 	if txRouter.Id == "" {
-		txRouter.Id = uuid.New().String()
+		txRouter.Id = eid.New()
 	}
 	var enrollmentId string
 

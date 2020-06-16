@@ -43,7 +43,6 @@ type ServiceRouter struct {
 func NewServiceRouter() *ServiceRouter {
 	return &ServiceRouter{
 		BasePath: "/" + EntityNameService,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

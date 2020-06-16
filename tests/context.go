@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/gateway/enroll"
 	"github.com/openziti/edge/gateway/xgress_edge"
 	"github.com/openziti/edge/rest_model"
@@ -56,7 +57,6 @@ import (
 	"gopkg.in/resty.v1"
 
 	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
@@ -104,8 +104,8 @@ type TestContext struct {
 
 var defaultTestContext = &TestContext{
 	AdminAuthenticator: &updbAuthenticator{
-		Username: uuid.New().String(),
-		Password: uuid.New().String(),
+		Username: eid.New(),
+		Password: eid.New(),
 	},
 }
 
@@ -113,8 +113,8 @@ func NewTestContext(t *testing.T) *TestContext {
 	ret := &TestContext{
 		ApiHost: "127.0.0.1:1281",
 		AdminAuthenticator: &updbAuthenticator{
-			Username: uuid.New().String(),
-			Password: uuid.New().String(),
+			Username: eid.New(),
+			Password: eid.New(),
 		},
 		req: require.New(t),
 	}
@@ -219,7 +219,7 @@ func (ctx *TestContext) startServer() {
 
 	ctx.EdgeController.Initialize()
 
-	err = ctx.EdgeController.AppEnv.Handlers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, uuid.New().String())
+	err = ctx.EdgeController.AppEnv.Handlers.Identity.InitializeDefaultAdmin(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password, eid.New())
 	if err != nil {
 		log.WithError(err).Warn("error during initialize admin")
 	}
@@ -516,7 +516,7 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 
 func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 	return &service{
-		name:               uuid.New().String(),
+		name:               eid.New(),
 		terminatorStrategy: xt_smartrouting.Name,
 		roleAttributes:     roleAttributes,
 		configs:            configs,
@@ -536,7 +536,7 @@ func (ctx *TestContext) newTerminator(serviceId, routerId, binding, address stri
 
 func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *config {
 	return &config{
-		name:         uuid.New().String(),
+		name:         eid.New(),
 		configTypeId: configType,
 		data:         data,
 		tags:         nil,
@@ -545,7 +545,7 @@ func (ctx *TestContext) newConfig(configType string, data map[string]interface{}
 
 func (ctx *TestContext) newConfigType() *configType {
 	return &configType{
-		name: uuid.New().String(),
+		name: eid.New(),
 		tags: nil,
 	}
 }

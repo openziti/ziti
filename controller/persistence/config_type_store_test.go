@@ -39,7 +39,7 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	err := ctx.Create(configType)
 	ctx.EqualError(err, "index on configTypes.name does not allow null or empty values")
 
-	configType = newConfigType(uuid.New().String())
+	configType = newConfigType(eid.NewId())
 	ctx.RequireCreate(configType)
 	ctx.ValidateBaseline(configType)
 
@@ -54,11 +54,11 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	ctx.NoError(err)
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
-	configType.Name = uuid.New().String()
+	configType.Name = eid.NewId()
 	ctx.RequireUpdate(configType)
 	ctx.ValidateUpdated(configType)
 
-	config := newConfig(uuid.New().String(), configType.Id, map[string]interface{}{
+	config := newConfig(eid.NewId(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})

@@ -17,7 +17,7 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -99,8 +99,8 @@ type SessionCert struct {
 
 func NewSession(apiSessionId, serviceId string) *Session {
 	return &Session{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
-		Token:         uuid.New().String(),
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Token:         eid.New(),
 		ApiSessionId:  apiSessionId,
 		ServiceId:     serviceId,
 		Type:          SessionTypeDial,

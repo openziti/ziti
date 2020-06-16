@@ -17,7 +17,7 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -38,9 +38,9 @@ type ApiSession struct {
 
 func NewApiSession(identityId string) *ApiSession {
 	return &ApiSession{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		IdentityId:    identityId,
-		Token:         uuid.New().String(),
+		Token:         eid.New(),
 	}
 }
 

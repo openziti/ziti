@@ -23,7 +23,7 @@ func Test_ServiceEdgeRouterPolicyStore(t *testing.T) {
 func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
 	ctx.cleanupAll()
 
-	policy := newServiceEdgeRouterPolicy(uuid.New().String())
+	policy := newServiceEdgeRouterPolicy(eid.NewId())
 	ctx.RequireCreate(policy)
 	ctx.ValidateBaseline(policy)
 
@@ -45,8 +45,8 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	ctx.cleanupAll()
 
 	// test service roles
-	policy := newServiceEdgeRouterPolicy(uuid.New().String())
-	invalidId := uuid.New().String()
+	policy := newServiceEdgeRouterPolicy(eid.NewId())
+	invalidId := eid.NewId()
 	policy.ServiceRoles = []string{entityRef(invalidId)}
 	err := ctx.Create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'serviceRoles' is invalid: no services found with the given ids", invalidId))
@@ -55,7 +55,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	err = ctx.Create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'serviceRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
-	service := newEdgeService(uuid.New().String())
+	service := newEdgeService(eid.NewId())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id), entityRef(invalidId)}
@@ -81,7 +81,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	err = ctx.Create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'edgeRouterRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
-	edgeRouter := newEdgeRouter(uuid.New().String())
+	edgeRouter := newEdgeRouter(eid.NewId())
 	ctx.RequireCreate(edgeRouter)
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id), entityRef(invalidId)}
@@ -102,8 +102,8 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 	ctx.cleanupAll()
 
 	// test service roles
-	policy := newServiceEdgeRouterPolicy(uuid.New().String())
-	service := newEdgeService(uuid.New().String())
+	policy := newServiceEdgeRouterPolicy(eid.NewId())
+	service := newEdgeService(eid.NewId())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
@@ -113,14 +113,14 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.ServiceRoles), "service id should have been removed from service roles")
 
-	service = newEdgeService(uuid.New().String())
+	service = newEdgeService(eid.NewId())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateServiceEdgeRouterPolicyServices([]*EdgeService{service}, []*ServiceEdgeRouterPolicy{policy})
 
-	service.Name = uuid.New().String()
+	service.Name = eid.NewId()
 	ctx.RequireUpdate(service)
 	ctx.RequireReload(policy)
 	ctx.True(stringz.Contains(policy.ServiceRoles, entityRef(service.Id)))
@@ -131,7 +131,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 	ctx.Equal(0, len(policy.ServiceRoles), "service name should have been removed from service roles")
 
 	// test edgeRouter roles
-	edgeRouter := newEdgeRouter(uuid.New().String())
+	edgeRouter := newEdgeRouter(eid.NewId())
 	ctx.RequireCreate(edgeRouter)
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
@@ -141,14 +141,14 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.EdgeRouterRoles), "edgeRouter id should have been removed from edgeRouter roles")
 
-	edgeRouter = newEdgeRouter(uuid.New().String())
+	edgeRouter = newEdgeRouter(eid.NewId())
 	ctx.RequireCreate(edgeRouter)
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateServiceEdgeRouterPolicyEdgeRouters([]*EdgeRouter{edgeRouter}, []*ServiceEdgeRouterPolicy{policy})
 
-	edgeRouter.Name = uuid.New().String()
+	edgeRouter.Name = eid.NewId()
 	ctx.RequireUpdate(edgeRouter)
 	ctx.RequireReload(policy)
 	ctx.True(stringz.Contains(policy.EdgeRouterRoles, entityRef(edgeRouter.Id)))
@@ -173,25 +173,25 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 
 	var services []*EdgeService
 	for i := 0; i < 5; i++ {
-		service := newEdgeService(uuid.New().String())
+		service := newEdgeService(eid.NewId())
 		ctx.RequireCreate(service)
 		services = append(services, service)
 	}
 
 	var edgeRouters []*EdgeRouter
 	for i := 0; i < 5; i++ {
-		edgeRouter := newEdgeRouter(uuid.New().String())
+		edgeRouter := newEdgeRouter(eid.NewId())
 		ctx.RequireCreate(edgeRouter)
 		edgeRouters = append(edgeRouters, edgeRouter)
 	}
 
-	serviceRolesAttrs := []string{"foo", "bar", uuid.New().String(), "baz", uuid.New().String(), "quux"}
+	serviceRolesAttrs := []string{"foo", "bar", eid.NewId(), "baz", eid.NewId(), "quux"}
 	var serviceRoles []string
 	for _, role := range serviceRolesAttrs {
 		serviceRoles = append(serviceRoles, roleRef(role))
 	}
 
-	edgeRouterRoleAttrs := []string{uuid.New().String(), "another-role", "parsley, sage, rosemary and don't forget thyme", uuid.New().String(), "blop", "asdf"}
+	edgeRouterRoleAttrs := []string{eid.NewId(), "another-role", "parsley, sage, rosemary and don't forget thyme", eid.NewId(), "blop", "asdf"}
 	var edgeRouterRoles []string
 	for _, role := range edgeRouterRoleAttrs {
 		edgeRouterRoles = append(edgeRouterRoles, roleRef(role))
@@ -223,23 +223,23 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	}
 
 	// no roles
-	service := newEdgeService(uuid.New().String())
+	service := newEdgeService(eid.NewId())
 	ctx.RequireCreate(service)
 	services = append(services, service)
 
 	stringz.Permutations(serviceRolesAttrs, func(roles []string) {
-		service := newEdgeService(uuid.New().String(), roles...)
+		service := newEdgeService(eid.NewId(), roles...)
 		ctx.RequireCreate(service)
 		services = append(services, service)
 	})
 
 	// no roles
-	edgeRouter := newEdgeRouter(uuid.New().String())
+	edgeRouter := newEdgeRouter(eid.NewId())
 	ctx.RequireCreate(edgeRouter)
 	edgeRouters = append(edgeRouters, edgeRouter)
 
 	stringz.Permutations(edgeRouterRoleAttrs, func(roles []string) {
-		edgeRouter := newEdgeRouter(uuid.New().String(), roles...)
+		edgeRouter := newEdgeRouter(eid.NewId(), roles...)
 		ctx.RequireCreate(edgeRouter)
 		edgeRouters = append(edgeRouters, edgeRouter)
 	})
@@ -259,7 +259,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	edgeRouters = nil
 
 	stringz.Permutations(serviceRolesAttrs, func(roles []string) {
-		service := newEdgeService(uuid.New().String())
+		service := newEdgeService(eid.NewId())
 		ctx.RequireCreate(service)
 		service.RoleAttributes = roles
 		ctx.RequireUpdate(service)
@@ -267,7 +267,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	})
 
 	stringz.Permutations(edgeRouterRoleAttrs, func(roles []string) {
-		edgeRouter := newEdgeRouter(uuid.New().String())
+		edgeRouter := newEdgeRouter(eid.NewId())
 		ctx.RequireCreate(edgeRouter)
 		edgeRouter.RoleAttributes = roles
 		ctx.RequireUpdate(edgeRouter)
@@ -329,7 +329,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles []string, services []*EdgeService, edgeRouters []*EdgeRouter, oncreate bool) []*ServiceEdgeRouterPolicy {
 	var policies []*ServiceEdgeRouterPolicy
 	for i := 0; i < 9; i++ {
-		policy := newServiceEdgeRouterPolicy(uuid.New().String())
+		policy := newServiceEdgeRouterPolicy(eid.NewId())
 		policy.Semantic = SemanticAllOf
 
 		if !oncreate {

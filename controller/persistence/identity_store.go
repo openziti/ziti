@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -47,7 +47,7 @@ const (
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
 	return &Identity{
-		BaseExtEntity:  boltz.BaseExtEntity{Id: uuid.New().String()},
+		BaseExtEntity:  boltz.BaseExtEntity{Id: eid.New()},
 		Name:           name,
 		IdentityTypeId: identityTypeId,
 		RoleAttributes: roleAttributes,

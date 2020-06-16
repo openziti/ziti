@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -110,8 +110,8 @@ func (ctx *TestContext) Init() {
 
 func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles []string, serviceRoles []string) *ServicePolicy {
 	entity := &ServicePolicy{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
-		Name:          uuid.New().String(),
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
 		PolicyType:    policyType,
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
@@ -122,7 +122,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles 
 
 func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
 	identity := &Identity{
-		BaseExtEntity: *boltz.NewExtEntity(uuid.New().String(), nil),
+		BaseExtEntity: *boltz.NewExtEntity(eid.New(), nil),
 		Name:          name,
 		IsAdmin:       isAdmin,
 	}
@@ -133,7 +133,7 @@ func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity 
 func (ctx *TestContext) requireNewService(name string) *EdgeService {
 	edgeService := &EdgeService{
 		Service: db.Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		},
 		Name: name,
 	}

@@ -3621,7 +3621,6 @@ definitions:
             type: string
           ottca:
             type: string
-            format: uuid
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
