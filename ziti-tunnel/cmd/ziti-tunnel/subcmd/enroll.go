@@ -66,6 +66,8 @@ func init() {
 }
 
 var enrollSubCmd = &cobra.Command{
+	SilenceErrors: true,
+	SilenceUsage: true,
 	Use:   "enroll",
 	Short: "enroll an identity",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -74,6 +76,14 @@ var enrollSubCmd = &cobra.Command{
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		//set the formatter for enrolling via ziti-tunnel
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:               true,
+			DisableTimestamp:          true,
+			TimestampFormat:           "",
+			PadLevelText:              true,
+		})
+		logrus.SetReportCaller(false) // for enrolling don't bother with this
 		return processEnrollment()
 	},
 }
@@ -135,7 +145,7 @@ func processEnrollment() error {
 	encErr := enc.Encode(&conf)
 
 	if encErr == nil {
-		fmt.Printf("enrolled successfully. identity file written to: %s", outpath)
+		logrus.Errorf("enrolled successfully. identity file written to: %s", outpath)
 		return nil
 	} else {
 		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", outpath, encErr)
