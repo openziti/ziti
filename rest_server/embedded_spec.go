@@ -7678,9 +7678,12 @@ func init() {
       "type": "object",
       "properties": {
         "apiVersions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiVersion"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/apiVersion"
+            }
           }
         },
         "buildDate": {
@@ -23229,9 +23232,12 @@ func init() {
       "type": "object",
       "properties": {
         "apiVersions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiVersion"
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/apiVersion"
+            }
           }
         },
         "buildDate": {

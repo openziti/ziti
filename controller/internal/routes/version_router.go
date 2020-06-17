@@ -60,17 +60,16 @@ func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		Revision:       buildInfo.GetRevision(),
 		RuntimeVersion: runtime.Version(),
 		Version:        buildInfo.GetVersion(),
-		APIVersions: []*rest_model.APIVersion{
-			mapApiVersionToRestModel(controller.RestApiV1, controller.RestApiBaseUrlV1),
+		APIVersions: map[string][]rest_model.APIVersion{
+			"edge": {mapApiVersionToRestModel(controller.RestApiV1, controller.RestApiBaseUrlV1)},
 		},
 	}
 	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 
-func mapApiVersionToRestModel(version, path string) *rest_model.APIVersion {
-	return &rest_model.APIVersion{
+func mapApiVersionToRestModel(version, path string) rest_model.APIVersion {
+	return rest_model.APIVersion{
 		Path:    &path,
 		Version: &version,
 	}
-
 }
