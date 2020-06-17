@@ -26,10 +26,10 @@ import (
 
 func Test_ApiSession(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
+	defer ctx.Teardown()
+	ctx.StartServer()
 
-	ctx.requireAdminLogin()
+	ctx.RequireAdminLogin()
 
 	t.Run("config types should be set and viewable", func(t *testing.T) {
 		configType1 := ctx.AdminSession.requireCreateNewConfigType()
@@ -37,14 +37,14 @@ func Test_ApiSession(t *testing.T) {
 
 		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), false)
 
-		auth.ConfigTypes = s(configType1.id, configType2.name)
+		auth.ConfigTypes = s(configType1.Id, configType2.Name)
 
 		session, err := auth.Authenticate(ctx)
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
-		expected := s(configType1.id, configType2.id)
+		expected := s(configType1.Id, configType2.Id)
 		sort.Strings(expected)
 		sort.Strings(session.configTypes)
-		ctx.req.Equal(expected, session.configTypes)
+		ctx.Req.Equal(expected, session.configTypes)
 	})
 }

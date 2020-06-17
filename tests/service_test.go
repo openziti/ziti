@@ -33,9 +33,9 @@ import (
 
 func Test_Services(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	identityRole := uuid.New().String()
 	nonAdminUserSession := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
@@ -43,7 +43,7 @@ func Test_Services(t *testing.T) {
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.newService(nil, nil)
-		service.name = ""
+		service.Name = ""
 		resp := ctx.AdminSession.createEntity(service)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
@@ -90,21 +90,21 @@ func Test_Services(t *testing.T) {
 		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole))
 		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole))
 
-		fmt.Printf("Expecting\n%v\n%v\n%v and not\n%v to be in final list\n", service1.id, service2.id, service3.id, service4.id)
+		fmt.Printf("Expecting\n%v\n%v\n%v and not\n%v to be in final list\n", service1.Id, service2.Id, service3.Id, service4.Id)
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
-			service1.id, service2.id, service3.id, service4.id, service5.id, service6.id, service7.id))
+			service1.Id, service2.Id, service3.Id, service4.Id, service5.Id, service6.Id, service7.Id))
 		result := nonAdminUserSession.requireQuery("services?filter=" + query)
-		data := ctx.requirePath(result, "data")
-		ctx.requireNoChildWith(data, "id", service4.id)
-		ctx.requireNoChildWith(data, "id", service5.id)
-		ctx.requireNoChildWith(data, "id", service6.id)
-		ctx.requireNoChildWith(data, "id", service7.id)
+		data := ctx.RequirePath(result, "data")
+		ctx.RequireNoChildWith(data, "id", service4.Id)
+		ctx.RequireNoChildWith(data, "id", service5.Id)
+		ctx.RequireNoChildWith(data, "id", service6.Id)
+		ctx.RequireNoChildWith(data, "id", service7.Id)
 
-		jsonService := ctx.requireChildWith(data, "id", service1.id)
+		jsonService := ctx.RequireChildWith(data, "id", service1.Id)
 		service1.validate(ctx, jsonService)
-		jsonService = ctx.requireChildWith(data, "id", service2.id)
+		jsonService = ctx.RequireChildWith(data, "id", service2.Id)
 		service2.validate(ctx, jsonService)
-		jsonService = ctx.requireChildWith(data, "id", service3.id)
+		jsonService = ctx.RequireChildWith(data, "id", service3.Id)
 		service3.validate(ctx, jsonService)
 	})
 
@@ -117,7 +117,7 @@ func Test_Services(t *testing.T) {
 
 	t.Run("lookup non-existent service as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(ctx.AdminSession.query("services/" + uuid.New().String()))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("services/" + uuid.New().String()))
 	})
 
 	t.Run("lookup existing service as non-admin should pass", func(t *testing.T) {
@@ -141,25 +141,25 @@ func Test_Services(t *testing.T) {
 
 	t.Run("lookup non-existent service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(nonAdminUserSession.query("services/" + uuid.New().String()))
+		ctx.RequireNotFoundError(nonAdminUserSession.query("services/" + uuid.New().String()))
 	})
 
 	t.Run("query non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
-		query := url.QueryEscape(fmt.Sprintf(`id in ["%v"]`, service.id))
+		query := url.QueryEscape(fmt.Sprintf(`id in ["%v"]`, service.Id))
 		body := nonAdminUserSession.requireQuery("services?filter=" + query)
 		data := body.S("data")
 		children, err := data.Children()
-		ctx.req.True(data == nil || data.Data() == nil || (err == nil && len(children) == 0))
+		ctx.Req.True(data == nil || data.Data() == nil || (err == nil && len(children) == 0))
 	})
 
 	t.Run("lookup non-visible service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		service := ctx.AdminSession.requireNewService(nil, nil)
-		httpStatus, body := nonAdminUserSession.query("services/" + service.id)
+		httpStatus, body := nonAdminUserSession.query("services/" + service.Id)
 		ctx.logJson(body)
-		ctx.requireNotFoundError(httpStatus, body)
+		ctx.RequireNotFoundError(httpStatus, body)
 	})
 
 	t.Run("update service should pass", func(t *testing.T) {
@@ -175,8 +175,8 @@ func Test_Services(t *testing.T) {
 		service.terminatorStrategy = "ha"
 		ctx.AdminSession.requireUpdateEntity(service)
 
-		result := ctx.AdminSession.requireQuery("services/" + service.id)
-		jsonService := ctx.requirePath(result, "data")
+		result := ctx.AdminSession.requireQuery("services/" + service.Id)
+		jsonService := ctx.RequirePath(result, "data")
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
 	})
@@ -184,40 +184,40 @@ func Test_Services(t *testing.T) {
 
 func Test_ServiceListWithConfigs(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	configType1 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("ONE")
 	configType2 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("TWO")
 	configType3 := ctx.AdminSession.requireCreateNewConfigTypeWithPrefix("THREE")
 
-	config1 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
+	config1 := ctx.AdminSession.requireCreateNewConfig(configType1.Id, map[string]interface{}{
 		"hostname": "foo",
 		"port":     float64(22),
 	})
 
-	config2 := ctx.AdminSession.requireCreateNewConfig(configType2.id, map[string]interface{}{
+	config2 := ctx.AdminSession.requireCreateNewConfig(configType2.Id, map[string]interface{}{
 		"dialAddress": "tcp:localhost:5432",
 	})
 
-	config3 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
+	config3 := ctx.AdminSession.requireCreateNewConfig(configType1.Id, map[string]interface{}{
 		"hostname": "bar",
 		"port":     float64(80),
 	})
 
-	config4 := ctx.AdminSession.requireCreateNewConfig(configType2.id, map[string]interface{}{
+	config4 := ctx.AdminSession.requireCreateNewConfig(configType2.Id, map[string]interface{}{
 		"dialAddress": "udp:external:5432",
 	})
 
-	config5 := ctx.AdminSession.requireCreateNewConfig(configType3.id, map[string]interface{}{
+	config5 := ctx.AdminSession.requireCreateNewConfig(configType3.Id, map[string]interface{}{
 		"froboz": "schnapplecakes",
 	})
 
 	service1 := ctx.AdminSession.requireNewService(nil, nil)
-	service2 := ctx.AdminSession.requireNewService(nil, s(config1.id))
-	service3 := ctx.AdminSession.requireNewService(nil, s(config2.id))
-	service4 := ctx.AdminSession.requireNewService(nil, s(config2.id, config3.id))
+	service2 := ctx.AdminSession.requireNewService(nil, s(config1.Id))
+	service3 := ctx.AdminSession.requireNewService(nil, s(config2.Id))
+	service4 := ctx.AdminSession.requireNewService(nil, s(config2.Id, config3.Id))
 
 	ctx.AdminSession.validateAssociations(service4, "configs", config2, config3)
 
@@ -232,102 +232,102 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 
 	session := ctx.AdminSession.createUserAndLogin(false, nil, nil)
 	for _, service := range services {
-		service.configs = map[string]*config{}
+		service.configs = map[string]*Config{}
 		session.validateEntityWithQuery(service)
 	}
 
-	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.id))
-	service2V.configs[configType1.name] = config1
-	service4V.configs[configType1.name] = config3
+	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.Id))
+	service2V.configs[configType1.Name] = config1
+	service4V.configs[configType1.Name] = config3
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
-		service.configs = map[string]*config{}
+		service.configs = map[string]*Config{}
 	}
 
-	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType2.id))
-	service3V.configs[configType2.name] = config2
-	service4V.configs[configType2.name] = config2
+	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType2.Id))
+	service3V.configs[configType2.Name] = config2
+	service4V.configs[configType2.Name] = config2
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
 	}
 
-	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.id, configType2.id))
-	service2V.configs[configType1.name] = config1
-	service3V.configs[configType2.name] = config2
-	service4V.configs[configType1.name] = config3
-	service4V.configs[configType2.name] = config2
+	session = ctx.AdminSession.createUserAndLogin(false, nil, s(configType1.Id, configType2.Id))
+	service2V.configs[configType1.Name] = config1
+	service3V.configs[configType2.Name] = config2
+	service4V.configs[configType1.Name] = config3
+	service4V.configs[configType2.Name] = config2
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
-		service.configs = map[string]*config{}
+		service.configs = map[string]*Config{}
 	}
 
 	session = ctx.AdminSession.createUserAndLogin(false, nil, s("all"))
-	service2V.configs[configType1.name] = config1
-	service3V.configs[configType2.name] = config2
-	service4V.configs[configType1.name] = config3
-	service4V.configs[configType2.name] = config2
+	service2V.configs[configType1.Name] = config1
+	service3V.configs[configType2.Name] = config2
+	service4V.configs[configType1.Name] = config3
+	service4V.configs[configType2.Name] = config2
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
 	}
 
-	configs1 := []serviceConfig{{ServiceId: service4.id, ConfigId: config1.id}, {ServiceId: service4.id, ConfigId: config5.id}}
+	configs1 := []serviceConfig{{ServiceId: service4.Id, ConfigId: config1.Id}, {ServiceId: service4.Id, ConfigId: config5.Id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs1...)
-	configs1 = []serviceConfig{{ServiceId: service4.id, ConfigId: config1.id}, {ServiceId: service4.id, ConfigId: config5.id}}
+	configs1 = []serviceConfig{{ServiceId: service4.Id, ConfigId: config1.Id}, {ServiceId: service4.Id, ConfigId: config5.Id}}
 	sort.Sort(sortableServiceConfigSlice(configs1))
 	currentConfigs := ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
-	ctx.req.Equal(configs1, currentConfigs)
+	ctx.Req.Equal(configs1, currentConfigs)
 
-	configs2 := []serviceConfig{{ServiceId: service1.id, ConfigId: config5.id}, {ServiceId: service3.id, ConfigId: config1.id}, {ServiceId: service3.id, ConfigId: config4.id}}
+	configs2 := []serviceConfig{{ServiceId: service1.Id, ConfigId: config5.Id}, {ServiceId: service3.Id, ConfigId: config1.Id}, {ServiceId: service3.Id, ConfigId: config4.Id}}
 	ctx.AdminSession.requireAssignIdentityServiceConfigs(session.identityId, configs2...)
 	checkConfigs := []serviceConfig{
-		{ServiceId: service4.id, ConfigId: config1.id},
-		{ServiceId: service4.id, ConfigId: config5.id},
-		{ServiceId: service1.id, ConfigId: config5.id},
-		{ServiceId: service3.id, ConfigId: config1.id},
-		{ServiceId: service3.id, ConfigId: config4.id},
+		{ServiceId: service4.Id, ConfigId: config1.Id},
+		{ServiceId: service4.Id, ConfigId: config5.Id},
+		{ServiceId: service1.Id, ConfigId: config5.Id},
+		{ServiceId: service3.Id, ConfigId: config1.Id},
+		{ServiceId: service3.Id, ConfigId: config4.Id},
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
-	ctx.req.Equal(checkConfigs, currentConfigs)
+	ctx.Req.Equal(checkConfigs, currentConfigs)
 
-	service1V.configs[configType3.name] = config5
-	service3V.configs[configType1.name] = config1
-	service3V.configs[configType2.name] = config4
-	service4V.configs[configType1.name] = config1
-	service4V.configs[configType3.name] = config5
+	service1V.configs[configType3.Name] = config5
+	service3V.configs[configType1.Name] = config1
+	service3V.configs[configType2.Name] = config4
+	service4V.configs[configType1.Name] = config1
+	service4V.configs[configType3.Name] = config5
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
-		service.configs = map[string]*config{}
+		service.configs = map[string]*Config{}
 	}
 
-	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{ServiceId: service1.id, ConfigId: config5.id}, serviceConfig{ServiceId: service3.id, ConfigId: config1.id})
+	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{ServiceId: service1.Id, ConfigId: config5.Id}, serviceConfig{ServiceId: service3.Id, ConfigId: config1.Id})
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
 	checkConfigs = []serviceConfig{
-		{ServiceId: service4.id, ConfigId: config1.id},
-		{ServiceId: service4.id, ConfigId: config5.id},
-		{ServiceId: service3.id, ConfigId: config4.id},
+		{ServiceId: service4.Id, ConfigId: config1.Id},
+		{ServiceId: service4.Id, ConfigId: config5.Id},
+		{ServiceId: service3.Id, ConfigId: config4.Id},
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
-	ctx.req.Equal(checkConfigs, currentConfigs)
+	ctx.Req.Equal(checkConfigs, currentConfigs)
 
-	service2V.configs[configType1.name] = config1
-	service3V.configs[configType2.name] = config4
-	service4V.configs[configType1.name] = config1
-	service4V.configs[configType2.name] = config2
-	service4V.configs[configType3.name] = config5
+	service2V.configs[configType1.Name] = config1
+	service3V.configs[configType2.Name] = config4
+	service4V.configs[configType1.Name] = config1
+	service4V.configs[configType2.Name] = config2
+	service4V.configs[configType3.Name] = config5
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
-		service.configs = map[string]*config{}
+		service.configs = map[string]*Config{}
 	}
 
 	ctx.AdminSession.requireRemoveIdentityServiceConfigs(session.identityId)
 	currentConfigs = ctx.AdminSession.listIdentityServiceConfigs(session.identityId)
-	ctx.req.Equal(0, len(currentConfigs))
+	ctx.Req.Equal(0, len(currentConfigs))
 
-	service2V.configs[configType1.name] = config1
-	service3V.configs[configType2.name] = config2
-	service4V.configs[configType1.name] = config3
-	service4V.configs[configType2.name] = config2
+	service2V.configs[configType1.Name] = config1
+	service3V.configs[configType2.Name] = config2
+	service4V.configs[configType1.Name] = config3
+	service4V.configs[configType2.Name] = config2
 	for _, service := range services {
 		session.validateEntityWithQuery(service)
 	}
@@ -335,32 +335,32 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 
 func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	configType1 := ctx.AdminSession.requireCreateNewConfigType()
 
-	config1 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
+	config1 := ctx.AdminSession.requireCreateNewConfig(configType1.Id, map[string]interface{}{
 		"hostname": "foo",
 		"port":     float64(22),
 	})
 
-	config2 := ctx.AdminSession.requireCreateNewConfig(configType1.id, map[string]interface{}{
+	config2 := ctx.AdminSession.requireCreateNewConfig(configType1.Id, map[string]interface{}{
 		"hostname": "bar",
 		"port":     float64(80),
 	})
 
-	service := ctx.newService(nil, s(config1.id, config2.id))
+	service := ctx.newService(nil, s(config1.Id, config2.Id))
 	resp := ctx.AdminSession.createEntity(service)
 	ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "configs")
 }
 
 func Test_ServiceRoleAttributes(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -402,22 +402,22 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 		ctx.AdminSession.requireNewService(nil, nil)
 
 		list := ctx.AdminSession.requireList("service-role-attributes")
-		ctx.req.True(len(list) >= 5)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+		ctx.Req.True(len(list) >= 5)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
 
 		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
 		list = ctx.AdminSession.requireList("service-role-attributes?filter=" + filter)
-		ctx.req.Equal(4, len(list))
+		ctx.Req.Equal(4, len(list))
 
 		expected := []string{role1, role3, role4, role5}
 		sort.Strings(expected)
-		ctx.req.Equal(expected, list)
+		ctx.Req.Equal(expected, list)
 
 		service.roleAttributes = nil
 		ctx.AdminSession.requireUpdateEntity(service)
 		list = ctx.AdminSession.requireList("service-role-attributes")
-		ctx.req.True(len(list) >= 4)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
-		ctx.req.False(stringz.Contains(list, role5))
+		ctx.Req.True(len(list) >= 4)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.Req.False(stringz.Contains(list, role5))
 	})
 }

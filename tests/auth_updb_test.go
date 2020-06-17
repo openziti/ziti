@@ -29,8 +29,8 @@ import (
 
 func Test_Authenticate_Updb(t *testing.T) {
 	testContext := NewTestContext(t)
-	defer testContext.teardown()
-	testContext.startServer()
+	defer testContext.Teardown()
+	testContext.StartServer()
 
 	tests := &authUpdbTests{
 		ctx: testContext,
@@ -88,7 +88,6 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidUsername(t *testing.T) {
 		require.New(t).Equal("", resp.Header().Get("zt-session"), "expected header zt-session to be empty, got %s", resp.Header().Get("zt-session"))
 	})
 }
-
 
 func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 	body := gabs.New()

@@ -14,9 +14,9 @@ import (
 
 func Test_CA(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("identity attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -67,7 +67,7 @@ func Test_CA(t *testing.T) {
 		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
-		ctx.req.NotEmpty(verificationToken)
+		ctx.Req.NotEmpty(verificationToken)
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
@@ -78,15 +78,15 @@ func Test_CA(t *testing.T) {
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 		ctx.logJson(resp.Body())
-		ctx.req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 		ctx.completeCaAutoEnrollment(clientAuthenticator)
 
 		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
 		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
 		sort.Strings(ca.identityRoles)
@@ -104,7 +104,7 @@ func Test_CA(t *testing.T) {
 		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
-		ctx.req.NotEmpty(verificationToken)
+		ctx.Req.NotEmpty(verificationToken)
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
@@ -115,18 +115,18 @@ func Test_CA(t *testing.T) {
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 		ctx.logJson(resp.Body())
-		ctx.req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 		ctx.completeCaAutoEnrollment(clientAuthenticator)
 
 		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
 		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
-		ctx.req.Equal(expectedName, identity.Path("data.name").Data().(string))
+		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})
 
 	t.Run("identities from auto enrollment identity name collisions add numbers to the end", func(t *testing.T) {
@@ -143,7 +143,7 @@ func Test_CA(t *testing.T) {
 		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
-		ctx.req.NotEmpty(verificationToken)
+		ctx.Req.NotEmpty(verificationToken)
 
 		//validate CA
 		validationAuth := ca.CreateSignedCert(verificationToken)
@@ -152,9 +152,9 @@ func Test_CA(t *testing.T) {
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 		ctx.logJson(resp.Body())
-		ctx.req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 		//first firstIdentity, no issues
 		firstClientAuthenticator := ca.CreateSignedCert(uuid.New().String())
@@ -162,10 +162,10 @@ func Test_CA(t *testing.T) {
 
 		firstEnrolledSession, err := firstClientAuthenticator.Authenticate(ctx)
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
 		firstIdentity := ctx.AdminSession.requireQuery("identities/" + firstEnrolledSession.identityId)
-		ctx.req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
+		ctx.Req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
 
 		//second firstIdentity that collides, becomes
 		secondClientAuthenticator := ca.CreateSignedCert(uuid.New().String())
@@ -173,10 +173,10 @@ func Test_CA(t *testing.T) {
 
 		secondEnrolledSession, err := secondClientAuthenticator.Authenticate(ctx)
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
 		secondIdentity := ctx.AdminSession.requireQuery("identities/" + secondEnrolledSession.identityId)
-		ctx.req.Equal(secondExpectedName, secondIdentity.Path("data.name").Data().(string))
+		ctx.Req.Equal(secondExpectedName, secondIdentity.Path("data.name").Data().(string))
 	})
 
 	t.Run("identities from auto enrollment use identity name format for naming with replacements", func(t *testing.T) {
@@ -189,7 +189,7 @@ func Test_CA(t *testing.T) {
 		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
-		ctx.req.NotEmpty(verificationToken)
+		ctx.Req.NotEmpty(verificationToken)
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 
@@ -200,20 +200,20 @@ func Test_CA(t *testing.T) {
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 		ctx.logJson(resp.Body())
-		ctx.req.Equal(http.StatusOK, resp.StatusCode())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 		requestedName := "bobby"
 		ctx.completeCaAutoEnrollmentWithName(clientAuthenticator, requestedName)
 
 		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
 
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 
 		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
 		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.cert.Subject.CommonName, requestedName, enrolledSession.identityId)
 
-		ctx.req.Equal(expectedName, identity.Path("data.name").Data().(string))
+		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})
 }

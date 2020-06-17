@@ -34,10 +34,10 @@ import (
 
 func Test_Authenticate_Cert(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
+	defer ctx.Teardown()
+	ctx.StartServer()
 
-	ctx.requireAdminLogin()
+	ctx.RequireAdminLogin()
 
 	_, certAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment("test", false)
 
@@ -235,7 +235,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 
 	t.Run("client info is set on the identity", func(t *testing.T) {
 		test.ctx.testContextChanged(t)
-		r := test.ctx.req
+		r := test.ctx.Req
 
 		data, err := gabs.ParseJSON(resp.Body())
 
@@ -272,7 +272,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 
 	t.Run("client info is updated on the identity", func(t *testing.T) {
 		test.ctx.testContextChanged(t)
-		r := test.ctx.req
+		r := test.ctx.Req
 
 		secondInfo := `{
   "envInfo": {"os": "updatedValueOs", "arch": "updatedValueArch", "osRelease": "updatedValueRelease", "osVersion": "updatedValueOsRelease"},

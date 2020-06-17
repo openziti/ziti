@@ -31,9 +31,9 @@ import (
 
 func Test_Configs(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	identityRole := uuid.New().String()
 	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
@@ -41,8 +41,8 @@ func Test_Configs(t *testing.T) {
 	t.Run("create without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
-		config.name = ""
+		config := ctx.newConfig(configType.Id, map[string]interface{}{"port": 22})
+		config.Name = ""
 		resp := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
@@ -50,7 +50,7 @@ func Test_Configs(t *testing.T) {
 	t.Run("create without data should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.newConfig(configType.id, nil)
+		config := ctx.newConfig(configType.Id, nil)
 		resp := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "data")
 	})
@@ -74,7 +74,7 @@ func Test_Configs(t *testing.T) {
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 
 		now := time.Now()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": float64(22)})
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
@@ -86,7 +86,7 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
-		config := ctx.newConfig(configType.id, map[string]interface{}{
+		config := ctx.newConfig(configType.Id, map[string]interface{}{
 			"port":     float64(22),
 			"hostname": "ssh.globotech.bizniz",
 			"enabled":  true,
@@ -101,8 +101,8 @@ func Test_Configs(t *testing.T) {
 				},
 			},
 		})
-		config.tags = map[string]interface{}{"org": "na", "deprecated": false}
-		config.id = ctx.AdminSession.requireCreateEntity(config)
+		config.Tags = map[string]interface{}{"org": "na", "deprecated": false}
+		config.Id = ctx.AdminSession.requireCreateEntity(config)
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
@@ -112,14 +112,14 @@ func Test_Configs(t *testing.T) {
 
 	t.Run("lookup non-existent config as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + uuid.New().String()))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("configs/" + uuid.New().String()))
 	})
 
 	t.Run("lookup config as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": 22})
-		ctx.requireUnauthorizedError(nonAdminUser.query("configs/" + config.id))
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": 22})
+		ctx.requireUnauthorizedError(nonAdminUser.query("configs/" + config.Id))
 	})
 
 	t.Run("update config should pass", func(t *testing.T) {
@@ -127,13 +127,13 @@ func Test_Configs(t *testing.T) {
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 
 		now := time.Now()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": float64(22)})
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.data = map[string]interface{}{"snafu": false}
+		config.Data = map[string]interface{}{"snafu": false}
 		ctx.AdminSession.requireUpdateEntity(config)
 		jsonConfig := ctx.AdminSession.validateUpdate(config)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
@@ -143,50 +143,50 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": float64(22)})
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
 		newName := uuid.New().String()
-		config.name = newName
-		config.data = map[string]interface{}{"foo": "bar"}
-		config.tags = map[string]interface{}{"baz": "bam"}
+		config.Name = newName
+		config.Data = map[string]interface{}{"foo": "bar"}
+		config.Tags = map[string]interface{}{"baz": "bam"}
 		ctx.AdminSession.requirePatchEntity(config, "name")
 
-		config.data = map[string]interface{}{"port": float64(22)} // data should not have gotten updated
-		config.tags = nil                                         // tags should not be updated
+		config.Data = map[string]interface{}{"port": float64(22)} // data should not have gotten updated
+		config.Tags = nil                                         // tags should not be updated
 		jsonConfig := ctx.AdminSession.validateUpdate(config)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
-		config.data = map[string]interface{}{"foo": "bar"}
-		config.tags = map[string]interface{}{"baz": "bam"}
+		config.Name = uuid.New().String()
+		config.Data = map[string]interface{}{"foo": "bar"}
+		config.Tags = map[string]interface{}{"baz": "bam"}
 		ctx.AdminSession.requirePatchEntity(config, "data")
 
-		config.name = newName // name should not be updated
-		config.tags = nil     // tags should not be updated
+		config.Name = newName // name should not be updated
+		config.Tags = nil     // tags should not be updated
 		ctx.AdminSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
-		config.data = map[string]interface{}{"bim": "bam"}
-		config.tags = map[string]interface{}{"enlightened": false}
+		config.Name = uuid.New().String()
+		config.Data = map[string]interface{}{"bim": "bam"}
+		config.Tags = map[string]interface{}{"enlightened": false}
 		ctx.AdminSession.requirePatchEntity(config, "tags")
 
-		config.name = newName                              // name should not be updated
-		config.data = map[string]interface{}{"foo": "bar"} // data should not have gotten updated
+		config.Name = newName                              // name should not be updated
+		config.Data = map[string]interface{}{"foo": "bar"} // data should not have gotten updated
 		ctx.AdminSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		config.name = uuid.New().String()
-		config.data = map[string]interface{}{"bim": "bom"}
-		config.tags = map[string]interface{}{"enlightened": true}
+		config.Name = uuid.New().String()
+		config.Data = map[string]interface{}{"bim": "bom"}
+		config.Tags = map[string]interface{}{"enlightened": true}
 		ctx.AdminSession.requirePatchEntity(config, "name", "data", "tags")
 		ctx.AdminSession.validateUpdate(config)
 	})
@@ -194,21 +194,21 @@ func Test_Configs(t *testing.T) {
 	t.Run("update of type config should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": float64(22)})
 		ctx.AdminSession.validateEntityWithQuery(config)
 
 		configType2 := ctx.AdminSession.requireCreateNewConfigType()
 		config.sendType = false
-		config.configTypeId = configType2.id
+		config.ConfigTypeId = configType2.Id
 		ctx.AdminSession.requireUpdateEntity(config)
 
-		config.configTypeId = configType.id
+		config.ConfigTypeId = configType.Id
 		ctx.AdminSession.validateEntityWithQuery(config)
 
-		config.configTypeId = configType2.id
+		config.ConfigTypeId = configType2.Id
 		ctx.AdminSession.requirePatchEntity(config, "name", "type")
 
-		config.configTypeId = configType.id
+		config.ConfigTypeId = configType.Id
 		ctx.AdminSession.validateEntityWithQuery(config)
 	})
 
@@ -216,12 +216,12 @@ func Test_Configs(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		now := time.Now()
-		config := ctx.AdminSession.requireCreateNewConfig(configType.id, map[string]interface{}{"port": float64(22)})
+		config := ctx.AdminSession.requireCreateNewConfig(configType.Id, map[string]interface{}{"port": float64(22)})
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
 		ctx.AdminSession.requireDeleteEntity(config)
-		ctx.requireNotFoundError(ctx.AdminSession.query("configs/" + config.id))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("configs/" + config.Id))
 	})
 
 	t.Run("create config type with non-object schema should fail", func(t *testing.T) {
@@ -237,7 +237,7 @@ func Test_Configs(t *testing.T) {
 	t.Run("create config type with schema should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
-		configType.schema = map[string]interface{}{
+		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
 			"type":                 "object",
 			"additionalProperties": false,
@@ -256,18 +256,18 @@ func Test_Configs(t *testing.T) {
 				},
 			},
 		}
-		configType.id = ctx.AdminSession.requireCreateEntity(configType)
+		configType.Id = ctx.AdminSession.requireCreateEntity(configType)
 
-		config := ctx.newConfig(configType.id, map[string]interface{}{"port": 22})
+		config := ctx.newConfig(configType.Id, map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "(root)")
 
 		now := time.Now()
-		config = ctx.newConfig(configType.id, map[string]interface{}{
+		config = ctx.newConfig(configType.Id, map[string]interface{}{
 			"hostname": "ssh.globotech.bizniz",
 			"port":     float64(22),
 		})
-		config.id = ctx.AdminSession.requireCreateEntity(config)
+		config.Id = ctx.AdminSession.requireCreateEntity(config)
 		entityJson := ctx.AdminSession.validateEntityWithQuery(config)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})

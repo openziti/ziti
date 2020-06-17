@@ -26,9 +26,9 @@ import (
 
 func Test_ServicePolicy(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	serviceRole1 := uuid.New().String()
 	serviceRole2 := uuid.New().String()
@@ -44,8 +44,8 @@ func Test_ServicePolicy(t *testing.T) {
 	identity3 := ctx.AdminSession.requireNewIdentity(false, identityRole2)
 
 	policy1 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1))
-	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.id), s("#"+identityRole1, "@"+identity3.id))
-	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.id, "@"+service3.id), s("@"+identity2.id, "@"+identity3.id))
+	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.Id), s("#"+identityRole1, "@"+identity3.Id))
+	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.Id, "@"+service3.Id), s("@"+identity2.Id, "@"+identity3.Id))
 	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"))
 	policy5 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
 	policy6 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))

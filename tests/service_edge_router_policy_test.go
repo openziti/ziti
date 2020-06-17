@@ -26,9 +26,9 @@ import (
 
 func Test_ServiceEdgeRouterPolicy(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	edgeRouterRole1 := uuid.New().String()
 	edgeRouterRole2 := uuid.New().String()
@@ -45,8 +45,8 @@ func Test_ServiceEdgeRouterPolicy(t *testing.T) {
 	service3 := ctx.AdminSession.requireNewService(s(serviceRole2), nil)
 
 	policy1 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#"+edgeRouterRole1), s("#"+serviceRole1))
-	policy2 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#"+edgeRouterRole1, "@"+edgeRouter3.id), s("#"+serviceRole1, "@"+service3.id))
-	policy3 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("@"+edgeRouter2.id, "@"+edgeRouter3.id), s("@"+service2.id, "@"+service3.id))
+	policy2 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#"+edgeRouterRole1, "@"+edgeRouter3.id), s("#"+serviceRole1, "@"+service3.Id))
+	policy3 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("@"+edgeRouter2.id, "@"+edgeRouter3.id), s("@"+service2.Id, "@"+service3.Id))
 	policy4 := ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 	policy5 := ctx.AdminSession.requireNewServiceEdgeRouterPolicyWithSemantic("AllOf", s("#"+edgeRouterRole1, "#"+edgeRouterRole2), s("#"+serviceRole1, "#"+serviceRole2))
 	policy6 := ctx.AdminSession.requireNewServiceEdgeRouterPolicyWithSemantic("AnyOf", s("#"+edgeRouterRole1, "#"+edgeRouterRole2), s("#"+serviceRole1, "#"+serviceRole2))

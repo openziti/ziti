@@ -29,21 +29,21 @@ import (
 
 func Test_ServerConnClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	_, context := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := context.Listen(service.name)
-	ctx.req.NoError(err)
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
 
 	defer func() {
-		ctx.req.NoError(listener.Close())
+		ctx.Req.NoError(listener.Close())
 	}()
 
 	errC := make(chan error, 1)
@@ -58,48 +58,48 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.wrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.Accept())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		conn.RequireClose()
 	}()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
-	conn := ctx.wrapConn(clientContext.Dial(service.name))
+	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	name := uuid.New().String()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
 	select {
 	case err := <-errC:
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out after 2 seconds")
 	}
 
-	ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
 	n, err := conn.Read(make([]byte, 1024))
-	ctx.req.Equal(0, n)
-	ctx.req.Equal(err, io.EOF)
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
 }
 
 func Test_ServerContextClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	_, context := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := context.Listen(service.name)
-	ctx.req.NoError(err)
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
 
 	errC := make(chan error, 1)
 
@@ -113,49 +113,49 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.wrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.Accept())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		context.Close()
 	}()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
-	conn := ctx.wrapConn(clientContext.Dial(service.name))
+	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	name := uuid.New().String()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
 	select {
 	case err := <-errC:
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out after 2 seconds")
 	}
 
-	ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
 	n, err := conn.Read(make([]byte, 1024))
-	ctx.req.Equal(0, n)
-	ctx.req.Equal(err, io.EOF)
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
 }
 
 // closing the listener should _not_ close open connections
 func Test_ServerCloseListenerPropagation(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	_, context := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := context.Listen(service.name)
-	ctx.req.NoError(err)
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
 
 	errC := make(chan error, 1)
 
@@ -169,19 +169,19 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.wrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.Accept())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
-		ctx.req.NoError(listener.Close())
+		ctx.Req.NoError(listener.Close())
 		name = conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 	}()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
-	conn := ctx.wrapConn(clientContext.Dial(service.name))
+	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	name := uuid.New().String()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -192,21 +192,21 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 
 func Test_ClientConnClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	_, context := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := context.Listen(service.name)
-	ctx.req.NoError(err)
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	errC := make(chan error, 1)
@@ -221,47 +221,47 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		conn.RequireClose()
 	}()
 
-	conn := ctx.wrapNetConn(listener.Accept())
+	conn := ctx.WrapNetConn(listener.Accept())
 	name := uuid.New().String()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
 	select {
 	case err := <-errC:
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out after 2 seconds")
 	}
 
-	ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
 	n, err := conn.Read(make([]byte, 1024))
-	ctx.req.Equal(0, n)
-	ctx.req.Equal(err, io.EOF)
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
 }
 
 func Test_ClientContextClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	fmt.Printf("service id: %v\n", service.Id)
 
-	_, context := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := context.Listen(service.name)
-	ctx.req.NoError(err)
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	errC := make(chan error, 1)
@@ -276,27 +276,27 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		conn.RequireClose()
 		clientContext.Close()
 	}()
 
-	conn := ctx.wrapNetConn(listener.Accept())
+	conn := ctx.WrapNetConn(listener.Accept())
 	name := uuid.New().String()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 
 	select {
 	case err := <-errC:
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out after 2 seconds")
 	}
 
-	ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
 	n, err := conn.Read(make([]byte, 1024))
-	ctx.req.Equal(0, n)
-	ctx.req.Equal(err, io.EOF)
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
 }

@@ -35,7 +35,7 @@ import (
 
 func (ctx *TestContext) setJsonValue(container *gabs.Container, value interface{}, path ...string) {
 	_, err := container.Set(value, path...)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *TestContext) setValue(container *gabs.Container, value interface{}, fields []string, field string) {
@@ -45,37 +45,37 @@ func (ctx *TestContext) setValue(container *gabs.Container, value interface{}, f
 func (ctx *TestContext) setValueWithPath(container *gabs.Container, value interface{}, fields []string, field string, path ...string) {
 	if len(fields) == 0 || stringz.Contains(fields, field) {
 		_, err := container.Set(value, path...)
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	}
 }
 
 func (ctx *TestContext) parseJson(body []byte) *gabs.Container {
 	result, err := gabs.ParseJSON(body)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	return result
 }
 
 func (ctx *TestContext) getEntityId(body []byte) string {
 	result := ctx.parseJson(body)
 	path := result.S("data", "id")
-	ctx.req.NotNil(path)
+	ctx.Req.NotNil(path)
 	return fmt.Sprintf("%v", path.Data())
 }
 
 func (ctx *TestContext) pathEquals(container *gabs.Container, val interface{}, path []string) {
 	pathValue := container.Search(path...)
 	if val == nil || (reflect.TypeOf(val).Kind() == reflect.Map && reflect.ValueOf(val).IsNil()) {
-		ctx.req.True(pathValue == nil || pathValue.Data() == nil)
+		ctx.Req.True(pathValue == nil || pathValue.Data() == nil)
 	} else {
-		ctx.req.Equal(val, pathValue.Data())
+		ctx.Req.Equal(val, pathValue.Data())
 	}
 }
 
 func (ctx *TestContext) requireString(container *gabs.Container, path ...string) string {
 	pathValue := container.Search(path...)
-	ctx.req.NotNil(pathValue)
+	ctx.Req.NotNil(pathValue)
 	result, ok := pathValue.Data().(string)
-	ctx.req.True(ok, "%+v must be a string", path)
+	ctx.Req.True(ok, "%+v must be a string", path)
 	return result
 }
 
@@ -83,38 +83,38 @@ func (ctx *TestContext) pathEqualsStringSlice(container *gabs.Container, val int
 	pathValue := container.Search(path...)
 	if val == nil || reflect.ValueOf(val).IsNil() {
 		if pathValue != nil {
-			ctx.req.Nil(pathValue.Data())
+			ctx.Req.Nil(pathValue.Data())
 		}
 	} else {
 		slice := ctx.toStringSlice(pathValue)
-		ctx.req.Equal(val, slice)
+		ctx.Req.Equal(val, slice)
 	}
 }
 
-func (ctx *TestContext) requirePath(container *gabs.Container, searchPath ...string) *gabs.Container {
+func (ctx *TestContext) RequirePath(container *gabs.Container, searchPath ...string) *gabs.Container {
 	if len(searchPath) == 1 {
 		searchPath = path(searchPath[0])
 	}
 	elem := container.S(searchPath...)
-	ctx.req.NotNil(elem)
+	ctx.Req.NotNil(elem)
 	return elem
 }
 
-func (ctx *TestContext) requireChildWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {
+func (ctx *TestContext) RequireChildWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {
 	child := ctx.childWith(container, attribute, value)
-	ctx.req.NotNil(child, "no child found with %v = %v", attribute, value)
+	ctx.Req.NotNil(child, "no child found with %v = %v", attribute, value)
 	return child
 }
 
-func (ctx *TestContext) requireNoChildWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {
+func (ctx *TestContext) RequireNoChildWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {
 	child := ctx.childWith(container, attribute, value)
-	ctx.req.Nil(child, "child found with %v = %v", attribute, value)
+	ctx.Req.Nil(child, "child found with %v = %v", attribute, value)
 	return child
 }
 
 func (ctx *TestContext) childWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {
 	children, err := container.Children()
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	for _, child := range children {
 		attr := child.S(path(attribute)...)
 		if attr == nil {
@@ -136,10 +136,10 @@ func (ctx *TestContext) toStringSlice(container *gabs.Container) []string {
 			return nil
 		}
 		children, err := container.Children()
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 		for _, child := range children {
 			val, ok := child.Data().(string)
-			ctx.req.True(ok, "expected child to be string value")
+			ctx.Req.True(ok, "expected child to be string value")
 			result = append(result, val)
 		}
 	}
@@ -147,15 +147,15 @@ func (ctx *TestContext) toStringSlice(container *gabs.Container) []string {
 }
 
 func (ctx *TestContext) requireFieldError(httpStatus int, body []byte, errorCode string, field string) *gabs.Container {
-	ctx.req.Equal(http.StatusBadRequest, httpStatus)
+	ctx.Req.Equal(http.StatusBadRequest, httpStatus)
 	parsed := ctx.parseJson(body)
 	ctx.pathEquals(parsed, errorCode, path("error.code"))
 	ctx.pathEquals(parsed, field, path("error.cause.field"))
 	return parsed
 }
 
-func (ctx *TestContext) requireNotFoundError(httpStatus int, body []byte) *gabs.Container {
-	ctx.req.Equal(http.StatusNotFound, httpStatus)
+func (ctx *TestContext) RequireNotFoundError(httpStatus int, body []byte) *gabs.Container {
+	ctx.Req.Equal(http.StatusNotFound, httpStatus)
 	parsed := ctx.parseJson(body)
 	ctx.pathEquals(parsed, apierror.NotFoundCode, path("error.code"))
 	ctx.pathEquals(parsed, "The resource requested was not found or is no longer available", path("error.message"))
@@ -163,7 +163,7 @@ func (ctx *TestContext) requireNotFoundError(httpStatus int, body []byte) *gabs.
 }
 
 func (ctx *TestContext) requireUnauthorizedError(httpStatus int, body []byte) *gabs.Container {
-	ctx.req.Equal(http.StatusUnauthorized, httpStatus)
+	ctx.Req.Equal(http.StatusUnauthorized, httpStatus)
 	parsed := ctx.parseJson(body)
 	ctx.pathEquals(parsed, apierror.UnauthorizedCode, path("error.code"))
 	ctx.pathEquals(parsed, "The request could not be completed. The session is not authorized or the credentials are invalid", path("error.message"))
