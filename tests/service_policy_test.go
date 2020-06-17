@@ -19,9 +19,8 @@
 package tests
 
 import (
+	"github.com/openziti/edge/eid"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func Test_ServicePolicy(t *testing.T) {
@@ -30,10 +29,10 @@ func Test_ServicePolicy(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminLogin()
 
-	serviceRole1 := uuid.New().String()
-	serviceRole2 := uuid.New().String()
-	identityRole1 := uuid.New().String()
-	identityRole2 := uuid.New().String()
+	serviceRole1 := eid.New()
+	serviceRole2 := eid.New()
+	identityRole1 := eid.New()
+	identityRole2 := eid.New()
 
 	service1 := ctx.AdminSession.requireNewService(s(serviceRole1), nil)
 	service2 := ctx.AdminSession.requireNewService(s(serviceRole1, serviceRole2), nil)

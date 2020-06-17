@@ -37,7 +37,6 @@ type ApiSessionHandler struct {
 func NewApiSessionRouter() *ApiSessionHandler {
 	return &ApiSessionHandler{
 		BasePath: "/" + EntityNameApiSession,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

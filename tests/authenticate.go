@@ -25,8 +25,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/util/stringz"
@@ -658,7 +658,7 @@ func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) b
 }
 
 func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttributes, configTypes []string) *session {
-	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(uuid.New().String(), uuid.New().String(), isAdmin, roleAttributes...)
+	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), isAdmin, roleAttributes...)
 	userAuth.ConfigTypes = configTypes
 
 	session, _ := userAuth.Authenticate(request.testContext)

@@ -38,7 +38,7 @@ func Test_getFields(t *testing.T) {
 		"roleAttributes":     []string{"foo", "bar"},
 		"name":               "Foo",
 		"terminatorStrategy": "default",
-		"configs": []string{"ssh-config", "ssh-server-config"},
+		"configs":            []string{"ssh-config", "ssh-server-config"},
 		"tags": map[string]interface{}{
 			"foo": "bar",
 			"nested": map[string]interface{}{

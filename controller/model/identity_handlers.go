@@ -18,10 +18,10 @@ package model
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/validation"
@@ -88,7 +88,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 	identityModel.IdentityTypeId = identityType.Id
 
 	if identityModel.Id == "" {
-		identityModel.Id = uuid.New().String()
+		identityModel.Id = eid.New()
 	}
 	var enrollmentIds []string
 
@@ -236,8 +236,8 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 		return err
 	}
 
-	identityId := uuid.New().String()
-	authenticatorId := uuid.New().String()
+	identityId := eid.New()
+	authenticatorId := eid.New()
 
 	defaultAdmin := &Identity{
 		BaseEntity: models.BaseEntity{
@@ -322,11 +322,11 @@ func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, 
 
 func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, authenticator *Authenticator) (string, string, error) {
 	if identity.Id == "" {
-		identity.Id = uuid.New().String()
+		identity.Id = eid.New()
 	}
 
 	if authenticator.Id == "" {
-		authenticator.Id = uuid.New().String()
+		authenticator.Id = eid.New()
 	}
 
 	if authenticator.IdentityId == "" {

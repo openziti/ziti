@@ -37,7 +37,6 @@ type ServicePolicyRouter struct {
 func NewServicePolicyRouter() *ServicePolicyRouter {
 	return &ServicePolicyRouter{
 		BasePath: "/" + EntityNameServicePolicy,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

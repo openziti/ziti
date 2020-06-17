@@ -20,8 +20,8 @@ package tests
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -128,7 +128,7 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
-		name := uuid.New().String()
+		name := eid.New()
 		conn.WriteString(name, time.Second)
 		conn.ReadExpected("hello, "+name, time.Second)
 		conn.RequireClose()
@@ -248,7 +248,7 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 	for range serverContexts {
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		conn.WriteString("quit", time.Second)
-		conn.ReadString(len(uuid.New().String()), time.Second) // ignore uuid
+		conn.ReadString(len(eid.New()), time.Second) // ignore uuid
 		conn.ReadExpected("ok", time.Second)
 	}
 }
@@ -265,7 +265,7 @@ func (service *serverFirstRotatingService) Handle(conn *testServerConn) error {
 	doClose := requests >= service.maxRequests
 	logger := pfxlog.Logger()
 
-	name := uuid.New().String()
+	name := eid.New()
 	expected := "hello, " + name
 	conn.WriteString(name, time.Minute)
 	read, eof := conn.ReadString(len(expected), time.Second)

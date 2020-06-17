@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ const (
 
 func newConfigType(name string) *ConfigType {
 	return &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
 	}
 }

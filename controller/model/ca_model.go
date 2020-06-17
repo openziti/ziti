@@ -18,8 +18,8 @@ package model
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
@@ -115,7 +115,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.En
 		CertPem:                   entity.CertPem,
 		Fingerprint:               fp,
 		IsVerified:                false,
-		VerificationToken:         uuid.New().String(),
+		VerificationToken:         eid.New(),
 		IsAuthEnabled:             entity.IsAuthEnabled,
 		IsAutoCaEnrollmentEnabled: entity.IsAutoCaEnrollmentEnabled,
 		IsOttCaEnrollmentEnabled:  entity.IsOttCaEnrollmentEnabled,

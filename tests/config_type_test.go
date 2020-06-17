@@ -19,13 +19,12 @@
 package tests
 
 import (
+	"github.com/openziti/edge/eid"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/openziti/edge/controller/apierror"
-
-	"github.com/google/uuid"
 )
 
 func Test_ConfigTypes(t *testing.T) {
@@ -34,7 +33,7 @@ func Test_ConfigTypes(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminLogin()
 
-	identityRole := uuid.New().String()
+	identityRole := eid.New()
 	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
 	t.Run("create config type without name should fail", func(t *testing.T) {
@@ -112,7 +111,7 @@ func Test_ConfigTypes(t *testing.T) {
 
 	t.Run("lookup non-existent config type as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + uuid.New().String()))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + eid.New()))
 	})
 
 	t.Run("lookup config type as non-admin should fail", func(t *testing.T) {

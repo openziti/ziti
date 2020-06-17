@@ -41,13 +41,11 @@ func init() {
 
 type CaRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewCaRouter() *CaRouter {
 	return &CaRouter{
 		BasePath: "/" + EntityNameCa,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

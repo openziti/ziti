@@ -18,9 +18,9 @@ package model
 
 import (
 	jwt2 "github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
 	"testing"
@@ -108,7 +108,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 	identityType, err := ctx.handlers.IdentityType.ReadByIdOrName("Service")
 	ctx.NoError(err)
 	identity := &Identity{
-		Name:           uuid.New().String(),
+		Name:           eid.New(),
 		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
@@ -119,7 +119,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 
 func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
-		Name: uuid.New().String(),
+		Name: eid.New(),
 	}
 	var err error
 	service.Id, err = ctx.handlers.EdgeService.Create(service)
@@ -129,7 +129,7 @@ func (ctx *TestContext) requireNewService() *Service {
 
 func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	edgeRouter := &EdgeRouter{
-		Name: uuid.New().String(),
+		Name: eid.New(),
 	}
 	var err error
 	edgeRouter.Id, err = ctx.handlers.EdgeRouter.Create(edgeRouter)
@@ -139,7 +139,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
 	policy := &EdgeRouterPolicy{
-		Name:            uuid.New().String(),
+		Name:            eid.New(),
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
@@ -151,7 +151,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 
 func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeRouterRoles []string) *ServiceEdgeRouterPolicy {
 	policy := &ServiceEdgeRouterPolicy{
-		Name:            uuid.New().String(),
+		Name:            eid.New(),
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}

@@ -20,7 +20,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"testing"
 	"time"
@@ -66,7 +66,7 @@ func Test_Dataflow(t *testing.T) {
 	_, clientContext := ctx.AdminSession.RequireCreateSdkContext()
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
-	name := uuid.New().String()
+	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
 	conn.WriteString("quit", time.Second)

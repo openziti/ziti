@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -37,7 +37,7 @@ type EdgeService struct {
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	return &EdgeService{
 		Service: db.Service{
-			BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		},
 		Name:           name,
 		RoleAttributes: roleAttributes,

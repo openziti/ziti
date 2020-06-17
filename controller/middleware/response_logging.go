@@ -17,8 +17,8 @@
 package middleware
 
 import (
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/eid"
 	"net/http"
 )
 
@@ -26,7 +26,7 @@ type StatusWriter struct {
 	http.ResponseWriter
 	status    int
 	length    int
-	RequestId uuid.UUID
+	RequestId string
 }
 
 func (w *StatusWriter) WriteHeader(status int) {
@@ -46,11 +46,11 @@ func (w *StatusWriter) Write(b []byte) (int, error) {
 func UseStatusWriter(next http.Handler) http.Handler {
 	log := pfxlog.Logger()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rid := uuid.New()
-		log.WithField("id", rid.String()).
+		rid := eid.New()
+		log.WithField("id", rid).
 			WithField("method", r.Method).
 			WithField("url", r.URL.String()).
-			Debugf("handling request[%s]: method [%s] URL [%s]", rid.String(), r.Method, r.URL.String())
+			Debugf("handling request[%s]: method [%s] URL [%s]", rid, r.Method, r.URL.String())
 
 		sw := &StatusWriter{
 			ResponseWriter: w,
@@ -58,10 +58,10 @@ func UseStatusWriter(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(sw, r)
 
-		log.WithField("id", rid.String()).
+		log.WithField("id", rid).
 			WithField("method", r.Method).
 			WithField("url", r.URL.String()).
 			WithField("status", sw.status).
-			Debugf("responding for request [%s] with status [%d]: method [%s] URL [%s]", sw.RequestId.String(), sw.status, r.Method, r.URL.String())
+			Debugf("responding for request [%s] with status [%d]: method [%s] URL [%s]", sw.RequestId, sw.status, r.Method, r.URL.String())
 	})
 }

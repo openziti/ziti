@@ -27,12 +27,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/openziti/edge/eid"
 	"math/big"
 	"sort"
 	"time"
 
 	"github.com/Jeffail/gabs"
-	"github.com/google/uuid"
 )
 
 type entity interface {
@@ -142,7 +142,7 @@ func (entity *terminator) validate(ctx *TestContext, c *gabs.Container) {
 
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 	return &identity{
-		name:           uuid.New().String(),
+		name:           eid.New(),
 		identityType:   "User",
 		isAdmin:        isAdmin,
 		roleAttributes: roleAttributes,
@@ -204,7 +204,7 @@ func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 
 func newTestEdgeRouter(roleAttributes ...string) *edgeRouter {
 	return &edgeRouter{
-		name:           uuid.New().String(),
+		name:           eid.New(),
 		roleAttributes: roleAttributes,
 	}
 }
@@ -250,7 +250,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 
 func newEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
 	return &edgeRouterPolicy{
-		name:            uuid.New().String(),
+		name:            eid.New(),
 		semantic:        semantic,
 		edgeRouterRoles: edgeRouterRoles,
 		identityRoles:   identityRoles,
@@ -312,7 +312,7 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 
 func newServiceEdgeRouterPolicy(semantic *string, edgeRouterRoles, serviceRoles []string) *serviceEdgeRouterPolicy {
 	return &serviceEdgeRouterPolicy{
-		name:            uuid.New().String(),
+		name:            eid.New(),
 		semantic:        semantic,
 		edgeRouterRoles: edgeRouterRoles,
 		serviceRoles:    serviceRoles,
@@ -374,7 +374,7 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 
 func newServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles []string) *servicePolicy {
 	return &servicePolicy{
-		name:          uuid.New().String(),
+		name:          eid.New(),
 		policyType:    policyType,
 		semantic:      semantic,
 		serviceRoles:  serviceRoles,
@@ -572,7 +572,7 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 
 func newTestTransitRouter() *transitRouter {
 	return &transitRouter{
-		name: uuid.New().String(),
+		name: eid.New(),
 	}
 }
 
@@ -665,7 +665,7 @@ func newTestCa(identityRoles ...string) *ca {
 	}
 
 	return &ca{
-		name:                      uuid.New().String(),
+		name:                      eid.New(),
 		isAutoCaEnrollmentEnabled: true,
 		isAuthEnabled:             true,
 		isOttCaEnrollmentEnabled:  true,

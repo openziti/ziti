@@ -37,7 +37,6 @@ type GeoRegionRouter struct {
 func NewGeoRegionRouter() *GeoRegionRouter {
 	return &GeoRegionRouter{
 		BasePath: "/" + EntityNameGeoRegion,
-		IdType:   response.IdTypeString,
 	}
 }
 

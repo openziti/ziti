@@ -19,7 +19,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
@@ -122,17 +122,17 @@ func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
 	ctx.cleanupAll()
 
 	sessionCert1 := &SessionCert{
-		Id:          "a" + uuid.New().String()[1:],
-		Cert:        uuid.New().String(),
-		Fingerprint: uuid.New().String(),
+		Id:          "a" + eid.New()[1:],
+		Cert:        eid.New(),
+		Fingerprint: eid.New(),
 		ValidFrom:   time.Now(),
 		ValidTo:     time.Now().Add(10 * time.Hour),
 	}
 
 	sessionCert2 := &SessionCert{
-		Id:          "b" + uuid.New().String()[1:],
-		Cert:        uuid.New().String(),
-		Fingerprint: uuid.New().String(),
+		Id:          "b" + eid.New()[1:],
+		Cert:        eid.New(),
+		Fingerprint: eid.New(),
 		ValidFrom:   time.Now().Add(-1 * time.Hour),
 		ValidTo:     time.Now().Add(5 * time.Hour),
 	}
@@ -177,8 +177,8 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 	apiSession2 := NewApiSession(identity1.Id)
 	ctx.RequireCreate(apiSession2)
 
-	service1 := ctx.requireNewService(uuid.New().String())
-	service2 := ctx.requireNewService(uuid.New().String())
+	service1 := ctx.requireNewService(eid.New())
+	service2 := ctx.requireNewService(eid.New())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
 	ctx.RequireCreate(session1)
@@ -246,7 +246,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 
 		tags := ctx.CreateTags()
 		now := time.Now()
-		session.Token = uuid.New().String()
+		session.Token = eid.New()
 		session.UpdatedAt = earlier
 		session.CreatedAt = now
 		session.ApiSessionId = entities.apiSession2.Id

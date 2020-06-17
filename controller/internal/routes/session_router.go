@@ -37,7 +37,6 @@ type SessionRouter struct {
 func NewSessionRouter() *SessionRouter {
 	return &SessionRouter{
 		BasePath: "/" + EntityNameSession,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

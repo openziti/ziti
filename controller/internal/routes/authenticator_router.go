@@ -37,7 +37,6 @@ type AuthenticatorRouter struct {
 func NewAuthenticatorRouter() *AuthenticatorRouter {
 	return &AuthenticatorRouter{
 		BasePath: "/" + EntityNameAuthenticator,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

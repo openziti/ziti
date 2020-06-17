@@ -20,6 +20,7 @@ package tests
 
 import (
 	"fmt"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"net/url"
 	"sort"
@@ -27,8 +28,6 @@ import (
 	"time"
 
 	"github.com/openziti/edge/controller/apierror"
-
-	"github.com/google/uuid"
 )
 
 func Test_Services(t *testing.T) {
@@ -37,7 +36,7 @@ func Test_Services(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminLogin()
 
-	identityRole := uuid.New().String()
+	identityRole := eid.New()
 	nonAdminUserSession := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
 
 	t.Run("create without name should fail", func(t *testing.T) {
@@ -74,8 +73,8 @@ func Test_Services(t *testing.T) {
 
 	t.Run("list as non-admin should return 3 services", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		dialRole := uuid.New().String()
-		bindRole := uuid.New().String()
+		dialRole := eid.New()
+		bindRole := eid.New()
 		service1 := ctx.AdminSession.requireNewService(s(dialRole), nil)
 		service1.permissions = []string{"Dial"}
 		service2 := ctx.AdminSession.requireNewService(s(bindRole), nil)
@@ -117,13 +116,13 @@ func Test_Services(t *testing.T) {
 
 	t.Run("lookup non-existent service as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.RequireNotFoundError(ctx.AdminSession.query("services/" + uuid.New().String()))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("services/" + eid.New()))
 	})
 
 	t.Run("lookup existing service as non-admin should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		dialRole := uuid.New().String()
-		bindRole := uuid.New().String()
+		dialRole := eid.New()
+		bindRole := eid.New()
 		service1 := ctx.AdminSession.requireNewService(s(dialRole), nil)
 		service1.permissions = []string{"Dial"}
 		service2 := ctx.AdminSession.requireNewService(s(bindRole), nil)
@@ -141,7 +140,7 @@ func Test_Services(t *testing.T) {
 
 	t.Run("lookup non-existent service as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.RequireNotFoundError(nonAdminUserSession.query("services/" + uuid.New().String()))
+		ctx.RequireNotFoundError(nonAdminUserSession.query("services/" + eid.New()))
 	})
 
 	t.Run("query non-visible service as non-admin should fail", func(t *testing.T) {
@@ -364,8 +363,8 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		service := ctx.AdminSession.requireNewService(s(role1, role2), nil)
 		service.permissions = []string{"Dial", "Bind"}
 
@@ -375,12 +374,12 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		role1 := uuid.New().String()
-		role2 := uuid.New().String()
+		role1 := eid.New()
+		role2 := eid.New()
 		service := ctx.AdminSession.requireNewService(s(role1, role2), nil)
 		service.permissions = []string{"Dial", "Bind"}
 
-		role3 := uuid.New().String()
+		role3 := eid.New()
 		service.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(service)
 		ctx.AdminSession.validateEntityWithLookup(service)

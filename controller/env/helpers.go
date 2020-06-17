@@ -5,9 +5,9 @@ import (
 	"fmt"
 	openApiErrors "github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/eid"
 	"net/http"
 )
 
@@ -53,7 +53,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 		}
 		apiError.Cause = openApiError
 
-		response.RespondWithApiError(rw, uuid.New(), runtime.JSONProducer(), apiError)
+		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 
@@ -63,16 +63,15 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 		apiError := apierror.NewUnhandled(err)
 
 		apiError.Cause = fmt.Errorf("error retrieveing request context: %w", err)
-		requestId := uuid.New()
-		response.RespondWithApiError(rw, requestId, runtime.JSONProducer(), apiError)
+
+		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 
 	if requestContext == nil {
 		apiError := apierror.NewUnhandled(err)
 		apiError.Cause = errors.New("expected request context is nil")
-		requestId := uuid.New()
-		response.RespondWithApiError(rw, requestId, runtime.JSONProducer(), apiError)
+		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 

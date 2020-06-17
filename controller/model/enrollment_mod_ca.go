@@ -20,9 +20,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 )
@@ -109,7 +109,7 @@ func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewCertInUse()
 	}
 
-	identityId := uuid.New().String()
+	identityId := eid.New()
 	requestedName := ""
 
 	if context.GetDataAsMap() != nil {

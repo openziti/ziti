@@ -18,7 +18,6 @@ package response
 
 import (
 	"github.com/go-openapi/runtime"
-	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/schema"
@@ -126,7 +125,7 @@ func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError)
 	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), apiError)
 }
 
-func Respond(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, data interface{}, httpStatus int) {
+func Respond(w http.ResponseWriter, requestId string, producer runtime.Producer, data interface{}, httpStatus int) {
 	w.WriteHeader(httpStatus)
 
 	err := producer.Produce(w, data)
@@ -136,7 +135,7 @@ func Respond(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Produc
 	}
 }
 
-func RespondWithError(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, err error) {
+func RespondWithError(w http.ResponseWriter, requestId string, producer runtime.Producer, err error) {
 	var apiError *apierror.ApiError
 	var ok bool
 
@@ -147,9 +146,9 @@ func RespondWithError(w http.ResponseWriter, requestId uuid.UUID, producer runti
 	RespondWithApiError(w, requestId, producer, apiError)
 }
 
-func RespondWithApiError(w http.ResponseWriter, requestId uuid.UUID, producer runtime.Producer, apiError *apierror.ApiError) {
+func RespondWithApiError(w http.ResponseWriter, requestId string, producer runtime.Producer, apiError *apierror.ApiError) {
 	data := &rest_model.APIErrorEnvelope{
-		Error: apiError.ToRestModel(requestId.String()),
+		Error: apiError.ToRestModel(requestId),
 		Meta: &rest_model.Meta{
 			APIEnrolmentVersion: version.GetApiVersion(),
 			APIVersion:          version.GetApiEnrollmentVersion(),

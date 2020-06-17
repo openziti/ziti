@@ -37,6 +37,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
 	"github.com/openziti/edge/rest_server"
@@ -320,7 +321,6 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	api.ApplicationXPemFileConsumer = noOpConsumer
 	api.ApplicationPkcs10Consumer = noOpConsumer
 
-
 	api.ApplicationXPemFileProducer = &TextProducer{}
 	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
 		principal, err = ae.GetHandlers().ApiSession.ReadByToken(token)
@@ -409,7 +409,7 @@ func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
 }
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
-	rid := uuid.New()
+	rid := eid.New()
 
 	sw, ok := rw.(*middleware.StatusWriter)
 
@@ -484,7 +484,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("could not retrieve request context")
-			response.RespondWithError(writer, uuid.New(), producer, err)
+			response.RespondWithError(writer, eid.New(), producer, err)
 			return
 		}
 

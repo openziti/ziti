@@ -37,7 +37,6 @@ type EdgeRouterPolicyRouter struct {
 func NewEdgeRouterPolicyRouter() *EdgeRouterPolicyRouter {
 	return &EdgeRouterPolicyRouter{
 		BasePath: "/" + EntityNameEdgeRouterPolicy,
-		IdType:   response.IdTypeUuid,
 	}
 }
 

@@ -210,7 +210,7 @@ func (re *RestEnroller) Send(client *resty.Client, enrollUrl string, e *apiPost)
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("enrollment failed recieved HTTP status [%s]: %s", resp.Status(), resp.Body())
+     		return nil, fmt.Errorf("enrollment failed recieved HTTP status [%s]: %s", resp.Status(), resp.Body())
 	}
 
 	return &envelope, nil
