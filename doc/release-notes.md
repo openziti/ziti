@@ -1,5 +1,5 @@
-# Release 0.14.13
-Ziti 0.14.13 includes the following:
+# Release 0.15.0
+Ziti 0.15.0 includes the following:
 
 * [Create fabric mgmt API to request database snapshot/backup be created](https://github.com/openziti/fabric/issues/99)
 * [Remove postgres store code including migrations](https://github.com/openziti/edge/issues/195)
@@ -13,7 +13,7 @@ The ziti-fabric tool can now be used to trigger the creation of a dabase backup/
 
     $ ziti-fabric snapshot-db
     
-This will create a copy of the database file within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. Support to trigger this from the Edge REST API will be comming in a follow up release.
+This will create a copy of the database file within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. Support to trigger this from the Edge REST API will be comming in a follow-up release.
 
 # Release 0.14.13
 Ziti 0.14.13 includes the following:

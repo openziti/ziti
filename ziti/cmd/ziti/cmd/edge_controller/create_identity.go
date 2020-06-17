@@ -150,9 +150,11 @@ func getIdentityJwt(o *createIdentityOptions, id string) error {
 		return err
 	}
 
-	jwtExpiration := newIdentity.Path("enrollment.ott.expiresAt").Data().(string)
-	if jwtExpiration != "" {
-		fmt.Printf("Enrollment expires at %v\n", jwtExpiration)
+	if container := newIdentity.Path("enrollment.ott.expiresAt"); container != nil && container.Data() != nil {
+		jwtExpiration := fmt.Sprintf("%v", container.Data())
+		if jwtExpiration != "" {
+			fmt.Printf("Enrollment expires at %v\n", jwtExpiration)
+		}
 	}
 
 	return err
