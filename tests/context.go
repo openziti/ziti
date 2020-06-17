@@ -79,7 +79,7 @@ func init() {
 	pfxlog.SetPrefix("github.com/openziti/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 
-	os.Setenv("ZITI_TRACE_ENABLED", "true")
+	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
@@ -92,7 +92,7 @@ type TestContext struct {
 	AdminSession       *session
 	fabricController   *controller.Controller
 	EdgeController     *server.Controller
-	req                *require.Assertions
+	Req                *require.Assertions
 	client             *resty.Client
 	enabledJsonLogging bool
 
@@ -116,7 +116,7 @@ func NewTestContext(t *testing.T) *TestContext {
 			Username: eid.New(),
 			Password: eid.New(),
 		},
-		req: require.New(t),
+		Req: require.New(t),
 	}
 	ret.testContextChanged(t)
 
@@ -129,7 +129,7 @@ func GetTestContext() *TestContext {
 
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
-	ctx.req = require.New(t)
+	ctx.Req = require.New(t)
 }
 
 func (ctx *TestContext) Transport() *http.Transport {
@@ -152,7 +152,7 @@ func (ctx *TestContext) Transport() *http.Transport {
 
 func (ctx *TestContext) HttpClient(transport *http.Transport) *http.Client {
 	jar, err := cookiejar.New(&cookiejar.Options{})
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	return &http.Client{
 		Transport:     transport,
@@ -189,7 +189,7 @@ func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *htt
 
 }
 
-func (ctx *TestContext) startServer() {
+func (ctx *TestContext) StartServer() {
 	log := pfxlog.Logger()
 	_ = os.Mkdir("testdata", os.FileMode(0755))
 	err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
@@ -201,19 +201,19 @@ func (ctx *TestContext) startServer() {
 		}
 		return err
 	})
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	log.Info("loading config")
 	config, err := controller.LoadConfig(ControllerConfFile)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	log.Info("creating fabric controller")
 	ctx.fabricController, err = controller.NewController(config)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	log.Info("creating edge controller")
 	ctx.EdgeController, err = server.NewController(config)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	ctx.EdgeController.SetHostController(ctx.fabricController)
 
@@ -228,10 +228,10 @@ func (ctx *TestContext) startServer() {
 	ctx.EdgeController.Run()
 	go func() {
 		err = ctx.fabricController.Run()
-		ctx.req.NoError(err)
+		ctx.Req.NoError(err)
 	}()
 	err = ctx.waitForPort(time.Minute * 5)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
@@ -247,11 +247,11 @@ func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edg
 	jwt := ctx.AdminSession.getEdgeRouterJwt(ctx.edgeRouterEntity.id)
 
 	cfgmap, err := router.LoadConfigMap(EdgeRouterConfFile)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller()
-	ctx.req.NoError(enroller.LoadConfig(cfgmap))
-	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
+	ctx.Req.NoError(enroller.LoadConfig(cfgmap))
+	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, ""))
 
 	return ctx.edgeRouterEntity
 }
@@ -269,11 +269,11 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 	jwt := ctx.AdminSession.getTransitRouterJwt(ctx.transitRouterEntity.id)
 
 	cfgmap, err := router.LoadConfigMap(TransitRouterConfFile)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller()
-	ctx.req.NoError(enroller.LoadConfig(cfgmap))
-	ctx.req.NoError(enroller.Enroll([]byte(jwt), true, ""))
+	ctx.Req.NoError(enroller.LoadConfig(cfgmap))
+	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, ""))
 
 	return ctx.transitRouterEntity
 }
@@ -285,13 +285,13 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 
 func (ctx *TestContext) startTransitRouter() {
 	config, err := router.LoadConfig(TransitRouterConfFile)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.router = router.Create(config)
 
-	ctx.req.NoError(ctx.router.Start())
+	ctx.Req.NoError(ctx.router.Start())
 }
 
-func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string) {
+func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) {
 	ctx.shutdownRouter()
 	ctx.createAndEnrollEdgeRouter(roleAttributes...)
 	ctx.startEdgeRouter()
@@ -299,32 +299,32 @@ func (ctx *TestContext) createEnrollAndStartEdgeRouter(roleAttributes ...string)
 
 func (ctx *TestContext) shutdownRouter() {
 	if ctx.router != nil {
-		ctx.req.NoError(ctx.router.Shutdown())
+		ctx.Req.NoError(ctx.router.Shutdown())
 		ctx.router = nil
 	}
 }
 
 func (ctx *TestContext) startEdgeRouter() {
 	config, err := router.LoadConfig(EdgeRouterConfFile)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.router = router.Create(config)
 
 	xgressEdgeFactory := xgress_edge.NewFactory()
 	xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
-	ctx.req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
-	ctx.req.NoError(ctx.router.Start())
+	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
+	ctx.Req.NoError(ctx.router.Start())
 }
 
-func (ctx *TestContext) enrollIdentity(identityId string) *sdkconfig.Config {
+func (ctx *TestContext) EnrollIdentity(identityId string) *sdkconfig.Config {
 	jwt := ctx.AdminSession.getIdentityJwt(identityId)
 	tkn, _, err := sdkenroll.ParseToken(jwt)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	flags := sdkenroll.EnrollmentFlags{
 		Token: tkn,
 	}
 	conf, err := sdkenroll.Enroll(flags)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	return conf
 }
 
@@ -363,15 +363,15 @@ func (ctx *TestContext) loginWithCert(cert *x509.Certificate, key *crypto.Privat
 	}).Authenticate(ctx)
 }
 
-func (ctx *TestContext) requireAdminLogin() {
+func (ctx *TestContext) RequireAdminLogin() {
 	var err error
 	ctx.AdminSession, err = ctx.AdminAuthenticator.Authenticate(ctx)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *TestContext) requireLogin(username, password string) *session {
 	session, err := ctx.login(username, password)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	return session
 }
 
@@ -382,12 +382,12 @@ func (ctx *TestContext) login(username, password string) (*session, error) {
 	}).Authenticate(ctx)
 }
 
-func (ctx *TestContext) teardown() {
+func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.EdgeController.Shutdown()
 	ctx.fabricController.Shutdown()
 	if ctx.router != nil {
-		ctx.req.NoError(ctx.router.Shutdown())
+		ctx.Req.NoError(ctx.router.Shutdown())
 	}
 }
 
@@ -399,9 +399,9 @@ func (ctx *TestContext) newRequest() *resty.Request {
 func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
 	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
 	path := result.Search(path("data.enrollment.updb.token")...)
-	ctx.req.NotNil(path)
+	ctx.Req.NotNil(path)
 	str, ok := path.Data().(string)
-	ctx.req.True(ok)
+	ctx.Req.True(ok)
 
 	enrollBody := gabs.New()
 	ctx.setJsonValue(enrollBody, password, "password")
@@ -409,9 +409,9 @@ func (ctx *TestContext) completeUpdbEnrollment(identityId string, password strin
 	resp, err := ctx.newRequest().
 		SetBody(enrollBody.String()).
 		Post("enroll?token=" + str)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
-	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 }
 
 func (ctx *TestContext) completeCaAutoEnrollment(certAuth *certAuthenticator) {
@@ -429,9 +429,9 @@ func (ctx *TestContext) completeCaAutoEnrollment(certAuth *certAuthenticator) {
 		SetBody("{}").
 		SetHeader("content-type", "application/x-pem-file").
 		Post("enroll?method=ca")
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
-	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 }
 
 func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthenticator, name string) {
@@ -452,9 +452,9 @@ func (ctx *TestContext) completeCaAutoEnrollmentWithName(certAuth *certAuthentic
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
 		Post("enroll?method=ca")
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
-	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 }
 
 func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthenticator {
@@ -462,19 +462,19 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 
 	tokenValue := result.Path("data.enrollment.ott.token")
 
-	ctx.req.NotNil(tokenValue)
+	ctx.Req.NotNil(tokenValue)
 	token, ok := tokenValue.Data().(string)
-	ctx.req.True(ok)
+	ctx.Req.True(ok)
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	request, err := certtools.NewCertRequest(map[string]string{
 		"C": "US", "O": "NetFoundry-API-Test", "CN": identityId,
 	}, nil)
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
 
@@ -483,18 +483,18 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 		SetHeader("content-type", "application/x-pem-file").
 		SetHeader("accept", "application/json").
 		Post("enroll?token=" + token)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	ctx.logJson(resp.Body())
-	ctx.req.Equal(http.StatusOK, resp.StatusCode())
+	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 	envelope := &rest_model.EnrollmentCertsEnvelope{}
 
 	err = json.Unmarshal(resp.Body(), envelope)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 
 	certs := nfpem.PemToX509(envelope.Data.Cert)
 
-	ctx.req.NotEmpty(certs)
+	ctx.Req.NotEmpty(certs)
 
 	return &certAuthenticator{
 		cert:    certs[0],
@@ -506,17 +506,17 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {
 	now := time.Now()
 	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
-	ctx.req.Equal(createdAt, updatedAt)
+	ctx.Req.Equal(createdAt, updatedAt)
 
-	ctx.req.True(start.Before(createdAt) || start.Equal(createdAt))
-	ctx.req.True(now.After(createdAt) || now.Equal(createdAt))
+	ctx.Req.True(start.Before(createdAt) || start.Equal(createdAt))
+	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt))
 
 	return createdAt
 }
 
 func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 	return &service{
-		name:               eid.New(),
+		Name:               eid.New(),
 		terminatorStrategy: xt_smartrouting.Name,
 		roleAttributes:     roleAttributes,
 		configs:            configs,
@@ -534,19 +534,19 @@ func (ctx *TestContext) newTerminator(serviceId, routerId, binding, address stri
 	}
 }
 
-func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *config {
-	return &config{
-		name:         eid.New(),
-		configTypeId: configType,
-		data:         data,
-		tags:         nil,
+func (ctx *TestContext) newConfig(configType string, data map[string]interface{}) *Config {
+	return &Config{
+		Name:         eid.New(),
+		ConfigTypeId: configType,
+		Data:         data,
+		Tags:         nil,
 	}
 }
 
 func (ctx *TestContext) newConfigType() *configType {
 	return &configType{
-		name: eid.New(),
-		tags: nil,
+		Name: eid.New(),
+		Tags: nil,
 	}
 }
 
@@ -554,24 +554,24 @@ func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, t
 	createdAtStr := jsonEntity.S("createdAt").Data().(string)
 	updatedAtStr := jsonEntity.S("updatedAt").Data().(string)
 
-	ctx.req.NotNil(createdAtStr)
-	ctx.req.NotNil(updatedAtStr)
+	ctx.Req.NotNil(createdAtStr)
+	ctx.Req.NotNil(updatedAtStr)
 
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
-	ctx.req.NoError(err)
+	ctx.Req.NoError(err)
 	return createdAt, updatedAt
 }
 
 func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreatedAt time.Time, jsonEntity *gabs.Container) time.Time {
 	now := time.Now()
 	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
-	ctx.req.Equal(origCreatedAt, createdAt)
+	ctx.Req.Equal(origCreatedAt, createdAt)
 
-	ctx.req.True(createdAt.Before(updatedAt))
-	ctx.req.True(start.Before(updatedAt) || start.Equal(updatedAt))
-	ctx.req.True(now.After(updatedAt) || now.Equal(updatedAt))
+	ctx.Req.True(createdAt.Before(updatedAt))
+	ctx.Req.True(start.Before(updatedAt) || start.Equal(updatedAt))
+	ctx.Req.True(now.After(updatedAt) || now.Equal(updatedAt))
 
 	return createdAt
 }
@@ -589,69 +589,69 @@ func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
 
 func (ctx *TestContext) requireEntityNotEnrolled(name string, entity *gabs.Container) {
 	fingerprint := entity.Path("fingerprint").Data()
-	ctx.req.Nil(fingerprint, "expected "+name+" with isVerified=false to have an empty fingerprint")
+	ctx.Req.Nil(fingerprint, "expected "+name+" with isVerified=false to have an empty fingerprint")
 
 	token, ok := entity.Path("enrollmentToken").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment token, could not cast")
-	ctx.req.NotEmpty(token, "expected "+name+" with isVerified=false to have an enrollment token, was empty")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=false to have an enrollment token, could not cast")
+	ctx.Req.NotEmpty(token, "expected "+name+" with isVerified=false to have an enrollment token, was empty")
 
 	jwt, ok := entity.Path("enrollmentJwt").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment jwt, could not cast")
-	ctx.req.NotEmpty(jwt, "expected "+name+" with isVerified=false to have an enrollment jwt, was empty")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=false to have an enrollment jwt, could not cast")
+	ctx.Req.NotEmpty(jwt, "expected "+name+" with isVerified=false to have an enrollment jwt, was empty")
 
 	createdAtStr, ok := entity.Path("enrollmentCreatedAt").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment created at date, could not cast")
-	ctx.req.NotEmpty(createdAtStr, "expected "+name+" with isVerified=false to have an enrollment created at date string, was empty")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=false to have an enrollment created at date, could not cast")
+	ctx.Req.NotEmpty(createdAtStr, "expected "+name+" with isVerified=false to have an enrollment created at date string, was empty")
 
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
-	ctx.req.NoError(err, "expected "+name+" with isVerified=false to have a parsable created at date time string")
-	ctx.req.NotEmpty(createdAt, "expected "+name+" with isVerified=false to have an enrollment created at date, was empty")
+	ctx.Req.NoError(err, "expected "+name+" with isVerified=false to have a parsable created at date time string")
+	ctx.Req.NotEmpty(createdAt, "expected "+name+" with isVerified=false to have an enrollment created at date, was empty")
 
 	expiresAtStr, ok := entity.Path("enrollmentExpiresAt").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
-	ctx.req.NotEmpty(expiresAtStr, "expected "+name+" with isVerified=false to have an enrollment expires at date string, was empty")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
+	ctx.Req.NotEmpty(expiresAtStr, "expected "+name+" with isVerified=false to have an enrollment expires at date string, was empty")
 
 	expiresAt, err := time.Parse(time.RFC3339, expiresAtStr)
-	ctx.req.NoError(err, "expected "+name+" with isVerified=false to have a parsable expires at date time string")
+	ctx.Req.NoError(err, "expected "+name+" with isVerified=false to have a parsable expires at date time string")
 
-	ctx.req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
-	ctx.req.NotEmpty(expiresAt, "expected "+name+" with isVerified=false to have an enrollment expires at date, was empty")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=false to have an enrollment expires at date, could not cast")
+	ctx.Req.NotEmpty(expiresAt, "expected "+name+" with isVerified=false to have an enrollment expires at date, was empty")
 
-	ctx.req.True(expiresAt.After(createdAt), "expected "+name+" with isVerified=false to have an enrollment expires at date after the created at date")
+	ctx.Req.True(expiresAt.After(createdAt), "expected "+name+" with isVerified=false to have an enrollment expires at date after the created at date")
 }
 
 func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Container) {
 	fingerprint, ok := entity.Path("fingerprint").Data().(string)
-	ctx.req.True(ok, "expected "+name+" with isVerified=true to have a fingerprint, could not cast")
-	ctx.req.NotEmpty(fingerprint, "expected "+name+" with isVerified=true to have a fingerprint, was empty")
-	ctx.req.False(strings.Contains(fingerprint, ":"), "fingerprint should not contain colons")
-	ctx.req.False(strings.ToLower(fingerprint) != fingerprint, "fingerprint should not contain uppercase characters")
+	ctx.Req.True(ok, "expected "+name+" with isVerified=true to have a fingerprint, could not cast")
+	ctx.Req.NotEmpty(fingerprint, "expected "+name+" with isVerified=true to have a fingerprint, was empty")
+	ctx.Req.False(strings.Contains(fingerprint, ":"), "fingerprint should not contain colons")
+	ctx.Req.False(strings.ToLower(fingerprint) != fingerprint, "fingerprint should not contain uppercase characters")
 
 	token := entity.Path("enrollmentToken").Data()
-	ctx.req.Nil(token, "expected "+name+" with isVerified=true to have an nil enrollment token")
+	ctx.Req.Nil(token, "expected "+name+" with isVerified=true to have an nil enrollment token")
 
 	jwt := entity.Path("enrollmentJwt").Data()
-	ctx.req.Nil(jwt, "expected "+name+" with isVerified=true to have an nil enrollment jwt")
+	ctx.Req.Nil(jwt, "expected "+name+" with isVerified=true to have an nil enrollment jwt")
 
 	createdAt := entity.Path("enrollmentCreatedAt").Data()
-	ctx.req.Nil(createdAt, "expected "+name+" with isVerified=true to have an nil enrollment created at date")
+	ctx.Req.Nil(createdAt, "expected "+name+" with isVerified=true to have an nil enrollment created at date")
 
 	expiresAt := entity.Path("enrollmentExpiresAt").Data()
-	ctx.req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
+	ctx.Req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
 }
 
-func (ctx *TestContext) wrapNetConn(conn net.Conn, err error) *testConn {
-	ctx.req.NoError(err)
+func (ctx *TestContext) WrapNetConn(conn net.Conn, err error) *testConn {
+	ctx.Req.NoError(err)
 	serviceConn, ok := conn.(edge.ServiceConn)
-	ctx.req.True(ok)
+	ctx.Req.True(ok)
 	return &testConn{
 		ServiceConn: serviceConn,
 		ctx:         ctx,
 	}
 }
 
-func (ctx *TestContext) wrapConn(conn edge.ServiceConn, err error) *testConn {
-	ctx.req.NoError(err)
+func (ctx *TestContext) WrapConn(conn edge.ServiceConn, err error) *testConn {
+	ctx.Req.NoError(err)
 	return &testConn{
 		ServiceConn: conn,
 		ctx:         ctx,
@@ -664,32 +664,32 @@ type testConn struct {
 }
 
 func (conn *testConn) WriteString(val string, timeout time.Duration) {
-	conn.ctx.req.NoError(conn.SetWriteDeadline(time.Now().Add(timeout)))
+	conn.ctx.Req.NoError(conn.SetWriteDeadline(time.Now().Add(timeout)))
 	defer func() { _ = conn.SetWriteDeadline(time.Time{}) }()
 
 	buf := []byte(val)
 	n, err := conn.Write(buf)
-	conn.ctx.req.NoError(err)
-	conn.ctx.req.Equal(n, len(buf))
+	conn.ctx.Req.NoError(err)
+	conn.ctx.Req.Equal(n, len(buf))
 }
 
 func (conn *testConn) ReadString(maxSize int, timeout time.Duration) string {
-	conn.ctx.req.NoError(conn.SetReadDeadline(time.Now().Add(timeout)))
+	conn.ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(timeout)))
 	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 
 	buf := make([]byte, maxSize)
 	n, err := conn.Read(buf)
-	conn.ctx.req.NoError(err)
+	conn.ctx.Req.NoError(err)
 	return string(buf[:n])
 }
 
 func (conn *testConn) ReadExpected(expected string, timeout time.Duration) {
 	val := conn.ReadString(len(expected)+1, timeout)
-	conn.ctx.req.Equal(expected, val)
+	conn.ctx.Req.Equal(expected, val)
 }
 
 func (conn *testConn) RequireClose() {
-	conn.ctx.req.NoError(conn.Close())
+	conn.ctx.Req.NoError(conn.Close())
 }
 
 var testServerCounter uint64
@@ -721,10 +721,10 @@ func (server *testServer) waitForDone(ctx *TestContext, timeout time.Duration) {
 	select {
 	case err, ok := <-server.errorC:
 		if ok {
-			ctx.req.NoError(err)
+			ctx.Req.NoError(err)
 		}
 	case <-time.After(timeout):
-		ctx.req.Fail("wait for done on test server timed out")
+		ctx.Req.Fail("wait for done on test server timed out")
 	}
 }
 

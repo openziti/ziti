@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -18,8 +18,8 @@ func Test_IdentityStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
-	service := ctx.requireNewService(eid.NewId())
-	identity := ctx.requireNewIdentity(eid.NewId(), false)
+	service := ctx.requireNewService(eid.New())
+	identity := ctx.requireNewIdentity(eid.New(), false)
 
 	clientConfigTypeId := ""
 	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
@@ -35,19 +35,19 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	config := newConfig(eid.NewId(), clientConfigTypeId, map[string]interface{}{
+	config := newConfig(eid.New(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "foo.yourcompany.com",
 		"port":     int64(22),
 	})
 	ctx.RequireCreate(config)
 
-	config2 := newConfig(eid.NewId(), clientConfigTypeId, map[string]interface{}{
+	config2 := newConfig(eid.New(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "bar.yourcompany.com",
 		"port":     int64(23),
 	})
 	ctx.RequireCreate(config2)
 
-	config3 := newConfig(eid.NewId(), serverConfigTypeId, map[string]interface{}{
+	config3 := newConfig(eid.New(), serverConfigTypeId, map[string]interface{}{
 		"hostname": "baz.yourcompany.com",
 		"port":     int64(24),
 	})

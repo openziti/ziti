@@ -28,17 +28,17 @@ import (
 
 func Test_Dataflow(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll(xt_smartrouting.Name)
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	fmt.Printf("service id: %v\n", service.Id)
 
-	ctx.createEnrollAndStartEdgeRouter()
-	_, hostContext := ctx.AdminSession.requireCreateSdkContext()
-	listener, err := hostContext.Listen(service.name)
-	ctx.req.NoError(err)
+	ctx.CreateEnrollAndStartEdgeRouter()
+	_, hostContext := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := hostContext.Listen(service.Name)
+	ctx.Req.NoError(err)
 
 	testServer := newTestServer(listener, func(conn *testServerConn) error {
 		for {
@@ -63,8 +63,8 @@ func Test_Dataflow(t *testing.T) {
 	})
 	testServer.start()
 
-	_, clientContext := ctx.AdminSession.requireCreateSdkContext()
-	conn := ctx.wrapConn(clientContext.Dial(service.name))
+	_, clientContext := ctx.AdminSession.RequireCreateSdkContext()
+	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
 	name := eid.New()
 	conn.WriteString(name, time.Second)

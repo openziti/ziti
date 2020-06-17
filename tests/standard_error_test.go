@@ -26,9 +26,9 @@ import (
 
 func Test_StandardErrorMessages(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("405 method not allowed returns a standard error", func(t *testing.T) {
 		req := require.New(t)

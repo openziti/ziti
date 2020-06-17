@@ -2,11 +2,11 @@ module github.com/openziti/edge
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
-// replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
-// replace github.com/openziti/sdk-golang => ../sdk-golang
+replace github.com/openziti/sdk-golang => ../sdk-golang
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -35,13 +35,15 @@ require (
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.1
 	github.com/openziti/fabric v0.11.40
-	github.com/openziti/foundation v0.11.3
-	github.com/openziti/sdk-golang v0.13.5
+	github.com/openziti/foundation v0.11.4
+	github.com/openziti/sdk-golang v0.13.6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
+	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.5.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
+	github.com/ventu-io/go-shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.4
 	go.mongodb.org/mongo-driver v1.3.3 // indirect

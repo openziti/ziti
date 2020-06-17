@@ -19,7 +19,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
@@ -42,7 +42,7 @@ func Test_ApiSessionStore(t *testing.T) {
 func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 	defer ctx.cleanupAll()
 
-	apiSession := NewApiSession(eid.NewId())
+	apiSession := NewApiSession(eid.New())
 	err := ctx.Create(apiSession)
 	ctx.EqualError(err, fmt.Sprintf("identity with id %v not found", apiSession.IdentityId))
 
@@ -57,7 +57,7 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 	err = ctx.Create(apiSession)
 	ctx.EqualError(err, "index on apiSessions.token does not allow null or empty values")
 
-	apiSession.Token = eid.NewId()
+	apiSession.Token = eid.New()
 	err = ctx.Create(apiSession)
 	ctx.NoError(err)
 	err = ctx.Create(apiSession)
@@ -121,8 +121,8 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 
 	service := ctx.requireNewService("test-service")
 	session := &Session{
-		BaseExtEntity: boltz.BaseExtEntity{Id: eid.NewId()},
-		Token:         eid.NewId(),
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Token:         eid.New(),
 		ApiSessionId:  apiSession2.Id,
 		ServiceId:     service.Id,
 	}
@@ -190,7 +190,7 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 
 		tags := ctx.CreateTags()
 		now := time.Now()
-		apiSession.Token = eid.NewId()
+		apiSession.Token = eid.New()
 		apiSession.UpdatedAt = earlier
 		apiSession.CreatedAt = now
 		apiSession.IdentityId = entities.identity2.Id

@@ -29,9 +29,9 @@ import (
 
 func Test_ConfigTypes(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	identityRole := eid.New()
 	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
@@ -39,7 +39,7 @@ func Test_ConfigTypes(t *testing.T) {
 	t.Run("create config type without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
-		configType.name = ""
+		configType.Name = ""
 		resp := ctx.AdminSession.createEntity(configType)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
 	})
@@ -59,7 +59,7 @@ func Test_ConfigTypes(t *testing.T) {
 	t.Run("create config type with invalid schema should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
-		configType.schema = map[string]interface{}{
+		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
 			"type":                 "objectionable", // not a valid type
 			"additionalProperties": false,
@@ -81,7 +81,7 @@ func Test_ConfigTypes(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
 		configType := ctx.newConfigType()
-		configType.schema = map[string]interface{}{
+		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
 			"type":                 "object",
 			"additionalProperties": false,
@@ -100,7 +100,7 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		configType.id = ctx.AdminSession.requireCreateEntity(configType)
+		configType.Id = ctx.AdminSession.requireCreateEntity(configType)
 
 		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
@@ -111,13 +111,13 @@ func Test_ConfigTypes(t *testing.T) {
 
 	t.Run("lookup non-existent config type as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.requireNotFoundError(ctx.AdminSession.query("config-types/" + eid.New()))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + eid.New()))
 	})
 
 	t.Run("lookup config type as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.AdminSession.requireCreateNewConfigType()
-		ctx.requireUnauthorizedError(nonAdminUser.query("config-types/" + configType.id))
+		ctx.requireUnauthorizedError(nonAdminUser.query("config-types/" + configType.Id))
 	})
 
 	t.Run("update config type should pass", func(t *testing.T) {
@@ -130,7 +130,7 @@ func Test_ConfigTypes(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		configType.schema = map[string]interface{}{
+		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
 			"type":                 "object",
 			"additionalProperties": false,
@@ -164,7 +164,7 @@ func Test_ConfigTypes(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 10)
 		now = time.Now()
-		configType.schema = map[string]interface{}{
+		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
 			"type":                 "object",
 			"additionalProperties": false,
@@ -197,6 +197,6 @@ func Test_ConfigTypes(t *testing.T) {
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
 		ctx.AdminSession.requireDeleteEntity(configType)
-		ctx.requireNotFoundError(ctx.AdminSession.query("config-types/" + configType.id))
+		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + configType.Id))
 	})
 }

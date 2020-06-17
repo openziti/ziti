@@ -35,11 +35,11 @@ import (
 
 func Test_HSRotatingDataflow(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
-	ctx.createEnrollAndStartEdgeRouter()
+	ctx.CreateEnrollAndStartEdgeRouter()
 
 	t.Run("test client first smart routing", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -73,56 +73,72 @@ func Test_HSRotatingDataflow(t *testing.T) {
 }
 
 func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll(strategy)
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
+	fmt.Printf("service id: %v\n", service.Id)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)
 	var serverContexts []ziti.Context
 	for i := 0; i < 3; i++ {
-		_, context := ctx.AdminSession.requireCreateSdkContext()
+		_, context := ctx.AdminSession.RequireCreateSdkContext()
 		serverContexts = append(serverContexts, context)
 		serverContextC <- context
 	}
+
+	dialCount := int32(0)
+	dials := make(chan struct{}, 1000)
 
 	go func() {
 		logger := pfxlog.Logger()
 		for {
 			select {
 			case context := <-serverContextC:
-				listener, err := context.Listen(service.name)
-				ctx.req.NoError(err)
+				logger.Info("starting new listener")
+				listener, err := context.Listen(service.Name)
+				ctx.Req.NoError(err)
 				service := &clientFirstRotatingService{
-					maxRequests: uint32(rand.Intn(5) + 5),
+					maxRequests: uint32(rand.Intn(20) + 10),
 					closeCB:     func() { serverContextC <- context },
 				}
 				server := newTestServer(listener, service.Handle)
 				server.start()
-				logger.Infof("started new listener, servicing %v reads", service.maxRequests)
+				logger.Infof("started new listener %v, servicing %v reads (dial capacity)",
+					listener.(edge.SessionListener).GetCurrentSession().Token, service.maxRequests)
+				for i := 0; i < int(service.maxRequests); i++ {
+					dials <- struct{}{}
+					count := atomic.AddInt32(&dialCount, 1)
+					logger.Infof("added dial capacity: Available: %v", count)
+				}
 			case <-doneC:
 				break
 			}
 		}
 	}()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
+	logger := pfxlog.Logger()
+
 	for i := 0; i < 250; i++ {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		<-dials
+		count := atomic.AddInt32(&dialCount, -1)
+		logger.Debugf("consumed dial capacity. Available: %v", count)
+
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
 		name := eid.New()
 		conn.WriteString(name, time.Second)
 		conn.ReadExpected("hello, "+name, time.Second)
 		conn.RequireClose()
-		fmt.Printf("%v: done\n", i+1)
+		logger.Debugf("%v: done", i+1)
 	}
 
 	close(doneC)
 
 	for range serverContexts {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		conn.WriteString("quit", time.Second)
 		conn.ReadExpected("ok", time.Second)
 	}
@@ -139,6 +155,8 @@ func (service *clientFirstRotatingService) Handle(conn *testServerConn) error {
 	requests := atomic.AddUint32(&service.requests, 1)
 	doClose := requests >= service.maxRequests
 	logger := pfxlog.Logger()
+	logger.Debugf("handling request on session %v. requests: %v, max: %v",
+		conn.server.listener.(edge.SessionListener).GetCurrentSession().Token, requests, service.maxRequests)
 	for {
 		name, eof := conn.ReadString(1024, time.Minute)
 		if eof {
@@ -174,14 +192,17 @@ func (service *clientFirstRotatingService) Handle(conn *testServerConn) error {
 }
 
 func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
-	service := ctx.AdminSession.requireNewServiceAccessibleToAll(strategy)
-	fmt.Printf("service id: %v\n", service.id)
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
+	fmt.Printf("service id: %v\n", service.Id)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)
 	var serverContexts []ziti.Context
+
+	dials := make(chan struct{}, 1000)
+
 	for i := 0; i < 3; i++ {
-		_, context := ctx.AdminSession.requireCreateSdkContext()
+		_, context := ctx.AdminSession.RequireCreateSdkContext()
 		serverContexts = append(serverContexts, context)
 		serverContextC <- context
 	}
@@ -191,36 +212,41 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 		for {
 			select {
 			case context := <-serverContextC:
-				listener, err := context.Listen(service.name)
-				ctx.req.NoError(err)
+				listener, err := context.Listen(service.Name)
+				ctx.Req.NoError(err)
 				service := &serverFirstRotatingService{
-					maxRequests: uint32(rand.Intn(5) + 5),
+					maxRequests: uint32(rand.Intn(20) + 10),
 					closeCB:     func() { serverContextC <- context },
 				}
 				server := newTestServer(listener, service.Handle)
 				server.start()
-				logger.Infof("started new listener, servicing %v reads", service.maxRequests)
+				logger.Infof("started new listener %v, servicing %v reads (dial capacity)",
+					listener.(edge.SessionListener).GetCurrentSession().Token, service.maxRequests)
+				for i := 0; i < int(service.maxRequests); i++ {
+					dials <- struct{}{}
+				}
 			case <-doneC:
 				break
 			}
 		}
 	}()
 
-	clientIdentity := ctx.AdminSession.requireNewIdentityWithOtt(false)
-	clientConfig := ctx.enrollIdentity(clientIdentity.id)
+	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	for i := 0; i < 250; i++ {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		<-dials
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		name := conn.ReadString(1024, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
-		log.Infof("%v: done", i+1)
+		log.Debugf("%v: done", i+1)
 	}
 
 	close(doneC)
 
 	for range serverContexts {
-		conn := ctx.wrapConn(clientContext.Dial(service.name))
+		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		conn.WriteString("quit", time.Second)
 		conn.ReadString(len(eid.New()), time.Second) // ignore uuid
 		conn.ReadExpected("ok", time.Second)

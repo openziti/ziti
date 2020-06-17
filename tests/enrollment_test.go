@@ -38,9 +38,9 @@ import (
 
 func Test_enrollment(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("ca auto enrollment", func(t *testing.T) {
 
@@ -49,16 +49,16 @@ func Test_enrollment(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			testCaId := ctx.AdminSession.requireCreateEntity(testCa)
-			ctx.req.NotEmpty(testCaId)
+			ctx.Req.NotEmpty(testCaId)
 
 			caContainer := ctx.AdminSession.requireQuery("cas/" + testCaId)
-			ctx.req.NotEmpty(caContainer)
+			ctx.Req.NotEmpty(caContainer)
 
 			token := caContainer.Path("data.verificationToken").Data().(string)
-			ctx.req.NotEmpty(token)
+			ctx.Req.NotEmpty(token)
 
 			verifyCert, _, err := generateCert(testCa.publicCert, testCa.privateKey, token)
-			ctx.req.NoError(err)
+			ctx.Req.NoError(err)
 
 			verificationBlock := &pem.Block{
 				Type:  "CERTIFICATE",
@@ -67,13 +67,13 @@ func Test_enrollment(t *testing.T) {
 			verifyPem := pem.EncodeToMemory(verificationBlock)
 
 			resp, err := ctx.AdminSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + testCaId + "/verify")
-			ctx.req.NoError(err)
+			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
 
 			t.Run("can enroll without a name and a 0 length body", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
-				ctx.req.NoError(err)
+				ctx.Req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
 				transport.TLSClientConfig.Certificates = []tls.Certificate{
@@ -87,21 +87,21 @@ func Test_enrollment(t *testing.T) {
 					SetHeader("content-type", "application/json").
 					Post("enroll?method=ca")
 
-				ctx.req.NoError(err)
+				ctx.Req.NoError(err)
 
-				ctx.req.Equal(http.StatusOK, resp.StatusCode())
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 				contentTypeHeaders := resp.Header().Values("content-type")
-				ctx.req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
+				ctx.Req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
 
 				contentType := strings.Split(contentTypeHeaders[0], ";")[0]
-				ctx.req.Equal("application/json", contentType)
+				ctx.Req.Equal("application/json", contentType)
 			})
 
 			t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
-				ctx.req.NoError(err)
+				ctx.Req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
 				transport.TLSClientConfig.Certificates = []tls.Certificate{
@@ -116,22 +116,22 @@ func Test_enrollment(t *testing.T) {
 					SetBody("{}").
 					Post("enroll?method=ca")
 
-				ctx.req.NoError(err)
+				ctx.Req.NoError(err)
 
-				ctx.req.Equal(http.StatusOK, resp.StatusCode())
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 				contentTypeHeaders := resp.Header().Values("content-type")
-				ctx.req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
+				ctx.Req.Equal(1, len(contentTypeHeaders), "expected only 1 content type header")
 
 				contentType := strings.Split(contentTypeHeaders[0], ";")[0]
-				ctx.req.Equal("application/json", contentType)
+				ctx.Req.Equal("application/json", contentType)
 			})
 
 			t.Run("can enroll with a name", func(t *testing.T) {
 				t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
-					ctx.req.NoError(err)
+					ctx.Req.NoError(err)
 
 					restClient, _, transport := ctx.NewClientComponents()
 					transport.TLSClientConfig.Certificates = []tls.Certificate{
@@ -146,9 +146,9 @@ func Test_enrollment(t *testing.T) {
 						SetBody(`{"name": "` + eid.New() + `"}`).
 						Post("enroll?method=ca")
 
-					ctx.req.NoError(err)
+					ctx.Req.NoError(err)
 
-					ctx.req.Equal(http.StatusOK, resp.StatusCode())
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 				})
 			})
 		})

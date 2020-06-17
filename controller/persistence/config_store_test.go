@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -36,25 +36,25 @@ func Test_ConfigStore(t *testing.T) {
 func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.cleanupAll()
 
-	configType := newConfigType(eid.NewId())
+	configType := newConfigType(eid.New())
 	ctx.RequireCreate(configType)
 
-	config := newConfig(eid.NewId(), "", map[string]interface{}{
+	config := newConfig(eid.New(), "", map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
 	err := ctx.Create(config)
 	ctx.EqualError(err, "index on configs.type does not allow null or empty values")
 
-	invalidId := eid.NewId()
-	config = newConfig(eid.NewId(), invalidId, map[string]interface{}{
+	invalidId := eid.New()
+	config = newConfig(eid.New(), invalidId, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
 	err = ctx.Create(config)
 	ctx.EqualError(err, fmt.Sprintf("configType with id %v not found", invalidId))
 
-	config = newConfig(eid.NewId(), configType.Id, map[string]interface{}{
+	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
@@ -71,11 +71,11 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	config.Id = eid.NewId()
+	config.Id = eid.New()
 	err = ctx.Create(config)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on configs store", config.Name))
 
-	config = newConfig(eid.NewId(), configType.Id, map[string]interface{}{
+	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 		"enabled":     true,
@@ -88,7 +88,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.RequireCreate(config)
 	ctx.ValidateBaseline(config)
 
-	config = newConfig(eid.NewId(), configType.Id, map[string]interface{}{
+	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 		"enabled":     true,
@@ -123,10 +123,10 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 func (ctx *TestContext) testConfigQuery(*testing.T) {
 	ctx.cleanupAll()
 
-	configType := newConfigType(eid.NewId())
+	configType := newConfigType(eid.New())
 	ctx.RequireCreate(configType)
 
-	config := newConfig(eid.NewId(), configType.Id, map[string]interface{}{
+	config := newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 		"enabled":     true,

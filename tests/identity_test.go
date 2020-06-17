@@ -30,16 +30,16 @@ import (
 
 func Test_Identity(t *testing.T) {
 	ctx := NewTestContext(t)
-	defer ctx.teardown()
-	ctx.startServer()
-	ctx.requireAdminLogin()
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.id = ctx.AdminSession.requireCreateEntity(identity)
+		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
 		ctx.AdminSession.validateEntityWithQuery(identity)
 		ctx.AdminSession.validateEntityWithLookup(identity)
 	})
@@ -49,7 +49,7 @@ func Test_Identity(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.id = ctx.AdminSession.requireCreateEntity(identity)
+		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
 
 		role3 := eid.New()
 		identity.roleAttributes = []string{role2, role3}
@@ -73,23 +73,23 @@ func Test_Identity(t *testing.T) {
 		ctx.AdminSession.requireNewIdentity(false)
 
 		list := ctx.AdminSession.requireList("identity-role-attributes")
-		ctx.req.True(len(list) >= 5)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
+		ctx.Req.True(len(list) >= 5)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
 
 		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
 		list = ctx.AdminSession.requireList("identity-role-attributes?filter=" + filter)
-		ctx.req.Equal(4, len(list))
+		ctx.Req.Equal(4, len(list))
 
 		expected := []string{role1, role3, role4, role5}
 		sort.Strings(expected)
-		ctx.req.Equal(expected, list)
+		ctx.Req.Equal(expected, list)
 
 		identity.roleAttributes = nil
 		ctx.AdminSession.requireUpdateEntity(identity)
 		list = ctx.AdminSession.requireList("identity-role-attributes")
-		ctx.req.True(len(list) >= 4)
-		ctx.req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
-		ctx.req.False(stringz.Contains(list, role5))
+		ctx.Req.True(len(list) >= 4)
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
+		ctx.Req.False(stringz.Contains(list, role5))
 	})
 
 	t.Run("update (PUT) an identity", func(t *testing.T) {
@@ -109,17 +109,17 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(false, "isAdmin")
 
 			resp := ctx.AdminSession.updateEntityOfType(enrolledId, "identities", updateContent.String(), false)
-			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + enrolledId)
 
 			data := enrolledIdentity.Path("data.authenticators").Data()
 			expectedAuths := data.(map[string]interface{})
-			ctx.req.NotEmpty(expectedAuths)
+			ctx.Req.NotEmpty(expectedAuths)
 
 			updatedAuths := updatedIdentity.Path("data.authenticators").Data().(map[string]interface{})
-			ctx.req.NotEmpty(updatedAuths)
-			ctx.req.Equal(expectedAuths, updatedAuths)
+			ctx.Req.NotEmpty(updatedAuths)
+			ctx.Req.Equal(expectedAuths, updatedAuths)
 		})
 
 		t.Run("should not alter enrollments", func(t *testing.T) {
@@ -131,17 +131,17 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(false, "isAdmin")
 
 			resp := ctx.AdminSession.updateEntityOfType(unenrolledId, "identities", updateContent.String(), false)
-			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
 
 			expectedEnrollments := unenrolledIdentity.Path("data.enrollment").Data().(map[string]interface{})
-			ctx.req.NotEmpty(expectedEnrollments)
+			ctx.Req.NotEmpty(expectedEnrollments)
 
 			updatedEnrollments := updatedIdentity.Path("data.enrollment").Data().(map[string]interface{})
-			ctx.req.NotEmpty(updatedEnrollments)
+			ctx.Req.NotEmpty(updatedEnrollments)
 
-			ctx.req.Equal(expectedEnrollments, updatedEnrollments)
+			ctx.Req.Equal(expectedEnrollments, updatedEnrollments)
 		})
 
 		t.Run("should not allow isDefaultAdmin to be altered", func(t *testing.T) {
@@ -156,13 +156,13 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(true, "isDefaultAdmin")
 
 			resp := ctx.AdminSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
-			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
 
-			ctx.req.Equal(true, updatedIdentity.ExistsP("data.isDefaultAdmin"))
+			ctx.Req.Equal(true, updatedIdentity.ExistsP("data.isDefaultAdmin"))
 			isDefaultAdmin := updatedIdentity.Path("data.isDefaultAdmin").Data().(bool)
-			ctx.req.Equal(false, isDefaultAdmin)
+			ctx.Req.Equal(false, isDefaultAdmin)
 		})
 
 		t.Run("can update", func(t *testing.T) {
@@ -177,22 +177,22 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(false, "isAdmin")
 
 			resp := ctx.AdminSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
-			ctx.req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
 			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identityId)
 
 			t.Run("name", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.req.Equal(true, updatedIdentity.ExistsP("data.name"))
+				ctx.Req.Equal(true, updatedIdentity.ExistsP("data.name"))
 				updatedName := updatedIdentity.Path("data.name").Data().(string)
-				ctx.req.Equal(newName, updatedName)
+				ctx.Req.Equal(newName, updatedName)
 			})
 
 			t.Run("isAdmin", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.req.Equal(true, updatedIdentity.ExistsP("data.isAdmin"))
+				ctx.Req.Equal(true, updatedIdentity.ExistsP("data.isAdmin"))
 				newIsAdmin := updatedIdentity.Path("data.isAdmin").Data().(bool)
-				ctx.req.Equal(false, newIsAdmin)
+				ctx.Req.Equal(false, newIsAdmin)
 			})
 		})
 

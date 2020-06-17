@@ -44,8 +44,8 @@ type entity interface {
 }
 
 type service struct {
-	id                 string
-	name               string
+	Id                 string
+	Name               string
 	terminatorStrategy string
 	roleAttributes     []string
 	configs            []string
@@ -54,11 +54,11 @@ type service struct {
 }
 
 func (entity *service) getId() string {
-	return entity.id
+	return entity.Id
 }
 
 func (entity *service) setId(id string) {
-	entity.id = id
+	entity.Id = id
 }
 
 func (entity *service) getEntityType() string {
@@ -67,7 +67,7 @@ func (entity *service) getEntityType() string {
 
 func (entity *service) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
-	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.Name, "name")
 	ctx.setJsonValue(entityData, entity.terminatorStrategy, "terminatorStrategy")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.configs, "configs")
@@ -83,7 +83,7 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
-	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.Name, path("name"))
 	ctx.pathEquals(c, entity.terminatorStrategy, path("terminatorStrategy"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 
@@ -150,7 +150,7 @@ func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 }
 
 type identity struct {
-	id             string
+	Id             string
 	name           string
 	identityType   string
 	isAdmin        bool
@@ -160,11 +160,11 @@ type identity struct {
 }
 
 func (entity *identity) getId() string {
-	return entity.id
+	return entity.Id
 }
 
 func (entity *identity) setId(id string) {
-	entity.id = id
+	entity.Id = id
 }
 
 func (entity *identity) getEntityType() string {
@@ -438,61 +438,61 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-type config struct {
-	id           string
-	configTypeId string
-	name         string
-	data         map[string]interface{}
-	tags         map[string]interface{}
+type Config struct {
+	Id           string
+	ConfigTypeId string
+	Name         string
+	Data         map[string]interface{}
+	Tags         map[string]interface{}
 	sendType     bool
 }
 
-func (entity *config) getId() string {
-	return entity.id
+func (entity *Config) getId() string {
+	return entity.Id
 }
 
-func (entity *config) setId(id string) {
-	entity.id = id
+func (entity *Config) setId(id string) {
+	entity.Id = id
 }
 
-func (entity *config) getEntityType() string {
+func (entity *Config) getEntityType() string {
 	return "configs"
 }
 
-func (entity *config) toJson(isCreate bool, ctx *TestContext, fields ...string) string {
+func (entity *Config) toJson(isCreate bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
-	ctx.setValue(entityData, entity.name, fields, "name")
+	ctx.setValue(entityData, entity.Name, fields, "name")
 	if isCreate || entity.sendType {
-		ctx.setValue(entityData, entity.configTypeId, fields, "configTypeId")
+		ctx.setValue(entityData, entity.ConfigTypeId, fields, "configTypeId")
 	}
-	ctx.setValue(entityData, entity.data, fields, "data")
-	ctx.setValue(entityData, entity.tags, fields, "tags")
+	ctx.setValue(entityData, entity.Data, fields, "data")
+	ctx.setValue(entityData, entity.Tags, fields, "tags")
 	return entityData.String()
 }
 
-func (entity *config) validate(ctx *TestContext, c *gabs.Container) {
-	if entity.tags == nil {
-		entity.tags = map[string]interface{}{}
+func (entity *Config) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.Tags == nil {
+		entity.Tags = map[string]interface{}{}
 	}
-	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.configTypeId, path("configTypeId"))
-	ctx.pathEquals(c, entity.data, path("data"))
-	ctx.pathEquals(c, entity.tags, path("tags"))
+	ctx.pathEquals(c, entity.Name, path("name"))
+	ctx.pathEquals(c, entity.ConfigTypeId, path("configTypeId"))
+	ctx.pathEquals(c, entity.Data, path("data"))
+	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 
 type configType struct {
-	id     string
-	name   string
-	schema map[string]interface{}
-	tags   map[string]interface{}
+	Id     string
+	Name   string
+	Schema map[string]interface{}
+	Tags   map[string]interface{}
 }
 
 func (entity *configType) getId() string {
-	return entity.id
+	return entity.Id
 }
 
 func (entity *configType) setId(id string) {
-	entity.id = id
+	entity.Id = id
 }
 
 func (entity *configType) getEntityType() string {
@@ -501,19 +501,19 @@ func (entity *configType) getEntityType() string {
 
 func (entity *configType) toJson(isCreate bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
-	ctx.setValue(entityData, entity.name, fields, "name")
-	ctx.setValue(entityData, entity.schema, fields, "schema")
-	ctx.setValue(entityData, entity.tags, fields, "tags")
+	ctx.setValue(entityData, entity.Name, fields, "name")
+	ctx.setValue(entityData, entity.Schema, fields, "schema")
+	ctx.setValue(entityData, entity.Tags, fields, "tags")
 	return entityData.String()
 }
 
 func (entity *configType) validate(ctx *TestContext, c *gabs.Container) {
-	if entity.tags == nil {
-		entity.tags = map[string]interface{}{}
+	if entity.Tags == nil {
+		entity.Tags = map[string]interface{}{}
 	}
-	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, entity.schema, path("schema"))
-	ctx.pathEquals(c, entity.tags, path("tags"))
+	ctx.pathEquals(c, entity.Name, path("name"))
+	ctx.pathEquals(c, entity.Schema, path("schema"))
+	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 
 type apiSession struct {
@@ -537,7 +537,7 @@ func (entity *apiSession) getEntityType() string {
 }
 
 func (entity *apiSession) toJson(_ bool, ctx *TestContext, fields ...string) string {
-	ctx.req.FailNow("should not be called")
+	ctx.Req.FailNow("should not be called")
 	return ""
 }
 
@@ -553,7 +553,7 @@ func (entity *apiSession) validate(ctx *TestContext, c *gabs.Container) {
 
 type configValidatingService struct {
 	*service
-	configs map[string]*config
+	configs map[string]*Config
 }
 
 func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Container) {
@@ -563,10 +563,10 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	}
 
 	children, err := configs.Children()
-	ctx.req.NoError(err)
-	ctx.req.Equal(len(entity.configs), len(children))
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(len(entity.configs), len(children))
 	for configType, config := range entity.configs {
-		ctx.pathEquals(configs, config.data, path(configType))
+		ctx.pathEquals(configs, config.Data, path(configType))
 	}
 }
 

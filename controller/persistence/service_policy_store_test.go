@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
@@ -23,7 +23,7 @@ func Test_ServicePolicyStore(t *testing.T) {
 func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
 	ctx.cleanupAll()
 
-	policy := newServicePolicy(eid.NewId())
+	policy := newServicePolicy(eid.New())
 	ctx.RequireCreate(policy)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
@@ -45,8 +45,8 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	ctx.cleanupAll()
 
 	// test identity roles
-	policy := newServicePolicy(eid.NewId())
-	invalidId := eid.NewId()
+	policy := newServicePolicy(eid.New())
+	invalidId := eid.New()
 	policy.IdentityRoles = []string{entityRef(invalidId)}
 	err := ctx.Create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'identityRoles' is invalid: no identities found with the given ids", invalidId))
@@ -56,7 +56,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'identityRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
 	identityTypeId := ctx.getIdentityTypeId()
-	identity := newIdentity(eid.NewId(), identityTypeId)
+	identity := newIdentity(eid.New(), identityTypeId)
 	ctx.RequireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Id), entityRef(invalidId)}
@@ -82,7 +82,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 	err = ctx.Create(policy)
 	ctx.EqualError(err, fmt.Sprintf("the value '[%v %v]' for 'serviceRoles' is invalid: if using %v, it should be the only role specified", AllRole, roleRef("other"), AllRole))
 
-	service := newEdgeService(eid.NewId())
+	service := newEdgeService(eid.New())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id), entityRef(invalidId)}
@@ -103,9 +103,9 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	ctx.cleanupAll()
 
 	// test identity roles
-	policy := newServicePolicy(eid.NewId())
+	policy := newServicePolicy(eid.New())
 	identityTypeId := ctx.getIdentityTypeId()
-	identity := newIdentity(eid.NewId(), identityTypeId)
+	identity := newIdentity(eid.New(), identityTypeId)
 	ctx.RequireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Id)}
@@ -115,14 +115,14 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.IdentityRoles), "identity id should have been removed from identity roles")
 
-	identity = newIdentity(eid.NewId(), identityTypeId)
+	identity = newIdentity(eid.New(), identityTypeId)
 	ctx.RequireCreate(identity)
 
 	policy.IdentityRoles = []string{entityRef(identity.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateServicePolicyIdentities([]*Identity{identity}, []*ServicePolicy{policy})
 
-	identity.Name = eid.NewId()
+	identity.Name = eid.New()
 	ctx.RequireUpdate(identity)
 	ctx.RequireReload(policy)
 	ctx.True(stringz.Contains(policy.IdentityRoles, entityRef(identity.Id)))
@@ -133,7 +133,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	ctx.Equal(0, len(policy.IdentityRoles), "identity name should have been removed from identity roles")
 
 	// test service roles
-	service := newEdgeService(eid.NewId())
+	service := newEdgeService(eid.New())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
@@ -143,14 +143,14 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.ServiceRoles), "service id should have been removed from service roles")
 
-	service = newEdgeService(eid.NewId())
+	service = newEdgeService(eid.New())
 	ctx.RequireCreate(service)
 
 	policy.ServiceRoles = []string{entityRef(service.Id)}
 	ctx.RequireUpdate(policy)
 	ctx.validateServicePolicyServices([]*EdgeService{service}, []*ServicePolicy{policy})
 
-	service.Name = eid.NewId()
+	service.Name = eid.New()
 	ctx.RequireUpdate(service)
 	ctx.RequireReload(policy)
 	ctx.True(stringz.Contains(policy.ServiceRoles, entityRef(service.Id)))
@@ -177,25 +177,25 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 
 	var identities []*Identity
 	for i := 0; i < 5; i++ {
-		identity := newIdentity(eid.NewId(), identityTypeId)
+		identity := newIdentity(eid.New(), identityTypeId)
 		ctx.RequireCreate(identity)
 		identities = append(identities, identity)
 	}
 
 	var services []*EdgeService
 	for i := 0; i < 5; i++ {
-		service := newEdgeService(eid.NewId())
+		service := newEdgeService(eid.New())
 		ctx.RequireCreate(service)
 		services = append(services, service)
 	}
 
-	identityRolesAttrs := []string{"foo", "bar", eid.NewId(), "baz", eid.NewId(), "quux"}
+	identityRolesAttrs := []string{"foo", "bar", eid.New(), "baz", eid.New(), "quux"}
 	var identityRoles []string
 	for _, role := range identityRolesAttrs {
 		identityRoles = append(identityRoles, roleRef(role))
 	}
 
-	serviceRoleAttrs := []string{eid.NewId(), "another-role", "parsley, sage, rosemary and don't forget thyme", eid.NewId(), "blop", "asdf"}
+	serviceRoleAttrs := []string{eid.New(), "another-role", "parsley, sage, rosemary and don't forget thyme", eid.New(), "blop", "asdf"}
 	var serviceRoles []string
 	for _, role := range serviceRoleAttrs {
 		serviceRoles = append(serviceRoles, roleRef(role))
@@ -227,23 +227,23 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	}
 
 	// no roles
-	identity := newIdentity(eid.NewId(), identityTypeId)
+	identity := newIdentity(eid.New(), identityTypeId)
 	ctx.RequireCreate(identity)
 	identities = append(identities, identity)
 
 	stringz.Permutations(identityRolesAttrs, func(roles []string) {
-		identity := newIdentity(eid.NewId(), identityTypeId, roles...)
+		identity := newIdentity(eid.New(), identityTypeId, roles...)
 		ctx.RequireCreate(identity)
 		identities = append(identities, identity)
 	})
 
 	// no roles
-	service := newEdgeService(eid.NewId())
+	service := newEdgeService(eid.New())
 	ctx.RequireCreate(service)
 	services = append(services, service)
 
 	stringz.Permutations(serviceRoleAttrs, func(roles []string) {
-		service := newEdgeService(eid.NewId(), roles...)
+		service := newEdgeService(eid.New(), roles...)
 		ctx.RequireCreate(service)
 		services = append(services, service)
 	})
@@ -263,7 +263,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	services = nil
 
 	stringz.Permutations(identityRolesAttrs, func(roles []string) {
-		identity := newIdentity(eid.NewId(), identityTypeId)
+		identity := newIdentity(eid.New(), identityTypeId)
 		ctx.RequireCreate(identity)
 		identity.RoleAttributes = roles
 		ctx.RequireUpdate(identity)
@@ -271,7 +271,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	})
 
 	stringz.Permutations(serviceRoleAttrs, func(roles []string) {
-		service := newEdgeService(eid.NewId())
+		service := newEdgeService(eid.New())
 		ctx.RequireCreate(service)
 		service.RoleAttributes = roles
 		ctx.RequireUpdate(service)
@@ -333,7 +333,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []string, identities []*Identity, services []*EdgeService, oncreate bool) []*ServicePolicy {
 	var policies []*ServicePolicy
 	for i := 0; i < 9; i++ {
-		policy := newServicePolicy(eid.NewId())
+		policy := newServicePolicy(eid.New())
 		if !oncreate {
 			ctx.RequireCreate(policy)
 		}
