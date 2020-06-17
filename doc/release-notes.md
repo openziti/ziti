@@ -1,15 +1,11 @@
 # Release 0.15.0
 Ziti 0.15.0 includes the following:
 
-* cosmetic changes to the ziti-enroller binary
-* cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
-
-# Release 0.14.13
-Ziti 0.14.13 includes the following:
-
 * [Create fabric mgmt API to request database snapshot/backup be created](https://github.com/openziti/fabric/issues/99)
 * [Remove postgres store code including migrations](https://github.com/openziti/edge/issues/195)
 * Remove deprecated AppWan and Clusters - These have been replaced by service policies and service edge router policies respectively
+* cosmetic changes to the ziti-enroller binary
+* cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
 
 ## Removal of deprecated code
 The code to migrate a Ziti instance from pre-0.9 releases has been removed. If you want to migrate from a pre-0.9 version you should first update to 0.14.12, then to new versions.
@@ -19,7 +15,7 @@ The ziti-fabric tool can now be used to trigger the creation of a dabase backup/
 
     $ ziti-fabric snapshot-db
     
-This will create a copy of the database file within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. Support to trigger this from the Edge REST API will be comming in a follow up release.
+This will create a copy of the database file within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. Support to trigger this from the Edge REST API will be comming in a follow-up release.
 
 # Release 0.14.13
 Ziti 0.14.13 includes the following:
