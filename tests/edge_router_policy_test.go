@@ -214,7 +214,6 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 			ctx.testContextChanged(t)
 			ctx.AdminSession.validateAssociations(identity3, "edge-router-policies", policy1, policy2, policy3, policy4, policy6)
 		})
-
 	})
 
 	t.Run("delete policy 2", func(t *testing.T) {

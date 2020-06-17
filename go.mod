@@ -35,20 +35,18 @@ require (
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.1
 	github.com/openziti/fabric v0.11.40
-	github.com/openziti/foundation v0.11.4
+	github.com/openziti/foundation v0.11.5
 	github.com/openziti/sdk-golang v0.13.6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
-	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.5.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
-	github.com/ventu-io/go-shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.etcd.io/bbolt v1.3.4
+	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 	go.mongodb.org/mongo-driver v1.3.3 // indirect
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
+	golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1
 	gopkg.in/resty.v1 v1.12.0
 )
