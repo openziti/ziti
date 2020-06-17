@@ -36,32 +36,24 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Version version
+// APIVersion api version
 //
-// swagger:model version
-type Version struct {
+// swagger:model apiVersion
+type APIVersion struct {
 
-	// api versions
-	APIVersions map[string]map[string]APIVersion `json:"apiVersions,omitempty"`
-
-	// build date
-	BuildDate string `json:"buildDate,omitempty"`
-
-	// revision
-	Revision string `json:"revision,omitempty"`
-
-	// runtime version
-	RuntimeVersion string `json:"runtimeVersion,omitempty"`
+	// path
+	// Required: true
+	Path *string `json:"path"`
 
 	// version
 	Version string `json:"version,omitempty"`
 }
 
-// Validate validates this version
-func (m *Version) Validate(formats strfmt.Registry) error {
+// Validate validates this api version
+func (m *APIVersion) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateAPIVersions(formats); err != nil {
+	if err := m.validatePath(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -71,34 +63,17 @@ func (m *Version) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
+func (m *APIVersion) validatePath(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.APIVersions) { // not required
-		return nil
-	}
-
-	for k := range m.APIVersions {
-
-		for kk := range m.APIVersions[k] {
-
-			if err := validate.Required("apiVersions"+"."+k+"."+kk, "body", m.APIVersions[k][kk]); err != nil {
-				return err
-			}
-			if val, ok := m.APIVersions[k][kk]; ok {
-				if err := val.Validate(formats); err != nil {
-					return err
-				}
-			}
-
-		}
-
+	if err := validate.Required("path", "body", m.Path); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *Version) MarshalBinary() ([]byte, error) {
+func (m *APIVersion) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -106,8 +81,8 @@ func (m *Version) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *Version) UnmarshalBinary(b []byte) error {
-	var res Version
+func (m *APIVersion) UnmarshalBinary(b []byte) error {
+	var res APIVersion
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
