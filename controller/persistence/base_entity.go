@@ -20,13 +20,9 @@ import "strings"
 
 const (
 	EntityTypeApiSessions               = "apiSessions"
-	EntityTypeAppwans                   = "appwans"
 	EntityTypeCas                       = "cas"
-	EntityTypeClusters                  = "clusters"
 	EntityTypeConfigs                   = "configs"
 	EntityTypeConfigTypes               = "configTypes"
-	EntityTypeEdgeRouters               = "edgeRouters"
-	EntityTypeTransitRouters            = "transitRouters"
 	EntityTypeEdgeRouterPolicies        = "edgeRouterPolicies"
 	EntityTypeEventLogs                 = "eventLogs"
 	EntityTypeGeoRegions                = "geoRegions"

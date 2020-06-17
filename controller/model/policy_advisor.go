@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 )
@@ -122,7 +123,7 @@ func (advisor *PolicyAdvisor) getIdentityEdgeRouters(identityId string) (map[str
 			return nil
 		}
 
-		return advisor.env.GetHandlers().EdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, edgeRouterPolicyId, persistence.EntityTypeEdgeRouters, edgeRouterIterator)
+		return advisor.env.GetHandlers().EdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, edgeRouterPolicyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
 	if err := advisor.env.GetHandlers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, edgeRouterPolicyIterator); err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouters(serviceId string) (map[strin
 			edgeRouters[edgeRouterId] = struct{}{}
 			return nil
 		}
-		return advisor.env.GetHandlers().ServiceEdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, policyId, persistence.EntityTypeEdgeRouters, edgeRouterIterator)
+		return advisor.env.GetHandlers().ServiceEdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, policyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
 
 	if err := advisor.env.GetHandlers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, serviceEdgeRouterPolicyIterator); err != nil {
@@ -189,7 +190,7 @@ func (advisor *PolicyAdvisor) getEdgeRouterPolicies(identityId, edgeRouterId str
 		if err != nil {
 			return err
 		}
-		if policyStore.IsEntityRelated(tx, policyId, persistence.EntityTypeEdgeRouters, edgeRouterId) {
+		if policyStore.IsEntityRelated(tx, policyId, db.EntityTypeRouters, edgeRouterId) {
 			result = append(result, policy)
 		}
 		return nil
@@ -295,7 +296,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouterPolicies(serviceId, edgeRouter
 		if err != nil {
 			return err
 		}
-		if policyStore.IsEntityRelated(tx, policyId, persistence.EntityTypeEdgeRouters, edgeRouterId) {
+		if policyStore.IsEntityRelated(tx, policyId, db.EntityTypeRouters, edgeRouterId) {
 			result = append(result, policy)
 		}
 		return nil

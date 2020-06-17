@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -37,12 +38,10 @@ type EdgeRouter struct {
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
-
 	boltEntity := &persistence.EdgeRouter{
-		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Router:         db.Router{BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags)},
 		Name:           entity.Name,
 		RoleAttributes: entity.RoleAttributes,
-		Fingerprint:    nil,
 		IsVerified:     false,
 	}
 
@@ -51,11 +50,13 @@ func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (b
 
 func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
 	return &persistence.EdgeRouter{
-		BaseExtEntity:       *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Router: db.Router{
+			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Fingerprint:   entity.Fingerprint,
+		},
 		Name:                entity.Name,
 		RoleAttributes:      entity.RoleAttributes,
 		IsVerified:          entity.IsVerified,
-		Fingerprint:         entity.Fingerprint,
 		CertPem:             entity.CertPem,
 		Hostname:            entity.Hostname,
 		EdgeRouterProtocols: entity.EdgeRouterProtocols,

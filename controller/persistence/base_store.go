@@ -55,11 +55,13 @@ func newBaseStore(stores *stores, entityType string) *baseStore {
 }
 
 func newChildBaseStore(stores *stores, parent boltz.CrudStore) *baseStore {
+	entityNotFoundF := func(id string) error {
+		return boltz.NewNotFoundError(parent.GetSingularEntityType(), "id", id)
+	}
+
 	return &baseStore{
-		stores: stores,
-		BaseStore: boltz.NewChildBaseStore(parent, func(id string) error {
-			return boltz.NewNotFoundError(parent.GetSingularEntityType(), "id", id)
-		}, EdgeBucket),
+		stores:    stores,
+		BaseStore: boltz.NewChildBaseStore(parent, entityNotFoundF, EdgeBucket),
 	}
 }
 
