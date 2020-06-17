@@ -17,7 +17,6 @@
 package env
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/go-events"
@@ -29,7 +28,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
-	"strings"
 	"sync"
 	"time"
 )
@@ -584,23 +582,15 @@ func (b *Broker) GetOnlineEdgeRouter(id string) *model.EdgeRouter {
 
 func (b *Broker) RouterConnected(r *network.Router) {
 	go func() {
-		if r.Fingerprint == nil {
-			return
+		if r.Fingerprint != nil {
+			if edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*r.Fingerprint); edgeRouter != nil {
+				b.sendHello(r, edgeRouter)
+			}
 		}
-
-		fp := formatFingerprint(*r.Fingerprint)
-		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
-
-		// not an edge router
-		if edgeRouter == nil || edgeRouter.Id == "" {
-			return
-		}
-
-		b.sendHello(r, edgeRouter, fp)
 	}()
 }
 
-func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fingerprint string) {
+func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter) {
 	serverVersion := build.GetBuildInfo().GetVersion()
 	serverHello := &edge_ctrl_pb.ServerHello{
 		Version: serverVersion,
@@ -665,39 +655,10 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter, fing
 
 func (b *Broker) RouterDisconnected(r *network.Router) {
 	go func() {
-		if r.Fingerprint == nil {
-			return
-		}
-		fp := formatFingerprint(*r.Fingerprint)
-		edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(fp)
-
-		// not an edge router
-		if edgeRouter == nil || edgeRouter.Id == "" {
-			return
-		}
-
-		b.edgeRouterMap.RemoveEntry(edgeRouter.Id)
-	}()
-}
-
-func formatFingerprint(fp string) string {
-	fp = strings.ToUpper(fp)
-
-	return insertNth(fp, 2, ":")
-}
-
-func insertNth(s string, n int, i string) string {
-	rs := []rune(i)
-	var buffer bytes.Buffer
-	var nMinus1 = n - 1
-	var lenMinus1 = len(s) - 1
-	for i, cr := range s {
-		buffer.WriteRune(cr)
-		if i%n == nMinus1 && i != lenMinus1 {
-			for _, r := range rs {
-				buffer.WriteRune(r)
+		if r.Fingerprint != nil {
+			if edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*r.Fingerprint); edgeRouter != nil {
+				b.edgeRouterMap.RemoveEntry(edgeRouter.Id)
 			}
 		}
-	}
-	return buffer.String()
+	}()
 }

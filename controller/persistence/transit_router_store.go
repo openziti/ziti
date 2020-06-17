@@ -53,7 +53,6 @@ func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.Typ
 		entity.IsBase = true
 		return
 	}
-	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldTransitRouterIsVerified, false)
 	entity.Enrollments = bucket.GetStringList(FieldTransitRouterEnrollments)
@@ -61,7 +60,6 @@ func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.Typ
 
 func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
 	entity.Router.SetValues(ctx.GetParentContext())
-	entity.SetBaseValues(ctx)
 	if ctx.Bucket != nil {
 		ctx.SetString(FieldName, entity.Name)
 		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)

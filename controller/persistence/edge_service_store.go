@@ -48,7 +48,6 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Service)
 	bucket.SetError(err)
 
-	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
@@ -57,7 +56,6 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	entity.Service.SetValues(ctx.GetParentContext())
 
-	entity.SetBaseValues(ctx)
 	store := ctx.Store.(*edgeServiceStoreImpl)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
@@ -67,10 +65,6 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
-}
-
-func (entity *EdgeService) GetEntityType() string {
-	return EntityTypeServices
 }
 
 func (entity *EdgeService) GetName() string {
@@ -117,7 +111,6 @@ func (store *edgeServiceStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 }
 
 func (store *edgeServiceStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
 	store.GetParentStore().GrantSymbols(store)
 
 	store.indexName = store.addUniqueNameField()

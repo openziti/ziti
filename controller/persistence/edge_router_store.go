@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -27,7 +28,6 @@ import (
 )
 
 const (
-	FieldEdgeRouterFingerprint = "fingerprint"
 	FieldEdgeRouterCertPEM     = "certPem"
 	FieldEdgeRouterIsVerified  = "isVerified"
 	FieldEdgeRouterHostname    = "hostname"
@@ -39,17 +39,16 @@ const (
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
 	return &EdgeRouter{
-		BaseExtEntity:  boltz.BaseExtEntity{Id: eid.New()},
+		Router:         db.Router{BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()}},
 		Name:           name,
 		RoleAttributes: roleAttributes,
 	}
 }
 
 type EdgeRouter struct {
-	boltz.BaseExtEntity
+	db.Router
 	Name                string
 	IsVerified          bool
-	Fingerprint         *string
 	CertPem             *string
 	Hostname            *string
 	EdgeRouterProtocols map[string]string
@@ -63,10 +62,11 @@ type EdgeRouter struct {
 	EnrollmentExpiresAt *time.Time
 }
 
-func (entity *EdgeRouter) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
+func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
+	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Router)
+	bucket.SetError(err)
+
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Fingerprint = bucket.GetString(FieldEdgeRouterFingerprint)
 	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
 
@@ -78,10 +78,10 @@ func (entity *EdgeRouter) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 }
 
 func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
+	entity.Router.SetValues(ctx.GetParentContext())
+
 	store := ctx.Store.(*edgeRouterStoreImpl)
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetStringP(FieldEdgeRouterFingerprint, entity.Fingerprint)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
@@ -93,10 +93,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
-}
-
-func (entity *EdgeRouter) GetEntityType() string {
-	return EntityTypeEdgeRouters
 }
 
 func (entity *EdgeRouter) GetName() string {
@@ -113,7 +109,7 @@ type EdgeRouterStore interface {
 
 func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
 	store := &edgeRouterStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeEdgeRouters),
+		baseStore: newChildBaseStore(stores, stores.Router),
 	}
 	store.InitImpl(store)
 	return store
@@ -139,12 +135,11 @@ func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 }
 
 func (store *edgeRouterStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
+	store.GetParentStore().GrantSymbols(store)
 
 	store.indexName = store.addUniqueNameField()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
-	store.AddSymbol(FieldEdgeRouterFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldEdgeRouterEnrollments, store.stores.enrollment)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)

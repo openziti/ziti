@@ -53,24 +53,22 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 	})
 }
 
-func (ir *VersionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 	buildInfo := build.GetBuildInfo()
 	data := rest_model.Version{
 		BuildDate:      buildInfo.GetBuildDate(),
 		Revision:       buildInfo.GetRevision(),
 		RuntimeVersion: runtime.Version(),
 		Version:        buildInfo.GetVersion(),
-		APIVersions: []*rest_model.APIVersion{
-			mapApiVersionToRestModel(controller.RestApiV1, controller.RestApiBaseUrlV1),
+		APIVersions: map[string]map[string]rest_model.APIVersion{
+			"edge": {controller.RestApiV1: mapApiVersionToRestModel(controller.RestApiBaseUrlV1)},
 		},
 	}
 	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 
-func mapApiVersionToRestModel(version, path string) *rest_model.APIVersion {
-	return &rest_model.APIVersion{
+func mapApiVersionToRestModel(path string) rest_model.APIVersion {
+	return rest_model.APIVersion{
 		Path:    &path,
-		Version: &version,
 	}
-
 }

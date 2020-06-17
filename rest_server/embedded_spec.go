@@ -4612,8 +4612,7 @@ func init() {
     "apiVersion": {
       "type": "object",
       "required": [
-        "path",
-        "version"
+        "path"
       ],
       "properties": {
         "path": {
@@ -7678,9 +7677,12 @@ func init() {
       "type": "object",
       "properties": {
         "apiVersions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiVersion"
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/apiVersion"
+            }
           }
         },
         "buildDate": {
@@ -20162,8 +20164,7 @@ func init() {
     "apiVersion": {
       "type": "object",
       "required": [
-        "path",
-        "version"
+        "path"
       ],
       "properties": {
         "path": {
@@ -23229,9 +23230,12 @@ func init() {
       "type": "object",
       "properties": {
         "apiVersions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiVersion"
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/apiVersion"
+            }
           }
         },
         "buildDate": {

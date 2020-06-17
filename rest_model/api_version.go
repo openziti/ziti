@@ -46,8 +46,7 @@ type APIVersion struct {
 	Path *string `json:"path"`
 
 	// version
-	// Required: true
-	Version *string `json:"version"`
+	Version string `json:"version,omitempty"`
 }
 
 // Validate validates this api version
@@ -55,10 +54,6 @@ func (m *APIVersion) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validatePath(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateVersion(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -71,15 +66,6 @@ func (m *APIVersion) Validate(formats strfmt.Registry) error {
 func (m *APIVersion) validatePath(formats strfmt.Registry) error {
 
 	if err := validate.Required("path", "body", m.Path); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *APIVersion) validateVersion(formats strfmt.Registry) error {
-
-	if err := validate.Required("version", "body", m.Version); err != nil {
 		return err
 	}
 

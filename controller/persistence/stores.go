@@ -53,7 +53,7 @@ type Stores struct {
 	Enrollment              EnrollmentStore
 	Authenticator           AuthenticatorStore
 
-	storeMap map[string]boltz.CrudStore
+	storeMap map[reflect.Type]boltz.CrudStore
 }
 
 func (stores *Stores) buildStoreMap() {
@@ -62,7 +62,8 @@ func (stores *Stores) buildStoreMap() {
 		f := val.Field(i)
 		if f.CanInterface() {
 			if store, ok := f.Interface().(boltz.CrudStore); ok {
-				stores.storeMap[store.GetEntityType()] = store
+				entityType := reflect.TypeOf(store.NewStoreEntity())
+				stores.storeMap[entityType] = store
 			}
 		}
 	}
@@ -79,7 +80,7 @@ func (stores *Stores) getStoreList() []Store {
 }
 
 func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
-	return stores.storeMap[entity.GetEntityType()]
+	return stores.storeMap[reflect.TypeOf(entity)]
 }
 
 type stores struct {
@@ -163,7 +164,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Authenticator:           internalStores.authenticator,
 		Enrollment:              internalStores.enrollment,
 
-		storeMap: make(map[string]boltz.CrudStore),
+		storeMap: make(map[reflect.Type]boltz.CrudStore),
 	}
 
 	// The Index store is used for querying indexes. It's a convenient store with only a single value (id), which

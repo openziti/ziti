@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
@@ -28,7 +29,7 @@ func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
 	ctx.ValidateBaseline(policy)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeEdgeRouters)))
+		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, db.EntityTypeRouters)))
 		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
 
 		testPolicy, err := ctx.stores.ServiceEdgeRouterPolicy.LoadOneByName(tx, policy.Name)
@@ -75,7 +76,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 	policy.ServiceRoles = nil
 	policy.EdgeRouterRoles = []string{entityRef(invalidId)}
 	err = ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no routers found with the given ids", invalidId))
 
 	policy.EdgeRouterRoles = []string{AllRole, roleRef("other")}
 	err = ctx.Create(policy)
@@ -86,7 +87,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id), entityRef(invalidId)}
 	err = ctx.Create(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no routers found with the given ids", invalidId))
 
 	policy.EdgeRouterRoles = []string{entityRef(edgeRouter.Id)}
 	ctx.RequireCreate(policy)
@@ -94,7 +95,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 
 	policy.EdgeRouterRoles = append(policy.EdgeRouterRoles, entityRef(invalidId))
 	err = ctx.Update(policy)
-	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no edgeRouters found with the given ids", invalidId))
+	ctx.EqualError(err, fmt.Sprintf("the value '[%v]' for 'edgeRouterRoles' is invalid: no routers found with the given ids", invalidId))
 	ctx.RequireDelete(policy)
 }
 
@@ -203,7 +204,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	policies := ctx.createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles, services, edgeRouters, true)
 
 	for i := 0; i < 9; i++ {
-		relatedEdgeRouters := ctx.getRelatedIds(policies[i], EntityTypeEdgeRouters)
+		relatedEdgeRouters := ctx.getRelatedIds(policies[i], db.EntityTypeRouters)
 		relatedServices := ctx.getRelatedIds(policies[i], EntityTypeServices)
 		if i == 3 {
 			ctx.Equal([]string{edgeRouters[0].Id}, relatedEdgeRouters)
@@ -405,7 +406,7 @@ func (ctx *TestContext) validateServiceEdgeRouterPolicyServices(services []*Edge
 func (ctx *TestContext) validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeRouter, policies []*ServiceEdgeRouterPolicy) {
 	for _, policy := range policies {
 		count := 0
-		relatedEdgeRouters := ctx.getRelatedIds(policy, EntityTypeEdgeRouters)
+		relatedEdgeRouters := ctx.getRelatedIds(policy, db.EntityTypeRouters)
 		for _, edgeRouter := range edgeRouters {
 			relatedPolicies := ctx.getRelatedIds(edgeRouter, EntityTypeServiceEdgeRouterPolicies)
 			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.EdgeRouterRoles, edgeRouter, edgeRouter.RoleAttributes)

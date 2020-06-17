@@ -63,7 +63,8 @@ func (factory *BasicLinkFactory) SelfLinkFromId(id string) rest_model.Link {
 }
 
 func (factory *BasicLinkFactory) SelfUrlString(id string) string {
-	return path.Join(".", factory.entityName, id)
+	//path.Join will remove the ./ prefix in its "clean" operation
+	return "./" + path.Join(factory.entityName, id)
 }
 
 func (factory *BasicLinkFactory) SelfLink(entity models.Entity) rest_model.Link {
@@ -78,7 +79,8 @@ func (factory *BasicLinkFactory) Links(entity models.Entity) rest_model.Links {
 
 func (factory BasicLinkFactory) NewNestedLink(entity models.Entity, elem ...string) rest_model.Link {
 	elem = append([]string{factory.SelfUrlString(entity.GetId())}, elem...)
-	return NewLink(path.Join(elem...))
+	//path.Join will remove the ./ prefix in its "clean" operation
+	return NewLink("./" + path.Join(elem...))
 }
 
 func (factory *BasicLinkFactory) EntityName() string {

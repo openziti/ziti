@@ -30,11 +30,10 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Version version
@@ -43,7 +42,7 @@ import (
 type Version struct {
 
 	// api versions
-	APIVersions []*APIVersion `json:"apiVersions"`
+	APIVersions map[string]map[string]APIVersion `json:"apiVersions,omitempty"`
 
 	// build date
 	BuildDate string `json:"buildDate,omitempty"`
@@ -78,18 +77,19 @@ func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
 		return nil
 	}
 
-	for i := 0; i < len(m.APIVersions); i++ {
-		if swag.IsZero(m.APIVersions[i]) { // not required
-			continue
-		}
+	for k := range m.APIVersions {
 
-		if m.APIVersions[i] != nil {
-			if err := m.APIVersions[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("apiVersions" + "." + strconv.Itoa(i))
-				}
+		for kk := range m.APIVersions[k] {
+
+			if err := validate.Required("apiVersions"+"."+k+"."+kk, "body", m.APIVersions[k][kk]); err != nil {
 				return err
 			}
+			if val, ok := m.APIVersions[k][kk]; ok {
+				if err := val.Validate(formats); err != nil {
+					return err
+				}
+			}
+
 		}
 
 	}
