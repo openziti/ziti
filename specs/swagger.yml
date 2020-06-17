@@ -4899,14 +4899,13 @@ definitions:
       apiVersions:
         type: object
         additionalProperties:
-          type: array
-          items:
+          type: object
+          additionalProperties:
             $ref: '#/definitions/apiVersion'
   apiVersion:
     type: object
     required:
       - path
-      - version
     properties:
       version:
         type: string
