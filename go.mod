@@ -35,8 +35,8 @@ require (
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.1
 	github.com/openziti/fabric v0.11.40
-	github.com/openziti/foundation v0.11.3
-	github.com/openziti/sdk-golang v0.13.5
+	github.com/openziti/foundation v0.11.4
+	github.com/openziti/sdk-golang v0.13.6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7
