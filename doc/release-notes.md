@@ -4,6 +4,8 @@ Ziti 0.15.0 includes the following:
 * [Create fabric mgmt API to request database snapshot/backup be created](https://github.com/openziti/fabric/issues/99)
 * [Remove postgres store code including migrations](https://github.com/openziti/edge/issues/195)
 * Remove deprecated AppWan and Clusters - These have been replaced by service policies and service edge router policies respectively
+* cosmetic changes to the ziti-enroller binary
+* cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
 
 ## Removal of deprecated code
 The code to migrate a Ziti instance from pre-0.9 releases has been removed. If you want to migrate from a pre-0.9 version you should first update to 0.14.12, then to new versions.

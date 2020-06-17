@@ -17,7 +17,6 @@
 package subcmd
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
@@ -56,7 +55,7 @@ var logFormatter string
 
 func Execute() {
 	if err := root.Execute(); err != nil {
-		fmt.Printf("error: %s", err)
+		pfxlog.Logger().Errorf("error: %s", err)
 	}
 }
 
