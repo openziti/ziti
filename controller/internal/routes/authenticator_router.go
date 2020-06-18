@@ -31,7 +31,6 @@ func init() {
 
 type AuthenticatorRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewAuthenticatorRouter() *AuthenticatorRouter {

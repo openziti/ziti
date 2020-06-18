@@ -50,6 +50,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/certificate_authority"
 	"github.com/openziti/edge/rest_server/operations/config"
 	"github.com/openziti/edge/rest_server/operations/current_api_session"
+	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/edge/rest_server/operations/edge_router"
 	"github.com/openziti/edge/rest_server/operations/edge_router_policy"
 	"github.com/openziti/edge/rest_server/operations/enroll"
@@ -130,6 +131,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		ConfigCreateConfigTypeHandler: config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.CreateConfigType has not yet been implemented")
+		}),
+		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
 		}),
 		EdgeRouterCreateEdgeRouterHandler: edge_router.CreateEdgeRouterHandlerFunc(func(params edge_router.CreateEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.CreateEdgeRouter has not yet been implemented")
@@ -606,6 +610,8 @@ type ZitiEdgeAPI struct {
 	ConfigCreateConfigHandler config.CreateConfigHandler
 	// ConfigCreateConfigTypeHandler sets the operation handler for the create config type operation
 	ConfigCreateConfigTypeHandler config.CreateConfigTypeHandler
+	// DatabaseCreateDatabaseSnapshotHandler sets the operation handler for the create database snapshot operation
+	DatabaseCreateDatabaseSnapshotHandler database.CreateDatabaseSnapshotHandler
 	// EdgeRouterCreateEdgeRouterHandler sets the operation handler for the create edge router operation
 	EdgeRouterCreateEdgeRouterHandler edge_router.CreateEdgeRouterHandler
 	// EdgeRouterPolicyCreateEdgeRouterPolicyHandler sets the operation handler for the create edge router policy operation
@@ -980,6 +986,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.ConfigCreateConfigTypeHandler == nil {
 		unregistered = append(unregistered, "config.CreateConfigTypeHandler")
+	}
+	if o.DatabaseCreateDatabaseSnapshotHandler == nil {
+		unregistered = append(unregistered, "database.CreateDatabaseSnapshotHandler")
 	}
 	if o.EdgeRouterCreateEdgeRouterHandler == nil {
 		unregistered = append(unregistered, "edge_router.CreateEdgeRouterHandler")
@@ -1512,6 +1521,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/config-types"] = config.NewCreateConfigType(o.context, o.ConfigCreateConfigTypeHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database/snapshot"] = database.NewCreateDatabaseSnapshot(o.context, o.DatabaseCreateDatabaseSnapshotHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

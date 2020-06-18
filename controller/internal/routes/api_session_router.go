@@ -31,7 +31,6 @@ func init() {
 
 type ApiSessionHandler struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewApiSessionRouter() *ApiSessionHandler {

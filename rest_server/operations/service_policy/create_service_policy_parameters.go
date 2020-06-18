@@ -77,7 +77,7 @@ func (o *CreateServicePolicyParams) BindRequest(r *http.Request, route *middlewa
 		var body rest_model.ServicePolicyCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body"))
+				res = append(res, errors.Required("body", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("body", "body", "", err))
 			}
@@ -92,7 +92,7 @@ func (o *CreateServicePolicyParams) BindRequest(r *http.Request, route *middlewa
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body"))
+		res = append(res, errors.Required("body", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

@@ -174,4 +174,8 @@ const (
 	AuthenticatorMethodMaxCode    string = "MAX_AUTHENTICATOR_METHODS_REACHED"
 	AuthenticatorMethodMaxMessage string = "The identity already has the maximum authenticators of the specified method"
 	AuthenticatorMethodMaxStatus  int    = http.StatusConflict
+
+	RateLimitedCode    string = "RATE_LIMITED"
+	RateLimitedMessage string = "The requested operation is rate limited and the rate limit has been exceeded. Please try again later"
+	RateLimitedStatus  int    = http.StatusTooManyRequests
 )

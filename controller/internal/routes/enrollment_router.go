@@ -31,7 +31,6 @@ func init() {
 
 type EnrollmentRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewEnrollmentRouter() *EnrollmentRouter {

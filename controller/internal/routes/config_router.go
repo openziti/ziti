@@ -32,7 +32,6 @@ func init() {
 
 type ConfigRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewConfigRouter() *ConfigRouter {
@@ -78,7 +77,7 @@ func (r *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigParams) {
 	if params.Body.Data == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body"))
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 
@@ -94,7 +93,7 @@ func (r *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigParams) {
 	if params.Body.Data == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body"))
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 

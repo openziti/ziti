@@ -32,7 +32,6 @@ func init() {
 
 type ConfigTypeRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewConfigTypeRouter() *ConfigTypeRouter {
@@ -120,7 +119,7 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 	}
 	if params.Body.Schema == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body"))
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
 		return
 	}
 

@@ -87,7 +87,7 @@ func (o *ErnollUpdbParams) BindRequest(r *http.Request, route *middleware.Matche
 // bindToken binds and validates parameter Token from query.
 func (o *ErnollUpdbParams) bindToken(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("token", "query")
+		return errors.Required("token", "query", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {

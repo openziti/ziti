@@ -32,7 +32,6 @@ func init() {
 
 type TerminatorRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewTerminatorRouter() *TerminatorRouter {
