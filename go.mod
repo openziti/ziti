@@ -25,7 +25,7 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang/protobuf v1.3.5
-	github.com/google/go-cmp v0.4.1
+	github.com/google/go-cmp v0.5.0
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
 	github.com/jessevdk/go-flags v1.4.0
@@ -35,12 +35,12 @@ require (
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.1
 	github.com/openziti/fabric v0.11.43
-	github.com/openziti/foundation v0.11.5
-	github.com/openziti/sdk-golang v0.13.7
+	github.com/openziti/foundation v0.11.6
+	github.com/openziti/sdk-golang v0.13.8
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
