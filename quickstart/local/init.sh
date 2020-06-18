@@ -94,12 +94,18 @@ fi
 echo "staring a new bash shell to retain all environment variables without polluting the initial shell"
 bash --rcfile <(cat << HERE
 . ~/.bashrc 
-export PS1="ZITI IS RUNNING: "
+. ~/.bash_aliases
+export PS1="ZITI IS RUNNING ${network_name}: "
 
 echo "adding pki-functions to bash shell"
 . ${curdir}/pki-functions.sh
 
 alias zec='ziti edge controller'
+alias zlogin='ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"'
+alias psz='ps -ef | grep ziti'
+
+echo "generating env file"
+for f in $(env); do if [[ $f = ZITI_* ]]; then echo "export $f" >> make-env.sh ; fi; done
 
 HERE
 )
