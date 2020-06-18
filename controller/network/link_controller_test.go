@@ -25,8 +25,8 @@ import (
 func TestLifecycle(t *testing.T) {
 	linkController := newLinkController()
 
-	r0 := NewRouter("r0", "")
-	r1 := NewRouter("r1", "")
+	r0 := NewRouter("r0", "", "")
+	r1 := NewRouter("r1", "", "")
 	l0 := &Link{
 		Id:  &identity.TokenId{Token: "l0"},
 		Src: r0,

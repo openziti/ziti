@@ -3,12 +3,16 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"testing"
 )
 
 func NewTestContext(t *testing.T) *TestContext {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+
 	context := &TestContext{
 		BaseTestContext: *boltz.NewTestContext(t),
 	}
@@ -45,6 +49,7 @@ func (ctx *TestContext) Init() {
 func (ctx *TestContext) requireNewService() *Service {
 	entity := &Service{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:          uuid.New().String(),
 	}
 	ctx.RequireCreate(entity)
 	return entity
@@ -53,6 +58,7 @@ func (ctx *TestContext) requireNewService() *Service {
 func (ctx *TestContext) requireNewRouter() *Router {
 	entity := &Router{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:          uuid.New().String(),
 	}
 	ctx.RequireCreate(entity)
 	return entity

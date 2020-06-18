@@ -32,16 +32,19 @@ const (
 
 type Router struct {
 	boltz.BaseExtEntity
+	Name        string
 	Fingerprint *string
 }
 
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
 }
 
@@ -51,7 +54,9 @@ func (entity *Router) GetEntityType() string {
 
 type RouterStore interface {
 	boltz.CrudStore
+	GetNameIndex() boltz.ReadIndex
 	LoadOneById(tx *bbolt.Tx, id string) (*Router, error)
+	LoadOneByName(tx *bbolt.Tx, id string) (*Router, error)
 }
 
 func newRouterStore(stores *stores) *routerStoreImpl {
@@ -71,16 +76,25 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 
 type routerStoreImpl struct {
 	baseStore
+	indexName         boltz.ReadIndex
 	terminatorsSymbol boltz.EntitySetSymbol
 }
 
 func (store *routerStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
+
+	symbolName := store.AddSymbol(FieldName, ast.NodeTypeString)
+	store.indexName = store.AddUniqueIndex(symbolName)
+
 	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
 	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
 }
 
 func (store *routerStoreImpl) initializeLinked() {
+}
+
+func (store *routerStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *routerStoreImpl) NewStoreEntity() boltz.Entity {
@@ -93,6 +107,14 @@ func (store *routerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Router, err
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (store *routerStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Router, error) {
+	id := store.indexName.Read(tx, []byte(name))
+	if id != nil {
+		return store.LoadOneById(tx, string(id))
+	}
+	return nil, nil
 }
 
 func (store *routerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

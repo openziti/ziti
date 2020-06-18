@@ -72,6 +72,7 @@ func toApiService(s *network.Service) *mgmt_pb.Service {
 
 	return &mgmt_pb.Service{
 		Id:                 s.Id,
+		Name:               s.Name,
 		TerminatorStrategy: s.TerminatorStrategy,
 		Terminators:        terminators,
 	}

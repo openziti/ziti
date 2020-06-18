@@ -58,6 +58,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 
 				responseR := &mgmt_pb.Router{
 					Id:          router.Id,
+					Name:        router.Name,
 					Fingerprint: stringz.OrEmpty(router.Fingerprint),
 				}
 

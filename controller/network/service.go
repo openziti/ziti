@@ -29,6 +29,7 @@ import (
 
 type Service struct {
 	models.BaseEntity
+	Name               string
 	TerminatorStrategy string
 	Terminators        []*Terminator
 }
@@ -38,6 +39,7 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
 	}
+	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.FillCommon(boltService)
 
@@ -54,6 +56,7 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
 		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:               entity.Name,
 		TerminatorStrategy: entity.TerminatorStrategy,
 	}
 }

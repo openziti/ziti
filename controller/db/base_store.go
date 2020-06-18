@@ -20,6 +20,10 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 )
 
+const (
+	FieldName = "name"
+)
+
 type store interface {
 	boltz.CrudStore
 }

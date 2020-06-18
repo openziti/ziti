@@ -42,7 +42,7 @@ func (h *createRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 
 	create := &mgmt_pb.CreateRouterRequest{}
 	if err := proto.Unmarshal(msg.Body, create); err == nil {
-		r := network.NewRouter(create.Router.Id, create.Router.Fingerprint)
+		r := network.NewRouter(create.Router.Id, create.Router.Name, create.Router.Fingerprint)
 		if err := h.network.CreateRouter(r); err == nil {
 			log.Infof("created router [r/%s] with fingerprint [%s]", r.Id, create.Router.Fingerprint)
 			handler_common.SendSuccess(msg, ch, "")

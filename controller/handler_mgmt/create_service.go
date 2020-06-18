@@ -41,8 +41,12 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	cs := &mgmt_pb.CreateServiceRequest{}
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
+		if cs.Service.Name == "" {
+			cs.Service.Name = cs.Service.Id
+		}
 		service := &network.Service{
 			BaseEntity:         models.BaseEntity{Id: cs.Service.Id},
+			Name:               cs.Service.Name,
 			TerminatorStrategy: cs.Service.TerminatorStrategy,
 		}
 		for _, terminator := range cs.Service.Terminators {

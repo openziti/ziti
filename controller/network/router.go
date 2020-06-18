@@ -30,6 +30,7 @@ import (
 
 type Router struct {
 	models.BaseEntity
+	Name               string
 	Fingerprint        *string
 	AdvertisedListener string
 	Control            channel2.Channel
@@ -42,6 +43,7 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
 	}
+	entity.Name = boltRouter.Name
 	entity.Fingerprint = boltRouter.Fingerprint
 	entity.FillCommon(boltRouter)
 	return nil
@@ -50,13 +52,18 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 func (entity *Router) toBolt() *db.Router {
 	return &db.Router{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
 		Fingerprint:   entity.Fingerprint,
 	}
 }
 
-func NewRouter(id, fingerprint string) *Router {
+func NewRouter(id, name, fingerprint string) *Router {
+	if name == "" {
+		name = id
+	}
 	return &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
+		Name:        name,
 		Fingerprint: &fingerprint,
 	}
 }
