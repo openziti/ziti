@@ -29,7 +29,6 @@ import (
 
 type EdgeService struct {
 	db.Service
-	Name           string
 	RoleAttributes []string
 	Configs        []string
 }
@@ -38,8 +37,8 @@ func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	return &EdgeService{
 		Service: db.Service{
 			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+			Name:          name,
 		},
-		Name:           name,
 		RoleAttributes: roleAttributes,
 	}
 }
@@ -113,7 +112,7 @@ func (store *edgeServiceStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.GetParentStore().GrantSymbols(store)
 
-	store.indexName = store.addUniqueNameField()
+	store.indexName = store.GetParentStore().(db.ServiceStore).GetNameIndex()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)

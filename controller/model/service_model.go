@@ -44,9 +44,9 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity
 	edgeService := &persistence.EdgeService{
 		Service: db.Service{
 			BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:               entity.Name,
 			TerminatorStrategy: entity.TerminatorStrategy,
 		},
-		Name:           entity.Name,
 		RoleAttributes: entity.RoleAttributes,
 		Configs:        entity.Configs,
 	}

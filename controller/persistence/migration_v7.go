@@ -44,6 +44,7 @@ func (m *Migrations) moveEdgeRoutersUnderFabricRouters(step *boltz.MigrationStep
 				fingerprint = &cfp
 			}
 
+			name := edgeRouterBucket.GetStringOrError(FieldName)
 			createdAt := edgeRouterBucket.GetTimeOrError(boltz.FieldCreatedAt)
 			updatedAt := edgeRouterBucket.GetTimeOrError(boltz.FieldUpdatedAt)
 			tags := edgeRouterBucket.GetMap(boltz.FieldTags)
@@ -58,6 +59,7 @@ func (m *Migrations) moveEdgeRoutersUnderFabricRouters(step *boltz.MigrationStep
 						Migrate:   true,
 					},
 				},
+				Name:        name,
 				Fingerprint: fingerprint,
 			}
 			if step.SetError(m.stores.Router.Create(step.Ctx, router)) {
@@ -97,7 +99,7 @@ func (m *Migrations) fixPolicyEdgeRouterReferences(step *boltz.MigrationStep, st
 	}
 
 	for _, id := range ids {
-		log.Debugf("converting %v %v", store.GetSingularEntityType(), id)
+		log.Debugf("moving edgeRouters for %v %v to routers", store.GetSingularEntityType(), id)
 		policyBucket := store.GetEntityBucket(step.Ctx.Tx(), []byte(id))
 		edgeRoutersBucket := policyBucket.GetBucket(migrationEntityTypeEdgeRouters)
 		if edgeRoutersBucket == nil {
@@ -109,6 +111,27 @@ func (m *Migrations) fixPolicyEdgeRouterReferences(step *boltz.MigrationStep, st
 		}
 		if step.SetError(routersBucket.Copy(edgeRoutersBucket, copyAll)) {
 			return
+		}
+	}
+}
+
+func (m *Migrations) copyNamesToParent(step *boltz.MigrationStep, store boltz.CrudStore) {
+	ids, _, err := store.QueryIds(step.Ctx.Tx(), "true")
+	if step.SetError(err) {
+		return
+	}
+
+	log := pfxlog.Logger()
+
+	for _, id := range ids {
+		log.Debugf("copying %v edge name to fabric for id: %v", store.GetSingularEntityType(), id)
+		edgeBucket := store.GetEntityBucket(step.Ctx.Tx(), []byte(id))
+		parentBucket := store.GetParentStore().GetEntityBucket(step.Ctx.Tx(), []byte(id))
+
+		name := edgeBucket.GetString(FieldName)
+		if name != nil {
+			parentBucket.SetString(FieldName, *name, nil)
+			log.Debugf("copied %v edge name of %v to fabric for id %v", store.GetSingularEntityType(), *name, id)
 		}
 	}
 }

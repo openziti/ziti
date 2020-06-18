@@ -72,6 +72,9 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 7 {
 		m.moveEdgeRoutersUnderFabricRouters(step)
+		m.copyNamesToParent(step, m.stores.EdgeService)
+		m.copyNamesToParent(step, m.stores.EdgeRouter)
+		m.copyNamesToParent(step, m.stores.TransitRouter)
 	}
 
 	// current version

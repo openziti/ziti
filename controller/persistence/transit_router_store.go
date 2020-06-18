@@ -30,7 +30,6 @@ const (
 
 type TransitRouter struct {
 	db.Router
-	Name        string
 	IsVerified  bool
 	Enrollments []string
 	IsBase      bool
@@ -53,7 +52,6 @@ func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.Typ
 		entity.IsBase = true
 		return
 	}
-	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldTransitRouterIsVerified, false)
 	entity.Enrollments = bucket.GetStringList(FieldTransitRouterEnrollments)
 }
@@ -61,7 +59,6 @@ func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.Typ
 func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
 	entity.Router.SetValues(ctx.GetParentContext())
 	if ctx.Bucket != nil {
-		ctx.SetString(FieldName, entity.Name)
 		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)
 		ctx.SetStringList(FieldTransitRouterEnrollments, entity.Enrollments)
 	}
@@ -103,7 +100,7 @@ func (store *transitRouterStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.GetParentStore().GrantSymbols(store)
 
-	store.indexName = store.addUniqueNameField()
+	store.indexName = store.GetParentStore().(db.RouterStore).GetNameIndex()
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldTransitRouterEnrollments, store.stores.enrollment)
 	store.MapSymbol(FieldName, boltz.NotNilStringMapper{})
 }

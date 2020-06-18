@@ -111,6 +111,7 @@ func Test_TransitRouters(t *testing.T) {
 				UpdatedAt: time.Now(),
 				Tags:      nil,
 			},
+			Name:               "uMvqq",
 			Fingerprint:        &fp,
 			AdvertisedListener: "tls:127.0.0.1",
 		}

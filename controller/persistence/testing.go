@@ -134,8 +134,8 @@ func (ctx *TestContext) requireNewService(name string) *EdgeService {
 	edgeService := &EdgeService{
 		Service: db.Service{
 			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+			Name:          name,
 		},
-		Name: name,
 	}
 	ctx.RequireCreate(edgeService)
 	return edgeService
