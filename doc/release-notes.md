@@ -1,9 +1,16 @@
 # Release 0.15.0
 Ziti 0.15.0 includes the following:
 
-* [Create fabric mgmt API to request database snapshot/backup be created](https://github.com/openziti/fabric/issues/99)
-* [Remove postgres store code including migrations](https://github.com/openziti/edge/issues/195)
-* Remove deprecated AppWan and Clusters - These have been replaced by service policies and service edge router policies respectively
+* The ability to invoke a database snapshot/backup
+  * [Create fabric mgmt API to request database snapshot/backup be created](https://github.com/openziti/fabric/issues/99)
+  * [Add snapshot db REST API](https://github.com/openziti/edge/issues/206)
+* Removal of deprecated code/migrations
+  * [Remove postgres store code including migrations](https://github.com/openziti/edge/issues/195)
+  * Remove deprecated AppWan and Clusters - These have been replaced by service policies and service edge router policies respectively
+* Edge Routers are now a subtype of Fabric Routers
+  * see [Unverified Edge Routers Cannot Be Used For Terminators](https://github.com/openziti/edge/issues/144)
+* Fabric services and routers now have names
+  * see [Add name to service and router](https://github.com/openziti/fabric/issues/101)
 * cosmetic changes to the ziti-enroller binary
 * cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
 * Memory leak remediation in the `PayloadBuffer` subsystem. Corrects unbounded memory growth in `ziti-router`.
@@ -12,11 +19,24 @@ Ziti 0.15.0 includes the following:
 The code to migrate a Ziti instance from pre-0.9 releases has been removed. If you want to migrate from a pre-0.9 version you should first update to 0.14.12, then to new versions.
 
 ## Database Snapshots
-The ziti-fabric tool can now be used to trigger the creation of a dabase backup/snapshot. 
+Database snapshots can now be triggered in a variety of ways to cause the creation of a dabase backup/snapshot. This can be done from the ziti-fabric CLI, the ziti CLI and the REST API 
 
     $ ziti-fabric snapshot-db
+    $ ziti edge snapshot-db
     
-This will create a copy of the database file within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. Support to trigger this from the Edge REST API will be comming in a follow-up release.
+The REST API is available by POSTing to `/edge/v1/database/snapshot`. This ability is only available to administrators.
+    
+The snapshot will be a copy of the database file created within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. 
+
+## Edge Routers/Fabric Router subtyping
+Previously edge routers and fabric routers were closely related, but weren't actually the same entity. When an edge router was created, there was no corresponding fabric router until the edge router had been succesfully enrolled. 
+
+Now, edge routers are a type of fabric router. When an edge router is created, it will be visible as a fabric router with no fingerprint. This means that the corresponding router application won't be able to connect until enrollment is complete. 
+
+This simplifies some things, including allowing adding terminators to an edge router before enrollment is complete.
+
+## Fabric Router and Service Names
+Previously fabric routers and services only had ids, which were assumed to be something user friendly. Now they also have a name. If no name is provided, the id will be used for the name as well. This was done primarily so that we have consistency between the fabric and the edge. Now when viewing a service or router you can be sure to find the label in the same place.
 
 # Release 0.14.13
 Ziti 0.14.13 includes the following:

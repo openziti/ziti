@@ -17,11 +17,11 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -53,7 +53,7 @@ var listRouters = &cobra.Command{
 					err := proto.Unmarshal(responseMsg.Body, response)
 					if err == nil {
 						out := fmt.Sprintf("\nRouters: (%d)\n\n", len(response.Routers))
-						out += fmt.Sprintf("%-12s | %-40s | %s\n", "Id", "Fingerprint", "Status")
+						out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", "Id", "Name", "Fingerprint", "Status")
 						for _, r := range response.Routers {
 							status := ""
 							if r.Connected {
@@ -62,7 +62,7 @@ var listRouters = &cobra.Command{
 							if r.ListenerAddress != "" {
 								status += " (" + r.ListenerAddress + ")"
 							}
-							out += fmt.Sprintf("%-12s | %-40s | %s\n", r.Id, r.Fingerprint, status)
+							out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", r.Id, r.Name, r.Fingerprint, status)
 						}
 						out += "\n"
 						fmt.Print(out)

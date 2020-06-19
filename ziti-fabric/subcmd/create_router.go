@@ -17,18 +17,21 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/identity/certtools"
 	"crypto/sha1"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/certtools"
 	"github.com/spf13/cobra"
 	"time"
 )
 
+var createRouterName string
+
 func init() {
+	createRouter.Flags().StringVar(&createServiceName, "name", "", "Router name. If not provided defaults to the router ID")
 	createRouterClient = NewMgmtClient(createRouter)
 	createCmd.AddCommand(createRouter)
 }
@@ -43,6 +46,7 @@ var createRouter = &cobra.Command{
 				request := &mgmt_pb.CreateRouterRequest{
 					Router: &mgmt_pb.Router{
 						Id:          cert[0].Subject.CommonName,
+						Name:        createRouterName,
 						Fingerprint: fmt.Sprintf("%x", sha1.Sum(cert[0].Raw)),
 					},
 				}

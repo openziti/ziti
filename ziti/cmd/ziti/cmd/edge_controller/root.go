@@ -57,6 +57,7 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newVersionCmd(f, out, errOut))
 	cmd.AddCommand(newPolicyAdivsorCmd(f, out, errOut))
 	cmd.AddCommand(newVerifyCmd(f, out, errOut))
+	cmd.AddCommand(newSnapshotDbCmd(f, out, errOut))
 	return cmd
 }
 
