@@ -43,10 +43,12 @@ func (bindHandler *bindHandler) HandleXgressBind(sessionId *identity.TokenId, ad
 	x.SetReceiveHandler(bindHandler.receiveHandler)
 	x.AddPeekHandler(bindHandler.metricsPeekHandler)
 
-	payloadBuffer := bindHandler.forwarder.PayloadBuffer(sessionId, address)
-	payloadBuffer.Originator = originator
-	payloadBuffer.SrcAddress = address
-	x.SetPayloadBuffer(payloadBuffer)
+	if x.Options.Retransmission {
+		payloadBuffer := bindHandler.forwarder.PayloadBuffer(sessionId, address)
+		payloadBuffer.Originator = originator
+		payloadBuffer.SrcAddress = address
+		x.SetPayloadBuffer(payloadBuffer)
+	}
 
 	x.SetCloseHandler(bindHandler.closeHandler)
 

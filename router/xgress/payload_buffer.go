@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -32,13 +33,15 @@ type PayloadBufferForwarder interface {
 }
 
 type PayloadBufferController struct {
-	buffers   cmap.ConcurrentMap // map[sessionId.Token]*PayloadBuffer
+	buffers   cmap.ConcurrentMap // map[bufferId{address+sessionId}]*PayloadBuffer
+	sessions  cmap.ConcurrentMap // map[sessionId][]string{bufferId{address+sessionId}
 	forwarder PayloadBufferForwarder
 }
 
 func NewPayloadBufferController(forwarder PayloadBufferForwarder) *PayloadBufferController {
 	return &PayloadBufferController{
 		buffers:   cmap.New(),
+		sessions:  cmap.New(),
 		forwarder: forwarder,
 	}
 }
@@ -51,13 +54,27 @@ func (controller *PayloadBufferController) BufferForSession(sessionId *identity.
 
 	buffer := NewPayloadBuffer(sessionId, controller.forwarder)
 	controller.buffers.Set(bufferId, buffer)
+	controller.sessions.Upsert(sessionId.Token, bufferId, func(exists bool, valueInMap interface{}, newValue interface{}) interface{} {
+		nv := newValue.(string)
+		if !exists {
+			return []string{nv}
+		}
+		res := valueInMap.([]string)
+		return append(res, nv)
+	})
+
 	return buffer
 }
 
 func (controller *PayloadBufferController) EndSession(sessionId *identity.TokenId) {
-	if i, found := controller.buffers.Get(sessionId.Token); found {
-		i.(*PayloadBuffer).Close()
-		controller.buffers.Remove(sessionId.Token)
+	if v, found := controller.sessions.Get(sessionId.Token); found {
+		logrus.Debugf("cleaning up for [s/%s]", sessionId.Token)
+		bufferIds := v.([]string)
+		for _, bufferId := range bufferIds {
+			logrus.Debugf("removing bufferId [%s]", bufferId)
+			controller.buffers.Remove(bufferId)
+		}
+		controller.sessions.Remove(sessionId.Token)
 	}
 }
 
@@ -140,6 +157,7 @@ func (buffer *PayloadBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 }
 
 func (buffer *PayloadBuffer) Close() {
+	logrus.Debugf("[%p] closing", buffer)
 	defer func() {
 		if r := recover(); r != nil {
 			pfxlog.Logger().Debug("already closed")
@@ -152,8 +170,8 @@ func (buffer *PayloadBuffer) Close() {
 
 func (buffer *PayloadBuffer) run() {
 	log := pfxlog.ContextLogger("s/" + buffer.sessionId.Token)
-	defer log.Debug("exited")
-	log.Debug("started")
+	defer log.Debugf("[%p] exited", buffer)
+	log.Debugf("[%p] started", buffer)
 
 	lastDebug := info.NowInMilliseconds()
 	for {

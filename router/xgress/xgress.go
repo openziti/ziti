@@ -95,7 +95,7 @@ type Xgress struct {
 	address        Address
 	peer           Connection
 	originator     Originator
-	options        *Options
+	Options        *Options
 	txQueue        chan *Payload
 	txBuffer       *TransmitBuffer
 	rxSequence     int32
@@ -113,7 +113,7 @@ func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, or
 		address:    address,
 		peer:       peer,
 		originator: originator,
-		options:    options,
+		Options:    options,
 		txQueue:    make(chan *Payload),
 		txBuffer:   NewTransmitBuffer(),
 		rxSequence: 0,
@@ -188,7 +188,7 @@ func (self *Xgress) Close() {
 		log.Debug("closing tx queue")
 		close(self.txQueue)
 
-		if self.options.Retransmission && self.payloadBuffer != nil {
+		if self.Options.Retransmission && self.payloadBuffer != nil {
 			self.payloadBuffer.Close()
 		}
 
@@ -231,7 +231,7 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 }
 
 func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error {
-	if self.options.Retransmission && self.payloadBuffer != nil {
+	if self.Options.Retransmission && self.payloadBuffer != nil {
 		// if we have xgress <-> xgress in a single router, they will share a Payload buffer, as they share
 		// a session and can get caught in deadlock if we don't dispatch to a new goroutine here
 		go self.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
@@ -250,10 +250,10 @@ func (self *Xgress) tx() {
 		case inPayload := <-self.txQueue:
 			if inPayload != nil && !inPayload.IsSessionEndFlagSet() {
 				payloadLogger := log.WithFields(inPayload.GetLoggerFields())
-				if !self.options.RandomDrops || rand.Int31n(self.options.Drop1InN) != 1 {
+				if !self.Options.RandomDrops || rand.Int31n(self.Options.Drop1InN) != 1 {
 					payloadLogger.Debug("adding to transmit buffer")
 					self.txBuffer.ReceiveUnordered(inPayload)
-					if self.options.Retransmission && self.payloadBuffer != nil {
+					if self.Options.Retransmission && self.payloadBuffer != nil {
 						payloadLogger.Debug("acknowledging")
 						self.payloadBuffer.AcknowledgePayload(inPayload)
 					}
@@ -324,7 +324,7 @@ func (self *Xgress) rx() {
 			remaining := n
 			payloads := 0
 			for remaining > 0 {
-				length := mathz.MinInt(remaining, int(self.options.Mtu))
+				length := mathz.MinInt(remaining, int(self.Options.Mtu))
 				payload := &Payload{
 					Header: Header{
 						SessionId: self.sessionId.Token,
@@ -340,8 +340,8 @@ func (self *Xgress) rx() {
 
 				payloadLogger := log.WithFields(payload.GetLoggerFields())
 
-				if self.options.Retransmission && self.payloadBuffer != nil {
-					payloadLogger.Debug("buffering payload")
+				if self.Options.Retransmission && self.payloadBuffer != nil {
+					//payloadLogger.Debug("buffering payload")
 					self.payloadBuffer.BufferPayload(payload)
 				}
 
