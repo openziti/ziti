@@ -748,12 +748,20 @@ func (network *Network) GetServiceCache() Cache {
 	return network.Services
 }
 
+var DbSnapshotTooFrequentError = dbSnapshotTooFrequentError{}
+
+type dbSnapshotTooFrequentError struct{}
+
+func (d dbSnapshotTooFrequentError) Error() string {
+	return "may snapshot database at most once per minute"
+}
+
 func (network *Network) SnapshotDatabase() error {
 	network.lock.Lock()
 	defer network.lock.Unlock()
 
 	if network.lastSnapshot.Add(time.Minute).After(time.Now()) {
-		return errors.New("may snapshot database at most once per minute")
+		return DbSnapshotTooFrequentError
 	}
 	pfxlog.Logger().Info("snapshotting database")
 	err := network.GetDb().View(func(tx *bbolt.Tx) error {
