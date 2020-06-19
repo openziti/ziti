@@ -135,3 +135,21 @@ func (m *Migrations) copyNamesToParent(step *boltz.MigrationStep, store boltz.Cr
 		}
 	}
 }
+
+func (m *Migrations) fixAuthenticatorCertFingerprints(step *boltz.MigrationStep) {
+	ids, _, err := m.stores.Authenticator.QueryIds(step.Ctx.Tx(), "true")
+	if step.SetError(err) {
+		return
+	}
+	for _, id := range ids {
+		bucket := m.stores.Authenticator.GetEntityBucket(step.Ctx.Tx(), []byte(id))
+		fp := bucket.GetString(FieldAuthenticatorCertFingerprint)
+		if fp != nil && len(*fp) > 0 {
+			updateFp := strings.Replace(strings.ToLower(*fp), ":", "", -1)
+			bucket.SetString(FieldAuthenticatorCertFingerprint, updateFp, nil)
+			if step.SetError(bucket.GetError()) {
+				return
+			}
+		}
+	}
+}
