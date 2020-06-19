@@ -39,22 +39,10 @@ type PayloadBufferController struct {
 }
 
 func NewPayloadBufferController(forwarder PayloadBufferForwarder) *PayloadBufferController {
-	pbc := &PayloadBufferController{
+	return &PayloadBufferController{
 		buffers:   cmap.New(),
 		sessions:  cmap.New(),
 		forwarder: forwarder,
-	}
-	go pbc.debug()
-	return pbc
-}
-
-func (controller *PayloadBufferController) debug() {
-	for {
-		time.Sleep(15 * time.Second)
-		logrus.Infof("buffers = [%d]", len(controller.buffers.Keys()))
-		for _, k := range controller.buffers.Keys() {
-			logrus.Infof("k = [%s]", k)
-		}
 	}
 }
 
