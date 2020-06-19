@@ -37,7 +37,7 @@ listeners:
     address:            tcp:0.0.0.0:1122
     service:            ssh
     options:
-      mtu:              768
+      retransmission:   true
 
   # for iperf_tcp (iperf3)
   - binding:            proxy
@@ -64,6 +64,11 @@ listeners:
       retransmission:   true
       randomDrops:      true
       drop1InN:         5000
+
+dialers:
+  - binding:            transport
+    options:
+      retransmission:   true
 
 # xctrl_example
 #

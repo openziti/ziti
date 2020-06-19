@@ -6,6 +6,7 @@ Ziti 0.15.0 includes the following:
 * Remove deprecated AppWan and Clusters - These have been replaced by service policies and service edge router policies respectively
 * cosmetic changes to the ziti-enroller binary
 * cosmetic changes to the ziti-tunnel binary when running the enroll subcommand
+* Memory leak remediation in the `PayloadBuffer` subsystem. Corrects unbounded memory growth in `ziti-router`.
 
 ## Removal of deprecated code
 The code to migrate a Ziti instance from pre-0.9 releases has been removed. If you want to migrate from a pre-0.9 version you should first update to 0.14.12, then to new versions.
