@@ -18,8 +18,8 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -39,15 +39,16 @@ const (
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
 	return &EdgeRouter{
-		Router:         db.Router{BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()}},
-		Name:           name,
+		Router: db.Router{
+			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+			Name:          name,
+		},
 		RoleAttributes: roleAttributes,
 	}
 }
 
 type EdgeRouter struct {
 	db.Router
-	Name                string
 	IsVerified          bool
 	CertPem             *string
 	Hostname            *string
@@ -66,7 +67,6 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Router)
 	bucket.SetError(err)
 
-	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
 
@@ -81,7 +81,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	entity.Router.SetValues(ctx.GetParentContext())
 
 	store := ctx.Store.(*edgeRouterStoreImpl)
-	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
@@ -137,7 +136,7 @@ func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.GetParentStore().GrantSymbols(store)
 
-	store.indexName = store.addUniqueNameField()
+	store.indexName = store.GetParentStore().(db.RouterStore).GetNameIndex()
 	store.indexRoleAttributes = store.addRoleAttributesField()
 
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)

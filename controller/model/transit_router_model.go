@@ -38,9 +38,9 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.En
 	boltEntity := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 		},
-		Name:       entity.Name,
 		IsVerified: false,
 	}
 
@@ -51,9 +51,9 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.En
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 		},
-		Name:       entity.Name,
 		IsVerified: entity.IsVerified,
 	}
 

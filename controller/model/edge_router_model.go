@@ -37,10 +37,12 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.EdgeRouter{
-		Router:         db.Router{BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags)},
-		Name:           entity.Name,
+		Router: db.Router{
+			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:          entity.Name,
+		},
 		RoleAttributes: entity.RoleAttributes,
 		IsVerified:     false,
 	}
@@ -52,9 +54,9 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 	return &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 		},
-		Name:                entity.Name,
 		RoleAttributes:      entity.RoleAttributes,
 		IsVerified:          entity.IsVerified,
 		CertPem:             entity.CertPem,
