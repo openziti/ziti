@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -140,6 +141,7 @@ func (buffer *PayloadBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 }
 
 func (buffer *PayloadBuffer) Close() {
+	logrus.Infof("[%p] closing", buffer)
 	defer func() {
 		if r := recover(); r != nil {
 			pfxlog.Logger().Debug("already closed")
@@ -152,8 +154,8 @@ func (buffer *PayloadBuffer) Close() {
 
 func (buffer *PayloadBuffer) run() {
 	log := pfxlog.ContextLogger("s/" + buffer.sessionId.Token)
-	defer log.Debug("exited")
-	log.Debug("started")
+	defer log.Infof("[%p] exited", buffer)
+	log.Infof("[%p] started", buffer)
 
 	lastDebug := info.NowInMilliseconds()
 	for {
