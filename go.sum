@@ -325,11 +325,18 @@ github.com/openziti/edge v0.14.45 h1:P/bUFsDVMj3Eh9Rbqk1O9EjxJz51iWAW51LFr/jGnxI
 github.com/openziti/edge v0.14.45/go.mod h1:BMfLnzTjmdsZCudteTDEuZ2zO0Jv4oh5qBCwTssNo2o=
 github.com/openziti/fabric v0.11.43 h1:+EEo1xYossvXf7LDLcnw3cJxaZwh+k8ez/Ew9qBUd9s=
 github.com/openziti/fabric v0.11.43/go.mod h1:va9H0K20ugtCsMj8/1vdRAWsWlFdy1T+OEdXm0e1LW4=
+github.com/openziti/fabric v0.11.48 h1:1mFFeelzAKj+ZAMS4cX64z4WTHULZCyz+h6QpePLteo=
+github.com/openziti/fabric v0.11.48/go.mod h1:DHTpBAV096+0d3T65IDNFwd/a+ht3IxqSbMNZbsd+2Q=
+github.com/openziti/foundation v0.11.5 h1:RmhFzKgH9KdztsF1T/70s+ftPpMGu1X3A6RhmPlOFiY=
 github.com/openziti/foundation v0.11.5/go.mod h1:jfnQ8WWFJGrDD2COPtQ/yX+gRlaiMdwUuXbvEBOpnLc=
 github.com/openziti/foundation v0.11.7 h1:Eb7jHhRsEo9rorwqUQce5SR/NCSqTmlMyVHd0JiGEb8=
 github.com/openziti/foundation v0.11.7/go.mod h1:Qdd7eCuTrpRwEeDbvYy89sFbEY4+J7OuX8UygxNBsvY=
+github.com/openziti/foundation v0.11.8 h1:fcJzxdtU1URLwPB6DHRLlod+by4TMXYmMPWxOKu2vEw=
+github.com/openziti/foundation v0.11.8/go.mod h1:Qdd7eCuTrpRwEeDbvYy89sFbEY4+J7OuX8UygxNBsvY=
 github.com/openziti/sdk-golang v0.13.10 h1:iLYvWVNvU2rMUITRXLiriwRnSNngioROVrjewv7QQZQ=
 github.com/openziti/sdk-golang v0.13.10/go.mod h1:jXBekQvK4B9+w/JwN0uE9AAorFuqbph36uFGZHSmwkw=
+github.com/openziti/sdk-golang v0.13.11 h1:VlaW8H2dOeq4LwZtc5VFObjcI9YJW+rNNVA43LYKAec=
+github.com/openziti/sdk-golang v0.13.11/go.mod h1:CQFpRGd/+x/i5uHdnXaY7V1Eusb6siCmZcF7vVhUXKo=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
@@ -489,6 +496,8 @@ golang.org/x/net v0.0.0-20191007182048-72f939374954/go.mod h1:z5CRVTTTmAJ677TzLL
 golang.org/x/net v0.0.0-20200202094626-16171245cfb2/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/net v0.0.0-20200226121028-0de0cce0169b h1:0mm1VjtFUOIlE1SbDlwjYaDxZVDP2S5ou6y0gSgXHu8=
 golang.org/x/net v0.0.0-20200226121028-0de0cce0169b/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
+golang.org/x/net v0.0.0-20200602114024-627f9648deb9 h1:pNX+40auqi2JqRfOP1akLGtYcn15TUbkhwuCO3foqqM=
+golang.org/x/net v0.0.0-20200602114024-627f9648deb9/go.mod h1:qpuaurCH72eLCgpAm/N6yyVIVM9cpaDIP3A8BGJEC5A=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
@@ -522,6 +531,7 @@ golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20191008105621-543471e840be/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 h1:LfCXLvNmTYH9kEmVgqbnsWfruoXZIrh4YBgqVHtDvw0=
 golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1 h1:ogLJMz+qpzav7lGMh10LMvAkM/fAoGlaiiHYiFYdm80=
 golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=

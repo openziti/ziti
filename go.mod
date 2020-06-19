@@ -26,9 +26,9 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/openziti/edge v0.14.45
-	github.com/openziti/fabric v0.11.43
-	github.com/openziti/foundation v0.11.7
-	github.com/openziti/sdk-golang v0.13.10
+	github.com/openziti/fabric v0.11.48
+	github.com/openziti/foundation v0.11.8
+	github.com/openziti/sdk-golang v0.13.11
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/viper v1.5.0
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/negroni v1.0.0
-	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
+	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	google.golang.org/grpc v1.25.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
