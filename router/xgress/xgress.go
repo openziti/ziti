@@ -341,7 +341,7 @@ func (self *Xgress) rx() {
 				payloadLogger := log.WithFields(payload.GetLoggerFields())
 
 				if self.Options.Retransmission && self.payloadBuffer != nil {
-					payloadLogger.Info("buffering payload")
+					//payloadLogger.Debug("buffering payload")
 					self.payloadBuffer.BufferPayload(payload)
 				}
 

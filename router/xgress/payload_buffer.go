@@ -33,14 +33,28 @@ type PayloadBufferForwarder interface {
 }
 
 type PayloadBufferController struct {
-	buffers   cmap.ConcurrentMap // map[sessionId.Token]*PayloadBuffer
+	buffers   cmap.ConcurrentMap // map[bufferId{address+sessionId}]*PayloadBuffer
+	sessions  cmap.ConcurrentMap // map[sessionId][]string{bufferId{address+sessionId}
 	forwarder PayloadBufferForwarder
 }
 
 func NewPayloadBufferController(forwarder PayloadBufferForwarder) *PayloadBufferController {
-	return &PayloadBufferController{
+	pbc := &PayloadBufferController{
 		buffers:   cmap.New(),
+		sessions:  cmap.New(),
 		forwarder: forwarder,
+	}
+	go pbc.debug()
+	return pbc
+}
+
+func (controller *PayloadBufferController) debug() {
+	for {
+		time.Sleep(15 * time.Second)
+		logrus.Infof("buffers = [%d]", len(controller.buffers.Keys()))
+		for _, k := range controller.buffers.Keys() {
+			logrus.Infof("k = [%s]", k)
+		}
 	}
 }
 
@@ -50,15 +64,30 @@ func (controller *PayloadBufferController) BufferForSession(sessionId *identity.
 		return i.(*PayloadBuffer)
 	}
 
-	buffer := NewPayloadBuffer(sessionId, controller.forwarder)
+	buffer := NewPayloadBuffer(controller, sessionId, controller.forwarder)
 	controller.buffers.Set(bufferId, buffer)
+
+	v, found := controller.sessions.Get(sessionId.Token)
+	if found {
+		bufferIds := v.([]string)
+		bufferIds = append(bufferIds, bufferId)
+		controller.sessions.Set(sessionId.Token, bufferIds)
+	} else {
+		bufferIds := []string{bufferId}
+		controller.sessions.Set(sessionId.Token, bufferIds)
+	}
 	return buffer
 }
 
 func (controller *PayloadBufferController) EndSession(sessionId *identity.TokenId) {
-	if i, found := controller.buffers.Get(sessionId.Token); found {
-		i.(*PayloadBuffer).Close()
-		controller.buffers.Remove(sessionId.Token)
+	if v, found := controller.sessions.Get(sessionId.Token); found {
+		logrus.Infof("cleaning up for [s/%s]", sessionId.Token)
+		bufferIds := v.([]string)
+		for _, bufferId := range bufferIds {
+			logrus.Infof("removing bufferId [%s]", bufferId)
+			controller.buffers.Remove(bufferId)
+		}
+		controller.sessions.Remove(sessionId.Token)
 	}
 }
 
@@ -74,6 +103,7 @@ type PayloadBuffer struct {
 	forwarder         PayloadBufferForwarder
 	SrcAddress        Address
 	Originator        Originator
+	controller        *PayloadBufferController
 
 	config struct {
 		retransmitAge int64
@@ -88,7 +118,7 @@ type payloadAge struct {
 	age     int64
 }
 
-func NewPayloadBuffer(sessionId *identity.TokenId, forwarder PayloadBufferForwarder) *PayloadBuffer {
+func NewPayloadBuffer(controller *PayloadBufferController, sessionId *identity.TokenId, forwarder PayloadBufferForwarder) *PayloadBuffer {
 	buffer := &PayloadBuffer{
 		sessionId:         sessionId,
 		buffer:            make(map[int32]*payloadAge),
@@ -99,6 +129,7 @@ func NewPayloadBuffer(sessionId *identity.TokenId, forwarder PayloadBufferForwar
 		newlyReceivedAcks: make(chan *Acknowledgement),
 		receivedAckHwm:    -1,
 		forwarder:         forwarder,
+		controller:        controller,
 	}
 
 	buffer.config.retransmitAge = 2000
