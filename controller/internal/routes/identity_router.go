@@ -118,7 +118,7 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 
 	// policy advice URL
 	ae.Api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, params.ServiceID, permissions.IsAdmin())
 	})
 }
 

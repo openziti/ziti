@@ -75,6 +75,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.copyNamesToParent(step, m.stores.EdgeService)
 		m.copyNamesToParent(step, m.stores.EdgeRouter)
 		m.copyNamesToParent(step, m.stores.TransitRouter)
+		m.fixAuthenticatorCertFingerprints(step)
 	}
 
 	// current version

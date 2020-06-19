@@ -153,8 +153,8 @@ func (handler *SessionHandler) querySessions(query ast.Query) (*SessionListResul
 
 func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
-	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.edgeRouters) = "%v" and `+
-		`anyOf(service.serviceEdgeRouterPolicies.edgeRouters) = "%v"`, edgeRouterId, edgeRouterId)
+	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.routers) = "%v" and `+
+		`anyOf(service.serviceEdgeRouterPolicies.routers) = "%v"`, edgeRouterId, edgeRouterId)
 	err := handler.list(query, result.collect)
 	if err != nil {
 		return nil, err

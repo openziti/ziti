@@ -40,7 +40,7 @@ import (
 // DetailEdgeRouterPolicyOKCode is the HTTP code returned for type DetailEdgeRouterPolicyOK
 const DetailEdgeRouterPolicyOKCode int = 200
 
-/*DetailEdgeRouterPolicyOK A single ege router policy
+/*DetailEdgeRouterPolicyOK A single edge router policy
 
 swagger:response detailEdgeRouterPolicyOK
 */

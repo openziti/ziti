@@ -78,7 +78,7 @@ func NewDetailServicePolicyOK() *DetailServicePolicyOK {
 
 /*DetailServicePolicyOK handles this case with default header values.
 
-A signle service policy
+A single service policy
 */
 type DetailServicePolicyOK struct {
 	Payload *rest_model.DetailServicePolicyEnvelop

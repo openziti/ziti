@@ -40,7 +40,7 @@ import (
 // DetailServicePolicyOKCode is the HTTP code returned for type DetailServicePolicyOK
 const DetailServicePolicyOKCode int = 200
 
-/*DetailServicePolicyOK A signle service policy
+/*DetailServicePolicyOK A single service policy
 
 swagger:response detailServicePolicyOK
 */

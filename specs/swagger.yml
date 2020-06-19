@@ -3314,7 +3314,7 @@ responses:
     schema:
       $ref: '#/definitions/listEdgeRouterPoliciesEnvelope'
   detailEdgeRouterPolicy:
-    description: A single ege router policy
+    description: A single edge router policy
     schema:
       $ref: '#/definitions/detailEdgeRouterPolicyEnvelope'
 
@@ -3326,7 +3326,7 @@ responses:
     schema:
       $ref: '#/definitions/listServicePoliciesEnvelope'
   detailServicePolicy:
-    description: A signle service policy
+    description: A single service policy
     schema:
       $ref: '#/definitions/detailServicePolicyEnvelop'
   ###################################################################

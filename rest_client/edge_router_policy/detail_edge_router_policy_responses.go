@@ -78,7 +78,7 @@ func NewDetailEdgeRouterPolicyOK() *DetailEdgeRouterPolicyOK {
 
 /*DetailEdgeRouterPolicyOK handles this case with default header values.
 
-A single ege router policy
+A single edge router policy
 */
 type DetailEdgeRouterPolicyOK struct {
 	Payload *rest_model.DetailEdgeRouterPolicyEnvelope

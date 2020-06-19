@@ -8001,7 +8001,7 @@ func init() {
       }
     },
     "detailEdgeRouterPolicy": {
-      "description": "A single ege router policy",
+      "description": "A single edge router policy",
       "schema": {
         "$ref": "#/definitions/detailEdgeRouterPolicyEnvelope"
       }
@@ -8043,7 +8043,7 @@ func init() {
       }
     },
     "detailServicePolicy": {
-      "description": "A signle service policy",
+      "description": "A single service policy",
       "schema": {
         "$ref": "#/definitions/detailServicePolicyEnvelop"
       }
@@ -12047,7 +12047,7 @@ func init() {
         "operationId": "detailEdgeRouterPolicy",
         "responses": {
           "200": {
-            "description": "A single ege router policy",
+            "description": "A single edge router policy",
             "schema": {
               "$ref": "#/definitions/detailEdgeRouterPolicyEnvelope"
             }
@@ -16726,7 +16726,7 @@ func init() {
         "operationId": "detailServicePolicy",
         "responses": {
           "200": {
-            "description": "A signle service policy",
+            "description": "A single service policy",
             "schema": {
               "$ref": "#/definitions/detailServicePolicyEnvelop"
             }
@@ -23645,7 +23645,7 @@ func init() {
       }
     },
     "detailEdgeRouterPolicy": {
-      "description": "A single ege router policy",
+      "description": "A single edge router policy",
       "schema": {
         "$ref": "#/definitions/detailEdgeRouterPolicyEnvelope"
       }
@@ -23687,7 +23687,7 @@ func init() {
       }
     },
     "detailServicePolicy": {
-      "description": "A signle service policy",
+      "description": "A single service policy",
       "schema": {
         "$ref": "#/definitions/detailServicePolicyEnvelop"
       }
