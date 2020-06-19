@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const CurrentDbVersion = 2
+const CurrentDbVersion = 3
 
 func (stores *stores) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion > CurrentDbVersion {
@@ -23,6 +23,11 @@ func (stores *stores) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 2 {
 		stores.extractTerminators(step)
+	}
+
+	if step.CurrentVersion < 3 {
+		stores.setNames(step, stores.service)
+		stores.setNames(step, stores.router)
 	}
 
 	if step.CurrentVersion <= CurrentDbVersion {
@@ -52,6 +57,22 @@ func (stores *stores) initCreatedAtUpdatedAt(step *boltz.MigrationStep, now time
 		entityBucket.SetTime(boltz.FieldUpdatedAt, now, nil)
 		if step.SetError(entityBucket.GetError()) {
 			return
+		}
+	}
+}
+
+func (stores *stores) setNames(step *boltz.MigrationStep, store boltz.CrudStore) {
+	ids, _, err := store.QueryIds(step.Ctx.Tx(), "true")
+	step.SetError(err)
+	for _, id := range ids {
+		entityBucket := store.GetEntityBucket(step.Ctx.Tx(), []byte(id))
+		if entityBucket == nil {
+			step.SetError(errors.Errorf("could not get entity bucket for %v with id %v", store.GetSingularEntityType(), id))
+			return
+		}
+		if name := entityBucket.GetString(FieldName); name == nil || len(*name) == 0 {
+			entityBucket.SetString(FieldName, string(id), nil)
+			step.SetError(entityBucket.GetError())
 		}
 	}
 }

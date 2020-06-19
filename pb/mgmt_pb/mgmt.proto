@@ -80,8 +80,9 @@ enum TerminatorChangeMask {
 
 message Service {
     string id = 1;
-    string terminatorStrategy = 2;
-    repeated Terminator terminators = 3;
+    string name = 2;
+    string terminatorStrategy = 3;
+    repeated Terminator terminators = 4;
 }
 
 message Terminator {
@@ -157,9 +158,10 @@ message SetTerminatorCostRequest {
 
 message Router {
     string id = 1;
-    string fingerprint = 2;
-    string listenerAddress = 3;
-    bool connected = 4;
+    string name = 2;
+    string fingerprint = 3;
+    string listenerAddress = 4;
+    bool connected = 5;
 }
 
 message ListRoutersRequest {

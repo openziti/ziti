@@ -56,8 +56,9 @@ func (h *getTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	if err == nil {
 		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetTerminatorResponseType), body)
 		responseMsg.ReplyTo(msg)
-		ch.Send(responseMsg)
-
+		if err = ch.Send(responseMsg); err != nil {
+			pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
+		}
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}

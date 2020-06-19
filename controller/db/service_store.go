@@ -31,16 +31,19 @@ const (
 
 type Service struct {
 	boltz.BaseExtEntity
+	Name               string
 	TerminatorStrategy string
 }
 
 func (entity *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.TerminatorStrategy = bucket.GetStringWithDefault(FieldServiceTerminatorStrategy, "")
 }
 
 func (entity *Service) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
 	if entity.TerminatorStrategy == "" {
 		entity.TerminatorStrategy = xt_smartrouting.Name
 	}
@@ -69,7 +72,9 @@ func (entity *Service) GetEntityType() string {
 
 type ServiceStore interface {
 	store
+	GetNameIndex() boltz.ReadIndex
 	LoadOneById(tx *bbolt.Tx, id string) (*Service, error)
+	LoadOneByName(tx *bbolt.Tx, name string) (*Service, error)
 }
 
 func newServiceStore(stores *stores) *serviceStoreImpl {
@@ -89,16 +94,25 @@ func newServiceStore(stores *stores) *serviceStoreImpl {
 
 type serviceStoreImpl struct {
 	baseStore
+	indexName         boltz.ReadIndex
 	terminatorsSymbol boltz.EntitySetSymbol
 }
 
 func (store *serviceStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
+
+	symbolName := store.AddSymbol(FieldName, ast.NodeTypeString)
+	store.indexName = store.AddUniqueIndex(symbolName)
+
 	store.AddSymbol(FieldServiceTerminatorStrategy, ast.NodeTypeString)
 	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
 }
 
 func (store *serviceStoreImpl) initializeLinked() {
+}
+
+func (store *serviceStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *serviceStoreImpl) NewStoreEntity() boltz.Entity {
@@ -111,6 +125,14 @@ func (store *serviceStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Service, e
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (store *serviceStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Service, error) {
+	id := store.indexName.Read(tx, []byte(name))
+	if id != nil {
+		return store.LoadOneById(tx, string(id))
+	}
+	return nil, nil
 }
 
 func (store *serviceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
