@@ -609,6 +609,10 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		outputJson(out, resp.Body())
 	}
 
+	if len(resp.Body()) == 0 {
+		return nil, nil
+	}
+
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
@@ -685,6 +689,10 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doReq
 		outputJson(out, resp.Body())
 	}
 
+	if resp.Body() == nil {
+		return nil, nil
+	}
+
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
@@ -692,7 +700,4 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doReq
 	}
 
 	return jsonParsed, nil
-
 }
-
-//util.EdgeControllerRequest(session.Host, session.Cert, session.Token, entityType, options.Out, options.OutputJSONResponse, func(request *resty.Request) error {
