@@ -79,8 +79,8 @@ func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
 
 	entityData, _ := gabs.New().ArrayOfSize(1)
 	serviceConfig := map[string]string{
-		"service": serviceId,
-		"config":  configId,
+		"serviceId": serviceId,
+		"configId":  configId,
 	}
 	_, _ = entityData.SetIndex(serviceConfig, 0)
 
