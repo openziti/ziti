@@ -69,10 +69,10 @@ func (controller *PayloadBufferController) BufferForSession(sessionId *identity.
 
 func (controller *PayloadBufferController) EndSession(sessionId *identity.TokenId) {
 	if v, found := controller.sessions.Get(sessionId.Token); found {
-		logrus.Infof("cleaning up for [s/%s]", sessionId.Token)
+		logrus.Debugf("cleaning up for [s/%s]", sessionId.Token)
 		bufferIds := v.([]string)
 		for _, bufferId := range bufferIds {
-			logrus.Infof("removing bufferId [%s]", bufferId)
+			logrus.Debugf("removing bufferId [%s]", bufferId)
 			controller.buffers.Remove(bufferId)
 		}
 		controller.sessions.Remove(sessionId.Token)
@@ -171,8 +171,8 @@ func (buffer *PayloadBuffer) Close() {
 
 func (buffer *PayloadBuffer) run() {
 	log := pfxlog.ContextLogger("s/" + buffer.sessionId.Token)
-	defer log.Infof("[%p] exited", buffer)
-	log.Infof("[%p] started", buffer)
+	defer log.Debugf("[%p] exited", buffer)
+	log.Debugf("[%p] started", buffer)
 
 	lastDebug := info.NowInMilliseconds()
 	for {
