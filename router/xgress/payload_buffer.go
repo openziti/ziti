@@ -158,7 +158,7 @@ func (buffer *PayloadBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 }
 
 func (buffer *PayloadBuffer) Close() {
-	logrus.Infof("[%p] closing", buffer)
+	logrus.Debugf("[%p] closing", buffer)
 	defer func() {
 		if r := recover(); r != nil {
 			pfxlog.Logger().Debug("already closed")
