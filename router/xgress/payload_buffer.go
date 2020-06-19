@@ -54,16 +54,15 @@ func (controller *PayloadBufferController) BufferForSession(sessionId *identity.
 
 	buffer := NewPayloadBuffer(sessionId, controller.forwarder)
 	controller.buffers.Set(bufferId, buffer)
+	controller.sessions.Upsert(sessionId.Token, bufferId, func(exists bool, valueInMap interface{}, newValue interface{}) interface{} {
+		nv := newValue.(string)
+		if !exists {
+			return []string{nv}
+		}
+		res := valueInMap.([]string)
+		return append(res, nv)
+	})
 
-	v, found := controller.sessions.Get(sessionId.Token)
-	if found {
-		bufferIds := v.([]string)
-		bufferIds = append(bufferIds, bufferId)
-		controller.sessions.Set(sessionId.Token, bufferIds)
-	} else {
-		bufferIds := []string{bufferId}
-		controller.sessions.Set(sessionId.Token, bufferIds)
-	}
 	return buffer
 }
 
