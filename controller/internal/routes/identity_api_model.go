@@ -78,7 +78,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 				Token:      uuid.New().String(),
 			})
 		} else if identity.Enrollment.Ottca != "" {
-			caId := identity.Enrollment.Ottca.String()
+			caId := identity.Enrollment.Ottca
 			enrollments = append(enrollments, &model.Enrollment{
 				BaseEntity: models.BaseEntity{},
 				Method:     persistence.MethodEnrollOttCa,

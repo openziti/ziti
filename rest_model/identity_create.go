@@ -204,8 +204,7 @@ type IdentityCreateEnrollment struct {
 	Ott bool `json:"ott,omitempty"`
 
 	// ottca
-	// Format: uuid
-	Ottca strfmt.UUID `json:"ottca,omitempty"`
+	Ottca string `json:"ottca,omitempty"`
 
 	// updb
 	Updb string `json:"updb,omitempty"`
@@ -213,28 +212,6 @@ type IdentityCreateEnrollment struct {
 
 // Validate validates this identity create enrollment
 func (m *IdentityCreateEnrollment) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validateOttca(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *IdentityCreateEnrollment) validateOttca(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.Ottca) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("enrollment"+"."+"ottca", "body", "uuid", m.Ottca.String(), formats); err != nil {
-		return err
-	}
-
 	return nil
 }
 

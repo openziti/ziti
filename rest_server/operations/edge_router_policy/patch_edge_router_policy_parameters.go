@@ -83,7 +83,7 @@ func (o *PatchEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middle
 		var body rest_model.EdgeRouterPolicyPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body"))
+				res = append(res, errors.Required("body", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("body", "body", "", err))
 			}
@@ -98,7 +98,7 @@ func (o *PatchEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middle
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body"))
+		res = append(res, errors.Required("body", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

@@ -109,7 +109,7 @@ func (o *AuthenticateParams) BindRequest(r *http.Request, route *middleware.Matc
 // bindMethod binds and validates parameter Method from query.
 func (o *AuthenticateParams) bindMethod(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("method", "query")
+		return errors.Required("method", "query", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {

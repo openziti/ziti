@@ -31,7 +31,6 @@ func init() {
 
 type ServiceEdgeRouterPolicyRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewServiceEdgeRouterPolicyRouter() *ServiceEdgeRouterPolicyRouter {

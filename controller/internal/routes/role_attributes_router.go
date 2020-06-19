@@ -26,12 +26,6 @@ import (
 	"github.com/openziti/fabric/controller/models"
 )
 
-const (
-	PathEdgeRouterRoleAttributes = "/edge-router-role-attributes"
-	PathIdentityRoleAttributes   = "/identity-role-attributes"
-	PathServiceRoleAttributes    = "/service-role-attributes"
-)
-
 func init() {
 	r := NewRoleAttributesRouter()
 	env.AddRouter(r)

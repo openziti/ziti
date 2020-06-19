@@ -81,7 +81,7 @@ func (o *VerifyCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 		var body string
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("certificate", "body"))
+				res = append(res, errors.Required("certificate", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("certificate", "body", "", err))
 			}
@@ -90,7 +90,7 @@ func (o *VerifyCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 			o.Certificate = body
 		}
 	} else {
-		res = append(res, errors.Required("certificate", "body"))
+		res = append(res, errors.Required("certificate", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

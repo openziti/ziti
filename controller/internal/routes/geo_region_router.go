@@ -31,7 +31,6 @@ func init() {
 
 type GeoRegionRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewGeoRegionRouter() *GeoRegionRouter {

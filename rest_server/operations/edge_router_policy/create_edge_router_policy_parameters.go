@@ -77,7 +77,7 @@ func (o *CreateEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middl
 		var body rest_model.EdgeRouterPolicyCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body"))
+				res = append(res, errors.Required("body", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("body", "body", "", err))
 			}
@@ -92,7 +92,7 @@ func (o *CreateEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middl
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body"))
+		res = append(res, errors.Required("body", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

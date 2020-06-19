@@ -33,7 +33,6 @@ func init() {
 
 type EdgeRouterRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewEdgeRouterRouter() *EdgeRouterRouter {

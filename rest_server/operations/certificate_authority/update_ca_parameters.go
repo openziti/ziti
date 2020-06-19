@@ -83,7 +83,7 @@ func (o *UpdateCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 		var body rest_model.CaUpdate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body"))
+				res = append(res, errors.Required("body", "body", ""))
 			} else {
 				res = append(res, errors.NewParseError("body", "body", "", err))
 			}
@@ -98,7 +98,7 @@ func (o *UpdateCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body"))
+		res = append(res, errors.Required("body", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

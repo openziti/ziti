@@ -312,3 +312,11 @@ func NewMethodNotAllowed() *ApiError {
 		Status:  MethodNotAllowedStatus,
 	}
 }
+
+func NewRateLimited() *ApiError {
+	return &ApiError{
+		Code:    RateLimitedCode,
+		Message: RateLimitedMessage,
+		Status:  RateLimitedStatus,
+	}
+}

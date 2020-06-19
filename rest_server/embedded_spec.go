@@ -1331,6 +1331,32 @@ func init() {
         }
       ]
     },
+    "/database/snapshot": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Create a new database snapshot. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Create a new database snapshot",
+        "operationId": "createDatabaseSnapshot",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
     "/edge-router-policies": {
       "get": {
         "security": [
@@ -6115,8 +6141,7 @@ func init() {
               "type": "boolean"
             },
             "ottca": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "updb": {
               "type": "string"
@@ -7824,7 +7849,7 @@ func init() {
               }
             },
             "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-            "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+            "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
             "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
             "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
           },
@@ -8257,6 +8282,29 @@ func init() {
       "description": "The patch request was successful and the resource has been altered",
       "schema": {
         "$ref": "#/definitions/empty"
+      }
+    },
+    "rateLimitedResponse": {
+      "description": "The resource requested is rate limited and the rate limit has been exceeded",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
+      },
+      "examples": {
+        "application/json": {
+          "error": {
+            "args": {
+              "urlVars": {}
+            },
+            "causeMessage": "you have hit a rate limit in the requested operation",
+            "code": "RATE_LIMITED",
+            "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+            "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+          },
+          "meta": {
+            "apiEnrolmentVersion": "0.0.1",
+            "apiVersion": "0.0.1"
+          }
+        }
       }
     },
     "sessionCreateResponse": {
@@ -10397,7 +10445,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -11013,7 +11061,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -11757,6 +11805,76 @@ func init() {
         }
       ]
     },
+    "/database/snapshot": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Create a new database snapshot. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Create a new database snapshot",
+        "operationId": "createDatabaseSnapshot",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/edge-router-policies": {
       "get": {
         "security": [
@@ -12199,7 +12317,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -13025,7 +13143,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -14600,7 +14718,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -16130,7 +16248,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -16878,7 +16996,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -17738,7 +17856,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -18641,7 +18759,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -19231,7 +19349,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -19815,7 +19933,7 @@ func init() {
                     }
                   },
                   "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-                  "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
                   "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
@@ -20000,8 +20118,7 @@ func init() {
           "type": "boolean"
         },
         "ottca": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "updb": {
           "type": "string"
@@ -21667,8 +21784,7 @@ func init() {
               "type": "boolean"
             },
             "ottca": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "updb": {
               "type": "string"
@@ -23377,7 +23493,7 @@ func init() {
               }
             },
             "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
-            "code": "CONFLIC_CANNOT_MODIFY_REFERENCED",
+            "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
             "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
             "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
           },
@@ -23810,6 +23926,29 @@ func init() {
       "description": "The patch request was successful and the resource has been altered",
       "schema": {
         "$ref": "#/definitions/empty"
+      }
+    },
+    "rateLimitedResponse": {
+      "description": "The resource requested is rate limited and the rate limit has been exceeded",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
+      },
+      "examples": {
+        "application/json": {
+          "error": {
+            "args": {
+              "urlVars": {}
+            },
+            "causeMessage": "you have hit a rate limit in the requested operation",
+            "code": "RATE_LIMITED",
+            "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+            "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+          },
+          "meta": {
+            "apiEnrolmentVersion": "0.0.1",
+            "apiVersion": "0.0.1"
+          }
+        }
       }
     },
     "sessionCreateResponse": {

@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/certificate_authority"
 	"github.com/openziti/edge/rest_server/operations/config"
 	"github.com/openziti/edge/rest_server/operations/current_api_session"
+	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/edge/rest_server/operations/edge_router"
 	"github.com/openziti/edge/rest_server/operations/edge_router_policy"
 	"github.com/openziti/edge/rest_server/operations/enroll"
@@ -146,6 +147,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.ConfigCreateConfigTypeHandler == nil {
 		api.ConfigCreateConfigTypeHandler = config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.CreateConfigType has not yet been implemented")
+		})
+	}
+	if api.DatabaseCreateDatabaseSnapshotHandler == nil {
+		api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
 		})
 	}
 	if api.EdgeRouterCreateEdgeRouterHandler == nil {

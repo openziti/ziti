@@ -33,7 +33,6 @@ func init() {
 
 type CurrentIdentityAuthenticatorRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewCurrentIdentityAuthenticatorRouter() *CurrentIdentityAuthenticatorRouter {

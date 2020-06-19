@@ -31,7 +31,6 @@ func init() {
 
 type IdentityTypeRouter struct {
 	BasePath string
-	IdType   response.IdType
 }
 
 func NewIdentityTypeRouter() *IdentityTypeRouter {
