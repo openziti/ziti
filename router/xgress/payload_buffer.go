@@ -52,7 +52,7 @@ func (controller *PayloadBufferController) BufferForSession(sessionId *identity.
 		return i.(*PayloadBuffer)
 	}
 
-	buffer := NewPayloadBuffer(controller, sessionId, controller.forwarder)
+	buffer := NewPayloadBuffer(sessionId, controller.forwarder)
 	controller.buffers.Set(bufferId, buffer)
 
 	v, found := controller.sessions.Get(sessionId.Token)
@@ -91,7 +91,6 @@ type PayloadBuffer struct {
 	forwarder         PayloadBufferForwarder
 	SrcAddress        Address
 	Originator        Originator
-	controller        *PayloadBufferController
 
 	config struct {
 		retransmitAge int64
@@ -106,7 +105,7 @@ type payloadAge struct {
 	age     int64
 }
 
-func NewPayloadBuffer(controller *PayloadBufferController, sessionId *identity.TokenId, forwarder PayloadBufferForwarder) *PayloadBuffer {
+func NewPayloadBuffer(sessionId *identity.TokenId, forwarder PayloadBufferForwarder) *PayloadBuffer {
 	buffer := &PayloadBuffer{
 		sessionId:         sessionId,
 		buffer:            make(map[int32]*payloadAge),
@@ -117,7 +116,6 @@ func NewPayloadBuffer(controller *PayloadBufferController, sessionId *identity.T
 		newlyReceivedAcks: make(chan *Acknowledgement),
 		receivedAckHwm:    -1,
 		forwarder:         forwarder,
-		controller:        controller,
 	}
 
 	buffer.config.retransmitAge = 2000
