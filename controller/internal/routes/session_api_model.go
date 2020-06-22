@@ -30,7 +30,7 @@ import (
 
 const EntityNameSession = "sessions"
 
-var SessionLinkFactory = NewBasicLinkFactory(EntityNameApiSession)
+var SessionLinkFactory = NewBasicLinkFactory(EntityNameSession)
 
 func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCreate) *model.Session {
 	ret := &model.Session{

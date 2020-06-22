@@ -7301,34 +7301,12 @@ func init() {
       "type": "object",
       "properties": {
         "data": {
-          "$ref": "#/definitions/sessionCreateLocation"
+          "$ref": "#/definitions/sessionDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
         }
       }
-    },
-    "sessionCreateLocation": {
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/createLocation"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "edgeRouters": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/sessionEdgeRouter"
-              }
-            },
-            "token": {
-              "type": "string"
-            }
-          }
-        }
-      ]
     },
     "sessionDetail": {
       "type": "object",
@@ -22944,34 +22922,12 @@ func init() {
       "type": "object",
       "properties": {
         "data": {
-          "$ref": "#/definitions/sessionCreateLocation"
+          "$ref": "#/definitions/sessionDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
         }
       }
-    },
-    "sessionCreateLocation": {
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/createLocation"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "edgeRouters": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/sessionEdgeRouter"
-              }
-            },
-            "token": {
-              "type": "string"
-            }
-          }
-        }
-      ]
     },
     "sessionDetail": {
       "type": "object",

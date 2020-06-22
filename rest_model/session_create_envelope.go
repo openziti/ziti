@@ -41,7 +41,7 @@ import (
 type SessionCreateEnvelope struct {
 
 	// data
-	Data *SessionCreateLocation `json:"data,omitempty"`
+	Data *SessionDetail `json:"data,omitempty"`
 
 	// meta
 	Meta *Meta `json:"meta,omitempty"`

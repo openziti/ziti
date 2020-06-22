@@ -34,18 +34,13 @@ func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link rest_mo
 		nsr.RespondWithError(err)
 		return
 	}
-	edgeRouters, _ := getSessionEdgeRouters(nsr.ae, modelSession)
+	restModel, err := MapSessionToRestModel(nsr.ae, modelSession)
+	if err != nil {
+		nsr.RespondWithError(err)
+		return
+	}
 	newSessionEnvelope := &rest_model.SessionCreateEnvelope{
-		Data: &rest_model.SessionCreateLocation{
-			CreateLocation: rest_model.CreateLocation{
-				Links: rest_model.Links{
-					"self": link,
-				},
-				ID: id,
-			},
-			Token:       modelSession.Token,
-			EdgeRouters: edgeRouters,
-		},
+		Data: restModel,
 		Meta: &rest_model.Meta{},
 	}
 
