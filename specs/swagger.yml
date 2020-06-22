@@ -4897,7 +4897,7 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
-        $ref: '#/definitions/sessionCreateLocation'
+        $ref: '#/definitions/sessionDetail'
   enrollmentCertsEnvelope:
     type: object
     properties:
@@ -4905,18 +4905,6 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/enrollmentCerts'
-  sessionCreateLocation:
-    type: object
-    allOf:
-      - $ref: '#/definitions/createLocation'
-      - type: object
-        properties:
-          token:
-            type: string
-          edgeRouters:
-            type: array
-            items:
-              $ref: '#/definitions/sessionEdgeRouter'
   version:
     type: object
     properties:

@@ -122,7 +122,11 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 	logger := pfxlog.Logger()
 
 	for i := 0; i < 250; i++ {
-		<-dials
+		select {
+		case <-time.After(time.Second * 10):
+			// let it fall through and try to dial
+		case <-dials:
+		}
 		count := atomic.AddInt32(&dialCount, -1)
 		logger.Debugf("consumed dial capacity. Available: %v", count)
 
@@ -236,7 +240,11 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	for i := 0; i < 250; i++ {
-		<-dials
+		select {
+		case <-time.After(time.Second * 10):
+		// let it fall through and try to dial
+		case <-dials:
+		}
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		name := conn.ReadString(1024, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
