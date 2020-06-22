@@ -37,6 +37,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/util/debugz"
 	nfpem "github.com/openziti/foundation/util/pem"
 	sdkconfig "github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -84,6 +85,24 @@ func init() {
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
+
+	go debugStuckTests()
+}
+
+func debugStuckTests() {
+	iterations := 1
+	lastStack := ""
+	for iterations < 21 {
+		time.Sleep(time.Minute)
+		stack := debugz.GenerateStack()
+		fmt.Printf("minute %v\n", iterations)
+		if stack == lastStack {
+			fmt.Println("Stack unchanged")
+		} else {
+			fmt.Println(stack)
+		}
+		lastStack = stack
+	}
 }
 
 type TestContext struct {
