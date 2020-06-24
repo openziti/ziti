@@ -232,8 +232,6 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		if err := xgress.RemoveTerminator(proxy.listener.factory, terminatorId); err != nil {
 			log.Errorf("failed to remove terminator %v (%v)", terminatorId, err)
 		}
-		proxy.sendStateClosed(connId, "session closed")
-		proxy.closeConn(connId)
 	})
 
 	log.Debug("establishing listener")
@@ -241,8 +239,12 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		localMessageSink: localMessageSink{
 			MsgChannel: *edge.NewEdgeMsgChannel(ch, connId),
 			seq:        sequencer.NewSingleWriterSeq(proxy.listener.options.MaxOutOfOrderMsgs),
-			closeCB: func(connId uint32) {
-				removeListener()
+			closeCB: func(closeConnId uint32) {
+				if closeConnId == connId {
+					removeListener()
+				}
+				proxy.sendStateClosed(closeConnId, "session closed")
+				proxy.closeConn(closeConnId)
 			},
 			newSinkCB: func(conn *localMessageSink) {
 				if err := proxy.msgMux.AddMsgSink(conn); err != nil {

@@ -281,7 +281,7 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 		authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
 		for _, authenticatorId := range authenticatorIds {
 			authenticator := &Authenticator{}
-			err := handler.env.GetHandlers().Authenticator.readEntity(authenticatorId, authenticator)
+			err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator)
 			if err != nil {
 				return err
 			}

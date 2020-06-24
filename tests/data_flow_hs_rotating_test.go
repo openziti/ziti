@@ -26,14 +26,40 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func Test_HSRotatingDataflow(t *testing.T) {
+	t.Run("test client first smart routing", func(t *testing.T) {
+		testClientFirstWithStrategy(t, "smartrouting")
+	})
+
+	t.Run("test client first random", func(t *testing.T) {
+		testClientFirstWithStrategy(t, "random")
+	})
+
+	t.Run("test client first weighted", func(t *testing.T) {
+		testClientFirstWithStrategy(t, "weighted")
+	})
+
+	t.Run("test server first smart routing", func(t *testing.T) {
+		testServerFirstWithStrategy(t, "smartrouting")
+	})
+
+	t.Run("test server first random", func(t *testing.T) {
+		testServerFirstWithStrategy(t, "random")
+	})
+
+	t.Run("test server first weighted", func(t *testing.T) {
+		testServerFirstWithStrategy(t, "weighted")
+	})
+}
+
+func testClientFirstWithStrategy(t *testing.T, strategy string) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -41,39 +67,8 @@ func Test_HSRotatingDataflow(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	t.Run("test client first smart routing", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testClientFirstWithStrategy(ctx, "smartrouting")
-	})
-
-	t.Run("test client first random", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testClientFirstWithStrategy(ctx, "random")
-	})
-
-	t.Run("test client first weighted", func(t *testing.T) {
-		ctx.testContextChanged(t)
-		testClientFirstWithStrategy(ctx, "weighted")
-	})
-
-	//t.Run("test server first smart routing", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//	testServerFirstWithStrategy(ctx, "smartrouting")
-	//})
-	//
-	//t.Run("test server first random", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//	testServerFirstWithStrategy(ctx, "random")
-	//})
-	//
-	//t.Run("test server first weighted", func(t *testing.T) {
-	//	ctx.testContextChanged(t)
-	//	testServerFirstWithStrategy(ctx, "weighted")
-	//})
-}
-
-func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
+
 	fmt.Printf("service id: %v\n", service.Id)
 
 	serverContextC := make(chan ziti.Context, 3)
@@ -88,6 +83,8 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 	dialCount := int32(0)
 	dials := make(chan struct{}, 1000)
 
+	servers := make(chan *testServer, 1000)
+
 	go func() {
 		logger := pfxlog.Logger()
 		for {
@@ -101,16 +98,25 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 					closeCB:     func() { serverContextC <- context },
 				}
 				server := newTestServer(listener, service.Handle)
+				servers <- server
 				server.start()
-				logger.Infof("started new listener %v, servicing %v reads (dial capacity)",
-					listener.(edge.SessionListener).GetCurrentSession().Token, service.maxRequests)
-				for i := 0; i < int(service.maxRequests); i++ {
-					dials <- struct{}{}
-					count := atomic.AddInt32(&dialCount, 1)
-					logger.Infof("added dial capacity: Available: %v", count)
-				}
+				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
+
+				notifyFirst := &sync.Once{}
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+					if len(conn) > 0 {
+						notifyFirst.Do(func() {
+							for i := 0; i < int(service.maxRequests); i++ {
+								dials <- struct{}{}
+							}
+							count := atomic.AddInt32(&dialCount, int32(service.maxRequests))
+							logger.Infof("added dial capacity: Available: %v", count)
+						})
+					}
+				})
 			case <-doneC:
-				break
+				close(servers)
+				return
 			}
 		}
 	}()
@@ -121,14 +127,18 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 
 	logger := pfxlog.Logger()
 
+	ticker := time.NewTicker(time.Millisecond * 500)
+	defer ticker.Stop()
+
 	for i := 0; i < 250; i++ {
 		select {
-		case <-time.After(time.Second * 10):
-			// let it fall through and try to dial
+		case <-ticker.C:
+			count := atomic.LoadInt32(&dialCount)
+			logger.Infof("timer expired. Dial capacity: %v", count)
 		case <-dials:
+			count := atomic.AddInt32(&dialCount, -1)
+			logger.Infof("consumed dial capacity. Available: %v", count)
 		}
-		count := atomic.AddInt32(&dialCount, -1)
-		logger.Debugf("consumed dial capacity. Available: %v", count)
 
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 
@@ -136,15 +146,13 @@ func testClientFirstWithStrategy(ctx *TestContext, strategy string) {
 		conn.WriteString(name, time.Second)
 		conn.ReadExpected("hello, "+name, time.Second)
 		conn.RequireClose()
-		logger.Debugf("%v: done", i+1)
+		logger.Infof("%v: done", i+1)
 	}
 
 	close(doneC)
 
-	for range serverContexts {
-		conn := ctx.WrapConn(clientContext.Dial(service.Name))
-		conn.WriteString("quit", time.Second)
-		conn.ReadExpected("ok", time.Second)
+	for server := range servers {
+		ctx.Req.NoError(server.close())
 	}
 }
 
@@ -159,7 +167,7 @@ func (service *clientFirstRotatingService) Handle(conn *testServerConn) error {
 	requests := atomic.AddUint32(&service.requests, 1)
 	doClose := requests >= service.maxRequests
 	logger := pfxlog.Logger()
-	logger.Debugf("handling request on session %v. requests: %v, max: %v",
+	logger.Infof("handling request on session %v. requests: %v, max: %v",
 		conn.server.listener.(edge.SessionListener).GetCurrentSession().Token, requests, service.maxRequests)
 	for {
 		name, eof := conn.ReadString(1024, time.Minute)
@@ -187,15 +195,22 @@ func (service *clientFirstRotatingService) Handle(conn *testServerConn) error {
 				return err
 			}
 			service.closeCB()
-			logger.Debugf("%v-%v: sleeping", conn.server.idx, conn.id)
+			logger.Infof("%v-%v: sleeping", conn.server.idx, conn.id)
 			time.Sleep(100 * time.Millisecond)
-			logger.Debugf("%v-%v: exiting", conn.server.idx, conn.id)
+			logger.Infof("%v-%v: exiting", conn.server.idx, conn.id)
 			return conn.server.close()
 		}
 	}
 }
 
-func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
+func testServerFirstWithStrategy(t *testing.T, strategy string) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
 	fmt.Printf("service id: %v\n", service.Id)
 
@@ -203,6 +218,8 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 	doneC := make(chan struct{}, 1)
 	var serverContexts []ziti.Context
 
+	var dialCount int32
+	servers := make(chan *testServer, 1000)
 	dials := make(chan struct{}, 1000)
 
 	for i := 0; i < 3; i++ {
@@ -223,14 +240,25 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 					closeCB:     func() { serverContextC <- context },
 				}
 				server := newTestServer(listener, service.Handle)
+				servers <- server
 				server.start()
-				logger.Infof("started new listener %v, servicing %v reads (dial capacity)",
-					listener.(edge.SessionListener).GetCurrentSession().Token, service.maxRequests)
-				for i := 0; i < int(service.maxRequests); i++ {
-					dials <- struct{}{}
-				}
+				logger.Infof("started new listener, servicing %v reads (dial capacity)", service.maxRequests)
+
+				notifyFirst := &sync.Once{}
+				listener.(edge.SessionListener).SetConnectionChangeHandler(func(conn []edge.Listener) {
+					if len(conn) > 0 {
+						notifyFirst.Do(func() {
+							for i := 0; i < int(service.maxRequests); i++ {
+								dials <- struct{}{}
+							}
+							count := atomic.AddInt32(&dialCount, int32(service.maxRequests))
+							logger.Infof("added dial capacity: Available: %v", count)
+						})
+					}
+				})
 			case <-doneC:
-				break
+				close(servers)
+				return
 			}
 		}
 	}()
@@ -239,25 +267,31 @@ func testServerFirstWithStrategy(ctx *TestContext, strategy string) {
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
+	ticker := time.NewTicker(time.Millisecond * 500)
+	defer ticker.Stop()
+
+	logger := pfxlog.Logger()
+
 	for i := 0; i < 250; i++ {
 		select {
-		case <-time.After(time.Second * 10):
-		// let it fall through and try to dial
+		case <-ticker.C:
+			count := atomic.LoadInt32(&dialCount)
+			logger.Infof("timer expired. Dial capacity: %v", count)
 		case <-dials:
+			count := atomic.AddInt32(&dialCount, -1)
+			logger.Infof("consumed dial capacity. Available: %v", count)
 		}
+
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
 		name := conn.ReadString(1024, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
-		log.Debugf("%v: done", i+1)
+		logger.Debugf("%v: done", i+1)
 	}
 
 	close(doneC)
 
-	for range serverContexts {
-		conn := ctx.WrapConn(clientContext.Dial(service.Name))
-		conn.WriteString("quit", time.Second)
-		conn.ReadString(len(eid.New()), time.Second) // ignore uuid
-		conn.ReadExpected("ok", time.Second)
+	for server := range servers {
+		ctx.Req.NoError(server.close())
 	}
 }
 
