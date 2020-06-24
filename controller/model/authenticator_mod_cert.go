@@ -60,13 +60,13 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 
 	for fingerprint := range fingerprints {
 		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
-		curCert := fingerprints[fingerprint]
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
 		}
 
 		if authenticator != nil {
+			curCert := fingerprints[fingerprint]
 			if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
 				if authCert.Pem == "" {
 					certPem := pem.EncodeToMemory(&pem.Block{
