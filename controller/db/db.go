@@ -30,7 +30,11 @@ type Db struct {
 }
 
 func Open(path string) (*Db, error) {
-	db, err := bbolt.Open(path, 0600, nil)
+	// Only wait 1 second if database file can't be locked, as it most likely means another controller is running
+	options := *bbolt.DefaultOptions
+	options.Timeout = time.Second
+
+	db, err := bbolt.Open(path, 0600, &options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open controller database [%s] (%s)", path, err)
 	}
