@@ -77,8 +77,10 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("error: %s", err)
+		pfxlog.Logger().Errorf("%s\n", err)
 	}
 }
 
@@ -139,7 +141,7 @@ func processEnrollment() error {
 	encErr := enc.Encode(&conf)
 
 	if encErr == nil {
-		fmt.Printf("enrolled successfully. identity file written to: %s", outpath)
+		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", outpath)
 		return nil
 	} else {
 		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", outpath, encErr)

@@ -79,7 +79,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-polices", outputServiceEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "identities", outputIdentities, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "services", outputServices, newOptions()))
 
@@ -110,7 +110,14 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", outputServices, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
 
-	cmd.AddCommand(configTypeListRootCmd, edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd, servicePolicyListRootCmd)
+	cmd.AddCommand(configTypeListRootCmd,
+		edgeRouterListRootCmd,
+		edgeRouterPolicyListRootCmd,
+		identityListRootCmd,
+		serviceEdgeRouterPolicyListRootCmd,
+		serviceListRootCmd,
+		servicePolicyListRootCmd,
+	)
 
 	return cmd
 }

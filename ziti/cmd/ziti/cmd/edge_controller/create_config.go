@@ -102,7 +102,7 @@ func runCreateConfig(o *createConfigOptions) error {
 
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, configTypeId, "type")
+	setJSONValue(entityData, configTypeId, "configTypeId")
 	setJSONValue(entityData, dataMap, "data")
 	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
 

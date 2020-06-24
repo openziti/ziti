@@ -27,8 +27,10 @@ import (
 
 var createServiceClient *mgmtClient
 var createServiceTerminatorStrategy string
+var createServiceName string
 
 func init() {
+	createService.Flags().StringVar(&createServiceName, "name", "", "Service name. If not provided defaults to the ID")
 	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
 	createServiceClient = NewMgmtClient(createService)
 	createCmd.AddCommand(createService)
@@ -43,6 +45,7 @@ var createService = &cobra.Command{
 			request := &mgmt_pb.CreateServiceRequest{
 				Service: &mgmt_pb.Service{
 					Id:                 args[0],
+					Name:               createServiceName,
 					TerminatorStrategy: createServiceTerminatorStrategy,
 				},
 			}
