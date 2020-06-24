@@ -36,8 +36,6 @@ import (
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/certtools"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/debugz"
 	nfpem "github.com/openziti/foundation/util/pem"
 	sdkconfig "github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -85,24 +83,6 @@ func init() {
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
-
-	go debugStuckTests()
-}
-
-func debugStuckTests() {
-	iterations := 1
-	lastStack := ""
-	for iterations < 21 {
-		time.Sleep(time.Minute)
-		stack := debugz.GenerateStack()
-		fmt.Printf("minute %v\n", iterations)
-		if stack == lastStack {
-			fmt.Println("Stack unchanged")
-		} else {
-			fmt.Println(stack)
-		}
-		lastStack = stack
-	}
 }
 
 type TestContext struct {
@@ -729,7 +709,6 @@ type testServer struct {
 	idx        uint64
 	listener   edge.Listener
 	errorC     chan error
-	closed     concurrenz.AtomicBoolean
 	msgCount   uint32
 	dispatcher func(conn *testServerConn) error
 	waiter     *sync.WaitGroup
@@ -752,13 +731,12 @@ func (server *testServer) start() {
 }
 
 func (server *testServer) close() error {
-	server.closed.Set(true)
 	return server.listener.Close()
 }
 
 func (server *testServer) acceptLoop() {
 	var err error
-	for !server.closed.Get() {
+	for !server.listener.IsClosed() {
 		var conn net.Conn
 		conn, err = server.listener.Accept()
 		if conn != nil {
@@ -770,8 +748,8 @@ func (server *testServer) acceptLoop() {
 		}
 	}
 
-	// If server is closed, assume this error is just letting us know the listener was closed
-	if !server.closed.Get() {
+	// If listener is closed, assume this error is just letting us know the listener was closed
+	if !server.listener.IsClosed() {
 		if err != nil {
 			server.errorC <- err
 		}

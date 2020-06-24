@@ -33,9 +33,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.29
 	github.com/mitchellh/mapstructure v1.3.2
-	github.com/openziti/fabric v0.11.50
-	github.com/openziti/foundation v0.11.9
-	github.com/openziti/sdk-golang v0.13.12
+	github.com/openziti/fabric v0.11.52
+	github.com/openziti/foundation v0.11.10
+	github.com/openziti/sdk-golang v0.13.16
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7

@@ -54,11 +54,6 @@ func Test_HSDataflow(t *testing.T) {
 			}
 
 			fmt.Printf("%v-%v: received '%v' from client\n", conn.server.idx, conn.id, name)
-			if name == "quit" {
-				conn.server.closed.Set(true)
-				conn.WriteString("ok", time.Second)
-				return conn.server.close()
-			}
 
 			result := "hello, " + name
 			fmt.Printf("%v-%v: returning '%v' to client\n", conn.server.idx, conn.id, result)
@@ -85,17 +80,11 @@ func Test_HSDataflow(t *testing.T) {
 		conn.RequireClose()
 	}
 
-	for i := 0; i < 2; i++ {
-		conn := ctx.WrapConn(clientContext.Dial(service.Name))
-		conn.WriteString("quit", time.Second)
-		conn.ReadExpected("ok", time.Second)
+	ctx.Req.NoError(listener1.Close())
+	server1.waitForDone(ctx, 5*time.Second)
+	ctx.Req.True(atomic.LoadUint32(&server1.msgCount) > 25)
 
-		if server1.closed.Get() {
-			server1.waitForDone(ctx, 5*time.Second)
-			ctx.Req.True(atomic.LoadUint32(&server1.msgCount) > 25)
-		} else {
-			server2.waitForDone(ctx, 5*time.Second)
-			ctx.Req.True(atomic.LoadUint32(&server2.msgCount) > 25)
-		}
-	}
+	ctx.Req.NoError(listener2.Close())
+	server2.waitForDone(ctx, 5*time.Second)
+	ctx.Req.True(atomic.LoadUint32(&server2.msgCount) > 25)
 }
