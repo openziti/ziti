@@ -161,6 +161,10 @@ func (handler AuthenticatorHandler) ReadByFingerprint(fingerprint string) (*Auth
 		return nil, err
 	}
 
+	if entity == nil {
+		return nil, nil
+	}
+
 	authenticator, ok := entity.(*Authenticator)
 
 	if !ok {
