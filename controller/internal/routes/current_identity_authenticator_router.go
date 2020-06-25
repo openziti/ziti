@@ -76,6 +76,10 @@ func (r *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.R
 		if err != nil {
 			return nil, err
 		}
+		for i, authenticator := range apiAuthenticators {
+			authenticator.Links = CurrentIdentityAuthenticatorLinkFactory.Links(result.Authenticators[i])
+		}
+
 		return NewQueryResult(apiAuthenticators, result.GetMetaData()), nil
 	})
 }
@@ -96,6 +100,8 @@ func (r *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response
 		if err != nil {
 			return nil, err
 		}
+
+		apiAuthenticator.Links = CurrentIdentityAuthenticatorLinkFactory.Links(authenticator)
 
 		return apiAuthenticator, nil
 	})

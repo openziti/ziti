@@ -169,11 +169,11 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 	return result, nil
 }
 
-func MapAuthenticatorsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Authenticator) ([]interface{}, error) {
-	apiEntities := make([]interface{}, 0)
+func MapAuthenticatorsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Authenticator) ([]*rest_model.AuthenticatorDetail, error) {
+	apiEntities := make([]*rest_model.AuthenticatorDetail, 0)
 
 	for _, e := range es {
-		al, err := MapAuthenticatorToRestEntity(ae, rc, e)
+		al, err := MapAuthenticatorToRestModel(ae, e)
 
 		if err != nil {
 			return nil, err

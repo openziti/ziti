@@ -250,9 +250,8 @@ func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker 
 }
 
 func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSelf, checker boltz.FieldChecker) error {
-	if checker.IsUpdated("newPassword") {
+	if checker.IsUpdated("password") {
 		checker = NewOrFieldChecker(checker, "salt", "password")
-
 	}
 
 	authenticator, err := handler.ReadForIdentity(authenticatorSelf.IdentityId, authenticatorSelf.Id)

@@ -37,6 +37,11 @@ func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_
 	}
 }
 
+type FullLinkFactory interface{
+	LinksFactory
+	SelfLinkFactory
+}
+
 type LinksFactory interface {
 	Links(entity models.Entity) rest_model.Links
 	EntityName() string

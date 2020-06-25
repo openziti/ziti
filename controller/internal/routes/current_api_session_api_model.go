@@ -20,13 +20,35 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 	"time"
 )
 
 const EntityNameCurrentSession = "current-api-session"
 
-var CurrentApiSessionLinkFactory LinksFactory = NewBasicLinkFactory(EntityNameCurrentSession)
+var CurrentApiSessionLinkFactory LinksFactory = NewCurrentApiSessionLinkFactory()
+
+type CurrentApiSessionLinkFactoryImpl struct {
+	BasicLinkFactory
+}
+
+func NewCurrentApiSessionLinkFactory() *CurrentApiSessionLinkFactoryImpl {
+	return &CurrentApiSessionLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameCurrentSession),
+	}
+}
+
+func (factory *CurrentApiSessionLinkFactoryImpl) SelfLink(entity models.Entity) rest_model.Link {
+	return NewLink("./" + EntityNameCurrentSession)
+}
+
+func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	return rest_model.Links{
+		EntityNameSelf:            factory.SelfLink(entity),
+		EntityNameCurrentIdentity: CurrentIdentityLinkFactory.SelfLink(entity),
+	}
+}
 
 func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 	expiresAt := strfmt.DateTime(s.UpdatedAt.Add(sessionTimeout))
