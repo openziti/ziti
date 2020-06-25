@@ -622,7 +622,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 			auth.Username = newUsername
 			auth.Password = newPassword
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
@@ -701,7 +700,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			auth.Password = newPassword
 
-			_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 			_, err := auth.Authenticate(ctx)
 
 			req.NoError(err)
