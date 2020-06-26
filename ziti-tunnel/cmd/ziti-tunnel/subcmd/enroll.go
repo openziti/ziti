@@ -145,7 +145,7 @@ func processEnrollment() error {
 	encErr := enc.Encode(&conf)
 
 	if encErr == nil {
-		logrus.Errorf("enrolled successfully. identity file written to: %s", outpath)
+		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", outpath)
 		return nil
 	} else {
 		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", outpath, encErr)
