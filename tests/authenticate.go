@@ -323,6 +323,12 @@ func (request *authenticatedRequests) requireNewService(roleAttributes, configs 
 	return service
 }
 
+func (request *authenticatedRequests) newServiceBulk(roleAttributes, configs []string) *service {
+	service := request.testContext.newService(roleAttributes, configs)
+	request.requireCreateEntity(service)
+	return service
+}
+
 func (request *authenticatedRequests) RequireNewServiceAccessibleToAll(terminatorStrategy string) *service {
 	request.requireNewServicePolicy("Dial", s("#all"), s("#all"))
 	request.requireNewServicePolicy("Bind", s("#all"), s("#all"))
@@ -406,6 +412,16 @@ func (request *authenticatedRequests) RequireNewIdentityWithOtt(isAdmin bool, ro
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	resp := request.createEntity(entity)
 	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+	id := request.testContext.getEntityId(resp.Body())
+	entity.setId(id)
+	return id
+}
+
+func (request *authenticatedRequests) createEntityBulk(entity entity) string {
+	resp := request.createEntity(entity)
+	if http.StatusCreated != resp.StatusCode() {
+		panic(errors.Errorf("expected error code %v", resp.StatusCode()))
+	}
 	id := request.testContext.getEntityId(resp.Body())
 	entity.setId(id)
 	return id

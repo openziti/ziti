@@ -98,7 +98,11 @@ type edgeServiceStoreImpl struct {
 
 	symbolServicePolicies           boltz.EntitySetSymbol
 	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
-	symbolConfigs                   boltz.EntitySetSymbol
+
+	symbolIdentities  boltz.EntitySetSymbol
+	symbolEdgeRouters boltz.EntitySetSymbol
+
+	symbolConfigs boltz.EntitySetSymbol
 }
 
 func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.Entity {
@@ -119,6 +123,8 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
+	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(migrationEntityTypeEdgeRouters, store.stores.edgeRouter)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
