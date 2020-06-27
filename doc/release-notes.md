@@ -1,3 +1,10 @@
+# Release 0.15.1
+
+* What's New
+
+* Bug fixes
+  * #129 - minor issue with `ziti-tunnel enroll` outputting the success message at ERROR level
+
 # Release 0.15.0
 Ziti 0.15.0 includes the following:
 
