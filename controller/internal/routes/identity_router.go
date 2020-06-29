@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_server/operations/identity"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
@@ -74,11 +73,6 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	// current identity
-	ae.Api.CurrentAPISessionGetCurrentIdentityHandler = current_api_session.GetCurrentIdentityHandlerFunc(func(params current_api_session.GetCurrentIdentityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(detailCurrentUser, params.HTTPRequest, "", "", permissions.IsAuthenticated())
-	})
-
 	// edge router policies list
 	ae.Api.IdentityListIdentitysEdgeRouterPoliciesHandler = identity.ListIdentitysEdgeRouterPoliciesHandlerFunc(func(params identity.ListIdentitysEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
@@ -120,16 +114,6 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 	ae.Api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, params.ServiceID, permissions.IsAdmin())
 	})
-}
-
-func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {
-	result, err := MapIdentityToRestEntity(ae, rc, rc.Identity)
-
-	if err != nil {
-		rc.RespondWithError(err)
-		return
-	}
-	rc.RespondWithOk(result, nil)
 }
 
 func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {

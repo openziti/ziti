@@ -132,6 +132,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	apiSession := MapToCurrentApiSessionRestModel(session, ae.Config.SessionTimeoutDuration())
+
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
 	expiration := time.Time(*apiSession.ExpiresAt)

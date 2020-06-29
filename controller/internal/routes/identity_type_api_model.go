@@ -28,7 +28,7 @@ import (
 
 const EntityNameIdentityType = "identity-types"
 
-var IdentityTypeLinkFactory = NewBasicLinkFactory(EntityNameIdentity)
+var IdentityTypeLinkFactory = NewBasicLinkFactory(EntityNameIdentityType)
 
 func MapIdentityTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, identityTypeModel models.Entity) (interface{}, error) {
 	identityType, ok := identityTypeModel.(*model.IdentityType)
