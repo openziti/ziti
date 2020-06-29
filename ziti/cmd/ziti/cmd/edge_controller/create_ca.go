@@ -100,6 +100,7 @@ func runCreateCa(options *createCaOptions) (err error) {
 	setJSONValue(data, options.ottCaEnrollment, "isOttCaEnrollmentEnabled")
 	setJSONValue(data, options.authEnabled, "isAuthEnabled")
 	setJSONValue(data, string(options.caPemBytes), "certPem")
+	setJSONValue(data, []string{}, "identityRoles")
 
 	result, err := createEntityOfType("cas", data.String(), &options.commonOptions)
 
