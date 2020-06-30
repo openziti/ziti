@@ -4,6 +4,7 @@
 
 * Bug fixes
   * [#129](https://github.com/openziti/ziti/issues/129) - minor issue with `ziti-tunnel enroll` outputting the success message at ERROR level
+  * [#131](https://github.com/openziti/ziti/issues/131) - issues w/ creating identities, CAs and validating CAs
   * [edge#191](https://github.com/openziti/edge/issues/191) - updating self password via CLI would error with 404 not found
 
 # Release 0.15.0

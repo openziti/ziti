@@ -436,6 +436,47 @@ func outputJson(out io.Writer, data []byte) {
 	}
 }
 
+func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out io.Writer) (*gabs.Container, error) {
+	session := &Session{}
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
+	client := newClient()
+
+	if session.GetCert() != "" {
+		client.SetRootCertificate(session.GetCert())
+	}
+
+	queryUrl := session.GetBaseUrl() + "/" + path.Join(entityType, entityId)
+
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader(constants.ZitiSession, session.GetToken()).
+		Get(queryUrl)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, session.GetBaseUrl(), err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
+			queryUrl, resp.Status(), resp.String())
+	}
+
+	if logJSON {
+		outputJson(out, resp.Body())
+	}
+
+	jsonParsed, err := gabs.ParseJSON(resp.Body())
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", queryUrl, resp.String())
+	}
+
+	return jsonParsed, nil
+}
+
 // EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
 func EdgeControllerListSubEntities(entityType, subType, entityId string, filter string, logJSON bool, out io.Writer) (*gabs.Container, error) {
 	params := url.Values{}
@@ -636,7 +677,7 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 	}
 	resp, err := client.
 		R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Type", "text/plain").
 		SetHeader(constants.ZitiSession, session.Token).
 		SetBody(body).
 		Post(session.Host + "/" + entityType + "/" + id + "/verify")

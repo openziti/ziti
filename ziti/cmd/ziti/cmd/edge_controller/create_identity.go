@@ -115,18 +115,10 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 }
 
 func getIdentityJwt(o *createIdentityOptions, id string) error {
-	list, _, err := listEntitiesOfType("identities", nil, o.OutputJSONResponse, o.Out)
+
+	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
-	}
-
-	var newIdentity *gabs.Container
-	for _, gw := range list {
-		gwId := gw.Path("id").Data().(string)
-		if gwId == id {
-			newIdentity = gw
-			break
-		}
 	}
 
 	if newIdentity == nil {
