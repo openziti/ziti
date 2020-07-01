@@ -217,6 +217,10 @@ type IdentityEnrollmentsOttca struct {
 	// ca Id
 	CaID string `json:"caId,omitempty"`
 
+	// expires at
+	// Format: date-time
+	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
+
 	// jwt
 	Jwt string `json:"jwt,omitempty"`
 
@@ -229,6 +233,10 @@ func (m *IdentityEnrollmentsOttca) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCa(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExpiresAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -251,6 +259,19 @@ func (m *IdentityEnrollmentsOttca) validateCa(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityEnrollmentsOttca) validateExpiresAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ExpiresAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("ottca"+"."+"expiresAt", "body", "date-time", m.ExpiresAt.String(), formats); err != nil {
+		return err
 	}
 
 	return nil

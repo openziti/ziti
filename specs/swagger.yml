@@ -3782,6 +3782,9 @@ definitions:
             type: string
           ca:
             $ref: '#/definitions/entityRef'
+          expiresAt:
+            type: string
+            format: date-time
   ###################################################################
   # Authenticator
   ##################################################################

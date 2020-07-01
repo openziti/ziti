@@ -224,6 +224,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 				CaID:  ca.Id,
 				Jwt:   entity.Jwt,
 				Token: entity.Token,
+				ExpiresAt: expiresAt,
 			}
 		}
 

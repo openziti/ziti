@@ -6248,6 +6248,10 @@ func init() {
             "caId": {
               "type": "string"
             },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -20135,6 +20139,10 @@ func init() {
         "caId": {
           "type": "string"
         },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "jwt": {
           "type": "string"
         },
@@ -21884,6 +21892,10 @@ func init() {
             },
             "caId": {
               "type": "string"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
             },
             "jwt": {
               "type": "string"
