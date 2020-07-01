@@ -33,6 +33,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // IdentityEnrollments identity enrollments
@@ -149,6 +150,10 @@ func (m *IdentityEnrollments) UnmarshalBinary(b []byte) error {
 // swagger:model IdentityEnrollmentsOtt
 type IdentityEnrollmentsOtt struct {
 
+	// expires at
+	// Format: date-time
+	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
+
 	// jwt
 	Jwt string `json:"jwt,omitempty"`
 
@@ -158,6 +163,28 @@ type IdentityEnrollmentsOtt struct {
 
 // Validate validates this identity enrollments ott
 func (m *IdentityEnrollmentsOtt) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateExpiresAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityEnrollmentsOtt) validateExpiresAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ExpiresAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("ott"+"."+"expiresAt", "body", "date-time", m.ExpiresAt.String(), formats); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -252,6 +279,10 @@ func (m *IdentityEnrollmentsOttca) UnmarshalBinary(b []byte) error {
 // swagger:model IdentityEnrollmentsUpdb
 type IdentityEnrollmentsUpdb struct {
 
+	// expires at
+	// Format: date-time
+	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
+
 	// jwt
 	Jwt string `json:"jwt,omitempty"`
 
@@ -261,6 +292,28 @@ type IdentityEnrollmentsUpdb struct {
 
 // Validate validates this identity enrollments updb
 func (m *IdentityEnrollmentsUpdb) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateExpiresAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityEnrollmentsUpdb) validateExpiresAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ExpiresAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("updb"+"."+"expiresAt", "body", "date-time", m.ExpiresAt.String(), formats); err != nil {
+		return err
+	}
+
 	return nil
 }
 

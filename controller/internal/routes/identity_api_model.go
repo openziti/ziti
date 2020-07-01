@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -189,10 +190,17 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	ret.Enrollment = &rest_model.IdentityEnrollments{}
 	if err := ae.GetHandlers().Identity.CollectEnrollments(identity.Id, func(entity *model.Enrollment) error {
+		var expiresAt strfmt.DateTime
+		if entity.ExpiresAt != nil {
+			expiresAt = strfmt.DateTime(*entity.ExpiresAt)
+		}
+
 		if entity.Method == persistence.MethodEnrollUpdb {
+
 			ret.Enrollment.Updb = &rest_model.IdentityEnrollmentsUpdb{
-				Jwt:   entity.Jwt,
-				Token: entity.Token,
+				Jwt:       entity.Jwt,
+				Token:     entity.Token,
+				ExpiresAt: expiresAt,
 			}
 		}
 
@@ -200,6 +208,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
 				Jwt:   entity.Jwt,
 				Token: entity.Token,
+				ExpiresAt: expiresAt,
 			}
 		}
 
