@@ -40,6 +40,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server"
 	"github.com/openziti/edge/rest_server/operations"
 	"github.com/openziti/fabric/controller/network"
@@ -276,13 +277,23 @@ func (p TextProducer) Produce(writer io.Writer, i interface{}) error {
 		output := fmt.Sprintf("CODE: %s\nMESSAGE: %s\nNote: cannot render additional information for this content-type", apiError.Code, apiError.Message)
 		_, err := writer.Write([]byte(output))
 		return err
+	} else if apiErrorEnv, ok := i.(*rest_model.APIErrorEnvelope); ok {
+		output := fmt.Sprintf("CODE: %s\nMESSAGE: %s\nNote: cannot render additional information for this content-type", apiErrorEnv.Error.Code, apiErrorEnv.Error.Message)
+		_, err := writer.Write([]byte(output))
+		return err
 	} else if _, ok := i.(error); ok {
 		//don't attempt to render random error information, may leak sensitive information
 		_, err := writer.Write([]byte("an error has occurred, more detail cannot be displayed in this content type"))
 		return err
 	} else {
-		return fmt.Errorf("unsupported type for text producer: %T", i)
+		msg := fmt.Sprintf("unsupported type for text producer: %T", i)
+		_, err := writer.Write([]byte(msg))
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func NewAppEnv(c *edgeConfig.Config) *AppEnv {
@@ -484,7 +495,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).Error("could not retrieve request context")
-			response.RespondWithError(writer, eid.New(), producer, err)
+			response.RespondWithError(writer, rc.Request, eid.New(), producer, err)
 			return
 		}
 
