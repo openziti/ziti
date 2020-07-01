@@ -35,7 +35,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/openziti/fabric v0.11.52
 	github.com/openziti/foundation v0.11.11
-	github.com/openziti/sdk-golang v0.13.19
+	github.com/openziti/sdk-golang v0.13.20
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7
@@ -43,8 +43,8 @@ require (
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
-	golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1
+	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae
 	gopkg.in/resty.v1 v1.12.0
 )
