@@ -180,12 +180,19 @@ func canRespondWithJson(request *http.Request) bool {
 		//no accept == "*/*"
 		canReturnJson = true
 	} else {
-		for _, acceptHeader := range acceptHeaders {
-			mediaRange := strings.Split(acceptHeader, ";")[0]
-
-			if mediaRange == "*/*" || mediaRange == "application/json" {
-				canReturnJson = true
+		for _, acceptHeader := range acceptHeaders { //look at all headers values
+			if canReturnJson {
 				break
+			}
+
+			for _, value := range strings.Split(acceptHeader, ",") { //each header can have multiple mimeTypes
+				mimeType := strings.Split(value, ";")[0] //remove quotients
+				mimeType = strings.TrimSpace(mimeType)
+
+				if mimeType == "*/*" || mimeType == "application/json" {
+					canReturnJson = true
+					break
+				}
 			}
 		}
 	}

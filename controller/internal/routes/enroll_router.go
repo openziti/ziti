@@ -162,7 +162,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 		rc.SetProducer(runtime.JSONProducer())
 	}
 
-	if producer, ok := rc.GetProducer().(*env.TextProducer); ok {
+	if producer, ok := rc.GetProducer().(*env.PemProducer); ok {
 		response.Respond(rc.ResponseWriter, rc.Id, producer, result.TextContent, http.StatusOK)
 		return
 	}
