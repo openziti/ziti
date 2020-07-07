@@ -33,6 +33,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // RouterEntityRef router entity ref
@@ -42,7 +43,8 @@ type RouterEntityRef struct {
 	EntityRef
 
 	// is online
-	IsOnline bool `json:"isOnline,omitempty"`
+	// Required: true
+	IsOnline *bool `json:"isOnline"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -56,7 +58,7 @@ func (m *RouterEntityRef) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		IsOnline bool `json:"isOnline,omitempty"`
+		IsOnline *bool `json:"isOnline"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -77,7 +79,7 @@ func (m RouterEntityRef) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		IsOnline bool `json:"isOnline,omitempty"`
+		IsOnline *bool `json:"isOnline"`
 	}
 
 	dataAO1.IsOnline = m.IsOnline
@@ -99,9 +101,22 @@ func (m *RouterEntityRef) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateIsOnline(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *RouterEntityRef) validateIsOnline(formats strfmt.Registry) error {
+
+	if err := validate.Required("isOnline", "body", m.IsOnline); err != nil {
+		return err
+	}
+
 	return nil
 }
 

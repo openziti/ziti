@@ -263,7 +263,7 @@ func MapAdvisorServiceReachabilityToRestEntity(entity *model.AdvisorServiceReach
 	for _, router := range entity.CommonRouters {
 		commonRouters = append(commonRouters, &rest_model.RouterEntityRef{
 			EntityRef: *ToEntityRef(router.Router.Name, router.Router, EdgeRouterLinkFactory),
-			IsOnline:  router.IsOnline,
+			IsOnline:  &router.IsOnline,
 		})
 	}
 

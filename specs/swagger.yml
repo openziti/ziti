@@ -5572,6 +5572,8 @@ definitions:
     allOf:
       - $ref: '#/definitions/entityRef'
       - type: object
+        required:
+          - isOnline
         properties:
           isOnline:
             type: boolean
