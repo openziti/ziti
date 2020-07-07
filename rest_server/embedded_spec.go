@@ -6818,6 +6818,9 @@ func init() {
         },
         {
           "type": "object",
+          "required": [
+            "isOnline"
+          ],
           "properties": {
             "isOnline": {
               "type": "boolean"
@@ -22439,6 +22442,9 @@ func init() {
         },
         {
           "type": "object",
+          "required": [
+            "isOnline"
+          ],
           "properties": {
             "isOnline": {
               "type": "boolean"
