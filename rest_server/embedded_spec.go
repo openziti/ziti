@@ -6227,6 +6227,10 @@ func init() {
         "ott": {
           "type": "object",
           "properties": {
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -6244,6 +6248,10 @@ func init() {
             "caId": {
               "type": "string"
             },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -6255,6 +6263,10 @@ func init() {
         "updb": {
           "type": "object",
           "properties": {
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -20109,6 +20121,10 @@ func init() {
     "IdentityEnrollmentsOtt": {
       "type": "object",
       "properties": {
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "jwt": {
           "type": "string"
         },
@@ -20126,6 +20142,10 @@ func init() {
         "caId": {
           "type": "string"
         },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "jwt": {
           "type": "string"
         },
@@ -20137,6 +20157,10 @@ func init() {
     "IdentityEnrollmentsUpdb": {
       "type": "object",
       "properties": {
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "jwt": {
           "type": "string"
         },
@@ -21851,6 +21875,10 @@ func init() {
         "ott": {
           "type": "object",
           "properties": {
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -21868,6 +21896,10 @@ func init() {
             "caId": {
               "type": "string"
             },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },
@@ -21879,6 +21911,10 @@ func init() {
         "updb": {
           "type": "object",
           "properties": {
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
             "jwt": {
               "type": "string"
             },

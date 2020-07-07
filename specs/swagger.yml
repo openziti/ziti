@@ -3758,6 +3758,9 @@ definitions:
             type: string
           jwt:
             type: string
+          expiresAt:
+            type: string
+            format: date-time
       ott:
         type: object
         properties:
@@ -3765,6 +3768,9 @@ definitions:
             type: string
           jwt:
             type: string
+          expiresAt:
+            type: string
+            format: date-time
       ottca:
         type: object
         properties:
@@ -3776,6 +3782,9 @@ definitions:
             type: string
           ca:
             $ref: '#/definitions/entityRef'
+          expiresAt:
+            type: string
+            format: date-time
   ###################################################################
   # Authenticator
   ##################################################################
