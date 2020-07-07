@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/validation"
 	"net/http"
+	"strings"
 )
 
 //todo: rename to Responder, remove old Responder and RequestResponder
@@ -118,11 +119,11 @@ func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
 }
 
 func (responder *ResponderImpl) RespondWithError(err error) {
-	RespondWithError(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), err)
+	RespondWithError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), err)
 }
 
 func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
-	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), apiError)
+	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), apiError)
 }
 
 func Respond(w http.ResponseWriter, requestId string, producer runtime.Producer, data interface{}, httpStatus int) {
@@ -135,7 +136,7 @@ func Respond(w http.ResponseWriter, requestId string, producer runtime.Producer,
 	}
 }
 
-func RespondWithError(w http.ResponseWriter, requestId string, producer runtime.Producer, err error) {
+func RespondWithError(w http.ResponseWriter, r *http.Request, requestId string, producer runtime.Producer, err error) {
 	var apiError *apierror.ApiError
 	var ok bool
 
@@ -143,10 +144,10 @@ func RespondWithError(w http.ResponseWriter, requestId string, producer runtime.
 		apiError = apierror.NewUnhandled(err)
 	}
 
-	RespondWithApiError(w, requestId, producer, apiError)
+	RespondWithApiError(w, r, requestId, producer, apiError)
 }
 
-func RespondWithApiError(w http.ResponseWriter, requestId string, producer runtime.Producer, apiError *apierror.ApiError) {
+func RespondWithApiError(w http.ResponseWriter, r *http.Request, requestId string, producer runtime.Producer, apiError *apierror.ApiError) {
 	data := &rest_model.APIErrorEnvelope{
 		Error: apiError.ToRestModel(requestId),
 		Meta: &rest_model.Meta{
@@ -155,10 +156,45 @@ func RespondWithApiError(w http.ResponseWriter, requestId string, producer runti
 		},
 	}
 
+	if canRespondWithJson(r) {
+		producer = runtime.JSONProducer()
+		w.Header().Set("content-type", "application/json")
+	}
+
 	w.WriteHeader(apiError.Status)
 	err := producer.Produce(w, data)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).WithField("requestId", requestId).Error("could not respond with error, producer errored")
 	}
+}
+
+func canRespondWithJson(request *http.Request) bool {
+	//if we can return JSON for errors we should as they provide the most
+	//information
+
+	canReturnJson := false
+
+	acceptHeaders := request.Header.Values("accept")
+	if len(acceptHeaders) == 0 {
+		//no accept == "*/*"
+		canReturnJson = true
+	} else {
+		for _, acceptHeader := range acceptHeaders { //look at all headers values
+			if canReturnJson {
+				break
+			}
+
+			for _, value := range strings.Split(acceptHeader, ",") { //each header can have multiple mimeTypes
+				mimeType := strings.Split(value, ";")[0] //remove quotients
+				mimeType = strings.TrimSpace(mimeType)
+
+				if mimeType == "*/*" || mimeType == "application/json" {
+					canReturnJson = true
+					break
+				}
+			}
+		}
+	}
+	return canReturnJson
 }

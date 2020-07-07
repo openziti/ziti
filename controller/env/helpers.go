@@ -53,7 +53,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 		}
 		apiError.Cause = openApiError
 
-		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
+		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 
@@ -64,14 +64,14 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 
 		apiError.Cause = fmt.Errorf("error retrieveing request context: %w", err)
 
-		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
+		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 
 	if requestContext == nil {
 		apiError := apierror.NewUnhandled(err)
 		apiError.Cause = errors.New("expected request context is nil")
-		response.RespondWithApiError(rw, eid.New(), runtime.JSONProducer(), apiError)
+		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
 		return
 	}
 
