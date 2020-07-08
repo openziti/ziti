@@ -6,6 +6,9 @@
   * [#129](https://github.com/openziti/ziti/issues/129) - minor issue with `ziti-tunnel enroll` outputting the success message at ERROR level
   * [#131](https://github.com/openziti/ziti/issues/131) - issues w/ creating identities, CAs and validating CAs
   * [edge#191](https://github.com/openziti/edge/issues/191) - updating self password via CLI would error with 404 not found
+  * [edge#231](https://github.com/openziti/edge/issues/231) - identities missing enrollment expiresAt property
+  * [edge#237](https://github.com/openziti/edge/issues/237) - Policy Advisor CLI is failing because common routers IsOnline value is missing
+  * [edge#233](https://github.com/openziti/edge/issues/233) - REST API Errors should be application/json if possible
 
 # Release 0.15.0
 Ziti 0.15.0 includes the following:
