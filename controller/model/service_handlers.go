@@ -65,28 +65,37 @@ func (handler *EdgeServiceHandler) readInTx(tx *bbolt.Tx, id string) (*ServiceDe
 func (handler *EdgeServiceHandler) ReadForIdentity(id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
 	var service *ServiceDetail
 	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
-		identity, err := handler.GetEnv().GetHandlers().Identity.readInTx(tx, identityId)
-		if err != nil {
-			return err
-		}
-		if identity.IsAdmin {
-			service, err = handler.readInTx(tx, id)
-			if err == nil && service != nil {
-				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
-			}
-		} else {
-			service, err = handler.ReadForIdentityInTx(tx, id, identityId)
-		}
-		if err == nil && len(configTypes) > 0 {
-			identityServiceConfigs := handler.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
-			handler.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
-		}
+		var err error
+		service, err = handler.ReadForIdentityInTx(tx, id, identityId, configTypes)
 		return err
 	})
 	return service, err
 }
 
-func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
+func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
+	identity, err := handler.GetEnv().GetHandlers().Identity.readInTx(tx, identityId)
+	if err != nil {
+		return nil, err
+	}
+
+	var service *ServiceDetail
+
+	if identity.IsAdmin {
+		service, err = handler.readInTx(tx, id)
+		if err == nil && service != nil {
+			service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
+		}
+	} else {
+		service, err = handler.ReadForNonAdminIdentityInTx(tx, id, identityId)
+	}
+	if err == nil && len(configTypes) > 0 {
+		identityServiceConfigs := handler.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
+		handler.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
+	}
+	return service, err
+}
+
+func (handler *EdgeServiceHandler) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
 	query := `id = "%v" and not isEmpty(from servicePolicies where (type = %v and anyOf(identities.id) = "%v"))`
 
 	dialQuery := fmt.Sprintf(query, id, persistence.PolicyTypeDial, identityId)
@@ -186,7 +195,7 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 
 	for _, key := range ids {
 		if !result.isAdmin && result.identityId != "" {
-			service, err = result.handler.ReadForIdentityInTx(tx, key, result.identityId)
+			service, err = result.handler.ReadForNonAdminIdentityInTx(tx, key, result.identityId)
 		} else {
 			service, err = result.handler.readInTx(tx, key)
 			if service != nil && result.isAdmin {
