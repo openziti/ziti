@@ -10,6 +10,7 @@
   * [edge#231](https://github.com/openziti/edge/issues/231) - identities missing enrollment expiresAt property
   * [edge#237](https://github.com/openziti/edge/issues/237) - Policy Advisor CLI is failing because common routers IsOnline value is missing
   * [edge#233](https://github.com/openziti/edge/issues/233) - REST API Errors should be application/json if possible
+  * [edge#240](https://github.com/openziti/edge/issues/240) - listing specs results in a 404
 
 # Release 0.15.0
 Ziti 0.15.0 includes the following:
