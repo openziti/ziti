@@ -184,6 +184,7 @@ paths:
       operationId: detailSpecBody
       produces:
         - text/yaml
+        - application/json
       responses:
         '200':
           $ref: '#/responses/detailSpecBody'

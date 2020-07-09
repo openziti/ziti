@@ -117,7 +117,7 @@ func (a *Client) DetailSpecBody(params *DetailSpecBodyParams) (*DetailSpecBodyOK
 		ID:                 "detailSpecBody",
 		Method:             "GET",
 		PathPattern:        "/specs/{id}/spec",
-		ProducesMediaTypes: []string{"text/yaml"},
+		ProducesMediaTypes: []string{"application/json", "text/yaml"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"https"},
 		Params:             params,

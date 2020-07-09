@@ -4056,7 +4056,8 @@ func init() {
         "security": [],
         "description": "Return the body of the specification (i.e. Swagger, OpenAPI 2.0, 3.0, etc).",
         "produces": [
-          "text/yaml"
+          "text/yaml",
+          "application/json"
         ],
         "tags": [
           "Informational"
@@ -18827,6 +18828,7 @@ func init() {
         "security": [],
         "description": "Return the body of the specification (i.e. Swagger, OpenAPI 2.0, 3.0, etc).",
         "produces": [
+          "application/json",
           "text/yaml"
         ],
         "tags": [
