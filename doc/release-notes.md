@@ -1,6 +1,7 @@
 # Release 0.15.1
 
-* What's New
+* What's New:
+No functionality changes were introduced.
 
 * Bug fixes
   * [#129](https://github.com/openziti/ziti/issues/129) - minor issue with `ziti-tunnel enroll` outputting the success message at ERROR level
