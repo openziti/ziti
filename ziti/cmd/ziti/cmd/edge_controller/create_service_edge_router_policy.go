@@ -71,7 +71,7 @@ func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) e
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "identities")
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
 	if err != nil {
 		return err
 	}
