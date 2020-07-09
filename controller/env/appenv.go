@@ -293,6 +293,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	api.ApplicationXPemFileConsumer = noOpConsumer
 	api.ApplicationPkcs10Consumer = noOpConsumer
 	api.ApplicationXPemFileProducer = &PemProducer{}
+	api.TextYamlProducer = &YamlProducer{}
 	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
 		principal, err = ae.GetHandlers().ApiSession.ReadByToken(token)
 

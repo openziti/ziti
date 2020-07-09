@@ -18,6 +18,7 @@ package env
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
 )
@@ -40,4 +41,12 @@ func (p PemProducer) Produce(writer io.Writer, i interface{}) error {
 		return err
 	}
 	return fmt.Errorf("unsupported type for PEM producer: %T", i)
+}
+
+
+type YamlProducer struct{}
+
+func (p YamlProducer) Produce(writer io.Writer, i interface{}) error {
+	enc := yaml.NewEncoder(writer)
+	return enc.Encode(i)
 }
