@@ -121,8 +121,7 @@ func (r *SpecRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 	data := rest_model.SpecList{
 		mapSpecToRestModel(swaggerSpec),
 	}
-
-
+	
 	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 
