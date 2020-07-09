@@ -1,1 +1,0 @@
-drop TABLE ziti_edge.service_hosts;

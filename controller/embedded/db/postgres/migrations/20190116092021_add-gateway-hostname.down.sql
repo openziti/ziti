@@ -1,1 +1,0 @@
-ALTER TABLE ziti_edge.gateways DROP COLUMN hostname;

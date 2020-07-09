@@ -1,1 +1,0 @@
-drop table ziti_edge.network_session_certs;
