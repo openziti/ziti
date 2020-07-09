@@ -166,7 +166,6 @@ paths:
       summary: Return a single spec resource
       description: Returns single spec resource embedded within the controller for consumption/documentation/code geneartion
       security: []
-      consumes:
       tags:
         - Informational
       operationId: detailSpec
