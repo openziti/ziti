@@ -304,13 +304,13 @@ func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error
 		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterSubEntitiesOfType("services", "identities", serviceId, filter, &o.commonOptions)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		for _, child := range children {
 			identityId, _ := child.S("id").Data().(string)
 			if err := runPolicyAdvisorForIdentityAndService(identityId, serviceId, o); err != nil {
-				panic(err)
+				return err
 			}
 		}
 		skip += len(children)
