@@ -29,7 +29,7 @@ require (
 	github.com/kataras/go-events v0.0.3-0.20170604004442-17d67be645c3
 	github.com/mdlayher/netlink v1.1.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/miekg/dns v1.1.29
+	github.com/miekg/dns v1.1.30
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/openziti/fabric v0.11.53
 	github.com/openziti/foundation v0.11.11
