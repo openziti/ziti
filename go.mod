@@ -21,8 +21,6 @@ require (
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.9
 	github.com/go-openapi/validate v0.19.10
-	github.com/gobuffalo/packr v1.30.1
-	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang/protobuf v1.3.5
 	github.com/google/go-cmp v0.5.0
 	github.com/google/uuid v1.1.1

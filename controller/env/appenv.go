@@ -27,7 +27,6 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
-	"github.com/gobuffalo/packr"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
@@ -57,7 +56,6 @@ import (
 type AppEnv struct {
 	BoltStores             *persistence.Stores
 	Handlers               *model.Handlers
-	Embedded               *packr.Box
 	Config                 *edgeConfig.Config
 	EnrollmentJwtGenerator jwt.EnrollmentGenerator
 	Versions               *config.Versions
@@ -265,13 +263,9 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 
 	api := operations.NewZitiEdgeAPI(swaggerSpec)
 	api.ServeError = ServeError
-	// See README.md in /ziti/edge/embedded for details
-	// This path is relative to source location of this file
-	embedded := packr.NewBox("../embedded")
 
 	ae := &AppEnv{
 		Config:   c,
-		Embedded: &embedded,
 		Versions: &config.Versions{
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
@@ -431,22 +425,6 @@ func GetRequestContextFromHttpContext(r *http.Request) (*response.RequestContext
 	}
 
 	return requestContext, nil
-}
-
-func (ae *AppEnv) GetEmbeddedFileContent(filePath string) (string, error) {
-	file, err := ae.Embedded.Open(filePath)
-
-	if err != nil {
-		return "", err
-	}
-
-	fileContents, err := ioutil.ReadAll(file)
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(fileContents), err
 }
 
 func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestContext), request *http.Request, entityId string, entitySubId string, permissions ...permissions.Resolver) openApiMiddleware.Responder {
