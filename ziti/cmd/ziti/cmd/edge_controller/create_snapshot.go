@@ -53,13 +53,13 @@ func newSnapshotDbCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
 
 // runSnapshotDb create a new config on the Ziti Edge Controller
 func runSnapshotDb(o *snapshotDbOptions) error {
-	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false)
+	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false)
 	return err
 }

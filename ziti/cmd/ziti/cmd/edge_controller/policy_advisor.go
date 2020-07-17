@@ -72,7 +72,7 @@ func newPolicyAdvisorIdentitiesCmd(f cmdutil.Factory, out io.Writer, errOut io.W
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 	cmd.Flags().BoolVarP(&options.quiet, "quiet", "q", false, "Minimize output by hiding header")
 
 	return cmd
@@ -101,8 +101,8 @@ func newPolicyAdvisorServicesCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.quiet, "quiet", "q", false, "Minimize output by hiding header")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

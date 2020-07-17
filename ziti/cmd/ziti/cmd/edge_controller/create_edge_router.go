@@ -59,8 +59,9 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new edge router")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
+	options.AddCommonFlags(cmd)
+
 	return cmd
 }
 

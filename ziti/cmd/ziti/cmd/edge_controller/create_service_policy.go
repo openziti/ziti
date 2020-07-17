@@ -62,7 +62,7 @@ func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the new service policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

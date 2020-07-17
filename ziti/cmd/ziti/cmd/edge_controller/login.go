@@ -19,11 +19,11 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
-	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 	"io"
 	"path/filepath"
@@ -70,7 +70,7 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
 	cmd.Flags().StringVarP(&options.Cert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

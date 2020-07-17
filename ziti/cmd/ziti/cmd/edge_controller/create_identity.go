@@ -77,11 +77,10 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
