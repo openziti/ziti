@@ -95,18 +95,9 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	list, _, err := listEntitiesOfType("edge-routers", nil, o.OutputJSONResponse, o.Out)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
-	}
-
-	var newRouter *gabs.Container
-	for _, gw := range list {
-		gwId := gw.Path("id").Data().(string)
-		if gwId == id {
-			newRouter = gw
-			break
-		}
 	}
 
 	if newRouter == nil {
