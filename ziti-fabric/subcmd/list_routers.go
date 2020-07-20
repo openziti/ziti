@@ -36,7 +36,13 @@ var listRouters = &cobra.Command{
 	Short: "List routers enrolled on the fabric",
 	Run: func(cmd *cobra.Command, args []string) {
 		if ch, err := listRoutersClient.Connect(); err == nil {
-			request := &mgmt_pb.ListRoutersRequest{}
+			query := "true limit none"
+			if len(args) > 0 {
+				query = args[0]
+			}
+			request := &mgmt_pb.ListRoutersRequest{
+				Query: query,
+			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
