@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/foundation/channel2"
+	"strings"
 	"sync"
 	"time"
 )
@@ -137,12 +138,24 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_
 }
 
 func (sm *StateManagerImpl) AddSession(ns *edge_ctrl_pb.Session) {
+	// BACKWARDS_COMPATIBILITY introduced 0.15.2
+	// support 0.14 (and older) style controller generated fingerprints, as fingerprint format changed from 0.14 to 0.15
+	for i := 0; i < len(ns.CertFingerprints); i++ {
+		ns.CertFingerprints[i] = strings.Replace(strings.ToLower(ns.CertFingerprints[i]), ":", "", -1)
+	}
+
 	pfxlog.Logger().Debugf("adding network session [%s] fingerprints [%s] TypeId [%v]", ns.Token, ns.CertFingerprints, ns.Type.String())
 	sm.networkSessionsByToken.Store(ns.Token, ns)
 	sm.Emit(EventAddedNetworkSession, ns)
 }
 
 func (sm *StateManagerImpl) UpdateSession(ns *edge_ctrl_pb.Session) {
+	// BACKWARDS_COMPATIBILITY introduced 0.15.2
+	// support 0.14 (and older) style controller generated fingerprints, as fingerprint format changed from 0.14 to 0.15
+	for i := 0; i < len(ns.CertFingerprints); i++ {
+		ns.CertFingerprints[i] = strings.Replace(strings.ToLower(ns.CertFingerprints[i]), ":", "", -1)
+	}
+
 	pfxlog.Logger().Debugf("updating network session [%s] fingerprints [%s]", ns.Token, ns.CertFingerprints)
 	sm.networkSessionsByToken.Store(ns.Token, ns)
 	sm.Emit(EventUpdatedNetworkSession, ns)
