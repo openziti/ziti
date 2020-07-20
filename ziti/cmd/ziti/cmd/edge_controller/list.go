@@ -398,8 +398,9 @@ func outputEdgeRouters(o *commonOptions, children []*gabs.Container, pagingInfo 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
+		isOnline, _ := entity.Path("isOnline").Data().(bool)
 		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    role attributes: %v\n", id, name, roleAttributes); err != nil {
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    role attributes: %v\n", id, name, isOnline, roleAttributes); err != nil {
 			return err
 		}
 	}
