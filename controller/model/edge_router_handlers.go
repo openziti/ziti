@@ -130,7 +130,9 @@ func (handler *EdgeRouterHandler) ListForSession(sessionId string) (*EdgeRouterL
 			return err
 		}
 
-		result, err = handler.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, nil)
+		limit := -1
+
+		result, err = handler.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, &limit)
 		return err
 	})
 	return result, err
