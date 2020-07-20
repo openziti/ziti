@@ -159,12 +159,15 @@ func (ctx *TestContext) cleanupAll() {
 	stores := []boltz.CrudStore{
 		ctx.stores.Session,
 		ctx.stores.ApiSession,
-		ctx.stores.EdgeRouterPolicy,
 		ctx.stores.Service,
 		ctx.stores.EdgeService,
 		ctx.stores.Identity,
 		ctx.stores.EdgeRouter,
 		ctx.stores.Config,
+		ctx.stores.Identity,
+		ctx.stores.EdgeRouterPolicy,
+		ctx.stores.ServicePolicy,
+		ctx.stores.ServiceEdgeRouterPolicy,
 	}
 	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		mutateContext := boltz.NewMutateContext(tx)

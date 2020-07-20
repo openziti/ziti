@@ -1,20 +1,24 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
+	"math/rand"
 	"sort"
 )
 
 const (
 	FieldServicePolicyType = "type"
 
-	PolicyTypeDialName = "Dial"
-	PolicyTypeBindName = "Bind"
+	PolicyTypeInvalidName = "Invalid"
+	PolicyTypeDialName    = "Dial"
+	PolicyTypeBindName    = "Bind"
 
 	PolicyTypeInvalid int32 = iota
 	PolicyTypeDial
@@ -22,9 +26,14 @@ const (
 )
 
 func newServicePolicy(name string) *ServicePolicy {
+	policyType := PolicyTypeDial
+	if rand.Int()%2 == 0 {
+		policyType = PolicyTypeBind
+	}
 	return &ServicePolicy{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
+		PolicyType:    policyType,
 	}
 }
 
@@ -41,6 +50,10 @@ func (entity *ServicePolicy) GetName() string {
 	return entity.Name
 }
 
+func (entity *ServicePolicy) GetSemantic() string {
+	return entity.Semantic
+}
+
 func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
@@ -53,6 +66,10 @@ func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	if entity.Semantic == "" {
 		entity.Semantic = SemanticAllOf
+	}
+
+	if entity.PolicyType != PolicyTypeBind {
+		entity.PolicyType = PolicyTypeDial
 	}
 
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
@@ -91,17 +108,25 @@ func (entity *ServicePolicy) GetEntityType() string {
 	return EntityTypeServicePolicies
 }
 
-func (entity *ServicePolicy) GetPolicyTypeName() string {
-	if entity.PolicyType == PolicyTypeBind {
+func getPolicyTypeName(policyType int32) string {
+	if policyType == PolicyTypeBind {
 		return PolicyTypeBindName
 	}
-	return PolicyTypeDialName
+	if policyType == PolicyTypeDial {
+		return PolicyTypeDialName
+	}
+	return PolicyTypeInvalidName
+}
+
+func (entity *ServicePolicy) GetPolicyTypeName() string {
+	return getPolicyTypeName(entity.PolicyType)
 }
 
 type ServicePolicyStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*ServicePolicy, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*ServicePolicy, error)
+	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error
 }
 
 func newServicePolicyStore(stores *stores) *servicePolicyStoreImpl {
@@ -116,6 +141,7 @@ type servicePolicyStoreImpl struct {
 	*baseStore
 
 	indexName           boltz.ReadIndex
+	symbolPolicyType    boltz.EntitySymbol
 	symbolSemantic      boltz.EntitySymbol
 	symbolIdentityRoles boltz.EntitySetSymbol
 	symbolServiceRoles  boltz.EntitySetSymbol
@@ -138,12 +164,12 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 
 	store.indexName = store.addUniqueNameField()
-	store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
+	store.symbolPolicyType = store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
 }
 
 func (store *servicePolicyStoreImpl) initializeLinked() {
@@ -174,16 +200,95 @@ Optimizations
    and just add/remove/ignore
 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
-func (store *servicePolicyStoreImpl) serviceRolesUpdated(ctx *boltz.PersistContext, policy *ServicePolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "serviceRoles", policy.ServiceRoles, policy.Semantic, store.stores.edgeService.indexRoleAttributes, store.stores.edgeService)
-	if !ctx.Bucket.SetError(err) {
-		ctx.Bucket.SetError(store.serviceCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
+func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    persistCtx.Bucket.Tx(),
+		rolesSymbol:           store.symbolServiceRoles,
+		linkCollection:        store.serviceCollection,
+		relatedLinkCollection: store.identityCollection,
+		ErrorHolder:           persistCtx.Bucket,
 	}
+	if policy.PolicyType == PolicyTypeDial {
+		ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
+	} else {
+		ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
+	}
+	EvaluatePolicy(ctx, policy, store.stores.edgeService.symbolRoleAttributes)
 }
 
-func (store *servicePolicyStoreImpl) identityRolesUpdated(ctx *boltz.PersistContext, policy *ServicePolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "identityRoles", policy.IdentityRoles, policy.Semantic, store.stores.identity.indexRoleAttributes, store.stores.identity)
-	if !ctx.Bucket.SetError(err) {
-		ctx.Bucket.SetError(store.identityCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
+func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    persistCtx.Bucket.Tx(),
+		rolesSymbol:           store.symbolIdentityRoles,
+		linkCollection:        store.identityCollection,
+		relatedLinkCollection: store.serviceCollection,
+		ErrorHolder:           persistCtx.Bucket,
 	}
+
+	if policy.PolicyType == PolicyTypeDial {
+		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+	} else {
+		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+	}
+
+	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+}
+
+func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	policy, err := store.LoadOneById(ctx.Tx(), id)
+	if err != nil {
+		return err
+	}
+	policy.IdentityRoles = nil
+	policy.ServiceRoles = nil
+	err = store.Update(ctx, policy, nil)
+	if err != nil {
+		return fmt.Errorf("failure while clearing policy before delete: %w", err)
+	}
+	return store.BaseStore.DeleteById(ctx, id)
+}
+
+func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error {
+	ctx := &denormCheckCtx{
+		tx:                     tx,
+		sourceStore:            store.stores.identity,
+		targetStore:            store.stores.edgeService,
+		policyStore:            store,
+		sourceCollection:       store.identityCollection,
+		targetCollection:       store.serviceCollection,
+		targetDenormCollection: store.stores.identity.bindServicesCollection,
+		errorSink:              errorSink,
+		repair:                 fix,
+		policyFilter: func(policyId []byte) bool {
+			policyType := PolicyTypeInvalid
+			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(tx, policyId)); result != nil {
+				policyType = *result
+			}
+			return policyType == PolicyTypeBind
+		},
+	}
+	if err := validatePolicyDenormalization(ctx); err != nil {
+		return err
+	}
+
+	ctx = &denormCheckCtx{
+		tx:                     tx,
+		sourceStore:            store.stores.identity,
+		targetStore:            store.stores.edgeService,
+		policyStore:            store,
+		sourceCollection:       store.identityCollection,
+		targetCollection:       store.serviceCollection,
+		targetDenormCollection: store.stores.identity.dialServicesCollection,
+		errorSink:              errorSink,
+		repair:                 fix,
+		policyFilter: func(policyId []byte) bool {
+			policyType := PolicyTypeInvalid
+			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(tx, policyId)); result != nil {
+				policyType = *result
+			}
+			return policyType == PolicyTypeDial
+		},
+	}
+
+	return validatePolicyDenormalization(ctx)
 }

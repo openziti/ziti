@@ -169,10 +169,10 @@ func (ctx *modelPerf) runScenario(spec *perfScenarioSpec) {
 	ctx.createScenario(spec)
 
 	stats := newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(10)
+	stats.collectStats(100)
 
 	stats = newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(10)
+	stats.collectStats(100)
 
 	ctx.Teardown()
 	shutdown = true
@@ -286,38 +286,78 @@ func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
 }
 
 func (ctx *modelPerf) createPolicies(spec *perfScenarioSpec) {
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+spec.services[0].Id), s("#all"))
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("@"+spec.identities[0].Id))
+	ctx.createServicePolicy("Dial", s("@"+spec.services[0].Id), s("#all"))
+	ctx.createServicePolicy("Dial", s("#all"), s("@"+spec.identities[0].Id))
 
 	serviceRoles := ctx.firstNPermuations(spec.servicePolicyCount, spec.serviceAttrSet)
 	identityRoles := ctx.firstNPermuations(spec.servicePolicyCount, spec.identityAttrSet)
 	for i := 2; i < spec.servicePolicyCount; i++ {
 		serviceRoles[i] = append(serviceRoles[i], "@"+spec.services[0].Id)
 		identityRoles[i] = append(identityRoles[i], "@"+spec.identities[0].Id)
-		ctx.AdminSession.requireNewServicePolicy("Dial", serviceRoles[i], identityRoles[i])
+		ctx.createServicePolicy("Dial", serviceRoles[i], identityRoles[i])
 	}
 
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("@"+spec.edgeRouters[0].Id), s("#all"))
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("@"+spec.identities[0].Id))
+	ctx.createEdgeRouterPolicy(s("@"+spec.edgeRouters[0].Id), s("#all"))
+	ctx.createEdgeRouterPolicy(s("#all"), s("@"+spec.identities[0].Id))
 
 	edgeRouterRoles := ctx.firstNPermuations(spec.edgeRouterPolicyCount, spec.edgeRouterAttrSet)
 	identityRoles = ctx.firstNPermuations(spec.edgeRouterPolicyCount, spec.identityAttrSet)
 	for i := 2; i < spec.edgeRouterPolicyCount; i++ {
 		edgeRouterRoles[i] = append(edgeRouterRoles[i], "@"+spec.edgeRouters[0].Id)
 		identityRoles[i] = append(identityRoles[i], "@"+spec.identities[0].Id)
-		ctx.AdminSession.requireNewEdgeRouterPolicy(edgeRouterRoles[i], identityRoles[i])
+		ctx.createEdgeRouterPolicy(edgeRouterRoles[i], identityRoles[i])
 	}
 
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("@"+spec.edgeRouters[0].Id), s("#all"))
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("@"+spec.services[0].Id))
+	ctx.createServiceEdgeRouterPolicy(s("@"+spec.edgeRouters[0].Id), s("#all"))
+	ctx.createServiceEdgeRouterPolicy(s("#all"), s("@"+spec.services[0].Id))
 
 	serviceRoles = ctx.firstNPermuations(spec.serviceEdgeRouterPolicyCount, spec.serviceAttrSet)
 	edgeRouterRoles = ctx.firstNPermuations(spec.serviceEdgeRouterPolicyCount, spec.edgeRouterAttrSet)
 	for i := 2; i < spec.serviceEdgeRouterPolicyCount; i++ {
 		serviceRoles[i] = append(serviceRoles[i], "@"+spec.services[0].Id)
 		edgeRouterRoles[i] = append(edgeRouterRoles[i], "@"+spec.edgeRouters[0].Id)
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(edgeRouterRoles[i], serviceRoles[i])
+		ctx.createServiceEdgeRouterPolicy(edgeRouterRoles[i], serviceRoles[i])
 	}
+}
+
+func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serviceRoles []string) {
+	policyHandler := ctx.EdgeController.AppEnv.Handlers.ServicePolicy
+	id := eid.New()
+	policy := &model.ServicePolicy{
+		BaseEntity:    models.BaseEntity{Id: id},
+		Name:          id,
+		PolicyType:    policyType,
+		IdentityRoles: identityRoles,
+		ServiceRoles:  serviceRoles,
+	}
+	_, err := policyHandler.Create(policy)
+	ctx.Req.NoError(err)
+}
+
+func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) {
+	policyHandler := ctx.EdgeController.AppEnv.Handlers.EdgeRouterPolicy
+	id := eid.New()
+	policy := &model.EdgeRouterPolicy{
+		BaseEntity:      models.BaseEntity{Id: id},
+		Name:            id,
+		IdentityRoles:   identityRoles,
+		EdgeRouterRoles: edgeRouterRoles,
+	}
+	_, err := policyHandler.Create(policy)
+	ctx.Req.NoError(err)
+}
+
+func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRoles []string) {
+	policyHandler := ctx.EdgeController.AppEnv.Handlers.ServiceEdgeRouterPolicy
+	id := eid.New()
+	policy := &model.ServiceEdgeRouterPolicy{
+		BaseEntity:      models.BaseEntity{Id: id},
+		Name:            id,
+		EdgeRouterRoles: edgeRouterRoles,
+		ServiceRoles:    serviceRoles,
+	}
+	_, err := policyHandler.Create(policy)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *modelPerf) firstNPermuations(n int, v []string) [][]string {

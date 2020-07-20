@@ -2,8 +2,9 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
@@ -30,7 +31,7 @@ func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, db.EntityTypeRouters)))
-		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
+		ctx.Equal(0, len(ctx.stores.ServiceEdgeRouterPolicy.GetRelatedEntitiesIdList(tx, policy.Id, db.EntityTypeServices)))
 
 		testPolicy, err := ctx.stores.ServiceEdgeRouterPolicy.LoadOneByName(tx, policy.Name)
 		ctx.NoError(err)
@@ -205,7 +206,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 
 	for i := 0; i < 9; i++ {
 		relatedEdgeRouters := ctx.getRelatedIds(policies[i], db.EntityTypeRouters)
-		relatedServices := ctx.getRelatedIds(policies[i], EntityTypeServices)
+		relatedServices := ctx.getRelatedIds(policies[i], db.EntityTypeServices)
 		if i == 3 {
 			ctx.Equal([]string{edgeRouters[0].Id}, relatedEdgeRouters)
 			ctx.Equal([]string{services[0].Id}, relatedServices)
@@ -245,8 +246,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 		edgeRouters = append(edgeRouters, edgeRouter)
 	})
 
-	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
-	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 
 	for _, service := range services {
 		ctx.RequireDelete(service)
@@ -275,8 +275,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 		edgeRouters = append(edgeRouters, edgeRouter)
 	})
 
-	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
-	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 
 	// ensure policies get cleaned up
 	for _, policy := range policies {
@@ -286,8 +285,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	// test with policies created after services/edge routers
 	policies = ctx.createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles, services, edgeRouters, true)
 
-	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
-	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 
 	for _, policy := range policies {
 		ctx.RequireDelete(policy)
@@ -296,8 +294,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 	// test with policies created after services/edge routers and roles added after created
 	policies = ctx.createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles, services, edgeRouters, false)
 
-	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
-	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 
 	for _, service := range services {
 		if len(service.RoleAttributes) > 0 {
@@ -323,8 +320,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) 
 		ctx.RequireUpdate(policy)
 	}
 
-	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
-	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicies(services, edgeRouters, policies)
 }
 
 func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouterRoles []string, services []*EdgeService, edgeRouters []*EdgeRouter, oncreate bool) []*ServiceEdgeRouterPolicy {
@@ -381,10 +377,16 @@ func (ctx *TestContext) createServiceEdgeRouterPolicies(serviceRoles, edgeRouter
 	return policies
 }
 
+func (ctx *TestContext) validateServiceEdgeRouterPolicies(services []*EdgeService, edgeRouters []*EdgeRouter, policies []*ServiceEdgeRouterPolicy) {
+	ctx.validateServiceEdgeRouterPolicyServices(services, policies)
+	ctx.validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateServiceEdgeRouterPolicyDenormalization()
+}
+
 func (ctx *TestContext) validateServiceEdgeRouterPolicyServices(services []*EdgeService, policies []*ServiceEdgeRouterPolicy) {
 	for _, policy := range policies {
 		count := 0
-		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)
+		relatedServices := ctx.getRelatedIds(policy, db.EntityTypeServices)
 		for _, service := range services {
 			relatedPolicies := ctx.getRelatedIds(service, EntityTypeServiceEdgeRouterPolicies)
 			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.ServiceRoles, service, service.RoleAttributes)
@@ -422,4 +424,14 @@ func (ctx *TestContext) validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters [
 		}
 		ctx.Equal(count, len(relatedEdgeRouters))
 	}
+}
+
+func (ctx *TestContext) validateServiceEdgeRouterPolicyDenormalization() {
+	errorHolder := &errorz.ErrorHolderImpl{}
+	errorHolder.SetError(ctx.db.View(func(tx *bbolt.Tx) error {
+		return ctx.stores.ServiceEdgeRouterPolicy.CheckIntegrity(tx, false, func(err error) {
+			errorHolder.SetError(err)
+		})
+	}))
+	ctx.NoError(errorHolder.GetError())
 }

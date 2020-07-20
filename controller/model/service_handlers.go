@@ -96,19 +96,14 @@ func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, 
 }
 
 func (handler *EdgeServiceHandler) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
-	query := `id = "%v" and not isEmpty(from servicePolicies where (type = %v and anyOf(identities.id) = "%v"))`
+	edgeServiceStore := handler.env.GetStores().EdgeService
+	isBindable := edgeServiceStore.IsBindableByIdentity(tx, id, identityId)
+	isDialable := edgeServiceStore.IsDialableByIdentity(tx, id, identityId)
 
-	dialQuery := fmt.Sprintf(query, id, persistence.PolicyTypeDial, identityId)
-	_, dialCount, err := handler.GetStore().QueryIds(tx, dialQuery)
-	if err != nil {
-		return nil, err
+	if !isBindable && !isDialable {
+		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
 	}
 
-	bindQuery := fmt.Sprintf(query, id, persistence.PolicyTypeBind, identityId)
-	_, bindCount, err := handler.GetStore().QueryIds(tx, bindQuery)
-	if err != nil {
-		return nil, err
-	}
 	result, err := handler.readInTx(tx, id)
 	if err != nil {
 		return nil, err
@@ -116,13 +111,10 @@ func (handler *EdgeServiceHandler) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id 
 	if result == nil {
 		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
 	}
-	if bindCount > 0 {
+	if isBindable {
 		result.Permissions = append(result.Permissions, persistence.PolicyTypeBindName)
-	} else if dialCount == 0 {
-		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
 	}
-
-	if dialCount > 0 {
+	if isDialable {
 		result.Permissions = append(result.Permissions, persistence.PolicyTypeDialName)
 	}
 	return result, nil
@@ -148,7 +140,7 @@ func (handler *EdgeServiceHandler) PublicQueryForIdentity(sessionIdentity *Ident
 }
 
 func (handler *EdgeServiceHandler) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
-	idFilterQueryString := fmt.Sprintf(`not isEmpty(from servicePolicies where anyOf(identities) = "%v")`, identityId)
+	idFilterQueryString := fmt.Sprintf(`(anyOf(dialIdentities) = "%v" or anyOf(bindIdentities) = "%v")`, identityId, identityId)
 	idFilterQuery, err := ast.Parse(handler.Store, idFilterQueryString)
 	if err != nil {
 		return nil, err

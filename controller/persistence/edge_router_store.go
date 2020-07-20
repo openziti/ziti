@@ -120,9 +120,16 @@ type edgeRouterStoreImpl struct {
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
 
+	symbolRoleAttributes            boltz.EntitySetSymbol
 	symbolEdgeRouterPolicies        boltz.EntitySetSymbol
 	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
 	symbolEnrollments               boltz.EntitySetSymbol
+
+	symbolIdentities boltz.EntitySetSymbol
+	symbolServices   boltz.EntitySetSymbol
+
+	identitiesCollection boltz.RefCountedLinkCollection
+	servicesCollection   boltz.RefCountedLinkCollection
 }
 
 func (store *edgeRouterStoreImpl) NewStoreEntity() boltz.Entity {
@@ -136,35 +143,53 @@ func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.GetParentStore().GrantSymbols(store)
 
+	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+
 	store.indexName = store.GetParentStore().(db.RouterStore).GetNameIndex()
-	store.indexRoleAttributes = store.addRoleAttributesField()
+	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldEdgeRouterEnrollments, store.stores.enrollment)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 
+	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
+	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
+
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
-}
-
-func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	// Recalculate edge router policy links
-	rolesSymbol := store.stores.edgeRouterPolicy.symbolEdgeRouterRoles
-	linkCollection := store.stores.edgeRouterPolicy.edgeRouterCollection
-	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-
-	// Recalculate service edge router policy links
-	rolesSymbol = store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles
-	linkCollection = store.stores.serviceEdgeRouterPolicy.edgeRouterCollection
-	semanticSymbol = store.stores.serviceEdgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolEdgeRouter)
+
+	store.identitiesCollection = store.AddRefCountedLinkCollection(store.symbolIdentities, store.stores.identity.symbolEdgeRouters)
+	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
+}
+
+func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+	// Recalculate edge router policy links
+	ctx := &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.edgeRouterPolicy.symbolEdgeRouterRoles,
+		linkCollection:        store.stores.edgeRouterPolicy.edgeRouterCollection,
+		relatedLinkCollection: store.stores.edgeRouterPolicy.identityCollection,
+		denormLinkCollection:  store.identitiesCollection,
+		ErrorHolder:           holder,
+	}
+	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
+
+	// Recalculate service edge router policy links
+	ctx = &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles,
+		linkCollection:        store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
+		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.serviceCollection,
+		denormLinkCollection:  store.servicesCollection,
+		ErrorHolder:           holder,
+	}
+	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)
 }
 
 func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {

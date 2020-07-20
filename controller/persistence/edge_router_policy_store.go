@@ -1,8 +1,9 @@
 package persistence
 
 import (
-	"github.com/openziti/fabric/controller/db"
+	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -28,6 +29,10 @@ type EdgeRouterPolicy struct {
 
 func (entity *EdgeRouterPolicy) GetName() string {
 	return entity.Name
+}
+
+func (entity *EdgeRouterPolicy) GetSemantic() string {
+	return entity.Semantic
 }
 
 func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -83,6 +88,7 @@ type EdgeRouterPolicyStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
+	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error
 }
 
 func newEdgeRouterPolicyStore(stores *stores) *edgeRouterPolicyStoreImpl {
@@ -154,16 +160,55 @@ Optimizations
    and just add/remove/ignore
 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
-func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(ctx *boltz.PersistContext, policy *EdgeRouterPolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "edgeRouterRoles", policy.EdgeRouterRoles, policy.Semantic, store.stores.edgeRouter.indexRoleAttributes, store.stores.edgeRouter)
-	if !ctx.Bucket.SetError(err) {
-		ctx.Bucket.SetError(store.edgeRouterCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
+func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    persistCtx.Bucket.Tx(),
+		rolesSymbol:           store.symbolEdgeRouterRoles,
+		linkCollection:        store.edgeRouterCollection,
+		relatedLinkCollection: store.identityCollection,
+		denormLinkCollection:  store.stores.edgeRouter.identitiesCollection,
+		ErrorHolder:           persistCtx.Bucket,
 	}
+	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes)
 }
 
-func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(ctx *boltz.PersistContext, policy *EdgeRouterPolicy) {
-	roleIds, err := store.getEntityIdsForRoleSet(ctx.Bucket.Tx(), "identityRoles", policy.IdentityRoles, policy.Semantic, store.stores.identity.indexRoleAttributes, store.stores.identity)
-	if !ctx.Bucket.SetError(err) {
-		ctx.Bucket.SetError(store.identityCollection.SetLinks(ctx.Bucket.Tx(), policy.Id, roleIds))
+func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    persistCtx.Bucket.Tx(),
+		rolesSymbol:           store.symbolIdentityRoles,
+		linkCollection:        store.identityCollection,
+		relatedLinkCollection: store.edgeRouterCollection,
+		denormLinkCollection:  store.stores.identity.edgeRoutersCollection,
+		ErrorHolder:           persistCtx.Bucket,
 	}
+	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+}
+
+func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	policy, err := store.LoadOneById(ctx.Tx(), id)
+	if err != nil {
+		return err
+	}
+	policy.EdgeRouterRoles = nil
+	policy.IdentityRoles = nil
+	err = store.Update(ctx, policy, nil)
+	if err != nil {
+		return fmt.Errorf("failure while clearing policy before delete: %w", err)
+	}
+	return store.BaseStore.DeleteById(ctx, id)
+}
+
+func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error {
+	ctx := &denormCheckCtx{
+		tx:                     tx,
+		sourceStore:            store.stores.identity,
+		targetStore:            store.stores.edgeRouter,
+		policyStore:            store,
+		sourceCollection:       store.identityCollection,
+		targetCollection:       store.edgeRouterCollection,
+		targetDenormCollection: store.stores.identity.edgeRoutersCollection,
+		repair:                 fix,
+		errorSink:              errorSink,
+	}
+	return validatePolicyDenormalization(ctx)
 }

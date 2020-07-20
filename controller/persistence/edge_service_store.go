@@ -27,6 +27,11 @@ import (
 	"reflect"
 )
 
+const (
+	FieldEdgeServiceDialIdentities = "dialIdentities"
+	FieldEdgeServiceBindIdentities = "bindIdentities"
+)
+
 type EdgeService struct {
 	db.Service
 	RoleAttributes []string
@@ -75,7 +80,8 @@ type EdgeServiceStore interface {
 
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
-
+	IsBindableByIdentity(tx *bbolt.Tx, id string, identityId string) bool
+	IsDialableByIdentity(tx *bbolt.Tx, id string, identityId string) bool
 	GetRoleAttributesIndex() boltz.SetReadIndex
 	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
 }
@@ -93,16 +99,21 @@ type edgeServiceStoreImpl struct {
 
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
-	symbolClusters      boltz.EntitySetSymbol
-	symbolSessions      boltz.EntitySetSymbol
+
+	symbolRoleAttributes boltz.EntitySetSymbol
+	symbolSessions       boltz.EntitySetSymbol
+	symbolConfigs        boltz.EntitySetSymbol
 
 	symbolServicePolicies           boltz.EntitySetSymbol
 	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
 
-	symbolIdentities  boltz.EntitySetSymbol
-	symbolEdgeRouters boltz.EntitySetSymbol
+	symbolDialIdentities boltz.EntitySetSymbol
+	symbolBindIdentities boltz.EntitySetSymbol
+	symbolEdgeRouters    boltz.EntitySetSymbol
 
-	symbolConfigs boltz.EntitySetSymbol
+	bindIdentitiesCollection boltz.RefCountedLinkCollection
+	dialIdentitiesCollection boltz.RefCountedLinkCollection
+	edgeRoutersCollection    boltz.RefCountedLinkCollection
 }
 
 func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.Entity {
@@ -116,37 +127,31 @@ func (store *edgeServiceStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.GetParentStore().GrantSymbols(store)
 
+	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+
 	store.indexName = store.GetParentStore().(db.ServiceStore).GetNameIndex()
-	store.indexRoleAttributes = store.addRoleAttributesField()
+	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
-	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
+
+	store.symbolBindIdentities = store.AddFkSetSymbol(FieldEdgeServiceBindIdentities, store.stores.identity)
+	store.symbolDialIdentities = store.AddFkSetSymbol(FieldEdgeServiceDialIdentities, store.stores.identity)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(migrationEntityTypeEdgeRouters, store.stores.edgeRouter)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
-}
-
-func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	// Recalculate service policy links
-	rolesSymbol := store.stores.servicePolicy.symbolServiceRoles
-	linkCollection := store.stores.servicePolicy.serviceCollection
-	semanticSymbol := store.stores.servicePolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-
-	// Recalculate service edge router policy links
-	rolesSymbol = store.stores.serviceEdgeRouterPolicy.symbolServiceRoles
-	linkCollection = store.stores.serviceEdgeRouterPolicy.serviceCollection
-	semanticSymbol = store.stores.serviceEdgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
 }
 
 func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolServices)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolServices)
 	store.AddLinkCollection(store.symbolConfigs, store.stores.config.symbolServices)
+
+	store.bindIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolBindIdentities, store.stores.identity.symbolBindServices)
+	store.dialIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolDialIdentities, store.stores.identity.symbolDialServices)
+	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
 
 	store.EventEmmiter.AddListener(boltz.EventUpdate, func(i ...interface{}) {
 		if len(i) != 1 {
@@ -160,6 +165,29 @@ func (store *edgeServiceStoreImpl) initializeLinked() {
 		store.stores.DbProvider.GetServiceCache().RemoveFromCache(service.Id)
 		pfxlog.Logger().WithField("id", service).Debugf("removed service from fabric cache")
 	})
+}
+
+func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+	// Recalculate service policy links
+	ctx := &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.servicePolicy.symbolServiceRoles,
+		linkCollection:        store.stores.servicePolicy.serviceCollection,
+		relatedLinkCollection: store.stores.servicePolicy.identityCollection,
+		ErrorHolder:           holder,
+	}
+	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
+
+	// Recalculate service edge router policy links
+	ctx = &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolServiceRoles,
+		linkCollection:        store.stores.serviceEdgeRouterPolicy.serviceCollection,
+		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
+		denormLinkCollection:  store.edgeRoutersCollection,
+		ErrorHolder:           holder,
+	}
+	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)
 }
 
 func (store *edgeServiceStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -214,4 +242,14 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 
 func (store *edgeServiceStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
 	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
+}
+
+func (store *edgeServiceStoreImpl) IsBindableByIdentity(tx *bbolt.Tx, id string, identityId string) bool {
+	linkCount := store.bindIdentitiesCollection.GetLinkCount(tx, []byte(id), []byte(identityId))
+	return linkCount != nil && *linkCount > 0
+}
+
+func (store *edgeServiceStoreImpl) IsDialableByIdentity(tx *bbolt.Tx, id string, identityId string) bool {
+	linkCount := store.dialIdentitiesCollection.GetLinkCount(tx, []byte(id), []byte(identityId))
+	return linkCount != nil && *linkCount > 0
 }
