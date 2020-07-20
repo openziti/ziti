@@ -17,8 +17,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/gobuffalo/packr v1.30.1 // indirect
-	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
 	github.com/google/uuid v1.1.1
