@@ -596,61 +596,42 @@ func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter) {
 		Version: serverVersion,
 	}
 
-	if buf, err := proto.Marshal(serverHello); err == nil {
-		if waitCh, err := r.Control.SendAndWait(channel2.NewMessage(ServerHelloType, buf)); err == nil {
-
-			select {
-			case resp := <-waitCh:
-				if resp.ContentType == ClientHelloType {
-					respHello := &edge_ctrl_pb.ClientHello{}
-					if err := proto.Unmarshal(resp.Body, respHello); err == nil {
-						pfxlog.Logger().
-							WithField("version", respHello.Version).
-							WithField("hostname", respHello.Hostname).
-							WithField("protocols", respHello.Protocols).
-							WithField("data", respHello.Data).
-							Info("edge router responded with client hello")
-
-						protocols := map[string]string{}
-						for _, p := range respHello.Protocols {
-							ingressUrl := fmt.Sprintf("%s://%s", p, respHello.Hostname)
-							protocols[p] = ingressUrl
-						}
-
-						//in memory only
-						edgeRouter.Hostname = &respHello.Hostname
-						edgeRouter.EdgeRouterProtocols = protocols
-
-						//todo: restrict version?
-						pfxlog.Logger().Infof("edge router connecting with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
-
-						b.AddEdgeRouter(r.Control, edgeRouter)
-					} else {
-						pfxlog.Logger().WithError(err).Error("could not unmarshal clientHello after serverHello")
-						return
-					}
-				}
-
-				if resp.ContentType == ErrorType {
-					respErr := &edge_ctrl_pb.Error{}
-					if err := proto.Unmarshal(resp.Body, respErr); err == nil {
-						pfxlog.Logger().WithField("cause", respErr.Cause).WithField("code", respErr.Code).WithField("message", respErr.Message).
-							Error("client responded with error after serverHello")
-						return
-					}
-					pfxlog.Logger().WithError(err).Error("could not unmarshal error from client after serverHello")
-					return
-				}
-
-			case <-time.After(5 * time.Second):
-				pfxlog.Logger().Error("timeout - waiting for clientHello from edge router")
-			}
-
-		} else {
-			pfxlog.Logger().WithError(err).Error("could not send serverHello message for edge router")
-			return
-		}
+	buf, err := proto.Marshal(serverHello)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("could not marshal serverHello")
+		return
 	}
+
+	if err = r.Control.SendWithTimeout(channel2.NewMessage(ServerHelloType, buf), 10*time.Second); err != nil {
+		pfxlog.Logger().WithError(err).Error("timed out sending serverHello message for edge router")
+		return
+	}
+}
+
+func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, respHello *edge_ctrl_pb.ClientHello) {
+	serverVersion := build.GetBuildInfo().GetVersion()
+
+	pfxlog.Logger().
+		WithField("version", respHello.Version).
+		WithField("hostname", respHello.Hostname).
+		WithField("protocols", respHello.Protocols).
+		WithField("data", respHello.Data).
+		Info("edge router responded with client hello")
+
+	protocols := map[string]string{}
+	for _, p := range respHello.Protocols {
+		ingressUrl := fmt.Sprintf("%s://%s", p, respHello.Hostname)
+		protocols[p] = ingressUrl
+	}
+
+	//in memory only
+	edgeRouter.Hostname = &respHello.Hostname
+	edgeRouter.EdgeRouterProtocols = protocols
+
+	//todo: restrict version?
+	pfxlog.Logger().Infof("edge router connecting with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
+
+	b.AddEdgeRouter(r.Control, edgeRouter)
 }
 
 func (b *Broker) RouterDisconnected(r *network.Router) {

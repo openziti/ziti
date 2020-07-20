@@ -121,7 +121,10 @@ func (c *Controller) SetHostController(h env.HostController) {
 }
 
 func (c *Controller) GetCtrlHandlers() []channel2.ReceiveHandler {
-	return []channel2.ReceiveHandler{handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv)}
+	return []channel2.ReceiveHandler{
+		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
+		handler_edge_ctrl.NewHelloHandler(c.AppEnv),
+	}
 }
 
 func (c *Controller) GetMgmtHandlers() []channel2.ReceiveHandler {
