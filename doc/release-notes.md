@@ -9,6 +9,7 @@
   * [#146](https://github.com/openziti/ziti/issues/146) - Export edge router JWT fails sometimes when there are more than 10 edge routers
   * [#147](https://github.com/openziti/ziti/issues/147) - Fix paging output when using 'limit none'
   * [#148](https://github.com/openziti/ziti/issues/148) - Show isOnline in ziti edge list edge-routers
+  * [edge#243](https://github.com/openziti/edge/issue/243) - Session creation only returns 10 edge routers
 
 
 # Release 0.15.1
