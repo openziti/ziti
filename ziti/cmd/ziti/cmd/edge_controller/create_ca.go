@@ -90,7 +90,7 @@ func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	cmd.Flags().BoolVarP(&options.authEnabled, "auth", "e", false, "Whether the CA can be used for authentication or not")
 	cmd.Flags().BoolVarP(&options.ottCaEnrollment, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "role-attributes", "a", nil, "A csv string of role attributes enrolling identities receive")
+	cmd.Flags().StringSliceVarP(&options.identityRoles, "role-attributes", "a", []string{}, "A csv string of role attributes enrolling identities receive")
 
 	return cmd
 }

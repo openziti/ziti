@@ -1,3 +1,12 @@
+# Release 0.15.2
+
+* What's New:
+
+
+* Bug Fixes:
+  * [#142](https://github.com/openziti/ziti/issues/142) - fix CLI ca create not defaulting identity roles
+
+
 # Release 0.15.1
 
 * What's New:
