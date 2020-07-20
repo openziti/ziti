@@ -1,19 +1,9 @@
-# Release 0.15.2
-
-* What's New:
-
-
-* Bug Fixes:
-  * [#142](https://github.com/openziti/ziti/issues/142) - fix CLI ca create not defaulting identity roles
-
-
-
 # Release 0.15.1
 
 * What's New:
 No new functionality introduced.
 
-* Bug Fixes:
+* Bug fixes
   * [#129](https://github.com/openziti/ziti/issues/129) - minor issue with `ziti-tunnel enroll` outputting the success message at ERROR level
   * [#131](https://github.com/openziti/ziti/issues/131) - issues w/ creating identities, CAs and validating CAs
   * [#133](https://github.com/openziti/ziti/issues/133) - fix service lookup by name when creating service edge router policies
