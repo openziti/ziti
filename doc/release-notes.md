@@ -5,6 +5,7 @@
 
 * Bug Fixes:
   * [#142](https://github.com/openziti/ziti/issues/142) - fix CLI ca create not defaulting identity roles
+  * [#144](https://github.com/openziti/ziti/issues/144) - ziti-fabric is only returning first 10 results for lists of services, routers and terminators
 
 
 # Release 0.15.1

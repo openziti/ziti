@@ -36,7 +36,13 @@ var listTerminators = &cobra.Command{
 	Short: "Retrieve terminator definitions",
 	Run: func(cmd *cobra.Command, args []string) {
 		if ch, err := listTerminatorsClient.Connect(); err == nil {
-			request := &mgmt_pb.ListTerminatorsRequest{}
+			query := "true limit none"
+			if len(args) > 0 {
+				query = args[0]
+			}
+			request := &mgmt_pb.ListTerminatorsRequest{
+				Query: query,
+			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
