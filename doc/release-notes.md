@@ -6,6 +6,9 @@
 * Bug Fixes:
   * [#142](https://github.com/openziti/ziti/issues/142) - fix CLI ca create not defaulting identity roles
   * [#144](https://github.com/openziti/ziti/issues/144) - ziti-fabric is only returning first 10 results for lists of services, routers and terminators
+  * [#146](https://github.com/openziti/ziti/issues/146) - Export edge router JWT fails sometimes when there are more than 10 edge routers
+  * [#147](https://github.com/openziti/ziti/issues/147) - Fix paging output when using 'limit none'
+  * [#148](https://github.com/openziti/ziti/issues/148) - Show isOnline in ziti edge list edge-routers
 
 
 # Release 0.15.1
