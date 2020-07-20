@@ -137,7 +137,7 @@ func (p *paging) output(o *commonOptions) {
 	} else {
 		first := p.offset + 1
 		last := p.offset + p.limit
-		if last > p.count {
+		if last > p.count || last < 0 { // if p.limit is maxint, last will rollover and be negative
 			last = p.count
 		}
 		_, _ = fmt.Fprintf(o.Out, "results: %v-%v of %v\n", first, last, p.count)
