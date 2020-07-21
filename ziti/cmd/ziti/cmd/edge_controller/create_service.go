@@ -64,10 +64,10 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

@@ -63,10 +63,10 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

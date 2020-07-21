@@ -59,9 +59,9 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

@@ -618,7 +618,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 }
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
-func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logRequestJson, logResponseJSON bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -628,6 +628,11 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 
 	if session.Cert != "" {
 		client.SetRootCertificate(session.Cert)
+	}
+
+	if logRequestJson {
+		outputJson(out, []byte(body))
+		fmt.Println()
 	}
 
 	resp, err := client.
@@ -646,7 +651,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 			entityType, session.Host, resp.Status(), resp.String())
 	}
 
-	if logJSON {
+	if logResponseJSON {
 		outputJson(out, resp.Body())
 	}
 

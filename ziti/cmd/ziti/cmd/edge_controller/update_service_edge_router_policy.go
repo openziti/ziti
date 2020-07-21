@@ -60,9 +60,9 @@ func newUpdateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router policy")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the service edge router policy")
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the service edge router policy")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

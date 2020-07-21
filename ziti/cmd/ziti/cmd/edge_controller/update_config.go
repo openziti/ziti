@@ -65,7 +65,7 @@ func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&options.data, "data", "d", "", "Set the data of the config")
 	cmd.Flags().StringVarP(&options.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

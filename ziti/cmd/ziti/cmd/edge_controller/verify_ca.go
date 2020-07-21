@@ -26,12 +26,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
-	nfpem "github.com/openziti/foundation/util/pem"
-	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -124,11 +124,11 @@ func newVerifyCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVarP(&options.certPath, "cert", "c", "", "The path to a cert with the CN set as the verification token and signed by the target CA")
 	cmd.Flags().StringVarP(&options.caCertPath, "cacert", "a", "", "The path to the CA cert that should be used to generate and sign a verification cert")
 	cmd.Flags().StringVarP(&options.caKeyPath, "cakey", "k", "", "The path to the CA key that should be used to generate and sign a verification cert")
 	cmd.Flags().StringVarP(&options.caKeyPassword, "password", "p", "", "The password for the CA key if necessary")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

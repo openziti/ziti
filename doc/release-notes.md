@@ -1,19 +1,19 @@
 # Release 0.15.2
 
 * What's New:
-
+  * [#140](https://github.com/openziti/ziti/issues/140) - Allow logging JSON request for Ziti CLI
+  * [#148](https://github.com/openziti/ziti/issues/148) - Show isOnline in ziti edge list edge-routers
+  * [#144](https://github.com/openziti/ziti/issues/144) - Allow ziti-fabric list to use queries. Default to `true limit none`
 
 * Bug Fixes:
   * [#142](https://github.com/openziti/ziti/issues/142) - fix CLI ca create not defaulting identity roles
-  * [#144](https://github.com/openziti/ziti/issues/144) - ziti-fabric is only returning first 10 results for lists of services, routers and terminators
   * [#146](https://github.com/openziti/ziti/issues/146) - Export edge router JWT fails sometimes when there are more than 10 edge routers
   * [#147](https://github.com/openziti/ziti/issues/147) - Fix paging output when using 'limit none'
-  * [#148](https://github.com/openziti/ziti/issues/148) - Show isOnline in ziti edge list edge-routers
   * [edge#243](https://github.com/openziti/edge/issue/243) - Session creation only returns 10 edge routers
   * [edge#245](https://github.com/openziti/edge/issue/245) - fingerprint calculation changed from 0.14 to 0.15. Ensure 0.15 routers can work with 0.14 controllers
   * [edge#248](https://github.com/openziti/edge/issue/248) - Edge Router Hello can time out on slow networks with many links to establish
   * [foundation#103](https://github.com/openziti/foundation/issues/103) - Fix config file env injection for lists
-
+ 
 # Release 0.15.1
 
 * What's New:

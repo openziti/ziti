@@ -179,8 +179,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -208,12 +207,11 @@ func newListServicesCmd(options *commonOptions) *cobra.Command {
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVar(&asIdentity, "as-identity", "", "Allow admins to see services as they would be seen by a different identity")
 	cmd.Flags().StringSliceVar(&configTypes, "config-types", nil, "Override which config types to view on services")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -239,10 +237,9 @@ func newListEdgeRoutersCmd(options *commonOptions) *cobra.Command {
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -268,10 +265,9 @@ func newListIdentitiesCmd(options *commonOptions) *cobra.Command {
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -295,8 +291,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

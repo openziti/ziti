@@ -61,7 +61,7 @@ func newCreateConfigTypeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.schemaFile, "schema-file", "f", "", "Read config type JSON schema from a file instead of the command line")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
