@@ -10,7 +10,9 @@
   * [#147](https://github.com/openziti/ziti/issues/147) - Fix paging output when using 'limit none'
   * [#148](https://github.com/openziti/ziti/issues/148) - Show isOnline in ziti edge list edge-routers
   * [edge#243](https://github.com/openziti/edge/issue/243) - Session creation only returns 10 edge routers
-
+  * [edge#245](https://github.com/openziti/edge/issue/245) - fingerprint calculation changed from 0.14 to 0.15. Ensure 0.15 routers can work with 0.14 controllers
+  * [edge#248](https://github.com/openziti/edge/issue/248) - Edge Router Hello can time out on slow networks with many links to establish
+  * [foundation#103](https://github.com/openziti/foundation/issues/103) - Fix config file env injection for lists
 
 # Release 0.15.1
 
