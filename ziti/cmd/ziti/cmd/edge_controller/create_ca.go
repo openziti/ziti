@@ -86,11 +86,11 @@ func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to service definition")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.authEnabled, "auth", "e", false, "Whether the CA can be used for authentication or not")
 	cmd.Flags().BoolVarP(&options.ottCaEnrollment, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "role-attributes", "a", nil, "A csv string of role attributes enrolling identities receive")
+	cmd.Flags().StringSliceVarP(&options.identityRoles, "role-attributes", "a", []string{}, "A csv string of role attributes enrolling identities receive")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

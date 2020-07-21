@@ -71,7 +71,7 @@ func deleteEntityOfTypeWithBody(entityType string, body string, options *commonO
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
 func updateEntityOfType(entityType string, body string, options *commonOptions, method string) (*gabs.Container, error) {
-	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONResponse)
+	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse)
 }
 
 func doRequest(entityType string, options *commonOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {

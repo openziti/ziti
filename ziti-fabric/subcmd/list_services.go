@@ -36,7 +36,13 @@ var listServices = &cobra.Command{
 	Short: "Retrieve all service definitions",
 	Run: func(cmd *cobra.Command, args []string) {
 		if ch, err := listServicesClient.Connect(); err == nil {
-			request := &mgmt_pb.ListServicesRequest{}
+			query := "true limit none"
+			if len(args) > 0 {
+				query = args[0]
+			}
+			request := &mgmt_pb.ListServicesRequest{
+				Query: query,
+			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)

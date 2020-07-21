@@ -61,9 +61,9 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the service. Use --role-attributes '' to set an empty list")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

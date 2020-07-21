@@ -87,7 +87,7 @@ func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, optio
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
