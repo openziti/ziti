@@ -54,7 +54,7 @@ func (entity *Terminator) GetCost() uint16 {
 	return entity.Cost
 }
 
-func (entity *Terminator) GetPeerData() map[uint32][]byte {
+func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
 

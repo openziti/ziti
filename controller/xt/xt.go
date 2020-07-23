@@ -38,9 +38,11 @@ type Terminator interface {
 	GetRouterId() string
 	GetBinding() string
 	GetAddress() string
-	GetPeerData() map[uint32][]byte
+	GetPeerData() PeerData
 	GetCreatedAt() time.Time
 }
+
+type PeerData map[uint32][]byte
 
 type CostedTerminator interface {
 	Terminator

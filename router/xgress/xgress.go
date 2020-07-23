@@ -19,6 +19,7 @@ package xgress
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
@@ -42,7 +43,7 @@ type Listener interface {
 }
 
 type Dialer interface {
-	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) error
+	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 

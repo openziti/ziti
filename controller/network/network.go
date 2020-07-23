@@ -301,7 +301,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 		// 5: Route Egress
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
-		err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
+		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
 		if err != nil {
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 			retryCount++
@@ -316,7 +316,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 		// 6: Create Intermediate Routes
 		for i := 0; i < len(circuit.Path)-1; i++ {
-			err = sendRoute(circuit.Path[i], rms[i])
+			_, err = sendRoute(circuit.Path[i], rms[i])
 			if err != nil {
 				return nil, err
 			}
@@ -329,6 +329,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			Service:    svc,
 			Circuit:    circuit,
 			Terminator: terminator,
+			PeerData:   peerData,
 		}
 		network.sessionController.add(ss)
 		network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
@@ -619,7 +620,7 @@ func (network *Network) rerouteSession(s *session) error {
 		}
 
 		for i := 0; i < len(cq.Path); i++ {
-			if err := sendRoute(cq.Path[i], rms[i]); err != nil {
+			if _, err := sendRoute(cq.Path[i], rms[i]); err != nil {
 				log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 			}
 		}
@@ -646,7 +647,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 	}
 
 	for i := 0; i < len(cq.Path); i++ {
-		if err := sendRoute(cq.Path[i], rms[i]); err != nil {
+		if _, err := sendRoute(cq.Path[i], rms[i]); err != nil {
 			log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 		}
 	}
@@ -681,18 +682,18 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 	}
 }
 
-func sendRoute(r *Router, createMsg *ctrl_pb.Route) error {
+func sendRoute(r *Router, createMsg *ctrl_pb.Route) (xt.PeerData, error) {
 	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
 
 	body, err := proto.Marshal(createMsg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body)
 	waitCh, err := r.Control.SendAndWait(msg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	select {
 	case msg := <-waitCh:
@@ -700,15 +701,23 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route) error {
 			result := channel2.UnmarshalResult(msg)
 
 			if !result.Success {
-				return errors.New(result.Message)
+				return nil, errors.New(result.Message)
 			}
-			return nil
+
+			peerData := xt.PeerData{}
+			for k, v := range msg.Headers {
+				if k > 0 {
+					peerData[uint32(k)] = v
+				}
+			}
+
+			return peerData, nil
 		}
-		return fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
+		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
 	case <-time.After(10 * time.Second):
 		pfxlog.Logger().Errorf("timed out waiting for response to route message from [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
-		return errors.New("timeout")
+		return nil, errors.New("timeout")
 	}
 }
 

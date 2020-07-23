@@ -18,6 +18,7 @@ package xgress_transport
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -42,20 +43,20 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
+func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
 	txDestination, err := transport.ParseAddress(destination)
 	if err != nil {
-		return fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
+		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
 	}
 
 	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	conn := &transportXgresscConn{peer}
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
 
-	return nil
+	return nil, nil
 }

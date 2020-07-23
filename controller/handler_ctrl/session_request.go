@@ -54,9 +54,17 @@ func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 			if session, err := h.network.CreateSession(h.r, id, request.ServiceId); err == nil {
 				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Circuit.IngressId)
 				responseMsg.ReplyTo(msg)
+
+				//static terminator peer data
 				for k, v := range session.Terminator.GetPeerData() {
 					responseMsg.Headers[int32(k)] = v
 				}
+
+				//runtime peer data
+				for k, v := range session.PeerData {
+					responseMsg.Headers[int32(k)] = v
+				}
+
 				if startXgressSession, err := h.r.Control.SendAndWaitWithTimeout(responseMsg, time.Second*10); err != nil {
 					log.Errorf("unable to respond (%s)", err)
 					h.network.RemoveSession(session.Id, true)

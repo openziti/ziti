@@ -28,6 +28,7 @@ type session struct {
 	Service    *Service
 	Terminator xt.Terminator
 	Circuit    *Circuit
+	PeerData   xt.PeerData
 }
 
 func (s *session) latency() int64 {

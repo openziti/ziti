@@ -18,6 +18,7 @@ package xgress_transport_udp
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/identity/identity"
@@ -25,17 +26,17 @@ import (
 	"net"
 )
 
-func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
+func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
 	logrus.Infof("parsing %v for xgress address: %v", destination, address)
 	packetAddress, err := xgress_udp.Parse(destination)
 	if err != nil {
-		return fmt.Errorf("cannot dial on invalid address [%s] (%w)", destination, err)
+		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%w)", destination, err)
 	}
 
 	logrus.Infof("dialing packet address [%v]", packetAddress)
 	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	logrus.Infof("bound on [%v]", conn.LocalAddr())
@@ -43,7 +44,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	x := xgress.NewXgress(sessionId, address, newPacketConn(conn), xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
 
-	return nil
+	return nil, nil
 }
 
 func (txd *dialer) IsTerminatorValid(string, string) bool {
