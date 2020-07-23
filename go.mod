@@ -30,7 +30,7 @@ require (
 	github.com/mdlayher/netlink v1.1.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.30
-	github.com/mitchellh/mapstructure v1.3.2
+	github.com/mitchellh/mapstructure v1.3.3
 	github.com/openziti/fabric v0.11.53
 	github.com/openziti/foundation v0.11.13
 	github.com/openziti/sdk-golang v0.13.22
