@@ -60,7 +60,6 @@ func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
 	entity.Router.SetValues(ctx.GetParentContext())
 	if ctx.Bucket != nil {
 		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)
-		ctx.SetStringList(FieldTransitRouterEnrollments, entity.Enrollments)
 	}
 }
 
@@ -106,7 +105,6 @@ func (store *transitRouterStoreImpl) initializeLocal() {
 }
 
 func (store *transitRouterStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentity)
 }
 
 func (store *transitRouterStoreImpl) CleanupExternal(ctx boltz.MutateContext, id string) error {

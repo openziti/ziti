@@ -23,8 +23,10 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/fabric/controller/network"
+	"net/http"
 )
 
 func init() {
@@ -43,6 +45,10 @@ func (r *DatabaseRouter) Register(ae *env.AppEnv) {
 	ae.Api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateSnapshot(ae, rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
+
+	ae.Api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, params.FixErrors) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
 func (r *DatabaseRouter) CreateSnapshot(ae *env.AppEnv, rc *response.RequestContext) {
@@ -55,4 +61,44 @@ func (r *DatabaseRouter) CreateSnapshot(ae *env.AppEnv, rc *response.RequestCont
 		return
 	}
 	rc.RespondWithEmptyOk()
+}
+
+func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.RequestContext, fixErrors *bool) {
+	fix := false
+	if fixErrors != nil {
+		fix = *fixErrors
+	}
+
+	var results []*rest_model.DataIntegrityCheckDetail
+
+	errorHandler := func(err error, fixed bool) {
+		description := err.Error()
+		results = append(results, &rest_model.DataIntegrityCheckDetail{
+			Description: &description,
+			Fixed:       &fixed,
+		})
+	}
+
+	if err := ae.GetStores().CheckIntegrity(fix, errorHandler); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	limit := int64(-1)
+	zero := int64(0)
+	count := int64(len(results))
+
+	result := rest_model.DataIntegrityCheckResultEnvelope{
+		Data: results,
+		Meta: &rest_model.Meta{
+			Pagination: &rest_model.Pagination{
+				Limit:      &limit,
+				Offset:     &zero,
+				TotalCount: &count,
+			},
+			FilterableFields: make([]string, 0),
+		},
+	}
+
+	rc.Respond(result, http.StatusOK)
 }

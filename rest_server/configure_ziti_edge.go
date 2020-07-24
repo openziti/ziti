@@ -129,6 +129,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation authentication.Authenticate has not yet been implemented")
 		})
 	}
+	if api.DatabaseCheckDataIntegrityHandler == nil {
+		api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorCreateAuthenticatorHandler == nil {
 		api.AuthenticatorCreateAuthenticatorHandler = authenticator.CreateAuthenticatorHandlerFunc(func(params authenticator.CreateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.CreateAuthenticator has not yet been implemented")

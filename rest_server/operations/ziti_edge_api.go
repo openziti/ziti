@@ -120,6 +120,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		AuthenticationAuthenticateHandler: authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 			return middleware.NotImplemented("operation authentication.Authenticate has not yet been implemented")
 		}),
+		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		}),
 		AuthenticatorCreateAuthenticatorHandler: authenticator.CreateAuthenticatorHandlerFunc(func(params authenticator.CreateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.CreateAuthenticator has not yet been implemented")
 		}),
@@ -602,6 +605,8 @@ type ZitiEdgeAPI struct {
 	IdentityAssociateIdentitysServiceConfigsHandler identity.AssociateIdentitysServiceConfigsHandler
 	// AuthenticationAuthenticateHandler sets the operation handler for the authenticate operation
 	AuthenticationAuthenticateHandler authentication.AuthenticateHandler
+	// DatabaseCheckDataIntegrityHandler sets the operation handler for the check data integrity operation
+	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
 	// AuthenticatorCreateAuthenticatorHandler sets the operation handler for the create authenticator operation
 	AuthenticatorCreateAuthenticatorHandler authenticator.CreateAuthenticatorHandler
 	// CertificateAuthorityCreateCaHandler sets the operation handler for the create ca operation
@@ -974,6 +979,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.AuthenticationAuthenticateHandler == nil {
 		unregistered = append(unregistered, "authentication.AuthenticateHandler")
+	}
+	if o.DatabaseCheckDataIntegrityHandler == nil {
+		unregistered = append(unregistered, "database.CheckDataIntegrityHandler")
 	}
 	if o.AuthenticatorCreateAuthenticatorHandler == nil {
 		unregistered = append(unregistered, "authenticator.CreateAuthenticatorHandler")
@@ -1505,6 +1513,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/authenticate"] = authentication.NewAuthenticate(o.context, o.AuthenticationAuthenticateHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database/checkDataIntegrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

@@ -1331,6 +1331,34 @@ func init() {
         }
       ]
     },
+    "/database/checkDataIntegrity": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Runs an data integrity scan on the datastore and returns any found issues",
+        "operationId": "checkDataIntegrity",
+        "parameters": [
+          {
+            "$ref": "#/parameters/fixErrors"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/dataIntegrityCheckResult"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
     "/database/snapshot": {
       "post": {
         "security": [
@@ -5340,6 +5368,42 @@ func init() {
         }
       }
     },
+    "dataIntegrityCheckDetail": {
+      "type": "object",
+      "required": [
+        "description",
+        "fixed"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "fixed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dataIntegrityCheckDetailList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataIntegrityCheckDetail"
+      }
+    },
+    "dataIntegrityCheckResultEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailAPISessionEnvelope": {
       "type": "object",
       "required": [
@@ -7739,6 +7803,11 @@ func init() {
       "name": "filter",
       "in": "query"
     },
+    "fixErrors": {
+      "type": "boolean",
+      "name": "fixErrors",
+      "in": "query"
+    },
     "id": {
       "type": "string",
       "description": "The id of the requested resource",
@@ -7858,6 +7927,12 @@ func init() {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
         "$ref": "#/definitions/createEnvelope"
+      }
+    },
+    "dataIntegrityCheckResult": {
+      "description": "A list of data integrity issues found",
+      "schema": {
+        "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
       }
     },
     "deleteResponse": {
@@ -11798,6 +11873,60 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/database/checkDataIntegrity": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Runs an data integrity scan on the datastore and returns any found issues",
+        "operationId": "checkDataIntegrity",
+        "parameters": [
+          {
+            "type": "boolean",
+            "name": "fixErrors",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of data integrity issues found",
+            "schema": {
+              "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/database/snapshot": {
       "post": {
@@ -20989,6 +21118,42 @@ func init() {
         }
       }
     },
+    "dataIntegrityCheckDetail": {
+      "type": "object",
+      "required": [
+        "description",
+        "fixed"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "fixed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dataIntegrityCheckDetailList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataIntegrityCheckDetail"
+      }
+    },
+    "dataIntegrityCheckResultEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailAPISessionEnvelope": {
       "type": "object",
       "required": [
@@ -23389,6 +23554,11 @@ func init() {
       "name": "filter",
       "in": "query"
     },
+    "fixErrors": {
+      "type": "boolean",
+      "name": "fixErrors",
+      "in": "query"
+    },
     "id": {
       "type": "string",
       "description": "The id of the requested resource",
@@ -23508,6 +23678,12 @@ func init() {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
         "$ref": "#/definitions/createEnvelope"
+      }
+    },
+    "dataIntegrityCheckResult": {
+      "description": "A list of data integrity issues found",
+      "schema": {
+        "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
       }
     },
     "deleteResponse": {
