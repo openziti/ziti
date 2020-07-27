@@ -59,6 +59,35 @@ Notes:
     endure container restarts), since the enrollment token is only valid for one
     enrollment.
 
+## Docker Compose
+
+This example uses Compose to store the Docker `build` and `run` parameters in a file. `docker-compose` is a command you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`.
+
+### Instructions
+1. Create a file named `docker-compose.yml` with contents like these in the same directory as /ziti-tunnel/docker/Dockerfile in this Git repo. Change the value of `ZITI_VERSION` and `NF_REG_NAME` to suit. The `command` is commented just to show how you may override the default command to pass additional parameters to `ziti-tunnel`.
+
+```yaml
+version: "3.3"
+services:
+    ziti-tunnel:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2 
+        volumes:
+        - .:/netfoundry
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+#        command: run --resolver udp://127.0.0.123:53
+```
+
+2. Save your Ziti identity JSON file in the same directory e.g. `my-ziti-identity-file.json`, matching the filename part to the value of `NF_REG_NAME`.
+3. Run `docker-compose up --build` in the same directory.
+
 ## Kubernetes
 
 The ziti-tunnel image can be used in Kubernetes either as a sidecar, which would
