@@ -5,7 +5,7 @@ services:
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2 
+                ZITI_VERSION: 0.15.2
         volumes:
         - .:/netfoundry
         network_mode: host
@@ -14,3 +14,17 @@ services:
         environment:
         - NF_REG_NAME=my-ziti-identity-file
 #        command: run --resolver udp://127.0.0.123:53
+    ziti-proxy:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2
+        volumes:
+        - .:/netfoundry
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+        ports:
+        - "8888:8888"
+        - "9999:9999"
+        command: proxy "my example service":8888 "my other example service":9999
