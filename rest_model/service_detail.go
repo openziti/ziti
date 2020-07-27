@@ -42,13 +42,17 @@ import (
 type ServiceDetail struct {
 	BaseEntity
 
-	// config
+	// map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
 	// Required: true
 	Config map[string]map[string]interface{} `json:"config"`
 
 	// configs
 	// Required: true
 	Configs []string `json:"configs"`
+
+	// encryption required
+	// Required: true
+	EncryptionRequired *bool `json:"encryptionRequired"`
 
 	// name
 	// Required: true
@@ -82,6 +86,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 
 		Configs []string `json:"configs"`
 
+		EncryptionRequired *bool `json:"encryptionRequired"`
+
 		Name *string `json:"name"`
 
 		Permissions DialBindArray `json:"permissions"`
@@ -97,6 +103,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 	m.Config = dataAO1.Config
 
 	m.Configs = dataAO1.Configs
+
+	m.EncryptionRequired = dataAO1.EncryptionRequired
 
 	m.Name = dataAO1.Name
 
@@ -123,6 +131,8 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 
 		Configs []string `json:"configs"`
 
+		EncryptionRequired *bool `json:"encryptionRequired"`
+
 		Name *string `json:"name"`
 
 		Permissions DialBindArray `json:"permissions"`
@@ -135,6 +145,8 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Config = m.Config
 
 	dataAO1.Configs = m.Configs
+
+	dataAO1.EncryptionRequired = m.EncryptionRequired
 
 	dataAO1.Name = m.Name
 
@@ -166,6 +178,10 @@ func (m *ServiceDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateConfigs(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateEncryptionRequired(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -219,6 +235,15 @@ func (m *ServiceDetail) validateConfig(formats strfmt.Registry) error {
 func (m *ServiceDetail) validateConfigs(formats strfmt.Registry) error {
 
 	if err := validate.Required("configs", "body", m.Configs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceDetail) validateEncryptionRequired(formats strfmt.Registry) error {
+
+	if err := validate.Required("encryptionRequired", "body", m.EncryptionRequired); err != nil {
 		return err
 	}
 

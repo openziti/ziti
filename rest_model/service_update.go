@@ -44,6 +44,9 @@ type ServiceUpdate struct {
 	// configs
 	Configs []string `json:"configs"`
 
+	// encryption required
+	EncryptionRequired bool `json:"encryptionRequired,omitempty"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`

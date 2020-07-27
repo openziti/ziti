@@ -27,10 +27,15 @@ import (
 	"reflect"
 )
 
+const (
+	FieldServiceEncryptionRequired = "encryptionRequired"
+)
+
 type EdgeService struct {
 	db.Service
-	RoleAttributes []string
-	Configs        []string
+	RoleAttributes     []string
+	Configs            []string
+	EncryptionRequired bool
 }
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {
@@ -50,6 +55,9 @@ func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.Typed
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
+
+	//default to true for old services w/o any value explicitly set
+	entity.EncryptionRequired = bucket.GetBoolWithDefault(FieldServiceEncryptionRequired, true)
 }
 
 func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
@@ -59,6 +67,7 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
+	ctx.SetBool(FieldServiceEncryptionRequired, entity.EncryptionRequired)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {

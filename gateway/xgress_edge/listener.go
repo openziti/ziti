@@ -150,10 +150,29 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 	peerData[edge.PublicKeyHeader] = req.Headers[edge.PublicKeyHeader]
+
+	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
+		//what is necessary to close this properly?
+		msg := "encryption required on service, initiator did not send public header"
+		pfxlog.Logger().WithField("connId", conn.Id()).Error(msg)
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(true, msg)
+		return
+	}
+
 	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, peerData)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if ns.Service.EncryptionRequired && sessionInfo.SessionId.Data[edge.PublicKeyHeader] == nil {
+		//what is necessary to close this properly?
+		msg := "encryption required on service, terminator did not send public header"
+		pfxlog.Logger().WithField("connId", conn.Id()).Error(msg)
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(true, msg)
 		return
 	}
 

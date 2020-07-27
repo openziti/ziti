@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -57,15 +58,15 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) error {
+func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
 	log := pfxlog.Logger().WithField("token", sessionId.Token)
 	destParts := strings.Split(destination, ":")
 	if len(destParts) != 2 {
-		return fmt.Errorf("destination '%v' format is incorrect", destination)
+		return nil, fmt.Errorf("destination '%v' format is incorrect", destination)
 	}
 
 	if destParts[0] != "hosted" {
-		return fmt.Errorf("unsupported destination type: '%v'", destParts[0])
+		return nil, fmt.Errorf("unsupported destination type: '%v'", destParts[0])
 	}
 
 	token := destParts[1]
@@ -73,7 +74,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	log.Debugf("looking up hosted service conn for token %v", token)
 	listenConn, found := dialer.factory.hostedServices.Get(token)
 	if !found {
-		return fmt.Errorf("host for token '%v' not found", token)
+		return nil, fmt.Errorf("host for token '%v' not found", token)
 	}
 
 	log.Debug("dialing sdk client hosting service")
@@ -82,16 +83,16 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	reply, err := listenConn.SendAndWaitWithTimeout(dialRequest, 5*time.Second)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	result, err := edge.UnmarshalDialResult(reply)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !result.Success {
-		return fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+		return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
 	}
 
 	conn := listenConn.newSink(result.NewConnId, dialer.options)
@@ -101,5 +102,5 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	start := edge.NewStateConnectedMsg(result.ConnId)
 	start.ReplyTo(reply)
-	return listenConn.SendState(start)
+	return nil, listenConn.SendState(start)
 }
