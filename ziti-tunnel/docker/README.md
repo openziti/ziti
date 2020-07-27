@@ -61,7 +61,7 @@ Notes:
 
 ## Docker Compose
 
-This example uses Compose to store in a file the Docker `build` and `run` parameters for several modes of operation of `ziti-tunnel`. `docker-compose` is a command you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`. Save your enrolled Ziti identity JSON file in the same directory e.g. `my-ziti-identity-file.json`, matching the filename part to the value of `NF_REG_NAME`.
+This example uses Compose to store in a file the Docker `build` and `run` parameters for several modes of operation of `ziti-tunnel`. `docker-compose` is a command you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`. Save your Ziti identity enrollment token in the same directory e.g. `my-ziti-identity-file.jwt`, matching the filename part to the value of `NF_REG_NAME`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saven in the same directory e.g. `my-ziti-identity-file.json`.
 
 
 ### Transparent Proxy Using Docker on Linux
