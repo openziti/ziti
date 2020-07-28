@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -100,7 +101,7 @@ func (store *configStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.symbolType = store.AddFkSymbol(FieldConfigType, store.stores.configType)
 	store.AddMapSymbol(FieldConfigData, ast.NodeTypeAnyType, FieldConfigData)
-	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)
+	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
 	store.symbolIdentityServices = store.AddSetSymbol(FieldConfigIdentityService, ast.NodeTypeOther)
 	store.identityServicesLinks = &boltz.LinkedSetSymbol{EntitySymbol: store.symbolIdentityServices}
 }

@@ -147,7 +147,7 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 		return nil, errors.Errorf("no service with id %v found", serviceId)
 	}
 
-	query := fmt.Sprintf(`anyOf(edgeRouterPolicies.identities) = "%v" and anyOf(serviceEdgeRouterPolicies.services) = "%v"`, identityId, service.Id)
+	query := fmt.Sprintf(`anyOf(identities) = "%v" and anyOf(services) = "%v"`, identityId, service.Id)
 
 	if limit != nil {
 		query += " limit " + strconv.Itoa(*limit)

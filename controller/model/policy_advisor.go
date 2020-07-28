@@ -87,7 +87,7 @@ func (advisor *PolicyAdvisor) getServicePermissions(identityId, serviceId string
 		if err != nil {
 			return err
 		}
-		if servicePolicyStore.IsEntityRelated(tx, servicePolicyId, persistence.EntityTypeServices, serviceId) {
+		if servicePolicyStore.IsEntityRelated(tx, servicePolicyId, db.EntityTypeServices, serviceId) {
 			if !stringz.Contains(permissions, servicePolicy.GetPolicyTypeName()) {
 				permissions = append(permissions, servicePolicy.GetPolicyTypeName())
 			}
@@ -243,7 +243,7 @@ func (advisor *PolicyAdvisor) getServicePolicies(identityId, serviceId string) (
 		if err != nil {
 			return err
 		}
-		if policyStore.IsEntityRelated(tx, policyId, persistence.EntityTypeServices, serviceId) {
+		if policyStore.IsEntityRelated(tx, policyId, db.EntityTypeServices, serviceId) {
 			result = append(result, policy)
 		}
 		return nil

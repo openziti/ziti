@@ -5,6 +5,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
@@ -116,7 +117,7 @@ func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(t *testing.T) {
 
 	policy.IdentityRoles = []string{entityRef(identity.Id)}
 	ctx.RequireCreate(policy)
-	ctx.validateEdgeRouterPolicyIdentities([]*Identity{identity}, []*EdgeRouterPolicy{policy})
+	ctx.validateEdgeRouterPolicies([]*Identity{identity}, nil, []*EdgeRouterPolicy{policy})
 	ctx.RequireDelete(identity)
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.IdentityRoles), "identity id should have been removed from identity roles")
@@ -182,14 +183,14 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 
 	identityTypeId := ctx.getIdentityTypeId()
 
-	var identities []*Identity
+	identities := make([]*Identity, 0) // goland complains of potential nil panic if we use var identities []*Identities
 	for i := 0; i < 5; i++ {
 		identity := newIdentity(eid.New(), identityTypeId)
 		ctx.RequireCreate(identity)
 		identities = append(identities, identity)
 	}
 
-	var edgeRouters []*EdgeRouter
+	edgeRouters := make([]*EdgeRouter, 0)
 	for i := 0; i < 5; i++ {
 		edgeRouter := newEdgeRouter(eid.New())
 		ctx.RequireCreate(edgeRouter)
@@ -255,8 +256,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 		edgeRouters = append(edgeRouters, edgeRouter)
 	})
 
-	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
-	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicies(identities, edgeRouters, policies)
 
 	for _, identity := range identities {
 		ctx.RequireDelete(identity)
@@ -285,8 +285,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 		edgeRouters = append(edgeRouters, edgeRouter)
 	})
 
-	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
-	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicies(identities, edgeRouters, policies)
 
 	// ensure policies get cleaned up
 	for _, policy := range policies {
@@ -296,8 +295,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 	// test with policies created after identities/edge routers
 	policies = ctx.createEdgeRouterPolicies(identityRoles, edgeRouterRoles, identities, edgeRouters, true)
 
-	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
-	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicies(identities, edgeRouters, policies)
 
 	for _, policy := range policies {
 		ctx.RequireDelete(policy)
@@ -306,8 +304,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 	// test with policies created after identities/edge routers and roles added after created
 	policies = ctx.createEdgeRouterPolicies(identityRoles, edgeRouterRoles, identities, edgeRouters, false)
 
-	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
-	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicies(identities, edgeRouters, policies)
 
 	for _, identity := range identities {
 		if len(identity.RoleAttributes) > 0 {
@@ -333,8 +330,7 @@ func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 		ctx.RequireUpdate(policy)
 	}
 
-	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
-	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicies(identities, edgeRouters, policies)
 }
 
 func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles []string, identities []*Identity, edgeRouters []*EdgeRouter, oncreate bool) []*EdgeRouterPolicy {
@@ -391,6 +387,12 @@ func (ctx *TestContext) createEdgeRouterPolicies(identityRoles, edgeRouterRoles 
 	return policies
 }
 
+func (ctx *TestContext) validateEdgeRouterPolicies(identities []*Identity, edgeRouters []*EdgeRouter, policies []*EdgeRouterPolicy) {
+	ctx.validateEdgeRouterPolicyIdentities(identities, policies)
+	ctx.validateEdgeRouterPolicyEdgeRouters(edgeRouters, policies)
+	ctx.validateEdgeRouterPolicyDenormalization()
+}
+
 func (ctx *TestContext) validateEdgeRouterPolicyIdentities(identities []*Identity, policies []*EdgeRouterPolicy) {
 	for _, policy := range policies {
 		count := 0
@@ -411,6 +413,16 @@ func (ctx *TestContext) validateEdgeRouterPolicyIdentities(identities []*Identit
 		}
 		ctx.Equal(count, len(relatedIdentities))
 	}
+}
+
+func (ctx *TestContext) validateEdgeRouterPolicyDenormalization() {
+	errorHolder := &errorz.ErrorHolderImpl{}
+	errorHolder.SetError(ctx.db.View(func(tx *bbolt.Tx) error {
+		return ctx.stores.EdgeRouterPolicy.CheckIntegrity(tx, false, func(err error) {
+			errorHolder.SetError(err)
+		})
+	}))
+	ctx.NoError(errorHolder.GetError())
 }
 
 func (ctx *TestContext) validateEdgeRouterPolicyEdgeRouters(edgeRouters []*EdgeRouter, policies []*EdgeRouterPolicy) {

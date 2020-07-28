@@ -189,17 +189,26 @@ func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *htt
 }
 
 func (ctx *TestContext) StartServer() {
+	ctx.StartServerFor("default", true)
+}
+
+func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	log := pfxlog.Logger()
 	_ = os.Mkdir("testdata", os.FileMode(0755))
-	err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
-		if err == nil {
-			if !info.IsDir() && strings.HasPrefix(info.Name(), "ctrl.db") {
-				pfxlog.Logger().Infof("removing test bolt file or backup: %v", path)
-				err = os.Remove(path)
+	if clean {
+		err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
+			if err == nil {
+				if !info.IsDir() && strings.HasPrefix(info.Name(), test+".db") {
+					pfxlog.Logger().Infof("removing test bolt file or backup: %v", path)
+					err = os.Remove(path)
+				}
 			}
-		}
-		return err
-	})
+			return err
+		})
+		ctx.Req.NoError(err)
+	}
+
+	err := os.Setenv("ZITI_TEST_DB", test)
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")

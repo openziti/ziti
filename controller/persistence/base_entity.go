@@ -16,7 +16,10 @@
 
 package persistence
 
-import "strings"
+import (
+	"github.com/openziti/foundation/storage/boltz"
+	"strings"
+)
 
 const (
 	EntityTypeApiSessions               = "apiSessions"
@@ -28,7 +31,6 @@ const (
 	EntityTypeGeoRegions                = "geoRegions"
 	EntityTypeIdentities                = "identities"
 	EntityTypeIdentityTypes             = "identityTypes"
-	EntityTypeServices                  = "services"
 	EntityTypeServicePolicies           = "servicePolicies"
 	EntityTypeServiceEdgeRouterPolicies = "serviceEdgeRouterPolicies"
 	EntityTypeSessions                  = "sessions"
@@ -74,4 +76,9 @@ func toStringInterfaceMap(m map[string]string) map[string]interface{} {
 		result[k] = v
 	}
 	return result
+}
+
+type Policy interface {
+	boltz.NamedExtEntity
+	GetSemantic() string
 }
