@@ -18,6 +18,7 @@ package subcmd
 
 import (
 	"github.com/openziti/edge/gateway/xgress_edge"
+	"github.com/openziti/edge/gateway/xgress_edge_transport"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/sirupsen/logrus"
@@ -47,6 +48,9 @@ func run(cmd *cobra.Command, args []string) {
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)
 		}
+
+		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(config.Id, r)
+		xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
 		if err := r.Run(); err != nil {
 			logrus.Panicf("error starting (%v)", err)
