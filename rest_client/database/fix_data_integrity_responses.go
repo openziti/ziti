@@ -39,22 +39,22 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CheckDataIntegrityReader is a Reader for the CheckDataIntegrity structure.
-type CheckDataIntegrityReader struct {
+// FixDataIntegrityReader is a Reader for the FixDataIntegrity structure.
+type FixDataIntegrityReader struct {
 	formats strfmt.Registry
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *CheckDataIntegrityReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *FixDataIntegrityReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
 	case 200:
-		result := NewCheckDataIntegrityOK()
+		result := NewFixDataIntegrityOK()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return result, nil
 	case 401:
-		result := NewCheckDataIntegrityUnauthorized()
+		result := NewFixDataIntegrityUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -65,28 +65,28 @@ func (o *CheckDataIntegrityReader) ReadResponse(response runtime.ClientResponse,
 	}
 }
 
-// NewCheckDataIntegrityOK creates a CheckDataIntegrityOK with default headers values
-func NewCheckDataIntegrityOK() *CheckDataIntegrityOK {
-	return &CheckDataIntegrityOK{}
+// NewFixDataIntegrityOK creates a FixDataIntegrityOK with default headers values
+func NewFixDataIntegrityOK() *FixDataIntegrityOK {
+	return &FixDataIntegrityOK{}
 }
 
-/*CheckDataIntegrityOK handles this case with default header values.
+/*FixDataIntegrityOK handles this case with default header values.
 
 A list of data integrity issues found
 */
-type CheckDataIntegrityOK struct {
+type FixDataIntegrityOK struct {
 	Payload *rest_model.DataIntegrityCheckResultEnvelope
 }
 
-func (o *CheckDataIntegrityOK) Error() string {
-	return fmt.Sprintf("[GET /database/check-data-integrity][%d] checkDataIntegrityOK  %+v", 200, o.Payload)
+func (o *FixDataIntegrityOK) Error() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityOK  %+v", 200, o.Payload)
 }
 
-func (o *CheckDataIntegrityOK) GetPayload() *rest_model.DataIntegrityCheckResultEnvelope {
+func (o *FixDataIntegrityOK) GetPayload() *rest_model.DataIntegrityCheckResultEnvelope {
 	return o.Payload
 }
 
-func (o *CheckDataIntegrityOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *FixDataIntegrityOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.DataIntegrityCheckResultEnvelope)
 
@@ -98,28 +98,28 @@ func (o *CheckDataIntegrityOK) readResponse(response runtime.ClientResponse, con
 	return nil
 }
 
-// NewCheckDataIntegrityUnauthorized creates a CheckDataIntegrityUnauthorized with default headers values
-func NewCheckDataIntegrityUnauthorized() *CheckDataIntegrityUnauthorized {
-	return &CheckDataIntegrityUnauthorized{}
+// NewFixDataIntegrityUnauthorized creates a FixDataIntegrityUnauthorized with default headers values
+func NewFixDataIntegrityUnauthorized() *FixDataIntegrityUnauthorized {
+	return &FixDataIntegrityUnauthorized{}
 }
 
-/*CheckDataIntegrityUnauthorized handles this case with default header values.
+/*FixDataIntegrityUnauthorized handles this case with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
-type CheckDataIntegrityUnauthorized struct {
+type FixDataIntegrityUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *CheckDataIntegrityUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
+func (o *FixDataIntegrityUnauthorized) Error() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
 
-func (o *CheckDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *FixDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *CheckDataIntegrityUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *FixDataIntegrityUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

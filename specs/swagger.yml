@@ -2913,8 +2913,8 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
-  /database/checkDataIntegrity:
-    post:
+  /database/check-data-integrity:
+    get:
       summary: Runs an data integrity scan on the datastore and returns any found issues
       description: Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
       security:
@@ -2922,8 +2922,20 @@ paths:
       tags:
         - Database
       operationId: checkDataIntegrity
-      parameters:
-        - $ref: '#/parameters/fixErrors'
+      responses:
+        '200':
+          $ref: '#/responses/dataIntegrityCheckResult'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  /database/fix-data-integrity:
+    post:
+      summary: Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+      description: Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Database
+      operationId: fixDataIntegrity
       responses:
         '200':
           $ref: '#/responses/dataIntegrityCheckResult'
@@ -2989,10 +3001,6 @@ parameters:
   roleSemantic:
     name: roleSemantic
     type: string
-    in: query
-  fixErrors:
-    name: fixErrors
-    type: boolean
     in: query
 
 #######################################################################################################################

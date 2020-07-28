@@ -40,89 +40,89 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-// NewCheckDataIntegrityParams creates a new CheckDataIntegrityParams object
+// NewFixDataIntegrityParams creates a new FixDataIntegrityParams object
 // with the default values initialized.
-func NewCheckDataIntegrityParams() *CheckDataIntegrityParams {
+func NewFixDataIntegrityParams() *FixDataIntegrityParams {
 
-	return &CheckDataIntegrityParams{
+	return &FixDataIntegrityParams{
 
 		timeout: cr.DefaultTimeout,
 	}
 }
 
-// NewCheckDataIntegrityParamsWithTimeout creates a new CheckDataIntegrityParams object
+// NewFixDataIntegrityParamsWithTimeout creates a new FixDataIntegrityParams object
 // with the default values initialized, and the ability to set a timeout on a request
-func NewCheckDataIntegrityParamsWithTimeout(timeout time.Duration) *CheckDataIntegrityParams {
+func NewFixDataIntegrityParamsWithTimeout(timeout time.Duration) *FixDataIntegrityParams {
 
-	return &CheckDataIntegrityParams{
+	return &FixDataIntegrityParams{
 
 		timeout: timeout,
 	}
 }
 
-// NewCheckDataIntegrityParamsWithContext creates a new CheckDataIntegrityParams object
+// NewFixDataIntegrityParamsWithContext creates a new FixDataIntegrityParams object
 // with the default values initialized, and the ability to set a context for a request
-func NewCheckDataIntegrityParamsWithContext(ctx context.Context) *CheckDataIntegrityParams {
+func NewFixDataIntegrityParamsWithContext(ctx context.Context) *FixDataIntegrityParams {
 
-	return &CheckDataIntegrityParams{
+	return &FixDataIntegrityParams{
 
 		Context: ctx,
 	}
 }
 
-// NewCheckDataIntegrityParamsWithHTTPClient creates a new CheckDataIntegrityParams object
+// NewFixDataIntegrityParamsWithHTTPClient creates a new FixDataIntegrityParams object
 // with the default values initialized, and the ability to set a custom HTTPClient for a request
-func NewCheckDataIntegrityParamsWithHTTPClient(client *http.Client) *CheckDataIntegrityParams {
+func NewFixDataIntegrityParamsWithHTTPClient(client *http.Client) *FixDataIntegrityParams {
 
-	return &CheckDataIntegrityParams{
+	return &FixDataIntegrityParams{
 		HTTPClient: client,
 	}
 }
 
-/*CheckDataIntegrityParams contains all the parameters to send to the API endpoint
-for the check data integrity operation typically these are written to a http.Request
+/*FixDataIntegrityParams contains all the parameters to send to the API endpoint
+for the fix data integrity operation typically these are written to a http.Request
 */
-type CheckDataIntegrityParams struct {
+type FixDataIntegrityParams struct {
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
 }
 
-// WithTimeout adds the timeout to the check data integrity params
-func (o *CheckDataIntegrityParams) WithTimeout(timeout time.Duration) *CheckDataIntegrityParams {
+// WithTimeout adds the timeout to the fix data integrity params
+func (o *FixDataIntegrityParams) WithTimeout(timeout time.Duration) *FixDataIntegrityParams {
 	o.SetTimeout(timeout)
 	return o
 }
 
-// SetTimeout adds the timeout to the check data integrity params
-func (o *CheckDataIntegrityParams) SetTimeout(timeout time.Duration) {
+// SetTimeout adds the timeout to the fix data integrity params
+func (o *FixDataIntegrityParams) SetTimeout(timeout time.Duration) {
 	o.timeout = timeout
 }
 
-// WithContext adds the context to the check data integrity params
-func (o *CheckDataIntegrityParams) WithContext(ctx context.Context) *CheckDataIntegrityParams {
+// WithContext adds the context to the fix data integrity params
+func (o *FixDataIntegrityParams) WithContext(ctx context.Context) *FixDataIntegrityParams {
 	o.SetContext(ctx)
 	return o
 }
 
-// SetContext adds the context to the check data integrity params
-func (o *CheckDataIntegrityParams) SetContext(ctx context.Context) {
+// SetContext adds the context to the fix data integrity params
+func (o *FixDataIntegrityParams) SetContext(ctx context.Context) {
 	o.Context = ctx
 }
 
-// WithHTTPClient adds the HTTPClient to the check data integrity params
-func (o *CheckDataIntegrityParams) WithHTTPClient(client *http.Client) *CheckDataIntegrityParams {
+// WithHTTPClient adds the HTTPClient to the fix data integrity params
+func (o *FixDataIntegrityParams) WithHTTPClient(client *http.Client) *FixDataIntegrityParams {
 	o.SetHTTPClient(client)
 	return o
 }
 
-// SetHTTPClient adds the HTTPClient to the check data integrity params
-func (o *CheckDataIntegrityParams) SetHTTPClient(client *http.Client) {
+// SetHTTPClient adds the HTTPClient to the fix data integrity params
+func (o *FixDataIntegrityParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
 // WriteToRequest writes these params to a swagger request
-func (o *CheckDataIntegrityParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
+func (o *FixDataIntegrityParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
 	if err := r.SetTimeout(o.timeout); err != nil {
 		return err

@@ -35,15 +35,15 @@ import (
 	golangswaggerpaths "path"
 )
 
-// CheckDataIntegrityURL generates an URL for the check data integrity operation
-type CheckDataIntegrityURL struct {
+// FixDataIntegrityURL generates an URL for the fix data integrity operation
+type FixDataIntegrityURL struct {
 	_basePath string
 }
 
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *CheckDataIntegrityURL) WithBasePath(bp string) *CheckDataIntegrityURL {
+func (o *FixDataIntegrityURL) WithBasePath(bp string) *FixDataIntegrityURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -51,15 +51,15 @@ func (o *CheckDataIntegrityURL) WithBasePath(bp string) *CheckDataIntegrityURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *CheckDataIntegrityURL) SetBasePath(bp string) {
+func (o *FixDataIntegrityURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *CheckDataIntegrityURL) Build() (*url.URL, error) {
+func (o *FixDataIntegrityURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/database/check-data-integrity"
+	var _path = "/database/fix-data-integrity"
 
 	_basePath := o._basePath
 	if _basePath == "" {
@@ -71,7 +71,7 @@ func (o *CheckDataIntegrityURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *CheckDataIntegrityURL) Must(u *url.URL, err error) *url.URL {
+func (o *FixDataIntegrityURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -82,17 +82,17 @@ func (o *CheckDataIntegrityURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *CheckDataIntegrityURL) String() string {
+func (o *FixDataIntegrityURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *CheckDataIntegrityURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *FixDataIntegrityURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on CheckDataIntegrityURL")
+		return nil, errors.New("scheme is required for a full url on FixDataIntegrityURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on CheckDataIntegrityURL")
+		return nil, errors.New("host is required for a full url on FixDataIntegrityURL")
 	}
 
 	base, err := o.Build()
@@ -106,6 +106,6 @@ func (o *CheckDataIntegrityURL) BuildFull(scheme, host string) (*url.URL, error)
 }
 
 // StringFull returns the string representation of a complete url
-func (o *CheckDataIntegrityURL) StringFull(scheme, host string) string {
+func (o *FixDataIntegrityURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

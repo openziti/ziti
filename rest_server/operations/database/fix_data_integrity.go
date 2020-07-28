@@ -35,42 +35,42 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// CheckDataIntegrityHandlerFunc turns a function with the right signature into a check data integrity handler
-type CheckDataIntegrityHandlerFunc func(CheckDataIntegrityParams, interface{}) middleware.Responder
+// FixDataIntegrityHandlerFunc turns a function with the right signature into a fix data integrity handler
+type FixDataIntegrityHandlerFunc func(FixDataIntegrityParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CheckDataIntegrityHandlerFunc) Handle(params CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+func (fn FixDataIntegrityHandlerFunc) Handle(params FixDataIntegrityParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// CheckDataIntegrityHandler interface for that can handle valid check data integrity params
-type CheckDataIntegrityHandler interface {
-	Handle(CheckDataIntegrityParams, interface{}) middleware.Responder
+// FixDataIntegrityHandler interface for that can handle valid fix data integrity params
+type FixDataIntegrityHandler interface {
+	Handle(FixDataIntegrityParams, interface{}) middleware.Responder
 }
 
-// NewCheckDataIntegrity creates a new http.Handler for the check data integrity operation
-func NewCheckDataIntegrity(ctx *middleware.Context, handler CheckDataIntegrityHandler) *CheckDataIntegrity {
-	return &CheckDataIntegrity{Context: ctx, Handler: handler}
+// NewFixDataIntegrity creates a new http.Handler for the fix data integrity operation
+func NewFixDataIntegrity(ctx *middleware.Context, handler FixDataIntegrityHandler) *FixDataIntegrity {
+	return &FixDataIntegrity{Context: ctx, Handler: handler}
 }
 
-/*CheckDataIntegrity swagger:route GET /database/check-data-integrity Database checkDataIntegrity
+/*FixDataIntegrity swagger:route POST /database/fix-data-integrity Database fixDataIntegrity
 
-Runs an data integrity scan on the datastore and returns any found issues
+Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
 
-Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
+Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
 
 */
-type CheckDataIntegrity struct {
+type FixDataIntegrity struct {
 	Context *middleware.Context
-	Handler CheckDataIntegrityHandler
+	Handler FixDataIntegrityHandler
 }
 
-func (o *CheckDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *FixDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		r = rCtx
 	}
-	var Params = NewCheckDataIntegrityParams()
+	var Params = NewFixDataIntegrityParams()
 
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {

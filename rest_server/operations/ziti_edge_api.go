@@ -291,6 +291,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		EnrollErnollUpdbHandler: enroll.ErnollUpdbHandlerFunc(func(params enroll.ErnollUpdbParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ErnollUpdb has not yet been implemented")
 		}),
+		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
+		}),
 		CertificateAuthorityGetCaJwtHandler: certificate_authority.GetCaJwtHandlerFunc(func(params certificate_authority.GetCaJwtParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation certificate_authority.GetCaJwt has not yet been implemented")
 		}),
@@ -719,6 +722,8 @@ type ZitiEdgeAPI struct {
 	EnrollEnrollOttCaHandler enroll.EnrollOttCaHandler
 	// EnrollErnollUpdbHandler sets the operation handler for the ernoll updb operation
 	EnrollErnollUpdbHandler enroll.ErnollUpdbHandler
+	// DatabaseFixDataIntegrityHandler sets the operation handler for the fix data integrity operation
+	DatabaseFixDataIntegrityHandler database.FixDataIntegrityHandler
 	// CertificateAuthorityGetCaJwtHandler sets the operation handler for the get ca jwt operation
 	CertificateAuthorityGetCaJwtHandler certificate_authority.GetCaJwtHandler
 	// CurrentAPISessionGetCurrentAPISessionHandler sets the operation handler for the get current API session operation
@@ -1151,6 +1156,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.EnrollErnollUpdbHandler == nil {
 		unregistered = append(unregistered, "enroll.ErnollUpdbHandler")
 	}
+	if o.DatabaseFixDataIntegrityHandler == nil {
+		unregistered = append(unregistered, "database.FixDataIntegrityHandler")
+	}
 	if o.CertificateAuthorityGetCaJwtHandler == nil {
 		unregistered = append(unregistered, "certificate_authority.GetCaJwtHandler")
 	}
@@ -1513,10 +1521,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/authenticate"] = authentication.NewAuthenticate(o.context, o.AuthenticationAuthenticateHandler)
-	if o.handlers["POST"] == nil {
-		o.handlers["POST"] = make(map[string]http.Handler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["POST"]["/database/checkDataIntegrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
+	o.handlers["GET"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -1741,6 +1749,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/enroll/updb"] = enroll.NewErnollUpdb(o.context, o.EnrollErnollUpdbHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database/fix-data-integrity"] = database.NewFixDataIntegrity(o.context, o.DatabaseFixDataIntegrityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

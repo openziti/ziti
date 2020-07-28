@@ -47,7 +47,11 @@ func (r *DatabaseRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.Api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, params.FixErrors) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, false) }, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
+
+	ae.Api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, true) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }
 
@@ -63,12 +67,7 @@ func (r *DatabaseRouter) CreateSnapshot(ae *env.AppEnv, rc *response.RequestCont
 	rc.RespondWithEmptyOk()
 }
 
-func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.RequestContext, fixErrors *bool) {
-	fix := false
-	if fixErrors != nil {
-		fix = *fixErrors
-	}
-
+func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.RequestContext, fixErrors bool) {
 	var results []*rest_model.DataIntegrityCheckDetail
 
 	errorHandler := func(err error, fixed bool) {
@@ -79,7 +78,7 @@ func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.Re
 		})
 	}
 
-	if err := ae.GetStores().CheckIntegrity(fix, errorHandler); err != nil {
+	if err := ae.GetStores().CheckIntegrity(fixErrors, errorHandler); err != nil {
 		rc.RespondWithError(err)
 		return
 	}

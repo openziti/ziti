@@ -36,18 +36,18 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// NewCheckDataIntegrityParams creates a new CheckDataIntegrityParams object
+// NewFixDataIntegrityParams creates a new FixDataIntegrityParams object
 // no default values defined in spec.
-func NewCheckDataIntegrityParams() CheckDataIntegrityParams {
+func NewFixDataIntegrityParams() FixDataIntegrityParams {
 
-	return CheckDataIntegrityParams{}
+	return FixDataIntegrityParams{}
 }
 
-// CheckDataIntegrityParams contains all the bound params for the check data integrity operation
+// FixDataIntegrityParams contains all the bound params for the fix data integrity operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters checkDataIntegrity
-type CheckDataIntegrityParams struct {
+// swagger:parameters fixDataIntegrity
+type FixDataIntegrityParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -56,8 +56,8 @@ type CheckDataIntegrityParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewCheckDataIntegrityParams() beforehand.
-func (o *CheckDataIntegrityParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewFixDataIntegrityParams() beforehand.
+func (o *FixDataIntegrityParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r

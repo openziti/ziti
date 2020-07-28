@@ -1331,8 +1331,8 @@ func init() {
         }
       ]
     },
-    "/database/checkDataIntegrity": {
-      "post": {
+    "/database/check-data-integrity": {
+      "get": {
         "security": [
           {
             "ztSession": []
@@ -1344,11 +1344,29 @@ func init() {
         ],
         "summary": "Runs an data integrity scan on the datastore and returns any found issues",
         "operationId": "checkDataIntegrity",
-        "parameters": [
+        "responses": {
+          "200": {
+            "$ref": "#/responses/dataIntegrityCheckResult"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
+    "/database/fix-data-integrity": {
+      "post": {
+        "security": [
           {
-            "$ref": "#/parameters/fixErrors"
+            "ztSession": []
           }
         ],
+        "description": "Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
+        "operationId": "fixDataIntegrity",
         "responses": {
           "200": {
             "$ref": "#/responses/dataIntegrityCheckResult"
@@ -7803,11 +7821,6 @@ func init() {
       "name": "filter",
       "in": "query"
     },
-    "fixErrors": {
-      "type": "boolean",
-      "name": "fixErrors",
-      "in": "query"
-    },
     "id": {
       "type": "string",
       "description": "The id of the requested resource",
@@ -11874,8 +11887,8 @@ func init() {
         }
       ]
     },
-    "/database/checkDataIntegrity": {
-      "post": {
+    "/database/check-data-integrity": {
+      "get": {
         "security": [
           {
             "ztSession": []
@@ -11887,13 +11900,53 @@ func init() {
         ],
         "summary": "Runs an data integrity scan on the datastore and returns any found issues",
         "operationId": "checkDataIntegrity",
-        "parameters": [
+        "responses": {
+          "200": {
+            "description": "A list of data integrity issues found",
+            "schema": {
+              "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/database/fix-data-integrity": {
+      "post": {
+        "security": [
           {
-            "type": "boolean",
-            "name": "fixErrors",
-            "in": "query"
+            "ztSession": []
           }
         ],
+        "description": "Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
+        "operationId": "fixDataIntegrity",
         "responses": {
           "200": {
             "description": "A list of data integrity issues found",
@@ -23552,11 +23605,6 @@ func init() {
     "filter": {
       "type": "string",
       "name": "filter",
-      "in": "query"
-    },
-    "fixErrors": {
-      "type": "boolean",
-      "name": "fixErrors",
       "in": "query"
     },
     "id": {
