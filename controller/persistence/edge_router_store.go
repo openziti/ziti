@@ -86,7 +86,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
-	ctx.SetLinkedIds(FieldEdgeRouterEnrollments, entity.Enrollments)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
@@ -162,7 +161,6 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolEdgeRouters)
 	store.AddLinkCollection(store.symbolServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouters)
-	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolEdgeRouter)
 
 	store.identitiesCollection = store.AddRefCountedLinkCollection(store.symbolIdentities, store.stores.identity.symbolEdgeRouters)
 	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)

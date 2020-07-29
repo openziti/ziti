@@ -57,7 +57,7 @@ func (entity *ServicePolicy) GetSemantic() string {
 func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.PolicyType = bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeInvalid)
+	entity.PolicyType = bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial)
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 	entity.ServiceRoles = bucket.GetStringList(FieldServiceRoles)
@@ -68,8 +68,9 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 		entity.Semantic = SemanticAllOf
 	}
 
-	if entity.PolicyType != PolicyTypeBind {
-		entity.PolicyType = PolicyTypeDial
+	if ctx.ProceedWithSet(FieldServicePolicyType) && entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
+		ctx.Bucket.SetError(validation.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
+		return
 	}
 
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
@@ -80,7 +81,7 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 		ctx.Bucket.SetError(err)
 	}
 
-	if !isSemanticValid(entity.Semantic) {
+	if ctx.ProceedWithSet(FieldSemantic) && !isSemanticValid(entity.Semantic) {
 		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
@@ -126,7 +127,6 @@ type ServicePolicyStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*ServicePolicy, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*ServicePolicy, error)
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error
 }
 
 func newServicePolicyStore(stores *stores) *servicePolicyStoreImpl {
@@ -248,8 +248,9 @@ func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id stri
 	return store.BaseStore.DeleteById(ctx, id)
 }
 
-func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error {
+func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
 	ctx := &denormCheckCtx{
+		name:                   "service-policies/bind",
 		tx:                     tx,
 		sourceStore:            store.stores.identity,
 		targetStore:            store.stores.edgeService,
@@ -272,6 +273,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, erro
 	}
 
 	ctx = &denormCheckCtx{
+		name:                   "service-policies/dial",
 		tx:                     tx,
 		sourceStore:            store.stores.identity,
 		targetStore:            store.stores.edgeService,
@@ -290,5 +292,9 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, erro
 		},
 	}
 
-	return validatePolicyDenormalization(ctx)
+	if err := validatePolicyDenormalization(ctx); err != nil {
+		return err
+	}
+
+	return store.BaseStore.CheckIntegrity(tx, fix, errorSink)
 }

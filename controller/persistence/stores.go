@@ -83,6 +83,27 @@ func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 	return stores.storeMap[reflect.TypeOf(entity)]
 }
 
+func (stores *Stores) CheckIntegrity(fix bool, errorHandler func(error, bool)) error {
+	if fix {
+		return stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
+			return stores.CheckIntegrityInTx(tx, fix, errorHandler)
+		})
+	}
+
+	return stores.DbProvider.GetDb().View(func(tx *bbolt.Tx) error {
+		return stores.CheckIntegrityInTx(tx, fix, errorHandler)
+	})
+}
+
+func (stores *Stores) CheckIntegrityInTx(tx *bbolt.Tx, fix bool, errorHandler func(error, bool)) error {
+	for _, store := range stores.storeMap {
+		if err := store.CheckIntegrity(tx, fix, errorHandler); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type stores struct {
 	DbProvider DbProvider
 
@@ -195,9 +216,4 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		return nil, errorHolder.GetError()
 	}
 	return externalStores, nil
-}
-
-type QueryContext struct {
-	Stores *Stores
-	Tx     *bbolt.Tx
 }

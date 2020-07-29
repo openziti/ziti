@@ -162,6 +162,7 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 }
 
 type denormCheckCtx struct {
+	name                   string
 	tx                     *bbolt.Tx
 	sourceStore            boltz.CrudStore
 	targetStore            boltz.CrudStore
@@ -170,7 +171,7 @@ type denormCheckCtx struct {
 	targetCollection       boltz.LinkCollection
 	targetDenormCollection boltz.RefCountedLinkCollection
 	policyFilter           func(policyId []byte) bool
-	errorSink              func(err error)
+	errorSink              func(err error, fixed bool)
 	repair                 bool
 }
 
@@ -212,10 +213,10 @@ func validatePolicyDenormalization(ctx *denormCheckCtx) error {
 func logDiscrepencies(ctx *denormCheckCtx, count int, sourceId, targetId []byte, sourceLinkCount, targetLinkCount *int32) {
 	oldValuesMatch := (sourceLinkCount == nil && targetLinkCount == nil) || (sourceLinkCount != nil && targetLinkCount != nil && *sourceLinkCount == *targetLinkCount)
 	if !oldValuesMatch {
-		err := errors.Errorf("fixed mismatched link counts. was %v %v (%v) <-> %v %v (%v), now both are %v",
+		err := errors.Errorf("%v: ismatched link counts. %v %v (%v) <-> %v %v (%v), should be both are %v", ctx.name,
 			ctx.sourceStore.GetSingularEntityType(), string(sourceId), sourceLinkCount,
 			ctx.targetStore.GetSingularEntityType(), string(targetId), targetLinkCount, count)
-		ctx.errorSink(err)
+		ctx.errorSink(err, ctx.repair)
 	}
 
 	if ((sourceLinkCount == nil || *sourceLinkCount == 0) && count != 0) ||
@@ -224,11 +225,11 @@ func logDiscrepencies(ctx *denormCheckCtx, count int, sourceId, targetId []byte,
 		if sourceLinkCount != nil {
 			sourceCount = *sourceLinkCount
 		}
-		err := errors.Errorf("fixed incorrect link counts for %v %v <-> %v %v was %v, is now %v",
+		err := errors.Errorf("%v: incorrect link counts for %v %v <-> %v %v is %v, should be %v", ctx.name,
 			ctx.sourceStore.GetSingularEntityType(), string(sourceId),
 			ctx.targetStore.GetSingularEntityType(), string(targetId),
 			sourceCount, count)
-		ctx.errorSink(err)
+		ctx.errorSink(err, ctx.repair)
 	}
 }
 

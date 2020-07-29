@@ -88,7 +88,6 @@ type EdgeRouterPolicyStore interface {
 	NameIndexedStore
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error
 }
 
 func newEdgeRouterPolicyStore(stores *stores) *edgeRouterPolicyStoreImpl {
@@ -198,8 +197,9 @@ func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id s
 	return store.BaseStore.DeleteById(ctx, id)
 }
 
-func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error)) error {
+func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
 	ctx := &denormCheckCtx{
+		name:                   "edge-router-policies",
 		tx:                     tx,
 		sourceStore:            store.stores.identity,
 		targetStore:            store.stores.edgeRouter,
@@ -210,5 +210,9 @@ func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, e
 		repair:                 fix,
 		errorSink:              errorSink,
 	}
-	return validatePolicyDenormalization(ctx)
+	if err := validatePolicyDenormalization(ctx); err != nil {
+		return err
+	}
+
+	return store.BaseStore.CheckIntegrity(tx, fix, errorSink)
 }

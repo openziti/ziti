@@ -2913,6 +2913,34 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '429':
           $ref: '#/responses/rateLimitedResponse'
+  /database/check-data-integrity:
+    get:
+      summary: Runs an data integrity scan on the datastore and returns any found issues
+      description: Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Database
+      operationId: checkDataIntegrity
+      responses:
+        '200':
+          $ref: '#/responses/dataIntegrityCheckResult'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  /database/fix-data-integrity:
+    post:
+      summary: Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+      description: Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+      security:
+        - ztSession: []
+      tags:
+        - Database
+      operationId: fixDataIntegrity
+      responses:
+        '200':
+          $ref: '#/responses/dataIntegrityCheckResult'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
 
 #######################################################################################################################
 #
@@ -3456,6 +3484,14 @@ responses:
     description: A single transit router
     schema:
       $ref: '#/definitions/detailTransitRouterEnvelope'
+
+  ###################################################################
+  # Datastore
+  ##################################################################
+  dataIntegrityCheckResult:
+    description: A list of data integrity issues found
+    schema:
+      $ref: '#/definitions/dataIntegrityCheckResultEnvelope'
 
 #######################################################################################################################
 #
@@ -5685,4 +5721,27 @@ definitions:
       - required
       - failed
 
-
+  dataIntegrityCheckResultEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/dataIntegrityCheckDetailList'
+  dataIntegrityCheckDetailList:
+    type: array
+    items:
+      $ref: '#/definitions/dataIntegrityCheckDetail'
+  dataIntegrityCheckDetail:
+    type: object
+    required:
+      - description
+      - fixed
+    properties:
+      description:
+        type: string
+      fixed:
+        type: boolean
