@@ -61,7 +61,7 @@ func doHttp(cmd *cobra.Command, args []string) {
 						return nil, err
 					}
 					serviceId := &identity.TokenId{Token: host}
-					if peer, err := xgress_transport.ClientDial(ingressAddr, id, serviceId); err == nil {
+					if peer, err := xgress_transport.ClientDial(ingressAddr, id, serviceId, nil); err == nil {
 						pfxlog.Logger().Debug("connected")
 						return peer.Conn(), nil
 					} else {

@@ -163,7 +163,7 @@ func dialer(_ *cobra.Command, args []string) {
 }
 
 func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, error) {
-	peer, err := endpoint.Dial("loop", id)
+	peer, err := endpoint.Dial("loop", id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, err
 }
 
 func dialIngress(endpoint transport.Address, id, serviceId *identity.TokenId) (net.Conn, error) {
-	peer, err := xgress_transport.ClientDial(endpoint, id, serviceId)
+	peer, err := xgress_transport.ClientDial(endpoint, id, serviceId, nil)
 	if err != nil {
 		return nil, err
 	}
