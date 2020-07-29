@@ -19,25 +19,27 @@ package xgress_transport
 import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 )
 
 type factory struct {
 	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
+	c       transport.Configuration
 }
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
-	return &factory{id: id, ctrl: ctrl}
+func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, c transport.Configuration) xgress.Factory {
+	return &factory{id: id, ctrl: ctrl, c: c}
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options := xgress.LoadOptions(optionsData)
-	return newListener(factory.id, factory.ctrl, options), nil
+	return newListener(factory.id, factory.ctrl, options, factory.c), nil
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	options := xgress.LoadOptions(optionsData)
-	return newDialer(factory.id, factory.ctrl, options)
+	return newDialer(factory.id, factory.ctrl, options, factory.c)
 }

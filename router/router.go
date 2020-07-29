@@ -33,7 +33,6 @@ import (
 	"github.com/openziti/fabric/router/xgress_transport_udp"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
-	"github.com/openziti/fabric/router/xlink_transwarp"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
@@ -178,11 +177,10 @@ func (self *Router) registerComponents() error {
 		self.metricsRegistry,
 	)
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter)
-	self.xlinkFactories["transwarp"] = xlink_transwarp.NewFactory(xlinkAccepter)
 
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, nil))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, nil))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
 	return nil

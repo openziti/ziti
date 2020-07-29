@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
-	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/info"
 	"github.com/sirupsen/logrus"
 	"net"
 	"time"
@@ -77,7 +77,7 @@ func (l *listener) relay() {
 	}()
 
 	for {
-		buf := make([]byte, udp.MaxPacketSize)
+		buf := make([]byte, info.MaxPacketSize)
 		read, addr, err := l.conn.ReadFrom(buf)
 		if err != nil {
 			logrus.Errorf("error reading packet (%v)", err)
