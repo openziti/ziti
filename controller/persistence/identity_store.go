@@ -127,8 +127,6 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
-	ctx.SetLinkedIds(FieldIdentityEnrollments, entity.Enrollments)
-	ctx.SetLinkedIds(FieldIdentityAuthenticators, entity.Authenticators)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	if entity.EnvInfo != nil {
@@ -238,8 +236,6 @@ func (store *identityStoreImpl) initializeLocal() {
 }
 
 func (store *identityStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolAuthenticators, store.stores.authenticator.symbolIdentityId)
-	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentity)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
 

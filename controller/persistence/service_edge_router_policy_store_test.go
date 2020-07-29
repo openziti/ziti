@@ -429,7 +429,7 @@ func (ctx *TestContext) validateServiceEdgeRouterPolicyEdgeRouters(edgeRouters [
 func (ctx *TestContext) validateServiceEdgeRouterPolicyDenormalization() {
 	errorHolder := &errorz.ErrorHolderImpl{}
 	errorHolder.SetError(ctx.db.View(func(tx *bbolt.Tx) error {
-		return ctx.stores.ServiceEdgeRouterPolicy.CheckIntegrity(tx, false, func(err error) {
+		return ctx.stores.ServiceEdgeRouterPolicy.CheckIntegrity(tx, false, func(err error, _ bool) {
 			errorHolder.SetError(err)
 		})
 	}))

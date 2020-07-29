@@ -431,7 +431,7 @@ func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, p
 func (ctx *TestContext) validateServicePolicyDenormalization() {
 	errorHolder := &errorz.ErrorHolderImpl{}
 	errorHolder.SetError(ctx.db.View(func(tx *bbolt.Tx) error {
-		return ctx.stores.ServicePolicy.CheckIntegrity(tx, false, func(err error) {
+		return ctx.stores.ServicePolicy.CheckIntegrity(tx, false, func(err error, _ bool) {
 			errorHolder.SetError(err)
 		})
 	}))

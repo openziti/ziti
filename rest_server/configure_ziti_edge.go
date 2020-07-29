@@ -129,6 +129,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation authentication.Authenticate has not yet been implemented")
 		})
 	}
+	if api.DatabaseCheckDataIntegrityHandler == nil {
+		api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorCreateAuthenticatorHandler == nil {
 		api.AuthenticatorCreateAuthenticatorHandler = authenticator.CreateAuthenticatorHandlerFunc(func(params authenticator.CreateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.CreateAuthenticator has not yet been implemented")
@@ -407,6 +412,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.EnrollErnollUpdbHandler == nil {
 		api.EnrollErnollUpdbHandler = enroll.ErnollUpdbHandlerFunc(func(params enroll.ErnollUpdbParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ErnollUpdb has not yet been implemented")
+		})
+	}
+	if api.DatabaseFixDataIntegrityHandler == nil {
+		api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		})
 	}
 	if api.CertificateAuthorityGetCaJwtHandler == nil {
