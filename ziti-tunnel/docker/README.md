@@ -132,6 +132,8 @@ pod that sets `hostNetwork` to true.
 The following example manifest shows how to run ziti-tunnel as a sidecar:
 
     $ cat app-with-ziti-tunnel-sidecar.yaml
+
+```yaml
     apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
@@ -191,7 +193,7 @@ The following example manifest shows how to run ziti-tunnel as a sidecar:
           - name: tunnel-sidecar-jwt
             secret:
               secretName: tunnel-sidecar.jwt
-
+```
 
 ## Azure IoT Hub
 
@@ -201,6 +203,7 @@ This image can be used to run a module on an Azure IoT runtime.
 
 
     $ cat module.json
+```json
     {
         "modulesContent": {
             "$edgeAgent": {
@@ -258,3 +261,4 @@ This image can be used to run a module on an Azure IoT runtime.
             }
         }
     }
+```
