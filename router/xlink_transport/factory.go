@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 )
 
-func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter) xlink.Factory {
-	return &factory{accepter: accepter, chAccepter: chAccepter}
+func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter, c transport.Configuration) xlink.Factory {
+	return &factory{accepter: accepter, chAccepter: chAccepter, c: c}
 }
 
 func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, configData map[interface{}]interface{}) (xlink.Listener, error) {
@@ -36,6 +37,7 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 		config:     config,
 		accepter:   self.accepter,
 		chAccepter: self.chAccepter,
+		c:          self.c,
 	}, nil
 }
 
@@ -49,10 +51,12 @@ func (self *factory) CreateDialer(id *identity.TokenId, _ xlink.Forwarder, confi
 		config:     config,
 		accepter:   self.accepter,
 		chAccepter: self.chAccepter,
+		c:          self.c,
 	}, nil
 }
 
 type factory struct {
 	accepter   xlink.Accepter
 	chAccepter ChannelAccepter
+	c          transport.Configuration
 }

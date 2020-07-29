@@ -22,11 +22,12 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 	"github.com/sirupsen/logrus"
 )
 
 func (self *listener) Listen() error {
-	listener := channel2.NewClassicListener(self.id, self.config.bind, self.config.options.ConnectOptions)
+	listener := channel2.NewClassicListenerWithConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.c)
 
 	self.listener = listener
 	if err := self.listener.Listen(); err != nil {
@@ -46,7 +47,7 @@ func (self *listener) Close() error {
 
 func (self *listener) acceptLoop() {
 	for {
-		ch, err := channel2.NewChannel("link", self.listener, self.config.options)
+		ch, err := channel2.NewChannelWithTransportConfig("link", self.listener, self.config.options, self.c)
 		if err == nil {
 			xlink := &impl{id: ch.Id(), ch: ch}
 			logrus.Infof("accepted link id [l/%s]", xlink.Id().Token)
@@ -78,4 +79,5 @@ type listener struct {
 	listener   channel2.UnderlayListener
 	accepter   xlink.Accepter
 	chAccepter ChannelAccepter
+	c          transport.Configuration
 }

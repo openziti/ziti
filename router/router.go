@@ -176,11 +176,11 @@ func (self *Router) registerComponents() error {
 		self.config.Forwarder,
 		self.metricsRegistry,
 	)
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter)
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport)
 
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, nil))
+	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, nil))
+	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
 	return nil
