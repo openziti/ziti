@@ -13,7 +13,7 @@ services:
         - NET_ADMIN
         environment:
         - NF_REG_NAME=my-ziti-identity-file
-#        command: run --resolver udp://127.0.0.123:53
+        #command: run --resolver udp://127.0.0.123:53 --verbose
     ziti-proxy:
         image: netfoundry/ziti-tunnel:local
         build:

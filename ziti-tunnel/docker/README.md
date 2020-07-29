@@ -61,11 +61,18 @@ Notes:
 
 ## Docker Compose
 
-This example uses Compose to store in a file the Docker `build` and `run` parameters for several modes of operation of `ziti-tunnel`. `docker-compose` is a command you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`. Save your Ziti identity enrollment token in the same directory e.g. `my-ziti-identity-file.jwt`, matching the filename part to the value of `NF_REG_NAME`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saven in the same directory e.g. `my-ziti-identity-file.json`.
+This example uses Compose to store in a file the Docker `build` and `run` parameters for several modes of operation of `ziti-tunnel`. 
+
+### Docker Compose Setup
+
+1. Install Docker Engine.
+2. `docker-compose` is a utility you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`. 
+3. Save your Ziti identity enrollment token in the same directory e.g. `my-ziti-identity-file.jwt`, matching the filename part to the value of `NF_REG_NAME`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saven in the same directory e.g. `my-ziti-identity-file.json`.
+4. You may change `ZITI_VERSION` to [another release version from our ziti-release repository](https://netfoundry.jfrog.io/ui/repos/simple/Properties/ziti-release%2Fziti-tunnel%2Famd64%2Flinux%2F0.15.2%2Fziti-tunnel.tar.gz).
 
 
-### Transparent Proxy Using Docker on Linux
-1. Modify to suit the file named `docker-compose.yml` with contents like these in this Git repo. Change the value of `ZITI_VERSION` and `NF_REG_NAME` to suit. The `command` is commented just to show how you may override the default command to pass additional parameters to `ziti-tunnel`.
+### Docker Transparent Proxy for Linux
+1. Modify "ziti-tunnel" under "services" in the file named `docker-compose.yml` in this Git repo. Optionally, override the default value of `command` to pass additional parameters to `ziti-tunnel`.
 
 ```yaml
 version: "3.3"
@@ -90,8 +97,8 @@ services:
 
 This will cause the container to configure the Linux host to transparently proxy any domain names or IP addresses that match a Ziti service.
 
-### Opaque Proxy Using Docker on MacOS or Windows
-1. Modify to suit the file named `docker-compose.yml` with contents like these in this Git repo. Change the value of `ZITI_VERSION` and `NF_REG_NAME` and the service name(s) and port number(s) to suit. You must align the mapped ports under `ports` with the bound ports in the `command`.
+### Docker Proxy or MacOS or Windows
+1. Modify "ziti-proxy" under "services" in the file named `docker-compose.yml` in this Git repo. Change the service name(s) and port number(s) to suit your actual services. You must align the mapped ports under `ports` with the bound ports in the `command`.
 
 ```yaml
 version: "3.3"
