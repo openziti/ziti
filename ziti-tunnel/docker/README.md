@@ -66,8 +66,8 @@ This example uses Compose to store in a file the Docker `build` and `run` parame
 ### Docker Compose Setup
 
 1. Install Docker Engine.
-2. `docker-compose` is a utility you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`. 
-3. Save your Ziti identity enrollment token in the same directory e.g. `my-ziti-identity-file.jwt`, matching the filename part to the value of `NF_REG_NAME`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saven in the same directory e.g. `my-ziti-identity-file.json`.
+2. `docker-compose` is a utility you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`.
+3. Save your Ziti identity enrollment token e.g. `my-ziti-identity-file.jwt` in the same directory as the file named `docker-compose.yml`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saved e.g. `my-ziti-identity-file.json`.
 4. You may change `ZITI_VERSION` to [another release version from our ziti-release repository](https://netfoundry.jfrog.io/ui/repos/simple/Properties/ziti-release%2Fziti-tunnel%2Famd64%2Flinux%2F0.15.2%2Fziti-tunnel.tar.gz).
 
 
@@ -82,7 +82,7 @@ services:
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2 
+                ZITI_VERSION: 0.15.2
         volumes:
         - .:/netfoundry
         network_mode: host
