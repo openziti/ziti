@@ -2,9 +2,9 @@ module github.com/openziti/edge
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
-// replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 // replace github.com/openziti/sdk-golang => ../sdk-golang
 
@@ -21,7 +21,7 @@ require (
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.9
 	github.com/go-openapi/validate v0.19.10
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.0
 	github.com/google/go-cmp v0.5.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
@@ -32,12 +32,12 @@ require (
 	github.com/miekg/dns v1.1.30
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/openziti/fabric v0.11.56
-	github.com/openziti/foundation v0.11.15
+	github.com/openziti/foundation v0.11.16
 	github.com/openziti/sdk-golang v0.13.24
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/cobra v0.0.7
+	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/xeipuuv/gojsonschema v1.2.0

@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/edge/tunnel/router"
 	"github.com/openziti/edge/tunnel/udp_vconn"
-	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/sdk-golang/ziti"
 	"golang.org/x/sys/unix"
@@ -172,12 +172,12 @@ func (t *tProxyInterceptor) acceptUDP(context ziti.Context) {
 
 func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
 	oobSize := 1600
-	bufPool := mempool.NewPool(16, udp.MaxPacketSize+oobSize)
+	bufPool := mempool.NewPool(16, info.MaxPacketSize+oobSize)
 
 	for {
 		pooled := bufPool.AcquireBuffer()
-		oob := pooled.Buf[udp.MaxPacketSize:]
-		pooled.Buf = pooled.Buf[:udp.MaxPacketSize]
+		oob := pooled.Buf[info.MaxPacketSize:]
+		pooled.Buf = pooled.Buf[:info.MaxPacketSize]
 		n, oobn, _, srcAddr, err := t.udpLn.ReadMsgUDP(pooled.Buf, oob)
 		if err != nil {
 			manager.QueueError(err)
