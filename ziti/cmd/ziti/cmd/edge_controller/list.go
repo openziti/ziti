@@ -609,7 +609,12 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingI
 }
 
 func mapRoleIdsToNames(c *gabs.Container, path string, entityType string) ([]string, error) {
-	values := c.Path(path).Data().([]interface{})
+	jsonValues := c.Path(path).Data()
+	if jsonValues == nil {
+		return nil, nil
+	}
+
+	values := jsonValues.([]interface{})
 
 	var result []string
 	for _, val := range values {

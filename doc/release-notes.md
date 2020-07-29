@@ -1,3 +1,11 @@
+# Release 0.15.3
+
+* What's New:
+
+* Bug Fixes:
+  * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
+  * [#156](https://github.com/openziti/ziti/issues/156) - fix display of policies with empty roles lists
+ 
 # Release 0.15.2
 
 * What's New:
