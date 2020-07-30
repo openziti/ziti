@@ -5,11 +5,12 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
 
-const CurrentDbVersion = 3
+const CurrentDbVersion = 4
 
 func (stores *stores) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion > CurrentDbVersion {
@@ -28,6 +29,10 @@ func (stores *stores) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 3 {
 		stores.setNames(step, stores.service)
 		stores.setNames(step, stores.router)
+	}
+
+	if step.CurrentVersion < 4 {
+		stores.fixNameIndexes(step)
 	}
 
 	if step.CurrentVersion <= CurrentDbVersion {
@@ -71,10 +76,22 @@ func (stores *stores) setNames(step *boltz.MigrationStep, store boltz.CrudStore)
 			return
 		}
 		if name := entityBucket.GetString(FieldName); name == nil || len(*name) == 0 {
-			entityBucket.SetString(FieldName, string(id), nil)
+			entityBucket.SetString(FieldName, id, nil)
 			step.SetError(entityBucket.GetError())
 		}
 	}
+}
+
+func (stores *stores) fixNameIndexes(step *boltz.MigrationStep) {
+	c := stores.service.indexName.(boltz.Constraint)
+	step.SetError(c.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+		log.WithError(err).Debugf("Fixing service name index. Fixed? %v", fixed)
+	}))
+
+	c = stores.router.indexName.(boltz.Constraint)
+	step.SetError(c.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+		log.WithError(err).Debugf("Fixing router name index. Fixed? %v", fixed)
+	}))
 }
 
 const (
