@@ -71,7 +71,7 @@ func Create(config *Config) *Router {
 
 	return &Router{
 		config:          config,
-		forwarder:       forwarder.NewForwarder(metricsRegistry),
+		forwarder:       forwarder.NewForwarder(metricsRegistry, config.Forwarder),
 		metricsRegistry: metricsRegistry,
 		shutdownC:       make(chan struct{}),
 	}
