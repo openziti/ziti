@@ -26,20 +26,20 @@ type factory struct {
 	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
-	c       transport.Configuration
+	tcfg    transport.Configuration
 }
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, c transport.Configuration) xgress.Factory {
-	return &factory{id: id, ctrl: ctrl, c: c}
+func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Configuration) xgress.Factory {
+	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
 	options := xgress.LoadOptions(optionsData)
-	return newListener(factory.id, factory.ctrl, options, factory.c), nil
+	return newListener(factory.id, factory.ctrl, options, factory.tcfg), nil
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
 	options := xgress.LoadOptions(optionsData)
-	return newDialer(factory.id, factory.ctrl, options, factory.c)
+	return newDialer(factory.id, factory.ctrl, options, factory.tcfg)
 }

@@ -24,12 +24,12 @@ import (
 	"github.com/openziti/foundation/transport"
 )
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, c transport.Configuration, service string) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, tcfg transport.Configuration, service string) xgress.Listener {
 	return &listener{
 		id:          id,
 		ctrl:        ctrl,
 		options:     options,
-		c:           c,
+		tcfg:        tcfg,
 		service:     service,
 		closeHelper: &xgress.CloseHelper{},
 	}
@@ -42,7 +42,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	}
 
 	incomingPeers := make(chan transport.Connection)
-	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, incomingPeers, listener.c))
+	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, incomingPeers, listener.tcfg))
 	go func() {
 		for {
 			select {
@@ -74,7 +74,7 @@ type listener struct {
 	id          *identity.TokenId
 	ctrl        xgress.CtrlChannel
 	options     *xgress.Options
-	c           transport.Configuration
+	tcfg        transport.Configuration
 	service     string
 	closeHelper *xgress.CloseHelper
 }

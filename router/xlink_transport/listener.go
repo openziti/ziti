@@ -27,7 +27,7 @@ import (
 )
 
 func (self *listener) Listen() error {
-	listener := channel2.NewClassicListenerWithConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.c)
+	listener := channel2.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg)
 
 	self.listener = listener
 	if err := self.listener.Listen(); err != nil {
@@ -47,7 +47,7 @@ func (self *listener) Close() error {
 
 func (self *listener) acceptLoop() {
 	for {
-		ch, err := channel2.NewChannelWithTransportConfig("link", self.listener, self.config.options, self.c)
+		ch, err := channel2.NewChannelWithTransportConfiguration("link", self.listener, self.config.options, self.tcfg)
 		if err == nil {
 			xlink := &impl{id: ch.Id(), ch: ch}
 			logrus.Infof("accepted link id [l/%s]", xlink.Id().Token)
@@ -79,5 +79,5 @@ type listener struct {
 	listener   channel2.UnderlayListener
 	accepter   xlink.Accepter
 	chAccepter ChannelAccepter
-	c          transport.Configuration
+	tcfg       transport.Configuration
 }

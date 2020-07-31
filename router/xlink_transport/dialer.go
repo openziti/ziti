@@ -30,7 +30,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 		logrus.Infof("dialing link [l/%s]", linkId.Token)
 
 		dialer := channel2.NewClassicDialer(linkId, address, nil)
-		ch, err := channel2.NewChannelWithTransportConfig("l/"+linkId.Token, dialer, self.config.options, self.c)
+		ch, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, dialer, self.config.options, self.tcfg)
 		if err == nil {
 			xlink := &impl{id: linkId, ch: ch}
 
@@ -59,5 +59,5 @@ type dialer struct {
 	config     *dialerConfig
 	accepter   xlink.Accepter
 	chAccepter ChannelAccepter
-	c          transport.Configuration
+	tcfg       transport.Configuration
 }
