@@ -88,7 +88,7 @@ func (l *listener) relayIncomingPackets() {
 	}()
 
 	for {
-		buf := make([]byte, info.MaxPacketSize)
+		buf := make([]byte, info.MaxUdpPacketSize)
 		logger.Debugf("Trying to read next packet")
 		bytesRead, addr, err := l.conn.ReadFrom(buf)
 		logger.Debugf("Packet read complete: %v bytes read", bytesRead)

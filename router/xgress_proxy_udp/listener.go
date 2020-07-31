@@ -77,7 +77,7 @@ func (l *listener) relay() {
 	}()
 
 	for {
-		buf := make([]byte, info.MaxPacketSize)
+		buf := make([]byte, info.MaxUdpPacketSize)
 		read, addr, err := l.conn.ReadFrom(buf)
 		if err != nil {
 			logrus.Errorf("error reading packet (%v)", err)

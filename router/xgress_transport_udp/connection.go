@@ -27,7 +27,7 @@ func (p *packetConn) LogContext() string {
 }
 
 func (p *packetConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	buffer := make([]byte, info.MaxPacketSize)
+	buffer := make([]byte, info.MaxUdpPacketSize)
 	n, err := p.Read(buffer)
 	if err != nil {
 		return nil, nil, err
