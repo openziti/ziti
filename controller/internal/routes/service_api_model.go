@@ -60,6 +60,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
+		EncryptionRequired: service.EncryptionRequired,
 	}
 
 	return ret
@@ -75,6 +76,7 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
+		EncryptionRequired: service.EncryptionRequired,
 	}
 
 	return ret
@@ -90,6 +92,7 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
+		EncryptionRequired: service.EncryptionRequired,
 	}
 
 	return ret
@@ -141,6 +144,7 @@ func MapServiceToRestModel(service *model.ServiceDetail) (*rest_model.ServiceDet
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
 		Config:             service.Config,
+		EncryptionRequired: &service.EncryptionRequired,
 	}
 
 	for _, permission := range service.Permissions {

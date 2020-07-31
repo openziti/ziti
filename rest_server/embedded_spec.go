@@ -7033,6 +7033,9 @@ func init() {
             "type": "string"
           }
         },
+        "encryptionRequired": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -7057,7 +7060,6 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
-          "description": "map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.",
           "type": "object",
           "required": [
             "name",
@@ -7065,10 +7067,12 @@ func init() {
             "roleAttributes",
             "permissions",
             "configs",
-            "config"
+            "config",
+            "encryptionRequired"
           ],
           "properties": {
             "config": {
+              "description": "map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.",
               "type": "object",
               "additionalProperties": {
                 "type": "object",
@@ -7082,6 +7086,9 @@ func init() {
               "items": {
                 "type": "string"
               }
+            },
+            "encryptionRequired": {
+              "type": "boolean"
             },
             "name": {
               "type": "string"
@@ -7216,6 +7223,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "encryptionRequired": {
+          "type": "boolean"
         },
         "name": {
           "type": "string"
@@ -7363,6 +7373,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "encryptionRequired": {
+          "type": "boolean"
         },
         "name": {
           "type": "string"
@@ -22818,6 +22831,9 @@ func init() {
             "type": "string"
           }
         },
+        "encryptionRequired": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -22842,7 +22858,6 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
-          "description": "map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.",
           "type": "object",
           "required": [
             "name",
@@ -22850,10 +22865,12 @@ func init() {
             "roleAttributes",
             "permissions",
             "configs",
-            "config"
+            "config",
+            "encryptionRequired"
           ],
           "properties": {
             "config": {
+              "description": "map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.",
               "type": "object",
               "additionalProperties": {
                 "type": "object",
@@ -22867,6 +22884,9 @@ func init() {
               "items": {
                 "type": "string"
               }
+            },
+            "encryptionRequired": {
+              "type": "boolean"
             },
             "name": {
               "type": "string"
@@ -23001,6 +23021,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "encryptionRequired": {
+          "type": "boolean"
         },
         "name": {
           "type": "string"
@@ -23148,6 +23171,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "encryptionRequired": {
+          "type": "boolean"
         },
         "name": {
           "type": "string"
