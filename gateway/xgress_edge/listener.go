@@ -152,11 +152,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	peerData[edge.PublicKeyHeader] = req.Headers[edge.PublicKeyHeader]
 
 	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
-		//what is necessary to close this properly?
 		msg := "encryption required on service, initiator did not send public header"
-		pfxlog.Logger().WithField("connId", conn.Id()).Error(msg)
 		proxy.sendStateClosedReply(msg, req)
-		conn.close(true, msg)
+		conn.close(false, msg)
 		return
 	}
 
@@ -168,11 +166,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 
 	if ns.Service.EncryptionRequired && sessionInfo.SessionId.Data[edge.PublicKeyHeader] == nil {
-		//what is necessary to close this properly?
 		msg := "encryption required on service, terminator did not send public header"
-		pfxlog.Logger().WithField("connId", conn.Id()).Error(msg)
 		proxy.sendStateClosedReply(msg, req)
-		conn.close(true, msg)
+		conn.close(false, msg)
 		return
 	}
 
@@ -181,8 +177,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	x.Start()
 
 	if err := sessionInfo.SendStartEgress(); err != nil {
-		pfxlog.Logger().WithField("connId", conn.Id()).WithError(err).Error("Failed to send start egress")
-		conn.close(true, "egress start failed")
+		msg := fmt.Sprintf("failed to send start egress: %v", err)
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(false, msg)
 	}
 
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)

@@ -17,6 +17,7 @@
 package xgress_edge_transport
 
 import (
+	"errors"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 )
@@ -35,8 +36,7 @@ func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
-	options := xgress.LoadOptions(optionsData)
-	return newListener(factory.id, factory.ctrl, options), nil
+	return nil, errors.New("listening not supported")
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
