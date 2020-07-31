@@ -150,10 +150,25 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 	peerData[edge.PublicKeyHeader] = req.Headers[edge.PublicKeyHeader]
+
+	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
+		msg := "encryption required on service, initiator did not send public header"
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(false, msg)
+		return
+	}
+
 	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, peerData)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
+		return
+	}
+
+	if ns.Service.EncryptionRequired && sessionInfo.SessionId.Data[edge.PublicKeyHeader] == nil {
+		msg := "encryption required on service, terminator did not send public header"
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(false, msg)
 		return
 	}
 
@@ -162,8 +177,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	x.Start()
 
 	if err := sessionInfo.SendStartEgress(); err != nil {
-		pfxlog.Logger().WithField("connId", conn.Id()).WithError(err).Error("Failed to send start egress")
-		conn.close(true, "egress start failed")
+		msg := fmt.Sprintf("failed to send start egress: %v", err)
+		proxy.sendStateClosedReply(msg, req)
+		conn.close(false, msg)
 	}
 
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)

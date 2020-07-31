@@ -44,6 +44,7 @@ message Error {
 message Service {
     string id = 1;
     string name = 2;
+    bool encryptionRequired = 3;
 }
 
 message Session {

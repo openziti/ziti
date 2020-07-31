@@ -415,6 +415,7 @@ func (b *Broker) modelServiceToProto(service *model.Service) (*edge_ctrl_pb.Serv
 	return &edge_ctrl_pb.Service{
 		Name: service.Name,
 		Id:   service.Id,
+		EncryptionRequired: service.EncryptionRequired,
 	}, nil
 }
 

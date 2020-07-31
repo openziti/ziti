@@ -43,6 +43,9 @@ type ServicePatch struct {
 	// configs
 	Configs []string `json:"configs"`
 
+	// encryption required
+	EncryptionRequired bool `json:"encryptionRequired,omitempty"`
+
 	// name
 	Name string `json:"name,omitempty"`
 

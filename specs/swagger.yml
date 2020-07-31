@@ -4567,6 +4567,7 @@ definitions:
           - permissions
           - configs
           - config
+          - encryptionRequired
         properties:
           name:
             type: string
@@ -4586,7 +4587,9 @@ definitions:
               type: object
               additionalProperties:
                 type: object
-        description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
+            description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
+          encryptionRequired:
+            type: boolean
   serviceCreate:
     type: object
     required:
@@ -4604,6 +4607,8 @@ definitions:
         type: array
         items:
           type: string
+      encryptionRequired:
+        type: boolean
       tags:
         $ref: '#/definitions/tags'
   serviceUpdate:
@@ -4623,6 +4628,8 @@ definitions:
         type: array
         items:
           type: string
+      encryptionRequired:
+        type: boolean
       tags:
         $ref: '#/definitions/tags'
   servicePatch:
@@ -4640,6 +4647,8 @@ definitions:
         type: array
         items:
           type: string
+      encryptionRequired:
+        type: boolean
       tags:
         $ref: '#/definitions/tags'
   ###################################################################

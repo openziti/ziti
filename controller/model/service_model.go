@@ -34,6 +34,7 @@ type Service struct {
 	TerminatorStrategy string   `json:"terminatorStrategy"`
 	RoleAttributes     []string `json:"roleAttributes"`
 	Configs            []string `json:"configs"`
+	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
 func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
@@ -47,8 +48,9 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity
 			Name:               entity.Name,
 			TerminatorStrategy: entity.TerminatorStrategy,
 		},
-		RoleAttributes: entity.RoleAttributes,
-		Configs:        entity.Configs,
+		RoleAttributes:     entity.RoleAttributes,
+		Configs:            entity.Configs,
+		EncryptionRequired: entity.EncryptionRequired,
 	}
 	return edgeService, nil
 }
@@ -98,6 +100,7 @@ func (entity *Service) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity)
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.RoleAttributes = boltService.RoleAttributes
 	entity.Configs = boltService.Configs
+	entity.EncryptionRequired = boltService.EncryptionRequired
 	return nil
 }
 
@@ -109,6 +112,7 @@ type ServiceDetail struct {
 	Permissions        []string                          `json:"permissions"`
 	Configs            []string                          `json:"configs"`
 	Config             map[string]map[string]interface{} `json:"config"`
+	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
 func (entity *ServiceDetail) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -121,6 +125,7 @@ func (entity *ServiceDetail) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.E
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.RoleAttributes = boltService.RoleAttributes
 	entity.Configs = boltService.Configs
+	entity.EncryptionRequired = boltService.EncryptionRequired
 
 	return nil
 }
