@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/transport/quic"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/openziti/foundation/transport/tls"
+	"github.com/openziti/foundation/transport/transwarp"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/client"
@@ -36,6 +37,7 @@ func init() {
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
+	transport.AddAddressParser(transwarp.AddressParser{})
 }
 
 func main() {
