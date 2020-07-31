@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 7
+	CurrentDbVersion = 8
 	FieldVersion     = "version"
 )
 
@@ -76,6 +76,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.copyNamesToParent(step, m.stores.EdgeRouter)
 		m.copyNamesToParent(step, m.stores.TransitRouter)
 		m.fixAuthenticatorCertFingerprints(step)
+	}
+
+	if step.CurrentVersion < 8 {
+		m.denormalizePolicies(step)
 	}
 
 	// current version

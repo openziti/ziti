@@ -34,8 +34,9 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.11.58
 	github.com/openziti/foundation v0.11.16
-	github.com/openziti/sdk-golang v0.13.24
+	github.com/openziti/sdk-golang v0.13.26
 	github.com/pkg/errors v0.9.1
+	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.6.1

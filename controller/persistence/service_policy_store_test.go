@@ -3,6 +3,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"sort"
@@ -28,7 +30,7 @@ func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ctx.ValidateBaseline(policy)
-		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeServices)))
+		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, db.EntityTypeServices)))
 		ctx.Equal(0, len(ctx.stores.ServicePolicy.GetRelatedEntitiesIdList(tx, policy.Id, EntityTypeIdentities)))
 
 		testPolicy, err := ctx.stores.ServicePolicy.LoadOneByName(tx, policy.Name)
@@ -207,7 +209,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	policies := ctx.createServicePolicies(identityRoles, serviceRoles, identities, services, true)
 
 	for i := 0; i < 9; i++ {
-		relatedServices := ctx.getRelatedIds(policies[i], EntityTypeServices)
+		relatedServices := ctx.getRelatedIds(policies[i], db.EntityTypeServices)
 		relatedIdentities := ctx.getRelatedIds(policies[i], EntityTypeIdentities)
 		if i == 3 {
 			ctx.Equal([]string{services[0].Id}, relatedServices)
@@ -248,8 +250,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 		services = append(services, service)
 	})
 
-	ctx.validateServicePolicyIdentities(identities, policies)
-	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicies(identities, services, policies)
 
 	for _, identity := range identities {
 		ctx.RequireDelete(identity)
@@ -278,8 +279,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 		services = append(services, service)
 	})
 
-	ctx.validateServicePolicyIdentities(identities, policies)
-	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicies(identities, services, policies)
 
 	// ensure policies get cleaned up
 	for _, policy := range policies {
@@ -289,8 +289,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	// test with policies created after identities/edge routers
 	policies = ctx.createServicePolicies(identityRoles, serviceRoles, identities, services, true)
 
-	ctx.validateServicePolicyIdentities(identities, policies)
-	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicies(identities, services, policies)
 
 	for _, policy := range policies {
 		ctx.RequireDelete(policy)
@@ -299,8 +298,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 	// test with policies created after identities/edge routers and roles added after created
 	policies = ctx.createServicePolicies(identityRoles, serviceRoles, identities, services, false)
 
-	ctx.validateServicePolicyIdentities(identities, policies)
-	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicies(identities, services, policies)
 
 	for _, identity := range identities {
 		if len(identity.RoleAttributes) > 0 {
@@ -326,8 +324,7 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 		ctx.RequireUpdate(policy)
 	}
 
-	ctx.validateServicePolicyIdentities(identities, policies)
-	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicies(identities, services, policies)
 }
 
 func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []string, identities []*Identity, services []*EdgeService, oncreate bool) []*ServicePolicy {
@@ -382,6 +379,12 @@ func (ctx *TestContext) createServicePolicies(identityRoles, serviceRoles []stri
 	return policies
 }
 
+func (ctx *TestContext) validateServicePolicies(identities []*Identity, services []*EdgeService, policies []*ServicePolicy) {
+	ctx.validateServicePolicyIdentities(identities, policies)
+	ctx.validateServicePolicyServices(services, policies)
+	ctx.validateServicePolicyDenormalization()
+}
+
 func (ctx *TestContext) validateServicePolicyIdentities(identities []*Identity, policies []*ServicePolicy) {
 	for _, policy := range policies {
 		count := 0
@@ -407,7 +410,7 @@ func (ctx *TestContext) validateServicePolicyIdentities(identities []*Identity, 
 func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, policies []*ServicePolicy) {
 	for _, policy := range policies {
 		count := 0
-		relatedServices := ctx.getRelatedIds(policy, EntityTypeServices)
+		relatedServices := ctx.getRelatedIds(policy, db.EntityTypeServices)
 		for _, service := range services {
 			relatedPolicies := ctx.getRelatedIds(service, EntityTypeServicePolicies)
 			shouldContain := ctx.policyShouldMatch(policy.Semantic, policy.ServiceRoles, service, service.RoleAttributes)
@@ -423,4 +426,14 @@ func (ctx *TestContext) validateServicePolicyServices(services []*EdgeService, p
 		}
 		ctx.Equal(count, len(relatedServices))
 	}
+}
+
+func (ctx *TestContext) validateServicePolicyDenormalization() {
+	errorHolder := &errorz.ErrorHolderImpl{}
+	errorHolder.SetError(ctx.db.View(func(tx *bbolt.Tx) error {
+		return ctx.stores.ServicePolicy.CheckIntegrity(tx, false, func(err error, _ bool) {
+			errorHolder.SetError(err)
+		})
+	}))
+	ctx.NoError(errorHolder.GetError())
 }

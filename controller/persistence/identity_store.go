@@ -19,6 +19,7 @@ package persistence
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -43,6 +44,9 @@ const (
 	FieldIdentitySdkInfoRevision  = "sdkInfoRevision"
 	FieldIdentitySdkInfoType      = "sdkInfoType"
 	FieldIdentitySdkInfoVersion   = "sdkInfoVersion"
+
+	FieldIdentityBindServices = "bindServices"
+	FieldIdentityDialServices = "dialServices"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -123,8 +127,6 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
-	ctx.SetLinkedIds(FieldIdentityEnrollments, entity.Enrollments)
-	ctx.SetLinkedIds(FieldIdentityAuthenticators, entity.Authenticators)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	if entity.EnvInfo != nil {
@@ -184,12 +186,21 @@ type identityStoreImpl struct {
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
 
-	symbolApiSessions        boltz.EntitySetSymbol
-	symbolAuthenticators     boltz.EntitySetSymbol
+	symbolRoleAttributes boltz.EntitySetSymbol
+	symbolApiSessions    boltz.EntitySetSymbol
+	symbolAuthenticators boltz.EntitySetSymbol
+	symbolIdentityTypeId boltz.EntitySymbol
+	symbolEnrollments    boltz.EntitySetSymbol
+
 	symbolEdgeRouterPolicies boltz.EntitySetSymbol
-	symbolEnrollments        boltz.EntitySetSymbol
 	symbolServicePolicies    boltz.EntitySetSymbol
-	symbolIdentityTypeId     boltz.EntitySymbol
+	symbolEdgeRouters        boltz.EntitySetSymbol
+	symbolBindServices       boltz.EntitySetSymbol
+	symbolDialServices       boltz.EntitySetSymbol
+
+	edgeRoutersCollection  boltz.RefCountedLinkCollection
+	bindServicesCollection boltz.RefCountedLinkCollection
+	dialServicesCollection boltz.RefCountedLinkCollection
 }
 
 func (store *identityStoreImpl) NewStoreEntity() boltz.Entity {
@@ -202,10 +213,15 @@ func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 
 func (store *identityStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
-	store.indexRoleAttributes = store.addRoleAttributesField()
+
+	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
+	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.edgeService)
+	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.edgeService)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
@@ -219,23 +235,34 @@ func (store *identityStoreImpl) initializeLocal() {
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
 
-func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
-	rolesSymbol := store.stores.edgeRouterPolicy.symbolIdentityRoles
-	linkCollection := store.stores.edgeRouterPolicy.identityCollection
-	semanticSymbol := store.stores.edgeRouterPolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-
-	rolesSymbol = store.stores.servicePolicy.symbolIdentityRoles
-	linkCollection = store.stores.servicePolicy.identityCollection
-	semanticSymbol = store.stores.servicePolicy.symbolSemantic
-	UpdateRelatedRoles(tx, string(rowId), rolesSymbol, linkCollection, new, holder, semanticSymbol)
-}
-
 func (store *identityStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolAuthenticators, store.stores.authenticator.symbolIdentityId)
-	store.AddLinkCollection(store.symbolEnrollments, store.stores.enrollment.symbolIdentity)
 	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
+
+	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
+}
+
+func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
+		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
+		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
+		denormLinkCollection:  store.edgeRoutersCollection,
+		ErrorHolder:           holder,
+	}
+	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
+
+	ctx = &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
+		linkCollection:        store.stores.servicePolicy.identityCollection,
+		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
+		ErrorHolder:           holder,
+	}
+	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }
 
 func (store *identityStoreImpl) GetNameIndex() boltz.ReadIndex {

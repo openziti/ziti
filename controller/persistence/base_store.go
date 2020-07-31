@@ -17,15 +17,12 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/foundation/validation"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -81,11 +78,6 @@ func (store *baseStore) addUniqueNameField() boltz.ReadIndex {
 	return store.AddUniqueIndex(symbolName)
 }
 
-func (store *baseStore) addRoleAttributesField() boltz.SetReadIndex {
-	symbol := store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
-	return store.AddSetIndex(symbol)
-}
-
 func (store *baseStore) initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder) {
 	store.InitializeIndexes(tx, errorHolder)
 }
@@ -102,7 +94,6 @@ func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.En
 }
 
 func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {
-	// If the entity name is the same as entity ID, don't remove any of those references as id references take precedence
 	idRef := entityRef(entity.GetId())
 
 	for _, policyHolderId := range store.GetRelatedEntitiesIdList(tx, entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
@@ -116,91 +107,6 @@ func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedE
 		}
 	}
 	return nil
-}
-
-func (store *baseStore) getEntityIdsForRoleSet(tx *bbolt.Tx, field string, roleSet []string, semantic string, index boltz.SetReadIndex, targetStore NameIndexedStore) ([]string, error) {
-	entityStore := index.GetSymbol().GetStore()
-	if stringz.Contains(roleSet, AllRole) {
-		ids, _, err := entityStore.QueryIds(tx, "true")
-		if err != nil {
-			return nil, err
-		}
-		return ids, nil
-	}
-
-	roles, ids, err := splitRolesAndIds(roleSet)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateEntityIds(tx, targetStore, field, ids); err != nil {
-		return nil, err
-	}
-	var roleIds []string
-	if strings.EqualFold(semantic, SemanticAllOf) {
-		roleIds = store.FindMatching(tx, index, roles)
-	} else if strings.EqualFold(semantic, SemanticAnyOf) {
-		roleIds = store.FindMatchingAnyOf(tx, index, roles)
-	} else {
-		return nil, errors.Errorf("unsupported policy semantic %v", semantic)
-	}
-
-	for _, id := range ids {
-		if entityStore.IsEntityPresent(tx, id) {
-			roleIds = append(roleIds, id)
-		}
-	}
-	return roleIds, nil
-}
-
-func validateEntityIds(tx *bbolt.Tx, store NameIndexedStore, field string, ids []string) error {
-	var invalid []string
-	for _, val := range ids {
-		if !store.IsEntityPresent(tx, val) {
-			invalid = append(invalid, val)
-		}
-	}
-	if len(invalid) > 0 {
-		return validation.NewFieldError(fmt.Sprintf("no %v found with the given ids", store.GetEntityType()), field, invalid)
-	}
-	return nil
-}
-
-func UpdateRelatedRoles(tx *bbolt.Tx, entityId string, roleSymbol boltz.EntitySetSymbol,
-	linkCollection boltz.LinkCollection, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder, semanticSymbol boltz.EntitySymbol) {
-	ids, _, err := roleSymbol.GetStore().QueryIds(tx, "true")
-	holder.SetError(err)
-
-	entityRoles := FieldValuesToIds(new)
-
-	for _, id := range ids {
-		roleSet := roleSymbol.EvalStringList(tx, []byte(id))
-		roles, ids, err := splitRolesAndIds(roleSet)
-		if err != nil {
-			holder.SetError(err)
-			return
-		}
-		semantic := SemanticAllOf
-		if semanticSymbol != nil {
-			if _, semanticValue := semanticSymbol.Eval(tx, []byte(id)); semanticValue != nil {
-				semantic = string(semanticValue)
-			}
-		}
-
-		if stringz.Contains(ids, entityId) || stringz.Contains(roles, "all") {
-			err = linkCollection.AddLinks(tx, id, entityId)
-		} else if strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(entityRoles, roles...) {
-			err = linkCollection.AddLinks(tx, id, entityId)
-		} else if strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(entityRoles, roles...) {
-			err = linkCollection.AddLinks(tx, id, entityId)
-		} else {
-			err = linkCollection.RemoveLinks(tx, id, entityId)
-		}
-
-		holder.SetError(err)
-		if holder.HasError() {
-			return
-		}
-	}
 }
 
 type NameIndexedStore interface {
