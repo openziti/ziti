@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
@@ -53,8 +54,13 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 
 	route := &ctrl_pb.Route{}
 	if err := proto.Unmarshal(msg.Body, route); err == nil {
-		if err := rh.createRoute(route); err == nil {
+		if peerData, err := rh.createRoute(route); err == nil {
 			response := channel2.NewResult(true, "")
+
+			for k, v := range peerData {
+				response.Headers[int32(k)] = v
+			}
+
 			response.ReplyTo(msg)
 			if err := rh.ctrl.Channel().Send(response); err == nil {
 				log.Debugf("handled route for [s/%s]", route.SessionId)
@@ -70,41 +76,45 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 	}
 }
 
-func (rh *routeHandler) createRoute(route *ctrl_pb.Route) error {
+func (rh *routeHandler) createRoute(route *ctrl_pb.Route) (xt.PeerData, error) {
+	var peerData xt.PeerData
+
 	if route.Egress != nil {
 		if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 			pfxlog.Logger().Warnf("destination exists for [%s]", route.Egress.Address)
 		} else {
-			if err := rh.connectEgress(route); err != nil {
-				return err
+			var err error
+			if peerData, err = rh.connectEgress(route); err != nil {
+				return nil, err
 			}
 		}
 	}
-
 	rh.forwarder.Route(route)
-
-	return nil
+	return peerData, nil
 }
 
-func (rh *routeHandler) connectEgress(route *ctrl_pb.Route) error {
+func (rh *routeHandler) connectEgress(route *ctrl_pb.Route) (xt.PeerData, error) {
 	log := pfxlog.Logger().WithField("sessionId", route.SessionId)
 	log.Debugf("route request received. binding: %v, destination: %v, address: %v",
 		route.Egress.Binding, route.Egress.Destination, route.Egress.Address)
 	if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 			sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
+
+			bindHandler := handler_xgress.NewBindHandler(
+				handler_xgress.NewReceiveHandler(rh.ctrl, rh.forwarder),
+				handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
+				rh.forwarder)
+
 			return dialer.Dial(route.Egress.Destination,
 				sessionId,
 				xgress.Address(route.Egress.Address),
-				handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(rh.ctrl, rh.forwarder),
-					handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
-					rh.forwarder))
+				bindHandler)
 		} else {
-			return fmt.Errorf("unable to create dialer (%s)", err)
+			return nil, fmt.Errorf("unable to create dialer (%s)", err)
 		}
 
 	} else {
-		return err
+		return nil, err
 	}
 }

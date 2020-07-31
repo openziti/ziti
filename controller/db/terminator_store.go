@@ -43,7 +43,7 @@ type Terminator struct {
 	Binding  string
 	Address  string
 	Cost     uint16
-	PeerData map[uint32][]byte
+	PeerData xt.PeerData
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -66,7 +66,7 @@ func (entity *Terminator) GetAddress() string {
 	return entity.Address
 }
 
-func (entity *Terminator) GetPeerData() map[uint32][]byte {
+func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
 

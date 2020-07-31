@@ -169,7 +169,7 @@ func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgre
 			return errors.New("no destination address")
 		}
 	} else {
-		return errors.New("no forward table")
+		return errors.New("cannot forward payload, no forward table")
 	}
 }
 
@@ -196,7 +196,7 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 		}
 
 	} else {
-		return errors.New("no forward table")
+		return errors.New("cannot acknowledge, no forward table")
 	}
 }
 
