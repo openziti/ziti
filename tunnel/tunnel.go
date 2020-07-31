@@ -67,7 +67,7 @@ func myCopy(dst net.Conn, src net.Conn, done chan int64) {
 
 	defer dst.Close()
 	defer log.WithFields(loggerFields).Info("stopping pipe")
-	copyBuf := make([]byte, info.MaxPacketSize)
+	copyBuf := make([]byte, info.MaxUdpPacketSize)
 	n, err := io.CopyBuffer(dst, src, copyBuf)
 	done <- n
 

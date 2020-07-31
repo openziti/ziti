@@ -172,12 +172,12 @@ func (t *tProxyInterceptor) acceptUDP(context ziti.Context) {
 
 func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
 	oobSize := 1600
-	bufPool := mempool.NewPool(16, info.MaxPacketSize+oobSize)
+	bufPool := mempool.NewPool(16, info.MaxUdpPacketSize+oobSize)
 
 	for {
 		pooled := bufPool.AcquireBuffer()
-		oob := pooled.Buf[info.MaxPacketSize:]
-		pooled.Buf = pooled.Buf[:info.MaxPacketSize]
+		oob := pooled.Buf[info.MaxUdpPacketSize:]
+		pooled.Buf = pooled.Buf[:info.MaxUdpPacketSize]
 		n, oobn, _, srcAddr, err := t.udpLn.ReadMsgUDP(pooled.Buf, oob)
 		if err != nil {
 			manager.QueueError(err)

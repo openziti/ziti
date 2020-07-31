@@ -158,7 +158,7 @@ type udpReader struct {
 
 func (reader *udpReader) generateReadEvents(manager udp_vconn.Manager) {
 	log := pfxlog.Logger().WithField("service", reader.service)
-	bufPool := mempool.NewPool(16, info.MaxPacketSize)
+	bufPool := mempool.NewPool(16, info.MaxUdpPacketSize)
 	for {
 		buf := bufPool.AcquireBuffer()
 		n, srcAddr, err := reader.conn.ReadFromUDP(buf.Buf)
