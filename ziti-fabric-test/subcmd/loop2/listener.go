@@ -61,7 +61,7 @@ func listen(bind transport.Address, i *identity.TokenId) {
 
 	incoming := make(chan transport.Connection)
 	go func() {
-		if _, err := bind.Listen("loop", i, incoming); err != nil {
+		if _, err := bind.Listen("loop", i, incoming, nil); err != nil {
 			panic(err)
 		}
 	}()
