@@ -2,9 +2,9 @@ module github.com/openziti/edge
 
 go 1.14
 
-replace github.com/openziti/foundation => ../foundation
+// replace github.com/openziti/foundation => ../foundation
 
-replace github.com/openziti/fabric => ../fabric
+// replace github.com/openziti/fabric => ../fabric
 
 // replace github.com/openziti/sdk-golang => ../sdk-golang
 
@@ -32,7 +32,7 @@ require (
 	github.com/miekg/dns v1.1.30
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.11.58
+	github.com/openziti/fabric v0.11.60
 	github.com/openziti/foundation v0.11.18
 	github.com/openziti/sdk-golang v0.13.27
 	github.com/pkg/errors v0.9.1
