@@ -27,11 +27,9 @@ import (
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"reflect"
 	"time"
 )
 
@@ -300,8 +298,6 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["transport"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			cfg.Transport = submap
-		} else {
-			return nil, errors.Errorf("invalid [transport] type (%v)", reflect.TypeOf(value))
 		}
 	}
 
