@@ -35,6 +35,7 @@ type Forwarder struct {
 	payloadBufferController *xgress.PayloadBufferController
 	metricsRegistry         metrics.Registry
 	traceController         trace.Controller
+	Options                 *Options
 }
 
 type Destination interface {
@@ -50,12 +51,13 @@ type XgressDestination interface {
 	Label() string
 }
 
-func NewForwarder(metricsRegistry metrics.Registry) *Forwarder {
+func NewForwarder(metricsRegistry metrics.Registry, options *Options) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(),
+		Options:         options,
 	}
 
 	forwarder.payloadBufferController = xgress.NewPayloadBufferController(forwarder)

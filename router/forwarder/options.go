@@ -23,10 +23,27 @@ import (
 
 type Options struct {
 	LatencyProbeInterval time.Duration
+	XgressDial           WorkerPoolOptions
+	LinkDial             WorkerPoolOptions
+}
+
+type WorkerPoolOptions struct {
+	QueueLength uint16
+	WorkerCount uint16
 }
 
 func DefaultOptions() *Options {
-	return &Options{LatencyProbeInterval: time.Duration(10) * time.Second}
+	return &Options{
+		LatencyProbeInterval: time.Duration(10) * time.Second,
+		XgressDial: WorkerPoolOptions{
+			QueueLength: 1000,
+			WorkerCount: 10,
+		},
+		LinkDial: WorkerPoolOptions{
+			QueueLength: 1000,
+			WorkerCount: 10,
+		},
+	}
 }
 
 func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
@@ -37,6 +54,50 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.LatencyProbeInterval = time.Duration(latencyProbeInterval) * time.Millisecond
 		} else {
 			return nil, errors.New("invalid value for 'latencyProbeInterval'")
+		}
+	}
+
+	if value, found := src["xgressDialQueueLength "]; found {
+		if length, ok := value.(int); ok {
+			if length <= 0 || length > 10000 {
+				return nil, errors.New("invalid value for 'xgressDialQueueLength ', expected integer between 1 and 1000")
+			}
+			options.XgressDial.QueueLength = uint16(length)
+		} else {
+			return nil, errors.New("invalid value for 'xgressDialQueueLength ', expected integer between 1 and 1000")
+		}
+	}
+
+	if value, found := src["xgressDialWorkerCount"]; found {
+		if workers, ok := value.(int); ok {
+			if workers <= 0 || workers > 10000 {
+				return nil, errors.New("invalid value for 'xgressDialWorkerCount', expected integer between 1 and 1000")
+			}
+			options.XgressDial.WorkerCount = uint16(workers)
+		} else {
+			return nil, errors.New("invalid value for 'xgressDialWorkerCount', expected integer between 1 and 1000")
+		}
+	}
+
+	if value, found := src["linkDialQueueLength"]; found {
+		if length, ok := value.(int); ok {
+			if length <= 0 || length > 10000 {
+				return nil, errors.New("invalid value for 'linkDialQueueLength', expected integer between 1 and 1000")
+			}
+			options.LinkDial.QueueLength = uint16(length)
+		} else {
+			return nil, errors.New("invalid value for 'linkDialQueueLength', expected integer between 1 and 1000")
+		}
+	}
+
+	if value, found := src["linkDialWorkerCount"]; found {
+		if workers, ok := value.(int); ok {
+			if workers <= 0 || workers > 10000 {
+				return nil, errors.New("invalid value for 'linkDialWorkerCount', expected integer between 10 and 1000")
+			}
+			options.LinkDial.WorkerCount = uint16(workers)
+		} else {
+			return nil, errors.New("invalid value for 'linkDialWorkerCount', expected integer between 10 and 1000")
 		}
 	}
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
@@ -31,23 +32,33 @@ type dialHandler struct {
 	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	dialers []xlink.Dialer
+	pool    handlerPool
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer) *dialHandler {
-	return &dialHandler{
+func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, forwarder *forwarder.Forwarder) *dialHandler {
+	handler := &dialHandler{
 		id:      id,
 		ctrl:    ctrl,
 		dialers: dialers,
+		pool:    handlerPool{options: forwarder.Options.LinkDial},
 	}
+	handler.pool.Start()
+
+	return handler
 }
 
 func (self *dialHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_DialType)
 }
 
-func (self *dialHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
-	logrus.Info("received link connect request")
+func (self *dialHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	self.pool.Queue(func(){
+		self.handle(msg, ch)
+	})
+}
 
+func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
+	logrus.Info("received link connect request")
 	dial := &ctrl_pb.Dial{}
 	if err := proto.Unmarshal(msg.Body, dial); err == nil {
 		linkId := self.id.ShallowCloneWithNewToken(dial.Id)
