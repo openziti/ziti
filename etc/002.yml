@@ -16,7 +16,7 @@ link:
   listeners:
     - binding:          transport
       bind:             tls:127.0.0.1:6002
-      advertise         tls:127.0.0.1:6002
+      advertise:        tls:127.0.0.1:6002
       # Enable transwarp for the mesh data plane
       #bind:             transwarp:127.0.0.1:6002
       #advertise:        transwarp:127.0.0.1:6002
