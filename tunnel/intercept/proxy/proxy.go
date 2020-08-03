@@ -19,6 +19,7 @@ package proxy
 import (
 	"fmt"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/foundation/util/info"
 	"net"
 
 	"github.com/michaelquigley/pfxlog"
@@ -26,7 +27,6 @@ import (
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/edge/tunnel/udp_vconn"
-	"github.com/openziti/foundation/transport/udp"
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
@@ -158,7 +158,7 @@ type udpReader struct {
 
 func (reader *udpReader) generateReadEvents(manager udp_vconn.Manager) {
 	log := pfxlog.Logger().WithField("service", reader.service)
-	bufPool := mempool.NewPool(16, udp.MaxPacketSize)
+	bufPool := mempool.NewPool(16, info.MaxUdpPacketSize)
 	for {
 		buf := bufPool.AcquireBuffer()
 		n, srcAddr, err := reader.conn.ReadFromUDP(buf.Buf)
