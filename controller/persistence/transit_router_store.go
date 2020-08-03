@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	TransitRouterPath             = "transitRouter"
 	FieldTransitRouterIsVerified  = "isVerified"
 	FieldTransitRouterEnrollments = "enrollments"
 )
@@ -33,14 +34,6 @@ type TransitRouter struct {
 	IsVerified  bool
 	Enrollments []string
 	IsBase      bool
-}
-
-func (entity *TransitRouter) GetId() string {
-	return entity.Id
-}
-
-func (entity *TransitRouter) SetId(id string) {
-	entity.Id = id
 }
 
 func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -79,7 +72,7 @@ type TransitRouterStore interface {
 
 func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
 	store := &transitRouterStoreImpl{
-		baseStore: newExtendedBaseStore(stores, stores.Router),
+		baseStore: newExtendedBaseStore(stores, stores.Router, TransitRouterPath),
 	}
 	store.InitImpl(store)
 	return store
@@ -96,12 +89,9 @@ func (store *transitRouterStoreImpl) NewStoreEntity() boltz.Entity {
 }
 
 func (store *transitRouterStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
 	store.GetParentStore().GrantSymbols(store)
-
 	store.indexName = store.GetParentStore().(db.RouterStore).GetNameIndex()
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldTransitRouterEnrollments, store.stores.enrollment)
-	store.MapSymbol(FieldName, boltz.NotNilStringMapper{})
 }
 
 func (store *transitRouterStoreImpl) initializeLinked() {

@@ -3,6 +3,7 @@ package persistence
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -110,6 +111,34 @@ func (m *Migrations) fixPolicyEdgeRouterReferences(step *boltz.MigrationStep, st
 			return
 		}
 		if step.SetError(routersBucket.Copy(edgeRoutersBucket, copyAll)) {
+			return
+		}
+	}
+}
+
+func (m *Migrations) moveTransitRouters(step *boltz.MigrationStep) {
+	log := pfxlog.Logger()
+	copyAll := func([]string) bool {
+		return true
+	}
+	store := m.stores.TransitRouter
+	for cursor := store.IterateValidIds(step.Ctx.Tx(), ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+		id := cursor.Current()
+		log.Debugf("moving transitRouter data for %v to %v bucket", string(id), TransitRouterPath)
+		routerBucket := store.GetEntityBucket(step.Ctx.Tx(), id)
+		edgeBucket := routerBucket.GetBucket(EdgeBucket)
+		if edgeBucket == nil {
+			continue
+		}
+		transitRouterBucket := routerBucket.GetOrCreateBucket(TransitRouterPath)
+		if step.SetError(transitRouterBucket.GetError()) {
+			return
+		}
+		if step.SetError(transitRouterBucket.Copy(edgeBucket, copyAll)) {
+			return
+		}
+		routerBucket.DeleteEntity(EdgeBucket)
+		if step.SetError(routerBucket.GetError()) {
 			return
 		}
 	}

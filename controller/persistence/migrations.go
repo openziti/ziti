@@ -49,14 +49,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		return step.CurrentVersion
 	}
 
-	//if step.CurrentVersion < 2 {
-	//	m.createEdgeRouterPoliciesV2(step)
-	//}
-	//
-	//if step.CurrentVersion < 3 {
-	//	m.createServicePoliciesV3(step)
-	//}
-
 	if step.CurrentVersion < 4 {
 		m.createInitialTunnelerConfigTypes(step)
 		m.createInitialTunnelerConfigs(step)
@@ -71,6 +63,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	}
 
 	if step.CurrentVersion < 7 {
+		m.moveTransitRouters(step)
 		m.moveEdgeRoutersUnderFabricRouters(step)
 		m.copyNamesToParent(step, m.stores.EdgeService)
 		m.copyNamesToParent(step, m.stores.EdgeRouter)
@@ -80,6 +73,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 8 {
 		m.denormalizePolicies(step)
+		m.fixNameIndices(step)
 	}
 
 	// current version

@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -96,6 +97,13 @@ func (stores *Stores) CheckIntegrity(fix bool, errorHandler func(error, bool)) e
 }
 
 func (stores *Stores) CheckIntegrityInTx(tx *bbolt.Tx, fix bool, errorHandler func(error, bool)) error {
+	if fix {
+		pfxlog.Logger().Info("creating database snapshot before attempting to fix data integrity issues")
+		if err := stores.DbProvider.GetDb().Snapshot(tx); err != nil {
+			return err
+		}
+	}
+
 	for _, store := range stores.storeMap {
 		if err := store.CheckIntegrity(tx, fix, errorHandler); err != nil {
 			return err
