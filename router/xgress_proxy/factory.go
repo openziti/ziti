@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 )
 
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
-	return &factory{id: id, ctrl: ctrl}
+func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Configuration) xgress.Factory {
+	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
@@ -34,7 +35,7 @@ func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	} else {
 		return nil, fmt.Errorf("missing 'service' configuration option")
 	}
-	return newListener(factory.id, factory.ctrl, options, service), nil
+	return newListener(factory.id, factory.ctrl, options, factory.tcfg, service), nil
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
@@ -45,4 +46,5 @@ type factory struct {
 	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
+	tcfg    transport.Configuration
 }

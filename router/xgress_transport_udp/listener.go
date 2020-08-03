@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/info"
 	"net"
 	"time"
 )
@@ -88,7 +88,7 @@ func (l *listener) relayIncomingPackets() {
 	}()
 
 	for {
-		buf := make([]byte, udp.MaxPacketSize)
+		buf := make([]byte, info.MaxUdpPacketSize)
 		logger.Debugf("Trying to read next packet")
 		bytesRead, addr, err := l.conn.ReadFrom(buf)
 		logger.Debugf("Packet read complete: %v bytes read", bytesRead)

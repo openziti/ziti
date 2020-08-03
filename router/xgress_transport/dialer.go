@@ -28,17 +28,19 @@ type dialer struct {
 	id      *identity.TokenId
 	ctrl    xgress.CtrlChannel
 	options *xgress.Options
+	tcfg    transport.Configuration
 }
 
 func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.Dialer, error) {
+func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, tcfg transport.Configuration) (xgress.Dialer, error) {
 	txd := &dialer{
 		id:      id,
 		ctrl:    ctrl,
 		options: options,
+		tcfg:    tcfg,
 	}
 	return txd, nil
 }
@@ -49,7 +51,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
 	}
 
-	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId)
+	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId, txd.tcfg)
 	if err != nil {
 		return nil, err
 	}

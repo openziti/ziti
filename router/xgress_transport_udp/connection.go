@@ -18,7 +18,7 @@ package xgress_transport_udp
 
 import (
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/info"
 	"net"
 )
 
@@ -27,7 +27,7 @@ func (p *packetConn) LogContext() string {
 }
 
 func (p *packetConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	buffer := make([]byte, udp.MaxPacketSize)
+	buffer := make([]byte, info.MaxUdpPacketSize)
 	n, err := p.Read(buffer)
 	if err != nil {
 		return nil, nil, err
