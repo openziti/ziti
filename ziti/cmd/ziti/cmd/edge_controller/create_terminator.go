@@ -19,6 +19,7 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/gateway/xgress_edge_transport"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -63,7 +64,7 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVar(&options.binding, "binding", "transport", "Set the terminator binding")
+	cmd.Flags().StringVar(&options.binding, "binding", xgress_edge_transport.BindingName, "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
 	options.AddCommonFlags(cmd)

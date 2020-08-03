@@ -32,6 +32,7 @@ type createServiceOptions struct {
 	tags               map[string]string
 	roleAttributes     []string
 	configs            []string
+	encryptionRequired bool
 }
 
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
@@ -67,6 +68,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().BoolVar(&options.encryptionRequired, "encryption-required", true, "Whether e2e encryption is required for this service")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -85,6 +87,7 @@ func runCreateService(o *createServiceOptions) (err error) {
 	if o.terminatorStrategy != "" {
 		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
 	}
+	setJSONValue(entityData, o.encryptionRequired, "encryptionRequired")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	setJSONValue(entityData, configs, "configs")
 	setJSONValue(entityData, o.tags, "tags")

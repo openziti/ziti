@@ -508,9 +508,11 @@ func outputServices(o *commonOptions, children []*gabs.Container, pagingInfo *pa
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
+		encryptionRequired, _ := entity.Path("encryptionRequired").Data().(bool)
 		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
 		roleAttributes := entity.Path("roleAttributes").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    terminator strategy: %v    role attributes: %v\n", id, name, terminatorStrategy, roleAttributes)
+
+		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    encryption required: %v    terminator strategy: %v    role attributes: %v\n", id, name, encryptionRequired , terminatorStrategy, roleAttributes)
 		if err != nil {
 			return err
 		}
