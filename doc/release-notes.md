@@ -3,7 +3,9 @@
 # What's New:
 
 * End-To-End Encryption Enhancements
-   * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
+  * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
+* Router Scaling Issues
+  * [Add worker pools for link and xgress dials](https://github.com/openziti/fabric/issues/109)
 
 * Bug Fixes:
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
@@ -52,7 +54,53 @@ POST /services
     "encryptionRequired": true
 }
 ```
+## Router Scaling Issues
 
+When scaling Ziti Routers it was possible that numerous requests to
+complete xgress routes or establish links between routers could block
+the control plane of a router. This could cause timeouts of other
+control messages and delay the establishment of new service routes and
+links. This would be especially noticeable when starting multiple
+routers at the same time or when a Ziti Controller was restarted with
+multiple routers already connected.
+
+To alleviate control channel congestion, worker queues and pools
+have been added to xgress and link dial processing. New options are
+exposed in the `forwarder` section of router configuration files to
+control the queue and worker pool.
+
+The new settings are:
+
+* `xgressDialQueueLength`
+* `xgressDialWorkerCount`
+* `linkDialQueueLength`
+* `linkDialWorkerCount`
+
+...and are explained in the following example.
+
+##### Example Router Configuration Section:
+```
+forwarder:
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
+  latencyProbeInterval: 1000
+  # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
+  # for services that have a terminator egress specified with an xgress binding (e.g. transport)
+  # (minimum 1, max 10000, default 1000)
+  xgressDialQueueLength: 1000
+  # The number of xgress dial workers used to process the xgress dial queue.
+  # (minimum 1, max 10000, default 10)
+  xgressDialWorkerCount: 10
+  # How many link dials can be queued for processing by the link dial workers. An link dial occurs
+  # when a router is notified of a new router by the controller.
+  # (minimum 1, max 10000, default 1000)
+  linkDialQueueLength: 1000
+  # The number of link dial workers used to process the link dial queue.
+  # (minimum 1, max 10000, default 10)
+  linkDialWorkerCount: 10
+```
 
 # Release 0.15.2
 
