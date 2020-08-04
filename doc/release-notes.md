@@ -53,6 +53,15 @@ POST /services
 }
 ```
 
+##### Patch Service Example (encryption required)
+Can also be set via PUT.
+```
+PATCH /services/<id>
+{
+    "encryptionRequired": true
+}
+```
+
 #### Create Service CLI (encryption required)
 End-to-end encryption defaults to required, no flag needed.
 
