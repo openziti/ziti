@@ -36,7 +36,7 @@ POST /terminators
 }
 ```
 
-### E2E Encryption Service Configuration
+### End-to-End Encryption Service Configuration
 
 Edge Services can now be set to require e2e encryption. All Edge
 Services defined before this version will default to requiring e2e
@@ -44,7 +44,7 @@ encryption. Existing services will need to have their terminators
 updated to use `xgress_edge_transport` or update the service to not
 require e2e encryption.
 
-##### Create Service Example (e2e on)
+##### Create Service Example (encryption required)
 ```
 POST /services
 {
@@ -53,6 +53,27 @@ POST /services
 }
 ```
 
+#### Create Service CLI (encryption required)
+End-to-end encryption defaults to required, no flag needed.
+
+```
+ziti edge create service myservice
+```
+
+#### Create Service CLI (encryption optional)
+```
+ziti edge create service myservice -o
+```
+
+#### Update Service CLI (set encryption required)
+```
+ziti edge update service myservice -e
+```
+
+#### Update Service CLI (set encryption optional)
+```
+ziti edge update service myservice -o
+```
 
 # Release 0.15.2
 
