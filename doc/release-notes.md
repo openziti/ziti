@@ -6,10 +6,19 @@
   * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
 * Router Scaling Issues
   * [Add worker pools for link and xgress dials](https://github.com/openziti/fabric/issues/109)
+* Model Performance Improvements
+  * [Denormalize policy links for performance](https://github.com/openziti/edge/issues/256)
+* Datastore Integrity Checker
+  * [foundation#107](https://github.com/openziti/foundation/issues/107)
+  * [edge#258](https://github.com/openziti/edge/issues/258)  
+  * [#163](https://github.com/openziti/ziti/issues/163)
 
 * Bug Fixes:
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
   * [#156](https://github.com/openziti/ziti/issues/156) - fix display of policies with empty roles lists
+
+* Backwards Compatibility 
+  * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
 
 ## End-To-End Encryption Enhancements
 ### E2E Encryption Router Termination
@@ -101,6 +110,29 @@ forwarder:
   # (minimum 1, max 10000, default 10)
   linkDialWorkerCount: 10
 ```
+
+## Model Performance Improvements
+Policy relationships are now stored in a denormalized fashion. This means that checking if an entity is tied to another entity via a policy is now a direct lookup, and much faster. This means that the Ziti controller should scale very well in cases where we have many identities, services and/or edge routers. Performance was tested against the APIs used by the SDKs. 
+
+See for more detail:
+
+* [Denormalized Policies](https://github.com/openziti/edge/wiki/Denormalized-Policies)
+* [Characterization (Pure Model Tests)](https://github.com/openziti/ziti/wiki/Characterization#pure-model-tests)
+
+## Data Integrity Checking Framework
+The bbolt datastore used by Ziti provides simple key/value storage with nesting. Ziti has implemented some basic relational constructs on top of bbolt, such as indexed values, foreign key indexes, many to many collections and reference counted collections (for policy denormalization). This release adds a data integrity checking framework which allows us to verify that constraint assumptions are valid, and allows fixing issues when they are found (if possible). This work was done in part to validate that the policy denormalization code is working correctly, and to provide a rememdy if issues are found.
+
+There are two new REST APIs available
+
+* GET `/database/check-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2916
+* POST `/database/fix-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2930
+
+These APIs can be used from the ziti CLI.
+
+* `ziti edge db check-integrity` - to report on data integrity issues
+* `ziti edge db check-integrity -f` - to report on data integrity issues and attempt to fix any that are found
 
 # Release 0.15.2
 
