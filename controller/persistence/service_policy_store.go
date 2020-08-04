@@ -20,9 +20,9 @@ const (
 	PolicyTypeDialName    = "Dial"
 	PolicyTypeBindName    = "Bind"
 
-	PolicyTypeInvalid int32 = iota
-	PolicyTypeDial
-	PolicyTypeBind
+	PolicyTypeInvalid int32 = 0
+	PolicyTypeDial    int32 = 1
+	PolicyTypeBind    int32 = 2
 )
 
 func newServicePolicy(name string) *ServicePolicy {
