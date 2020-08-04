@@ -3,11 +3,22 @@
 # What's New:
 
 * End-To-End Encryption Enhancements
-   * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
+  * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
+* Router Scaling Issues
+  * [Add worker pools for link and xgress dials](https://github.com/openziti/fabric/issues/109)
+* Model Performance Improvements
+  * [Denormalize policy links for performance](https://github.com/openziti/edge/issues/256)
+* Datastore Integrity Checker
+  * [foundation#107](https://github.com/openziti/foundation/issues/107)
+  * [edge#258](https://github.com/openziti/edge/issues/258)  
+  * [#163](https://github.com/openziti/ziti/issues/163)
 
 * Bug Fixes:
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
   * [#156](https://github.com/openziti/ziti/issues/156) - fix display of policies with empty roles lists
+
+* Backwards Compatibility 
+  * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
 
 ## End-To-End Encryption Enhancements
 ### E2E Encryption Router Termination
@@ -52,7 +63,6 @@ POST /services
     "encryptionRequired": true
 }
 ```
-
 ##### Patch Service Example (encryption required)
 Can also be set via PUT.
 ```
@@ -83,6 +93,77 @@ ziti edge update service myservice -e
 ```
 ziti edge update service myservice -o
 ```
+
+## Router Scaling Issues
+
+When scaling Ziti Routers it was possible that numerous requests to
+complete xgress routes or establish links between routers could block
+the control plane of a router. This could cause timeouts of other
+control messages and delay the establishment of new service routes and
+links. This would be especially noticeable when starting multiple
+routers at the same time or when a Ziti Controller was restarted with
+multiple routers already connected.
+
+To alleviate control channel congestion, worker queues and pools
+have been added to xgress and link dial processing. New options are
+exposed in the `forwarder` section of router configuration files to
+control the queue and worker pool.
+
+The new settings are:
+
+* `xgressDialQueueLength`
+* `xgressDialWorkerCount`
+* `linkDialQueueLength`
+* `linkDialWorkerCount`
+
+...and are explained in the following example.
+
+##### Example Router Configuration Section:
+```
+forwarder:
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
+  latencyProbeInterval: 1000
+  # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
+  # for services that have a terminator egress specified with an xgress binding (e.g. transport)
+  # (minimum 1, max 10000, default 1000)
+  xgressDialQueueLength: 1000
+  # The number of xgress dial workers used to process the xgress dial queue.
+  # (minimum 1, max 10000, default 10)
+  xgressDialWorkerCount: 10
+  # How many link dials can be queued for processing by the link dial workers. An link dial occurs
+  # when a router is notified of a new router by the controller.
+  # (minimum 1, max 10000, default 1000)
+  linkDialQueueLength: 1000
+  # The number of link dial workers used to process the link dial queue.
+  # (minimum 1, max 10000, default 10)
+  linkDialWorkerCount: 10
+```
+
+## Model Performance Improvements
+Policy relationships are now stored in a denormalized fashion. This means that checking if an entity is tied to another entity via a policy is now a direct lookup, and much faster. This means that the Ziti controller should scale very well in cases where we have many identities, services and/or edge routers. Performance was tested against the APIs used by the SDKs. 
+
+See for more detail:
+
+* [Denormalized Policies](https://github.com/openziti/edge/wiki/Denormalized-Policies)
+* [Characterization (Pure Model Tests)](https://github.com/openziti/ziti/wiki/Characterization#pure-model-tests)
+
+## Data Integrity Checking Framework
+The bbolt datastore used by Ziti provides simple key/value storage with nesting. Ziti has implemented some basic relational constructs on top of bbolt, such as indexed values, foreign key indexes, many to many collections and reference counted collections (for policy denormalization). This release adds a data integrity checking framework which allows us to verify that constraint assumptions are valid, and allows fixing issues when they are found (if possible). This work was done in part to validate that the policy denormalization code is working correctly, and to provide a rememdy if issues are found.
+
+There are two new REST APIs available
+
+* GET `/database/check-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2916
+* POST `/database/fix-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2930
+
+These APIs can be used from the ziti CLI.
+
+* `ziti edge db check-integrity` - to report on data integrity issues
+* `ziti edge db check-integrity -f` - to report on data integrity issues and attempt to fix any that are found
 
 # Release 0.15.2
 

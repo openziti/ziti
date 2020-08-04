@@ -26,20 +26,19 @@ import (
 	"net/http"
 )
 
-type snapshotDbOptions struct {
+type dbSnapshotOptions struct {
 	commonOptions
 }
 
-// newSnapshotDbCmd creates the 'edge controller create service-policy' command
-func newSnapshotDbCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &snapshotDbOptions{
+func newDbSnapshotCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &dbSnapshotOptions{
 		commonOptions: commonOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "snapshot-db",
+		Use:   "snapshot",
 		Short: "creates a database snapshot",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -58,8 +57,7 @@ func newSnapshotDbCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra
 	return cmd
 }
 
-// runSnapshotDb create a new config on the Ziti Edge Controller
-func runSnapshotDb(o *snapshotDbOptions) error {
+func runSnapshotDb(o *dbSnapshotOptions) error {
 	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false)
 	return err
 }
