@@ -15,7 +15,8 @@
 
 * Bug Fixes:
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
-  * [#156](https://github.com/openziti/ziti/issues/156) - fix display of policies with empty roles lists
+  * [#156](https://github.com/openziti/ziti/issues/156) - Fix display of policies with empty roles lists
+  * [#169](https://github.com/openziti/ziti/issues/169) - Fix delete by ID in Ziti CLI
 
 * Backwards Compatibility 
   * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`

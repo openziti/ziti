@@ -18,7 +18,6 @@ package edge_controller
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"os"
 	"strings"
@@ -73,17 +72,23 @@ func mapIdToName(entityType string, val string) (string, error) {
 func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
-
-		// If we can parse it as a UUID, treat it as such
-		_, err := uuid.Parse(val)
-		if err == nil {
-			result = append(result, val)
+		if strings.HasPrefix(val, "id") {
+			id := strings.TrimPrefix(val, "id:")
+			result = append(result, id)
 		} else {
-			// Allow UUID formatted names to be recognized with a name: prefix
-			name := strings.TrimPrefix(val, "name:")
-			list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", name), false, nil)
+			query := fmt.Sprintf(`id = "%s" or name="%s"`, val, val)
+			if strings.HasPrefix(val, "name") {
+				name := strings.TrimPrefix(val, "name:")
+				query = fmt.Sprintf(`name="%s"`, name)
+			}
+			list, _, err := filterEntitiesOfType(entityType, query, false, nil)
 			if err != nil {
 				return nil, err
+			}
+
+			if len(list) > 1 {
+				fmt.Printf("Found multiple %v matching %v. Please specify which you want by prefixing with id: or name:\n", entityType, val)
+				return nil, errors.Errorf("ambigous if %v is id or name", val)
 			}
 
 			for _, entity := range list {
