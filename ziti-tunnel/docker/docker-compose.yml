@@ -1,6 +1,6 @@
 version: "3.3"
 services:
-    ziti-tunnel:
+    ziti-test:
         image: netfoundry/ziti-tunnel:local
         build:
             context: .
@@ -13,7 +13,38 @@ services:
         - NET_ADMIN
         environment:
         - NF_REG_NAME=my-ziti-identity-file
-        #command: run --resolver udp://127.0.0.123:53 --verbose
+        entrypoint: ["sh", "-c", "while true; do sleep 11; done"]
+        #command: bash
+    ziti-tproxy:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2
+        volumes:
+        - .:/netfoundry
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+        command: tproxy --resolver udp://127.0.0.123:53 --verbose
+    ziti-tun:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2
+        volumes:
+        - .:/netfoundry
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+        command: tun --resolver udp://127.0.0.123:53
+        devices:
+          - "/dev/net/tun:/dev/net/tun"
     ziti-proxy:
         image: netfoundry/ziti-tunnel:local
         build:
