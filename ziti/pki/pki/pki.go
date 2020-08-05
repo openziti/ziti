@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,9 +27,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/netfoundry/ziti-cmd/ziti/pki/certificate"
-	"github.com/netfoundry/ziti-cmd/ziti/pki/store"
-	"github.com/netfoundry/ziti-foundation/identity/certtools"
+	"github.com/openziti/ziti/ziti/pki/certificate"
+	"github.com/openziti/ziti/ziti/pki/store"
+	"github.com/openziti/foundation/identity/certtools"
 )
 
 const (

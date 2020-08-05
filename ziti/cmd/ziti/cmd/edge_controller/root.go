@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ import (
 	"io"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -30,23 +30,40 @@ import (
 func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
 	cmd.AddCommand(newCmdEdgeController(f, out, errOut))
+	populateEdgeCommands(f, out, errOut, cmd)
 	return cmd
 }
 
 // commonOptions are common options for edge controller commands
 type commonOptions struct {
 	common.CommonOptions
+	OutputJSONRequest  bool
 	OutputJSONResponse bool
+}
+
+func (options *commonOptions) AddCommonFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
 }
 
 // newCmdEdgeController creates a command object for the "edge controller" command
 func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("controller", "Interact with a Ziti Edge Controller")
+	populateEdgeCommands(f, out, errOut, cmd)
+	return cmd
+}
+
+func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
+
 	cmd.AddCommand(newCreateCmd(f, out, errOut))
 	cmd.AddCommand(newDeleteCmd(f, out, errOut))
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
 	cmd.AddCommand(newListCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
+	cmd.AddCommand(newVersionCmd(f, out, errOut))
+	cmd.AddCommand(newPolicyAdivsorCmd(f, out, errOut))
+	cmd.AddCommand(newVerifyCmd(f, out, errOut))
+	cmd.AddCommand(newSnapshotDbCmd(f, out, errOut))
 	return cmd
 }
 

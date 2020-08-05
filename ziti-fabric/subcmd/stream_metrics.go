@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package cmd
 
 import (
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"fmt"
 	"github.com/spf13/cobra"
 	"io"

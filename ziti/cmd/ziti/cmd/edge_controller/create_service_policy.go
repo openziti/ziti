@@ -1,5 +1,5 @@
 /*
-	Copyright 2020 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,13 +19,14 @@ package edge_controller
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -59,9 +60,9 @@ func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "r", nil, "Service roles of the new service policy")
+	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the new service policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -73,11 +74,21 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
 	}
 
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	if err != nil {
+		return err
+	}
+
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities")
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, o.Args[1], "type")
-	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
-	setJSONValue(entityData, o.identityRoles, "identityRoles")
+	setJSONValue(entityData, serviceRoles, "serviceRoles")
+	setJSONValue(entityData, identityRoles, "identityRoles")
 	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {
@@ -91,4 +102,21 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	}
 
 	return err
+}
+
+func convertNamesToIds(roles []string, entityType string) ([]string, error) {
+	var result []string
+	for _, val := range roles {
+		if strings.HasPrefix(val, "@") {
+			idOrName := strings.TrimPrefix(val, "@")
+			id, err := mapNameToID(entityType, idOrName)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, "@"+id)
+		} else {
+			result = append(result, val)
+		}
+	}
+	return result, nil
 }

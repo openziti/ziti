@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import (
 
 	"crypto/x509"
 
-	"github.com/netfoundry/ziti-cmd/ziti/pki/certificate"
+	"github.com/openziti/ziti/ziti/pki/certificate"
 )
 
 // Predifined directory names.

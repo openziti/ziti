@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import (
 	"io/ioutil"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -59,8 +59,9 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new edge router")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
+	options.AddCommonFlags(cmd)
+
 	return cmd
 }
 
@@ -78,8 +79,12 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 
 	id := result.S("data", "id").Data().(string)
 
-	if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
-		panic(err)
+	if !o.OutputJSONResponse {
+
+		//output id
+		if _, err = fmt.Fprintf(o.Out, "%v\n", id); err != nil {
+			panic(err)
+		}
 	}
 
 	if o.jwtOutputFile != "" {
@@ -91,18 +96,9 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	list, err := listEntitiesOfType("edge-routers", &o.commonOptions)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
-	}
-
-	var newRouter *gabs.Container
-	for _, gw := range list {
-		gwId := gw.Path("id").Data().(string)
-		if gwId == id {
-			newRouter = gw
-			break
-		}
 	}
 
 	if newRouter == nil {

@@ -1,7 +1,7 @@
 // +build utils
 
 /*
-	Copyright 2020 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ package main
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/util/debugz"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/edge"
+	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -35,7 +35,7 @@ import (
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
+	pfxlog.SetPrefix("github.com/openziti/")
 }
 
 func init() {

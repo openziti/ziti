@@ -1,20 +1,20 @@
 # Kubernetes Sidecar Client
 
-This guide shows you how to access a NetFoundry service from a pre-existing (or third party) application that's running
-in a Kubernetes Pod. To provide access to the service, we will deploy the `ziti-tunnel` NetFoundry client in a sidecar
+This guide shows you how to access a Ziti service from a pre-existing (or third party) application that's running
+in a Kubernetes Pod. To provide access to the service, we will deploy the `ziti-tunnel` client in a sidecar
 container.
 
 ## Overview
 
-The [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html)
+The [Ziti Network Quickstart](https://openziti.github.io/ziti/quickstarts/networks-overview.html)
 walked you through standing up a Ziti instance and accessing a Ziti service from your workstation with 
 `ziti-tunnel`. In this guide we'll deploy the same `ziti-tunnel` client, but instead of running it from the
 command line we will deploy it in a sidecar container in a Kubernetes Pod.
 
-This guide also demonstrates `ziti-tunnel`'s internal DNS server, which allows us to access NetFoundry services
+This guide also demonstrates `ziti-tunnel`'s internal DNS server, which allows us to access Ziti services
 by hostname instead of IP address.
 
-[Here's some detail on how the various intercept modes work on Linux](https://netfoundry.github.io/ziti-doc/ziti/clients/linux.html)
+[Here's some detail on how the various intercept modes work on Linux](https://openziti.github.io/ziti/clients/linux.html)
 
 
 ### Solution Overview
@@ -24,7 +24,7 @@ by hostname instead of IP address.
 
 ## Prerequisites
 
-- Complete the [Ziti Network Quickstart](https://netfoundry.github.io/ziti-doc/ziti/quickstarts/networks-overview.html). This guide
+- Complete the [Ziti Network Quickstart](https://openziti.github.io/ziti/quickstarts/networks-overview.html). This guide
   uses the Ziti Controller and Ziti Edge Router that are created in the Ziti Quickstart.
 - Admin-level access to a Kubernetes cluster via `kubectl`.
 
@@ -53,7 +53,7 @@ We can mount the JWT as a secret like this:
 
 Deploy a Pod that runs a client application and `ziti-tunnel` as a sidecar container. For this
 demonstration, the client application is `wget`. Our Pod runs `wget` in a loop so we can see content
-from our NetFoundry service in the Pod's logs.
+from our Ziti service in the Pod's logs.
 
 Save the following yaml to a file named tunnel-sidecar-demo.yaml
 

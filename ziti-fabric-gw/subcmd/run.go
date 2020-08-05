@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-foundation/common/constants"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 	"github.com/gorilla/mux"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/rs/cors"

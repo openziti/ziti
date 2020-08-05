@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"github.com/netfoundry/ziti-foundation/util/term"
+	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 	"io"
 	"path/filepath"
@@ -70,7 +70,7 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
 	cmd.Flags().StringVarP(&options.Cert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -111,14 +111,16 @@ func (o *loginOptions) Run() error {
 		return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
 	}
 
-	fmt.Printf("Token: %v\n", token)
+	if !o.OutputJSONResponse {
+		fmt.Printf("Token: %v\n", token)
+	}
 
 	absCertPath, err := filepath.Abs(o.Cert)
 	if err == nil {
 		o.Cert = absCertPath
 	}
 
-	session := &session{
+	session := &util.Session{
 		Host:  host,
 		Token: token,
 		Cert:  o.Cert,

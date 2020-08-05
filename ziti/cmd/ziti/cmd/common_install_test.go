@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"os"

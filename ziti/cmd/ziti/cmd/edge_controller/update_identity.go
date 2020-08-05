@@ -1,5 +1,5 @@
 /*
-	Copyright 2020 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -23,18 +23,18 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 type updateIdentityOptions struct {
 	commonOptions
-	name string
+	name           string
+	roleAttributes []string
 }
 
-// newUpdateIdentityCmd updates the 'edge controller update service-policy' command
 func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
 		commonOptions: commonOptions{
@@ -56,10 +56,12 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 		SuggestFor: []string{},
 	}
 
+	options.AddCommonFlags(cmd)
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
+		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
 
 	return cmd
 }
@@ -73,8 +75,13 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 	entityData := gabs.New()
 	change := false
 
-	if len(o.name) > 0 {
+	if o.Cmd.Flags().Changed("name") {
 		setJSONValue(entityData, o.name, "name")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("role-attributes") {
+		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
@@ -83,10 +90,5 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 	}
 
 	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.commonOptions)
-
-	if err != nil {
-		panic(err)
-	}
-
 	return err
 }

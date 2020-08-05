@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,9 +17,16 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-enroller/subcmd"
+	"github.com/openziti/ziti/ziti-enroller/subcmd"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:               true,
+		DisableTimestamp:          true,
+		TimestampFormat:           "",
+		PadLevelText:              true,
+	})
 	subcmd.Execute()
 }

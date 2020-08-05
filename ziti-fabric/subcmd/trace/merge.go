@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package trace
 
 import (
-	"github.com/netfoundry/ziti-foundation/trace"
-	"github.com/netfoundry/ziti-foundation/trace/pb"
+	"github.com/openziti/foundation/trace"
+	"github.com/openziti/foundation/trace/pb"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"

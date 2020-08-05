@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/gateway/xgress_edge"
-	"github.com/netfoundry/ziti-fabric/router"
-	"github.com/netfoundry/ziti-fabric/xgress"
+	"github.com/openziti/edge/gateway/xgress_edge"
+	"github.com/openziti/fabric/router"
+	"github.com/openziti/fabric/router/xgress"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -45,15 +45,15 @@ func run(cmd *cobra.Command, args []string) {
 		xgressEdgeFactory := xgress_edge.NewFactory()
 		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
-			logrus.Panicf("error registering edge in framework (%w)", err)
+			logrus.Panicf("error registering edge in framework (%v)", err)
 		}
 
 		if err := r.Run(); err != nil {
-			logrus.Panicf("error starting (%w)", err)
+			logrus.Panicf("error starting (%v)", err)
 		}
 
 	} else {
-		logrus.Panicf("error loading configuration (%w)", err)
+		logrus.Panicf("error loading configuration (%v)", err)
 	}
 }
 

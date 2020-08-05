@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ import (
 	"io"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -57,20 +57,28 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "r", nil, "Edge router roles of the new service edge router policy")
+	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the new service edge router policy")
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Identity roles of the new service edge router policy")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
 
 // runCreateServiceEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
 func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) error {
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
+	if err != nil {
+		return err
+	}
 
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	if err != nil {
+		return err
+	}
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, o.serviceRoles, "serviceRoles")
+	setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+	setJSONValue(entityData, serviceRoles, "serviceRoles")
 	result, err := createEntityOfType("service-edge-router-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {

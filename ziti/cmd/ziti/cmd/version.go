@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,18 +17,18 @@
 package cmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/table"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
 	"fmt"
 	"github.com/blang/semver"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
 	// "strings"
 
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	c "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/constants"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
-	"github.com/netfoundry/ziti-cmd/common/version"
+	"github.com/openziti/ziti/common/version"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 
 	"github.com/spf13/cobra"
 )
@@ -182,7 +182,7 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 	if err != nil {
 		log.Warnf("\nAn err occurred: %s", err)
 	} else {
-		currentVersion, err = semver.Make(output)
+		currentVersion, err = semver.ParseTolerant(output)
 		if err != nil {
 			log.Warnf("Failed to get %s version: %s\n", zitiApp, err)
 			return err

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,18 +17,18 @@
 package main
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-gw/subcmd"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-foundation/transport/quic"
-	"github.com/netfoundry/ziti-foundation/transport/tcp"
-	"github.com/netfoundry/ziti-foundation/transport/tls"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/transport/quic"
+	"github.com/openziti/foundation/transport/tcp"
+	"github.com/openziti/foundation/transport/tls"
+	"github.com/openziti/ziti/ziti-fabric-gw/subcmd"
 	"github.com/sirupsen/logrus"
 )
 
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
-	pfxlog.SetPrefix("bitbucket.org/netfoundry/")
+	pfxlog.SetPrefix("github.com/openziti/")
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})

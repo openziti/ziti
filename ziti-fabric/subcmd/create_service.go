@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,33 +17,36 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
 
+var createServiceClient *mgmtClient
+var createServiceTerminatorStrategy string
+var createServiceName string
+
 func init() {
-	createService.Flags().StringVar(&createServiceBinding, "binding", "transport", "Xgress binding for service")
+	createService.Flags().StringVar(&createServiceName, "name", "", "Service name. If not provided defaults to the ID")
+	createService.Flags().StringVar(&createServiceTerminatorStrategy, "terminator-strategy", "", "Terminator strategy for service")
 	createServiceClient = NewMgmtClient(createService)
 	createCmd.AddCommand(createService)
 }
 
 var createService = &cobra.Command{
-	Use:   "service <serviceId> <endpoint> <egress>",
+	Use:   "service <serviceId>",
 	Short: "Create a new fabric service",
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if ch, err := createServiceClient.Connect(); err == nil {
 			request := &mgmt_pb.CreateServiceRequest{
 				Service: &mgmt_pb.Service{
-					Id:              args[0],
-					Binding:         createServiceBinding,
-					EndpointAddress: args[1],
-					Egress:          args[2],
+					Id:                 args[0],
+					Name:               createServiceName,
+					TerminatorStrategy: createServiceTerminatorStrategy,
 				},
 			}
 			body, err := proto.Marshal(request)
@@ -51,30 +54,22 @@ var createService = &cobra.Command{
 				panic(err)
 			}
 			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateServiceRequestType), body)
-			waitCh, err := ch.SendAndWait(requestMsg)
+			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			select {
-			case responseMsg := <-waitCh:
-				if responseMsg.ContentType == channel2.ContentTypeResultType {
-					result := channel2.UnmarshalResult(responseMsg)
-					if result.Success {
-						fmt.Printf("\nsuccess\n\n")
-					} else {
-						fmt.Printf("\nfailure [%s]\n\n", result.Message)
-					}
+			if responseMsg.ContentType == channel2.ContentTypeResultType {
+				result := channel2.UnmarshalResult(responseMsg)
+				if result.Success {
+					fmt.Printf("\nsuccess\n\n")
 				} else {
-					panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
+					fmt.Printf("\nfailure [%s]\n\n", result.Message)
 				}
-			case <-time.After(5 * time.Second):
-				panic(errors.New("timeout"))
+			} else {
+				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
-
 		} else {
 			panic(err)
 		}
 	},
 }
-var createServiceClient *mgmtClient
-var createServiceBinding string

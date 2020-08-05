@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti/agent"
-	"github.com/netfoundry/ziti-edge/controller/server"
-	"github.com/netfoundry/ziti-fabric/controller"
+	"fmt"
+	"github.com/openziti/ziti/ziti/agent"
+	"github.com/openziti/edge/controller/server"
+	"github.com/openziti/fabric/controller"
 	"github.com/spf13/cobra"
 )
-
 
 func init() {
 	root.AddCommand(runCmd)
@@ -45,6 +45,7 @@ func run(cmd *cobra.Command, args []string) {
 
 		var c *controller.Controller
 		if c, err = controller.NewController(config); err != nil {
+			fmt.Printf("unable to create fabric controller %+v\n", err)
 			panic(err)
 		}
 

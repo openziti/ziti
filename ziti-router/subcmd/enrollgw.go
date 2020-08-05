@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/gateway/enroll"
-	"github.com/netfoundry/ziti-fabric/router"
+	"github.com/openziti/edge/gateway/enroll"
+	"github.com/openziti/fabric/router"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 	"io/ioutil"

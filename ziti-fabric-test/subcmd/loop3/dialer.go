@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ package loop3
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	loop3_pb "github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd/loop3/pb"
-	"github.com/netfoundry/ziti-fabric/xgress_transport"
-	"github.com/netfoundry/ziti-foundation/identity/dotziti"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
+	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/foundation/identity/dotziti"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"

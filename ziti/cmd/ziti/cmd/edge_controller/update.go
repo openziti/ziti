@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 package edge_controller
 
 import (
-	"fmt"
 	"github.com/Jeffail/gabs"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -42,58 +41,39 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newUpdateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateConfigCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCaCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateIdentityCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateIdentityConfigsCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServiceCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServicePolicyCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateTerminatorCmd(f, out, errOut))
 
 	return cmd
 }
 
 func putEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-	return updateEntityOfType(entityType, body, options, true)
+	return updateEntityOfType(entityType, body, options, resty.MethodPut)
 }
 
 func patchEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-	return updateEntityOfType(entityType, body, options, false)
+	return updateEntityOfType(entityType, body, options, resty.MethodPatch)
+}
+
+func postEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, resty.MethodPost)
+}
+
+func deleteEntityOfTypeWithBody(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+	return updateEntityOfType(entityType, body, options, resty.MethodDelete)
 }
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
-func updateEntityOfType(entityType string, body string, options *commonOptions, put bool) (*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerUpdate(session.Host, session.Cert, session.Token, entityType, body, options.Out, put, options.OutputJSONResponse)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+func updateEntityOfType(entityType string, body string, options *commonOptions, method string) (*gabs.Container, error) {
+	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse)
 }
 
 func doRequest(entityType string, options *commonOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerRequest(session.Host, session.Cert, session.Token, entityType, options.Out, options.OutputJSONResponse, doRequest)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerRequest(entityType, options.Out, options.OutputJSONResponse, doRequest)
 }

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,13 +19,18 @@ package edge_controller
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
 	"io"
+	"net/url"
+	"reflect"
+	"strings"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -55,21 +60,28 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("edge-routers", runListEdgeRouters, newOptions()))
+	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("gateways", runListEdgeRouters, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("identities", runListIdentities, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("services", runListServices, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
+	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
+	cmd.AddCommand(newListServicesCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("transit-routers", runListTransitRouters, newOptions()))
+
+	cmd.AddCommand(newListCmdForEntityType("edge-router-role-attributes", runListEdgeRouterRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("service-role-attributes", runListServiceRoleAttributes, newOptions()))
 
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
 	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
-	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router", "service-edge-router-polices", outputServiceEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "identities", outputIdentities, newOptions()))
+	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "services", outputServices, newOptions()))
 
 	edgeRouterPolicyListRootCmd := newEntityListRootCmd("edge-router-policy")
 	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
@@ -77,11 +89,18 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 
 	identityListRootCmd := newEntityListRootCmd("identity")
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "edge-routers", outputEdgeRouters, newOptions()))
 	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-policies", outputServicePolicies, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "services", outputServices, newOptions()))
+	identityListRootCmd.AddCommand(newSubListCmdForEntityType("identities", "service-configs", outputServiceConfigs, newOptions()))
 
 	serviceListRootCmd := newEntityListRootCmd("service")
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "configs", outputConfigs, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-policies", outputServicePolicies, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "terminators", outputTerminators, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "identities", outputIdentities, newOptions()))
+	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", outputEdgeRouters, newOptions()))
 
 	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy")
 	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "services", outputServices, newOptions()))
@@ -91,14 +110,43 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", outputServices, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
 
-	cmd.AddCommand(configTypeListRootCmd, edgeRouterListRootCmd, edgeRouterPolicyListRootCmd, identityListRootCmd, serviceListRootCmd, servicePolicyListRootCmd)
+	cmd.AddCommand(configTypeListRootCmd,
+		edgeRouterListRootCmd,
+		edgeRouterPolicyListRootCmd,
+		identityListRootCmd,
+		serviceEdgeRouterPolicyListRootCmd,
+		serviceListRootCmd,
+		servicePolicyListRootCmd,
+	)
 
 	return cmd
 }
 
+type paging struct {
+	limit  int64
+	offset int64
+	count  int64
+	errorz.ErrorHolderImpl
+}
+
+func (p *paging) output(o *commonOptions) {
+	if p.HasError() {
+		_, _ = fmt.Fprintf(o.Out, "unable to retrieve paging information: %v\n", p.Err)
+	} else if p.count == 0 {
+		_, _ = fmt.Fprintln(o.Out, "results: none")
+	} else {
+		first := p.offset + 1
+		last := p.offset + p.limit
+		if last > p.count || last < 0 { // if p.limit is maxint, last will rollover and be negative
+			last = p.count
+		}
+		_, _ = fmt.Fprintf(o.Out, "results: %v-%v of %v\n", first, last, p.count)
+	}
+}
+
 type listCommandRunner func(*commonOptions) error
 
-type outputFunction func(o *commonOptions, children []*gabs.Container) error
+type outputFunction func(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error
 
 func newEntityListRootCmd(entityType string) *cobra.Command {
 	desc := fmt.Sprintf("list entities related to a %v instance managed by the Ziti Edge Controller", entityType)
@@ -131,8 +179,95 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
+	options.AddCommonFlags(cmd)
 
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	return cmd
+}
+
+// newListServicesCmd creates the list command for the given entity type
+func newListServicesCmd(options *commonOptions) *cobra.Command {
+	var asIdentity string
+	var configTypes []string
+	var roleFilters []string
+	var roleSemantic string
+
+	cmd := &cobra.Command{
+		Use:   "services <filter>?",
+		Short: "lists services managed by the Ziti Edge Controller",
+		Long:  "lists services managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListServices(asIdentity, configTypes, roleFilters, roleSemantic, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringVar(&asIdentity, "as-identity", "", "Allow admins to see services as they would be seen by a different identity")
+	cmd.Flags().StringSliceVar(&configTypes, "config-types", nil, "Override which config types to view on services")
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
+
+	return cmd
+}
+
+// newListEdgeRoutersCmd creates the list command for the given entity type
+func newListEdgeRoutersCmd(options *commonOptions) *cobra.Command {
+	var roleFilters []string
+	var roleSemantic string
+
+	cmd := &cobra.Command{
+		Use:   "edge-routers <filter>?",
+		Short: "lists edge routers managed by the Ziti Edge Controller",
+		Long:  "lists edge routers managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListEdgeRouters(roleFilters, roleSemantic, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
+
+	return cmd
+}
+
+// newListEdgeRoutersCmd creates the list command for the given entity type
+func newListIdentitiesCmd(options *commonOptions) *cobra.Command {
+	var roleFilters []string
+	var roleSemantic string
+
+	cmd := &cobra.Command{
+		Use:   "identities <filter>?",
+		Short: "lists identities managed by the Ziti Edge Controller",
+		Long:  "lists identities managed by the Ziti Edge Controller",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runListIdentities(roleFilters, roleSemantic, options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
+	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -144,7 +279,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 		Use:   fmt.Sprintf("%v <id or name>", subType),
 		Short: desc,
 		Long:  desc,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -156,189 +291,368 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, options *commonOptions) ([]*gabs.Container, error) {
-	return filterEntitiesOfType(entityType, "", options.OutputJSONResponse)
-}
-
-func listEntitiesOfTypeWithOptionalFilter(entityType string, options *commonOptions) ([]*gabs.Container, error) {
-	filter := ""
+func listEntitiesWithOptions(entityType string, options *commonOptions) ([]*gabs.Container, *paging, error) {
+	params := url.Values{}
 	if len(options.Args) > 0 {
-		filter = options.Args[0]
+		params.Add("filter", options.Args[0])
 	}
-	return filterEntitiesOfType(entityType, filter, options.OutputJSONResponse)
+
+	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out)
+}
+
+func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer) ([]*gabs.Container, *paging, error) {
+	params := url.Values{}
+	params.Add("filter", filter)
+	return listEntitiesOfType(entityType, params, logJSON, out)
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterEntitiesOfType(entityType string, filter string, outputJSON bool) ([]*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
+func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer) ([]*gabs.Container, *paging, error) {
+	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
+	children, err := jsonParsed.S("data").Children()
+	return children, getPaging(jsonParsed), err
+}
+
+func toInt64(c *gabs.Container, path string, errorHolder errorz.ErrorHolder) int64 {
+	data := c.S(path).Data()
+	if data == nil {
+		errorHolder.SetError(errors.Errorf("%v not found", path))
+		return 0
 	}
-
-	jsonParsed, err := util.EdgeControllerListEntities(session, entityType, filter, outputJSON)
-
-	if err != nil {
-		return nil, err
+	val, ok := data.(float64)
+	if !ok {
+		errorHolder.SetError(errors.Errorf("%v not a number, it's a %v", path, reflect.TypeOf(data)))
+		return 0
 	}
+	return int64(val)
+}
 
-	return jsonParsed.S("data").Children()
+func getPaging(c *gabs.Container) *paging {
+	pagingInfo := &paging{}
+	pagination := c.S("meta", "pagination")
+	if pagination != nil {
+		pagingInfo.limit = toInt64(pagination, "limit", pagingInfo)
+		pagingInfo.offset = toInt64(pagination, "offset", pagingInfo)
+		pagingInfo.count = toInt64(pagination, "totalCount", pagingInfo)
+	} else {
+		pagingInfo.SetError(errors.New("meta.pagination section not found in result"))
+	}
+	return pagingInfo
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterSubEntitiesOfType(entityType, subType, entityId, filter string, outputJSON bool) ([]*gabs.Container, error) {
-	session := &session{}
-	err := session.Load()
+func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *commonOptions) ([]*gabs.Container, *paging, error) {
+	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
+	children, err := jsonParsed.S("data").Children()
+	if err == gabs.ErrNotObjOrArray {
+		return nil, getPaging(jsonParsed), nil
 	}
-
-	jsonParsed, err := util.EdgeControllerListSubEntities(session, entityType, subType, entityId, filter, outputJSON)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonParsed.S("data").Children()
+	return children, getPaging(jsonParsed), err
 }
 
-func runListEdgeRouters(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("edge-routers", o)
+func runListEdgeRouters(roleFilters []string, roleSemantic string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
+	}
+	children, paging, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
 		return err
 	}
-	return outputEdgeRouters(o, children)
+
+	return outputEdgeRouters(options, children, paging)
 }
 
-func outputEdgeRouters(o *commonOptions, children []*gabs.Container) error {
+func outputEdgeRouters(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
+		isOnline, _ := entity.Path("isOnline").Data().(bool)
 		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    role attributes: %v\n", id, name, roleAttributes); err != nil {
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    role attributes: %v\n", id, name, isOnline, roleAttributes); err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListEdgeRouterPolicies(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("edge-router-policies", o)
+	children, paging, err := listEntitiesWithOptions("edge-router-policies", o)
 	if err != nil {
 		return err
 	}
-	return outputEdgeRouterPolicies(o, children)
+	return outputEdgeRouterPolicies(o, children, paging)
 }
 
-func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) error {
+func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		identityRoles := entity.Path("identityRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
+
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		if err != nil {
+			return err
+		}
+
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
 		if err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
 	return nil
 }
 
-func runListServices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("services", o)
+func runListTerminators(o *commonOptions) error {
+	children, pagingInfo, err := listEntitiesWithOptions("terminators", o)
 	if err != nil {
 		return err
 	}
-	return outputServices(o, children)
+	return outputTerminators(o, children, pagingInfo)
 }
 
-func outputServices(o *commonOptions, children []*gabs.Container) error {
+func outputTerminators(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v\n", id, name, edgeRouterRoles)
+		service := entity.Path("service.name").Data().(string)
+		router := entity.Path("router.id").Data().(string)
+		binding := entity.Path("binding").Data().(string)
+		address := entity.Path("address").Data().(string)
+		staticCost := entity.Path("cost").Data().(float64)
+		precedence := entity.Path("precedence").Data().(string)
+		dynamicCost := entity.Path("dynamicCost").Data().(float64)
+		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
+			id, service, router, binding, address, staticCost, precedence, dynamicCost)
 		if err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
+	return nil
+}
 
+func runListServices(asIdentity string, configTypes []string, roleFilters []string, roleSemantic string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	if asIdentity != "" {
+		params.Add("asIdentity", asIdentity)
+	}
+
+	if configTypes, err := mapNamesToIDs("config-types", configTypes...); err != nil {
+		return err
+	} else {
+		for _, configType := range configTypes {
+			params.Add("configTypes", configType)
+		}
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
+	}
+	children, pagingInfo, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out)
+	if err != nil {
+		return err
+	}
+	return outputServices(options, children, pagingInfo)
+}
+
+func outputServices(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
+		roleAttributes := entity.Path("roleAttributes").String()
+		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    terminator strategy: %v    role attributes: %v\n", id, name, terminatorStrategy, roleAttributes)
+		if err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+	return nil
+}
+
+func outputServiceConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		service, _ := entity.Path("service").Data().(string)
+		serviceName, _ := mapIdToName("services", service)
+		config, _ := entity.Path("config").Data().(string)
+		configName, _ := mapIdToName("configs", config)
+		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
+		if err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListServiceEdgeRouterPolices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("service-edge-router-policies", o)
+	children, pagingInfo, err := listEntitiesWithOptions("service-edge-router-policies", o)
 	if err != nil {
 		return err
 	}
-	return outputServiceEdgeRouterPolicies(o, children)
+	return outputServiceEdgeRouterPolicies(o, children, pagingInfo)
 }
 
-func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Container) error {
+func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles := entity.Path("edgeRouterRoles").String()
-		serviceRoles := entity.Path("serviceRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		if err != nil {
+			return err
+		}
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
 		if err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListServicePolices(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("service-policies", o)
+	children, pagingInfo, err := listEntitiesWithOptions("service-policies", o)
 	if err != nil {
 		return err
 	}
-	return outputServicePolicies(o, children)
+	return outputServicePolicies(o, children, pagingInfo)
 }
 
-func outputServicePolicies(o *commonOptions, children []*gabs.Container) error {
+func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
 		policyType, _ := entity.Path("type").Data().(string)
-		identityRoles := entity.Path("identityRoles").String()
-		serviceRoles := entity.Path("serviceRoles").String()
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v\n", id, name, policyType, serviceRoles, identityRoles)
+
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		if err != nil {
+			return err
+		}
+
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v\n", id, name, policyType, serviceRoles, identityRoles)
 		if err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
 	return nil
 }
 
+func mapRoleIdsToNames(c *gabs.Container, path string, entityType string) ([]string, error) {
+	values := c.Path(path).Data().([]interface{})
+
+	var result []string
+	for _, val := range values {
+		str := val.(string)
+		if strings.HasPrefix(str, "@") {
+			id := strings.TrimPrefix(str, "@")
+			name, err := mapIdToName(entityType, id)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, "@"+name)
+		} else {
+			result = append(result, str)
+		}
+	}
+	return result, nil
+}
+
 // runListIdentities implements the command to list identities
-func runListIdentities(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("identities", o)
+func runListIdentities(roleFilters []string, roleSemantic string, options *commonOptions) error {
+	params := url.Values{}
+	if len(options.Args) > 0 {
+		params.Add("filter", options.Args[0])
+	}
+	for _, roleFilter := range roleFilters {
+		params.Add("roleFilter", roleFilter)
+	}
+	if roleSemantic != "" {
+		params.Add("roleSemantic", roleSemantic)
+	}
+	children, pagingInfo, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out)
 	if err != nil {
 		return err
 	}
-	return outputIdentities(o, children)
+	return outputIdentities(options, children, pagingInfo)
 }
 
 // outputIdentities implements the command to list identities
-func outputIdentities(o *commonOptions, children []*gabs.Container) error {
+func outputIdentities(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -348,14 +662,19 @@ func outputIdentities(o *commonOptions, children []*gabs.Container) error {
 			return err
 		}
 	}
+	pagingInfo.output(o)
 
 	return nil
 }
 
 func runListCAs(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("cas", o)
+	children, pagingInfo, err := listEntitiesWithOptions("cas", o)
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
@@ -366,14 +685,18 @@ func runListCAs(o *commonOptions) error {
 			return err
 		}
 	}
-
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListConfigTypes(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("config-types", o)
+	children, pagingInfo, err := listEntitiesWithOptions("config-types", o)
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
@@ -383,19 +706,23 @@ func runListConfigTypes(o *commonOptions) error {
 			return err
 		}
 	}
-
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListConfigs(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("configs", o)
+	children, pagingInfo, err := listEntitiesWithOptions("configs", o)
 	if err != nil {
 		return err
 	}
-	return outputConfigs(o, children)
+	return outputConfigs(o, children, pagingInfo)
 }
 
-func outputConfigs(o *commonOptions, children []*gabs.Container) error {
+func outputConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
@@ -409,14 +736,18 @@ func outputConfigs(o *commonOptions, children []*gabs.Container) error {
 			return err
 		}
 	}
-
+	pagingInfo.output(o)
 	return nil
 }
 
 func runListApiSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("api-sessions", o)
+	children, pagingInfo, err := listEntitiesWithOptions("api-sessions", o)
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
@@ -427,40 +758,108 @@ func runListApiSessions(o *commonOptions) error {
 			return err
 		}
 	}
-
+	pagingInfo.output(o)
 	return err
 }
 
 func runListSessions(o *commonOptions) error {
-	children, err := listEntitiesOfTypeWithOptionalFilter("sessions", o)
+	children, pagingInfo, err := listEntitiesWithOptions("sessions", o)
 
 	if err != nil {
 		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
 	}
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		sessionId, _ := entity.Path("apiSession.id").Data().(string)
 		serviceName, _ := entity.Path("service.name").Data().(string)
-		hosting, _ := entity.Path("hosting").Data().(bool)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     hosting: %v\n", id, sessionId, serviceName, hosting); err != nil {
+		sessionType, _ := entity.Path("type").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
 			return err
 		}
 	}
+	pagingInfo.output(o)
+	return err
+}
 
+func runListTransitRouters(o *commonOptions) error {
+	children, pagingInfo, err := listEntitiesWithOptions("transit-routers", o)
+
+	if err != nil {
+		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		name, _ := entity.Path("name").Data().(string)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v\n", id, name); err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+	return err
+}
+
+func runListEdgeRouterRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("edge-router", o)
+}
+
+func runListIdentityRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("identity", o)
+}
+
+func runListServiceRoleAttributes(o *commonOptions) error {
+	return runListRoleAttributes("service", o)
+}
+
+func runListRoleAttributes(entityType string, o *commonOptions) error {
+	children, pagingInfo, err := listEntitiesWithOptions(entityType+"-role-attributes", o)
+
+	if err != nil {
+		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		if _, err := fmt.Fprintf(o.Out, "role-attribute: %v\n", entity.Data().(string)); err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
 	return err
 }
 
 func runListChilden(parentType, childType string, o *commonOptions, outputF outputFunction) error {
 	idOrName := o.Args[0]
-	serviceId, err := mapNameToID(parentType, idOrName)
+	parentId, err := mapNameToID(parentType, idOrName)
 	if err != nil {
 		return err
 	}
 
-	children, err := filterSubEntitiesOfType(parentType, childType, serviceId, "", o.OutputJSONResponse)
+	filter := ""
+	if len(o.Args) > 1 {
+		filter = o.Args[1]
+	}
+
+	children, pagingInfo, err := filterSubEntitiesOfType(parentType, childType, parentId, filter, o)
 	if err != nil {
 		return err
 	}
-	return outputF(o, children)
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	return outputF(o, children, pagingInfo)
 }

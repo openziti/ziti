@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@
 package client
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
-	"github.com/netfoundry/ziti-fabric/xgress_transport"
-	"github.com/netfoundry/ziti-foundation/identity/dotziti"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
+	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/foundation/identity/dotziti"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net"
@@ -34,7 +34,7 @@ import (
 
 func init() {
 	httpCmd.Flags().StringVarP(&httpCmdIdentity, "identityName", "i", "default", "dotzeet identity name")
-	httpCmd.Flags().StringVarP(&httpCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7001", "ingress endpoint address")
+	httpCmd.Flags().StringVarP(&httpCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7002", "ingress endpoint address")
 	httpCmd.Flags().StringVar(&httpCmdHost, "host", "", "optional host header")
 	httpCmd.Flags().BoolVar(&httpCmdInsecure, "insecure", false, "Disable SSL security checks")
 	subcmd.Root.AddCommand(httpCmd)

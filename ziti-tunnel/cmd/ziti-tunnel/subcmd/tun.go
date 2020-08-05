@@ -1,7 +1,7 @@
 // +build linux
 
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tun"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel/intercept/tun"
 	"github.com/spf13/cobra"
 )
 
@@ -36,10 +36,11 @@ func init() {
 }
 
 var tunCmd = &cobra.Command{
-	Use:   "tun <config>",
-	Short: "Intercept packets with tun interface",
-	Args:  cobra.NoArgs,
-	RunE:  runTun,
+	Use:     "tun <config>",
+	Short:   "Intercept packets with tun interface",
+	Args:    cobra.NoArgs,
+	RunE:    runTun,
+	PostRun: rootPostRun,
 }
 
 func runTun(cmd *cobra.Command, args []string) error {

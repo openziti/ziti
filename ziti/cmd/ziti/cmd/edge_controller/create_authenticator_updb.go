@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 )
 

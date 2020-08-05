@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -45,24 +44,19 @@ var removeService = &cobra.Command{
 				panic(err)
 			}
 			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveServiceRequestType), body)
-			waitCh, err := ch.SendAndWait(requestMsg)
+			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
 			if err != nil {
 				panic(err)
 			}
-			select {
-			case responseMsg := <-waitCh:
-				if responseMsg.ContentType == channel2.ContentTypeResultType {
-					result := channel2.UnmarshalResult(responseMsg)
-					if result.Success {
-						fmt.Printf("\nsuccess\n\n")
-					} else {
-						fmt.Printf("\nfailure [%s]\n\n", result.Message)
-					}
+			if responseMsg.ContentType == channel2.ContentTypeResultType {
+				result := channel2.UnmarshalResult(responseMsg)
+				if result.Success {
+					fmt.Printf("\nsuccess\n\n")
 				} else {
-					panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
+					fmt.Printf("\nfailure [%s]\n\n", result.Message)
 				}
-			case <-time.After(5 * time.Second):
-				panic(errors.New("timeout"))
+			} else {
+				panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 			}
 		}
 	},

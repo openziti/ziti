@@ -1,7 +1,7 @@
 // +build linux
 
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,16 +19,17 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-edge/tunnel/intercept/tproxy"
 	"fmt"
+	"github.com/openziti/edge/tunnel/intercept/tproxy"
 	"github.com/spf13/cobra"
 )
 
 var runTProxyCmd = &cobra.Command{
-	Use:   "tproxy",
-	Short: "Use the 'tproxy' interceptor",
-	Long:  "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
-	RunE:  runTProxy,
+	Use:     "tproxy",
+	Short:   "Use the 'tproxy' interceptor",
+	Long:    "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
+	RunE:    runTProxy,
+	PostRun: rootPostRun,
 }
 
 func init() {

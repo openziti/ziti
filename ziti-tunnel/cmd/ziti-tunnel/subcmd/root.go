@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 package subcmd
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-edge/tunnel/dns"
-	"github.com/netfoundry/ziti-edge/tunnel/entities"
-	"github.com/netfoundry/ziti-edge/tunnel/intercept"
-	"github.com/netfoundry/ziti-sdk-golang/ziti"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/config"
+	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -45,10 +44,9 @@ func init() {
 }
 
 var root = &cobra.Command{
-	Use:               filepath.Base(os.Args[0]),
-	Short:             "Ziti Tunnel",
-	PersistentPreRun:  rootPreRun,
-	PersistentPostRun: rootPostRun,
+	Use:              filepath.Base(os.Args[0]),
+	Short:            "Ziti Tunnel",
+	PersistentPreRun: rootPreRun,
 }
 
 var interceptor intercept.Interceptor
@@ -57,7 +55,7 @@ var logFormatter string
 
 func Execute() {
 	if err := root.Execute(); err != nil {
-		fmt.Printf("error: %s", err)
+		pfxlog.Logger().Errorf("error: %s", err)
 	}
 }
 

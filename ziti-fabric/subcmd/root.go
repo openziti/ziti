@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -71,6 +71,11 @@ var removeCmd = &cobra.Command{
 var streamCmd = &cobra.Command{
 	Use:   "stream",
 	Short: "Stream fabric operational data",
+}
+
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update fabric components",
 }
 
 func Execute() {

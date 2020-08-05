@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,10 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-foundation/util/term"
+	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
-import cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type updateUpdbOptions struct {
 	commonOptions
@@ -96,10 +97,28 @@ func updateSelfPassword(current string, new string, options commonOptions) error
 	}
 
 	passwordData := gabs.New()
-	setJSONValue(passwordData, current, "current")
-	setJSONValue(passwordData, new, "new")
+	setJSONValue(passwordData, current, "currentPassword")
+	setJSONValue(passwordData, new, "password")
 
-	_, err = putEntityOfType("current-identity/updb/password", passwordData.String(), &options)
+	respEnvelope, err := util.EdgeControllerList("current-identity/authenticators", map[string][]string{"filter": {`method="updb"`}}, options.OutputJSONResponse, options.Out)
+
+	if err != nil {
+		return err
+	}
+
+	authenticators, err := respEnvelope.S("data").Children()
+
+	if err != nil {
+		return err
+	}
+
+	if len(authenticators) == 0 {
+		return errors.New("no updb authenticator found for the current identity")
+	} else if len(authenticators) > 1 {
+		return errors.New("too many updb authenticator found for the current identity")
+	}
+
+	_, err = patchEntityOfType("current-identity/authenticators/"+authenticators[0].Path("id").Data().(string), passwordData.String(), &options)
 
 	if err != nil {
 		return err

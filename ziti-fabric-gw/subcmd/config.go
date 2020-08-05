@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 
-	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/openziti/foundation/transport"
 	"bytes"
 )
 

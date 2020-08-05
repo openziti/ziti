@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/ziti-foundation/identity/certtools"
-	"github.com/netfoundry/ziti-sdk-golang/ziti/enroll"
+	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -77,8 +77,10 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("error: %s", err)
+		pfxlog.Logger().Errorf("%s\n", err)
 	}
 }
 
@@ -139,7 +141,7 @@ func processEnrollment() error {
 	encErr := enc.Encode(&conf)
 
 	if encErr == nil {
-		fmt.Printf("enrolled successfully. identity file written to: %s", outpath)
+		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", outpath)
 		return nil
 	} else {
 		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", outpath, encErr)

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 package edge_controller
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/Jeffail/gabs"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -42,8 +41,10 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newCreateAuthenticatorCmd(f, out, errOut))
 	cmd.AddCommand(newCreateCaCmd(f, out, errOut))
 	cmd.AddCommand(newCreateConfigCmd(f, out, errOut))
+	cmd.AddCommand(newCreateConfigTypeCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterCmd(f, out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
+	cmd.AddCommand(newCreateTerminatorCmd(f, out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceCmd(f, out, errOut))
 	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(f, out, errOut))
@@ -54,23 +55,5 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 
 // createEntityOfType create an entity of the given type on the Ziti Edge Controller
 func createEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
-
-	session := &session{}
-	err := session.Load()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Host == "" {
-		return nil, fmt.Errorf("host not specififed in cli config file. Exiting")
-	}
-
-	jsonParsed, err := util.EdgeControllerCreate(session.Host, session.Cert, session.Token, entityType, body, options.Out, options.OutputJSONResponse)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return jsonParsed, nil
+	return util.EdgeControllerCreate(entityType, body, options.Out, options.OutputJSONResponse)
 }

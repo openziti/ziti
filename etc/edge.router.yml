@@ -1,4 +1,4 @@
-v: 2
+v: 3
 
 # (required) The certificates, ca chains, and private key used to represent this routers identity
 #
@@ -31,6 +31,10 @@ identity:
 
 ctrl:
   endpoint:             tls:127.0.0.1:6262
+
+link:
+  dialers:
+    - binding:          transport
 
 # By having an 'edge' section defined, the ziti-router will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
@@ -78,6 +82,13 @@ listeners:
     options:
       # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
       advertise: 127.0.0.1:3022
+      # (optional) settings
+      # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+      #maxQueuedConnects:      50
+      # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+      #maxOutstandingConnects: 100
+      # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+      #connectTimeoutMs:       3000
   - binding: transport
     address: tls:0.0.0.0:7099
 

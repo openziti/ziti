@@ -1,4 +1,4 @@
-v: 2
+v: 3
 
 identity:
   cert:                 etc/ca/intermediate/certs/002-client.cert.pem
@@ -13,9 +13,13 @@ ctrl:
   endpoint:             tls:127.0.0.1:6262
 
 link:
-  listener:             quic:127.0.0.1:6002
-
-listeners:
-  - binding:            transport
-    address:            tls:0.0.0.0:7002 # make sure we don't conflict with router 001
-
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:6002
+      advertise:        tls:127.0.0.1:6002
+      options:
+        outQueueSize:   16
+  dialers:
+    - binding:          transport
+      options:
+        outQueueSize:   32

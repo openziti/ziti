@@ -1,4 +1,4 @@
-v: 2
+v: 3
 
 identity:
   cert:                 etc/ca/intermediate/certs/001-client.cert.pem
@@ -27,11 +27,17 @@ forwarder:
 ctrl:
   endpoint:             tls:127.0.0.1:6262
 
+link:
+  dialers:
+    - binding:          transport
+
 listeners:
   # basic ssh proxy
   - binding:            proxy
     address:            tcp:0.0.0.0:1122
     service:            ssh
+    options:
+      retransmission:   true
 
   # for iperf_tcp (iperf3)
   - binding:            proxy
@@ -52,12 +58,17 @@ listeners:
       drop1InN:         5000
 
   # example xgress_udp
-  - binding:            udp
+  - binding:            transport_udp
     address:            udp:0.0.0.0:7003
     options:
       retransmission:   true
       randomDrops:      true
       drop1InN:         5000
+
+dialers:
+  - binding:            transport
+    options:
+      retransmission:   true
 
 # xctrl_example
 #

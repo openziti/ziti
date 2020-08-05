@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package subcmd
 
 import (
-	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -36,7 +36,13 @@ var listRouters = &cobra.Command{
 	Short: "List routers enrolled on the fabric",
 	Run: func(cmd *cobra.Command, args []string) {
 		if ch, err := listRoutersClient.Connect(); err == nil {
-			request := &mgmt_pb.ListRoutersRequest{}
+			query := "true limit none"
+			if len(args) > 0 {
+				query = args[0]
+			}
+			request := &mgmt_pb.ListRoutersRequest{
+				Query: query,
+			}
 			body, err := proto.Marshal(request)
 			if err != nil {
 				panic(err)
@@ -53,7 +59,7 @@ var listRouters = &cobra.Command{
 					err := proto.Unmarshal(responseMsg.Body, response)
 					if err == nil {
 						out := fmt.Sprintf("\nRouters: (%d)\n\n", len(response.Routers))
-						out += fmt.Sprintf("%-12s | %-40s | %s\n", "Id", "Fingerprint", "Status")
+						out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", "Id", "Name", "Fingerprint", "Status")
 						for _, r := range response.Routers {
 							status := ""
 							if r.Connected {
@@ -62,7 +68,7 @@ var listRouters = &cobra.Command{
 							if r.ListenerAddress != "" {
 								status += " (" + r.ListenerAddress + ")"
 							}
-							out += fmt.Sprintf("%-12s | %-40s | %s\n", r.Id, r.Fingerprint, status)
+							out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", r.Id, r.Name, r.Fingerprint, status)
 						}
 						out += "\n"
 						fmt.Print(out)

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ import (
 	"strings"
 
 	"github.com/Jeffail/gabs"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/factory"
-	cmdhelper "github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,6 @@ type createIdentityOptions struct {
 	commonOptions
 	isAdmin        bool
 	roleAttributes []string
-	configTypes    []string
 	jwtOutputFile  string
 }
 
@@ -78,12 +77,10 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
-	cmd.Flags().StringSliceVarP(&options.configTypes, "config-types", "c", nil, "Configuration types used by the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
@@ -95,7 +92,6 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	setJSONValue(entityData, true, "enrollment", "ott")
 	setJSONValue(entityData, o.isAdmin, "isAdmin")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.configTypes, "configTypes")
 
 	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
 
@@ -118,18 +114,10 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 }
 
 func getIdentityJwt(o *createIdentityOptions, id string) error {
-	list, err := listEntitiesOfType("identities", &o.commonOptions)
+
+	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out)
 	if err != nil {
 		return err
-	}
-
-	var newIdentity *gabs.Container
-	for _, gw := range list {
-		gwId := gw.Path("id").Data().(string)
-		if gwId == id {
-			newIdentity = gw
-			break
-		}
 	}
 
 	if newIdentity == nil {
@@ -153,9 +141,11 @@ func getIdentityJwt(o *createIdentityOptions, id string) error {
 		return err
 	}
 
-	jwtExpiration := newIdentity.Path("enrollment.ott.expiresAt").Data().(string)
-	if jwtExpiration != "" {
-		fmt.Printf("Enrollment expires at %v\n", jwtExpiration)
+	if container := newIdentity.Path("enrollment.ott.expiresAt"); container != nil && container.Data() != nil {
+		jwtExpiration := fmt.Sprintf("%v", container.Data())
+		if jwtExpiration != "" {
+			fmt.Printf("Enrollment expires at %v\n", jwtExpiration)
+		}
 	}
 
 	return err

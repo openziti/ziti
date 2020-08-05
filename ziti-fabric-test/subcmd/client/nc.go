@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 package client
 
 import (
-	"github.com/netfoundry/ziti-cmd/ziti-fabric-test/subcmd"
-	"github.com/netfoundry/ziti-fabric/xgress_transport"
-	"github.com/netfoundry/ziti-foundation/identity/dotziti"
-	"github.com/netfoundry/ziti-foundation/identity/identity"
-	"github.com/netfoundry/ziti-foundation/transport"
-	"github.com/netfoundry/ziti-foundation/transport/udp"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
+	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/foundation/identity/dotziti"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/transport/udp"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -32,7 +32,7 @@ import (
 
 func init() {
 	ncCmd.Flags().StringVarP(&ncCmdIdentity, "identityName", "i", "default", "dotzeet identity name")
-	ncCmd.Flags().StringVarP(&ncCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7001", "ingress endpoint address")
+	ncCmd.Flags().StringVarP(&ncCmdIngress, "ingressEndpoint", "e", "tls:127.0.0.1:7002", "ingress endpoint address")
 	subcmd.Root.AddCommand(ncCmd)
 }
 

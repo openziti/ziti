@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/internal/log"
-	"github.com/netfoundry/ziti-cmd/ziti/cmd/ziti/util"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 )
 
 var cliAgentEnabled bool
