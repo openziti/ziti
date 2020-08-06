@@ -1,8 +1,10 @@
 #!/bin/bash -e
 
 function alldone() {
-    # slow down restarts if they're enabled
-    sleep 1
+    # send SIGINT to ziti-tunnel to trigger a cleanup of iptables mangle rules
+    kill -INT $ZITI_TUNNEL_PID
+    # let entrypoint script exit after ziti-tunnel PID
+    wait $ZITI_TUNNEL_PID
 }
 trap alldone exit
 
@@ -49,4 +51,6 @@ fi
 
 echo "running ziti-tunnel"
 set -x
-ziti-tunnel -i "${json}" "${@}"
+ziti-tunnel -i "${json}" "${@}" &
+ZITI_TUNNEL_PID=$!
+wait $ZITI_TUNNEL_PID

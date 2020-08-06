@@ -59,6 +59,70 @@ Notes:
     endure container restarts), since the enrollment token is only valid for one
     enrollment.
 
+## Docker Compose
+
+This example uses Compose to store in a file the Docker `build` and `run` parameters for several modes of operation of `ziti-tunnel`. 
+
+### Docker Compose Setup
+
+1. Install Docker Engine.
+2. `docker-compose` is a utility you can install with the Python Package Index (PyPi) e.g. `pip install --upgrade docker-compose`.
+3. Save your Ziti identity enrollment token e.g. `my-ziti-identity-file.jwt` in the same directory as the file named `docker-compose.yml`. Your identity will be enrolled the first time you run the container, and the permanent identity file will be saved e.g. `my-ziti-identity-file.json`.
+4. You may change `ZITI_VERSION` to [another release version from our ziti-release repository](https://netfoundry.jfrog.io/ui/repos/simple/Properties/ziti-release%2Fziti-tunnel%2Famd64%2Flinux%2F0.15.2%2Fziti-tunnel.tar.gz).
+
+
+### Docker Transparent Proxy for Linux
+1. Modify "ziti-tunnel" under "services" in the file named `docker-compose.yml` in this Git repo. Optionally, override the default value of `command` to pass additional parameters to `ziti-tunnel`.
+
+```yaml
+version: "3.3"
+services:
+    ziti-tunnel:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2
+        volumes:
+        - .:/netfoundry
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+#        command: run --resolver udp://127.0.0.123:53
+```
+
+2. Run `docker-compose up --build ziti-tunnel` in the same directory.
+
+This will cause the container to configure the Linux host to transparently proxy any domain names or IP addresses that match a Ziti service.
+
+### Docker Proxy or MacOS or Windows
+1. Modify "ziti-proxy" under "services" in the file named `docker-compose.yml` in this Git repo. Change the service name(s) and port number(s) to suit your actual services. You must align the mapped ports under `ports` with the bound ports in the `command`.
+
+```yaml
+version: "3.3"
+services:
+    ziti-proxy:
+        image: netfoundry/ziti-tunnel:local
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.2
+        volumes:
+        - .:/netfoundry
+        environment:
+        - NF_REG_NAME=my-ziti-identity-file
+        ports:
+        - "8888:8888"
+        - "9999:9999"
+        command: proxy "my example service":8888 "my other example service":9999
+```
+
+2. Run `docker-compose up --build ziti-proxy` in the same directory.
+
+This will cause the container to listen on the mapped port(s) and proxy any received traffic to the Ziti service that is bound to that port.
+
 ## Kubernetes
 
 The ziti-tunnel image can be used in Kubernetes either as a sidecar, which would
@@ -68,6 +132,8 @@ pod that sets `hostNetwork` to true.
 The following example manifest shows how to run ziti-tunnel as a sidecar:
 
     $ cat app-with-ziti-tunnel-sidecar.yaml
+
+```yaml
     apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
@@ -127,7 +193,7 @@ The following example manifest shows how to run ziti-tunnel as a sidecar:
           - name: tunnel-sidecar-jwt
             secret:
               secretName: tunnel-sidecar.jwt
-
+```
 
 ## Azure IoT Hub
 
@@ -137,6 +203,7 @@ This image can be used to run a module on an Azure IoT runtime.
 
 
     $ cat module.json
+```json
     {
         "modulesContent": {
             "$edgeAgent": {
@@ -194,3 +261,4 @@ This image can be used to run a module on an Azure IoT runtime.
             }
         }
     }
+```
