@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/pkg/errors"
 )
 
 type routeHandler struct {
@@ -95,6 +96,17 @@ func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, rout
 	}
 }
 
+func (rh *routeHandler) fail(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, err error) {
+	log := pfxlog.ContextLogger(ch.Label())
+	response := channel2.NewResult(false, err.Error())
+	response.ReplyTo(msg)
+
+	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
+	if err := rh.ctrl.Channel().Send(response); err != nil {
+		log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
+	}
+}
+
 func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
 		log := pfxlog.Logger().WithField("sessionId", route.SessionId)
@@ -115,14 +127,13 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel
 					bindHandler); err == nil {
 					rh.success(msg, ch, route, peerData)
 				} else {
-					pfxlog.ContextLogger(ch.Label()).Errorf("error creating route for [s/%s] (%s)", route.SessionId, err)
+					rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
 				}
 			} else {
-				log.Errorf("unable to create dialer (%s)", err)
+				rh.fail(msg, ch, route, errors.Errorf("unable to create dialer (%s)", err))
 			}
-
 		} else {
-			pfxlog.ContextLogger(ch.Label()).Errorf("error creating route for [s/%s] (%s)", route.SessionId, err)
+			rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
 		}
 	})
 }
