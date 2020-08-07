@@ -1,4 +1,4 @@
-# Release 0.15.3
+# Release 0.15.4
 
 # What's New:
 
@@ -17,7 +17,9 @@
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
   * [#156](https://github.com/openziti/ziti/issues/156) - Fix display of policies with empty roles lists
   * [#169](https://github.com/openziti/ziti/issues/169) - Fix delete by ID in Ziti CLI
-  * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5 
+  * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5
+  * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
+   
 
 * Backwards Compatibility 
   * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
@@ -167,6 +169,11 @@ These APIs can be used from the ziti CLI.
 * `ziti edge db check-integrity` - to report on data integrity issues
 * `ziti edge db check-integrity -f` - to report on data integrity issues and attempt to fix any that are found
 
+# Release 0.15.3
+
+* What's New:
+  * Add example docker compose for ziti-tunnel  
+  
 # Release 0.15.2
 
 * What's New:
