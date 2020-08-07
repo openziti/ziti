@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
@@ -28,7 +29,7 @@ import (
 
 type streamSessionsHandler struct {
 	network        *network.Network
-	streamHandlers []network.SessionLifeCycleListener
+	streamHandlers []network.SessionEventHandler
 }
 
 func newStreamSessionsHandler(network *network.Network) *streamSessionsHandler {
@@ -46,24 +47,19 @@ func (handler *streamSessionsHandler) HandleReceive(msg *channel2.Message, ch ch
 		return
 	}
 
-	sessionEventRouter := handler.network.GetSessionLifeCycleController()
-	sessionsStreamHandler := &SessionsStreamHandler{
-		ch:     ch,
-		router: sessionEventRouter,
-	}
+	sessionsStreamHandler := &SessionsStreamHandler{ch: ch}
 	handler.streamHandlers = append(handler.streamHandlers, sessionsStreamHandler)
-	sessionEventRouter.AddListener(sessionsStreamHandler)
+	events.AddSessionEventHandler(sessionsStreamHandler)
 }
 
 func (handler *streamSessionsHandler) HandleClose(ch channel2.Channel) {
 	for _, listener := range handler.streamHandlers {
-		handler.network.GetSessionLifeCycleController().RemoveListener(listener)
+		events.RemoveSessionEventHandler(listener)
 	}
 }
 
 type SessionsStreamHandler struct {
-	ch     channel2.Channel
-	router network.SessionLifeCycleController
+	ch channel2.Channel
 }
 
 func (handler *SessionsStreamHandler) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
@@ -112,5 +108,5 @@ func (handler *SessionsStreamHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Error("unexpected error closing mgmt channel")
 	}
-	handler.router.RemoveListener(handler)
+	events.RemoveSessionEventHandler(handler)
 }

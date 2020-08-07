@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
@@ -47,18 +48,16 @@ func (handler *streamTracesHandler) HandleReceive(msg *channel2.Message, ch chan
 		return
 	}
 
-	eventRouter := handler.network.GetTraceEventController()
-
 	filter := createFilter(request)
-	eventHandler := &traceEventsHandler{ch, eventRouter, filter}
+	eventHandler := &traceEventsHandler{ch, filter}
 
 	handler.streamHandlers = append(handler.streamHandlers, eventHandler)
-	eventRouter.AddHandler(eventHandler)
+	events.AddTraceEventHandler(eventHandler)
 }
 
-func (handler *streamTracesHandler) HandleClose(ch channel2.Channel) {
+func (handler *streamTracesHandler) HandleClose(channel2.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
-		handler.network.GetTraceEventController().RemoveHandler(streamHandler)
+		events.RemoveTraceEventHandler(streamHandler)
 	}
 }
 
@@ -74,7 +73,6 @@ func createFilter(request *mgmt_pb.StreamTracesRequest) trace.Filter {
 
 type traceEventsHandler struct {
 	ch     channel2.Channel
-	router trace.EventController
 	filter trace.Filter
 }
 
@@ -99,5 +97,5 @@ func (handler *traceEventsHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Error("unexpected error while closing mgmt channel")
 	}
-	handler.router.RemoveHandler(handler)
+	events.RemoveTraceEventHandler(handler)
 }

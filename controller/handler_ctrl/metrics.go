@@ -26,11 +26,11 @@ import (
 )
 
 type metricsHandler struct {
-	metrics.EventController
+	metrics.Handler
 }
 
 func newMetricsHandler(network *network.Network) *metricsHandler {
-	return &metricsHandler{network.GetMetricsEventController()}
+	return &metricsHandler{metrics.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)}
 }
 
 func (h *metricsHandler) ContentType() int32 {

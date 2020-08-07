@@ -18,116 +18,44 @@ package network
 
 import (
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/cowslice"
 )
 
-type SessionLifeCycleListener interface {
+var SessionEventHandlerRegistry = cowslice.NewCowSlice(make([]SessionEventHandler, 0))
+
+func getSessionEventHandlers() []SessionEventHandler {
+	return SessionEventHandlerRegistry.Value().([]SessionEventHandler)
+}
+
+type SessionEventHandler interface {
 	SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit)
 	SessionDeleted(sessionId *identity.TokenId)
 	CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit)
 }
 
-// SessionLifeCycleController allows for sending session changes to multiple Listeners
-type SessionLifeCycleController interface {
-	SessionLifeCycleListener
-
-	// AddListener adds the given listener to the controller
-	AddListener(listener SessionLifeCycleListener)
-
-	// RemoveListener removes the given listener from the controller
-	RemoveListener(listener SessionLifeCycleListener)
-
-	// Shutdown stops the controller
-	Shutdown()
-}
-
-// NewSessionLifeCycleController creates a new SessionLifeCycleController instance
-func NewSessionLifeCyleController() SessionLifeCycleController {
-	controller := &sessionLifeCycleControllerImpl{
-		changeChan: make(chan sessionLifeCycleControllerChange, 1),
-		eventChan:  make(chan sessionLifeCycleEvent, 25),
-		listeners:  make(map[SessionLifeCycleListener]SessionLifeCycleListener),
-	}
-
-	go controller.run()
-	return controller
-}
-
-type sessionLifeCycleControllerImpl struct {
-	changeChan chan sessionLifeCycleControllerChange
-	eventChan  chan sessionLifeCycleEvent
-	listeners  map[SessionLifeCycleListener]SessionLifeCycleListener
-}
-
-func (controller *sessionLifeCycleControllerImpl) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit) {
+func (network *Network) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit) {
 	event := &sessionCreatedEvent{
 		sessionId: sessionId,
 		clientId:  clientId,
 		serviceId: serviceId,
 		circuit:   circuit,
 	}
-	controller.eventChan <- event
+	network.eventDispatcher.Dispatch(event)
 }
 
-func (controller *sessionLifeCycleControllerImpl) SessionDeleted(sessionId *identity.TokenId) {
+func (network *Network) SessionDeleted(sessionId *identity.TokenId) {
 	event := &sessionDeletedEvent{
 		sessionId: sessionId,
 	}
-	controller.eventChan <- event
+	network.eventDispatcher.Dispatch(event)
 }
 
-func (controller *sessionLifeCycleControllerImpl) CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit) {
+func (network *Network) CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit) {
 	event := &sessionCircuitEvent{
 		sessionId: sessionId,
 		circuit:   circuit,
 	}
-	controller.eventChan <- event
-}
-
-func (controller *sessionLifeCycleControllerImpl) AddListener(listener SessionLifeCycleListener) {
-	controller.changeChan <- sessionLifeCycleControllerChange{listener, sessionLifeCycleControllerAddListener}
-}
-
-func (controller *sessionLifeCycleControllerImpl) RemoveListener(listener SessionLifeCycleListener) {
-	controller.changeChan <- sessionLifeCycleControllerChange{listener, sessionLifeCycleControllerRemoveListener}
-}
-
-func (controller *sessionLifeCycleControllerImpl) Shutdown() {
-	controller.changeChan <- sessionLifeCycleControllerChange{nil, sessionLifeCycleControllerShutdown}
-}
-
-func (controller *sessionLifeCycleControllerImpl) run() {
-	running := true
-	for running {
-		select {
-		case change := <-controller.changeChan:
-			if sessionLifeCycleControllerAddListener == change.changeType {
-				controller.listeners[change.listener] = change.listener
-			} else if sessionLifeCycleControllerRemoveListener == change.changeType {
-				delete(controller.listeners, change.listener)
-			} else if sessionLifeCycleControllerShutdown == change.changeType {
-				running = false
-			}
-		case event := <-controller.eventChan:
-			event.handle(controller)
-		}
-	}
-}
-
-type sessionLifecycleControllerChangeType uint8
-
-const (
-	sessionLifeCycleControllerAddListener = iota
-	sessionLifeCycleControllerRemoveListener
-	sessionLifeCycleControllerShutdown
-)
-
-type sessionLifeCycleControllerChange struct {
-	listener   SessionLifeCycleListener
-	changeType sessionLifecycleControllerChangeType
-}
-
-type sessionLifeCycleEvent interface {
-	handle(controller *sessionLifeCycleControllerImpl)
+	network.eventDispatcher.Dispatch(event)
 }
 
 type sessionCreatedEvent struct {
@@ -137,8 +65,9 @@ type sessionCreatedEvent struct {
 	circuit   *Circuit
 }
 
-func (event *sessionCreatedEvent) handle(controller *sessionLifeCycleControllerImpl) {
-	for _, handler := range controller.listeners {
+func (event *sessionCreatedEvent) Handle() {
+	handlers := getSessionEventHandlers()
+	for _, handler := range handlers {
 		go handler.SessionCreated(event.sessionId, event.clientId, event.serviceId, event.circuit)
 	}
 }
@@ -147,8 +76,9 @@ type sessionDeletedEvent struct {
 	sessionId *identity.TokenId
 }
 
-func (event *sessionDeletedEvent) handle(controller *sessionLifeCycleControllerImpl) {
-	for _, handler := range controller.listeners {
+func (event *sessionDeletedEvent) Handle() {
+	handlers := getSessionEventHandlers()
+	for _, handler := range handlers {
 		go handler.SessionDeleted(event.sessionId)
 	}
 }
@@ -158,8 +88,9 @@ type sessionCircuitEvent struct {
 	circuit   *Circuit
 }
 
-func (event *sessionCircuitEvent) handle(controller *sessionLifeCycleControllerImpl) {
-	for _, handler := range controller.listeners {
+func (event *sessionCircuitEvent) Handle() {
+	handlers := getSessionEventHandlers()
+	for _, handler := range handlers {
 		go handler.CircuitUpdated(event.sessionId, event.circuit)
 	}
 }

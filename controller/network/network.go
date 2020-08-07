@@ -27,6 +27,8 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/event"
+	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
@@ -44,24 +46,22 @@ import (
 
 type Network struct {
 	*Controllers
-	nodeId                     *identity.TokenId
-	options                    *Options
-	routerChanged              chan *Router
-	linkController             *linkController
-	linkChanged                chan *Link
-	sessionController          *sessionController
-	sequence                   *sequence.Sequence
-	metricsEventController     metrics.EventController
-	sessionLifeCycleController SessionLifeCycleController
-	traceEventController       trace.EventController
-	traceController            trace.Controller
-	routerPresenceHandlers     []RouterPresenceHandler
-	capabilities               []string
-	shutdownChan               chan struct{}
-	isShutdown                 concurrenz.AtomicBoolean
-	lock                       sync.Mutex
-	strategyRegistry           xt.Registry
-	lastSnapshot               time.Time
+	nodeId                 *identity.TokenId
+	options                *Options
+	routerChanged          chan *Router
+	linkController         *linkController
+	linkChanged            chan *Link
+	sessionController      *sessionController
+	sequence               *sequence.Sequence
+	eventDispatcher        event.Dispatcher
+	traceController        trace.Controller
+	routerPresenceHandlers []RouterPresenceHandler
+	capabilities           []string
+	shutdownChan           chan struct{}
+	isShutdown             concurrenz.AtomicBoolean
+	lock                   sync.Mutex
+	strategyRegistry       xt.Registry
+	lastSnapshot           time.Time
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
@@ -72,23 +72,22 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 	controllers := NewControllers(database, stores)
 
 	network := &Network{
-		Controllers:                controllers,
-		nodeId:                     nodeId,
-		options:                    options,
-		routerChanged:              make(chan *Router),
-		linkController:             newLinkController(),
-		linkChanged:                make(chan *Link),
-		sessionController:          newSessionController(),
-		sequence:                   sequence.NewSequence(),
-		metricsEventController:     metrics.NewEventController(metricsCfg),
-		sessionLifeCycleController: NewSessionLifeCyleController(),
-		traceEventController:       trace.NewEventController(),
-		traceController:            trace.NewController(),
-		shutdownChan:               make(chan struct{}),
-		strategyRegistry:           xt.GlobalRegistry(),
-		lastSnapshot:               time.Now().Add(-time.Hour),
+		Controllers:       controllers,
+		nodeId:            nodeId,
+		options:           options,
+		routerChanged:     make(chan *Router),
+		linkController:    newLinkController(),
+		linkChanged:       make(chan *Link),
+		sessionController: newSessionController(),
+		sequence:          sequence.NewSequence(),
+		eventDispatcher:   event.NewDispatcher(),
+		traceController:   trace.NewController(),
+		shutdownChan:      make(chan struct{}),
+		strategyRegistry:  xt.GlobalRegistry(),
+		lastSnapshot:      time.Now().Add(-time.Hour),
 	}
-	network.metricsEventController.AddHandler(network)
+	metrics.Init(metricsCfg)
+	events.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	return network, nil
@@ -146,16 +145,8 @@ func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
 }
 
-func (network *Network) GetMetricsEventController() metrics.EventController {
-	return network.metricsEventController
-}
-
-func (network *Network) GetSessionLifeCycleController() SessionLifeCycleController {
-	return network.sessionLifeCycleController
-}
-
-func (network *Network) GetTraceEventController() trace.EventController {
-	return network.traceEventController
+func (network *Network) GetEventDispatcher() event.Dispatcher {
+	return network.eventDispatcher
 }
 
 func (network *Network) GetTraceController() trace.Controller {
@@ -332,7 +323,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			PeerData:   peerData,
 		}
 		network.sessionController.add(ss)
-		network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
+		network.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
 
 		log.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
@@ -399,6 +390,14 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 
 	terminator, err := strategy.Select(weightedTerminators)
 
+	if err != nil {
+		return nil, nil, nil, errors2.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
+	}
+
+	if terminator == nil {
+		return nil, nil, nil, errors2.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
+	}
+
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		buf := strings.Builder{}
 		buf.WriteString("[")
@@ -411,14 +410,6 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 		}
 		buf.WriteString("]")
 		pfxlog.Logger().Infof("selected %v for path from %v", terminator.GetId(), buf.String())
-	}
-
-	if err != nil {
-		return nil, nil, nil, errors2.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
-	}
-
-	if terminator == nil {
-		return nil, nil, nil, errors2.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
 	}
 
 	return strategy, terminator, paths[terminator.GetRouterId()].path, nil
@@ -435,7 +426,7 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 			}
 		}
 		network.sessionController.remove(ss)
-		network.sessionLifeCycleController.SessionDeleted(sessionId)
+		network.SessionDeleted(sessionId)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewSessionEnded(ss.Terminator))
@@ -618,7 +609,7 @@ func (network *Network) rerouteSession(s *session) error {
 
 		log.Infof("rerouted session [s/%s]", s.Id.Token)
 
-		network.sessionLifeCycleController.CircuitUpdated(s.Id, s.Circuit)
+		network.CircuitUpdated(s.Id, s.Circuit)
 
 		return nil
 	} else {
@@ -645,7 +636,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	log.Debugf("rerouted session [s/%s]", s.Id.Token)
 
-	network.sessionLifeCycleController.CircuitUpdated(s.Id, s.Circuit)
+	network.CircuitUpdated(s.Id, s.Circuit)
 
 	return nil
 }
