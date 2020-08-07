@@ -553,6 +553,7 @@ func (network *Network) Run() {
 func (network *Network) Shutdown() {
 	if network.isShutdown.CompareAndSwap(false, true) {
 		close(network.shutdownChan)
+		events.RemoveMetricsEventHandler(network)
 	}
 }
 
@@ -646,7 +647,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 
 	router, err := network.Routers.Read(metrics.SourceId)
 	if err != nil {
-		log.Warnf("could not find router [r/%s] while processing metrics", metrics.SourceId)
+		log.Debugf("could not find router [r/%s] while processing metrics", metrics.SourceId)
 		return
 	}
 
@@ -658,7 +659,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 			} else if link.Dst.Id == router.Id {
 				link.DstLatency = int64(latency.Mean)
 			} else {
-				log.Warnf("link not for router (wtf?)")
+				log.Warnf("link not for router")
 			}
 		}
 	}

@@ -73,7 +73,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		// TODO: We could distringuish between gone and invalid configuration and allow disabling terminators
 		//       rather than deleting them
 		if dialer == nil || !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
-			log.Infof("removing invalid terminator %v", terminator.Id)
+			log.Infof("removing invalid terminator %v with binding: %v. had dialer? %v", terminator.Id, terminator.Binding, dialer != nil)
 			if err := xgress.RemoveTerminator(handler.ctrl, terminator.Id); err != nil {
 				log.Errorf("failed to remove invalid terminator %v (%v)", terminator.Id, err)
 			}

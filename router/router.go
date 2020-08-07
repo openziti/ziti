@@ -62,6 +62,7 @@ type Router struct {
 	shutdownC       chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
 	eventDispatcher event.Dispatcher
+	metricsReporter metrics.Handler
 }
 
 func (self *Router) Channel() channel2.Channel {
@@ -116,6 +117,9 @@ func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
 		self.eventDispatcher.Stop()
+		if self.metricsReporter != nil {
+			events.RemoveMetricsEventHandler(self.metricsReporter)
+		}
 
 		if err := self.ctrl.Close(); err != nil {
 			errors = append(errors, err)
@@ -285,7 +289,8 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	events.AddMetricsEventHandler(metrics.NewChannelReporter(self.ctrl))
+	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
+	events.AddMetricsEventHandler(self.metricsReporter)
 
 	return nil
 }
