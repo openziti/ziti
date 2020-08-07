@@ -26,10 +26,10 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/openziti/edge v0.15.35
-	github.com/openziti/fabric v0.11.62
-	github.com/openziti/foundation v0.11.19
-	github.com/openziti/sdk-golang v0.13.28
+	github.com/openziti/edge v0.15.36-0.20200807153251-979725248822
+	github.com/openziti/fabric v0.11.63-0.20200807152646-3fd3b4ba2f21
+	github.com/openziti/foundation v0.11.20-0.20200807152403-075f322a28b0
+	github.com/openziti/sdk-golang v0.0.0-20200807152849-698ad2d69002
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
