@@ -316,8 +316,6 @@ github.com/michaelquigley/dilithium v0.2.0/go.mod h1:MIqCw2+ObUwmS7G+8N8hWiwNMjI
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc h1:PQrqw9XKYcPRI9rKwoGZucMjWvfZpyfb5j8Lc13j8YY=
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc/go.mod h1:Z0K0l/NScHvLeGoy4SZTps+ZxGv85ql4AvZqTqOxBY8=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
-github.com/miekg/dns v1.1.30 h1:Qww6FseFn8PRfw07jueqIXqodm0JKiiKuK0DeXSqfyo=
-github.com/miekg/dns v1.1.30/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/dns v1.1.31 h1:sJFOl9BgwbYAWOGEwr61FU28pqsBNdpRBnhGXtO06Oo=
 github.com/miekg/dns v1.1.31/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/pkcs11 v1.0.3 h1:iMwmD7I5225wv84WxIG/bmxz9AXjWvTWIbM/TYHvWtw=
@@ -350,8 +348,8 @@ github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1Cpa
 github.com/onsi/gomega v1.8.1 h1:C5Dqfs/LeauYDX0jJXIe2SWmwCbGzx9yF8C8xy3Lh34=
 github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoTdcA=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.11.62 h1:QYayraVsmWRUG8wjpHSiegKfc6uMVPXrRZtCblV1yQo=
-github.com/openziti/fabric v0.11.62/go.mod h1:m0wfc70b7f3x7xj4zs+WtJzXsPjraCKy8NwdKCk21js=
+github.com/openziti/fabric v0.11.64 h1:5jZAVIiXCTrivULGJCanDZFrkUD61FzTq5LxgepAAtY=
+github.com/openziti/fabric v0.11.64/go.mod h1:m0wfc70b7f3x7xj4zs+WtJzXsPjraCKy8NwdKCk21js=
 github.com/openziti/foundation v0.11.19 h1:yKhkIK8Pwv/BVXTcEu0SBrGB6LknuTWKpiLflSOaqKo=
 github.com/openziti/foundation v0.11.19/go.mod h1:qYViHuLb9+F2Sf8Fp82hvx+oVyP3nWV2czTN/n+zHCc=
 github.com/openziti/sdk-golang v0.13.28 h1:FVUosVbIhomz+SOSf4xnNqboZ2KA978qT+Xtf2/PF9w=
