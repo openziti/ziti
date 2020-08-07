@@ -33,7 +33,6 @@ import (
 	"golang.org/x/sys/unix"
 	"net"
 	"os"
-	"time"
 	"unsafe"
 )
 
@@ -53,12 +52,7 @@ type ifreqFlags struct {
 
 func open(name string, mtu uint) (*tunInterface, error) {
 	const In6AddrGenModeNone = "1"
-	f, err := os.OpenFile(tunCloneDevice, os.O_RDWR, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	err = f.SetDeadline(time.Time{})
+	f, err := unix.Open(tunCloneDevice, unix.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +69,7 @@ func open(name string, mtu uint) (*tunInterface, error) {
 	}
 
 	ifName := string(bytes.TrimRight(tunFlags.name[:], "\000"))
+	unix.SetNonblock(f, true)
 
 	// prevent auto-assigned link local IPv6 address when the interface is brought up
 	// https://www.toradex.com/community/questions/16932/ipv6-addrconfnetdev-up-eth0-link-is-not-ready.html
@@ -96,13 +91,13 @@ func open(name string, mtu uint) (*tunInterface, error) {
 		return nil, err
 	}
 	sock := os.NewFile(uintptr(fd), "raw")
-	if err = ioctl(sock, unix.SIOCSIFMTU, uintptr(unsafe.Pointer(&tunFlags))); err != nil {
+	if err = ioctl(int(sock.Fd()), unix.SIOCSIFMTU, uintptr(unsafe.Pointer(&tunFlags))); err != nil {
 		return nil, err
 	}
 
 	iFace, err := net.InterfaceByName(ifName)
 	tun := &tunInterface{
-		dev:   f,
+		dev:   os.NewFile(uintptr(f), ifName),
 		iFace: iFace,
 	}
 
@@ -191,8 +186,8 @@ func closeNetlink(conn *netlink.Conn) {
 	}
 }
 
-func ioctl(f *os.File, request uint32, argp uintptr) error {
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, f.Fd(), uintptr(request), argp)
+func ioctl(f int, request uint32, argp uintptr) error {
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(f), uintptr(request), argp)
 	if errno != 0 {
 		return fmt.Errorf("ioctl failed with '%s'", errno)
 	}
