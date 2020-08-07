@@ -392,11 +392,11 @@ func (ctx *TestContext) login(username, password string) (*session, error) {
 
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
-	ctx.EdgeController.Shutdown()
-	ctx.fabricController.Shutdown()
 	if ctx.router != nil {
 		ctx.Req.NoError(ctx.router.Shutdown())
 	}
+	ctx.EdgeController.Shutdown()
+	ctx.fabricController.Shutdown()
 }
 
 func (ctx *TestContext) newRequest() *resty.Request {

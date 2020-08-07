@@ -37,6 +37,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/events"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
 	"github.com/openziti/edge/rest_server"
@@ -254,7 +255,6 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	return nil
 }
 
-
 func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	swaggerSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
 	if err != nil {
@@ -265,7 +265,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	api.ServeError = ServeError
 
 	ae := &AppEnv{
-		Config:   c,
+		Config: c,
 		Versions: &config.Versions{
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
@@ -332,6 +332,8 @@ func (ae *AppEnv) InitPersistence() error {
 	if err == nil {
 		ae.Handlers = model.InitHandlers(ae)
 	}
+
+	events.Init(ae.BoltStores.Session)
 
 	return err
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"go.etcd.io/bbolt"
@@ -16,6 +15,8 @@ import (
 const (
 	FieldEventType = "__eventType__"
 )
+
+var DispatcherNotRunningError = errors.New("dispatched not running")
 
 type storeEventLoader interface {
 	loadEvent(bucket *boltz.TypedBucket) storeEvent
@@ -284,7 +285,7 @@ func (dispatcher *storeEventDispatcherImpl) nextKey() []byte {
 
 func (dispatcher *storeEventDispatcherImpl) dispatch(tx *bbolt.Tx, event storeEvent) error {
 	if !dispatcher.running.Get() {
-		return events.DispatcherNotRunningError
+		return DispatcherNotRunningError
 	}
 
 	wrapper := &eventWrapper{
@@ -314,10 +315,10 @@ func (dispatcher *storeEventDispatcherImpl) dispatch(tx *bbolt.Tx, event storeEv
 	tx.OnCommit(func() {
 		select {
 		case dispatcher.eventC <- wrapper:
-			fmt.Printf("%v submitted\n", wrapper.getId())
+			// fmt.Printf("%v submitted\n", wrapper.getId())
 		default:
 			// don't block submitting, we can pick it up from the datastore if need be
-			fmt.Printf("%v skipped\n", wrapper.getId())
+			// fmt.Printf("%v skipped\n", wrapper.getId())
 		}
 	})
 

@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/cowslice"
@@ -80,7 +79,7 @@ func TestNewPersistedEventDispatcher(t *testing.T) {
 		if r > 5 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		fmt.Printf("handled %v: %v\n", event.seq, event.id)
+		// fmt.Printf("handled %v: %v\n", event.seq, event.id)
 		waitGroup.Done()
 	}
 
@@ -105,7 +104,7 @@ func TestNewPersistedEventDispatcher(t *testing.T) {
 						return err
 					}
 					i++
-					fmt.Printf("submitted event %v: %v\n", event.seq, event.id)
+					// fmt.Printf("submitted event %v: %v\n", event.seq, event.id)
 				}
 			}
 			return nil

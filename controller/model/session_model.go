@@ -83,6 +83,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		ApiSessionId:  entity.ApiSessionId,
 		ServiceId:     entity.ServiceId,
 		Type:          entity.Type,
+		ApiSession:    apiSession,
 	}
 
 	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
