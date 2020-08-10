@@ -65,25 +65,17 @@ func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 					responseMsg.Headers[int32(k)] = v
 				}
 
-				if startXgressSession, err := h.r.Control.SendAndWaitWithTimeout(responseMsg, time.Second*10); err != nil {
-					log.Errorf("unable to respond (%s)", err)
-					h.network.RemoveSession(session.Id, true)
-				} else {
-					if startXgressSession.ContentType == int32(ctrl_pb.ContentType_StartXgressType) {
-						if err = h.network.StartSessionEgress(session.Id); err != nil {
-							log.WithError(err).Error("failure starting xgress")
-							h.network.RemoveSession(session.Id, true)
-						}
-					} else {
-						log.Errorf("unexpected reply to dial response: %v", startXgressSession.ContentType)
-						h.network.RemoveSession(session.Id, true)
+				if err := h.r.Control.SendWithTimeout(responseMsg, time.Second*10); err != nil {
+					log.Errorf("unable to respond with success to create session request for session %v (%s)", session.Id, err)
+					if err := h.network.RemoveSession(session.Id, true); err != nil {
+						log.Errorf("unable to remove session %v (%v)", session.Id, err)
 					}
 				}
 			} else {
 				responseMsg := ctrl_msg.NewSessionFailedMsg(err.Error())
 				responseMsg.ReplyTo(msg)
 				if err := h.r.Control.Send(responseMsg); err != nil {
-					log.Errorf("unable to respond (%s)", err)
+					log.Errorf("unable to respond with failure to create session request for service %v (%s)", request.ServiceId, err)
 				}
 			}
 		}()

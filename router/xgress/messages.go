@@ -59,8 +59,9 @@ func (o Originator) String() string {
 type PayloadFlag uint32
 
 const (
-	PayloadFlagSessionEnd PayloadFlag = 1
-	PayloadFlagEgress     PayloadFlag = 2
+	PayloadFlagSessionEnd   PayloadFlag = 1
+	PayloadFlagEgress       PayloadFlag = 2
+	PayloadFlagSessionStart PayloadFlag = 4
 )
 
 type Header struct {
@@ -231,6 +232,10 @@ func isPayloadFlagSet(flags uint32, flag PayloadFlag) bool {
 
 func (payload *Payload) IsSessionEndFlagSet() bool {
 	return isPayloadFlagSet(payload.Flags, PayloadFlagSessionEnd)
+}
+
+func (payload *Payload) IsSessionStartFlagSet() bool {
+	return isPayloadFlagSet(payload.Flags, PayloadFlagSessionStart)
 }
 
 func SetOriginatorFlag(flags uint32, originator Originator) uint32 {

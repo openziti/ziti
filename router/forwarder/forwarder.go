@@ -97,19 +97,6 @@ func (forwarder *Forwarder) UnregisterDestinations(sessionId *identity.TokenId) 
 	}
 }
 
-func (forwarder *Forwarder) StartDestinations(sessionId *identity.TokenId) {
-	if addresses, found := forwarder.destinations.getAddressesForSession(sessionId); found {
-		for _, address := range addresses {
-			if destination, found := forwarder.destinations.getDestination(address); found {
-				if xgressDest, ok := destination.(XgressDestination); ok && xgressDest.IsTerminator() {
-					xgressDest.Start()
-					pfxlog.Logger().Debugf("started Xgress for session %v", sessionId.Token)
-				}
-			}
-		}
-	}
-}
-
 func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 	_, found := forwarder.destinations.getDestination(address)
 	return found

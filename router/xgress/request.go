@@ -134,12 +134,6 @@ type SessionInfo struct {
 	ctrl        CtrlChannel
 }
 
-func (si *SessionInfo) SendStartEgress() error {
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_StartXgressType), nil)
-	msg.ReplyTo(si.ResponseMsg)
-	return si.ctrl.Channel().SendWithTimeout(msg, time.Second*5)
-}
-
 var authError = errors.New("unexpected failure while authenticating")
 
 func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData map[uint32][]byte) (*SessionInfo, error) {
@@ -202,9 +196,6 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, Initiator, x)
 	x.Start()
 
-	if err = sessionInfo.SendStartEgress(); err != nil {
-		return &Response{Success: false, Message: err.Error()}
-	}
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
