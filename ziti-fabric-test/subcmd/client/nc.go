@@ -19,12 +19,12 @@ package client
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/openziti/fabric/router/xgress_transport"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/transport/udp"
+	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -59,7 +59,7 @@ func doNC(cmd *cobra.Command, args []string) {
 
 	serviceId := &identity.TokenId{Token: args[0]}
 	fmt.Fprintf(os.Stderr, "Dialing fabric ingress %v\n", ncCmdIngress)
-	conn, err := xgress_transport.ClientDial(ingressAddr, id, serviceId)
+	conn, err := xgress_transport.ClientDial(ingressAddr, id, serviceId, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func doNC(cmd *cobra.Command, args []string) {
 }
 
 func Copy(writer io.Writer, reader io.Reader) {
-	buf := make([]byte, udp.MaxPacketSize)
+	buf := make([]byte, info.MaxUdpPacketSize)
 	bytesCopied, err := io.CopyBuffer(writer, reader, buf)
 	pfxlog.Logger().Infof("Copied %v bytes", bytesCopied)
 	if err != nil {
@@ -81,7 +81,7 @@ func Copy(writer io.Writer, reader io.Reader) {
 
 // CopyAndLog does what io.Copy does but with additional logging
 func CopyAndLog(context string, writer io.Writer, reader io.Reader) {
-	buf := make([]byte, udp.MaxPacketSize)
+	buf := make([]byte, info.MaxUdpPacketSize)
 
 	var bytesRead, totalBytesRead, bytesWritten, totalBytesWritten int
 	var readErr, writeErr error

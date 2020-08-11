@@ -1,3 +1,205 @@
+# Release 0.16.0
+
+# What's New:
+
+**Important Note:** This release contains backwards incompatible changes. See below for details.
+
+* End-To-End Encryption Enhancements
+  * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
+* Router Scaling Issues
+  * [Add worker pools for link and xgress dials](https://github.com/openziti/fabric/issues/109)
+* Model Performance Improvements
+  * [Denormalize policy links for performance](https://github.com/openziti/edge/issues/256)
+* Datastore Integrity Checker
+  * [foundation#107](https://github.com/openziti/foundation/issues/107)
+  * [edge#258](https://github.com/openziti/edge/issues/258)  
+  * [#163](https://github.com/openziti/ziti/issues/163)
+* Events Framework
+  * [foundation#116](https://github.com/openziti/foundation/issues/116) - Add generic event framework and use it for metrics
+  * [fabric#106](https://github.com/openziti/fabric/issues/106) - Event Streaming
+  * [edge#229](https://github.com/openziti/edge/issues/229) - Stream Session Events
+
+* Bug Fixes:
+  * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
+  * [#156](https://github.com/openziti/ziti/issues/156) - Fix display of policies with empty roles lists
+  * [#169](https://github.com/openziti/ziti/issues/169) - Fix delete by ID in Ziti CLI
+  * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5
+  * [edge#273](https://github.com/openziti/edge/issues/273) - Avoid tun "not pollable" read failures
+  * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
+  * [fabric#117](https://github.com/openziti/fabric/issues/117) - Xgress setup has a race condition
+ 
+* Backwards Compatibility 
+  * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
+  * In order to fix [fabric#117](https://github.com/openziti/fabric/issues/117), the xgress protocol flow had to be updated. This means 0.16+ controllers and routers will not work with older controllers and routers
+
+## End-To-End Encryption Enhancements
+### E2E Encryption Router Termination
+A new xgress module has been added specifically for handling Ziti Edge e2e to handle SDK to Router Termination scenarios.
+Previously, only SDK-to-SDK end-to-end encryption was supported. When e2e encryption is desired
+for a router terminated service, use the bind value `xgress_edge_transport` when defining
+the terminator for the service. This value is now the default when using the CLI to create
+a terminator. If the `binding` value is omitted when using the REST API directly, it will default
+to `transport` - which does not support e2e encryption.
+
+##### CLI Example (explicit binding):
+
+```
+ziti edge create terminator mytcpservice 002 tcp:my-tcp-service.com:12345 --binding  xgress_edge_transport
+```
+
+##### Edge Rest API Example:
+
+```
+POST /terminators
+{
+    "service": "ZbX9",
+    "router": "002",
+    "binding": "xgress_edge_transport",
+    "address": "tcp:my-tcp-service.com:12345"
+}
+```
+
+### End-to-End Encryption Service Configuration
+
+Edge Services can now be set to require e2e encryption. All Edge
+Services defined before this version will default to requiring e2e
+encryption. Existing services will need to have their terminators
+updated to use `xgress_edge_transport` or update the service to not
+require e2e encryption.
+
+##### Create Service Example (encryption required)
+```
+POST /services
+{
+    "name": "my-service",
+    "encryptionRequired": true
+}
+```
+##### Patch Service Example (encryption required)
+Can also be set via PUT.
+```
+PATCH /services/<id>
+{
+    "encryptionRequired": true
+}
+```
+
+#### Create Service CLI (encryption required)
+End-to-end encryption defaults to required, no flag needed.
+
+```
+ziti edge create service myservice
+```
+
+#### Create Service CLI (encryption optional)
+```
+ziti edge create service myservice -o
+```
+
+#### Update Service CLI (set encryption required)
+```
+ziti edge update service myservice -e
+```
+
+#### Update Service CLI (set encryption optional)
+```
+ziti edge update service myservice -o
+```
+
+## Router Scaling Issues
+
+When scaling Ziti Routers it was possible that numerous requests to
+complete xgress routes or establish links between routers could block
+the control plane of a router. This could cause timeouts of other
+control messages and delay the establishment of new service routes and
+links. This would be especially noticeable when starting multiple
+routers at the same time or when a Ziti Controller was restarted with
+multiple routers already connected.
+
+To alleviate control channel congestion, worker queues and pools
+have been added to xgress and link dial processing. New options are
+exposed in the `forwarder` section of router configuration files to
+control the queue and worker pool.
+
+The new settings are:
+
+* `xgressDialQueueLength`
+* `xgressDialWorkerCount`
+* `linkDialQueueLength`
+* `linkDialWorkerCount`
+
+...and are explained in the following example.
+
+##### Example Router Configuration Section:
+```
+forwarder:
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
+  latencyProbeInterval: 1000
+  # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
+  # for services that have a terminator egress specified with an xgress binding (e.g. transport)
+  # (minimum 1, max 10000, default 1000)
+  xgressDialQueueLength: 1000
+  # The number of xgress dial workers used to process the xgress dial queue.
+  # (minimum 1, max 10000, default 10)
+  xgressDialWorkerCount: 10
+  # How many link dials can be queued for processing by the link dial workers. An link dial occurs
+  # when a router is notified of a new router by the controller.
+  # (minimum 1, max 10000, default 1000)
+  linkDialQueueLength: 1000
+  # The number of link dial workers used to process the link dial queue.
+  # (minimum 1, max 10000, default 10)
+  linkDialWorkerCount: 10
+```
+
+## Model Performance Improvements
+Policy relationships are now stored in a denormalized fashion. This means that checking if an entity is tied to another entity via a policy is now a direct lookup, and much faster. This means that the Ziti controller should scale very well in cases where we have many identities, services and/or edge routers. Performance was tested against the APIs used by the SDKs. 
+
+See for more detail:
+
+* [Denormalized Policies](https://github.com/openziti/edge/wiki/Denormalized-Policies)
+* [Characterization (Pure Model Tests)](https://github.com/openziti/ziti/wiki/Characterization#pure-model-tests)
+
+## Data Integrity Checking Framework
+The bbolt datastore used by Ziti provides simple key/value storage with nesting. Ziti has implemented some basic relational constructs on top of bbolt, such as indexed values, foreign key indexes, many to many collections and reference counted collections (for policy denormalization). This release adds a data integrity checking framework which allows us to verify that constraint assumptions are valid, and allows fixing issues when they are found (if possible). This work was done in part to validate that the policy denormalization code is working correctly, and to provide a rememdy if issues are found.
+
+There are two new REST APIs available
+
+* GET `/database/check-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2916
+* POST `/database/fix-data-integrity`
+    * https://github.com/openziti/edge/blob/master/specs/swagger.yml#L2930
+
+These APIs can be used from the ziti CLI.
+
+* `ziti edge db check-integrity` - to report on data integrity issues
+* `ziti edge db check-integrity -f` - to report on data integrity issues and attempt to fix any that are found
+
+## Events Framework
+Ziti now has a shared events framework used across projects. Events are used internally and can be used by users to write components which plug into Ziti and react to events (or make them available externally).
+
+Each project which exposes events will have a top-level events package where you can find registration hooks for all exposed events in the project
+
+### Current Event Types
+* foundation  
+    * metrics events
+* fabric
+    * fabric session events (session created, session deleted, session path changed)
+    * trace events
+* edge
+    * **NEW** edge session events (session created, session deleted) 
+        * the session event created includes sessionId, session token, API sessionId and identity id
+        * the session deleted event includes sessionId and session token
+
+NOTE: The clientId on fabric session events is the edge session token for fabric sessions created from the edge
+
+# Release 0.15.3
+
+* What's New:
+  * Add example docker compose for ziti-tunnel  
+
 # Release 0.15.2
 
 * What's New:
