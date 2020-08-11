@@ -36,7 +36,7 @@
 ### E2E Encryption Router Termination
 A new xgress module has been added specifically for handling Ziti Edge e2e to handle SDK to Router Termination scenarios.
 Previously, only SDK-to-SDK end-to-end encryption was supported. When e2e encryption is desired
-for a router terminated service, use the bind value `xgress_edge_transport` when defining
+for a router terminated service, use the bind value `edge_transport` when defining
 the terminator for the service. This value is now the default when using the CLI to create
 a terminator. If the `binding` value is omitted when using the REST API directly, it will default
 to `transport` - which does not support e2e encryption.
@@ -44,7 +44,7 @@ to `transport` - which does not support e2e encryption.
 ##### CLI Example (explicit binding):
 
 ```
-ziti edge create terminator mytcpservice 002 tcp:my-tcp-service.com:12345 --binding  xgress_edge_transport
+ziti edge create terminator mytcpservice 002 tcp:my-tcp-service.com:12345 --binding edge_transport
 ```
 
 ##### Edge Rest API Example:
@@ -54,7 +54,7 @@ POST /terminators
 {
     "service": "ZbX9",
     "router": "002",
-    "binding": "xgress_edge_transport",
+    "binding": "edge_transport",
     "address": "tcp:my-tcp-service.com:12345"
 }
 ```
@@ -64,7 +64,7 @@ POST /terminators
 Edge Services can now be set to require e2e encryption. All Edge
 Services defined before this version will default to requiring e2e
 encryption. Existing services will need to have their terminators
-updated to use `xgress_edge_transport` or update the service to not
+updated to use `edge_transport` or update the service to not
 require e2e encryption.
 
 ##### Create Service Example (encryption required)

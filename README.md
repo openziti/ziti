@@ -6,7 +6,7 @@ Ziti represents the next generation of secure, open-source networking for your a
 * [Developer Overview](https://github.com/openziti/ziti/blob/master/doc/001-overview.md)
 * [Local Development](https://github.com/openziti/ziti/blob/master/doc/002-local-dev.md)
 * [Local Deployment](https://github.com/openziti/ziti/blob/master/doc/003-local-deploy.md)
-* [Release Notes](https://github.com/openziti/ziti/blob/master/doc/release-notes.md)
+* [Release Notes](https://github.com/openziti/ziti/blob/master/CHANGELOG.md)
 
 ## What is Ziti?
 * The Ziti fabric provides a scalable, plugable, networking mesh with built in smart routing
