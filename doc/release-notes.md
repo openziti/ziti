@@ -18,6 +18,7 @@
   * [#156](https://github.com/openziti/ziti/issues/156) - Fix display of policies with empty roles lists
   * [#169](https://github.com/openziti/ziti/issues/169) - Fix delete by ID in Ziti CLI
   * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5
+  * [edge#273](https://github.com/openziti/edge/issues/273) - Avoid tun "not pollable" read failures
   * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
    
 
