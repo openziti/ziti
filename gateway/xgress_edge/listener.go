@@ -176,12 +176,6 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	proxy.listener.bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, xgress.Initiator, x)
 	x.Start()
 
-	if err := sessionInfo.SendStartEgress(); err != nil {
-		msg := fmt.Sprintf("failed to send start egress: %v", err)
-		proxy.sendStateClosedReply(msg, req)
-		conn.close(false, msg)
-	}
-
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
 }
 
