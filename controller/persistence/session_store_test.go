@@ -19,6 +19,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -76,13 +77,15 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.cleanupAll()
 
+	compareOpts := cmpopts.IgnoreFields(Session{}, "ApiSession")
+
 	identity := ctx.requireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
 	service := ctx.requireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
 	ctx.RequireCreate(session)
-	ctx.ValidateBaseline(session)
+	ctx.ValidateBaseline(session, compareOpts)
 
 	sessionIds := ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(1, len(sessionIds))
@@ -95,7 +98,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	session2 := NewSession(apiSession.Id, service.Id)
 	session2.Tags = ctx.CreateTags()
 	ctx.RequireCreate(session2)
-	ctx.ValidateBaseline(session2)
+	ctx.ValidateBaseline(session2, compareOpts)
 
 	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
 	ctx.EqualValues(2, len(sessionIds))
@@ -262,7 +265,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 		ctx.True(loaded.UpdatedAt.Equal(now) || loaded.UpdatedAt.After(now))
 		session.CreatedAt = loaded.CreatedAt
 		session.UpdatedAt = loaded.UpdatedAt
-		ctx.True(cmp.Equal(session, loaded), cmp.Diff(session, loaded))
+		ctx.True(cmp.Equal(session, loaded, cmpopts.IgnoreFields(Session{}, "ApiSession")), cmp.Diff(session, loaded))
 		return nil
 	})
 	ctx.NoError(err)
@@ -274,4 +277,15 @@ func (ctx *TestContext) testDeleteSessions(_ *testing.T) {
 	ctx.RequireDelete(entities.session1)
 	ctx.RequireDelete(entities.session2)
 	ctx.RequireDelete(entities.session3)
+}
+
+func NewSession(apiSessionId, serviceId string) *Session {
+	return &Session{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Token:         eid.New(),
+		ApiSessionId:  apiSessionId,
+		ServiceId:     serviceId,
+		Type:          SessionTypeDial,
+		Certs:         nil,
+	}
 }

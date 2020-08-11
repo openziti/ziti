@@ -17,7 +17,6 @@
 package persistence
 
 import (
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -51,6 +50,7 @@ type Session struct {
 	ServiceId    string
 	Type         string
 	Certs        []*SessionCert
+	ApiSession   *ApiSession
 }
 
 func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -83,6 +83,10 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 			ctx.Bucket.SetError(ctx.Store.CreateChild(mutateCtx, entity.Id, cert))
 		}
 	}
+
+	if entity.ApiSession == nil {
+		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadOneById(ctx.Bucket.Tx(), entity.ApiSessionId)
+	}
 }
 
 func (entity *Session) GetEntityType() string {
@@ -95,17 +99,6 @@ type SessionCert struct {
 	Fingerprint string
 	ValidFrom   time.Time
 	ValidTo     time.Time
-}
-
-func NewSession(apiSessionId, serviceId string) *Session {
-	return &Session{
-		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
-		Token:         eid.New(),
-		ApiSessionId:  apiSessionId,
-		ServiceId:     serviceId,
-		Type:          SessionTypeDial,
-		Certs:         nil,
-	}
 }
 
 func (entity *SessionCert) GetId() string {
