@@ -238,15 +238,6 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 		}
 
-	case int32(ContentType_StartXgressType):
-		meta := channel2.NewTraceMessageDecode(DECODER, "Start Xgress")
-		meta["sessionId"] = string(msg.Body)
-		data, err := meta.MarshalTraceMessageDecode()
-		if err != nil {
-			return nil, true
-		}
-		return data, true
-
 	case int32(ContentType_MetricsType):
 		metricsMsg := &metrics_pb.MetricsMessage{}
 		if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {

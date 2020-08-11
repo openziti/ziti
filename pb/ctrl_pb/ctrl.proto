@@ -19,7 +19,6 @@ enum ContentType {
     RemoveTerminatorRequestType = 1012;
     InspectRequestType = 1013;
     InspectResponseType = 1014;
-    StartXgressType = 1015;
     SessionFailedType = 1016;
     ValidateTerminatorsRequestType = 1017;
     UpdateTerminatorRequestType = 10018;

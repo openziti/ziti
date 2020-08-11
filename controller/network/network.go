@@ -450,15 +450,6 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 	return InvalidSessionError{sessionId: sessionId.Token}
 }
 
-func (network *Network) StartSessionEgress(sessionId *identity.TokenId) error {
-	if ss, found := network.sessionController.get(sessionId); found {
-		terminatingRouter := ss.Circuit.Path[len(ss.Circuit.Path)-1]
-		pfxlog.Logger().Debugf("started session egress [s/%s]", ss.Id.Token)
-		return sendStartXgress(terminatingRouter, sessionId)
-	}
-	return fmt.Errorf("invalid session (%s)", sessionId.Token)
-}
-
 func (network *Network) CreateCircuit(srcR, dstR *Router) (*Circuit, error) {
 	ingressId, err := network.sequence.NextHash()
 	if err != nil {
@@ -732,14 +723,6 @@ func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
 	}
 	removeMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 	if err := r.Control.Send(removeMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-func sendStartXgress(r *Router, sessionId *identity.TokenId) error {
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_StartXgressType), []byte(sessionId.Token))
-	if err := r.Control.Send(msg); err != nil {
 		return err
 	}
 	return nil

@@ -56,7 +56,6 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder))
 	ch.AddReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
-	ch.AddReceiveHandler(newStartXgressHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
 	ch.AddReceiveHandler(newInspectHandler(self.id))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
