@@ -99,6 +99,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
 	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
+	x.Start()
 
 	start := edge.NewStateConnectedMsg(result.ConnId)
 	start.ReplyTo(reply)
