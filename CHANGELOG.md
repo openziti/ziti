@@ -1,6 +1,8 @@
-# Release 0.15.4
+# Release 0.16.0
 
 # What's New:
+
+**Important Note:** This release contains backwards incompatible changes. See below for details.
 
 * End-To-End Encryption Enhancements
   * [e2e Service Configuration & Router Termination](https://github.com/openziti/edge/issues/173)
@@ -12,6 +14,10 @@
   * [foundation#107](https://github.com/openziti/foundation/issues/107)
   * [edge#258](https://github.com/openziti/edge/issues/258)  
   * [#163](https://github.com/openziti/ziti/issues/163)
+* Events Framework
+  * [foundation#116](https://github.com/openziti/foundation/issues/116) - Add generic event framework and use it for metrics
+  * [fabric#106](https://github.com/openziti/fabric/issues/106) - Event Streaming
+  * [edge#229](https://github.com/openziti/edge/issues/229) - Stream Session Events
 
 * Bug Fixes:
   * [#152](https://github.com/openziti/ziti/issues/152) - Fix ziti-router enroll exit code on failure
@@ -20,10 +26,11 @@
   * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5
   * [edge#273](https://github.com/openziti/edge/issues/273) - Avoid tun "not pollable" read failures
   * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
-   
-
+  * [fabric#117](https://github.com/openziti/fabric/issues/117) - Xgress setup has a race condition
+ 
 * Backwards Compatibility 
   * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
+  * In order to fix [fabric#117](https://github.com/openziti/fabric/issues/117), the xgress protocol flow had to be updated. This means 0.16+ controllers and routers will not work with older controllers and routers
 
 ## End-To-End Encryption Enhancements
 ### E2E Encryption Router Termination
@@ -170,11 +177,29 @@ These APIs can be used from the ziti CLI.
 * `ziti edge db check-integrity` - to report on data integrity issues
 * `ziti edge db check-integrity -f` - to report on data integrity issues and attempt to fix any that are found
 
+## Events Framework
+Ziti now has a shared events framework used across projects. Events are used internally and can be used by users to write components which plug into Ziti and react to events (or make them available externally).
+
+Each project which exposes events will have a top-level events package where you can find registration hooks for all exposed events in the project
+
+### Current Event Types
+* foundation  
+    * metrics events
+* fabric
+    * fabric session events (session created, session deleted, session path changed)
+    * trace events
+* edge
+    * **NEW** edge session events (session created, session deleted) 
+        * the session event created includes sessionId, session token, API sessionId and identity id
+        * the session deleted event includes sessionId and session token
+
+NOTE: The clientId on fabric session events is the edge session token for fabric sessions created from the edge
+
 # Release 0.15.3
 
 * What's New:
   * Add example docker compose for ziti-tunnel  
-  
+
 # Release 0.15.2
 
 * What's New:

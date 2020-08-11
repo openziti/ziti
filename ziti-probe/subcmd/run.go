@@ -4,6 +4,7 @@ import (
 	"context"
 	influxdb "github.com/influxdata/influxdb1-client"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/sdk-golang/ziti"
@@ -132,7 +133,7 @@ func (p *probe) run(cmd *cobra.Command, args []string) {
 	}
 	log.Info("connected to influx version = ", res)
 
-	p.ctx.Metrics().EventController().AddHandler(p)
+	events.AddMetricsEventHandler(p)
 
 	go p.sendMetrics()
 
