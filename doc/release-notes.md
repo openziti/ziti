@@ -1,4 +1,4 @@
-# Release 0.15.4
+# Release 0.16.0
 
 # What's New:
 
@@ -20,10 +20,11 @@
   * [edge#269](https://github.com/openziti/edge/issues/269) - Service Policy types in the bbolt should be 1 and 2, rather than 4 and 5
   * [edge#273](https://github.com/openziti/edge/issues/273) - Avoid tun "not pollable" read failures
   * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
-   
-
+  * [fabric#117](https://github.com/openziti/fabric/issues/117) - Xgress setup has a race condition
+ 
 * Backwards Compatibility 
   * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
+  * In order to fix [fabric#117](https://github.com/openziti/fabric/issues/117), the xgress protocol flow had to be updated. This means 0.16+ controllers and routers will not work with older controllers and routers
 
 ## End-To-End Encryption Enhancements
 ### E2E Encryption Router Termination
