@@ -64,7 +64,6 @@ func (handler *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher 
 }
 
 func NewChannelPeekHandler(appId *identity.TokenId, ch channel2.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
-
 	handler := &ChannelPeekHandler{
 		appId:      appId,
 		ch:         ch,

@@ -34,6 +34,8 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/event"
+	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -59,6 +61,8 @@ type Router struct {
 	metricsRegistry metrics.Registry
 	shutdownC       chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
+	eventDispatcher event.Dispatcher
+	metricsReporter metrics.Handler
 }
 
 func (self *Router) Channel() channel2.Channel {
@@ -66,13 +70,15 @@ func (self *Router) Channel() channel2.Channel {
 }
 
 func Create(config *Config) *Router {
-	metricsRegistry := metrics.NewRegistry(config.Id.Token, make(map[string]string), time.Second*15, nil)
+	eventDispatcher := event.NewDispatcher()
+	metricsRegistry := metrics.NewRegistry(config.Id.Token, make(map[string]string), time.Second*15, metrics.NewDispatchWrapper(eventDispatcher.Dispatch))
 
 	return &Router{
 		config:          config,
 		forwarder:       forwarder.NewForwarder(metricsRegistry, config.Forwarder),
 		metricsRegistry: metricsRegistry,
 		shutdownC:       make(chan struct{}),
+		eventDispatcher: eventDispatcher,
 	}
 }
 
@@ -110,6 +116,11 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
+		self.eventDispatcher.Stop()
+		if self.metricsReporter != nil {
+			events.RemoveMetricsEventHandler(self.metricsReporter)
+		}
+
 		if err := self.ctrl.Close(); err != nil {
 			errors = append(errors, err)
 		}
@@ -278,7 +289,8 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	self.metricsRegistry.EventController().AddHandler(metrics.NewChannelReporter(self.ctrl))
+	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
+	events.AddMetricsEventHandler(self.metricsReporter)
 
 	return nil
 }

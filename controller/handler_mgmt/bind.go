@@ -67,7 +67,9 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddCloseHandler(streamTracesHandler)
 
 	ch.AddReceiveHandler(newTogglePipeTracesHandler(network))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), ch, network.GetTraceController(), network.GetTraceEventController()))
+
+	traceDispatchWrapper := trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), ch, network.GetTraceController(), traceDispatchWrapper))
 
 	ch.AddReceiveHandler(newSnapshotDbHandler(network))
 

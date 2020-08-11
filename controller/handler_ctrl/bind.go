@@ -34,6 +34,7 @@ func newBindHandler(router *network.Router, network *network.Network, xctrls []x
 }
 
 func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
+	traceDispatchWrapper := trace.NewDispatchWrapper(bindHandler.network.GetEventDispatcher().Dispatch)
 	ch.SetLogicalName(bindHandler.router.Id)
 	ch.AddReceiveHandler(newSessionRequestHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newCreateTerminatorHandler(bindHandler.network, bindHandler.router))
@@ -42,9 +43,9 @@ func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newLinkHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newFaultHandler(bindHandler.router, bindHandler.network))
 	ch.AddReceiveHandler(newMetricsHandler(bindHandler.network))
-	ch.AddReceiveHandler(bindHandler.network.GetTraceEventController())
+	ch.AddReceiveHandler(newTraceHandler(traceDispatchWrapper))
 	ch.AddReceiveHandler(newInspectHandler(bindHandler.network))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), ch, bindHandler.network.GetTraceController(), bindHandler.network.GetTraceEventController()))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), ch, bindHandler.network.GetTraceController(), traceDispatchWrapper))
 
 	xctrlDone := make(chan struct{})
 	for _, x := range bindHandler.xctrls {

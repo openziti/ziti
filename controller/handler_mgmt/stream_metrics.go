@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"regexp"
@@ -56,18 +57,17 @@ func (handler *streamMetricsHandler) HandleReceive(msg *channel2.Message, ch cha
 	}
 
 	metricsStreamHandler := &MetricsStreamHandler{
-		ch:              ch,
-		filters:         filters,
-		eventController: handler.network.GetMetricsEventController(),
+		ch:      ch,
+		filters: filters,
 	}
 
 	handler.streamHandlers = append(handler.streamHandlers, metricsStreamHandler)
-	handler.network.GetMetricsEventController().AddHandler(metricsStreamHandler)
+	events.AddMetricsEventHandler(metricsStreamHandler)
 }
 
-func (handler *streamMetricsHandler) HandleClose(ch channel2.Channel) {
+func (handler *streamMetricsHandler) HandleClose(channel2.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
-		handler.network.GetMetricsEventController().RemoveHandler(streamHandler)
+		events.RemoveMetricsEventHandler(streamHandler)
 	}
 }
 
@@ -103,9 +103,8 @@ type metricsFilter struct {
 }
 
 type MetricsStreamHandler struct {
-	ch              channel2.Channel
-	filters         []*metricsFilter
-	eventController metrics.EventController
+	ch      channel2.Channel
+	filters []*metricsFilter
 }
 
 func (handler *MetricsStreamHandler) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
@@ -232,5 +231,5 @@ func (handler *MetricsStreamHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure while closing handler")
 	}
-	handler.eventController.RemoveHandler(handler)
+	events.RemoveMetricsEventHandler(handler)
 }
