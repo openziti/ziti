@@ -320,3 +320,11 @@ func NewRateLimited() *ApiError {
 		Status:  RateLimitedStatus,
 	}
 }
+
+func NewTimeoutError() *ApiError {
+	return &ApiError{
+		Code:    TimeoutCode,
+		Message: TimeoutMessage,
+		Status:  TimeoutStatus,
+	}
+}

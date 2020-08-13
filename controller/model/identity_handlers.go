@@ -433,5 +433,5 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
 	}
 
-	return handler.Patch(identity, checker)
+	return handler.patchEntityBatch(identity, checker)
 }

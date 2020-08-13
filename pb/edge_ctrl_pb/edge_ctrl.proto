@@ -54,6 +54,7 @@ message Session {
     repeated string urls = 4;
     Service service = 5;
     string sessionToken = 6;
+    string id = 7;
 }
 
 message ApiSession {

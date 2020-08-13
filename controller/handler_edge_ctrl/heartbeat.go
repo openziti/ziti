@@ -52,7 +52,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, _ channel
 			}
 
 		} else {
-			pfxlog.Logger().Panic("could not convert message as session heartbeat")
+			pfxlog.Logger().Error("could not convert message as session heartbeat")
 		}
 	}()
 }

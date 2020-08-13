@@ -17,7 +17,9 @@
 package model
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/ast"
 	"go.etcd.io/bbolt"
 )
 
@@ -81,6 +83,44 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		return handler.GetEnv().GetStores().ApiSession.MarkActivity(tx, tokens)
+	})
+}
+
+func (handler *ApiSessionHandler) Stream(query string, collect func(*ApiSession, error) error) error {
+	filter, err := ast.Parse(handler.Store, query)
+
+	if err != nil {
+		return fmt.Errorf("could not parse query for streaming api sesions: %v", err)
+	}
+
+	return handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for cursor := handler.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
+			current := cursor.Current()
+
+			apiSession, err := handler.readInTx(tx, string(current))
+			if err := collect(apiSession, err); err != nil {
+				return err
+			}
+		}
+		return collect(nil, nil)
+	})
+}
+
+func (handler *ApiSessionHandler) StreamIds(query string, collect func(string, error) error) error {
+	filter, err := ast.Parse(handler.Store, query)
+
+	if err != nil {
+		return fmt.Errorf("could not parse query for streaming api sesions ids: %v", err)
+	}
+
+	return handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for cursor := handler.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
+			current := cursor.Current()
+			if err := collect(string(current), err); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

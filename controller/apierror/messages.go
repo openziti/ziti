@@ -178,4 +178,8 @@ const (
 	RateLimitedCode    string = "RATE_LIMITED"
 	RateLimitedMessage string = "The requested operation is rate limited and the rate limit has been exceeded. Please try again later"
 	RateLimitedStatus  int    = http.StatusTooManyRequests
+
+	TimeoutCode    string = "TIMEOUT"
+	TimeoutMessage string = "The requested operation took too much time to reply"
+	TimeoutStatus  int    = http.StatusServiceUnavailable
 )

@@ -202,16 +202,20 @@ func (a authorizer) Authorize(request *http.Request, principal interface{}) erro
 func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	rc.SessionToken = ae.GetSessionTokenFromRequest(rc.Request)
 	logger := pfxlog.Logger()
-	_, err := uuid.Parse(rc.SessionToken)
 
-	if err != nil {
-		logger.WithError(err).Debug("failed to parse session id")
-		rc.SessionToken = ""
-	} else {
-		logger.Tracef("authorizing request using session id '%v'", rc.SessionToken)
+	if rc.SessionToken != "" {
+		_, err := uuid.Parse(rc.SessionToken)
+		if err != nil {
+			logger.WithError(err).Debug("failed to parse session id")
+			rc.SessionToken = ""
+		} else {
+			logger.Tracef("authorizing request using session id '%v'", rc.SessionToken)
+		}
+
 	}
 
 	if rc.SessionToken != "" {
+		var err error
 		rc.ApiSession, err = ae.GetHandlers().ApiSession.ReadByToken(rc.SessionToken)
 		if err != nil {
 			logger.WithError(err).Debugf("looking up API session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
@@ -232,6 +236,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	}
 
 	if rc.ApiSession != nil {
+		var err error
 		rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {

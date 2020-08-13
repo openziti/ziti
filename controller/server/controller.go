@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/openziti/edge/controller"
+	"github.com/openziti/edge/controller/apierror"
 	"net/http"
 	"os"
 	"os/signal"
@@ -243,7 +244,7 @@ func (c *Controller) Run() {
 		})
 	})
 
-	as := newApiServer(c.config, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		//if not edge prefix, translate to "/edge/v<latest>"
 		if !strings.HasPrefix(request.URL.Path, controller.RestApiBase) {
 			request.URL.Path = controller.RestApiBaseUrlLatest + request.URL.Path
@@ -251,7 +252,11 @@ func (c *Controller) Run() {
 
 		//let the OpenApi http router take over
 		apiHandler.ServeHTTP(writer, request)
-	}))
+	})
+
+	timeoutHandler := TimeoutHandler(handler, 10*time.Second, apierror.NewTimeoutError())
+
+	as := newApiServer(c.config, timeoutHandler)
 
 	as.corsOptions = corsOpts
 	c.apiServer = as

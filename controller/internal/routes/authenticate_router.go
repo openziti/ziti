@@ -52,6 +52,9 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 }
 
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
+	logger := pfxlog.Logger()
+
+	startTime := time.Now()
 
 	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Body)
 
@@ -81,7 +84,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		if envInfoInterface := dataMap["envInfo"]; envInfoInterface != nil {
 			if envInfo := envInfoInterface.(map[string]interface{}); envInfo != nil {
 				if err := mapstructure.Decode(envInfo, &identity.EnvInfo); err != nil {
-					pfxlog.Logger().WithError(err).Error("error processing env info")
+					logger.WithError(err).Error("error processing env info")
 				}
 				shouldUpdate = true
 			}
@@ -90,16 +93,19 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		if sdkInfoInterface := dataMap["sdkInfo"]; sdkInfoInterface != nil {
 			if sdkInfo := sdkInfoInterface.(map[string]interface{}); sdkInfo != nil {
 				if err := mapstructure.Decode(sdkInfo, &identity.SdkInfo); err != nil {
-					pfxlog.Logger().WithError(err).Error("error processing sdk info")
+					logger.WithError(err).Error("error processing sdk info")
 				}
 				shouldUpdate = true
 			}
 		}
 
 		if shouldUpdate {
+			beforePathInfo := time.Now()
 			if err := ae.GetHandlers().Identity.PatchInfo(identity); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
+				logger.WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
 			}
+			patchInfoDelta := time.Now().Sub(beforePathInfo)
+			logger.Debugf("auth patch info timing (micro-sec): %v\n", patchInfoDelta.Microseconds())
 		}
 	}
 
@@ -110,24 +116,26 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		configTypes = mapConfigTypeNamesToIds(ae, params.Body.ConfigTypes, identity.Id)
 	}
 
-	pfxlog.Logger().Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
+	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	s := &model.ApiSession{
 		IdentityId:  identity.Id,
 		Token:       token,
 		ConfigTypes: configTypes,
 	}
-
+	beforeSessionCreate := time.Now()
 	sessionId, err := ae.Handlers.ApiSession.Create(s)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
+	sessionCreateDuration := time.Now().Sub(beforeSessionCreate)
+	logger.Debugf("auth create session timing (micro-sec): %v\n", sessionCreateDuration.Microseconds())
 
 	session, err := ae.Handlers.ApiSession.Read(sessionId)
 
 	if err != nil {
-		pfxlog.Logger().WithField("cause", err).Error("loading session by id resulted in an error")
+		logger.WithField("cause", err).Error("loading session by id resulted in an error")
 		rc.RespondWithApiError(apierror.NewUnauthorized())
 	}
 
@@ -142,6 +150,9 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	http.SetCookie(rc.ResponseWriter, &cookie)
 
 	rc.Respond(envelope, http.StatusOK)
+
+	taken := time.Now().Sub(startTime).Microseconds()
+	logger.Debugf("auth timing (micro-sec): %v\n", taken)
 }
 
 func mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) map[string]struct{} {

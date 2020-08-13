@@ -158,7 +158,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		return
 	}
 
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Token, ns.Service.Id, peerData)
+	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, ns.Service.Id, peerData)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
