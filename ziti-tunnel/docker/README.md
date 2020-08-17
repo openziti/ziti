@@ -77,23 +77,23 @@ This example uses Compose to store in a file the Docker `build` and `run` parame
 ```yaml
 version: "3.3"
 services:
-    ziti-tunnel:
-        image: netfoundry/ziti-tunnel:local
+    ziti-tproxy:
+        image: netfoundry/ziti-tunnel:tproxy
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
         cap_add:
         - NET_ADMIN
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
+        - NF_REG_NAME
 #        command: run --resolver udp://127.0.0.123:53
 ```
 
-2. Run `docker-compose up --build ziti-tunnel` in the same directory.
+2. Run `NF_REG_NAME=my-ziti-identity-file docker-compose up --build ziti-tproxy` in the same directory.
 
 This will cause the container to configure the Linux host to transparently proxy any domain names or IP addresses that match a Ziti service.
 
