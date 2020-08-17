@@ -1,6 +1,7 @@
 #!/bin/bash
 ${curdir}/create-controller-config.sh
 ${curdir}/create-edge-router-config.sh
+${curdir}/create-edge-wss-router-config.sh
 
 
 echo "

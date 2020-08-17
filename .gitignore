@@ -20,3 +20,4 @@ db/
 # goland
 .idea
 github_deploy_key
+.vscode/
