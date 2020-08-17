@@ -34,6 +34,8 @@ type updateServiceOptions struct {
 	name               string
 	terminatorStrategy string
 	roleAttributes     []string
+	requireEncryption  bool
+	optionalEncryption bool
 }
 
 func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -63,6 +65,8 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the service. Use --role-attributes '' to set an empty list")
+	cmd.Flags().BoolVarP(&options.requireEncryption, "encryption-required", "e", false, "Require end-to-end encryption for the service")
+	cmd.Flags().BoolVarP(&options.optionalEncryption, "encryption-optional", "o", false, "Optional end-to-end encryption for the service")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -89,6 +93,21 @@ func runUpdateService(o *updateServiceOptions) error {
 
 	if o.Cmd.Flags().Changed("terminator-strategy") {
 		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
+		change = true
+	}
+
+
+	if o.Cmd.Flags().Changed("encryption-optional") && o.Cmd.Flags().Changed("encryption-required") {
+		return errors.New("cannot specify both --encryption-optional and --encryption-required")
+	}
+
+	if o.Cmd.Flags().Changed("encryption-required") {
+		setJSONValue(entityData, true, "encryptionRequired")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("encryption-optional") {
+		setJSONValue(entityData, false, "encryptionRequired")
 		change = true
 	}
 

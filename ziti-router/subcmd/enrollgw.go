@@ -17,9 +17,9 @@
 package subcmd
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/gateway/enroll"
 	"github.com/openziti/fabric/router"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 )
@@ -58,8 +58,7 @@ func enrollGw(cmd *cobra.Command, args []string) {
 		}
 
 		if err := enroller.Enroll(jwtBuf, true, *engine); err != nil {
-			log.Error(err)
-			return
+			log.Fatalf("enrollment failure: (%v)", err)
 		}
 	} else {
 		panic(err)
