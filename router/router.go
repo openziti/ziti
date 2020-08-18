@@ -58,7 +58,7 @@ type Router struct {
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
 	xgressListeners []xgress.Listener
-	metricsRegistry metrics.Registry
+	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
 	eventDispatcher event.Dispatcher
@@ -71,7 +71,12 @@ func (self *Router) Channel() channel2.Channel {
 
 func Create(config *Config) *Router {
 	eventDispatcher := event.NewDispatcher()
-	metricsRegistry := metrics.NewRegistry(config.Id.Token, make(map[string]string), time.Second*15, metrics.NewDispatchWrapper(eventDispatcher.Dispatch))
+	metricsConfig := &metrics.Config{
+		Source:         config.Id.Token,
+		ReportInterval: time.Second * 15,
+		EventSink:      metrics.NewDispatchWrapper(eventDispatcher.Dispatch),
+	}
+	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig)
 
 	return &Router{
 		config:          config,

@@ -30,7 +30,8 @@ func TestShortestPath(t *testing.T) {
 
 	req := assert.New(t)
 
-	network, err := NewNetwork(nil, nil, ctx.GetDb(), nil)
+	nodeId := &identity.TokenId{Token: "test"}
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
