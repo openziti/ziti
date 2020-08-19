@@ -120,7 +120,11 @@ services:
         command: proxy "my example service":8888 "my other example service":9999
 ```
 
-2. Run `docker-compose up --build ziti-proxy` in the same directory.
+2. Run in the same directory:
+
+```bash
+docker-compose up --build ziti-proxy
+```
 
 This will cause the container to listen on the mapped port(s) and proxy any received traffic to the Ziti service that is bound to that port.
 
