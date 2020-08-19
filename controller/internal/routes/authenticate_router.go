@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/authentication"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"time"
@@ -39,6 +40,7 @@ func init() {
 }
 
 type AuthRouter struct {
+	createTimer metrics.Timer
 }
 
 func NewAuthRouter() *AuthRouter {
@@ -46,13 +48,14 @@ func NewAuthRouter() *AuthRouter {
 }
 
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
+	ro.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("api-session.create")
 	ae.Api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params) }, params.HTTPRequest, "", "", permissions.Always())
 	})
 }
 
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
-
+	start := time.Now()
 	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Body)
 
 	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
@@ -140,6 +143,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 
 	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, session.Token)
 	http.SetCookie(rc.ResponseWriter, &cookie)
+	ro.createTimer.UpdateSince(start)
 
 	rc.Respond(envelope, http.StatusOK)
 }

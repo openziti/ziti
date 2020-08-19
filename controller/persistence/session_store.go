@@ -130,8 +130,6 @@ func (entity *SessionCert) GetEntityType() string {
 type SessionStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*Session, error)
-	LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Session, error)
 	LoadCerts(tx *bbolt.Tx, id string) ([]*SessionCert, error)
 }
 
@@ -146,7 +144,6 @@ func newSessionStore(stores *stores) *sessionStoreImpl {
 type sessionStoreImpl struct {
 	*baseStore
 
-	indexToken       boltz.ReadIndex
 	symbolApiSession boltz.EntitySymbol
 	symbolService    boltz.EntitySymbol
 }
@@ -158,17 +155,17 @@ func (store *sessionStoreImpl) NewStoreEntity() boltz.Entity {
 func (store *sessionStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 
-	symbolToken := store.AddSymbol(FieldSessionToken, ast.NodeTypeString)
-	store.indexToken = store.AddUniqueIndex(symbolToken)
+	store.AddSymbol(FieldSessionToken, ast.NodeTypeString)
 
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
 	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
 	store.AddSymbol(FieldSessionType, ast.NodeTypeBool)
+
+	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeDelete)
+	store.AddFkConstraint(store.symbolService, false, boltz.CascadeDelete)
 }
 
 func (store *sessionStoreImpl) initializeLinked() {
-	store.AddFkIndex(store.symbolApiSession, store.stores.apiSession.symbolSessions)
-	store.AddFkIndex(store.symbolService, store.stores.edgeService.symbolSessions)
 }
 
 func (store *sessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Session, error) {
@@ -177,22 +174,6 @@ func (store *sessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Session, e
 		return nil, err
 	}
 	return entity, nil
-}
-
-func (store *sessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Session, error) {
-	entity := &Session{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error) {
-	id := store.indexToken.Read(tx, []byte(token))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
 }
 
 func (store *sessionStoreImpl) LoadCerts(tx *bbolt.Tx, id string) ([]*SessionCert, error) {

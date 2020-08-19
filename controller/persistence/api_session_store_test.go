@@ -48,7 +48,7 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 
 	apiSession.IdentityId = ""
 	err = ctx.Create(apiSession)
-	ctx.EqualError(err, "index on apiSessions.identity does not allow null or empty values")
+	ctx.EqualError(err, "fk constraint on apiSessions.identity does not allow null or empty values")
 
 	identity := ctx.requireNewIdentity("user1", false)
 	apiSession.Token = ""
@@ -74,26 +74,17 @@ func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
 
 	ctx.ValidateBaseline(apiSession)
 
-	apiSessionIds := ctx.getRelatedIds(identity, FieldIdentityApiSessions)
-	ctx.EqualValues(1, len(apiSessionIds))
-	ctx.EqualValues(apiSession.Id, apiSessionIds[0])
-
 	apiSession2 := NewApiSession(identity.Id)
 	apiSession2.Tags = ctx.CreateTags()
 	ctx.RequireCreate(apiSession2)
 
 	ctx.ValidateBaseline(apiSession2)
 
-	apiSessionIds = ctx.getRelatedIds(identity, FieldIdentityApiSessions)
-	ctx.EqualValues(2, len(apiSessionIds))
-	ctx.True(stringz.Contains(apiSessionIds, apiSession.Id))
-	ctx.True(stringz.Contains(apiSessionIds, apiSession2.Id))
-
 	ctx.RequireDelete(apiSession)
 
-	apiSessionIds = ctx.getRelatedIds(identity, FieldIdentityApiSessions)
-	ctx.EqualValues(1, len(apiSessionIds))
-	ctx.EqualValues(apiSession2.Id, apiSessionIds[0])
+	ctx.RequireDelete(identity)
+	ctx.ValidateDeleted(apiSession.Id)
+	ctx.ValidateDeleted(apiSession2.Id)
 }
 
 type apiSessionTestEntities struct {
@@ -163,11 +154,6 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 		ctx.True(stringz.Contains(ids, entities.apiSession2.Id))
 		ctx.True(stringz.Contains(ids, entities.apiSession3.Id))
 
-		query = fmt.Sprintf(`anyOf(sessions.service.id) = "%v"`, entities.serviceId)
-		ids, _, err = ctx.stores.ApiSession.QueryIds(tx, query)
-		ctx.NoError(err)
-		ctx.EqualValues(1, len(ids))
-		ctx.EqualValues(entities.apiSession2.Id, ids[0])
 		return nil
 	})
 	ctx.NoError(err)

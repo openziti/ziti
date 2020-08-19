@@ -46,6 +46,7 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/xeipuuv/gojsonschema"
@@ -119,6 +120,10 @@ func (ae *AppEnv) IsEdgeRouterOnline(id string) bool {
 
 func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
 	return ae.ApiClientCsrSigner
+}
+
+func (ae *AppEnv) GetMetricsRegistry() metrics.Registry {
+	return ae.HostController.GetNetwork().GetMetricsRegistry()
 }
 
 type HostController interface {

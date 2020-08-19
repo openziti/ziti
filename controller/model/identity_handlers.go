@@ -23,14 +23,17 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 type IdentityHandler struct {
 	baseHandler
 	allowedFieldsChecker boltz.FieldChecker
+	updateSdkInfoTimer   metrics.Timer
 }
 
 func NewIdentityHandler(env Env) *IdentityHandler {
@@ -43,6 +46,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 			persistence.FieldIdentityType:           struct{}{},
 			boltz.FieldTags:                         struct{}{},
 		},
+		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 	}
 	handler.impl = handler
 	return handler
@@ -422,6 +426,7 @@ func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]strin
 }
 
 func (handler IdentityHandler) PatchInfo(identity *Identity) error {
+	start := time.Now()
 	checker := boltz.MapFieldChecker{
 		persistence.FieldIdentityEnvInfoArch:      struct{}{},
 		persistence.FieldIdentityEnvInfoOs:        struct{}{},
@@ -433,5 +438,20 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
 	}
 
-	return handler.Patch(identity, checker)
+	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		boltEntity, err := identity.toBoltEntityForPatch(tx, handler.impl)
+		if err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not convert to bolt identity")
+			return nil
+		}
+
+		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not patch identity")
+			return nil
+		}
+		return nil
+	})
+	handler.updateSdkInfoTimer.UpdateSince(start)
+	return err
 }

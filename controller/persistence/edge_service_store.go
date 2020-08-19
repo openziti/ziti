@@ -107,7 +107,6 @@ type edgeServiceStoreImpl struct {
 	indexRoleAttributes boltz.SetReadIndex
 
 	symbolRoleAttributes boltz.EntitySetSymbol
-	symbolSessions       boltz.EntitySetSymbol
 	symbolConfigs        boltz.EntitySetSymbol
 
 	symbolServicePolicies           boltz.EntitySetSymbol
@@ -138,7 +137,6 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.indexName = store.GetParentStore().(db.ServiceStore).GetNameIndex()
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
-	store.symbolSessions = store.AddFkSetSymbol(EntityTypeSessions, store.stores.session)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
@@ -225,12 +223,6 @@ func (store *edgeServiceStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*
 }
 
 func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	for _, sessionId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeSessions) {
-		if err := store.stores.session.DeleteById(ctx, sessionId); err != nil {
-			return err
-		}
-	}
-
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from ServiceRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolServiceRoles); err != nil {
