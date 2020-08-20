@@ -4171,7 +4171,7 @@ definitions:
         description: Data payload is defined by the schema of the config-type defined in the type parameter
     example:
       name: test-config
-      type: cea49285-6c07-42cf-9f52-09a9b115c783
+      configTypeId: cea49285-6c07-42cf-9f52-09a9b115c783
       data:
         hostname: example.com
         port: 80

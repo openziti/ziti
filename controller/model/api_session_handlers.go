@@ -26,6 +26,7 @@ func NewApiSessionHandler(env Env) *ApiSessionHandler {
 		baseHandler: newBaseHandler(env, env.GetStores().ApiSession),
 	}
 	handler.impl = handler
+
 	return handler
 }
 
@@ -37,8 +38,8 @@ func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
 	return &ApiSession{}
 }
 
-func (handler *ApiSessionHandler) Create(ApiSessionModel *ApiSession) (string, error) {
-	return handler.createEntity(ApiSessionModel)
+func (handler *ApiSessionHandler) Create(entity *ApiSession) (string, error) {
+	return handler.createEntity(entity)
 }
 
 func (handler *ApiSessionHandler) Read(id string) (*ApiSession, error) {

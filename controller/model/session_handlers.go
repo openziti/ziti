@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-
 	"go.etcd.io/bbolt"
 )
 
