@@ -1,6 +1,17 @@
+# Release 0.16.1
+
+* What's New
+  * Metrics Refactoring
+      * [Support timers in metrics events](https://github.com/openziti/foundation/issues/121)
+      * [Convert json file reporter to generic reporter supporting multiple formatters, including json and plain](https://github.com/openziti/foundation/issues/122)
+  * Session Performance Fixes
+      * [Supported unindexed FK constraints in bbolt](https://github.com/openziti/foundation/issues/119)
+      * [Improve API Session and Session creation performance](https://github.com/openziti/edge/issues/281)
+
+
 # Release 0.16.0
 
-# What's New:
+## Overview:
 
 **Important Note:** This release contains backwards incompatible changes. See below for details.
 
