@@ -33,7 +33,7 @@ type Forwarder struct {
 	sessions                *sessionTable
 	destinations            *destinationTable
 	payloadBufferController *xgress.PayloadBufferController
-	metricsRegistry         metrics.Registry
+	metricsRegistry         metrics.UsageRegistry
 	traceController         trace.Controller
 	Options                 *Options
 }
@@ -51,7 +51,7 @@ type XgressDestination interface {
 	Label() string
 }
 
-func NewForwarder(metricsRegistry metrics.Registry, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
@@ -72,7 +72,7 @@ func (forwarder *Forwarder) PayloadBufferController() *xgress.PayloadBufferContr
 	return forwarder.payloadBufferController
 }
 
-func (forwarder *Forwarder) MetricsRegistry() metrics.Registry {
+func (forwarder *Forwarder) MetricsRegistry() metrics.UsageRegistry {
 	return forwarder.metricsRegistry
 }
 

@@ -62,6 +62,7 @@ type Network struct {
 	lock                   sync.Mutex
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
+	metricsRegistry        metrics.Registry
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
@@ -69,7 +70,9 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 	if err != nil {
 		return nil, err
 	}
+
 	controllers := NewControllers(database, stores)
+	eventDispatcher := event.NewDispatcher()
 
 	network := &Network{
 		Controllers:       controllers,
@@ -80,17 +83,38 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		linkChanged:       make(chan *Link),
 		sessionController: newSessionController(),
 		sequence:          sequence.NewSequence(),
-		eventDispatcher:   event.NewDispatcher(),
+		eventDispatcher:   eventDispatcher,
 		traceController:   trace.NewController(),
 		shutdownChan:      make(chan struct{}),
 		strategyRegistry:  xt.GlobalRegistry(),
 		lastSnapshot:      time.Now().Add(-time.Hour),
+		metricsRegistry:   metrics.NewRegistry(nodeId.Token, nil),
 	}
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
+	network.relayControllerMetrics(metricsCfg)
 	return network, nil
+}
+
+func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
+	reportInterval := time.Second * 15
+	if cfg != nil && cfg.ReportInterval != 0 {
+		reportInterval = cfg.ReportInterval
+	}
+	go func() {
+		timer := time.NewTicker(reportInterval)
+		dispatcher := metrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
+		for {
+			select {
+			case <-timer.C:
+				if msg := network.metricsRegistry.Poll(); msg != nil {
+					dispatcher.AcceptMetrics(msg)
+				}
+			}
+		}
+	}()
 }
 
 func (network *Network) GetAppId() *identity.TokenId {
@@ -151,6 +175,10 @@ func (network *Network) GetEventDispatcher() event.Dispatcher {
 
 func (network *Network) GetTraceController() trace.Controller {
 	return network.traceController
+}
+
+func (network *Network) GetMetricsRegistry() metrics.Registry {
+	return network.metricsRegistry
 }
 
 func (network *Network) RouterChanged(r *Router) {
@@ -643,6 +671,10 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 }
 
 func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
+	if metrics.SourceId == network.nodeId.Token {
+		return // ignore metrics coming from the controller itself
+	}
+
 	log := pfxlog.Logger()
 
 	router, err := network.Routers.Read(metrics.SourceId)

@@ -25,7 +25,7 @@ import (
 )
 
 // NewChannelPeekHandler creates a channel PeekHandler which tracks latency, message rate and message size distribution
-func NewChannelPeekHandler(linkId string, registry metrics.Registry) channel2.PeekHandler {
+func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channel2.PeekHandler {
 	appTxBytesMeter := registry.Meter("fabric.tx.bytesrate")
 	appTxMsgMeter := registry.Meter("fabric.tx.msgrate")
 	appTxMsgSizeHistogram := registry.Histogram("fabric.tx.msgsize")
@@ -96,10 +96,10 @@ type channelPeekHandler struct {
 	closeHook func()
 }
 
-func (h *channelPeekHandler) Connect(ch channel2.Channel, remoteAddress string) {
+func (h *channelPeekHandler) Connect(channel2.Channel, string) {
 }
 
-func (h *channelPeekHandler) Rx(msg *channel2.Message, ch channel2.Channel) {
+func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.linkRxBytesMeter.Mark(msgSize)
 	h.linkRxMsgMeter.Mark(1)
@@ -117,7 +117,7 @@ func (h *channelPeekHandler) Rx(msg *channel2.Message, ch channel2.Channel) {
 	}
 }
 
-func (h *channelPeekHandler) Tx(msg *channel2.Message, ch channel2.Channel) {
+func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.linkTxBytesMeter.Mark(msgSize)
 	h.linkTxMsgMeter.Mark(1)
@@ -135,14 +135,14 @@ func (h *channelPeekHandler) Tx(msg *channel2.Message, ch channel2.Channel) {
 	}
 }
 
-func (h *channelPeekHandler) Close(ch channel2.Channel) {
+func (h *channelPeekHandler) Close(channel2.Channel) {
 	if h.closeHook != nil {
 		h.closeHook()
 	}
 }
 
 // NewXgressPeekHandler creates an xgress PeekHandler which tracks message rates and histograms as well as usage
-func NewXgressPeekHandler(registry metrics.Registry) xgress.PeekHandler {
+func NewXgressPeekHandler(registry metrics.UsageRegistry) xgress.PeekHandler {
 	ingressTxBytesMeter := registry.Meter("ingress.tx.bytesrate")
 	ingressTxMsgMeter := registry.Meter("ingress.tx.msgrate")
 	ingressRxBytesMeter := registry.Meter("ingress.rx.bytesrate")
@@ -230,5 +230,5 @@ func (handler *xgressPeekHandler) Tx(x *xgress.Xgress, payload *xgress.Payload) 
 	}
 }
 
-func (handler *xgressPeekHandler) Close(x *xgress.Xgress) {
+func (handler *xgressPeekHandler) Close(*xgress.Xgress) {
 }
