@@ -17,6 +17,7 @@
 package edge_controller
 
 import (
+	"github.com/openziti/ziti/common/enrollment"
 	"io"
 
 	"github.com/Jeffail/gabs"
@@ -64,6 +65,7 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newPolicyAdivsorCmd(f, out, errOut))
 	cmd.AddCommand(newVerifyCmd(f, out, errOut))
 	cmd.AddCommand(newDbCmd(f, out, errOut))
+	cmd.AddCommand(enrollment.NewEnrollCommand())
 	return cmd
 }
 
