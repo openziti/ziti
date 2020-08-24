@@ -1,4 +1,4 @@
-package server
+package timeout
 
 import (
 	"bytes"
@@ -165,7 +165,7 @@ func relevantCaller() goruntime.Frame {
 	var frame goruntime.Frame
 	for {
 		frame, more := frames.Next()
-		if !strings.HasPrefix(frame.Function, "net/http.") {
+		if !strings.HasPrefix(frame.Function, "net/http.") && !strings.HasPrefix(frame.Function, "github.com/openziti/edge/controller/timeout") {
 			return frame
 		}
 		if !more {
