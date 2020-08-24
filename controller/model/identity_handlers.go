@@ -23,14 +23,17 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 type IdentityHandler struct {
 	baseHandler
 	allowedFieldsChecker boltz.FieldChecker
+	updateSdkInfoTimer   metrics.Timer
 }
 
 func NewIdentityHandler(env Env) *IdentityHandler {
@@ -43,6 +46,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 			persistence.FieldIdentityType:           struct{}{},
 			boltz.FieldTags:                         struct{}{},
 		},
+		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 	}
 	handler.impl = handler
 	return handler
@@ -422,6 +426,7 @@ func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]strin
 }
 
 func (handler IdentityHandler) PatchInfo(identity *Identity) error {
+	start := time.Now()
 	checker := boltz.MapFieldChecker{
 		persistence.FieldIdentityEnvInfoArch:      struct{}{},
 		persistence.FieldIdentityEnvInfoOs:        struct{}{},
@@ -433,5 +438,9 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
 	}
 
-	return handler.patchEntityBatch(identity, checker)
+	err := handler.patchEntityBatch(identity, checker)
+
+	handler.updateSdkInfoTimer.UpdateSince(start)
+
+	return err
 }

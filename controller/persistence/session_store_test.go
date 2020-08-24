@@ -52,7 +52,7 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 
 	session := NewSession("", service.Id)
 	err := ctx.Create(session)
-	ctx.EqualError(err, "index on sessions.apiSession does not allow null or empty values")
+	ctx.EqualError(err, "fk constraint on sessions.apiSession does not allow null or empty values")
 
 	session.ApiSessionId = "invalid-id"
 	err = ctx.Create(session)
@@ -61,7 +61,7 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 	session.ApiSessionId = apiSession.Id
 	session.ServiceId = ""
 	err = ctx.Create(session)
-	ctx.EqualError(err, "index on sessions.service does not allow null or empty values")
+	ctx.EqualError(err, "fk constraint on sessions.service does not allow null or empty values")
 
 	session.ServiceId = "invalid-id"
 	err = ctx.Create(session)
@@ -87,38 +87,25 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.RequireCreate(session)
 	ctx.ValidateBaseline(session, compareOpts)
 
-	sessionIds := ctx.getRelatedIds(apiSession, EntityTypeSessions)
-	ctx.EqualValues(1, len(sessionIds))
-	ctx.EqualValues(session.Id, sessionIds[0])
-
-	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
-	ctx.EqualValues(1, len(sessionIds))
-	ctx.EqualValues(session.Id, sessionIds[0])
-
 	session2 := NewSession(apiSession.Id, service.Id)
-	session2.Tags = ctx.CreateTags()
 	ctx.RequireCreate(session2)
 	ctx.ValidateBaseline(session2, compareOpts)
 
-	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
-	ctx.EqualValues(2, len(sessionIds))
-	ctx.True(stringz.Contains(sessionIds, session.Id))
-	ctx.True(stringz.Contains(sessionIds, session2.Id))
+	service2 := ctx.requireNewService("test-service-2")
+	session3 := NewSession(apiSession.Id, service2.Id)
+	session3.Tags = ctx.CreateTags()
+	ctx.RequireCreate(session3)
+	ctx.ValidateBaseline(session3, compareOpts)
 
-	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
-	ctx.EqualValues(2, len(sessionIds))
-	ctx.True(stringz.Contains(sessionIds, session.Id))
-	ctx.True(stringz.Contains(sessionIds, session2.Id))
+	ctx.RequireDelete(service2)
+	ctx.ValidateDeleted(session3.Id)
+	ctx.RequireReload(session)
+	ctx.RequireReload(session2)
 
-	ctx.RequireDelete(session)
+	ctx.RequireDelete(apiSession)
+	ctx.ValidateDeleted(session.Id)
+	ctx.ValidateDeleted(session2.Id)
 
-	sessionIds = ctx.getRelatedIds(apiSession, EntityTypeSessions)
-	ctx.EqualValues(1, len(sessionIds))
-	ctx.EqualValues(session2.Id, sessionIds[0])
-
-	sessionIds = ctx.getRelatedIds(service, EntityTypeSessions)
-	ctx.EqualValues(1, len(sessionIds))
-	ctx.EqualValues(session2.Id, sessionIds[0])
 }
 
 func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
@@ -210,19 +197,14 @@ func (ctx *TestContext) testLoadQuerySessions(_ *testing.T) {
 	entities := ctx.createSessionTestEntities()
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		session, err := ctx.stores.Session.LoadOneByToken(tx, entities.session1.Token)
-		ctx.NoError(err)
-		ctx.NotNil(session)
-		ctx.EqualValues(entities.session1.Id, session.Id)
-
 		query := fmt.Sprintf(`apiSession = "%v"`, entities.apiSession1.Id)
-		session, err = ctx.stores.Session.LoadOneByQuery(tx, query)
+		ids, _, err := ctx.stores.Session.QueryIds(tx, query)
 		ctx.NoError(err)
-		ctx.NotNil(session)
-		ctx.EqualValues(entities.session1.Id, session.Id)
+		ctx.EqualValues(1, len(ids))
+		ctx.EqualValues(entities.session1.Id, ids[0])
 
 		query = fmt.Sprintf(`service = "%v"`, entities.service2.Id)
-		ids, _, err := ctx.stores.Session.QueryIds(tx, query)
+		ids, _, err = ctx.stores.Session.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
 		ctx.True(stringz.Contains(ids, entities.session2.Id))

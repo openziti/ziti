@@ -186,23 +186,11 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 		ctx.NotNil(service)
 		ctx.EqualValues(entities.service1.Id, service.Id)
 
-		query := fmt.Sprintf(`anyOf(sessions) = "%v"`, entities.session1.Id)
+		query := fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, entities.servicePolicy.Id)
 		ids, _, err := ctx.stores.EdgeService.QueryIds(tx, query)
 		ctx.NoError(err)
-		ctx.EqualValues(1, len(ids))
-		ctx.Equal(entities.service1.Id, ids[0])
-
-		query = fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, entities.servicePolicy.Id)
-		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
-		ctx.NoError(err)
 		ctx.True(stringz.Contains(ids, entities.service1.Id))
 
-		query = fmt.Sprintf(`anyOf(sessions.apiSession) = "%v"`, entities.apiSession1.Id)
-		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
-		ctx.NoError(err)
-		ctx.EqualValues(2, len(ids))
-		ctx.True(stringz.Contains(ids, entities.service1.Id))
-		ctx.True(stringz.Contains(ids, entities.service2.Id))
 		return nil
 	})
 	ctx.NoError(err)

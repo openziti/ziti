@@ -23,13 +23,15 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/foundation/metrics"
 	"testing"
 )
 
 type TestContext struct {
 	*persistence.TestContext
-	handlers *Handlers
-	config   *config.Config
+	handlers        *Handlers
+	config          *config.Config
+	metricsRegistry metrics.Registry
 }
 
 func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
@@ -80,9 +82,14 @@ func (ctx *TestContext) IsEdgeRouterOnline(string) bool {
 	panic("implement me")
 }
 
+func (ctx *TestContext) GetMetricsRegistry() metrics.Registry {
+	return ctx.metricsRegistry
+}
+
 func newTestContext(t *testing.T) *TestContext {
 	context := &TestContext{
-		TestContext: persistence.NewTestContext(t),
+		TestContext:     persistence.NewTestContext(t),
+		metricsRegistry: metrics.NewRegistry("test", nil),
 	}
 	context.Init()
 	return context

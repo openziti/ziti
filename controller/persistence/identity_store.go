@@ -29,7 +29,6 @@ import (
 
 const (
 	FieldIdentityType           = "type"
-	FieldIdentityApiSessions    = "apiSessions"
 	FieldIdentityIsDefaultAdmin = "isDefaultAdmin"
 	FieldIdentityIsAdmin        = "isAdmin"
 	FieldIdentityEnrollments    = "enrollments"
@@ -187,7 +186,6 @@ type identityStoreImpl struct {
 	indexRoleAttributes boltz.SetReadIndex
 
 	symbolRoleAttributes boltz.EntitySetSymbol
-	symbolApiSessions    boltz.EntitySetSymbol
 	symbolAuthenticators boltz.EntitySetSymbol
 	symbolIdentityTypeId boltz.EntitySymbol
 	symbolEnrollments    boltz.EntitySetSymbol
@@ -218,7 +216,6 @@ func (store *identityStoreImpl) initializeLocal() {
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.indexName = store.addUniqueNameField()
-	store.symbolApiSessions = store.AddFkSetSymbol(FieldIdentityApiSessions, store.stores.apiSession)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
 	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.edgeService)
 	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.edgeService)
@@ -286,12 +283,6 @@ func (store *identityStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Ident
 }
 
 func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	for _, apiSessionId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldIdentityApiSessions) {
-		if err := store.stores.apiSession.DeleteById(ctx, apiSessionId); err != nil {
-			return err
-		}
-	}
-
 	for _, enrollmentId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldIdentityEnrollments) {
 		if err := store.stores.enrollment.DeleteById(ctx, enrollmentId); err != nil {
 			return err

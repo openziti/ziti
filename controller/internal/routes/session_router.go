@@ -22,6 +22,8 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_server/operations/session"
+	"github.com/openziti/foundation/metrics"
+	"time"
 )
 
 func init() {
@@ -30,8 +32,9 @@ func init() {
 }
 
 type SessionRouter struct {
-	BasePath string
-	IdType   response.IdType
+	BasePath    string
+	IdType      response.IdType
+	createTimer metrics.Timer
 }
 
 func NewSessionRouter() *SessionRouter {
@@ -41,6 +44,7 @@ func NewSessionRouter() *SessionRouter {
 }
 
 func (r *SessionRouter) Register(ae *env.AppEnv) {
+	r.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("session.create")
 	ae.Api.SessionDeleteSessionHandler = session.DeleteSessionHandlerFunc(func(params session.DeleteSessionParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
@@ -96,8 +100,10 @@ func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params session.CreateSessionParams) {
+	start := time.Now()
 	responder := &SessionRequestResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
 		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.ApiSession.Id, params.Body))
 	})
+	r.createTimer.UpdateSince(start)
 }

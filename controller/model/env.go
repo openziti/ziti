@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/foundation/metrics"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -38,6 +39,7 @@ type Env interface {
 	GetControlClientCsrSigner() cert.Signer
 	GetHostController() HostController
 	IsEdgeRouterOnline(id string) bool
+	GetMetricsRegistry() metrics.Registry
 }
 
 type HostController interface {

@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/authentication"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"time"
@@ -39,6 +40,7 @@ func init() {
 }
 
 type AuthRouter struct {
+	createTimer metrics.Timer
 }
 
 func NewAuthRouter() *AuthRouter {
@@ -46,16 +48,15 @@ func NewAuthRouter() *AuthRouter {
 }
 
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
+	ro.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("api-session.create")
 	ae.Api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params) }, params.HTTPRequest, "", "", permissions.Always())
 	})
 }
 
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
+	start := time.Now()
 	logger := pfxlog.Logger()
-
-	startTime := time.Now()
-
 	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Body)
 
 	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
@@ -100,12 +101,9 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		}
 
 		if shouldUpdate {
-			beforePathInfo := time.Now()
 			if err := ae.GetHandlers().Identity.PatchInfo(identity); err != nil {
 				logger.WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
 			}
-			patchInfoDelta := time.Now().Sub(beforePathInfo)
-			logger.Debugf("auth patch info timing (micro-sec): %v\n", patchInfoDelta.Microseconds())
 		}
 	}
 
@@ -122,15 +120,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		Token:       token,
 		ConfigTypes: configTypes,
 	}
-	beforeSessionCreate := time.Now()
 	sessionId, err := ae.Handlers.ApiSession.Create(s)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
-	sessionCreateDuration := time.Now().Sub(beforeSessionCreate)
-	logger.Debugf("auth create session timing (micro-sec): %v\n", sessionCreateDuration.Microseconds())
 
 	session, err := ae.Handlers.ApiSession.Read(sessionId)
 
@@ -148,11 +143,9 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 
 	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, session.Token)
 	http.SetCookie(rc.ResponseWriter, &cookie)
+	ro.createTimer.UpdateSince(start)
 
 	rc.Respond(envelope, http.StatusOK)
-
-	taken := time.Now().Sub(startTime).Microseconds()
-	logger.Debugf("auth timing (micro-sec): %v\n", taken)
 }
 
 func mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) map[string]struct{} {
