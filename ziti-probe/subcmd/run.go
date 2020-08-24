@@ -2,6 +2,7 @@ package subcmd
 
 import (
 	"context"
+	"fmt"
 	influxdb "github.com/influxdata/influxdb1-client"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/metrics"
@@ -32,6 +33,7 @@ const (
 	DefaultDbName   = "ziti"
 	DefaultDbType   = "influxdb"
 	DefaultInterval = 5 * 60 // 5 minutes
+	ProbeService    = "probe-service"
 )
 
 func init() {
@@ -55,11 +57,11 @@ var defaultConfig = probeCfg{
 }
 
 type probe struct {
-	cfg    *probeCfg
-	indb   *influxdb.Client
-	ctx    ziti.Context
-	latest atomic.Value
-	closer chan interface{}
+	cfg      *probeCfg
+	influxDb *influxdb.Client
+	ctx      ziti.Context
+	latest   atomic.Value
+	closer   chan interface{}
 }
 
 var theProbe = &probe{
@@ -80,9 +82,25 @@ func (p *probe) sendMetrics() {
 				return
 			}
 			bp.Database = p.cfg.dbName
-			_, err = p.indb.Write(*bp)
-			if err != nil {
-				logrus.Errorln(err)
+			_, err = p.influxDb.Write(*bp)
+
+			if err == nil {
+				logrus.Debug("write complete")
+			} else {
+				logrus.Errorf("error writing to influxdb: %v", err)
+				logrus.Info("attempting to reconnect")
+				if service, ok := p.ctx.GetService(ProbeService); ok {
+					if err := p.connectToInfluxDb(service); err == nil {
+						logrus.Info("reconnected, attempting to write")
+						if _, err = p.influxDb.Write(*bp); err != nil {
+							logrus.Errorf("failed to write after reconnect, giving up")
+						}
+					} else {
+						logrus.Errorf("failed to reconnect: %v", err)
+					}
+				} else {
+					logrus.Errorf("could not find %s", ProbeService)
+				}
 			}
 		}
 	}
@@ -104,28 +122,48 @@ func (p *probe) run(_ *cobra.Command, args []string) {
 
 	}
 
-	if _, err = p.ctx.GetServices(); err != nil {
-		log.Fatal("failed to load available services")
+	for {
+		if err = p.ctx.Authenticate(); err != nil {
+			sleepDuration := 5 * time.Second
+			log.Errorf("failed to authenticate, trying again in %.2f seconds: %v", sleepDuration.Seconds(), err)
+			time.Sleep(sleepDuration)
+		} else {
+			break
+		}
 	}
 
-	service, found := p.ctx.GetService("probe-service")
-	if !found {
-		log.Fatal("required service was not found")
+	for {
+		if _, err = p.ctx.GetServices(); err != nil {
+			sleepDuration := 5 * time.Second
+			log.Error("failed to load available services, try again in %.2f seconds: %v", sleepDuration.Seconds(), err)
+			time.Sleep(sleepDuration)
+		} else {
+			break
+		}
 	}
 
-	p.cfg = getProbeConfig(service)
-
-	p.indb, err = p.createInfluxDbClient(p.cfg)
-	if err != nil {
-		log.Error(err)
-		return
+	var service *edge.Service
+	for {
+		var found bool
+		service, found = p.ctx.GetService(ProbeService)
+		if !found {
+			sleepDuration := 5 * time.Second
+			log.Errorf("required service was not found, try again in %.2f seconds", sleepDuration.Seconds())
+			time.Sleep(sleepDuration)
+		} else {
+			break
+		}
 	}
-
-	_, res, err := p.indb.Ping()
-	if err != nil {
-		log.WithError(err).Fatal("failed to get server info")
+	for {
+		err := p.connectToInfluxDb(service)
+		if err != nil {
+			sleepDuration := 5 * time.Second
+			log.Errorf("could not connect to influxDb, trying again in %.2f seconds: %v", sleepDuration.Seconds(), err)
+			time.Sleep(sleepDuration)
+		} else {
+			break
+		}
 	}
-	log.Info("connected to influx version = ", res)
 
 	go p.sendMetrics()
 
@@ -134,6 +172,24 @@ func (p *probe) run(_ *cobra.Command, args []string) {
 	}
 
 	p.ctx.Close()
+}
+
+func (p *probe) connectToInfluxDb(service *edge.Service) error {
+
+	p.cfg = getProbeConfig(service)
+
+	var err error
+	p.influxDb, err = p.createInfluxDbClient(p.cfg)
+	if err != nil {
+		return fmt.Errorf("could not create influxDb client: %v", err)
+	}
+
+	_, res, err := p.influxDb.Ping()
+	if err != nil {
+		return fmt.Errorf("failed to get influxDb server info: %v", err)
+	}
+	log.Info("connected to influx version = ", res)
+	return nil
 }
 
 func getProbeConfig(service *edge.Service) *probeCfg {
@@ -198,7 +254,7 @@ func (p *probe) createInfluxDbClient(cfg *probeCfg) (*influxdb.Client, error) {
 	}
 
 	influxConfig := influxdb.NewConfig()
-	u, _ := url.Parse("http://probe-service")
+	u, _ := url.Parse("http://" + ProbeService)
 	influxConfig.URL = *u
 	influxConfig.Username = cfg.dbUser
 	influxConfig.Password = cfg.dbPassword
@@ -210,8 +266,8 @@ func (p *probe) createInfluxDbClient(cfg *probeCfg) (*influxdb.Client, error) {
 
 	hcp := unsafe.Pointer(uintptr(unsafe.Pointer(clt)) + hcf.Offset)
 
-	hcpp := (**http.Client)(hcp)
-	*hcpp = httpC
+	httpCppClient := (**http.Client)(hcp)
+	*httpCppClient = httpC
 
 	return clt, nil
 }
