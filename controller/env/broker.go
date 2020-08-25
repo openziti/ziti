@@ -26,7 +26,9 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
+	fabricEvents "github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"sync"
@@ -165,6 +167,21 @@ type Broker struct {
 	routerMsgBufferSize int
 }
 
+func (b *Broker) SessionCreated(_ *identity.TokenId, _ *identity.TokenId, _ string, _ *network.Circuit) {
+}
+
+func (b *Broker) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
+	logger := pfxlog.Logger()
+
+	if err := b.ae.Handlers.Session.Delete(clientId.Token); err != nil {
+		logger.Errorf("fabric session [%s] removed, attempted to remove edge session [%s]: %v", sessionId.Token, clientId.Token, err)
+	} else {
+		logger.Debugf("fabric session [%s] removed, removing edge session [%s]", sessionId.Token, clientId.Token)
+	}
+}
+
+func (b *Broker) CircuitUpdated(*identity.TokenId, *network.Circuit) {}
+
 func NewBroker(ae *AppEnv) *Broker {
 	b := &Broker{
 		ae: ae,
@@ -198,7 +215,8 @@ func NewBroker(ae *AppEnv) *Broker {
 	b.registerEventHandlers()
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(b)
-	ae.HostController.GetNetwork().AddSessionRemovedHandler(b)
+
+	fabricEvents.AddSessionEventHandler(b)
 
 	return b
 }
@@ -519,8 +537,6 @@ func (b *Broker) streamApiSessions(chunkSize int, callback func(addedMsg *edge_c
 	}
 	logger := pfxlog.Logger()
 
-
-
 	return b.ae.GetHandlers().ApiSession.Stream("true", func(apiSession *model.ApiSession, err error) error {
 		if err != nil {
 			logger.Errorf("error reading api sessions for router: %v", err)
@@ -697,16 +713,6 @@ func (b *Broker) RouterConnected(r *network.Router) {
 			}
 		}
 	}()
-}
-
-func (b *Broker) SessionRemoved(fabricSessionId string, edgeSessionId string) {
-	logger := pfxlog.Logger()
-
-	if err := b.ae.Handlers.Session.Delete(edgeSessionId); err != nil {
-		logger.Errorf("fabric session [%s] removed, attempted to remove edge session [%s]: %v", fabricSessionId, edgeSessionId, err)
-	} else {
-		logger.Debugf("fabric session [%s] removed, removing edge session [%s]", fabricSessionId, edgeSessionId)
-	}
 }
 
 func (b *Broker) sendHello(r *network.Router) {
