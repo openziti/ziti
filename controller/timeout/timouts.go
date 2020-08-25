@@ -71,7 +71,7 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	select {
 	case p := <-panicChan:
-		pfxlog.Logger().Error("panic caught by timeout handler: %v", p)
+		pfxlog.Logger().Errorf("panic caught by timeout handler: %v", p)
 	case <-done:
 		tw.mu.Lock()
 		defer tw.mu.Unlock()

@@ -82,7 +82,7 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 }
 
 func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
-	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+	return handler.GetDb().Batch(func(tx *bbolt.Tx) error {
 		return handler.GetEnv().GetStores().ApiSession.MarkActivity(tx, tokens)
 	})
 }

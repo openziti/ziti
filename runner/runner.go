@@ -59,7 +59,7 @@ func (r *LimitedRunner) AddOperation(e Operation) error {
 	}
 
 	if d > r.maxFrequency {
-		return fmt.Errorf("error frequency too large, must be smaller than %s", r.minFrequency)
+		return fmt.Errorf("error frequency too large, must be smaller than %s", r.maxFrequency)
 	}
 
 	if e.GetId() == uuid.Nil {
