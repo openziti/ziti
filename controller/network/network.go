@@ -56,7 +56,6 @@ type Network struct {
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
 	routerPresenceHandlers []RouterPresenceHandler
-	sessionRemoveHandlers  []SessionRemovedHandler
 	capabilities           []string
 	shutdownChan           chan struct{}
 	isShutdown             concurrenz.AtomicBoolean
@@ -455,7 +454,7 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 			}
 		}
 		network.sessionController.remove(ss)
-		network.SessionDeleted(sessionId)
+		network.SessionDeleted(ss.Id, ss.ClientId)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewSessionEnded(ss.Terminator))
@@ -464,9 +463,7 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 		}
 
 		log.Debugf("removed session [s/%s]", ss.Id.Token)
-		for _, h := range network.sessionRemoveHandlers {
-			h.SessionRemoved(ss.Id.Token, ss.ClientId.Token)
-		}
+
 		return nil
 	}
 	return InvalidSessionError{sessionId: sessionId.Token}
@@ -545,10 +542,6 @@ func (network *Network) setLinks(circuit *Circuit) {
 
 func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
 	network.routerPresenceHandlers = append(network.routerPresenceHandlers, h)
-}
-
-func (network *Network) AddSessionRemovedHandler(h SessionRemovedHandler) {
-	network.sessionRemoveHandlers = append(network.sessionRemoveHandlers, h)
 }
 
 func (network *Network) Run() {

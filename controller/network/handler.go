@@ -20,7 +20,3 @@ type RouterPresenceHandler interface {
 	RouterConnected(r *Router)
 	RouterDisconnected(r *Router)
 }
-
-type SessionRemovedHandler interface {
-	SessionRemoved(sessionId string, clientId string)
-}
