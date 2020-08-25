@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/ziti/common/enrollment"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -41,6 +42,8 @@ func init() {
 	root.PersistentFlags().Uint(svcPollRateFlag, 15, "Set poll rate for service updates (seconds)")
 	root.PersistentFlags().StringP(resolverCfgFlag, "r", "udp://127.0.0.1:53", "Resolver configuration")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+
+	root.AddCommand(enrollment.NewEnrollCommand())
 }
 
 var root = &cobra.Command{

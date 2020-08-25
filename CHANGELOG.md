@@ -7,6 +7,7 @@
   * Session Performance Fixes
       * [Supported unindexed FK constraints in bbolt](https://github.com/openziti/foundation/issues/119)
       * [Improve API Session and Session creation performance](https://github.com/openziti/edge/issues/281)
+   * [Make enrollment available from the ziti CLI](https://github.com/openziti/ziti/issues/182)
 
 
 # Release 0.16.0
