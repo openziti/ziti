@@ -8,19 +8,19 @@ services:
         entrypoint: ["sh", "-c", "while true; do sleep 11; done"]
     ziti-tproxy:
         image: netfoundry/ziti-tunnel:tproxy
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
         build:
             context: .
             args:
                 ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
-        network_mode: host
-        cap_add:
-        - NET_ADMIN
         environment:
         - NF_REG_NAME
-#        command: tproxy
-        command: tproxy --resolver udp://127.0.0.123:53
+        command: tproxy
+#        command: tproxy --resolver udp://127.0.0.123:53
     ziti-iproxy:
         image: netfoundry/ziti-tunnel:tproxy
         build:
