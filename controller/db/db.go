@@ -60,6 +60,10 @@ func (db *Db) View(fn func(tx *bbolt.Tx) error) error {
 	return db.db.View(fn)
 }
 
+func (db *Db) Stats() bbolt.Stats {
+	return db.db.Stats()
+}
+
 func (db *Db) RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	ziti := tx.Bucket([]byte("ziti"))
 	if ziti == nil {

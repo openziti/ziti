@@ -29,7 +29,7 @@ func getSessionEventHandlers() []SessionEventHandler {
 
 type SessionEventHandler interface {
 	SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit)
-	SessionDeleted(sessionId *identity.TokenId)
+	SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId)
 	CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit)
 }
 
@@ -43,9 +43,10 @@ func (network *Network) SessionCreated(sessionId *identity.TokenId, clientId *id
 	network.eventDispatcher.Dispatch(event)
 }
 
-func (network *Network) SessionDeleted(sessionId *identity.TokenId) {
+func (network *Network) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
 	event := &sessionDeletedEvent{
 		sessionId: sessionId,
+		clientId:  clientId,
 	}
 	network.eventDispatcher.Dispatch(event)
 }
@@ -74,12 +75,13 @@ func (event *sessionCreatedEvent) Handle() {
 
 type sessionDeletedEvent struct {
 	sessionId *identity.TokenId
+	clientId  *identity.TokenId
 }
 
 func (event *sessionDeletedEvent) Handle() {
 	handlers := getSessionEventHandlers()
 	for _, handler := range handlers {
-		go handler.SessionDeleted(event.sessionId)
+		go handler.SessionDeleted(event.sessionId, event.clientId)
 	}
 }
 

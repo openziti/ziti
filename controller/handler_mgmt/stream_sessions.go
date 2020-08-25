@@ -73,10 +73,11 @@ func (handler *SessionsStreamHandler) SessionCreated(sessionId *identity.TokenId
 	handler.sendEvent(event)
 }
 
-func (handler *SessionsStreamHandler) SessionDeleted(sessionId *identity.TokenId) {
+func (handler *SessionsStreamHandler) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
 	event := &mgmt_pb.StreamSessionsEvent{
 		EventType: mgmt_pb.StreamSessionEventType_SessionDeleted,
 		SessionId: sessionId.Token,
+		ClientId:  clientId.Token,
 	}
 	handler.sendEvent(event)
 }

@@ -454,7 +454,7 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 			}
 		}
 		network.sessionController.remove(ss)
-		network.SessionDeleted(sessionId)
+		network.SessionDeleted(ss.Id, ss.ClientId)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewSessionEnded(ss.Terminator))
@@ -542,10 +542,6 @@ func (network *Network) setLinks(circuit *Circuit) {
 
 func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
 	network.routerPresenceHandlers = append(network.routerPresenceHandlers, h)
-}
-
-func (network *Network) Debug() string {
-	return "oh, wow"
 }
 
 func (network *Network) Run() {
