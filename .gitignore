@@ -20,7 +20,3 @@ db/
 # goland
 .idea
 github_deploy_key
-
-# enrollments in-use with Docker Compose
-*.json
-*.jwt
