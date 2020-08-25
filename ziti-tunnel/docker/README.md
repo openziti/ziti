@@ -123,7 +123,7 @@ services:
 2. Run in the same directory:
 
 ```bash
-docker-compose up --build ziti-proxy
+NF_REG_NAME=my-ziti-identity-file docker-compose up --build ziti-proxy
 ```
 
 This will cause the container to listen on the mapped port(s) and proxy any received traffic to the Ziti service that is bound to that port.
