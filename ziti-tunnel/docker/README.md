@@ -72,28 +72,29 @@ This example uses Compose to store in a file the Docker `build` and `run` parame
 
 
 ### Docker Transparent Proxy for Linux
-1. Modify "ziti-tunnel" under "services" in the file named `docker-compose.yml` in this Git repo. Optionally, override the default value of `command` to pass additional parameters to `ziti-tunnel`.
+1. Modify "ziti-tproxy" under "services" in the file named `docker-compose.yml` in this Git repo, optionally overriding the default value of `command` to pass additional parameters to `ziti-tunnel`.
 
 ```yaml
 version: "3.3"
 services:
-    ziti-tunnel:
-        image: netfoundry/ziti-tunnel:local
+    ziti-tproxy:
+        image: netfoundry/ziti-tunnel:tproxy
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
         cap_add:
         - NET_ADMIN
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
+        - NF_REG_NAME
 #        command: run --resolver udp://127.0.0.123:53
+#        command: run --resolver none
 ```
 
-2. Run `docker-compose up --build ziti-tunnel` in the same directory.
+2. Run `NF_REG_NAME=my-ziti-identity-file docker-compose up --build ziti-tproxy` in the same directory.
 
 This will cause the container to configure the Linux host to transparently proxy any domain names or IP addresses that match a Ziti service.
 
@@ -104,22 +105,26 @@ This will cause the container to configure the Linux host to transparently proxy
 version: "3.3"
 services:
     ziti-proxy:
-        image: netfoundry/ziti-tunnel:local
+        image: netfoundry/ziti-tunnel:proxy
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
+        - NF_REG_NAME
         ports:
         - "8888:8888"
         - "9999:9999"
         command: proxy "my example service":8888 "my other example service":9999
 ```
 
-2. Run `docker-compose up --build ziti-proxy` in the same directory.
+2. Run in the same directory:
+
+```bash
+NF_REG_NAME=my-ziti-identity-file docker-compose up --build ziti-proxy
+```
 
 This will cause the container to listen on the mapped port(s) and proxy any received traffic to the Ziti service that is bound to that port.
 

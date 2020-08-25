@@ -8,7 +8,7 @@
       * [Supported unindexed FK constraints in bbolt](https://github.com/openziti/foundation/issues/119)
       * [Improve API Session and Session creation performance](https://github.com/openziti/edge/issues/281)
    * [Make enrollment available from the ziti CLI](https://github.com/openziti/ziti/issues/182)
-
+  * Docker image for `ziti-tunnel` - Embellish examples and fix entrypoint script to wait for clean up of iptables rules on exit
 
 # Release 0.16.0
 
