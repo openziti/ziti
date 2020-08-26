@@ -229,11 +229,10 @@ func (handler *baseHandler) updateGeneralBatch(modelEntity boltEntitySource, che
 		}
 
 		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
+			pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
 			if patch {
-				pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
 				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", handler.GetStore().GetEntityType())
 			} else {
-				pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
 				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", handler.GetStore().GetEntityType())
 			}
 			return err
