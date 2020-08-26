@@ -40,6 +40,8 @@ link:
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
 # Router.
 edge:
+  # (optional) Determines the rate at which API session heartbeats are sent for connected SDK clients (default: 60)
+  heartbeatIntervalSeconds: 60
   # (required) Information used to generate the initial registration CSR. For documentation on these fields please
   # refer to the openssl documentation. These values MUST be supplied and have no defaults.
   csr:
