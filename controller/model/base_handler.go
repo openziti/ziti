@@ -223,21 +223,18 @@ func (handler *baseHandler) updateGeneralBatch(modelEntity boltEntitySource, che
 						return validation.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 					}
 				} else {
-					//no logs in batch
-					//pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+					pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
 				}
 			}
 		}
 
 		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
 			if patch {
-				//no logs in batch
-				//pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
-				//pfxlog.Logger().WithError(err).Errorf("could not patch %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", handler.GetStore().GetEntityType())
 			} else {
-				//no logs in batch
-				//pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
-				//pfxlog.Logger().WithError(err).Errorf("could not update %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", handler.GetStore().GetEntityType())
 			}
 			return err
 		}
