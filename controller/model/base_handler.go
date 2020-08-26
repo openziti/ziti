@@ -186,6 +186,61 @@ func (handler *baseHandler) patchEntity(modelEntity boltEntitySource, checker bo
 	return handler.updateGeneral(modelEntity, checker, true)
 }
 
+func (handler *baseHandler) patchEntityBatch(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
+	return handler.updateGeneralBatch(modelEntity, checker, true)
+}
+
+func (handler *baseHandler) updateGeneralBatch(modelEntity boltEntitySource, checker boltz.FieldChecker, patch bool) error {
+	return handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		existing := handler.GetStore().NewStoreEntity()
+		found, err := handler.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
+		}
+		var boltEntity boltz.Entity
+		if patch {
+			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl)
+		} else {
+			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, handler.impl)
+		}
+		if err != nil {
+			return err
+		}
+
+		// validate name for named entities
+		if namedEntity, ok := boltEntity.(boltz.NamedExtEntity); ok {
+			existingNamed := existing.(boltz.NamedExtEntity)
+			if (checker == nil || checker.IsUpdated("name")) && namedEntity.GetName() != existingNamed.GetName() {
+				if namedEntity.GetName() == "" {
+					return validation.NewFieldError("name is required", "name", namedEntity.GetName())
+				}
+				if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
+					if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
+						return validation.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+					}
+				} else {
+					pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+				}
+			}
+		}
+
+		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
+			pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+			if patch {
+				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", handler.GetStore().GetEntityType())
+			} else {
+				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", handler.GetStore().GetEntityType())
+			}
+			return err
+		}
+		return nil
+	})
+}
+
 func (handler *baseHandler) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker, patch bool) error {
 	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)

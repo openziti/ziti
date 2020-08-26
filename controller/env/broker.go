@@ -28,19 +28,10 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/concurrenz"
 	"sync"
 	"time"
 )
-
-type Broker struct {
-	ae            *AppEnv
-	events        map[events.EventEmmiter]map[events.EventName][]events.Listener
-	edgeRouterMap *edgeRouterMap
-}
-
-type edgeRouterMap struct {
-	internalMap *sync.Map
-}
 
 const (
 	SessionRemovedType = int32(edge_ctrl_pb.ContentType_SessionRemovedType)
@@ -54,11 +45,73 @@ const (
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
-	ErrorType       = int32(edge_ctrl_pb.ContentType_ErrorType)
 )
+
+type edgeRouterMap struct {
+	internalMap *sync.Map //edgeRouterId -> edgeRouterEntry
+}
+
+type edgeRouterEntry struct {
+	EdgeRouter *model.EdgeRouter
+	Channel    channel2.Channel
+	send       chan *channel2.Message
+	stop       chan interface{}
+	running    concurrenz.AtomicBoolean
+	stopping   concurrenz.AtomicBoolean
+}
+
+func newEdgeRouterEntry(router *model.EdgeRouter, ch channel2.Channel, sendBufferSize int) *edgeRouterEntry {
+	return &edgeRouterEntry{
+		EdgeRouter: router,
+		Channel:    ch,
+		send:       make(chan *channel2.Message, sendBufferSize),
+		stop:       make(chan interface{}, 0),
+		running:    concurrenz.AtomicBoolean(0),
+		stopping:   concurrenz.AtomicBoolean(0),
+	}
+}
+
+func (entry *edgeRouterEntry) Start() {
+
+	running := entry.running.Get()
+	if !running {
+		entry.running.Set(true)
+		go entry.run()
+	}
+}
+
+func (entry *edgeRouterEntry) Stop() {
+	stopping := entry.stopping.Get()
+	if !stopping {
+		entry.stopping.Set(true)
+		go func() {
+			entry.stop <- struct{}{}
+		}()
+	}
+}
+
+func (entry *edgeRouterEntry) run() {
+	for {
+		select {
+		case <-entry.stop:
+			entry.running.Set(false)
+			entry.stopping.Set(false)
+			return
+		case msg := <-entry.send:
+			if !entry.Channel.IsClosed() {
+				_ = entry.Channel.Send(msg)
+			}
+		}
+	}
+}
+
+func (entry *edgeRouterEntry) Send(msg *channel2.Message) {
+	entry.send <- msg
+}
 
 func (m *edgeRouterMap) AddEntry(edgeRouterEntry *edgeRouterEntry) {
 	m.internalMap.Store(edgeRouterEntry.EdgeRouter.Id, edgeRouterEntry)
+	edgeRouterEntry.Start()
 }
 
 func (m *edgeRouterMap) GetEntry(edgeRouterId string) *edgeRouterEntry {
@@ -86,7 +139,11 @@ func (m *edgeRouterMap) GetOnlineEntries() []*edgeRouterEntry {
 }
 
 func (m *edgeRouterMap) RemoveEntry(edgeRouterId string) {
-	m.internalMap.Delete(edgeRouterId)
+	entry := m.GetEntry(edgeRouterId)
+	if entry != nil {
+		entry.Stop()
+		m.internalMap.Delete(edgeRouterId)
+	}
 }
 
 func (m *edgeRouterMap) RangeEdgeRouterEntries(f func(entries *edgeRouterEntry) bool) {
@@ -99,9 +156,13 @@ func (m *edgeRouterMap) RangeEdgeRouterEntries(f func(entries *edgeRouterEntry) 
 	})
 }
 
-type edgeRouterEntry struct {
-	EdgeRouter *model.EdgeRouter
-	Channel    channel2.Channel
+type Broker struct {
+	ae                  *AppEnv
+	events              map[events.EventEmmiter]map[events.EventName][]events.Listener
+	edgeRouterMap       *edgeRouterMap
+	sessionChunkSize    int
+	apiSessionChunkSize int
+	routerMsgBufferSize int
 }
 
 func NewBroker(ae *AppEnv) *Broker {
@@ -110,6 +171,9 @@ func NewBroker(ae *AppEnv) *Broker {
 		edgeRouterMap: &edgeRouterMap{
 			internalMap: &sync.Map{},
 		},
+		sessionChunkSize:    100,
+		apiSessionChunkSize: 100,
+		routerMsgBufferSize: 100,
 	}
 
 	b.events = map[events.EventEmmiter]map[events.EventName][]events.Listener{
@@ -139,48 +203,61 @@ func NewBroker(ae *AppEnv) *Broker {
 }
 
 func (b *Broker) AddEdgeRouter(ch channel2.Channel, edgeRouter *model.EdgeRouter) {
-	edgeRouterEntry := &edgeRouterEntry{
-		EdgeRouter: edgeRouter,
-		Channel:    ch,
-	}
-
+	logger := pfxlog.Logger()
+	edgeRouterEntry := newEdgeRouterEntry(edgeRouter, ch, b.routerMsgBufferSize)
+	edgeRouterEntry.Start()
 	b.edgeRouterMap.AddEntry(edgeRouterEntry)
 
-	sessionMsg, err := b.getCurrentSessions()
+	//stream so we don't hold hundreds of thousands in memory at once
+	beforeFullStreamApiSessionTime := time.Now()
+	err := b.streamApiSessions(b.apiSessionChunkSize, func(addedMsg *edge_ctrl_pb.ApiSessionAdded) {
+		logger.Infof("sending edge router session updates [%d]", len(addedMsg.ApiSessions))
+
+		if buf, err := proto.Marshal(addedMsg); err == nil {
+
+			beforeApiSessionSend := time.Now()
+
+			msg := channel2.NewMessage(ApiSessionAddedType, buf)
+			edgeRouterEntry.Send(msg)
+
+			apiSessionSendDelta := time.Now().Sub(beforeApiSessionSend)
+			logger.Debugf("broker api session send timing (micro-sec): %v\n", apiSessionSendDelta.Microseconds())
+		} else {
+			logger.WithError(err).Error("error sending session added, could not marshal message content")
+		}
+	})
+
+	fullStreamApiSessionDelta := time.Now().Sub(beforeFullStreamApiSessionTime)
+	logger.Debugf("broker api session FULL stream timing (micro-sec): %v\n", fullStreamApiSessionDelta.Microseconds())
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("could not get current sessions")
+		logger.WithError(err).Error("could not get stream sessions")
 		return
 	}
 
-	pfxlog.Logger().Infof("sending edge router session updates [%d]", len(sessionMsg.ApiSessions))
+	beforeFullStreamSessionTime := time.Now()
+	err = b.streamSessions(edgeRouter.Id, b.sessionChunkSize, func(addedMsg *edge_ctrl_pb.SessionAdded) {
+		logger.Infof("sending edge router network session updates [%d]", len(addedMsg.Sessions))
+		if buf, err := proto.Marshal(addedMsg); err == nil {
+			beforeSessionSend := time.Now()
 
-	if buf, err := proto.Marshal(sessionMsg); err == nil {
-		if err = ch.Send(channel2.NewMessage(ApiSessionAddedType, buf)); err != nil {
-			pfxlog.Logger().WithError(err).Error("error sending session added")
+			msg := channel2.NewMessage(SessionAddedType, buf)
+			edgeRouterEntry.Send(msg)
+
+			sessionSendDelta := time.Now().Sub(beforeSessionSend)
+			logger.Debugf(fmt.Sprintf("broker session send timing (micro-sec): %v\n", sessionSendDelta.Microseconds()))
+		} else {
+			logger.WithError(err).Error("error sending network session added, could not marshal message content")
 		}
-	} else {
-		pfxlog.Logger().WithError(err).Error("error sending session added, could not marshal message content")
-	}
-
-	networkSessionMsg, err := b.getCurrentStateNetworkSessions(edgeRouter.Id)
+	})
+	fullStreamSessionTimeDelta := time.Now().Sub(beforeFullStreamSessionTime)
+	logger.Debugf(fmt.Sprintf("broker session FULL stream timing (micro-sec): %v\n", fullStreamSessionTimeDelta.Microseconds()))
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not get current network sessions for edge router id [%s]", edgeRouter.Id)
+		logger.WithError(err).Errorf("could not stream current network sessions for edge router id [%s], connected but potentially out of sync", edgeRouter.Id)
 		return
 	}
-
-	pfxlog.Logger().Infof("sending edge router network session updates [%d]", len(networkSessionMsg.Sessions))
-
-	if buf, err := proto.Marshal(networkSessionMsg); err == nil {
-		if err = ch.Send(channel2.NewMessage(SessionAddedType, buf)); err != nil {
-			pfxlog.Logger().WithError(err).Error("error sending network session added")
-		}
-	} else {
-		pfxlog.Logger().WithError(err).Error("error sending network session added, could not marshal message content")
-	}
-
-	pfxlog.Logger().Infof("edge router connection finalized and synchronized [%s] [%s]", edgeRouter.Id, edgeRouter.Name)
+	logger.Infof("edge router connection finalized and synchronized [%s] [%s]", edgeRouter.Id, edgeRouter.Name)
 }
 
 func (b *Broker) apiSessionCreateEventHandler(args ...interface{}) {
@@ -206,6 +283,10 @@ func (b *Broker) sendApiSessionCreates(apiSession *persistence.ApiSession) {
 	fingerprints, err := b.getApiSessionFingerprints(apiSession.IdentityId)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("could not get session fingerprints")
+		return
+	}
+
+	if len(fingerprints) == 0 {
 		return
 	}
 
@@ -247,7 +328,12 @@ func (b *Broker) sendApiSessionUpdates(apiSession *persistence.ApiSession) {
 
 	fingerprints, err := b.getApiSessionFingerprints(apiSession.IdentityId)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not get session fingerprints")
+		pfxlog.Logger().WithError(err).Errorf("could not get api session fingerprints")
+		return
+	}
+
+	if len(fingerprints) == 0 {
+		pfxlog.Logger().WithError(err).Debug("api session has no fingerprints, not sending to edge routers")
 		return
 	}
 
@@ -259,7 +345,7 @@ func (b *Broker) sendApiSessionUpdates(apiSession *persistence.ApiSession) {
 	byteMsg, err := proto.Marshal(apiSessionMsg)
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not marshal session updated message")
+		pfxlog.Logger().WithError(err).Errorf("could not marshal api session updated message")
 		return
 	}
 
@@ -270,9 +356,7 @@ func (b *Broker) sendApiSessionUpdates(apiSession *persistence.ApiSession) {
 
 func (b *Broker) sendToAllEdgeRouters(msg *channel2.Message) {
 	b.edgeRouterMap.RangeEdgeRouterEntries(func(edgeRouterEntry *edgeRouterEntry) bool {
-		if err := edgeRouterEntry.Channel.Send(msg); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not send session added message")
-		}
+		edgeRouterEntry.Send(msg)
 		return true
 	})
 }
@@ -287,9 +371,7 @@ func (b *Broker) sendToAllEdgeRoutersForSession(sessionId string, msg *channel2.
 	for _, edgeRouter := range edgeRouterList.EdgeRouters {
 		edgeRouterEntry := b.edgeRouterMap.GetEntry(edgeRouter.Id)
 		if edgeRouterEntry != nil && !edgeRouterEntry.Channel.IsClosed() {
-			if err := edgeRouterEntry.Channel.Send(msg); err != nil {
-				pfxlog.Logger().WithError(err).Errorf("could not send session added message")
-			}
+			edgeRouterEntry.Send(msg)
 		}
 	}
 }
@@ -397,6 +479,7 @@ func (b *Broker) sendSessionCreates(session *persistence.Session) {
 	}
 
 	sessionAdded.Sessions = append(sessionAdded.Sessions, &edge_ctrl_pb.Session{
+		Id:               session.Id,
 		Token:            session.Token,
 		Service:          svc,
 		CertFingerprints: fps,
@@ -413,71 +496,92 @@ func (b *Broker) sendSessionCreates(session *persistence.Session) {
 
 func (b *Broker) modelServiceToProto(service *model.Service) (*edge_ctrl_pb.Service, error) {
 	return &edge_ctrl_pb.Service{
-		Name: service.Name,
-		Id:   service.Id,
+		Name:               service.Name,
+		Id:                 service.Id,
 		EncryptionRequired: service.EncryptionRequired,
 	}, nil
 }
 
 func (b *Broker) registerEventHandlers() {
-	for s, enls := range b.events {
-		for en, ls := range enls {
+	for emitter, eventNameMap := range b.events {
+		for en, ls := range eventNameMap {
 			for _, l := range ls {
-				s.AddListener(en, l)
+				emitter.AddListener(en, l)
 			}
 		}
 	}
 }
 
-func (b *Broker) getCurrentSessions() (*edge_ctrl_pb.ApiSessionAdded, error) {
+func (b *Broker) streamApiSessions(chunkSize int, callback func(addedMsg *edge_ctrl_pb.ApiSessionAdded)) error {
 	ret := &edge_ctrl_pb.ApiSessionAdded{
 		IsFullState: true,
 	}
+	logger := pfxlog.Logger()
 
-	sessions, err := b.ae.GetHandlers().ApiSession.Query("true limit none")
-	if err != nil {
-		return nil, err
-	}
-
-	log := pfxlog.Logger()
-	for _, session := range sessions.ApiSessions {
-		sessionProto, err := b.modelApiSessionToProto(session.Token, session.IdentityId)
-
+	return b.ae.GetHandlers().ApiSession.Stream("true", func(apiSession *model.ApiSession, err error) error {
 		if err != nil {
-			log.Error(err)
-			continue
+			logger.Errorf("error reading api sessions for router: %v", err)
+			return nil
 		}
 
-		ret.ApiSessions = append(ret.ApiSessions, sessionProto)
-	}
+		if apiSession == nil {
+			//done
+			callback(ret)
+			return nil
+		}
 
-	return ret, nil
+		apiSessionProto, err := b.modelApiSessionToProto(apiSession.Token, apiSession.IdentityId)
+
+		if err != nil {
+			logger.Errorf("error converting api session to proto: %v", err)
+			return nil
+		}
+
+		ret.ApiSessions = append(ret.ApiSessions, apiSessionProto)
+
+		if len(ret.ApiSessions) > chunkSize {
+			callback(ret)
+			ret = &edge_ctrl_pb.ApiSessionAdded{}
+		}
+		return nil
+	})
 }
 
-func (b *Broker) getCurrentStateNetworkSessions(edgeRouterId string) (*edge_ctrl_pb.SessionAdded, error) {
+func (b *Broker) streamSessions(edgeRouterId string, chunkSize int, callback func(*edge_ctrl_pb.SessionAdded)) error {
+	logger := pfxlog.Logger()
+
 	ret := &edge_ctrl_pb.SessionAdded{
 		IsFullState: true,
 	}
 
-	result, err := b.ae.Handlers.Session.ListSessionsForEdgeRouter(edgeRouterId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	log := pfxlog.Logger()
-	for _, session := range result.Sessions {
-		nu, err := b.modelSessionToProto(session)
-
+	return b.ae.Handlers.Session.StreamAll(func(session *model.Session, err error) error {
 		if err != nil {
-			log.Error(err)
-			continue
+			logger.Errorf("error reading sessions for router [%s]: %v", edgeRouterId, err)
+			return nil
 		}
 
-		ret.Sessions = append(ret.Sessions, nu)
-	}
+		if session == nil {
+			//done
+			callback(ret)
+			return nil
+		}
 
-	return ret, nil
+		sessionProto, err := b.modelSessionToProto(session)
+
+		if err != nil {
+			logger.Errorf("error converting session to proto: %v", err)
+			return nil
+		}
+
+		ret.Sessions = append(ret.Sessions, sessionProto)
+
+		if len(ret.Sessions) > chunkSize {
+			callback(ret)
+			ret = &edge_ctrl_pb.SessionAdded{}
+		}
+
+		return nil
+	})
 }
 
 func (b *Broker) getActiveFingerprints(sessionId string) ([]string, error) {
@@ -560,6 +664,7 @@ func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, 
 	}
 
 	return &edge_ctrl_pb.Session{
+		Id:               apiSession.Id,
 		Token:            ns.Token,
 		SessionToken:     apiSession.Token,
 		Service:          svc,
@@ -585,13 +690,13 @@ func (b *Broker) RouterConnected(r *network.Router) {
 	go func() {
 		if r.Fingerprint != nil {
 			if edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*r.Fingerprint); edgeRouter != nil {
-				b.sendHello(r, edgeRouter)
+				b.sendHello(r)
 			}
 		}
 	}()
 }
 
-func (b *Broker) sendHello(r *network.Router, edgeRouter *model.EdgeRouter) {
+func (b *Broker) sendHello(r *network.Router) {
 	serverVersion := build.GetBuildInfo().GetVersion()
 	serverHello := &edge_ctrl_pb.ServerHello{
 		Version: serverVersion,

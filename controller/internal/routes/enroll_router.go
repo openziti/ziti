@@ -163,7 +163,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 	}
 
 	if producer, ok := rc.GetProducer().(*env.PemProducer); ok {
-		response.Respond(rc.ResponseWriter, rc.Id, producer, result.TextContent, http.StatusOK)
+		response.Respond(rc.ResponseWriter, rc.Request.URL.Path, rc.Id, producer, result.TextContent, http.StatusOK)
 		return
 	}
 

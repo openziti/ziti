@@ -45,9 +45,9 @@ func newApiServer(c *config.Config, r http.Handler) *apiServer {
 		logWriter: logWriter,
 		httpServer: &http.Server{
 			Addr:         c.Api.Listener,
-			WriteTimeout: time.Second * 15,
-			ReadTimeout:  time.Second * 15,
-			IdleTimeout:  time.Second * 60,
+			WriteTimeout: time.Second * 10,
+			ReadTimeout:  time.Second * 5,
+			IdleTimeout:  time.Second * 5,
 			Handler:      r,
 			TLSConfig:    tlsConfig,
 			ErrorLog:     log.New(logWriter, "", 0),

@@ -438,20 +438,9 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
 	}
 
-	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := identity.toBoltEntityForPatch(tx, handler.impl)
-		if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not convert to bolt identity")
-			return nil
-		}
+	err := handler.patchEntityBatch(identity, checker)
 
-		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not patch identity")
-			return nil
-		}
-		return nil
-	})
 	handler.updateSdkInfoTimer.UpdateSince(start)
+
 	return err
 }

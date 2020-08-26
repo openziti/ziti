@@ -21,6 +21,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/openziti/edge/controller"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/timeout"
+	"github.com/openziti/edge/rest_server"
 	"net/http"
 	"os"
 	"os/signal"
@@ -221,7 +224,7 @@ func (c *Controller) Run() {
 			http.MethodDelete}),
 		handlers.AllowCredentials(),
 	}
-
+	c.AppEnv.Api.Context()
 	apiHandler := c.AppEnv.Api.Serve(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rc := c.AppEnv.CreateRequestContext(rw, r)
@@ -243,15 +246,25 @@ func (c *Controller) Run() {
 		})
 	})
 
-	as := newApiServer(c.config, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		//if not edge prefix, translate to "/edge/v<latest>"
 		if !strings.HasPrefix(request.URL.Path, controller.RestApiBase) {
 			request.URL.Path = controller.RestApiBaseUrlLatest + request.URL.Path
 		}
 
+		if request.URL.Path == controller.RestApiSpecUrl {
+			writer.Header().Set("content-type", "application/json")
+			writer.WriteHeader(http.StatusOK)
+			_, _ = writer.Write(rest_server.SwaggerJSON)
+			return
+		}
 		//let the OpenApi http router take over
 		apiHandler.ServeHTTP(writer, request)
-	}))
+	})
+
+	timeoutHandler := timeout.TimeoutHandler(handler, 10*time.Second, apierror.NewTimeoutError())
+
+	as := newApiServer(c.config, timeoutHandler)
 
 	as.corsOptions = corsOpts
 	c.apiServer = as

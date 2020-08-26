@@ -60,7 +60,8 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 		}
 
 		if session == nil {
-			return fmt.Errorf("no session found")
+			_ = ch.Close()
+			return fmt.Errorf("no api session found for token [%s]", token)
 		}
 
 		for _, fingerprint := range session.CertFingerprints {
@@ -80,9 +81,10 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 				return nil
 			}
 		}
-
+		_ = ch.Close()
 		return errors.New("invalid client certificate for session")
 	}
+	_ = ch.Close()
 	return errors.New("no token attribute provided")
 }
 

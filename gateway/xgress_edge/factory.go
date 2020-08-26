@@ -67,7 +67,7 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 
 func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{}) error {
 	factory.ctrl = ctrl
-	factory.stateManager.StartHeartbeat(ctrl)
+	factory.stateManager.StartHeartbeat(ctrl, factory.config.HeartbeatIntervalSeconds)
 	return nil
 }
 

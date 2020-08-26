@@ -56,7 +56,7 @@ type StateManager interface {
 	GetSession(token string) chan *edge_ctrl_pb.ApiSession
 	AddNetworkSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 	AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener
-	StartHeartbeat(channel channel2.Channel)
+	StartHeartbeat(channel channel2.Channel, seconds int)
 	AddConnectedSession(token string, removeCB func(), ch channel2.Channel)
 	RemoveConnectedSession(token string, underlay channel2.Channel)
 }
@@ -299,11 +299,11 @@ func (sm *StateManagerImpl) getSessionRemovedEventName(token string) events.Even
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel) {
-	sm.heartbeatOperation = newHeartbeatOperation(ctrl, 5*time.Second, sm)
+func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSeconds int) {
+	sm.heartbeatOperation = newHeartbeatOperation(ctrl, time.Duration(intervalSeconds) * time.Second, sm)
 
 	var err error
-	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 30*time.Second, func(e error, operation runner.Operation) {
+	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24 * time.Hour, func(e error, operation runner.Operation) {
 		pfxlog.Logger().WithError(err).Error("error during heartbeat runner")
 	})
 

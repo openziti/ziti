@@ -115,7 +115,7 @@ func (responder *ResponderImpl) RespondWithOk(data interface{}, meta *rest_model
 }
 
 func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
-	Respond(responder.rc.ResponseWriter, responder.rc.Id, responder.GetProducer(), data, httpStatus)
+	Respond(responder.rc.ResponseWriter, responder.rc.Request.URL.Path, responder.rc.Id, responder.GetProducer(), data, httpStatus)
 }
 
 func (responder *ResponderImpl) RespondWithError(err error) {
@@ -126,13 +126,13 @@ func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError)
 	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), apiError)
 }
 
-func Respond(w http.ResponseWriter, requestId string, producer runtime.Producer, data interface{}, httpStatus int) {
+func Respond(w http.ResponseWriter, path, requestId string, producer runtime.Producer, data interface{}, httpStatus int) {
 	w.WriteHeader(httpStatus)
 
 	err := producer.Produce(w, data)
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).WithField("requestId", requestId).Error("could not respond, producer errored")
+		pfxlog.Logger().WithError(err).WithField("requestId", requestId).WithField("path", path).Debug("could not respond, producer errored, possible timeout")
 	}
 }
 

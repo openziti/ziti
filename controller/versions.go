@@ -22,4 +22,5 @@ const (
 	RestApiV1            = "v1"
 	RestApiBaseUrlV1     = "/edge/" + RestApiV1
 	RestApiBaseUrlLatest = RestApiBaseUrlV1
+	RestApiSpecUrl       = RestApiBaseUrlLatest + "/swagger.json"
 )

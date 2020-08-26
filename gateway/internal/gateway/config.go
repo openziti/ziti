@@ -27,11 +27,12 @@ import (
 )
 
 type Config struct {
-	Enabled        bool
-	ApiProxy       ApiProxy
-	Advertise      string
-	Csr            Csr
-	IdentityConfig identity.IdentityConfig
+	Enabled                  bool
+	ApiProxy                 ApiProxy
+	Advertise                string
+	Csr                      Csr
+	IdentityConfig           identity.IdentityConfig
+	HeartbeatIntervalSeconds int
 }
 
 type Csr struct {
@@ -93,6 +94,14 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	}
 
 	config.loadIdentity(configMap)
+
+	if val, found := edgeConfigMap["heartbeatIntervalSeconds"]; found {
+		config.HeartbeatIntervalSeconds = val.(int)
+	}
+
+	if config.HeartbeatIntervalSeconds == 0 {
+		config.HeartbeatIntervalSeconds = 60
+	}
 
 	if err = config.loadApiProxy(edgeConfigMap); err != nil {
 		return err
