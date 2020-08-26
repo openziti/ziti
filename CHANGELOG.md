@@ -18,7 +18,7 @@
       * Support heartbeat interval configuration, default raised from 5s to 60s
   * Ziti-Probe
     * Attempts to retain and reuse API Sessions
-    * Attempts to reconnect on disconnection, API Session remremoval, session removal
+    * Attempts to reconnect on disconnection, API Session removal, session removal
     * Improve reconnection strategy
     * Adds `version` command to `ziti-probe`
   * Go SDK
