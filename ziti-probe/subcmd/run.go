@@ -88,19 +88,26 @@ func (p *probe) sendMetrics() {
 				logrus.Debug("write complete")
 			} else {
 				logrus.Errorf("error writing to influxdb: %v", err)
-				logrus.Info("attempting to reconnect")
-				if service, ok := p.ctx.GetService(ProbeService); ok {
-					if err := p.connectToInfluxDb(service); err == nil {
-						logrus.Info("reconnected, attempting to write")
-						if _, err = p.influxDb.Write(*bp); err != nil {
-							logrus.Errorf("failed to write after reconnect, giving up")
+
+				for {
+					logrus.Info("attempting to reconnect")
+					if service, ok := p.ctx.GetService(ProbeService); ok {
+						if err := p.connectToInfluxDb(service); err == nil {
+							logrus.Info("reconnected")
+							if _, err = p.influxDb.Write(*bp); err != nil {
+								logrus.Errorf("failed to write after reconnect")
+							} else {
+								break
+							}
+						} else {
+							logrus.Errorf("failed to reconnect: %v", err)
 						}
 					} else {
-						logrus.Errorf("failed to reconnect: %v", err)
+						logrus.Errorf("could not find %s", ProbeService)
 					}
-				} else {
-					logrus.Errorf("could not find %s", ProbeService)
+					time.Sleep(30 * time.Second)
 				}
+
 			}
 		}
 	}
