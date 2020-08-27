@@ -1,6 +1,33 @@
+# Release 0.16.1
+
+* What's New
+  * Metrics Refactoring
+      * [Support timers in metrics events](https://github.com/openziti/foundation/issues/121)
+      * [Convert json file reporter to generic reporter supporting multiple formatters, including json and plain](https://github.com/openziti/foundation/issues/122)
+  * Session Performance Fixes
+      * [Supported unindexed FK constraints in bbolt](https://github.com/openziti/foundation/issues/119)
+      * [Improve API Session and Session creation performance](https://github.com/openziti/edge/issues/281)
+   * [Make enrollment available from the ziti CLI](https://github.com/openziti/ziti/issues/182)
+  * Docker image for `ziti-tunnel` - Embellish examples and fix entrypoint script to wait for clean up of iptables rules on exit
+  * Various Internal Stability & Scale Fixes
+    * Edge Controller:
+      * Use bbolt batch operations where possible (heartbeat updates, sdk/env info)
+      * Stream API Sessions & Session during Edge Router Sync
+      * Removal of `Panic()` calls
+    * Edge Router:
+      * Support heartbeat interval configuration, default raised from 5s to 60s
+  * Ziti-Probe
+    * Attempts to retain and reuse API Sessions
+    * Attempts to reconnect on disconnection, API Session removal, session removal
+    * Improve reconnection strategy
+    * Adds `version` command to `ziti-probe`
+  * Go SDK
+    * Removal of `Fatal()` call
+    * Add ability to detect invalid sessions
+
 # Release 0.16.0
 
-# What's New:
+## Overview:
 
 **Important Note:** This release contains backwards incompatible changes. See below for details.
 
@@ -12,7 +39,7 @@
   * [Denormalize policy links for performance](https://github.com/openziti/edge/issues/256)
 * Datastore Integrity Checker
   * [foundation#107](https://github.com/openziti/foundation/issues/107)
-  * [edge#258](https://github.com/openziti/edge/issues/258)  
+  * [edge#258](https://github.com/openziti/edge/issues/258)
   * [#163](https://github.com/openziti/ziti/issues/163)
 * Events Framework
   * [foundation#116](https://github.com/openziti/foundation/issues/116) - Add generic event framework and use it for metrics
@@ -27,8 +54,8 @@
   * [edge#273](https://github.com/openziti/edge/issues/273) - Avoid tun "not pollable" read failures
   * [fabric#114](https://github.com/openziti/fabric/issues/114) - When egress connect fails, router does not return failure to controller
   * [fabric#117](https://github.com/openziti/fabric/issues/117) - Xgress setup has a race condition
- 
-* Backwards Compatibility 
+
+* Backwards Compatibility
   * The `ziti edge snapshot-db` command is now `ziti edge db snapshot`
   * In order to fix [fabric#117](https://github.com/openziti/fabric/issues/117), the xgress protocol flow had to be updated. This means 0.16+ controllers and routers will not work with older controllers and routers
 
@@ -36,7 +63,7 @@
 ### E2E Encryption Router Termination
 A new xgress module has been added specifically for handling Ziti Edge e2e to handle SDK to Router Termination scenarios.
 Previously, only SDK-to-SDK end-to-end encryption was supported. When e2e encryption is desired
-for a router terminated service, use the bind value `xgress_edge_transport` when defining
+for a router terminated service, use the bind value `edge_transport` when defining
 the terminator for the service. This value is now the default when using the CLI to create
 a terminator. If the `binding` value is omitted when using the REST API directly, it will default
 to `transport` - which does not support e2e encryption.
@@ -44,7 +71,7 @@ to `transport` - which does not support e2e encryption.
 ##### CLI Example (explicit binding):
 
 ```
-ziti edge create terminator mytcpservice 002 tcp:my-tcp-service.com:12345 --binding  xgress_edge_transport
+ziti edge create terminator mytcpservice 002 tcp:my-tcp-service.com:12345 --binding edge_transport
 ```
 
 ##### Edge Rest API Example:
@@ -54,7 +81,7 @@ POST /terminators
 {
     "service": "ZbX9",
     "router": "002",
-    "binding": "xgress_edge_transport",
+    "binding": "edge_transport",
     "address": "tcp:my-tcp-service.com:12345"
 }
 ```
@@ -64,7 +91,7 @@ POST /terminators
 Edge Services can now be set to require e2e encryption. All Edge
 Services defined before this version will default to requiring e2e
 encryption. Existing services will need to have their terminators
-updated to use `xgress_edge_transport` or update the service to not
+updated to use `edge_transport` or update the service to not
 require e2e encryption.
 
 ##### Create Service Example (encryption required)
@@ -155,7 +182,7 @@ forwarder:
 ```
 
 ## Model Performance Improvements
-Policy relationships are now stored in a denormalized fashion. This means that checking if an entity is tied to another entity via a policy is now a direct lookup, and much faster. This means that the Ziti controller should scale very well in cases where we have many identities, services and/or edge routers. Performance was tested against the APIs used by the SDKs. 
+Policy relationships are now stored in a denormalized fashion. This means that checking if an entity is tied to another entity via a policy is now a direct lookup, and much faster. This means that the Ziti controller should scale very well in cases where we have many identities, services and/or edge routers. Performance was tested against the APIs used by the SDKs.
 
 See for more detail:
 
@@ -183,13 +210,13 @@ Ziti now has a shared events framework used across projects. Events are used int
 Each project which exposes events will have a top-level events package where you can find registration hooks for all exposed events in the project
 
 ### Current Event Types
-* foundation  
+* foundation
     * metrics events
 * fabric
     * fabric session events (session created, session deleted, session path changed)
     * trace events
 * edge
-    * **NEW** edge session events (session created, session deleted) 
+    * **NEW** edge session events (session created, session deleted)
         * the session event created includes sessionId, session token, API sessionId and identity id
         * the session deleted event includes sessionId and session token
 
@@ -198,7 +225,7 @@ NOTE: The clientId on fabric session events is the edge session token for fabric
 # Release 0.15.3
 
 * What's New:
-  * Add example docker compose for ziti-tunnel  
+  * Add example docker compose for ziti-tunnel
 
 # Release 0.15.2
 
@@ -215,7 +242,7 @@ NOTE: The clientId on fabric session events is the edge session token for fabric
   * [edge#245](https://github.com/openziti/edge/issue/245) - fingerprint calculation changed from 0.14 to 0.15. Ensure 0.15 routers can work with 0.14 controllers
   * [edge#248](https://github.com/openziti/edge/issue/248) - Edge Router Hello can time out on slow networks with many links to establish
   * [foundation#103](https://github.com/openziti/foundation/issues/103) - Fix config file env injection for lists
- 
+
 # Release 0.15.1
 
 * What's New:
@@ -255,19 +282,19 @@ Ziti 0.15.0 includes the following:
 The code to migrate a Ziti instance from pre-0.9 releases has been removed. If you want to migrate from a pre-0.9 version you should first update to 0.14.12, then to new versions.
 
 ## Database Snapshots
-Database snapshots can now be triggered in a variety of ways to cause the creation of a dabase backup/snapshot. This can be done from the ziti-fabric CLI, the ziti CLI and the REST API 
+Database snapshots can now be triggered in a variety of ways to cause the creation of a dabase backup/snapshot. This can be done from the ziti-fabric CLI, the ziti CLI and the REST API
 
     $ ziti-fabric snapshot-db
     $ ziti edge snapshot-db
-    
+
 The REST API is available by POSTing to `/edge/v1/database/snapshot`. This ability is only available to administrators.
-    
-The snapshot will be a copy of the database file created within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute. 
+
+The snapshot will be a copy of the database file created within a bolt transaction. The file name will have the data and time appended to it. Snapshotting can be done at most once per minute.
 
 ## Edge Routers/Fabric Router subtyping
-Previously edge routers and fabric routers were closely related, but weren't actually the same entity. When an edge router was created, there was no corresponding fabric router until the edge router had been succesfully enrolled. 
+Previously edge routers and fabric routers were closely related, but weren't actually the same entity. When an edge router was created, there was no corresponding fabric router until the edge router had been succesfully enrolled.
 
-Now, edge routers are a type of fabric router. When an edge router is created, it will be visible as a fabric router with no fingerprint. This means that the corresponding router application won't be able to connect until enrollment is complete. 
+Now, edge routers are a type of fabric router. When an edge router is created, it will be visible as a fabric router with no fingerprint. This means that the corresponding router application won't be able to connect until enrollment is complete.
 
 This simplifies some things, including allowing adding terminators to an edge router before enrollment is complete.
 
@@ -452,7 +479,7 @@ Ziti 0.14.10 includes the following:
 
 # Release 0.14.9
 Ziti 0.14.9 includes the following:
-  
+
 * [Move ziti edge controller commands to ziti edge](https://github.com/openziti/ziti/issues/108)
     * Note: for now `ziti edge` and `ziti edge controller` will both have edge controller related commands. `ziti edge controller` is deprecated and will be removed in a future release. Please update your scripts.
 
@@ -463,7 +490,7 @@ Ziti 0.14.8 includes the following:
 
 # Release 0.14.7
 Ziti 0.14.7 includes the following:
-  
+
 * [Add CLI support for updating terminators](https://github.com/openziti/ziti/issues/106)
 * [Add CLI support for managing identity service config overrides](https://github.com/openziti/ziti/issues/105)
 
@@ -479,7 +506,7 @@ Ziti 0.14.5 includes the following:
     * [CA Identity Name Format](https://github.com/openziti/edge/issues/147)
   * [Remove sourceType from metrics](https://github.com/openziti/foundation/issues/68)
   * Fix name of metric from `egress.tx.Msgrate` to `egress.tx.msgrate`
-  
+
 ## Ziti Edge API
 ### CA Identity Name Format
 
@@ -529,13 +556,13 @@ authenticators with their target identities, addresses the root cause, and adds 
 # Release 0.14.2
 ## Theme
 Ziti 0.14.2 includes the following:
-  
+
   * CLI enhancements
-      * [can't create service policy with @ identity name](https://github.com/openziti/ziti/issues/93) 
+      * [can't create service policy with @ identity name](https://github.com/openziti/ziti/issues/93)
       * [Add CLI commands to allow updating policies and role attributes](https://github.com/openziti/ziti/issues/94)
       * [CLI: read config/config-type JSON from file](https://github.com/openziti/ziti/issues/90)
   * [Not found errors for assigned/related ids do not say which resource was not found](https://github.com/openziti/edge/issues/148)
-  * Fixes to connection setup timing 
+  * Fixes to connection setup timing
 
 ## CLI Updates
 ### Names in Policy Roles
@@ -581,8 +608,8 @@ Ziti 0.14.1 includes the following:
   * Xt fixes
       * Fixed strategies missing session ended events
       * Fixed costed terminator sorting
-      * Fixed race condition where terminators could be selected right after delete because they would have default cost. 
-      * Expanded space between precedence levels to ensure terminator static cost doesn't allow total costs to jump precedence boundary 
+      * Fixed race condition where terminators could be selected right after delete because they would have default cost.
+      * Expanded space between precedence levels to ensure terminator static cost doesn't allow total costs to jump precedence boundary
       * Fixed type error in failure cost tracker
   * Logging cleanup - many log statements that were error or info have been dropped to debug
   * ziti-probe can now handle partial configs
@@ -599,9 +626,9 @@ type Listener interface {
 }
 ```
 
-This allows clients to set their precedence to `failed` when shutting down. This will allow them to gracefully finishing any outstanding requests while ensuring that no new requests will be routed to this application. This should allow for applications to do round-robin upgrades without service interruption to clients. It also allows clients to influence costs on the fly based on knowledge available to the application. 
+This allows clients to set their precedence to `failed` when shutting down. This will allow them to gracefully finishing any outstanding requests while ensuring that no new requests will be routed to this application. This should allow for applications to do round-robin upgrades without service interruption to clients. It also allows clients to influence costs on the fly based on knowledge available to the application.
 
-Support is currently limited to the Golang SDK, support in other SDKs will be forthcoming as it is prioritized. 
+Support is currently limited to the Golang SDK, support in other SDKs will be forthcoming as it is prioritized.
 
 # Release 0.14.0
 ## Theme
@@ -609,7 +636,7 @@ Ziti 0.14.0 includes the following:
 
 ### Features
   * The first full implementation of high availability (HA) and horizontal scale (HS) services
-  
+
 ### Fixes
   * [When using index scanner, wrong count is returned when using skip](https://github.com/openziti/foundation/issues/62)
   * fabric now includes migration to extract terminators from services
@@ -628,9 +655,9 @@ The fabric now includes a new framework called Xt (eXtensible Terminators) which
   1. Smart routing finds all the active terminators for the session (active meaning the terminator's router is connected)
   1. Smart routing calculates a cost for each terminator then hands the service's terminator strategy a list of terminators and their costs ranked from lowest to highest
   1. The strategy returns the terminator that should be used
-  1. A new session is created using that path. 
-  
-Strategies will often work by adjusting terminator costs. The selection algorithm the simply returns the lowest cost option presented by smart routing. 
+  1. A new session is created using that path.
+
+Strategies will often work by adjusting terminator costs. The selection algorithm the simply returns the lowest cost option presented by smart routing.
 
 #### Costs
 There are a number of elements which feed the smart routing cost algorithm.
@@ -643,11 +670,11 @@ Each terminator has a static cost which can be set or updated when the terminato
 
 #### Precedence
 Each terminator has a precedence. There are three precedence levels: `required`, `default` and `failed`.
-  
+
 Smart routing will always rank terminators with higher precedence levels higher than terminators with lower precedence levers. So required terminators will always be first, default second and failed third. Precedence levels can be used to implement HA. The primary will be marked as required and the secondary as default. When the primary is determined to be down, either by some internal or external set of heuristics, it will be marked as Failed and new sessions will go to the secondary. When the primary recovers it can be bumped back up to Required.
 
-##### Dynamic Cost 
-Each terminator also has a dynamic cost that will move a terminator up and down relative to its precedence. This cost can be driven by stratagies or by external components. A strategy might use number of active of open sessions or dial successes and failures to drive the cost. 
+##### Dynamic Cost
+Each terminator also has a dynamic cost that will move a terminator up and down relative to its precedence. This cost can be driven by stratagies or by external components. A strategy might use number of active of open sessions or dial successes and failures to drive the cost.
 
 ##### Cost API
 Costs can be set via the Costs API in Xt:
@@ -667,7 +694,7 @@ type Costs interface {
 }
 ```
 
-Each terminator has an associated precedence and dynamic cost. This can be reduced to a single cost. The cost algorithm ensures terminators at difference precedence levels do not overlap. So a terminator which is marked failed, with dynamic cost 0, will always have a higher calculated cost than a terminator with default precedence and maximum value for dynamic cost. 
+Each terminator has an associated precedence and dynamic cost. This can be reduced to a single cost. The cost algorithm ensures terminators at difference precedence levels do not overlap. So a terminator which is marked failed, with dynamic cost 0, will always have a higher calculated cost than a terminator with default precedence and maximum value for dynamic cost.
 
 #### Strategies
 Strategies must implement the following interface:
@@ -692,15 +719,15 @@ This is the default strategy. It always uses the lowest cost terminator. It driv
   * Cost is proportional to number of open sessions
   * Dial failures drive the cost up
   * Dial successes drive the cost down, but only as much as they were previously driven up by failures
-  
+
 ##### `weighted`
-This strategy drives costs in the same way as the `smartrouting` strategy. However instead of always picking the lowest cost terminator it does a weighted random selection across all terminators of the highest precedence. If a terminator has double the cost of another terminator it should get picked approximately half as often. 
-   
+This strategy drives costs in the same way as the `smartrouting` strategy. However instead of always picking the lowest cost terminator it does a weighted random selection across all terminators of the highest precedence. If a terminator has double the cost of another terminator it should get picked approximately half as often.
+
 ##### `random`
-This strategy does not change terminator weights. It does simple random selection across all terminators of the highest precedence. 
+This strategy does not change terminator weights. It does simple random selection across all terminators of the highest precedence.
 
 ##### `ha`
-This strategy assumes that one terminator will have `required` precedence and there will be a secondary terminator with `default` precedence. If three consecutive dials to the highest ranked terminator fail in a row it will be marked as failed. This will allow the secondary to take over. If the primary recovers it can be marked as required again via the APIs. 
+This strategy assumes that one terminator will have `required` precedence and there will be a secondary terminator with `default` precedence. If three consecutive dials to the highest ranked terminator fail in a row it will be marked as failed. This will allow the secondary to take over. If the primary recovers it can be marked as required again via the APIs.
 
 ### API Changes
 The terminator endpoint now supports setting the static terminator cost and terminator precedence.
@@ -717,9 +744,9 @@ The terminator endpoint now supports setting the static terminator cost and term
 Ziti 0.13.9 includes the following:
 
  * Adds paging information to cli commands
- 
+
  Example
- 
+
  ```shell script
 $ ec list api-sessions "true sort by token skip 2 limit 3" 
 id: 37dd1463-e4e7-40de-9a63-f75486430361    token: 0b392a2f-47f8-4561-af63-93807ce70d93    identity: Default Admin
@@ -741,7 +768,7 @@ Ziti 0.13.7 includes the following:
 
   * Improvements to sdk availability when hosting services
   * Various bug fixes to related to terminators and transit routers
-  
+
 ## SDK Resilience
 The golang sdk now has a new listen method on context, which takes listen options.
 
@@ -757,7 +784,7 @@ type ListenOptions struct {
 	ConnectTimeout time.Duration
 	MaxConnections int
 }
-```  
+```
 
 The SDK now supports the following:
 
@@ -766,7 +793,7 @@ The SDK now supports the following:
   * Allow establishing new API session, existing API session goes away
   * If client doesn't have access to service, it should stop listening and return an error
   * If client can't establish or re-establish API session, it should stop listening and return error
-  
+
 If paired with a ziti controller/routers which support terminator strategies for HA/HS, the following features are also supported:
 
   * Handle listen to multiple edge routers.
@@ -897,13 +924,13 @@ listeners:
 
 # Release 0.13
 ## Theme
-Ziti 0.13 includes the following: 
- 
+Ziti 0.13 includes the following:
+
   * Changes to make working with policies easier, including
       * New APIs to list existing role attributes used by edge routers, identities and services
       * New APIs to list entities related by polices (such as listing edge routers available to a service via service edge router policies)
       * Enhancements to the LIST APIs for edge routers, identities and services which allow one to filter by roles
-      * A policy advisor API, which helps analyze policies and current system state to figure out if an identity should be able to use a service and if not, why not 
+      * A policy advisor API, which helps analyze policies and current system state to figure out if an identity should be able to use a service and if not, why not
   * CA Auto Enrollment now allows identities to inherit role attributes from the validating CA
       * New `identityRole` attributes added to CA entities
   * New APIs to list and manage Transit Routers
@@ -915,16 +942,16 @@ Ziti 0.13 includes the following:
       * Adjustable Xgress MTU size.
   * All Ziti Go projects are now being built with Go 1.14
       * See here for change to Go in 1.14 - https://golang.org/doc/go1.14
-      
-## Making Policies More User Friendly 
+
+## Making Policies More User Friendly
 ### Listing Role Attributes in Use
 
-There are three new endpoints for listing role attributes in use. 
+There are three new endpoints for listing role attributes in use.
 
     * Endpoint: /edge-router-role-attributes
     * Endpoint: /identity-role-attributes
     * Endpoint: /service-role-attributes
-    
+
 All three support the same operations:
 
     * Supported operations
@@ -932,13 +959,13 @@ All three support the same operations:
             * Supports filtering
             * role attributes can be filtered/sorted using the symbol `id`
             * Ex:`?filter=id contains "north" limit 5`
-            
+
 The CLI supports these new operations as well.
 
     ziti edge controller list edge-router-role-attributes
     ziti edge controller list identity-role-attributes
     ziti edge controller list service-role-attributes
-    
+
 Example output:
 
     $ ec list service-role-attributes "true sort by id desc limit 5" -j
@@ -997,8 +1024,8 @@ When building UIs it may be useful to list entities which have role attributes b
      * Query: GET /services now supports two new query paramters
          * roleFilter. May be specified more than one. Should be an id or role specifier (ex: @38683097-2412-4335-b056-ae8747314dd3 or #sales)
          * roleSemantic. Optional. Defaults to AllOf if not specified. Indicates which semantic to use when evaluating role matches
-         
-Note that a roleFilter should have one role specifier (like `@some-id` or `#sales`). If you wish to specify multiple, provide multiple role filters. 
+
+Note that a roleFilter should have one role specifier (like `@some-id` or `#sales`). If you wish to specify multiple, provide multiple role filters.
 
     /edge-routers?roleFilter=#sales&roleFilter=#us
 
@@ -1048,14 +1075,14 @@ This adds a new operation to the /identities endpoint
        * Query related identities: GET /identities/<identity-id>/policy-advice/<service-id>
 
 This will return the following information about the identity and service:
- 
+
    * If the identity can dial the service
    * If the identity can bind the service
    * How many edge routers the identity has access to
    * How many edge routers the service can be accessed through
    * Which edge routers the identity and service have in common (if this is none, then the service can't be accessed by the identity)
-   * Which of the common edge routers are on-line 
-    
+   * Which of the common edge routers are on-line
+
 Example result:
 
     {
@@ -1135,7 +1162,7 @@ Examples:
 
     # Inspect the ssh service for issues related to the jsmith-laptop identity 
     ziti edge controller policy-advisor identities ssh jsmith-laptop
-    
+
 Some example output of the CLI:
 
     $ ec policy-advisor identities -q
@@ -1184,8 +1211,8 @@ Some example output of the CLI:
 
 ## CA Auto Enrollment Identity Attributes
 
-Identities that are enrolled via a CA can now inherit a static list of identity role attributes. The normal create, 
-update, patch requests supported by the CA entities now allow the role attributes to be specified. CA identity role 
+Identities that are enrolled via a CA can now inherit a static list of identity role attributes. The normal create,
+update, patch requests supported by the CA entities now allow the role attributes to be specified. CA identity role
 attribute changes do no propagate to identities that have completed enrollment.
 
 This feature allows a simple degree of automation for identities that are auto-provisioning through a third party CA.
@@ -1277,8 +1304,8 @@ Example list output:
 ```
 ## Transit Routers now support enrolment via `ziti-router enroll`
 
-Transit Routers now enroll using the same command: `ziti-router enroll <config> -j <jwt>`. During the enrollment process, 
-the CSR properties used will be taken from `edge.csr`. If `edge.csr` does not exist `csr` will be utilized. If both are 
+Transit Routers now enroll using the same command: `ziti-router enroll <config> -j <jwt>`. During the enrollment process,
+the CSR properties used will be taken from `edge.csr`. If `edge.csr` does not exist `csr` will be utilized. If both are
 missing an error will occur.
 
 Example router configuration:
@@ -1394,8 +1421,8 @@ The main endpoint to retrieve the Swagger/Open API 2.0 specification is: `/specs
 ## APIs now only accept ID, not ID or Name
   1. Some APIs related to configurations accepted config names or ids. These now only accept name.
   1. Policies would accept entity references with names as well as ids. So you could use `@ssh`, for example when referencing the ssh service. These now also only accept ID
-  
-In general allowing both values adds complexity to the server side code. Consuming code, such as user interfaces or the ziti cli, can do the name to id translation just as easily. 
+
+In general allowing both values adds complexity to the server side code. Consuming code, such as user interfaces or the ziti cli, can do the name to id translation just as easily.
 
 ## Fabric Enhancements
 ### Xlink Framework
@@ -1444,16 +1471,16 @@ This MTU controls the maximum size of the `Payload` packet sent across the data 
 
 # Release 0.12
 ## Theme
-Ziti 0.12 includes the following: 
- 
+Ziti 0.12 includes the following:
+
  * Terminators have been extracted from services
      * Terminators define where a service terminates. Previously each service had exactly one terminator. Now services can have 0 to N terminators.
  * List APIs now support inline paging
- * Association APIs now support filtering, paging and querying 
+ * Association APIs now support filtering, paging and querying
  * The bolt datastore creates a backup of the datastore file before attempting a schema/data migration
  * Fabric and edge code are now much more closely aligned at the persistence and model layers
  * Some deprecated endpoints are now being removed
- 
+
 ## Terminators
 See https://github.com/openziti/fabric/wiki/Pluggable-Service-Terminators for a discussion of what service terminators are, the motivation for extracting them from services and the design for how they will work.
 
@@ -1461,13 +1488,13 @@ This release includes the following:
 
   * Terminators extracted from service as separate entities
   * When SDK applications bind and unbind, the controller now dynamically adds/removes terminators as appropriate
- 
+
 This release does not yet include a terminator strategy API. Strategies can be specified per service, but if a service has multiple terminators the first one will be used. The terminator strategy API along with some implementations will be added in a follow-up release. This release also does not include strategy inputs on terminators as discussed in the above design document. If strategy inputs end up being useful, they may be added in the furure.
 
 ### Terminator related API changes
 
 There is a new terminators endpoint:
- 
+
     * Endpoint: /terminators
     * Supported operations
         * Detail: GET /terminators/<terminator-id>
@@ -1482,9 +1509,9 @@ There is a new terminators endpoint:
          * router - type: uuid, must be a valid router id
          * binding - type: string. Optional, defaults to "transport". The xgress binding on the selected router to use
          * address - type: string. The address that will be dialed using the xgress component on the selected router
-         
+
 The service endpoint has changes as well:
-  
+
     * Endpoint: /services
     * New operations
        * Query related endpoints: GET /services/<service-id>/terminators?filter=<optional-filter>
@@ -1493,7 +1520,7 @@ The service endpoint has changes as well:
        * endpointAddress
     * The following property has been added
        * terminatorStrategy - type: string, optional. The terminator strategy to use. Currently unused.
-       
+
 The fabric service definition has also changed (visible from ziti-fabric).
 
   * The following properties have been removed
@@ -1502,9 +1529,9 @@ The fabric service definition has also changed (visible from ziti-fabric).
        * `endpointAddress`
   * The following property has been added
        * `terminatorStrategy`
-       
+
 The ziti and ziti-fabric CLIs have been updated with new terminator related functionality, so that terminators can be viewed, created and deleted from both.
-   
+
 ## Filtering/Sorting/Paging Changes
 List operations on entities previously allowed the following parameters:
 
@@ -1512,8 +1539,8 @@ List operations on entities previously allowed the following parameters:
   * `sort`
   * `limit`
   * `offset`
-  
-These are all still supported, but now sort, limit and offset can also be included in the filter. If parameters are specified both in the filter and in an explicit query parameter, the filter takes precedence. 
+
+These are all still supported, but now sort, limit and offset can also be included in the filter. If parameters are specified both in the filter and in an explicit query parameter, the filter takes precedence.
 
 When listing entities from the ziti CLI, filters can be included as an optional argument.
 
@@ -1543,8 +1570,8 @@ For example:
     id: dcc9922a-c681-41bf-8079-be2163509702    name: mattermost    terminator strategy:     role attributes: {}
     id: 4e33859b-070d-42b1-8b40-4adf973f680c    name: simple    terminator strategy:     role attributes: {}
 
-Association lists now also support filtering, sorting and paging. Association GET operations only support the filter parameter. 
-    
+Association lists now also support filtering, sorting and paging. Association GET operations only support the filter parameter.
+
 
     $ ziti edge controller list service terminators ssh
     Found services with id cd1ae16e-5015-49ad-9864-3ca0f5814091 for name ssh
@@ -1562,13 +1589,13 @@ Association lists now also support filtering, sorting and paging. Association GE
     id: a5213300-9c5f-4b0e-a790-1ed460964d7c    serviceId: cd1ae16e-5015-49ad-9864-3ca0f5814091    routerId: 888cfde1-5786-4ba8-aa75-9f97804cb7bb    binding: transport    address: tcp:localhost:2022
 
 ## Bolt Datastore Migrations
-The fabric now supports migrating schema/data from one version to another. The fabric and edge share a common framework for migration. The migration framework now also automatically backs up the bolt data file before migration data. The backup file will have the same name as the original bolt file but with a timestamp appended to it. 
+The fabric now supports migrating schema/data from one version to another. The fabric and edge share a common framework for migration. The migration framework now also automatically backs up the bolt data file before migration data. The backup file will have the same name as the original bolt file but with a timestamp appended to it.
 
 Example:
 
     Original file: /tmp/ziti-bolt.db
     Backup file:   /tmp/ziti-bolt.db-20200316-134725
-    
+
 The fabric and edge schemas do not yet get migrated in the same transaction. This will be addressed in a follow-up release.
 
 ## Fabric and Edge Alignment
@@ -1580,13 +1607,13 @@ As part of this consolidation effort, fabric entities now share the same set of 
   * `createdAt`
   * `updatedAt`
   * `tags`
-  
+
 Previously the only common property was `id`.
 
 ## Deprecated Endpoints
-The `/gateways` (replaced by `/edge-routers`) and `network-sessions` (replaced by `/sessions`) endpoints, which were previously deprecated, have now been removed.  
+The `/gateways` (replaced by `/edge-routers`) and `network-sessions` (replaced by `/sessions`) endpoints, which were previously deprecated, have now been removed.
 
-## Miscellaneous 
+## Miscellaneous
 
 There is a new `ziti edge controller version` command which shows information about the version of the controller being connected to:
 
@@ -1600,10 +1627,10 @@ Example:
 
 # Release 0.11
 ## Theme
-Ziti 0.11 includes the following: 
- 
+Ziti 0.11 includes the following:
+
  * Ziti connections from Ziti SDK client to services hosted by SDK are encrypted end-to-end (no API changes)
- 
+
 
 ## End-to-end Encryption
 
@@ -1612,10 +1639,10 @@ Read more about on https://openziti.github.io (_coming soon_)
 
 # Releaes 0.10
 ## Theme
-Ziti 0.10 includes a single change: 
- 
+Ziti 0.10 includes a single change:
+
  * Edge API input validation processing was changed to operate on the supplied JSON instead of target objects
- 
+
 
 ## Edge API Validation
 
@@ -1628,16 +1655,16 @@ operations. PATCH (partial update) should not be affected.
 
 # Release 0.9
 ## Theme
-Ziti 0.9 includes the following 
- 
+Ziti 0.9 includes the following
+
  * a generic service configuration facility, useful for configuring service centric edge configuration data
  * several changes to policy syntax and semantics
  * service edge router policies are now a separate entity, instead of just a field on service
- 
+
 
 ## Service Configuration
-Configurations are named JSON style objects that can be associated with services. Configurations have a type. 
-A service can have 0 or 1 configurations of each configuration type associated with it.  
+Configurations are named JSON style objects that can be associated with services. Configurations have a type.
+A service can have 0 or 1 configurations of each configuration type associated with it.
 
 ### Configuration types
 There is a new endpoint for managing config types.
@@ -1658,12 +1685,12 @@ There is a new endpoint for managing config types.
 
 If a schema is set on a type, that schema will be used to validate config data on configurations of that type. Validation
 will happen if a configuration is created or updated. If a config type schema changes, the system does not re-validate
-configurations of that type. 
+configurations of that type.
 
 It is generally assumed that if there are backwards incompatible changes being made to a schema that a new config type
-will be created and interested applications can support multiple configuration types. 
+will be created and interested applications can support multiple configuration types.
 
-The ziti CLI supports the following operations on config types: 
+The ziti CLI supports the following operations on config types:
 
     * create config-type
     * list config-types
@@ -1671,7 +1698,7 @@ The ziti CLI supports the following operations on config types:
     * delete config-type
 
 ### Configurations
-There is a new endpoint for managing configurations       
+There is a new endpoint for managing configurations
 
     * Endpoint: `/configs`
     * Supported operations
@@ -1688,13 +1715,13 @@ There is a new endpoint for managing configurations
          * data - type: JSON object
              * Support values are strings, numbers, booleans and nested objects/maps
 
-The ziti CLI supports the following operations on configs: 
+The ziti CLI supports the following operations on configs:
 
     * create config
     * update config
     * list configs
     * delete config
-    
+
 ```shell script
 $ ziti edge controller create config ssh ziti-tunneler-client.v1 '{ "hostname" : "ssh.mycompany.com", "port" : 22 }'
 83a1e815-04bc-4c91-8d88-1de8c943545f
@@ -1726,11 +1753,11 @@ Found configs with id 83a1e815-04bc-4c91-8d88-1de8c943545f for name ssh
 $ ziti edge controller list configs
 $ 
 ```
-             
+
 ### Service Configuration
 The DNS block, which included hostname and port, has been removed from service definitions. When creating or updating
 services, you can submit a `configs` array, which may include config ids or names (or a mix of the two). Configs are
-not required. 
+not required.
 
 **NOTE**: Only one config of a given type may be associated with a service.
 
@@ -1739,18 +1766,18 @@ Configurations associated with a service may be listed as entities using:
     * List associated configs GET `/services/<config-id>/configs`
 
 #### Retrieving service configuration
-When authenticating, a user may now indicate which config types should be included when listing services. 
-The authentication POST may include a body. If the body has a content-type of application/json, it will 
+When authenticating, a user may now indicate which config types should be included when listing services.
+The authentication POST may include a body. If the body has a content-type of application/json, it will
 be parsed as a map. The controller will looking for a key at the top level of the map called `configTypes`,
-which should be an array of config type ids or names (or mix of the two). 
+which should be an array of config type ids or names (or mix of the two).
 
 Example authentication POST body:
 ```json
 {
     "configTypes" : ["ziti-tunneler-client.v1", "ziti-tunneler-client.v2"]
 }
-``` 
-When retrieving services, the config data for for those configuration types that were requested will be embedded in 
+```
+When retrieving services, the config data for for those configuration types that were requested will be embedded in
 the service definition. For example, if the user has requested (by name) the config types "ziti-tunneler-client.v1" and
 "ziti-tunneler-server.v1" and the `ssh` service has configurations of both of those kinds associated, a listing which
 includes that service might look as follows:
@@ -1812,7 +1839,7 @@ includes that service might look as follows:
     ]
 }
 ```
- 
+
 ### Identity Service Configuration
 Configuration for a service can also be specified for a given identity. If a configuration is specified for a service,
 it will replace any configuration of that type on that service.
@@ -1829,7 +1856,7 @@ it will replace any configuration of that type on that service.
         * service may be a service name or id. If there are id and name collisions, id will take precedence
         * config may be a config name or id. If there are id and name collisions, id will take precedence
         * Ex: [{"service": "ssh", "config"  : "my-custom-ssh-config" }]
- 
+
 ## Policy Changes
 ### Syntax Changes
    1. Roles are now prefixed with `#` instead of `@`
@@ -1839,36 +1866,36 @@ it will replace any configuration of that type on that service.
 
 ### Entity Reference by Name
 Previously, entities could be referenced in policies by id. They can now also be referenced by name, using the same
-syntax. So a service named "ssh" can be referenced as `@ssh`. If the entity is renamed, the policy will be updated 
-with the updated name. 
+syntax. So a service named "ssh" can be referenced as `@ssh`. If the entity is renamed, the policy will be updated
+with the updated name.
 
 If a reference matches both a name and an ID, the ID will always take precedence.
 
 ### `Any Of` Semantics
 Previously polices operated using 'all of' semantics. In other words, to match a policy, an entity had to have ALL OF
-the role attributes specified by the policy or be listed explicitly by id. 
+the role attributes specified by the policy or be listed explicitly by id.
 
 Edge Router and Service policies now have a new field `semantics`, which may have values of `AnyOf` or `AllOf`. If no
 value is provided, it will default to the original behavior of `AllOf`. If `AnyOf` is provided then an entity will match
-if it matches any of the roles listed, or if it is listed explicitly by id or name. 
+if it matches any of the roles listed, or if it is listed explicitly by id or name.
 
-**NOTE** 
-Because service edgeRouterRoles are not broken out into a separate policy entity, they do not support `AnyOf` semantics. 
+**NOTE**
+Because service edgeRouterRoles are not broken out into a separate policy entity, they do not support `AnyOf` semantics.
 
 ### `#All` limitations
 Because having #all grouped with other roles or entity references doesn't make any sense, `#all` policies must now be
-created with no other roles or entity references. 
+created with no other roles or entity references.
 
 ### Service Edge Router Policy
 Previously services could be confgured with edge router roles, which limited which edge routers could be used to dial
-or bind the service. 
+or bind the service.
 
 In 0.9 that is replaced with a new standalone type: service edge router policies. A service edge router policy has three attributes:
 
   * Name
   * Service Roles
   * Edge Router Roles
-  
+
 An service can be a member of multiple policies and will have access to the union of all edge routers linked to from those policies.
 
 There is a new `/service-edge-router-policies` endpoint which can be used for creating/updating/deleting/querying service edge router policies. Service edge router policies PUT/POST/PATCH all take the following properties:
@@ -1877,14 +1904,14 @@ There is a new `/service-edge-router-policies` endpoint which can be used for cr
   * edgeRouterRoles
   * serviceRoles
   * tags
- 
+
 #### IMPORTANT NOTES
     1. Previously edge router roles on service could be left blank, and the service would be allowed access to all edge routers. Now, a service must be included in at least one service edge router policy or it cannot be dialed or bound.
     1. The set of edge routers an identity can use to dial/bind a service is the intersection of the edge routers that the identity has access to via edge router policies and the edge routers that the service has access to via service edge router policies 
 
 #### CLI Updates
-The CLI now has 
-    # create service-edge-router-policy 
+The CLI now has
+    # create service-edge-router-policy
     # list service-edge-router-policies
     # list service-edge-router-policy services
     # list service-edge-router-policy edge-routers
@@ -1905,15 +1932,15 @@ Ex:
     }
 ```
 
-Similarly, when sessions were listed, they had a `hosting` flag, which has been replaced by a `type` flag. 
+Similarly, when sessions were listed, they had a `hosting` flag, which has been replaced by a `type` flag.
 
 **NOTE**: Finally when sessions are transmitted between the controller and edge router, the format has also switched from using
 a hosting flag to a type field. This means that controllers and edge routers will **not inter-operate** across the the 0.9
 version boundary.
-     
+
 
 # Release 0.8
-## Theme 
+## Theme
  * Ziti 0.8.0 replaces appwans with role attribute based service policies
  * Ziti 0.8.0 consolidates dial and bind permissions into service policies
 
@@ -1925,7 +1952,7 @@ In 0.7.0 and prior access to services was controlled by appwans.
   * Services had explicit lists of identities that could bind the service
   * In order to dial a service, the identity had to be an admin or be in at least one appwan with that service
   * In order to bind a serivice, the identity had to be able to dial the service and be in the list of identities allowed to bind the service
-      
+
 Release 0.8.0 replaces this model with something new. It has the following goals:
 
   * Allow grouping identities and services dynamically using role attributes rather than hard-coded lists
@@ -1935,11 +1962,11 @@ The following concepts were introduced in 0.7 for edge router policies. They are
 
   * Role attributes
      * Role attributes are just a set of strings associated to a model entity
-     * The semantics of the role attributes are determined by the system administrator 
-     * Ex: an edge router might have the role attributes `["us-east", "new-york", "omnicorp"]` 
+     * The semantics of the role attributes are determined by the system administrator
+     * Ex: an edge router might have the role attributes `["us-east", "new-york", "omnicorp"]`
      * These tags might indicate that this edge router is located on the east coast of the USA, specifically in New York and should be dedicated to use by a customer named OmniCorp
      * Currently role attributes are supported on edge routers and identities
-  * Roles 
+  * Roles
      * Roles specify a set of entities
      * Roles may include role attributes as well as entity ids
      * A role will match all entities which either:
@@ -1948,22 +1975,22 @@ The following concepts were introduced in 0.7 for edge router policies. They are
      * Role attributes are prefixed with `@`. Role elements not prefixed with `@` are assumed to be ids
      * There is a special role attribute `@all` which will match all entities
      * A role may have only role attributes or only ids or may have both
-     
+
 ### Role Example
-  * Service with id 1 has role attributes `["sales", "New York City"]`    
-  * Service with id 2 has role attributes `["sales", "Albany"]`    
+  * Service with id 1 has role attributes `["sales", "New York City"]`
+  * Service with id 2 has role attributes `["sales", "Albany"]`
   * Service with id 3 has role attributes `["support", "Los Angeles"]`
   * A service role of `["@sales", "@New York City", "3"]` would evaluate as follows
      * Service 1 would match because it has all listed role attributes
      * Service 2 would not match, because it doesn't have all listed role attributes
      * Service 3 would match because its ID is listed explicitly
-     
+
 ### Model Changes
 #### Session Names
   1. api sessions had two endpoints in 0.7, `/api-sessions` and `/sessions` which was deprecated. `/sessions` is now no longer valid for api sessions
-  2. sessions used the `/network-sessions` endpoint. In this release, `/network-sessions` has been deprecated and `/sessions` should be used instead. 
+  2. sessions used the `/network-sessions` endpoint. In this release, `/network-sessions` has been deprecated and `/sessions` should be used instead.
   3. `/current-session` is now `/current-api-session`
-  
+
 #### Session Format
   1. When creating a session, the returned JSON has the same base format as when listing sessions, so it now includes the service and api-session information. The only difference is that the session token is also returned from session create, but not when listing sessions.
   1. The gateways attribute of session has been renamed to edgeRouters.
@@ -1978,13 +2005,13 @@ Services now have a roleAttributes field. Identities already had a roleAttribute
   * Policy Type ("Bind" or "Dial")
   * Identity Roles
   * Service Roles
-  
+
 An identity can be a member of multiple policies and will have access to the union of all services linked to from those policies.
 
 There is a new `/service-policies` endpoint which can be used for creating/updating/deleting/querying service policies. Service policies PUT/POST/PATCH all take the following properties:
 
   * name
-  * type 
+  * type
       * valid values are "Bind" and "Dial"
   * identityRoles
   * serviceRoles
@@ -1997,11 +2024,11 @@ There are also new association endpoints allowing the listing of services and id
   * /identities/<id>/service-policies
   * /services/<id>/service-policies
 
-#### Service Access 
+#### Service Access
   * An admin may dial or bind any service
   * A non-admin identity may dial any service it has access to via service policies of type "Dial"
   * A non-admin identity may bind any service it has access to via service policies of type "Bind"
-  
+
 When listing services, the controller used to provide a hostable flag with each service to indicate if the service could be bound in addition to being dialed. Now, the service will have a permissions block which will indicate if the service may be dialed, bound or both.
 
 Ex:
@@ -2045,12 +2072,12 @@ Ex:
 #### Appwan Removal and Migration
 The `/app-wans` endpoint has been removed. The bbolt schema version has been bumped to 3. If starting a fresh controller no action will be taken. However, if coming from an existing 0.7 or earlier bbolt database, the following will be done:
 
-  1. For each existing appwan, a service policy with type "Dial" will be created 
-  1. The new service policy will have the same name as the appwan it replaces 
+  1. For each existing appwan, a service policy with type "Dial" will be created
+  1. The new service policy will have the same name as the appwan it replaces
   1. The new service policy will have the same identities and services as the appwan it replaces
-  1. Identities and services will be specified explicitly by ID rather as opposed to by creating new role attributes 
+  1. Identities and services will be specified explicitly by ID rather as opposed to by creating new role attributes
 
-NOTE: Service hosting identities will not be migrated into equivalent Bind service policies, as binds are not yet used in any production scenarios. 
+NOTE: Service hosting identities will not be migrated into equivalent Bind service policies, as binds are not yet used in any production scenarios.
 
 ## Go SDK changes
 Several types have been renamed to conform to standard nomenclature
@@ -2061,30 +2088,30 @@ Several types have been renamed to conform to standard nomenclature
      * The Gateways field is now EdgeRouters
   * Gateway is now EdgeRouter
   * On the Service type the Hostable flag has been removed and replaced with a Permissions string array
-      * It may be nil, empty or contain either or both of "Dial" and "Bind" 
+      * It may be nil, empty or contain either or both of "Dial" and "Bind"
   * On the Context type
       * GetNetworkSession is now GetSession
       * GetNetworkHostSession is now GetBindSession
-      
+
 ## ziti command line changes
   1. The `ziti edge controller create/delete gateway` commands have been removed. Use `ziti edge controller create/delete edge-router` instead.
   2. There are new `ziti edge controller create/delete service-policy` commands
-  
+
 ## Ziti Proxy changes
-ziti-proxy has been incorporated into the ziti-tunnel command. Where previously one would have run 
+ziti-proxy has been incorporated into the ziti-tunnel command. Where previously one would have run
 
 ```
 ZITI_SDK_CONFIG=./config.json ziti-proxy run <proxied services>
-``` 
+```
 
-now one should use 
+now one should use
 
 ```
 ziti-tunnel proxy -i ./config.json <proxied services>
-``` 
+```
 
 # Release 0.7
-## Theme 
+## Theme
  * Ziti 0.7.0 replaces clusters with role attribute based policies
  * Ziti 0.7.0 takes steps towards consistent terminology for sessions
 
@@ -2093,10 +2120,10 @@ In 0.6.0 access to edge routers was controlled by clusters and services.
 
   * Every edge router was assigned to a cluster
   * Services belonged to 1 or more clusters
-  * Dial/bind request would results would include a list of edge routers which were 
-      * in clusters linked to the dialed/bound service and 
-      * were online when the request was made 
-      
+  * Dial/bind request would results would include a list of edge routers which were
+      * in clusters linked to the dialed/bound service and
+      * were online when the request was made
+
 Release 0.7.0 replaces this model with something new. It has the following goals:
 
   * Allow grouping edge routers and other entities dynamically using role attributes rather than hard-coded lists
@@ -2106,11 +2133,11 @@ It includes the following new concepts:
 
   * Role attributes
      * Role attributes are just a set of strings associated to a model entity
-     * The semantics of the role attributes are determined by the system administrator 
-     * Ex: an edge router might have the role attributes `["us-east", "new-york", "omnicorp"]` 
+     * The semantics of the role attributes are determined by the system administrator
+     * Ex: an edge router might have the role attributes `["us-east", "new-york", "omnicorp"]`
      * These tags might indicate that this edge router is located on the east coast of the USA, specifically in New York and should be dedicated to use by a customer named OmniCorp
      * Currently role attributes are supported on edge routers and identities
-  * Roles 
+  * Roles
      * Roles specify a set of entities
      * Roles may include role attributes as well as entity ids
      * A role will match all entities which either:
@@ -2119,16 +2146,16 @@ It includes the following new concepts:
      * Role attributes are prefixed with `@`. Role elements not prefixed with `@` are assumed to be ids
      * There is a special role attribute `@all` which will match all entities
      * A role may have only role attributes or only ids or may have both
-     
+
 ### Role Example
-  * Edge router with id 1 has role attributes `["us-east", "New York City"]`    
-  * Edge router with id 2 has role attributes `["us-east", "Albany"]`    
+  * Edge router with id 1 has role attributes `["us-east", "New York City"]`
+  * Edge router with id 2 has role attributes `["us-east", "Albany"]`
   * Edge router with id 3 has role attributes `["us-west", "Los Angeles"]`
   * An edge router role of `["@us-east", "@New York City", "3"]` would evaluate as follows
      * Edge router 1 would match because it has all listed role attributes
      * Edge router 2 would not match, because it doesn't have all listed role attributes
      * Edge router 3 would match because its ID is listed explicitly
-     
+
 ### Model Changes
 #### Role Attributes
 Edge routers and identities now have roleAttributes fields. Edge routers no longer have an associated cluster.
@@ -2139,7 +2166,7 @@ Edge routers and identities now have roleAttributes fields. Edge routers no long
   * Name
   * Identity Roles
   * Edge Router Roles
-  
+
 An identity can be a member of multiple policies and will have access to the union of all edge routers linked to from those policies.
 
 There is a new `/edge-router-policies` endpoint which can be used for creating/updating/deleting/querying edge router policies. Edge router policies PUT/POST/PATCH all take the following properties:
@@ -2150,12 +2177,12 @@ There is a new `/edge-router-policies` endpoint which can be used for creating/u
   * tags
 
 #### Service Edge Router Roles
-Services now have a new edgeRouterRoles field. If set, this specifies which edge routers may be used for a service. This replaces the old cluster functionality. 
+Services now have a new edgeRouterRoles field. If set, this specifies which edge routers may be used for a service. This replaces the old cluster functionality.
 
-#### Edge Router Access 
+#### Edge Router Access
 When a service is dialed or bound, which edge routers will be returned?
 
-  * If the service edgeRouterRoles are NOT set, then it will be the set of edge routers to which the dialing/binding identity has access 
+  * If the service edgeRouterRoles are NOT set, then it will be the set of edge routers to which the dialing/binding identity has access
   * If the service edgeRouterRoles ARE set, then it will be the intersection of the edge routers to which the service has access and the set of edge routers to which the identity has access
 
 #### Cluster Removal and Migration
@@ -2163,8 +2190,8 @@ The `/clusters` endpoint has been removed. The bbolt schema version has been bum
 
   1. An edge router policy will be created with `@all` for both identityRoles and edgeRouterRoles, allowing access to all edge routers from all identities. This will allow the current identities to continue using the system. Otherwise, no identities would be able to connect to any edge routers.
   2. Each edge router will get a role attribute of `cluster-<cluster name>` for the cluster it belonged to
-  3. If a service belongs to 1 or more clusters it will get a role attribute corresponding to the first cluster. Any edge routers assigned to additional clusters will be added to edge router roles field by ID. 
-      1. Noe: If we were to add additional role clusters for the other clusts we'd get the intersection, not the union and would end up with access to 0 edge routers  
+  3. If a service belongs to 1 or more clusters it will get a role attribute corresponding to the first cluster. Any edge routers assigned to additional clusters will be added to edge router roles field by ID.
+      1. Noe: If we were to add additional role clusters for the other clusts we'd get the intersection, not the union and would end up with access to 0 edge routers
 
 ## Session changes
 Terminology related to sessions is being made consistent between the edge and fabric.
@@ -2175,13 +2202,13 @@ There are two types of sessions:
       1. These were referred to as sessions in the edge and have no fabric equivalent
   1. Sessions which establish routing and allow data flow to/from/within the edge and fabric
       1. These were referred to as network sessions in the edge and sessions in the fabric
-      
+
 Going forward, what was called a session in the edge will now be referred to as an API session. What was called a network session will be now just be called session in both the edge and fabric.
 
-As a first step, in 0.7.0 API sessions will be available at both the `/sessions` and `/api-sessions` endpoints. Use of the `/sessions` endpoint is deprecated. In later releases the `/sessions` endpoint will be used for sessions instead of API sessions. 
+As a first step, in 0.7.0 API sessions will be available at both the `/sessions` and `/api-sessions` endpoints. Use of the `/sessions` endpoint is deprecated. In later releases the `/sessions` endpoint will be used for sessions instead of API sessions.
 
 # Release 0.6
-## Theme 
+## Theme
 Ziti 0.6.0 moves the back-end persistence model of Ziti Edge and Ziti Fabric into the same repository based on Bbolt (an in memory data store that is backed by a memory mapped file). The changes remove the requirement for PostgresSQL.
 
 ## UPDB Enrollment JWTs

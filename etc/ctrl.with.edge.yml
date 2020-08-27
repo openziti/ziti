@@ -39,10 +39,16 @@ mgmt:
     # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
     #connectTimeoutMs:       3000
 
-#metrics:
-#  influxdb:
-#    url:                http://localhost:8086
-#    database:           ziti
+metrics:
+  #file:
+    #path: /tmp/ziti-controller-metrics.log
+    #maxsizemb: 100:wq
+    # Supported formats: json, plain
+    # Defaults to json
+    #format: plain
+  #influxdb:
+    #url:                http://localhost:8086
+    #database:           ziti
 
 # xctrl_example
 #

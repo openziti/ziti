@@ -1,60 +1,66 @@
 version: "3.3"
 services:
     ziti-test:
-        image: netfoundry/ziti-tunnel:local
-        build:
-            context: .
-            args:
-                ZITI_VERSION: 0.15.2
-        volumes:
-        - .:/netfoundry
+        image: netfoundry/ziti-tunnel:tproxy
         network_mode: host
         cap_add:
         - NET_ADMIN
-        environment:
-        - NF_REG_NAME=my-ziti-identity-file
         entrypoint: ["sh", "-c", "while true; do sleep 11; done"]
-        #command: bash
     ziti-tproxy:
-        image: netfoundry/ziti-tunnel:local
+        image: netfoundry/ziti-tunnel:tproxy
+        network_mode: host
+        cap_add:
+        - NET_ADMIN
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
+        volumes:
+        - .:/netfoundry
+        environment:
+        - NF_REG_NAME
+        command: tproxy
+#        command: tproxy --resolver udp://127.0.0.123:53
+    ziti-iproxy:
+        image: netfoundry/ziti-tunnel:tproxy
+        build:
+            context: .
+            args:
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
         cap_add:
         - NET_ADMIN
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
-        command: tproxy --resolver udp://127.0.0.123:53 --verbose
+        - NF_REG_NAME
+        command: tproxy --resolver none
     ziti-tun:
-        image: netfoundry/ziti-tunnel:local
+        image: netfoundry/ziti-tunnel:tun
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
         cap_add:
         - NET_ADMIN
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
-        command: tun --resolver udp://127.0.0.123:53
+        - NF_REG_NAME
+        command: tun
         devices:
-          - "/dev/net/tun:/dev/net/tun"
+        - "/dev/net/tun:/dev/net/tun"
     ziti-proxy:
-        image: netfoundry/ziti-tunnel:local
+        image: netfoundry/ziti-tunnel:proxy
         build:
             context: .
             args:
-                ZITI_VERSION: 0.15.2
+                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         environment:
-        - NF_REG_NAME=my-ziti-identity-file
+        - NF_REG_NAME
         ports:
         - "8888:8888"
         - "9999:9999"
