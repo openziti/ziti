@@ -224,6 +224,8 @@ github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57/go.mod h1:zfwlbNMJ+OI
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
+github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
@@ -373,8 +375,10 @@ github.com/openziti/fabric v0.12.5 h1:K85PendocjszlkLnFC3dGtqqBlYnA9hJdi9WdSmlLi
 github.com/openziti/fabric v0.12.5/go.mod h1:ylhCe7OOkpJGFwy+SYtZn2VTk0q1YVtGZO8yDjCUVLY=
 github.com/openziti/foundation v0.13.2 h1:oLyq+JQzUiVoodklMb4T2gd/knZznxAvYIOmVx8g8N0=
 github.com/openziti/foundation v0.13.2/go.mod h1:EZ17GjcO0gq8VfVHZeKjkWj+h/mgYUrWhjpA4+XEN6w=
-github.com/openziti/sdk-golang v0.13.36 h1:UNo9jYZu0pj6UK8OmjXIzv7bbCOpX/SCyN701/SbItA=
-github.com/openziti/sdk-golang v0.13.36/go.mod h1:nUBh+1zeaTqhmk8JwPXptsl/6uaQLRsfvOKEILg2jLY=
+github.com/openziti/foundation v0.13.3 h1:ggRZD56kkrFEZsjQbDYdLqjaRomp+Na//EOVT+6WI+w=
+github.com/openziti/foundation v0.13.3/go.mod h1:sLhimiyS153uPxGfmUCGJvjkI44eV0/1xj2GDVhSxb8=
+github.com/openziti/sdk-golang v0.13.37 h1:ptGTltGq2TT/nJ+bWqhS0f116zzhELthtjKl2YRtTqI=
+github.com/openziti/sdk-golang v0.13.37/go.mod h1:gveE34bbGPsWhm7I6A1laB3vhC9bDnv3rdXKrr0Rclc=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
