@@ -22,7 +22,7 @@ require (
 	github.com/go-openapi/swag v0.19.9
 	github.com/go-openapi/validate v0.19.10
 	github.com/golang/protobuf v1.4.2
-	github.com/google/go-cmp v0.5.1
+	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.4.2
 	github.com/jessevdk/go-flags v1.4.0
@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.12.5
-	github.com/openziti/foundation v0.13.3
-	github.com/openziti/sdk-golang v0.13.37
+	github.com/openziti/foundation v0.13.4
+	github.com/openziti/sdk-golang v0.13.38
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.6.0
