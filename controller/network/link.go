@@ -19,6 +19,7 @@ package network
 import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
+	"sync/atomic"
 )
 
 type Link struct {
@@ -27,17 +28,19 @@ type Link struct {
 	Dst        *Router
 	state      []*LinkState
 	Down       bool
-	Cost       int
+	StaticCost int32
 	SrcLatency int64
 	DstLatency int64
+	Cost       int64
 }
 
 func newLink(id *identity.TokenId) *Link {
 	l := &Link{
-		Id:    id,
-		state: make([]*LinkState, 0),
-		Down:  false,
-		Cost:  1,
+		Id:         id,
+		state:      make([]*LinkState, 0),
+		Down:       false,
+		StaticCost: 1,
+		Cost:       1,
 	}
 	l.addState(&LinkState{Mode: Pending, Timestamp: info.NowInMilliseconds()})
 	return l
@@ -55,6 +58,42 @@ func (link *Link) addState(s *LinkState) {
 		link.state = make([]*LinkState, 0)
 	}
 	link.state = append([]*LinkState{s}, link.state...)
+}
+
+func (link *Link) GetStaticCost() int32 {
+	return atomic.LoadInt32(&link.StaticCost)
+}
+
+func (link *Link) SetStaticCost(cost int32) {
+	atomic.StoreInt32(&link.StaticCost, cost)
+	link.recalculateCost()
+}
+
+func (link *Link) GetSrcLatency() int64 {
+	return atomic.LoadInt64(&link.SrcLatency)
+}
+
+func (link *Link) SetSrcLatency(latency int64) {
+	atomic.StoreInt64(&link.SrcLatency, latency)
+	link.recalculateCost()
+}
+
+func (link *Link) GetDstLatency() int64 {
+	return atomic.LoadInt64(&link.DstLatency)
+}
+
+func (link *Link) SetDstLatency(latency int64) {
+	atomic.StoreInt64(&link.DstLatency, latency)
+	link.recalculateCost()
+}
+
+func (link *Link) recalculateCost() {
+	cost := int64(link.GetStaticCost()) + link.GetSrcLatency()/1_000_000 + link.GetDstLatency()/1_000_000
+	atomic.StoreInt64(&link.Cost, cost)
+}
+
+func (link *Link) GetCost() int64 {
+	return atomic.LoadInt64(&link.Cost)
 }
 
 type LinkMode byte

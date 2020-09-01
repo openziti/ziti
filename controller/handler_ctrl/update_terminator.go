@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -53,42 +54,42 @@ func (h *updateTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 		return
 	}
 
-	var precedence xt.Precedence
-	if request.UpdatePrecedence {
-		if request.Precedence == ctrl_pb.TerminatorPrecedence_Default {
-			precedence = xt.Precedences.Default
-		} else if request.Precedence == ctrl_pb.TerminatorPrecedence_Required {
-			precedence = xt.Precedences.Required
-		} else if request.Precedence == ctrl_pb.TerminatorPrecedence_Failed {
-			precedence = xt.Precedences.Failed
-		} else {
-			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid precedence: %v", request.Precedence))
-			return
-		}
+	if !request.UpdateCost && !request.UpdatePrecedence {
+		// nothing to do
+		handler_common.SendSuccess(msg, ch, "")
+		return
 	}
 
-	var staticCost uint16
+	checker := boltz.MapFieldChecker{}
+
 	if request.UpdateCost {
 		if request.Cost > math.MaxUint16 {
 			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid static cost %v. Must be less than %v", request.Cost, math.MaxUint16))
 			return
 		}
-		staticCost = uint16(request.Cost)
-	}
-
-	if request.UpdateCost {
-		terminator.Cost = staticCost
-		checker := boltz.MapFieldChecker{
-			"cost": struct{}{},
-		}
-		if err := h.network.Terminators.Patch(terminator, checker); err != nil {
-			handler_common.SendFailure(msg, ch, err.Error())
-			return
-		}
+		terminator.Cost = uint16(request.Cost)
+		checker[db.FieldTerminatorCost] = struct{}{}
 	}
 
 	if request.UpdatePrecedence {
-		xt.GlobalCosts().SetPrecedence(request.TerminatorId, precedence)
+		if request.UpdatePrecedence {
+			if request.Precedence == ctrl_pb.TerminatorPrecedence_Default {
+				terminator.Precedence = xt.Precedences.Default
+			} else if request.Precedence == ctrl_pb.TerminatorPrecedence_Required {
+				terminator.Precedence = xt.Precedences.Required
+			} else if request.Precedence == ctrl_pb.TerminatorPrecedence_Failed {
+				terminator.Precedence = xt.Precedences.Failed
+			} else {
+				handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid precedence: %v", request.Precedence))
+				return
+			}
+		}
+		checker[db.FieldTerminatorPrecedence] = struct{}{}
+	}
+
+	if err := h.network.Terminators.Patch(terminator, checker); err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
 	}
 
 	handler_common.SendSuccess(msg, ch, "")

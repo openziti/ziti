@@ -55,7 +55,7 @@ func (s strategy) VisitDialFailed(event xt.TerminatorEvent) {
 	}
 }
 
-func (s strategy) VisitDialSucceeded(event xt.TerminatorEvent) {
+func (s strategy) VisitDialSucceeded(xt.TerminatorEvent) {
 	atomic.StoreInt32(&s.failCount, 0)
 }
 

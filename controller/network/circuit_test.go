@@ -177,7 +177,6 @@ func newRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 		BaseEntity:  models.BaseEntity{Id: id},
 		Fingerprint: &fingerprint,
 		Control:     ctrl,
-		CostFactor:  1,
 	}
 	if advLstnr != nil {
 		r.AdvertisedListener = advLstnr.String()

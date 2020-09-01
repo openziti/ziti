@@ -14,6 +14,7 @@
 package network
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt"
@@ -26,12 +27,13 @@ import (
 
 type Terminator struct {
 	models.BaseEntity
-	Service  string
-	Router   string
-	Binding  string
-	Address  string
-	Cost     uint16
-	PeerData map[uint32][]byte
+	Service    string
+	Router     string
+	Binding    string
+	Address    string
+	Cost       uint16
+	Precedence xt.Precedence
+	PeerData   map[uint32][]byte
 }
 
 func (entity *Terminator) GetServiceId() string {
@@ -54,6 +56,10 @@ func (entity *Terminator) GetCost() uint16 {
 	return entity.Cost
 }
 
+func (entity *Terminator) GetPrecedence() xt.Precedence {
+	return entity.Precedence
+}
+
 func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
@@ -69,11 +75,16 @@ func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.E
 	entity.Address = boltTerminator.Address
 	entity.PeerData = boltTerminator.PeerData
 	entity.Cost = boltTerminator.Cost
+	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
 	entity.FillCommon(boltTerminator)
 	return nil
 }
 
 func (entity *Terminator) toBolt() *db.Terminator {
+	precedence := xt.Precedences.Default.String()
+	if entity.Precedence != nil {
+		precedence = entity.Precedence.String()
+	}
 	return &db.Terminator{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Service:       entity.Service,
@@ -81,6 +92,7 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		Binding:       entity.Binding,
 		Address:       entity.Address,
 		Cost:          entity.Cost,
+		Precedence:    precedence,
 		PeerData:      entity.PeerData,
 	}
 }
@@ -92,14 +104,6 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 	}
 	result.impl = result
 
-	controllers.stores.Terminator.On(boltz.EventCreate, func(params ...interface{}) {
-		for _, entity := range params {
-			if terminator, ok := entity.(*db.Terminator); ok {
-				xt.GlobalCosts().TerminatorCreated(terminator.Id)
-			}
-		}
-	})
-
 	controllers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
 		for _, entity := range params {
 			if terminator, ok := entity.(*db.Terminator); ok {
@@ -107,6 +111,8 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 			}
 		}
 	})
+
+	xt.GlobalCosts().SetPrecedenceChangeHandler(result.handlePrecedenceChange)
 
 	return result
 }
@@ -147,6 +153,24 @@ func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, terminator
 		return "", err
 	}
 	return boltTerminator.Id, nil
+}
+
+func (ctrl *TerminatorController) handlePrecedenceChange(terminatorId string, precedence xt.Precedence) {
+	terminator, err := ctrl.Read(terminatorId)
+	if err != nil {
+		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)",
+			terminatorId, precedence, err)
+		return
+	}
+
+	terminator.Precedence = precedence
+	checker := boltz.MapFieldChecker{
+		db.FieldTerminatorPrecedence: struct{}{},
+	}
+
+	if err = ctrl.Patch(terminator, checker); err != nil {
+		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)", terminatorId, precedence, err)
+	}
 }
 
 func (ctrl *TerminatorController) Update(terminator *Terminator) error {
@@ -217,16 +241,7 @@ func (result *TerminatorListResult) collect(tx *bbolt.Tx, ids []string, qmd *mod
 
 type RoutingTerminator struct {
 	RouteCost uint32
-	Stats     xt.Stats
 	*Terminator
-}
-
-func (r *RoutingTerminator) GetPrecedence() xt.Precedence {
-	return r.Stats.GetPrecedence()
-}
-
-func (r *RoutingTerminator) GetTerminatorStats() xt.Stats {
-	return r.Stats
 }
 
 func (r *RoutingTerminator) GetRouteCost() uint32 {

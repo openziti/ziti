@@ -5,60 +5,60 @@ package mgmt_pb;
 import "google/protobuf/timestamp.proto";
 
 enum ContentType {
-    // Protoc says this has to be here
-    Zero = 0;
+  // Protoc says this has to be here
+  Zero = 0;
 
-    // Services
-    ListServicesRequestType = 10001;
-    ListServicesResponseType = 10002;
-    CreateServiceRequestType = 10003;
-    RemoveServiceRequestType = 10005;
-    GetServiceRequestType = 10006;
-    GetServiceResponseType = 10007;
+  // Services
+  ListServicesRequestType = 10001;
+  ListServicesResponseType = 10002;
+  CreateServiceRequestType = 10003;
+  RemoveServiceRequestType = 10005;
+  GetServiceRequestType = 10006;
+  GetServiceResponseType = 10007;
 
-    // Service Terminators
-    CreateTerminatorRequestType = 10050;
-    RemoveTerminatorRequestType = 10051;
-    ListTerminatorsRequestType = 10052;
-    ListTerminatorsResponseType = 10053;
-    GetTerminatorRequestType = 10054;
-    GetTerminatorResponseType = 10055;
-    SetTerminatorCostRequestType = 10056;
+  // Service Terminators
+  CreateTerminatorRequestType = 10050;
+  RemoveTerminatorRequestType = 10051;
+  ListTerminatorsRequestType = 10052;
+  ListTerminatorsResponseType = 10053;
+  GetTerminatorRequestType = 10054;
+  GetTerminatorResponseType = 10055;
+  SetTerminatorCostRequestType = 10056;
 
-    // Routers
-    ListRoutersRequestType = 10010;
-    ListRoutersResponseType = 10011;
-    CreateRouterRequestType = 10012;
-    RemoveRouterRequestType = 10013;
+  // Routers
+  ListRoutersRequestType = 10010;
+  ListRoutersResponseType = 10011;
+  CreateRouterRequestType = 10012;
+  RemoveRouterRequestType = 10013;
 
-    // Links
-    ListLinksRequestType = 10020;
-    ListLinksResponseType = 10021;
-    SetLinkCostRequestType = 10022;
-    SetLinkDownRequestType = 10023;
+  // Links
+  ListLinksRequestType = 10020;
+  ListLinksResponseType = 10021;
+  SetLinkCostRequestType = 10022;
+  SetLinkDownRequestType = 10023;
 
-    // Sessions
-    ListSessionsRequestType = 10030;
-    ListSessionsResponseType = 10031;
-    RemoveSessionRequestType = 10032;
+  // Sessions
+  ListSessionsRequestType = 10030;
+  ListSessionsResponseType = 10031;
+  RemoveSessionRequestType = 10032;
 
-    // Streams
-    StreamMetricsRequestType = 10040;
-    StreamMetricsEventType = 10041;
-    StreamSessionsRequestType = 10042;
-    StreamSessionsEventType = 10043;
+  // Streams
+  StreamMetricsRequestType = 10040;
+  StreamMetricsEventType = 10041;
+  StreamSessionsRequestType = 10042;
+  StreamSessionsEventType = 10043;
 
-    TogglePipeTracesRequestType = 10044;
-    ToggleSessionTracesRequestType = 10045;
-    StreamTracesRequestType = 10046;
-    StreamTracesEventType = 10047;
+  TogglePipeTracesRequestType = 10044;
+  ToggleSessionTracesRequestType = 10045;
+  StreamTracesRequestType = 10046;
+  StreamTracesEventType = 10047;
 
-    // Inspect
-    InspectRequestType = 10048;
-    InspectResponseType = 10049;
+  // Inspect
+  InspectRequestType = 10048;
+  InspectResponseType = 10049;
 
-    // Snapshot db
-    SnapshotDbRequestType = 10070;
+  // Snapshot db
+  SnapshotDbRequestType = 10070;
 }
 
 //
@@ -66,90 +66,90 @@ enum ContentType {
 //
 
 enum TerminatorPrecedence {
-    Default = 0;
-    Required = 1;
-    Failed = 2;
+  Default = 0;
+  Required = 1;
+  Failed = 2;
 }
 
 enum TerminatorChangeMask {
-    None = 0;
-    StaticCost = 1;
-    Precedence = 2;
-    DynamicCost = 4;
+  None = 0;
+  StaticCost = 1;
+  Precedence = 2;
+  DynamicCost = 4;
 }
 
 message Service {
-    string id = 1;
-    string name = 2;
-    string terminatorStrategy = 3;
-    repeated Terminator terminators = 4;
+  string id = 1;
+  string name = 2;
+  string terminatorStrategy = 3;
+  repeated Terminator terminators = 4;
 }
 
 message Terminator {
-    string id = 1;
-    string serviceId = 2;
-    string routerId = 3;
-    string binding = 4;
-    string address = 5;
-    google.protobuf.Timestamp createdAt = 6;
-    map<uint32, bytes> peerData = 7;
+  string id = 1;
+  string serviceId = 2;
+  string routerId = 3;
+  string binding = 4;
+  string address = 5;
+  TerminatorPrecedence precedence = 8;
+  uint32 cost = 9;
 }
 
 message ListServicesRequest {
-    string query = 1;
+  string query = 1;
 }
 
 message ListServicesResponse {
-    repeated Service services = 1;
+  repeated Service services = 1;
 }
 
 message CreateServiceRequest {
-    Service service = 1;
+  Service service = 1;
 }
 
 message RemoveServiceRequest {
-    string serviceId = 1;
+  string serviceId = 1;
 }
 
 message GetServiceRequest {
-    string serviceId = 1;
+  string serviceId = 1;
 }
 
 message GetServiceResponse {
-    Service service = 1;
+  Service service = 1;
 }
 
 // service terminators
 message ListTerminatorsRequest {
-    string query = 1;
+  string query = 1;
 }
 
 message ListTerminatorsResponse {
-    repeated Terminator terminators = 1;
+  repeated Terminator terminators = 1;
 }
 
 message CreateTerminatorRequest {
-    Terminator terminator = 1;
+  Terminator terminator = 1;
 }
 
 message RemoveTerminatorRequest {
-    string terminatorId = 1;
+  string terminatorId = 1;
 }
 
 message GetTerminatorRequest {
-    string terminatorId = 1;
+  string terminatorId = 1;
 }
 
 message GetTerminatorResponse {
-    Terminator terminator = 1;
+  Terminator terminator = 1;
 }
 
 message SetTerminatorCostRequest {
-    string terminatorId = 1;
-    TerminatorPrecedence precedence = 2;
-    uint32 staticCost = 3;
-    uint32 dynamicCost = 4;
-    int32 updateMask = 5;
+  string terminatorId = 1;
+  TerminatorPrecedence precedence = 2;
+  uint32 staticCost = 3;
+  uint32 dynamicCost = 4;
+  int32 updateMask = 5;
 }
 
 //
@@ -157,26 +157,26 @@ message SetTerminatorCostRequest {
 //
 
 message Router {
-    string id = 1;
-    string name = 2;
-    string fingerprint = 3;
-    string listenerAddress = 4;
-    bool connected = 5;
+  string id = 1;
+  string name = 2;
+  string fingerprint = 3;
+  string listenerAddress = 4;
+  bool connected = 5;
 }
 
 message ListRoutersRequest {
-    string query = 1;
+  string query = 1;
 }
 message ListRoutersResponse {
-    repeated Router routers = 1;
+  repeated Router routers = 1;
 }
 
 message CreateRouterRequest {
-    Router router = 1;
+  Router router = 1;
 }
 
 message RemoveRouterRequest {
-    string routerId = 1;
+  string routerId = 1;
 }
 
 //
@@ -184,30 +184,30 @@ message RemoveRouterRequest {
 //
 
 message Link {
-    string id = 1;
-    string src = 2;
-    string dst = 3;
-    string state = 4;
-    bool down = 5;
-    int32 cost = 6;
-    int64 srcLatency = 7;
-    int64 dstLatency = 8;
+  string id = 1;
+  string src = 2;
+  string dst = 3;
+  string state = 4;
+  bool down = 5;
+  int32 cost = 6;
+  int64 srcLatency = 7;
+  int64 dstLatency = 8;
 }
 
 message ListLinksRequest {
 }
 message ListLinksResponse {
-    repeated Link links = 1;
+  repeated Link links = 1;
 }
 
 message SetLinkCostRequest {
-    string linkId = 1;
-    int32 cost = 2;
+  string linkId = 1;
+  int32 cost = 2;
 }
 
 message SetLinkDownRequest {
-    string linkId = 1;
-    bool down = 2;
+  string linkId = 1;
+  bool down = 2;
 }
 
 //
@@ -215,27 +215,27 @@ message SetLinkDownRequest {
 //
 
 message Circuit {
-    repeated string path = 1;
-    repeated string links = 2;
+  repeated string path = 1;
+  repeated string links = 2;
 }
 
 message Session {
-    string id = 1;
-    string clientId = 2;
-    string serviceId = 3;
-    string terminatorId = 4;
-    Circuit circuit = 5;
+  string id = 1;
+  string clientId = 2;
+  string serviceId = 3;
+  string terminatorId = 4;
+  Circuit circuit = 5;
 }
 
 message ListSessionsRequest {
 }
 message ListSessionsResponse {
-    repeated Session sessions = 1;
+  repeated Session sessions = 1;
 }
 
 message RemoveSessionRequest {
-    string sessionId = 1;
-    bool now = 2;
+  string sessionId = 1;
+  bool now = 2;
 }
 
 //
@@ -243,80 +243,80 @@ message RemoveSessionRequest {
 //
 
 message StreamMetricsRequest {
-    repeated MetricMatcher matchers = 1;
+  repeated MetricMatcher matchers = 1;
 
-    message MetricMatcher {
-        string nameRegex = 1;
-        string sourceIDRegex = 2;
-    }
+  message MetricMatcher {
+    string nameRegex = 1;
+    string sourceIDRegex = 2;
+  }
 }
 
 message StreamMetricsEvent {
-    string sourceId = 1;
-    google.protobuf.Timestamp timestamp = 2;
-    map<string, string> tags = 3;
+  string sourceId = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  map<string, string> tags = 3;
 
-    map<string, int64> intMetrics = 4;
-    map<string, double> floatMetrics = 5;
+  map<string, int64> intMetrics = 4;
+  map<string, double> floatMetrics = 5;
 
-    repeated IntervalMetric intervalMetrics = 6;
+  repeated IntervalMetric intervalMetrics = 6;
 
-    message IntervalMetric {
-        string name = 1;
-        google.protobuf.Timestamp intervalStartUTC = 2;
-        google.protobuf.Timestamp intervalEndUTC = 3;
-        map<string, uint64> values = 4;
-    }
+  message IntervalMetric {
+    string name = 1;
+    google.protobuf.Timestamp intervalStartUTC = 2;
+    google.protobuf.Timestamp intervalEndUTC = 3;
+    map<string, uint64> values = 4;
+  }
 }
 
 message StreamSessionsRequest {
 }
 
 enum StreamSessionEventType {
-    SessionCreated = 0;
-    SessionDeleted = 1;
-    SessionPresent = 2;
-    CircuitUpdated = 3;
+  SessionCreated = 0;
+  SessionDeleted = 1;
+  SessionPresent = 2;
+  CircuitUpdated = 3;
 }
 
 message StreamSessionsEvent {
-    StreamSessionEventType eventType = 1;
-    string sessionId = 2;
-    string clientId = 3;
-    string serviceId = 4;
-    Circuit circuit = 5;
+  StreamSessionEventType eventType = 1;
+  string sessionId = 2;
+  string clientId = 3;
+  string serviceId = 4;
+  Circuit circuit = 5;
 }
 
 message ToggleSessionTracesRequest {
-    bool enable = 1;
-    string serviceRegex = 2;
-    string clientRegex = 3;
+  bool enable = 1;
+  string serviceRegex = 2;
+  string clientRegex = 3;
 }
 
 enum TraceFilterType {
-    EXCLUDE = 0;
-    INCLUDE = 1;
+  EXCLUDE = 0;
+  INCLUDE = 1;
 }
 
 message StreamTracesRequest {
-    bool enabledFilter = 1;
-    TraceFilterType filterType = 2;
-    repeated int32 contentTypes = 3;
+  bool enabledFilter = 1;
+  TraceFilterType filterType = 2;
+  repeated int32 contentTypes = 3;
 }
 
 message InspectRequest {
-    string appRegex = 1;
-    repeated string requestedValues = 2;
+  string appRegex = 1;
+  repeated string requestedValues = 2;
 }
 
 message InspectResponse {
-    bool success = 1;
-    repeated string errors = 2;
-    repeated InspectValue values = 3;
+  bool success = 1;
+  repeated string errors = 2;
+  repeated InspectValue values = 3;
 
-    message InspectValue {
-        string appId = 1;
-        string name = 2;
-        string value = 3;
-    }
+  message InspectValue {
+    string appId = 1;
+    string name = 2;
+    string value = 3;
+  }
 }

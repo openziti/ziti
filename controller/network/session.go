@@ -34,8 +34,8 @@ type session struct {
 func (s *session) latency() int64 {
 	var latency int64
 	for _, l := range s.Circuit.Links {
-		latency += l.SrcLatency
-		latency += l.DstLatency
+		latency += l.GetSrcLatency()
+		latency += l.GetDstLatency()
 	}
 	return latency
 }

@@ -21,9 +21,11 @@ import (
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/pkg/errors"
+	"math"
 )
 
 type createTerminatorHandler struct {
@@ -67,15 +69,27 @@ func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*network.Term
 		binding = e.Binding
 	}
 
+	if e.Cost > math.MaxUint16 {
+		return nil, errors.Errorf("invalid cost %v. cost must be between 0 and %v inclusive", e.Cost, math.MaxUint16)
+	}
+
+	precedence := xt.Precedences.Default
+	if e.Precedence == mgmt_pb.TerminatorPrecedence_Required {
+		precedence = xt.Precedences.Required
+	} else if e.Precedence == mgmt_pb.TerminatorPrecedence_Failed {
+		precedence = xt.Precedences.Failed
+	}
+
 	return &network.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:   e.Id,
 			Tags: nil,
 		},
-		Service:  e.ServiceId,
-		Router:   router.Id,
-		Binding:  binding,
-		Address:  e.Address,
-		PeerData: e.PeerData,
+		Service:    e.ServiceId,
+		Router:     router.Id,
+		Binding:    binding,
+		Address:    e.Address,
+		Cost:       uint16(e.Cost),
+		Precedence: precedence,
 	}, nil
 }

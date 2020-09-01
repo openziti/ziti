@@ -55,9 +55,9 @@ func (h *listLinksHandler) HandleReceive(msg *channel2.Message, ch channel2.Chan
 			Dst:        l.Dst.Id,
 			State:      l.CurrentState().Mode.String(),
 			Down:       l.Down,
-			Cost:       int32(l.Cost),
-			SrcLatency: l.SrcLatency,
-			DstLatency: l.DstLatency,
+			Cost:       l.GetStaticCost(),
+			SrcLatency: l.GetSrcLatency(),
+			DstLatency: l.GetDstLatency(),
 		}
 		response.Links = append(response.Links, responseLink)
 	}

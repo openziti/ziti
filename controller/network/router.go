@@ -34,7 +34,6 @@ type Router struct {
 	Fingerprint        *string
 	AdvertisedListener string
 	Control            channel2.Channel
-	CostFactor         int
 	Connected          concurrenz.AtomicBoolean
 }
 

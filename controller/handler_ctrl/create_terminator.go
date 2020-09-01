@@ -17,13 +17,14 @@
 package handler_ctrl
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
+	"math"
 )
 
 type createTerminatorHandler struct {
@@ -49,17 +50,22 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 		return
 	}
 
+	if request.Cost > math.MaxUint16 {
+		handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", request.Cost, math.MaxUint16))
+		return
+	}
+
 	terminator := &network.Terminator{
-		Service:  request.ServiceId,
-		Router:   h.router.Id,
-		Binding:  request.Binding,
-		Address:  request.Address,
-		PeerData: request.PeerData,
-		Cost:     uint16(request.Cost),
+		Service:    request.ServiceId,
+		Router:     h.router.Id,
+		Binding:    request.Binding,
+		Address:    request.Address,
+		PeerData:   request.PeerData,
+		Precedence: request.GetXtPrecedence(),
+		Cost:       uint16(request.Cost),
 	}
 
 	if id, err := h.network.Terminators.Create(terminator); err == nil {
-		xt.GlobalCosts().SetPrecedence(id, request.GetXtPrecedence())
 		pfxlog.Logger().Infof("created terminator [t/%s]", id)
 		handler_common.SendSuccess(msg, ch, id)
 	} else {

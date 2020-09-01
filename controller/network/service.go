@@ -89,7 +89,18 @@ func (ctrl *ServiceController) newModelEntity() boltEntitySink {
 func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
 	for _, entity := range params {
 		if terminator, ok := entity.(*db.Terminator); ok {
-			ctrl.RemoveFromCache(terminator.Service)
+			// patched entities may not have all fields, if service is blank, load terminator
+			serviceId := terminator.Service
+			if serviceId == "" {
+				t, err := ctrl.Terminators.Read(terminator.Id)
+				if err != nil {
+					ctrl.clearCache()
+					return
+				}
+				serviceId = t.Service
+			}
+			pfxlog.Logger().Infof("clearing service from cache: %v", serviceId)
+			ctrl.RemoveFromCache(serviceId)
 		}
 	}
 }
@@ -111,7 +122,7 @@ func (ctrl *ServiceController) Create(s *Service) error {
 	if err != nil {
 		return err
 	}
-	ctrl.cache.Set(s.Id, s)
+	ctrl.cacheService(s)
 	return nil
 }
 
@@ -122,7 +133,7 @@ func (ctrl *ServiceController) Update(s *Service) error {
 	if err != nil {
 		return err
 	}
-	ctrl.cache.Set(s.Id, s)
+	ctrl.cacheService(s)
 	return nil
 }
 
@@ -147,7 +158,7 @@ func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, erro
 		return nil, err
 	}
 
-	ctrl.cache.Set(id, entity)
+	ctrl.cacheService(entity)
 	return entity, nil
 }
 
@@ -156,12 +167,24 @@ func (ctrl *ServiceController) Delete(id string) error {
 		return ctrl.store.DeleteById(boltz.NewMutateContext(tx), id)
 	})
 	if err == nil {
-		ctrl.cache.Remove(id)
+		ctrl.RemoveFromCache(id)
 	}
 	return err
+}
+
+func (ctrl *ServiceController) cacheService(service *Service) {
+	pfxlog.Logger().Tracef("updated service cache: %v", service.Id)
+	ctrl.cache.Set(service.Id, service)
 }
 
 func (ctrl *ServiceController) RemoveFromCache(id string) {
 	pfxlog.Logger().Debugf("removed service from cache: %v", id)
 	ctrl.cache.Remove(id)
+}
+
+func (ctrl *ServiceController) clearCache() {
+	pfxlog.Logger().Debugf("clearing all services from cache")
+	for _, key := range ctrl.cache.Keys() {
+		ctrl.cache.Remove(key)
+	}
 }

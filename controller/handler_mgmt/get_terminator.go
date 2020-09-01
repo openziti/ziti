@@ -18,7 +18,6 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
@@ -65,16 +64,20 @@ func (h *getTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.
 }
 
 func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
-	ts, err := ptypes.TimestampProto(s.CreatedAt)
-	if err != nil {
-		pfxlog.Logger().Warnf("unexpected bad timestamp conversion: %v", err)
+	precedence := mgmt_pb.TerminatorPrecedence_Default
+	if s.Precedence.IsRequired() {
+		precedence = mgmt_pb.TerminatorPrecedence_Required
+	} else if s.Precedence.IsFailed() {
+		precedence = mgmt_pb.TerminatorPrecedence_Failed
 	}
+
 	return &mgmt_pb.Terminator{
-		Id:        s.Id,
-		ServiceId: s.Service,
-		RouterId:  s.Router,
-		Binding:   s.Binding,
-		Address:   s.Address,
-		CreatedAt: ts,
+		Id:         s.Id,
+		ServiceId:  s.Service,
+		RouterId:   s.Router,
+		Binding:    s.Binding,
+		Address:    s.Address,
+		Cost:       uint32(s.Cost),
+		Precedence: precedence,
 	}
 }

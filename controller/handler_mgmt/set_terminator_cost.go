@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -85,23 +86,30 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 		dynamicCost = uint16(request.DynamicCost)
 	}
 
-	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_StaticCost) != 0 {
-		terminator.Cost = staticCost
-		checker := boltz.MapFieldChecker{
-			"cost": struct{}{},
+	updateStaticCost := request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_StaticCost) != 0
+	updatePrecedence := request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_Precedence) != 0
+
+	if updateStaticCost || updatePrecedence {
+		checker := boltz.MapFieldChecker{}
+
+		if updateStaticCost {
+			terminator.Cost = staticCost
+			checker[db.FieldTerminatorCost] = struct{}{}
 		}
+
+		if updatePrecedence {
+			terminator.Precedence = precedence
+			checker[db.FieldTerminatorPrecedence] = struct{}{}
+		}
+
 		if err := h.network.Terminators.Patch(terminator, checker); err != nil {
 			handler_common.SendFailure(msg, ch, err.Error())
 			return
 		}
 	}
 
-	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_Precedence) != 0 {
-		xt.GlobalCosts().SetPrecedence(request.TerminatorId, precedence)
-	}
-
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_DynamicCost) != 0 {
-		xt.GlobalCosts().SetPrecedenceCost(request.TerminatorId, dynamicCost)
+		xt.GlobalCosts().SetDynamicCost(request.TerminatorId, dynamicCost)
 	}
 
 	handler_common.SendSuccess(msg, ch, "")

@@ -18,7 +18,6 @@ package network
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
@@ -35,7 +34,7 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/sequence"
-	errors2 "github.com/pkg/errors"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"sort"
@@ -360,7 +359,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.Terminator, []*Router, error) {
 	if len(svc.Terminators) == 0 {
-		return nil, nil, nil, errors2.Errorf("service %v has no Terminators", svc.Id)
+		return nil, nil, nil, errors.Errorf("service %v has no Terminators", svc.Id)
 	}
 
 	paths := map[string]*PathAndCost{}
@@ -374,7 +373,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 		if !found {
 			dstR := network.Routers.getConnected(terminator.GetRouterId())
 			if dstR == nil {
-				err := errors2.Errorf("invalid terminating router %v on terminator %v", terminator.GetRouterId(), terminator.GetId())
+				err := errors.Errorf("invalid terminating router %v on terminator %v", terminator.GetRouterId(), terminator.GetId())
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
 				continue
@@ -391,14 +390,12 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 			paths[terminator.GetRouterId()] = pathAndCost
 		}
 
-		staticTerminatorCost := uint32(terminator.Cost)
-		terminatorStats := xt.GlobalCosts().GetStats(terminator.Id)
-		dynamicTerminatorCost := terminatorStats.GetCost()
-		fullCost := pathAndCost.cost + dynamicTerminatorCost + staticTerminatorCost
+		dynamicCost := xt.GlobalCosts().GetDynamicCost(terminator.Id)
+		unbiasedCost := uint32(terminator.Cost) + uint32(dynamicCost) + pathAndCost.cost
+		biasedCost := terminator.Precedence.GetBiasedCost(unbiasedCost)
 		costedTerminator := &RoutingTerminator{
 			Terminator: terminator,
-			RouteCost:  fullCost,
-			Stats:      terminatorStats,
+			RouteCost:  biasedCost,
 		}
 		weightedTerminators = append(weightedTerminators, costedTerminator)
 	}
@@ -419,11 +416,11 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 	terminator, err := strategy.Select(weightedTerminators)
 
 	if err != nil {
-		return nil, nil, nil, errors2.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
+		return nil, nil, nil, errors.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
 	}
 
 	if terminator == nil {
-		return nil, nil, nil, errors2.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
+		return nil, nil, nil, errors.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
 	}
 
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
@@ -508,7 +505,9 @@ func (network *Network) CreateCircuitWithPath(path []*Router) (*Circuit, error) 
 		IngressId: ingressId,
 		EgressId:  egressId,
 	}
-	network.setLinks(circuit)
+	if err := network.setLinks(circuit); err != nil {
+		return nil, err
+	}
 	return circuit, nil
 }
 
@@ -526,18 +525,23 @@ func (network *Network) UpdateCircuit(circuit *Circuit) (*Circuit, error) {
 		IngressId: circuit.IngressId,
 		EgressId:  circuit.EgressId,
 	}
-	network.setLinks(circuit2)
+	if err := network.setLinks(circuit2); err != nil {
+		return nil, err
+	}
 	return circuit2, nil
 }
 
-func (network *Network) setLinks(circuit *Circuit) {
+func (network *Network) setLinks(circuit *Circuit) error {
 	if len(circuit.Path) > 1 {
 		for i := 0; i < len(circuit.Path)-1; i++ {
 			if link, found := network.linkController.leastExpensiveLink(circuit.Path[i], circuit.Path[i+1]); found {
 				circuit.Links = append(circuit.Links, link)
+			} else {
+				return errors.Errorf("no link from r/%v to r/%v", circuit.Path[i].Id, circuit.Path[i+1].Id)
 			}
 		}
 	}
+	return nil
 }
 
 func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
@@ -683,9 +687,9 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 		metricId := "link." + link.Id.Token + ".latency"
 		if latency, ok := metrics.Histograms[metricId]; ok {
 			if link.Src.Id == router.Id {
-				link.SrcLatency = int64(latency.Mean)
+				link.SetSrcLatency(int64(latency.Mean)) // latency is in nanoseconds
 			} else if link.Dst.Id == router.Id {
-				link.DstLatency = int64(latency.Mean)
+				link.SetDstLatency(int64(latency.Mean)) // latency is in nanoseconds
 			} else {
 				log.Warnf("link not for router")
 			}

@@ -27,23 +27,25 @@ import (
 )
 
 const (
-	EntityTypeTerminators  = "terminators"
-	FieldTerminatorService = "service"
-	FieldTerminatorRouter  = "router"
-	FieldTerminatorBinding = "binding"
-	FieldTerminatorAddress = "address"
-	FieldTerminatorCost    = "cost"
-	FieldServerPeerData    = "peerData"
+	EntityTypeTerminators     = "terminators"
+	FieldTerminatorService    = "service"
+	FieldTerminatorRouter     = "router"
+	FieldTerminatorBinding    = "binding"
+	FieldTerminatorAddress    = "address"
+	FieldTerminatorCost       = "cost"
+	FieldTerminatorPrecedence = "precedence"
+	FieldServerPeerData       = "peerData"
 )
 
 type Terminator struct {
 	boltz.BaseExtEntity
-	Service  string
-	Router   string
-	Binding  string
-	Address  string
-	Cost     uint16
-	PeerData xt.PeerData
+	Service    string
+	Router     string
+	Binding    string
+	Address    string
+	Cost       uint16
+	Precedence string
+	PeerData   xt.PeerData
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -77,6 +79,7 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Binding = bucket.GetStringOrError(FieldTerminatorBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldTerminatorAddress, "")
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
+	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 
 	data := bucket.GetBucket(FieldServerPeerData)
 	if data != nil {
@@ -91,6 +94,10 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 
+	if entity.Precedence == "" {
+		entity.Precedence = xt.Precedences.Default.String()
+	}
+
 	if ctx.IsCreate { // don't allow service to be changed
 		ctx.SetRequiredString(FieldTerminatorService, entity.Service)
 	}
@@ -98,6 +105,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetRequiredString(FieldTerminatorBinding, entity.Binding)
 	ctx.SetRequiredString(FieldTerminatorAddress, entity.Address)
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
+	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 
 	_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
 	if entity.PeerData != nil {

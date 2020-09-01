@@ -98,13 +98,14 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	for _, link := range links {
 		currentState := link.CurrentState()
 		if currentState != nil && currentState.Mode == Connected && !link.Down {
+			linkCost := link.GetCost()
 			if link.Src == a && link.Dst == b {
-				if link.SrcLatency+link.DstLatency < cost {
+				if linkCost < cost {
 					selected = link
 				}
 			}
 			if link.Dst == a && link.Src == b {
-				if link.SrcLatency+link.DstLatency < cost {
+				if linkCost < cost {
 					selected = link
 				}
 			}
