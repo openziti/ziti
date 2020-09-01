@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 9
+	CurrentDbVersion = 10
 	FieldVersion     = "version"
 )
 
@@ -71,13 +71,28 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.fixAuthenticatorCertFingerprints(step)
 	}
 
+	policyTypesFixed := false
+	policiesRepaired := false
 	if step.CurrentVersion < 8 {
-		m.denormalizePolicies(step)
+		m.fixServicePolicyTypes(step)
+		policyTypesFixed = true
+
+		m.repairPolicies(step)
+		policiesRepaired = true
+
 		m.fixNameIndices(step)
 	}
 
 	if step.CurrentVersion < 9 {
-		m.fixServicePolicyTypes(step)
+		if !policyTypesFixed {
+			m.fixServicePolicyTypes(step)
+		}
+	}
+
+	if step.CurrentVersion < 10 {
+		if !policiesRepaired {
+			m.repairPolicies(step)
+		}
 	}
 
 	// current version

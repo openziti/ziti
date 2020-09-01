@@ -26,40 +26,22 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/util/stringz"
-	"strings"
 )
 
 const EntityNameTerminator = "terminators"
 
 var TerminatorLinkFactory = NewBasicLinkFactory(EntityNameTerminator)
 
-func GetPrecedence(precedence *rest_model.TerminatorPrecedence) *xt.Precedence {
-	if precedence == nil {
-		return nil
-	}
-
-	if strings.EqualFold("default", string(*precedence)) {
-		return &xt.Precedences.Default
-	}
-	if strings.EqualFold("required", string(*precedence)) {
-		return &xt.Precedences.Required
-	}
-	if strings.EqualFold("failed", string(*precedence)) {
-		return &xt.Precedences.Failed
-	}
-
-	return nil
-}
-
 func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *network.Terminator {
 	ret := &network.Terminator{
 		BaseEntity: models.BaseEntity{
 			Tags: terminator.Tags,
 		},
-		Service: stringz.OrEmpty(terminator.Service),
-		Router:  stringz.OrEmpty(terminator.Router),
-		Binding: terminator.Binding,
-		Address: stringz.OrEmpty(terminator.Address),
+		Service:    stringz.OrEmpty(terminator.Service),
+		Router:     stringz.OrEmpty(terminator.Router),
+		Binding:    terminator.Binding,
+		Address:    stringz.OrEmpty(terminator.Address),
+		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}
 	if terminator.Cost != nil {
 		ret.Cost = uint16(*terminator.Cost)
@@ -73,10 +55,11 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 			Tags: terminator.Tags,
 			Id:   id,
 		},
-		Service: stringz.OrEmpty(terminator.Service),
-		Router:  stringz.OrEmpty(terminator.Router),
-		Binding: terminator.Binding,
-		Address: stringz.OrEmpty(terminator.Address),
+		Service:    stringz.OrEmpty(terminator.Service),
+		Router:     stringz.OrEmpty(terminator.Router),
+		Binding:    terminator.Binding,
+		Address:    stringz.OrEmpty(terminator.Address),
+		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}
 	if terminator.Cost != nil {
 		ret.Cost = uint16(*terminator.Cost)
@@ -90,10 +73,11 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 			Tags: terminator.Tags,
 			Id:   id,
 		},
-		Service: terminator.Service,
-		Router:  terminator.Router,
-		Binding: terminator.Binding,
-		Address: terminator.Address,
+		Service:    terminator.Service,
+		Router:     terminator.Router,
+		Binding:    terminator.Binding,
+		Address:    terminator.Address,
+		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}
 	if terminator.Cost != nil {
 		ret.Cost = uint16(*terminator.Cost)
@@ -147,10 +131,10 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 	cost := rest_model.TerminatorCost(int64(terminator.Cost))
 	ret.Cost = &cost
 
-	dynamicCost := rest_model.TerminatorCost(xt.GlobalCosts().GetPrecedenceCost(terminator.Id))
+	dynamicCost := rest_model.TerminatorCost(xt.GlobalCosts().GetDynamicCost(terminator.Id))
 	ret.DynamicCost = &dynamicCost
 
-	precedence := xt.GlobalCosts().GetPrecedence(*ret.ID)
+	precedence := terminator.Precedence
 	if precedence.IsRequired() {
 		ret.Precedence = "required"
 	} else if precedence.IsFailed() {

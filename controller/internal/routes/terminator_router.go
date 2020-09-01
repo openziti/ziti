@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_server/operations/terminator"
-	"github.com/openziti/fabric/controller/xt"
 )
 
 func init() {
@@ -76,13 +75,7 @@ func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, rc, TerminatorLinkFactory, func() (string, error) {
-		id, err := ae.Handlers.Terminator.Create(MapCreateTerminatorToModel(params.Body))
-		if err == nil {
-			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
-				xt.GlobalCosts().SetPrecedence(id, *precedence)
-			}
-		}
-		return id, err
+		return ae.Handlers.Terminator.Create(MapCreateTerminatorToModel(params.Body))
 	})
 }
 
@@ -92,24 +85,12 @@ func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		err := ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Body))
-		if err == nil {
-			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
-				xt.GlobalCosts().SetPrecedence(id, *precedence)
-			}
-		}
-		return err
+		return ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Body))
 	})
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		err := ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Body), fields.FilterMaps("tags"))
-		if err == nil {
-			if precedence := GetPrecedence(&params.Body.Precedence); precedence != nil {
-				xt.GlobalCosts().SetPrecedence(id, *precedence)
-			}
-		}
-		return err
+		return ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Body), fields.FilterMaps("tags"))
 	})
 }
