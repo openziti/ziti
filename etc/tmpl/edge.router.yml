@@ -1,0 +1,90 @@
+v: 3
+
+# (required) The certificates, ca chains, and private key used to represent this routers identity
+#
+# If the 'edge" section is enabled and enrollment is run, the files in this section will be written to with the results.
+# The "key" value can be provided through any of the support private key engines (file, etc.).
+#
+# If the 'key' value is a file and that file exists; it is expected to a pre-generated private key. It will be used for
+# the  enrollment process and it will back the certificates generated during enrollment. If the file does not exist, it
+# will be generated.
+#
+# The 'cert', 'server_cert', and 'ca' files will be overwritten with the results of the enrollment process.
+#
+# When running the ziti-router the files/values in this section will be read and used. The 'cert' value will be used
+# as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
+# 'ca' value is used to populate an internally Trusted CA pool.
+identity:
+  cert:                 ${ZITI_DATA}/edge-router-client.cert.pem
+  server_cert:          ${ZITI_DATA}/edge-router-server.cert.pem
+  key:                  ${ZITI_DATA}/edge-router.key.pem
+  ca:                   ${ZITI_DATA}/edge-router-ca-chain.cert.pem
+
+#trace:
+# path:                 001.trace
+
+#profile:
+#  memory:
+#    path:               001.memprof
+#  cpu:
+#    path:               001.cpuprof
+
+ctrl:
+  endpoint:             tls:${CONTROLLER_HOST}:${CONTROLLER_PORT}
+
+link:
+  dialers:
+    - binding:          transport
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:${LINK_LISTENER_PORT}
+      advertise:        tls:127.0.0.1:${LINK_LISTENER_PORT}
+
+
+# By having an 'edge' section defined, the ziti-router will attempt to parse the edge configuration. Removing this
+# section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
+# Router.
+edge:
+  # (optional) Determines the rate at which API session heartbeats are sent for connected SDK clients (default: 60)
+  heartbeatIntervalSeconds: 60
+  # (required) Information used to generate the initial registration CSR. For documentation on these fields please
+  # refer to the openssl documentation. These values MUST be supplied and have no defaults.
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+
+    # (required) SANs that this Gateways certs should contain. At least one IP or DNS SAN should be defined that matches
+    # the edge listeners "advertise" value from the "listeners" section.
+    sans:
+      dns:
+        - "localhost"
+        - "test-network"
+        - "test-network.localhost"
+        - "ziti-dev-ingress01"
+      email:
+        - "admin@example.com"
+      ip:
+        - "127.0.0.1"
+      uri:
+        - "ziti://ziti-dev-gateway01/made/up/example"
+
+dialers:
+  - binding: udp
+  - binding: transport
+
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:${ZITI_EDGE_PORT}
+    options:
+      # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
+      advertise: 127.0.0.1:${ZITI_EDGE_PORT}
+      # (optional) settings
+      # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+      #maxQueuedConnects:      50
+      # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+      #maxOutstandingConnects: 100
+      # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+      #connectTimeoutMs:       3000

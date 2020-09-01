@@ -1,3 +1,14 @@
+# Release 0.16.2
+
+* What's New
+  * Smart routing fixes
+      * [Persist Terminator Precedence](https://github.com/openziti/fabric/issues/112)
+      * [Terminators and Fixed Link Cost, Incorrect Path Selection](https://github.com/openziti/fabric/issues/121)
+      * [If link vanishes during reroute, controller can panic](https://github.com/openziti/fabric/issues/122)
+      * [Scale latency metric when used for path costing](https://github.com/openziti/fabric/issues/123)
+      * [Services not always getting cleared from cache when terminators are updated](https://github.com/openziti/fabric/issues/124)
+    * [Fix service policy denormalization migration](https://github.com/openziti/edge/issues/291) 
+  
 # Release 0.16.1
 
 * What's New
