@@ -335,14 +335,15 @@ func (ae *AppEnv) InitPersistence() error {
 	var err error
 
 	ae.BoltStores, err = persistence.NewBoltStores(ae.HostController.GetNetwork())
-	if err == nil {
-		err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores)
+	if err != nil {
+		return err
 	}
 
-	if err == nil {
-		ae.Handlers = model.InitHandlers(ae)
+	if err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores); err != nil {
+		return err
 	}
 
+	ae.Handlers = model.InitHandlers(ae)
 	events.Init(ae.BoltStores.Session)
 
 	return err

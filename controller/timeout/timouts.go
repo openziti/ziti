@@ -9,6 +9,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/foundation/util/debugz"
 	"net/http"
 	"path"
 	goruntime "runtime"
@@ -63,6 +64,7 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
+				pfxlog.Logger().Errorf("panic caught by timeout handler: %v\n%v", p, debugz.GenerateLocalStack())
 				panicChan <- p
 			}
 		}()
@@ -70,8 +72,7 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		close(done)
 	}()
 	select {
-	case p := <-panicChan:
-		pfxlog.Logger().Errorf("panic caught by timeout handler: %v", p)
+	case <-panicChan:
 	case <-done:
 		tw.mu.Lock()
 		defer tw.mu.Unlock()

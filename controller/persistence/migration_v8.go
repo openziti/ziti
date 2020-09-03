@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (m *Migrations) denormalizePolicies(step *boltz.MigrationStep) {
+func (m *Migrations) repairPolicies(step *boltz.MigrationStep) {
 	log := pfxlog.Logger()
 
 	err := m.stores.EdgeRouterPolicy.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
