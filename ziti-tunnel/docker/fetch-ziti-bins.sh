@@ -18,7 +18,7 @@ done
 host_arch=$(uname -m)
 case "${host_arch}" in
 "x86_64") artifact_arch="amd64";;
-"armv7l") artifact_arch="arm";;
+"armv7l"|"aarch64") artifact_arch="arm";;
 *) echo "ERROR: ziti binaries do not exist for architecture ${host_arch}"; exit 1;;
 esac
 
@@ -44,5 +44,7 @@ for exe in "${@}"; do
         exit 1
     fi
     tar -xzf "${exe}.tar.gz"
+    if [ -f "${exe}" ]; then chmod 755 "${exe}"; fi
+    if [ -f "${exe}.exe" ]; then chmod 755 "${exe}.exe"; fi
     rm "${exe}.tar.gz"
 done
