@@ -7,7 +7,9 @@
       * [If link vanishes during reroute, controller can panic](https://github.com/openziti/fabric/issues/122)
       * [Scale latency metric when used for path costing](https://github.com/openziti/fabric/issues/123)
       * [Services not always getting cleared from cache when terminators are updated](https://github.com/openziti/fabric/issues/124)
-    * [Fix service policy denormalization migration](https://github.com/openziti/edge/issues/291) 
+    * [Fix service policy denormalization migration](https://github.com/openziti/edge/issues/291)
+  * [sdk-golang#84](https://github.com/openziti/sdk-golang/issues/84) Fixes go routine leak that would slowly kill SDK application (i.e. ziti-probe)
+  * REST API doc via ReDoc available at `https://<host>:<port>/docs`
   
 # Release 0.16.1
 
@@ -18,7 +20,7 @@
   * Session Performance Fixes
       * [Supported unindexed FK constraints in bbolt](https://github.com/openziti/foundation/issues/119)
       * [Improve API Session and Session creation performance](https://github.com/openziti/edge/issues/281)
-   * [Make enrollment available from the ziti CLI](https://github.com/openziti/ziti/issues/182)
+  * [Make enrollment available from the ziti CLI](https://github.com/openziti/ziti/issues/182)
   * Docker image for `ziti-tunnel` - Embellish examples and fix entrypoint script to wait for clean up of iptables rules on exit
   * Various Internal Stability & Scale Fixes
     * Edge Controller:
