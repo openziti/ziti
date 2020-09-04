@@ -56,10 +56,10 @@ var listTerminators = &cobra.Command{
 				response := &mgmt_pb.ListTerminatorsResponse{}
 				if err := proto.Unmarshal(responseMsg.Body, response); err == nil {
 					out := fmt.Sprintf("\nTerminators: (%d)\n\n", len(response.Terminators))
-					out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", "Id", "Service", "Binding", "Destination")
+					out += fmt.Sprintf("%-10s | %-12s | %-16s | %-12s | %-12s | %s\n", "Id", "Service", "Binding", "Static Cost", "Precedence", "Destination")
 					for _, terminator := range response.Terminators {
-						out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", terminator.Id, terminator.ServiceId, terminator.Binding,
-							fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
+						out += fmt.Sprintf("%-10v | %-12v | %-16v | %-12v | %-12v | %s\n", terminator.Id, terminator.ServiceId, terminator.Binding,
+							terminator.Cost, terminator.Precedence, fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 					}
 					out += "\n"
 					fmt.Print(out)
