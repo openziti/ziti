@@ -55,7 +55,7 @@ func init() {
   "info": {
     "title": "Ziti Edge",
     "contact": {},
-    "version": "0.15.0"
+    "version": "0.16.3"
   },
   "host": "demo.ziti.dev",
   "basePath": "/edge/v1",
@@ -4654,7 +4654,8 @@ func init() {
             "token",
             "identity",
             "identityId",
-            "configTypes"
+            "configTypes",
+            "ipAddress"
           ],
           "properties": {
             "configTypes": {
@@ -4667,6 +4668,9 @@ func init() {
               "$ref": "#/definitions/entityRef"
             },
             "identityId": {
+              "type": "string"
+            },
+            "ipAddress": {
               "type": "string"
             },
             "token": {
@@ -5109,12 +5113,12 @@ func init() {
         }
       },
       "example": {
+        "configTypeId": "cea49285-6c07-42cf-9f52-09a9b115c783",
         "data": {
           "hostname": "example.com",
           "port": 80
         },
-        "name": "test-config",
-        "type": "cea49285-6c07-42cf-9f52-09a9b115c783"
+        "name": "test-config"
       }
     },
     "configDetail": {
@@ -8470,7 +8474,7 @@ func init() {
   "info": {
     "title": "Ziti Edge",
     "contact": {},
-    "version": "0.15.0"
+    "version": "0.16.3"
   },
   "host": "demo.ziti.dev",
   "basePath": "/edge/v1",
@@ -20452,7 +20456,8 @@ func init() {
             "token",
             "identity",
             "identityId",
-            "configTypes"
+            "configTypes",
+            "ipAddress"
           ],
           "properties": {
             "configTypes": {
@@ -20465,6 +20470,9 @@ func init() {
               "$ref": "#/definitions/entityRef"
             },
             "identityId": {
+              "type": "string"
+            },
+            "ipAddress": {
               "type": "string"
             },
             "token": {
@@ -20907,12 +20915,12 @@ func init() {
         }
       },
       "example": {
+        "configTypeId": "cea49285-6c07-42cf-9f52-09a9b115c783",
         "data": {
           "hostname": "example.com",
           "port": 80
         },
-        "name": "test-config",
-        "type": "cea49285-6c07-42cf-9f52-09a9b115c783"
+        "name": "test-config"
       }
     },
     "configDetail": {

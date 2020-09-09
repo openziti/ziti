@@ -60,6 +60,7 @@ func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISess
 		IdentityID:  &apiSession.IdentityId,
 		Identity:    ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
 		Token:       &apiSession.Token,
+		IPAddress:   &apiSession.IPAddress,
 		ConfigTypes: stringz.SetToSlice(apiSession.ConfigTypes),
 	}
 	return ret, nil

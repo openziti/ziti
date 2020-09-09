@@ -32,6 +32,7 @@ type ApiSession struct {
 	Token       string
 	IdentityId  string
 	Identity    *Identity
+	IPAddress   string
 	ConfigTypes map[string]struct{}
 }
 
@@ -45,6 +46,7 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Ent
 		Token:         entity.Token,
 		IdentityId:    entity.IdentityId,
 		ConfigTypes:   stringz.SetToSlice(entity.ConfigTypes),
+		IPAddress:     entity.IPAddress,
 	}
 
 	return boltEntity, nil
@@ -71,6 +73,7 @@ func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.Token = boltApiSession.Token
 	entity.IdentityId = boltApiSession.IdentityId
 	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)
+	entity.IPAddress = boltApiSession.IPAddress
 	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err

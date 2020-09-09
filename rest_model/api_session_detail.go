@@ -54,6 +54,10 @@ type APISessionDetail struct {
 	// Required: true
 	IdentityID *string `json:"identityId"`
 
+	// ip address
+	// Required: true
+	IPAddress *string `json:"ipAddress"`
+
 	// token
 	// Required: true
 	Token *string `json:"token"`
@@ -76,6 +80,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 
 		IdentityID *string `json:"identityId"`
 
+		IPAddress *string `json:"ipAddress"`
+
 		Token *string `json:"token"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
@@ -87,6 +93,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	m.Identity = dataAO1.Identity
 
 	m.IdentityID = dataAO1.IdentityID
+
+	m.IPAddress = dataAO1.IPAddress
 
 	m.Token = dataAO1.Token
 
@@ -109,6 +117,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 
 		IdentityID *string `json:"identityId"`
 
+		IPAddress *string `json:"ipAddress"`
+
 		Token *string `json:"token"`
 	}
 
@@ -117,6 +127,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Identity = m.Identity
 
 	dataAO1.IdentityID = m.IdentityID
+
+	dataAO1.IPAddress = m.IPAddress
 
 	dataAO1.Token = m.Token
 
@@ -146,6 +158,10 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateIdentityID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIPAddress(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -189,6 +205,15 @@ func (m *APISessionDetail) validateIdentity(formats strfmt.Registry) error {
 func (m *APISessionDetail) validateIdentityID(formats strfmt.Registry) error {
 
 	if err := validate.Required("identityId", "body", m.IdentityID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateIPAddress(formats strfmt.Registry) error {
+
+	if err := validate.Required("ipAddress", "body", m.IPAddress); err != nil {
 		return err
 	}
 
