@@ -1,7 +1,7 @@
 ---
 swagger: '2.0'
 info:
-  version: 0.15.0
+  version: 0.16.3
   title: Ziti Edge
   contact: {}
 host: demo.ziti.dev
@@ -3640,12 +3640,15 @@ definitions:
           - identity
           - identityId
           - configTypes
+          - ipAddress
         properties:
           token:
             type: string
           identity:
             $ref: '#/definitions/entityRef'
           identityId:
+            type: string
+          ipAddress:
             type: string
           configTypes:
             type: array

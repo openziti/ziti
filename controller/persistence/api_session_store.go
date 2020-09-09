@@ -27,12 +27,14 @@ const (
 	FieldApiSessionIdentity    = "identity"
 	FieldApiSessionToken       = "token"
 	FieldApiSessionConfigTypes = "configTypes"
+	FieldApiSessionIPAddress   = "ipAddress"
 )
 
 type ApiSession struct {
 	boltz.BaseExtEntity
 	IdentityId  string
 	Token       string
+	IPAddress   string
 	ConfigTypes []string
 }
 
@@ -49,6 +51,7 @@ func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.IdentityId = bucket.GetStringOrError(FieldApiSessionIdentity)
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
 	entity.ConfigTypes = bucket.GetStringList(FieldApiSessionConfigTypes)
+	entity.IPAddress = bucket.GetStringWithDefault(FieldApiSessionIPAddress, "")
 }
 
 func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
@@ -56,6 +59,7 @@ func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldApiSessionIdentity, entity.IdentityId)
 	ctx.SetString(FieldApiSessionToken, entity.Token)
 	ctx.SetStringList(FieldApiSessionConfigTypes, entity.ConfigTypes)
+	ctx.SetString(FieldApiSessionIPAddress, entity.IPAddress)
 }
 
 func (entity *ApiSession) GetEntityType() string {

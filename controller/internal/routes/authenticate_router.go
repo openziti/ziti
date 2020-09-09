@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/authentication"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/stringz"
+	"net"
 	"net/http"
 	"time"
 )
@@ -113,12 +114,17 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	if params.Body != nil {
 		configTypes = mapConfigTypeNamesToIds(ae, params.Body.ConfigTypes, identity.Id)
 	}
+	remoteIpStr := ""
+	if remoteIp, _, err := net.SplitHostPort(rc.Request.RemoteAddr); err == nil {
+		remoteIpStr = remoteIp
+	}
 
 	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	s := &model.ApiSession{
 		IdentityId:  identity.Id,
 		Token:       token,
 		ConfigTypes: configTypes,
+		IPAddress:   remoteIpStr,
 	}
 	sessionId, err := ae.Handlers.ApiSession.Create(s)
 

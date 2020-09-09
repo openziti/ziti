@@ -58,6 +58,7 @@ func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Du
 			Identity:    ToEntityRef(s.Identity.Name, s.Identity, IdentityLinkFactory),
 			Token:       &s.Token,
 			ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
+			IPAddress:   &s.IPAddress,
 		},
 		ExpiresAt: &expiresAt,
 	}
