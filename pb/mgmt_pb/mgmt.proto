@@ -267,6 +267,8 @@ message StreamMetricsEvent {
     google.protobuf.Timestamp intervalEndUTC = 3;
     map<string, uint64> values = 4;
   }
+
+  map<string, string> metricGroup = 7;
 }
 
 message StreamSessionsRequest {

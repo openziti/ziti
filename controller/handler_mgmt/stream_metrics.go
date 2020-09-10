@@ -126,40 +126,41 @@ func (handler *MetricsStreamHandler) AcceptMetrics(msg *metrics_pb.MetricsMessag
 
 func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metrics_pb.MetricsMessage) {
 	event := &mgmt_pb.StreamMetricsEvent{
-		SourceId:  msg.SourceId,
-		Timestamp: msg.Timestamp,
-		Tags:      msg.Tags,
+		SourceId:    msg.SourceId,
+		Timestamp:   msg.Timestamp,
+		Tags:        msg.Tags,
+		MetricGroup: map[string]string{},
 	}
 
 	for name, value := range msg.IntValues {
-		filterIntMetric(name, value, event, filters)
+		filterIntMetric(name, value, event, filters, name)
 	}
 
 	for name, value := range msg.FloatValues {
-		filterFloatMetric(name, value, event, filters)
+		filterFloatMetric(name, value, event, filters, name)
 	}
 
 	for name, value := range msg.Meters {
-		filterIntMetric(name+".count", value.Count, event, filters)
-		filterFloatMetric(name+".mean_rate", value.MeanRate, event, filters)
-		filterFloatMetric(name+".m1_rate", value.M1Rate, event, filters)
-		filterFloatMetric(name+".m5_rate", value.M5Rate, event, filters)
-		filterFloatMetric(name+".m15_rate", value.M15Rate, event, filters)
+		filterIntMetric(name+".count", value.Count, event, filters, name)
+		filterFloatMetric(name+".mean_rate", value.MeanRate, event, filters, name)
+		filterFloatMetric(name+".m1_rate", value.M1Rate, event, filters, name)
+		filterFloatMetric(name+".m5_rate", value.M5Rate, event, filters, name)
+		filterFloatMetric(name+".m15_rate", value.M15Rate, event, filters, name)
 	}
 
 	for name, value := range msg.Histograms {
-		filterIntMetric(name+".count", value.Count, event, filters)
-		filterIntMetric(name+".min", value.Min, event, filters)
-		filterIntMetric(name+".max", value.Max, event, filters)
-		filterFloatMetric(name+".mean", value.Mean, event, filters)
-		filterFloatMetric(name+".std_dev", value.StdDev, event, filters)
-		filterFloatMetric(name+".variance", value.Variance, event, filters)
-		filterFloatMetric(name+".p50", value.P50, event, filters)
-		filterFloatMetric(name+".p75", value.P75, event, filters)
-		filterFloatMetric(name+".p95", value.P95, event, filters)
-		filterFloatMetric(name+".p99", value.P99, event, filters)
-		filterFloatMetric(name+".p999", value.P999, event, filters)
-		filterFloatMetric(name+".p9999", value.P9999, event, filters)
+		filterIntMetric(name+".count", value.Count, event, filters, name)
+		filterIntMetric(name+".min", value.Min, event, filters, name)
+		filterIntMetric(name+".max", value.Max, event, filters, name)
+		filterFloatMetric(name+".mean", value.Mean, event, filters, name)
+		filterFloatMetric(name+".std_dev", value.StdDev, event, filters, name)
+		filterFloatMetric(name+".variance", value.Variance, event, filters, name)
+		filterFloatMetric(name+".p50", value.P50, event, filters, name)
+		filterFloatMetric(name+".p75", value.P75, event, filters, name)
+		filterFloatMetric(name+".p95", value.P95, event, filters, name)
+		filterFloatMetric(name+".p99", value.P99, event, filters, name)
+		filterFloatMetric(name+".p999", value.P999, event, filters, name)
+		filterFloatMetric(name+".p9999", value.P9999, event, filters, name)
 	}
 
 	for name, interval := range msg.IntervalCounters {
@@ -183,21 +184,23 @@ func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metri
 	}
 }
 
-func filterIntMetric(name string, value int64, event *mgmt_pb.StreamMetricsEvent, filters []*metricsFilter) {
+func filterIntMetric(name string, value int64, event *mgmt_pb.StreamMetricsEvent, filters []*metricsFilter, group string) {
 	if nameMatches(name, filters) {
 		if event.IntMetrics == nil {
 			event.IntMetrics = make(map[string]int64)
 		}
 		event.IntMetrics[name] = value
+		event.MetricGroup[name] = group
 	}
 }
 
-func filterFloatMetric(name string, value float64, event *mgmt_pb.StreamMetricsEvent, filters []*metricsFilter) {
+func filterFloatMetric(name string, value float64, event *mgmt_pb.StreamMetricsEvent, filters []*metricsFilter, group string) {
 	if nameMatches(name, filters) {
 		if event.FloatMetrics == nil {
 			event.FloatMetrics = make(map[string]float64)
 		}
 		event.FloatMetrics[name] = value
+		event.MetricGroup[name] = group
 	}
 }
 
