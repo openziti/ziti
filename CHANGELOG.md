@@ -2,7 +2,8 @@
 
 * What's New
   * [ziti#192 CAs default to 10yr expiration](https://github.com/openziti/ziti/issues/192)
-  * Allow specifying edge config file when using ziti-fabric-test loop2 
+  * Allow specifying edge config file when using ziti-fabric-test loop2
+  * Add grouping data to streaming metrics, so values can be associated with their source metric  
   
 # Release 0.16.2
 
