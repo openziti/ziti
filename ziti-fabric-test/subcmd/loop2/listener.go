@@ -17,12 +17,15 @@
 package loop2
 
 import (
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
+	"net"
+	"strings"
 )
 
 func init() {
@@ -41,17 +44,42 @@ var listenerCmdIdentity string
 var listenerCmdBindAddress string
 
 func listener(_ *cobra.Command, _ []string) {
-	_, id, err := dotziti.LoadIdentity(listenerCmdIdentity)
+	if strings.HasPrefix(listenerCmdBindAddress, "edge") {
+		listenEdge()
+	} else {
+		_, id, err := dotziti.LoadIdentity(listenerCmdIdentity)
+		if err != nil {
+			panic(err)
+		}
+
+		bindAddress, err := transport.ParseAddress(listenerCmdBindAddress)
+		if err != nil {
+			panic(err)
+		}
+
+		listen(bindAddress, id)
+	}
+}
+
+func listenEdge() {
+	log := pfxlog.ContextLogger(dialerCmdEndpoint)
+	defer log.Error("exited")
+	log.Info("started")
+
+	context := ziti.NewContext()
+	service := strings.TrimPrefix(dialerCmdEndpoint, "edge:")
+	listener, err := context.Listen(service)
 	if err != nil {
 		panic(err)
 	}
 
-	bindAddress, err := transport.ParseAddress(listenerCmdBindAddress)
-	if err != nil {
-		panic(err)
+	for {
+		if conn, err := listener.Accept(); err != nil {
+			panic(err)
+		} else {
+			go handle(conn, dialerCmdEndpoint)
+		}
 	}
-
-	listen(bindAddress, id)
 }
 
 func listen(bind transport.Address, i *identity.TokenId) {
@@ -68,18 +96,18 @@ func listen(bind transport.Address, i *identity.TokenId) {
 	for {
 		select {
 		case peer := <-incoming:
-		if peer != nil {
-			go handle(peer)
-		} else {
-			return
+			if peer != nil {
+				go handle(peer.Conn(), peer.Detail().String())
+			} else {
+				return
+			}
 		}
 	}
 }
-}
 
-func handle(peer transport.Connection) {
-	log := pfxlog.ContextLogger(peer.Detail().String())
-	if proto, err := newProtocol(peer.Conn()); err == nil {
+func handle(conn net.Conn, context string) {
+	log := pfxlog.ContextLogger(context)
+	if proto, err := newProtocol(conn); err == nil {
 		if test, err := proto.rxTest(); err == nil {
 			var result *loop2_pb.Result
 			if err := proto.run(test); err == nil {

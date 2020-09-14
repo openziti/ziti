@@ -30,11 +30,16 @@ identity:
 #    path:               001.cpuprof
 
 ctrl:
-  endpoint:             tls:127.0.0.1:6262
+  endpoint:             tls:${CONTROLLER_HOST}:${CONTROLLER_PORT}
 
 link:
   dialers:
     - binding:          transport
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:${LINK_LISTENER_PORT}
+      advertise:        tls:127.0.0.1:${LINK_LISTENER_PORT}
+
 
 # By having an 'edge' section defined, the ziti-router will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
@@ -66,24 +71,16 @@ edge:
       uri:
         - "ziti://ziti-dev-gateway01/made/up/example"
 
-  # (optional) Configuration specific to the controller's API that is proxied through this process. If not defined
-  # the API Proxy will not run.
-  apiProxy:
-    # (required) The interface and port that the Edge API should be served on.
-    listener: 0.0.0.0:1080
-    # (required) The hostname and port combination to the ziti-controller hosted Edge API
-    upstream: 127.0.0.1:1280
-
 dialers:
   - binding: udp
   - binding: transport
 
 listeners:
   - binding: edge
-    address: tls:0.0.0.0:3022
+    address: tls:0.0.0.0:${ZITI_EDGE_PORT}
     options:
       # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
-      advertise: 127.0.0.1:3022
+      advertise: 127.0.0.1:${ZITI_EDGE_PORT}
       # (optional) settings
       # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
       #maxQueuedConnects:      50
@@ -91,6 +88,3 @@ listeners:
       #maxOutstandingConnects: 100
       # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
       #connectTimeoutMs:       3000
-  - binding: transport
-    address: tls:0.0.0.0:7099
-

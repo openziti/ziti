@@ -17,11 +17,11 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"sort"
 	"time"
@@ -58,7 +58,7 @@ func listLinks(cmd *cobra.Command, args []string) {
 				err := proto.Unmarshal(responseMsg.Body, response)
 				if err == nil {
 					out := fmt.Sprintf("\nLinks: (%d)\n\n", len(response.Links))
-					out += fmt.Sprintf("%-6s | %-24s -> %-24s | %-12s | %-4s | %-12s\n", "Id", "Src", "Dst", "State", "Cost", "Latency")
+					out += fmt.Sprintf("%-6s | %-24s -> %-24s | %-12s | %-4s | %-13s | %-12s | %-6s\n", "Id", "Src", "Dst", "State", "Cost", "Latency", "Full Cost", "Status")
 					sort.Slice(response.Links, func(i, j int) bool {
 						if response.Links[i].Src == response.Links[j].Src {
 							return response.Links[i].Dst < response.Links[j].Dst
@@ -66,14 +66,16 @@ func listLinks(cmd *cobra.Command, args []string) {
 						return response.Links[i].Src < response.Links[j].Src
 					})
 					for _, l := range response.Links {
-						down := ""
+						status := "up"
 						if l.Down {
-							down = "->down<-"
+							status = "down"
 						}
 						// Convert nanoseconds to fractional seconds
-						srcLatency := float64(l.SrcLatency) / 1000000000.0
-						dstLatency := float64(l.DstLatency) / 1000000000.0
-						out += fmt.Sprintf("%-6s | %-24s -> %-24s | %-12s | %-4d | %-0.4f %-0.4f %s\n", l.Id, l.Src, l.Dst, l.State, l.Cost, srcLatency, dstLatency, down)
+						srcLatency := float64(l.SrcLatency) / 1_000_000_000.0
+						dstLatency := float64(l.DstLatency) / 1_000_000_000.0
+						cost := (l.SrcLatency / 1_000_000) + (l.DstLatency / 1_000_000) + int64(l.Cost)
+						out += fmt.Sprintf("%-6s | %-24s -> %-24s | %-12s | %-4d | %-0.4f %-0.4f | %-12v | %-6v\n", l.Id, l.Src, l.Dst, l.State, l.Cost, srcLatency, dstLatency,
+							cost, status)
 					}
 					out += "\n"
 					fmt.Print(out)

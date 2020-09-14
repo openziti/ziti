@@ -1,0 +1,3 @@
+# enrollments in-use with Docker Compose
+*.json
+*.jwt

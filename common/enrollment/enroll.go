@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package subcmd
+package enrollment
 
 import (
 	"encoding/json"
@@ -42,7 +42,30 @@ const idnameDesc = "Names the identity. Ignored if not 3rd party auto enrollment
 
 const outFlag = "out"
 
-func init() {
+func NewEnrollCommand() *cobra.Command {
+	var enrollSubCmd = &cobra.Command{
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Use:           "enroll",
+		Short:         "enroll an identity",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+			}
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			//set the formatter for enrolling via ziti-tunnel
+			logrus.SetFormatter(&logrus.TextFormatter{
+				ForceColors:      true,
+				DisableTimestamp: true,
+				TimestampFormat:  "",
+				PadLevelText:     true,
+			})
+			logrus.SetReportCaller(false) // for enrolling don't bother with this
+			return processEnrollment()
+		},
+	}
+
 	enrollSubCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, verboseDesc)
 	enrollSubCmd.Flags().StringVarP(&jwtpath, "jwt", "j", "", jwtpathDesc)
 	enrollSubCmd.Flags().StringVarP(&outpath, outFlag, "o", "", outpathDesc)
@@ -62,30 +85,7 @@ func init() {
 
 	_ = enrollSubCmd.MarkFlagRequired("jwt")
 
-	root.AddCommand(enrollSubCmd)
-}
-
-var enrollSubCmd = &cobra.Command{
-	SilenceErrors: true,
-	SilenceUsage: true,
-	Use:   "enroll",
-	Short: "enroll an identity",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if verbose {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		//set the formatter for enrolling via ziti-tunnel
-		logrus.SetFormatter(&logrus.TextFormatter{
-			ForceColors:               true,
-			DisableTimestamp:          true,
-			TimestampFormat:           "",
-			PadLevelText:              true,
-		})
-		logrus.SetReportCaller(false) // for enrolling don't bother with this
-		return processEnrollment()
-	},
+	return enrollSubCmd
 }
 
 func processEnrollment() error {
@@ -135,10 +135,10 @@ func processEnrollment() error {
 	}
 
 	output, err := os.Create(outpath)
-	defer output.Close()
 	if err != nil {
 		return fmt.Errorf("failed to open file '%s': %s", outpath, err.Error())
 	}
+	defer func() { _ = output.Close() }()
 
 	enc := json.NewEncoder(output)
 	enc.SetEscapeHTML(false)

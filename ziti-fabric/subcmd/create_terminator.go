@@ -21,15 +21,21 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/spf13/cobra"
 	"time"
 )
 
 var createTerminatorClient *mgmtClient
 var createTerminatorBinding string
+var createTerminatorCost uint32
+var createTerminatorPrecedence string
 
 func init() {
 	createTerminator.Flags().StringVar(&createTerminatorBinding, "binding", "transport", "Terminator binding")
+	createTerminator.Flags().Uint32VarP(&createTerminatorCost, "cost", "c", 0, "Set the terminator cost")
+	createTerminator.Flags().StringVarP(&createTerminatorPrecedence, "precedence", "p", "default", "Set the terminator precedence ('default', 'required' or 'failed')")
+
 	createTerminatorClient = NewMgmtClient(createTerminator)
 	createCmd.AddCommand(createTerminator)
 }
@@ -39,13 +45,30 @@ var createTerminator = &cobra.Command{
 	Short: "Create a new fabric service terminator",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
+		validValues := []string{"default", "required", "failed"}
+		if !stringz.Contains(validValues, createTerminatorPrecedence) {
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Invalid precedence %v. Must be one of %+v\n", createTerminatorPrecedence, validValues); err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		precedence := mgmt_pb.TerminatorPrecedence_Default
+		if createTerminatorPrecedence == "required" {
+			precedence = mgmt_pb.TerminatorPrecedence_Required
+		} else if createTerminatorPrecedence == "failed" {
+			precedence = mgmt_pb.TerminatorPrecedence_Failed
+		}
+
 		if ch, err := createTerminatorClient.Connect(); err == nil {
 			request := &mgmt_pb.CreateTerminatorRequest{
 				Terminator: &mgmt_pb.Terminator{
-					ServiceId: args[0],
-					RouterId:  args[1],
-					Binding:   createTerminatorBinding,
-					Address:   args[2],
+					ServiceId:  args[0],
+					RouterId:   args[1],
+					Binding:    createTerminatorBinding,
+					Address:    args[2],
+					Precedence: precedence,
+					Cost:       createTerminatorCost,
 				},
 			}
 			body, err := proto.Marshal(request)
