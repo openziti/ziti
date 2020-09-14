@@ -231,6 +231,7 @@ github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE0
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/handlers v1.4.2 h1:0QniY0USkHQ1RGCLfKxeNHK9bkDHGRYGNDFBCS+YARg=
 github.com/gorilla/handlers v1.4.2/go.mod h1:Qkdc/uu4tH4g6mTK6auzZ766c4CA0Ng8+o/OAirnOIQ=
+github.com/gorilla/mux v1.7.4/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=
@@ -375,8 +376,10 @@ github.com/openziti/fabric v0.13.2 h1:gss5iDbMNpx/MzHkHpuDYNkJ4hmQ8eMBpQzs+EzEhA
 github.com/openziti/fabric v0.13.2/go.mod h1:5XwSupcpP8mLRVz8vgjoTDD4V8t/TpvMfIZKmT3COLY=
 github.com/openziti/foundation v0.14.0 h1:a4Wu/zpxJ8fuWuO+LPfTyroURWymtz81KWYmSyuhbJM=
 github.com/openziti/foundation v0.14.0/go.mod h1:N6QMLsB1vXnTa8SMWXRpyMOpP5af8Nd2MxeBJEiF+hk=
-github.com/openziti/sdk-golang v0.13.40 h1:QNvOvBkMfp3KrjrLwpWQGKyFa4yEl07IGad7nkgqu9w=
-github.com/openziti/sdk-golang v0.13.40/go.mod h1:1fpsjitE5ue8EVGFXhjCMq2E9+FxacopAAlEQ/RlEHw=
+github.com/openziti/foundation v0.14.1 h1:XrgfN1PZV4XkaOSafp/AC/aeU4sdzksC78o++6oluNQ=
+github.com/openziti/foundation v0.14.1/go.mod h1:h13y744+DrqdhkUPQ9m66PD9N1ycfmM22iDhcItfhwI=
+github.com/openziti/sdk-golang v0.13.41 h1:Kg8tPuN6dXvC9/cYzVniamGbFt1BR6V0xk5Y/Es+UaA=
+github.com/openziti/sdk-golang v0.13.41/go.mod h1:jvdmV/1LxkJe7G8BVEYnZ7BNi7FdgYtIUa9TXv91kbE=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
