@@ -45,7 +45,7 @@ const outFlag = "out"
 func NewEnrollCommand() *cobra.Command {
 	var enrollSubCmd = &cobra.Command{
 		SilenceErrors: true,
-		SilenceUsage:  true,
+		SilenceUsage:  false,
 		Use:           "enroll",
 		Short:         "enroll an identity",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -83,7 +83,9 @@ func NewEnrollCommand() *cobra.Command {
 
 	enrollSubCmd.Flags().StringVarP(&keyPath, "key", "k", "", keyDesc)
 
-	_ = enrollSubCmd.MarkFlagRequired("jwt")
+	if err := enrollSubCmd.MarkFlagRequired("jwt"); err != nil {
+		panic(err)
+	}
 
 	return enrollSubCmd
 }
