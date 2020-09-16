@@ -61,7 +61,8 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
-	listener.underlayListener = channel2.NewClassicListener(listener.id, addr, listener.options.channelOptions.ConnectOptions)
+	listener.underlayListener = channel2.NewClassicListenerWithTransportConfiguration(
+		listener.id, addr, listener.options.channelOptions.ConnectOptions, listener.factory.config.Tcfg)
 	if err := listener.underlayListener.Listen(); err != nil {
 		return err
 	}

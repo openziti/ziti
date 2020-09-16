@@ -53,7 +53,7 @@ func (factory *Factory) Enabled() bool {
 
 func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	factory.ctrl = ch
-	ch.AddReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.config.Advertise, []string{"tls"}))
+	ch.AddReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.config.Advertise, []string{"tls", "wss"}))
 
 	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionAddedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))

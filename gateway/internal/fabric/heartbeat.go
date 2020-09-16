@@ -56,7 +56,7 @@ func (operation *heartbeatOperation) Run() error {
 func (operation *heartbeatOperation) beat(tokens []string) {
 	var msgs []*channel2.Message
 
-	pfxlog.Logger().Debugf("heartbeat tokens: %d", len(tokens))
+	pfxlog.Logger().Tracef("heartbeat tokens: %d", len(tokens))
 
 	for len(tokens) > 0 {
 

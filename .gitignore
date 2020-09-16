@@ -1,3 +1,5 @@
 .idea
 ignore.*
 github_deploy_key
+.vscode/
+.DS_Store
