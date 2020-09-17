@@ -56,13 +56,15 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	}
 
 	terminator := &network.Terminator{
-		Service:    request.ServiceId,
-		Router:     h.router.Id,
-		Binding:    request.Binding,
-		Address:    request.Address,
-		PeerData:   request.PeerData,
-		Precedence: request.GetXtPrecedence(),
-		Cost:       uint16(request.Cost),
+		Service:        request.ServiceId,
+		Router:         h.router.Id,
+		Binding:        request.Binding,
+		Address:        request.Address,
+		Identity:       request.Identity,
+		IdentitySecret: request.IdentitySecret,
+		PeerData:       request.PeerData,
+		Precedence:     request.GetXtPrecedence(),
+		Cost:           uint16(request.Cost),
 	}
 
 	if id, err := h.network.Terminators.Create(terminator); err == nil {

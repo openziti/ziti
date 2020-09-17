@@ -23,29 +23,34 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/sequence"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
 const (
-	EntityTypeTerminators     = "terminators"
-	FieldTerminatorService    = "service"
-	FieldTerminatorRouter     = "router"
-	FieldTerminatorBinding    = "binding"
-	FieldTerminatorAddress    = "address"
-	FieldTerminatorCost       = "cost"
-	FieldTerminatorPrecedence = "precedence"
-	FieldServerPeerData       = "peerData"
+	EntityTypeTerminators         = "terminators"
+	FieldTerminatorService        = "service"
+	FieldTerminatorRouter         = "router"
+	FieldTerminatorBinding        = "binding"
+	FieldTerminatorAddress        = "address"
+	FieldTerminatorIdentity       = "identity"
+	FieldTerminatorIdentitySecret = "identitySecret"
+	FieldTerminatorCost           = "cost"
+	FieldTerminatorPrecedence     = "precedence"
+	FieldServerPeerData           = "peerData"
 )
 
 type Terminator struct {
 	boltz.BaseExtEntity
-	Service    string
-	Router     string
-	Binding    string
-	Address    string
-	Cost       uint16
-	Precedence string
-	PeerData   xt.PeerData
+	Service        string
+	Router         string
+	Binding        string
+	Address        string
+	Identity       string
+	IdentitySecret string
+	Cost           uint16
+	Precedence     string
+	PeerData       xt.PeerData
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -78,6 +83,8 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Router = bucket.GetStringOrError(FieldTerminatorRouter)
 	entity.Binding = bucket.GetStringOrError(FieldTerminatorBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldTerminatorAddress, "")
+	entity.Identity = bucket.GetStringWithDefault(FieldTerminatorIdentity, "")
+	entity.IdentitySecret = bucket.GetStringWithDefault(FieldTerminatorIdentitySecret, "")
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 
@@ -98,12 +105,22 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 		entity.Precedence = xt.Precedences.Default.String()
 	}
 
+	terminatorStore := ctx.Store.(*terminatorStoreImpl)
+
+	terminatorStore.validateIdentitySecret(ctx, entity)
+	if ctx.Bucket.HasError() {
+		return
+	}
+
 	if ctx.IsCreate { // don't allow service to be changed
 		ctx.SetRequiredString(FieldTerminatorService, entity.Service)
 	}
+
 	ctx.SetRequiredString(FieldTerminatorRouter, entity.Router)
 	ctx.SetRequiredString(FieldTerminatorBinding, entity.Binding)
 	ctx.SetRequiredString(FieldTerminatorAddress, entity.Address)
+	ctx.SetString(FieldTerminatorIdentity, entity.Identity)
+	ctx.SetString(FieldTerminatorIdentitySecret, entity.IdentitySecret)
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 
@@ -121,7 +138,6 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 		return
 	}
 
-	terminatorStore := ctx.Store.(*terminatorStoreImpl)
 	serviceId := ctx.Bucket.GetStringOrError(FieldTerminatorService) // service won't be passed in on change
 	service, err := terminatorStore.stores.service.LoadOneById(ctx.Bucket.Tx(), serviceId)
 	if err != nil || service == nil {
@@ -243,4 +259,38 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *terminatorStoreImpl) validateIdentitySecret(ctx *boltz.PersistContext, entity *Terminator) {
+	serviceId := ""
+	if ctx.IsCreate { // don't allow service to be changed
+		serviceId = entity.Service
+	} else {
+		terminator, err := store.LoadOneById(ctx.Bucket.Tx(), ctx.Id)
+		if ctx.Bucket.SetError(err) {
+			return
+		}
+		serviceId = terminator.Service
+	}
+
+	identity := entity.Identity
+
+	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(ctx.Bucket.Tx(), serviceId, EntityTypeTerminators)
+	var identityTerminators []*Terminator
+	for _, terminatorId := range terminatorIds {
+		if terminatorId != ctx.Id {
+			if terminator, _ := store.LoadOneById(ctx.Bucket.Tx(), terminatorId); terminator != nil {
+				if identity == terminator.Identity {
+					identityTerminators = append(identityTerminators, terminator)
+				}
+			}
+		}
+	}
+
+	for _, terminator := range identityTerminators {
+		if entity.IdentitySecret != terminator.IdentitySecret {
+			ctx.Bucket.SetError(errors.Errorf("identity secret did not match other terminator(s) with shared identity %v", identity))
+			return
+		}
+	}
 }

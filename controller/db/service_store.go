@@ -44,6 +44,7 @@ func (entity *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) 
 func (entity *Service) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
+
 	if entity.TerminatorStrategy == "" {
 		entity.TerminatorStrategy = xt_smartrouting.Name
 	}
