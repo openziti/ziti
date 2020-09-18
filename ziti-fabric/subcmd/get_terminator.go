@@ -53,9 +53,9 @@ var getTerminator = &cobra.Command{
 				err := proto.Unmarshal(responseMsg.Body, response)
 				if err == nil {
 					terminator := response.Terminator
-					fmt.Printf("\n%10s | %-12s|  %-16s| %-12v| %-12v| %v\n", "Id", "Service", "Binding", "Precedence", "Static Cost", "Destination")
-					fmt.Printf("%-10s | %-12s | %-16s | %-12v| %-12v| %v\n", terminator.Id, terminator.ServiceId, terminator.Binding,
-						terminator.Precedence.String(), terminator.Cost, fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
+					fmt.Printf("\n%10s | %-12s | %-16s | %-12v | %-12v | %-12v | %v\n", "Id", "Service", "Binding", "Precedence", "Static Cost", "Identity", "Destination")
+					fmt.Printf("%-10s | %-12s | %-16s | %-12v | %-12v | %-12v | %v\n", terminator.Id, terminator.ServiceId, terminator.Binding,
+						terminator.Precedence.String(), terminator.Cost, terminator.Identity, fmt.Sprintf("%-12s -> %s", terminator.RouterId, terminator.Address))
 				} else {
 					fmt.Printf("Id not found\n")
 				}

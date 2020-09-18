@@ -458,11 +458,12 @@ func outputTerminators(o *commonOptions, children []*gabs.Container, pagingInfo 
 		router := entity.Path("router.id").Data().(string)
 		binding := entity.Path("binding").Data().(string)
 		address := entity.Path("address").Data().(string)
+		identity := entity.Path("identity").Data().(string)
 		staticCost := entity.Path("cost").Data().(float64)
 		precedence := entity.Path("precedence").Data().(string)
 		dynamicCost := entity.Path("dynamicCost").Data().(float64)
-		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
-			id, service, router, binding, address, staticCost, precedence, dynamicCost)
+		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    identity: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
+			id, service, router, binding, address, identity, staticCost, precedence, dynamicCost)
 		if err != nil {
 			return err
 		}
