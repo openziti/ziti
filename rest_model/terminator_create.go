@@ -51,6 +51,12 @@ type TerminatorCreate struct {
 	// cost
 	Cost *TerminatorCost `json:"cost,omitempty"`
 
+	// identity
+	Identity string `json:"identity,omitempty"`
+
+	// identity secret
+	IdentitySecret string `json:"identitySecret,omitempty"`
+
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`
 

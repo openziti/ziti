@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	log "github.com/sirupsen/logrus"
@@ -77,11 +78,18 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		return nil, fmt.Errorf("host for token '%v' not found", token)
 	}
 
+	callerId := ""
+	if sessionId.Data != nil {
+		if callerIdBytes, found := sessionId.Data[edge.CallerIdHeader]; found {
+			callerId = string(callerIdBytes)
+		}
+	}
+
 	log.Debug("dialing sdk client hosting service")
-	dialRequest := edge.NewDialMsg(listenConn.Id(), token)
+	dialRequest := edge.NewDialMsg(listenConn.Id(), token, callerId)
 	dialRequest.Headers[edge.PublicKeyHeader] = sessionId.Data[edge.PublicKeyHeader]
 
-	reply, err := listenConn.SendAndWaitWithTimeout(dialRequest, 5*time.Second)
+	reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}

@@ -152,6 +152,10 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	peerData := make(map[uint32][]byte)
 	peerData[edge.PublicKeyHeader] = req.Headers[edge.PublicKeyHeader]
 
+	if callerId, found := req.Headers[edge.CallerIdHeader]; found {
+		peerData[edge.CallerIdHeader] = callerId
+	}
+
 	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
 		msg := "encryption required on service, initiator did not send public header"
 		proxy.sendStateClosedReply(msg, req)
@@ -159,7 +163,11 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		return
 	}
 
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, ns.Service.Id, peerData)
+	service := ns.Service.Id
+	if terminatorIdentity, found := req.GetStringHeader(edge.TerminatorIdentityHeader); found {
+		service = terminatorIdentity + "@" + service
+	}
+	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, service, peerData)
 	if err != nil {
 		log.Warn("failed to dial fabric ", err)
 		proxy.sendStateClosedReply(err.Error(), req)
@@ -270,7 +278,13 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 
 	proxy.listener.factory.hostedServices.Put(token, messageSink)
 
-	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, hostData, cost, precedence)
+	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
+	var terminatorIdentitySecret string
+	if terminatorIdentity != "" {
+		terminatorIdentitySecret, _ = req.GetStringHeader(edge.TerminatorIdentitySecretHeader)
+	}
+
+	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, terminatorIdentity, terminatorIdentitySecret, hostData, cost, precedence)
 	messageSink.terminatorIdRef.Set(terminatorId)
 
 	log.Debugf("registered listener for terminator %v, token: %v", terminatorId, token)

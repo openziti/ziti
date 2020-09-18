@@ -7550,6 +7550,12 @@ func init() {
         "cost": {
           "$ref": "#/definitions/terminatorCost"
         },
+        "identity": {
+          "type": "string"
+        },
+        "identitySecret": {
+          "type": "string"
+        },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
         },
@@ -7579,6 +7585,7 @@ func init() {
             "router",
             "binding",
             "address",
+            "identity",
             "cost",
             "precedence",
             "dynamicCost"
@@ -7595,6 +7602,9 @@ func init() {
             },
             "dynamicCost": {
               "$ref": "#/definitions/terminatorCost"
+            },
+            "identity": {
+              "type": "string"
             },
             "precedence": {
               "$ref": "#/definitions/terminatorPrecedence"
@@ -23353,6 +23363,12 @@ func init() {
         "cost": {
           "$ref": "#/definitions/terminatorCost"
         },
+        "identity": {
+          "type": "string"
+        },
+        "identitySecret": {
+          "type": "string"
+        },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
         },
@@ -23382,6 +23398,7 @@ func init() {
             "router",
             "binding",
             "address",
+            "identity",
             "cost",
             "precedence",
             "dynamicCost"
@@ -23398,6 +23415,9 @@ func init() {
             },
             "dynamicCost": {
               "$ref": "#/definitions/terminatorCost"
+            },
+            "identity": {
+              "type": "string"
             },
             "precedence": {
               "$ref": "#/definitions/terminatorPrecedence"

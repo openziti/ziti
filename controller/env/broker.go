@@ -484,6 +484,7 @@ func (b *Broker) sendSessionCreates(session *persistence.Session) {
 		Service:          svc,
 		CertFingerprints: fps,
 		Type:             sessionType,
+		SessionToken:     session.ApiSession.Token,
 	})
 
 	if buf, err := proto.Marshal(sessionAdded); err == nil {

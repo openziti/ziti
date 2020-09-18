@@ -58,6 +58,10 @@ type TerminatorDetail struct {
 	// Required: true
 	DynamicCost *TerminatorCost `json:"dynamicCost"`
 
+	// identity
+	// Required: true
+	Identity *string `json:"identity"`
+
 	// precedence
 	// Required: true
 	Precedence TerminatorPrecedence `json:"precedence"`
@@ -98,6 +102,8 @@ func (m *TerminatorDetail) UnmarshalJSON(raw []byte) error {
 
 		DynamicCost *TerminatorCost `json:"dynamicCost"`
 
+		Identity *string `json:"identity"`
+
 		Precedence TerminatorPrecedence `json:"precedence"`
 
 		Router *EntityRef `json:"router"`
@@ -119,6 +125,8 @@ func (m *TerminatorDetail) UnmarshalJSON(raw []byte) error {
 	m.Cost = dataAO1.Cost
 
 	m.DynamicCost = dataAO1.DynamicCost
+
+	m.Identity = dataAO1.Identity
 
 	m.Precedence = dataAO1.Precedence
 
@@ -151,6 +159,8 @@ func (m TerminatorDetail) MarshalJSON() ([]byte, error) {
 
 		DynamicCost *TerminatorCost `json:"dynamicCost"`
 
+		Identity *string `json:"identity"`
+
 		Precedence TerminatorPrecedence `json:"precedence"`
 
 		Router *EntityRef `json:"router"`
@@ -169,6 +179,8 @@ func (m TerminatorDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Cost = m.Cost
 
 	dataAO1.DynamicCost = m.DynamicCost
+
+	dataAO1.Identity = m.Identity
 
 	dataAO1.Precedence = m.Precedence
 
@@ -210,6 +222,10 @@ func (m *TerminatorDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateDynamicCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIdentity(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -288,6 +304,15 @@ func (m *TerminatorDetail) validateDynamicCost(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorDetail) validateIdentity(formats strfmt.Registry) error {
+
+	if err := validate.Required("identity", "body", m.Identity); err != nil {
+		return err
 	}
 
 	return nil
