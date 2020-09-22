@@ -17,8 +17,10 @@
 package model
 
 import (
+	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -110,6 +112,26 @@ func (handler *CaHandler) Query(query string) (*CaListResult, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (handler *CaHandler) Stream(query string, collect func(*Ca, error) error) error {
+	filter, err := ast.Parse(handler.Store, query)
+
+	if err != nil {
+		return fmt.Errorf("could not parse query for streaming cas: %v", err)
+	}
+
+	return handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for cursor := handler.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
+			current := cursor.Current()
+
+			ca, err := handler.readInTx(tx, string(current))
+			if err := collect(ca, err); err != nil {
+				return err
+			}
+		}
+		return collect(nil, nil)
+	})
 }
 
 type CaListResult struct {

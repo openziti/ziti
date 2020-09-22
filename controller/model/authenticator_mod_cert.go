@@ -111,13 +111,17 @@ func (module *AuthModuleCert) getRootPool() *x509.CertPool {
 		roots.AddCert(caCert)
 	}
 
-	cas, err := module.env.GetHandlers().Ca.Query("isAuthEnabled = true and isVerified = true limit 500")
+	err := module.env.GetHandlers().Ca.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
+		if ca == nil && err == nil {
+			return nil
+		}
 
-	if err != nil {
-		return nil
-	}
+		if err != nil {
+			//continue on err
+			pfxlog.Logger().Errorf("error streaming cas for authentication: %vs", err)
+			return nil
+		}
 
-	for _, ca := range cas.Cas {
 		if val, ok := module.dynamicCaCache.Get(ca.Id); ok {
 			if caCerts, ok := val.([]*x509.Certificate); ok {
 				for _, caCert := range caCerts {
@@ -131,6 +135,12 @@ func (module *AuthModuleCert) getRootPool() *x509.CertPool {
 				roots.AddCert(caCert)
 			}
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil
 	}
 
 	return roots
