@@ -76,8 +76,7 @@ func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Iden
 	if identityId == "" {
 		return nil, apierror.NewInvalidAuth()
 	}
-
-
+	
 	return handler.env.GetHandlers().Identity.Read(identityId)
 }
 
