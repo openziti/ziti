@@ -24,6 +24,8 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	nfpem "github.com/openziti/foundation/util/pem"
+	cmap "github.com/orcaman/concurrent-map"
 	"net/http"
 )
 
@@ -36,14 +38,20 @@ type AuthModuleCert struct {
 	env                  Env
 	method               string
 	fingerprintGenerator cert.FingerprintGenerator
+	caChain              []byte
+	staticCaCerts        []*x509.Certificate
+	dynamicCaCache       cmap.ConcurrentMap //map[string][]*x509.Certificate
 }
 
-func NewAuthModuleCert(env Env) *AuthModuleCert {
+func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
 	handler := &AuthModuleCert{
 		env:                  env,
 		method:               persistence.MethodAuthenticatorCert,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
+		staticCaCerts:        nfpem.PemToX509(string(caChain)),
+		dynamicCaCache:       cmap.New(),
 	}
+
 	return handler
 }
 
@@ -58,7 +66,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 		return "", err
 	}
 
-	for fingerprint := range fingerprints {
+	for fingerprint, cert := range fingerprints {
 		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if err != nil {
@@ -81,11 +89,53 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 				}
 			}
 
-			return authenticator.IdentityId, nil
+			opts := x509.VerifyOptions{
+				Roots:         module.getRootPool(),
+				Intermediates: x509.NewCertPool(),
+				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			}
+
+			if _, err := cert.Verify(opts); err == nil {
+				return authenticator.IdentityId, nil
+			} else {
+				println(err)
+			}
 		}
 	}
 
 	return "", apierror.NewInvalidAuth()
+}
+
+func (module *AuthModuleCert) getRootPool() *x509.CertPool {
+	roots := x509.NewCertPool()
+
+	for _, caCert := range module.staticCaCerts {
+		roots.AddCert(caCert)
+	}
+
+	cas, err := module.env.GetHandlers().Ca.Query("isAuthEnabled = true and isVerified = true limit 500")
+
+	if err != nil {
+		return nil
+	}
+
+	for _, ca := range cas.Cas {
+		if val, ok := module.dynamicCaCache.Get(ca.Id); ok {
+			if caCerts, ok := val.([]*x509.Certificate); ok {
+				for _, caCert := range caCerts {
+					roots.AddCert(caCert)
+				}
+			}
+		} else {
+			caCerts := nfpem.PemToX509(ca.CertPem)
+			module.dynamicCaCache.Set(ca.Id, caCerts)
+			for _, caCert := range caCerts {
+				roots.AddCert(caCert)
+			}
+		}
+	}
+
+	return roots
 }
 
 func (module *AuthModuleCert) isEdgeRouter(certs []*x509.Certificate) bool {

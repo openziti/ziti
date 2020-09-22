@@ -215,4 +215,70 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})
+
+	t.Run("CAs with auth enabled can authenticate", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		ca := newTestCa()
+
+		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+
+		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		verificationToken := caValues.Path("data.verificationToken").Data().(string)
+		ctx.Req.NotEmpty(verificationToken)
+
+		validationAuth := ca.CreateSignedCert(verificationToken)
+		clientAuthenticator := ca.CreateSignedCert(eid.New())
+
+		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+			SetHeader("content-type", "text/plain").
+			SetBody(validationAuth.certPem).
+			Post("cas/" + ca.id + "/verify")
+
+		ctx.Req.NoError(err)
+		ctx.logJson(resp.Body())
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		ctx.completeCaAutoEnrollment(clientAuthenticator)
+
+		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(enrolledSession)
+
+		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ca.isAuthEnabled = false
+			resp := ctx.AdminSession.patchEntity(ca, "isAuthEnabled")
+			ctx.Req.NotEmpty(resp)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+
+			ctx.Req.Error(err)
+			ctx.Req.Empty(enrolledSession)
+		})
+
+		t.Run("CAs with auth re-enabled an authenticate", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ca.isAuthEnabled = true
+			resp := ctx.AdminSession.patchEntity(ca, "isAuthEnabled")
+			ctx.Req.NotEmpty(resp)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(enrolledSession)
+		})
+
+		t.Run("deleting a CA no longer allows authentication", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.AdminSession.requireDeleteEntity(ca)
+
+			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+
+			ctx.Req.Error(err)
+			ctx.Req.Empty(enrolledSession)
+		})
+	})
 }
