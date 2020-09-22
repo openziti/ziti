@@ -97,8 +97,6 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 
 			if _, err := cert.Verify(opts); err == nil {
 				return authenticator.IdentityId, nil
-			} else {
-				println(err)
 			}
 		}
 	}
