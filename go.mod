@@ -32,7 +32,7 @@ require (
 	github.com/miekg/dns v1.1.31
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.13.2
+	github.com/openziti/fabric v0.13.6
 	github.com/openziti/foundation v0.14.4
 	github.com/openziti/sdk-golang v0.13.44
 	github.com/pkg/errors v0.9.1
