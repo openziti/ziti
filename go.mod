@@ -2,7 +2,7 @@ module github.com/openziti/edge
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../foundation
+//replace github.com/openziti/foundation => ../foundation
 
 //replace github.com/openziti/fabric => ../fabric
 
@@ -35,6 +35,7 @@ require (
 	github.com/openziti/fabric v0.13.6
 	github.com/openziti/foundation v0.14.4
 	github.com/openziti/sdk-golang v0.13.44
+	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.6.0
