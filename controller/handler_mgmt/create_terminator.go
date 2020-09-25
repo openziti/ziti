@@ -58,38 +58,40 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	}
 }
 
-func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*network.Terminator, error) {
-	router, _ := n.GetRouter(e.RouterId)
+func toModelTerminator(n *network.Network, terminator *mgmt_pb.Terminator) (*network.Terminator, error) {
+	router, _ := n.GetRouter(terminator.RouterId)
 	if router == nil {
-		return nil, errors.Errorf("invalid router id %v", e.RouterId)
+		return nil, errors.Errorf("invalid router id %v", terminator.RouterId)
 	}
 
 	binding := "transport"
-	if e.Binding != "" {
-		binding = e.Binding
+	if terminator.Binding != "" {
+		binding = terminator.Binding
 	}
 
-	if e.Cost > math.MaxUint16 {
-		return nil, errors.Errorf("invalid cost %v. cost must be between 0 and %v inclusive", e.Cost, math.MaxUint16)
+	if terminator.Cost > math.MaxUint16 {
+		return nil, errors.Errorf("invalid cost %v. cost must be between 0 and %v inclusive", terminator.Cost, math.MaxUint16)
 	}
 
 	precedence := xt.Precedences.Default
-	if e.Precedence == mgmt_pb.TerminatorPrecedence_Required {
+	if terminator.Precedence == mgmt_pb.TerminatorPrecedence_Required {
 		precedence = xt.Precedences.Required
-	} else if e.Precedence == mgmt_pb.TerminatorPrecedence_Failed {
+	} else if terminator.Precedence == mgmt_pb.TerminatorPrecedence_Failed {
 		precedence = xt.Precedences.Failed
 	}
 
 	return &network.Terminator{
 		BaseEntity: models.BaseEntity{
-			Id:   e.Id,
+			Id:   terminator.Id,
 			Tags: nil,
 		},
-		Service:    e.ServiceId,
-		Router:     router.Id,
-		Binding:    binding,
-		Address:    e.Address,
-		Cost:       uint16(e.Cost),
-		Precedence: precedence,
+		Service:        terminator.ServiceId,
+		Router:         router.Id,
+		Binding:        binding,
+		Address:        terminator.Address,
+		Identity:       terminator.Identity,
+		IdentitySecret: terminator.IdentitySecret,
+		Cost:           uint16(terminator.Cost),
+		Precedence:     precedence,
 	}, nil
 }

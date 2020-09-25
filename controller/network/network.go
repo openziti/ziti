@@ -273,7 +273,7 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string) (*session, error) {
+func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*session, error) {
 	log := pfxlog.Logger()
 
 	// 1: Allocate Session Identifier
@@ -282,6 +282,8 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		return nil, err
 	}
 	sessionId := &identity.TokenId{Token: sessionIdHash}
+
+	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	retryCount := 0
 	for {
@@ -292,7 +294,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 3: select terminator
-		strategy, terminator, path, err := network.selectPath(srcR, svc)
+		strategy, terminator, path, err := network.selectPath(srcR, svc, targetIdentity)
 		if err != nil {
 			return nil, err
 		}
@@ -357,11 +359,17 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	}
 }
 
-func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.Terminator, []*Router, error) {
-	if len(svc.Terminators) == 0 {
-		return nil, nil, nil, errors.Errorf("service %v has no Terminators", svc.Id)
+func parseIdentityAndService(service string) (string, string) {
+	atIndex := strings.IndexRune(service, '@')
+	if atIndex < 0 {
+		return "", service
 	}
+	identity := service[0:atIndex]
+	serviceId := service[atIndex+1:]
+	return identity, serviceId
+}
 
+func (network *Network) selectPath(srcR *Router, svc *Service, identity string) (xt.Strategy, xt.Terminator, []*Router, error) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
@@ -369,6 +377,10 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 	log := pfxlog.Logger()
 
 	for _, terminator := range svc.Terminators {
+		if terminator.Identity != identity {
+			continue
+		}
+
 		pathAndCost, found := paths[terminator.Router]
 		if !found {
 			dstR := network.Routers.getConnected(terminator.GetRouterId())
@@ -398,6 +410,10 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 			RouteCost:  biasedCost,
 		}
 		weightedTerminators = append(weightedTerminators, costedTerminator)
+	}
+
+	if len(svc.Terminators) == 0 {
+		return nil, nil, nil, errors.Errorf("service %v has no Terminators", svc.Id)
 	}
 
 	if len(weightedTerminators) == 0 {

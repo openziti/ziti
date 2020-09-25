@@ -199,15 +199,17 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func AddTerminator(ctrl CtrlChannel, serviceId string, binding string, address string, peerData map[uint32][]byte, staticCost uint16, precedence ctrl_pb.TerminatorPrecedence) (string, error) {
+func AddTerminator(ctrl CtrlChannel, serviceId, binding, address, identity string, identitySecret []byte, peerData map[uint32][]byte, staticCost uint16, precedence ctrl_pb.TerminatorPrecedence) (string, error) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.CreateTerminatorRequest{
-		ServiceId:  serviceId,
-		Binding:    binding,
-		Address:    address,
-		PeerData:   peerData,
-		Cost:       uint32(staticCost),
-		Precedence: precedence,
+		ServiceId:      serviceId,
+		Binding:        binding,
+		Address:        address,
+		Identity:       identity,
+		IdentitySecret: identitySecret,
+		PeerData:       peerData,
+		Cost:           uint32(staticCost),
+		Precedence:     precedence,
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {

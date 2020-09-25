@@ -43,6 +43,8 @@ message CreateTerminatorRequest {
     map<uint32, bytes> peerData = 5;
     uint32 cost = 6;
     TerminatorPrecedence precedence = 7;
+    string identity = 8;
+    bytes identitySecret = 9;
 }
 
 message RemoveTerminatorRequest {

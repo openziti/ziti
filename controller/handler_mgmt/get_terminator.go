@@ -77,6 +77,7 @@ func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
 		RouterId:   s.Router,
 		Binding:    s.Binding,
 		Address:    s.Address,
+		Identity:   s.Identity,
 		Cost:       uint32(s.Cost),
 		Precedence: precedence,
 	}

@@ -27,13 +27,15 @@ import (
 
 type Terminator struct {
 	models.BaseEntity
-	Service    string
-	Router     string
-	Binding    string
-	Address    string
-	Cost       uint16
-	Precedence xt.Precedence
-	PeerData   map[uint32][]byte
+	Service        string
+	Router         string
+	Binding        string
+	Address        string
+	Identity       string
+	IdentitySecret []byte
+	Cost           uint16
+	Precedence     xt.Precedence
+	PeerData       map[uint32][]byte
 }
 
 func (entity *Terminator) GetServiceId() string {
@@ -50,6 +52,14 @@ func (entity *Terminator) GetBinding() string {
 
 func (entity *Terminator) GetAddress() string {
 	return entity.Address
+}
+
+func (entity *Terminator) GetIdentity() string {
+	return entity.Identity
+}
+
+func (entity *Terminator) GetIdentitySecret() []byte {
+	return entity.IdentitySecret
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -73,6 +83,8 @@ func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.E
 	entity.Router = boltTerminator.Router
 	entity.Binding = boltTerminator.Binding
 	entity.Address = boltTerminator.Address
+	entity.Identity = boltTerminator.Identity
+	entity.IdentitySecret = boltTerminator.IdentitySecret
 	entity.PeerData = boltTerminator.PeerData
 	entity.Cost = boltTerminator.Cost
 	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
@@ -86,14 +98,16 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		precedence = entity.Precedence.String()
 	}
 	return &db.Terminator{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Service:       entity.Service,
-		Router:        entity.Router,
-		Binding:       entity.Binding,
-		Address:       entity.Address,
-		Cost:          entity.Cost,
-		Precedence:    precedence,
-		PeerData:      entity.PeerData,
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Service:        entity.Service,
+		Router:         entity.Router,
+		Binding:        entity.Binding,
+		Address:        entity.Address,
+		Identity:       entity.Identity,
+		IdentitySecret: entity.IdentitySecret,
+		Cost:           entity.Cost,
+		Precedence:     precedence,
+		PeerData:       entity.PeerData,
 	}
 }
 

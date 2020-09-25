@@ -122,7 +122,7 @@ func (ctrl *ServiceController) Create(s *Service) error {
 	if err != nil {
 		return err
 	}
-	ctrl.cacheService(s)
+	// don't cache, wait for first read. entity may not match data store as data store may have set defaults
 	return nil
 }
 
@@ -133,7 +133,9 @@ func (ctrl *ServiceController) Update(s *Service) error {
 	if err != nil {
 		return err
 	}
-	ctrl.cacheService(s)
+
+	ctrl.RemoveFromCache(s.Id) // don't cache entity as not all fields may be changed, wait for read to reload
+
 	return nil
 }
 
