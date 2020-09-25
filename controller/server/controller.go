@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_server"
+	"github.com/openziti/fabric/controller/xtv"
 	"net/http"
 	"os"
 	"os/signal"
@@ -196,6 +197,11 @@ func (c *Controller) Initialize() {
 			WithField("enforcerId", sessionEnforcer.GetId()).
 			Errorf("could not add session enforcer")
 
+	}
+
+	xtv.RegisterValidator("edge", env.NewEdgeTerminatorValidator(c.AppEnv))
+	if err := xtv.InitializeMappings(); err != nil {
+		log.Fatalf("error initializing xtv: %+v", err)
 	}
 }
 

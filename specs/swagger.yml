@@ -5484,6 +5484,7 @@ definitions:
         type: string
       identitySecret:
         type: string
+        format: byte
       cost:
         $ref: '#/definitions/terminatorCost'
       precedence:

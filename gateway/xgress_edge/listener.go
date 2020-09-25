@@ -279,9 +279,9 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	proxy.listener.factory.hostedServices.Put(token, messageSink)
 
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
-	var terminatorIdentitySecret string
+	var terminatorIdentitySecret []byte
 	if terminatorIdentity != "" {
-		terminatorIdentitySecret, _ = req.GetStringHeader(edge.TerminatorIdentitySecretHeader)
+		terminatorIdentitySecret, _ = req.Headers[edge.TerminatorIdentitySecretHeader]
 	}
 
 	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, terminatorIdentity, terminatorIdentitySecret, hostData, cost, precedence)

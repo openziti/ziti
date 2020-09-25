@@ -55,7 +55,8 @@ type TerminatorCreate struct {
 	Identity string `json:"identity,omitempty"`
 
 	// identity secret
-	IdentitySecret string `json:"identitySecret,omitempty"`
+	// Format: byte
+	IdentitySecret strfmt.Base64 `json:"identitySecret,omitempty"`
 
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`

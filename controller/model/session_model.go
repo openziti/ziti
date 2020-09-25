@@ -92,22 +92,22 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		return nil, err
 	}
 
-	fingerprints := map[string]bool{}
+	fingerprints := map[string]string{}
 
 	for _, authenticatorId := range identity.Authenticators {
-		authPrints, err := handler.GetEnv().GetHandlers().Authenticator.ReadFingerprints(authenticatorId)
+		authenticator, err := handler.GetEnv().GetStores().Authenticator.LoadOneById(tx, authenticatorId)
 		if err != nil {
 			pfxlog.Logger().Errorf("encountered error retrieving fingerprints for authenticator [%s]", authenticatorId)
 			continue
 		}
-		for _, fingerprint := range authPrints {
-			fingerprints[fingerprint] = true
+		if certAuth := authenticator.ToCert(); certAuth != nil {
+			fingerprints[certAuth.Fingerprint] = certAuth.Pem
 		}
 	}
-	for fingerprint := range fingerprints {
+
+	for fingerprint, cert := range fingerprints {
 		validFrom := time.Now()
 		validTo := time.Now().AddDate(1, 0, 0)
-		cert := "unknown"
 
 		boltEntity.Certs = append(boltEntity.Certs, &persistence.SessionCert{
 			Cert:        cert,

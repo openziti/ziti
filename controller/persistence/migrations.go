@@ -19,10 +19,11 @@ package persistence
 import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	CurrentDbVersion = 10
+	CurrentDbVersion = 11
 	FieldVersion     = "version"
 )
 
@@ -93,6 +94,12 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		if !policiesRepaired {
 			m.repairPolicies(step)
 		}
+	}
+
+	if step.CurrentVersion < 11 {
+		step.SetError(m.stores.EdgeRouterPolicy.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+			log.WithError(err).Debugf("attempting to update session token index. Fixed? %v", fixed)
+		}))
 	}
 
 	// current version

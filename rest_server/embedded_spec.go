@@ -7554,7 +7554,8 @@ func init() {
           "type": "string"
         },
         "identitySecret": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
@@ -23367,7 +23368,8 @@ func init() {
           "type": "string"
         },
         "identitySecret": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"

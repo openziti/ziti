@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
 	"testing"
@@ -107,4 +108,95 @@ func Test_AddressableTerminators(t *testing.T) {
 			ctx.Req.NoError(hostConn.Close())
 		}
 	}
+}
+
+func Test_AddressableTerminatorSameIdentity(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
+
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	fmt.Printf("service id: %v\n", service.Id)
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	errorC := make(chan error, 1)
+	errorHandler := func(err error) {
+		select {
+		case errorC <- err:
+		default:
+		}
+	}
+
+	identity, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
+		BindUsingEdgeIdentity: true,
+		ConnectTimeout:        5 * time.Second,
+	})
+	ctx.Req.NoError(err)
+	listener.(edge.SessionListener).SetErrorEventHandler(errorHandler)
+	defer func() { _ = listener.Close() }()
+
+	context2 := ziti.NewContextWithConfig(identity.config)
+	listener2, err := context2.ListenWithOptions(service.Name, &ziti.ListenOptions{
+		BindUsingEdgeIdentity: true,
+		ConnectTimeout:        5 * time.Second,
+	})
+	listener2.(edge.SessionListener).SetErrorEventHandler(errorHandler)
+	ctx.Req.NoError(err)
+	defer func() { _ = listener2.Close() }()
+
+	select {
+	case err = <-errorC:
+	case <-time.After(5 * time.Second):
+		err = nil
+	}
+	ctx.Req.NoError(err)
+}
+
+func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminLogin()
+
+	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	fmt.Printf("service id: %v\n", service.Id)
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	errorC := make(chan error, 1)
+	errorHandler := func(err error) {
+		select {
+		case errorC <- err:
+		default:
+		}
+	}
+
+	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
+		Identity:       "foobar",
+		ConnectTimeout: 5 * time.Second,
+	})
+	listener.(edge.SessionListener).SetErrorEventHandler(errorHandler)
+	ctx.Req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	_, context2 := ctx.AdminSession.RequireCreateSdkContext()
+	listener2, err := context2.ListenWithOptions(service.Name, &ziti.ListenOptions{
+		Identity:       "foobar",
+		ConnectTimeout: 5 * time.Second,
+	})
+	ctx.Req.NoError(err)
+	listener2.(edge.SessionListener).SetErrorEventHandler(errorHandler)
+	defer func() { _ = listener2.Close() }()
+
+	select {
+	case err = <-errorC:
+	case <-time.After(5 * time.Second):
+		err = nil
+	}
+	ctx.Req.Error(err)
+	ctx.Req.Contains(err.Error(), "shared identity foobar belongs to different identity")
 }
