@@ -199,7 +199,7 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func AddTerminator(ctrl CtrlChannel, serviceId, binding, address, identity, identitySecret string, peerData map[uint32][]byte, staticCost uint16, precedence ctrl_pb.TerminatorPrecedence) (string, error) {
+func AddTerminator(ctrl CtrlChannel, serviceId, binding, address, identity string, identitySecret []byte, peerData map[uint32][]byte, staticCost uint16, precedence ctrl_pb.TerminatorPrecedence) (string, error) {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.CreateTerminatorRequest{
 		ServiceId:      serviceId,

@@ -283,7 +283,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	}
 	sessionId := &identity.TokenId{Token: sessionIdHash}
 
-	targetIdentity, serviceId := parseServiceAndIdentity(service)
+	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	retryCount := 0
 	for {
@@ -359,7 +359,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	}
 }
 
-func parseServiceAndIdentity(service string) (string, string) {
+func parseIdentityAndService(service string) (string, string) {
 	atIndex := strings.IndexRune(service, '@')
 	if atIndex < 0 {
 		return "", service

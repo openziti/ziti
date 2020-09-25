@@ -17,9 +17,11 @@
 package db
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/sequence"
@@ -47,7 +49,7 @@ type Terminator struct {
 	Binding        string
 	Address        string
 	Identity       string
-	IdentitySecret string
+	IdentitySecret []byte
 	Cost           uint16
 	Precedence     string
 	PeerData       xt.PeerData
@@ -73,6 +75,14 @@ func (entity *Terminator) GetAddress() string {
 	return entity.Address
 }
 
+func (entity *Terminator) GetIdentity() string {
+	return entity.Identity
+}
+
+func (entity *Terminator) GetIdentitySecret() []byte {
+	return entity.IdentitySecret
+}
+
 func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
@@ -84,7 +94,7 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Binding = bucket.GetStringOrError(FieldTerminatorBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldTerminatorAddress, "")
 	entity.Identity = bucket.GetStringWithDefault(FieldTerminatorIdentity, "")
-	entity.IdentitySecret = bucket.GetStringWithDefault(FieldTerminatorIdentitySecret, "")
+	entity.IdentitySecret = bucket.Get([]byte(FieldTerminatorIdentitySecret))
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 
@@ -107,20 +117,21 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 
 	terminatorStore := ctx.Store.(*terminatorStoreImpl)
 
-	terminatorStore.validateIdentitySecret(ctx, entity)
 	if ctx.Bucket.HasError() {
 		return
 	}
 
-	if ctx.IsCreate { // don't allow service to be changed
+	if ctx.IsCreate { // don't allow service, identity or secret to be changed
 		ctx.SetRequiredString(FieldTerminatorService, entity.Service)
+		ctx.SetString(FieldTerminatorIdentity, entity.Identity)
+		if entity.IdentitySecret != nil {
+			ctx.Bucket.PutValue([]byte(FieldTerminatorIdentitySecret), entity.IdentitySecret)
+		}
 	}
 
 	ctx.SetRequiredString(FieldTerminatorRouter, entity.Router)
 	ctx.SetRequiredString(FieldTerminatorBinding, entity.Binding)
 	ctx.SetRequiredString(FieldTerminatorAddress, entity.Address)
-	ctx.SetString(FieldTerminatorIdentity, entity.Identity)
-	ctx.SetString(FieldTerminatorIdentitySecret, entity.IdentitySecret)
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 
@@ -231,7 +242,24 @@ func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 		}
 		entity.SetId(id)
 	}
-	return store.baseStore.Create(ctx, entity)
+	if err := store.baseStore.Create(ctx, entity); err != nil {
+		return err
+	}
+	return xtv.Validate(ctx.Tx(), entity.(*Terminator))
+}
+
+func (store *terminatorStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	if err := store.baseStore.Update(ctx, entity, checker); err != nil {
+		return err
+	}
+
+	// load from database, as entity used to persist may be incomplete or have out of sync data, for example when patching
+	// or when fields become immutable after create
+	terminator, err := store.LoadOneById(ctx.Tx(), entity.GetId())
+	if err != nil {
+		return err
+	}
+	return xtv.Validate(ctx.Tx(), terminator)
 }
 
 func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -288,7 +316,7 @@ func (store *terminatorStoreImpl) validateIdentitySecret(ctx *boltz.PersistConte
 	}
 
 	for _, terminator := range identityTerminators {
-		if entity.IdentitySecret != terminator.IdentitySecret {
+		if !bytes.Equal(entity.IdentitySecret, terminator.IdentitySecret) {
 			ctx.Bucket.SetError(errors.Errorf("identity secret did not match other terminator(s) with shared identity %v", identity))
 			return
 		}

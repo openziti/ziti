@@ -32,7 +32,7 @@ type Terminator struct {
 	Binding        string
 	Address        string
 	Identity       string
-	IdentitySecret string
+	IdentitySecret []byte
 	Cost           uint16
 	Precedence     xt.Precedence
 	PeerData       map[uint32][]byte
@@ -52,6 +52,14 @@ func (entity *Terminator) GetBinding() string {
 
 func (entity *Terminator) GetAddress() string {
 	return entity.Address
+}
+
+func (entity *Terminator) GetIdentity() string {
+	return entity.Identity
+}
+
+func (entity *Terminator) GetIdentitySecret() []byte {
+	return entity.IdentitySecret
 }
 
 func (entity *Terminator) GetCost() uint16 {

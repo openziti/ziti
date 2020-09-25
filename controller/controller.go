@@ -31,9 +31,11 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
+	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/pkg/errors"
 )
 
 type Controller struct {
@@ -58,6 +60,9 @@ func NewController(cfg *Config) (*Controller, error) {
 	}
 
 	c.registerXts()
+	if err := c.loadXtvMappings(); err != nil {
+		return nil, err
+	}
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
 		c.network = n
@@ -152,6 +157,29 @@ func (c *Controller) startProfiling() {
 	if c.config.Profile.Memory.Path != "" {
 		go profiler.NewMemoryWithShutdown(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval, c.shutdownC).Run()
 	}
+}
+
+func (c *Controller) loadXtvMappings() error {
+	if t, ok := c.config.src["terminator"]; ok {
+		if tm, ok := t.(map[interface{}]interface{}); ok {
+			if vals, ok := tm["validators"]; ok {
+				if valMap, ok := vals.(map[interface{}]interface{}); ok {
+					for k, v := range valMap {
+						binding, ok := k.(string)
+						if !ok {
+							return errors.Errorf("invalid binding in terminator.validators configuration: %v", binding)
+						}
+						validatorId, ok := v.(string)
+						if !ok {
+							return errors.Errorf("invalid validator id in terminator.validators configuration: %v", binding)
+						}
+						xtv.GetRegistry().RegisterBinding(binding, validatorId)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Controller) registerXts() {

@@ -94,7 +94,7 @@ message Terminator {
     TerminatorPrecedence precedence = 8;
     uint32 cost = 9;
     string identity = 10;
-    string identitySecret = 11;
+    bytes identitySecret = 11;
 }
 
 message ListServicesRequest {
