@@ -160,7 +160,7 @@ func (t *tProxyInterceptor) accept(context ziti.Context) {
 				client.Close()
 				continue
 			}
-			go tunnel.Run(context, service.Name, client)
+			go tunnel.DialAndRun(context, service.Name, client)
 		}
 	}()
 }

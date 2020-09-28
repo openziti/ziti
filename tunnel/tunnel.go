@@ -26,7 +26,7 @@ import (
 
 var log = logrus.StandardLogger()
 
-func Run(context ziti.Context, service string, clientConn net.Conn) {
+func DialAndRun(context ziti.Context, service string, clientConn net.Conn) {
 	zitiConn, err := context.Dial(service)
 	if err != nil {
 		log.Errorf("zt.Dial(%s) failed: %s", service, err.Error())
@@ -34,6 +34,10 @@ func Run(context ziti.Context, service string, clientConn net.Conn) {
 		return
 	}
 
+	Run(zitiConn, clientConn)
+}
+
+func Run(zitiConn net.Conn, clientConn net.Conn) {
 	loggerFields := logrus.Fields{
 		"src-remote": clientConn.RemoteAddr(), "src-local": clientConn.LocalAddr(),
 		"dst-local": zitiConn.LocalAddr(), "dst-remote": zitiConn.RemoteAddr()}

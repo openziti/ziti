@@ -98,7 +98,7 @@ func Enqueue(context ziti.Context, srcIP, dstIP net.IP, pdu []byte, dev io.ReadW
 				release()
 				return true // this packet is effectively handled here, even though we're dropping it
 			}
-			go tunnel.Run(context, service, clientConn)
+			go tunnel.DialAndRun(context, service, clientConn)
 		} else {
 			log.Debugf("packet from %s lacks TCP syn", clientKey)
 			release()

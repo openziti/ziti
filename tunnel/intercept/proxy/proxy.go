@@ -116,7 +116,7 @@ func (p *interceptor) handleTCP(service *Service) {
 			p.closeCh <- err
 			return
 		}
-		go tunnel.Run(p.context, service.Name, conn)
+		go tunnel.DialAndRun(p.context, service.Name, conn)
 	}
 }
 

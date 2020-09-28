@@ -17,8 +17,8 @@
 package intercept
 
 import (
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
-	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -181,13 +181,16 @@ func host(context ziti.Context, svc *entities.Service) {
 		return
 	}
 	defer listener.Close()
+	config := svc.ServerConfig
 	for {
+		log.WithField("service", svc.Name).
+			WithField("dialAddr", config.String()).
+			Info("hosting service, waiting for connections")
 		conn, err := listener.Accept()
 		if err != nil {
 			log.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
 			return
 		}
-		config := svc.ServerConfig
 		externalConn, err := net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
 		if err != nil {
 			log.WithError(err).
@@ -196,58 +199,6 @@ func host(context ziti.Context, svc *entities.Service) {
 				Error("dial failed")
 			continue
 		}
-		log.WithField("service", svc.Name).
-			WithField("dialAddr", config.String()).
-			Error("hosting service, waiting for connections")
-		pipe(svc, config.String(), conn, externalConn)
-	}
-}
-
-func pipe(svc *entities.Service, addr string, zitiConn net.Conn, externalConn net.Conn) {
-	log := pfxlog.Logger()
-	closeReadC := make(chan struct{})
-	closeWriteC := make(chan struct{})
-
-	copyAndClose := func(reader io.Reader, writer io.Writer, closeCh chan struct{}, context string) {
-		_ = copy(reader, writer, context)
-		close(closeCh)
-	}
-
-	go copyAndClose(zitiConn, externalConn, closeWriteC, "->")
-	go copyAndClose(externalConn, zitiConn, closeReadC, "<-")
-
-	go func() {
-		defer externalConn.Close()
-		defer zitiConn.Close()
-
-		<-closeReadC
-
-		log.WithField("service", svc.Name).WithField("dialAddr", addr).
-			Info("communication complete, closing connections")
-	}()
-}
-
-func copy(reader io.Reader, writer io.Writer, context string) error {
-	log := pfxlog.Logger().WithField("type", context)
-	buf := make([]byte, 1024)
-	for {
-		n, err := reader.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				log.Info("reached EOF on copy, returning")
-				return nil
-			}
-			log.WithError(err).Error("error on copy read, returning")
-			return err
-		}
-		log.WithError(err).Infof("read %v bytes", n)
-
-		writeBuf := buf[:n]
-		n, err = writer.Write(writeBuf)
-		if err != nil {
-			log.WithError(err).Error("error on copy write, returning")
-			return err
-		}
-		log.WithError(err).Infof("wrote %v bytes", n)
+		tunnel.Run(conn, externalConn)
 	}
 }
