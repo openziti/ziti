@@ -16,7 +16,7 @@ type Terminator interface {
 }
 
 type Validator interface {
-	Validate(tx *bbolt.Tx, terminator Terminator) error
+	Validate(tx *bbolt.Tx, terminator Terminator, create bool) error
 }
 
 type Registry interface {
@@ -29,9 +29,9 @@ func RegisterValidator(id string, validator Validator) {
 	globalRegistry.RegisterValidator(id, validator)
 }
 
-func Validate(tx *bbolt.Tx, terminator Terminator) error {
+func Validate(tx *bbolt.Tx, terminator Terminator, create bool) error {
 	validator := globalRegistry.GetValidatorForBinding(terminator.GetBinding())
-	return validator.Validate(tx, terminator)
+	return validator.Validate(tx, terminator, create)
 }
 
 func InitializeMappings() error {

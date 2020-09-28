@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	stackdumpIdRegEx, err := regexp.Compile(`(^.*)\.stackdump$`)
+	stackdumpIdRegEx, err := regexp.Compile(`(^.*)\.stack[dD]ump$`)
 	if err != nil {
 		panic(err)
 	}

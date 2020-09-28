@@ -17,7 +17,6 @@
 package db
 
 import (
-	"bytes"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
@@ -25,7 +24,6 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/sequence"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -181,6 +179,7 @@ func (entity *Terminator) GetEntityType() string {
 type TerminatorStore interface {
 	boltz.CrudStore
 	LoadOneById(tx *bbolt.Tx, id string) (*Terminator, error)
+	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminator xtv.Terminator, create bool) ([]*Terminator, error)
 }
 
 func newTerminatorStore(stores *stores) *terminatorStoreImpl {
@@ -215,6 +214,7 @@ func (store *terminatorStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.AddSymbol(FieldTerminatorBinding, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorIdentity, ast.NodeTypeString)
 
 	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
@@ -245,7 +245,7 @@ func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 	if err := store.baseStore.Create(ctx, entity); err != nil {
 		return err
 	}
-	return xtv.Validate(ctx.Tx(), entity.(*Terminator))
+	return xtv.Validate(ctx.Tx(), entity.(*Terminator), true)
 }
 
 func (store *terminatorStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
@@ -259,7 +259,7 @@ func (store *terminatorStoreImpl) Update(ctx boltz.MutateContext, entity boltz.E
 	if err != nil {
 		return err
 	}
-	return xtv.Validate(ctx.Tx(), terminator)
+	return xtv.Validate(ctx.Tx(), terminator, false)
 }
 
 func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -289,36 +289,30 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	return store.baseStore.DeleteById(ctx, id)
 }
 
-func (store *terminatorStoreImpl) validateIdentitySecret(ctx *boltz.PersistContext, entity *Terminator) {
+func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, entity xtv.Terminator, create bool) ([]*Terminator, error) {
 	serviceId := ""
-	if ctx.IsCreate { // don't allow service to be changed
-		serviceId = entity.Service
+	if create { // don't allow service to be changed
+		serviceId = entity.GetServiceId()
 	} else {
-		terminator, err := store.LoadOneById(ctx.Bucket.Tx(), ctx.Id)
-		if ctx.Bucket.SetError(err) {
-			return
+		terminator, err := store.LoadOneById(tx, entity.GetId())
+		if err != nil {
+			return nil, err
 		}
-		serviceId = terminator.Service
+		serviceId = terminator.GetServiceId()
 	}
 
-	identity := entity.Identity
+	identity := entity.GetIdentity()
 
-	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(ctx.Bucket.Tx(), serviceId, EntityTypeTerminators)
+	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators)
 	var identityTerminators []*Terminator
 	for _, terminatorId := range terminatorIds {
-		if terminatorId != ctx.Id {
-			if terminator, _ := store.LoadOneById(ctx.Bucket.Tx(), terminatorId); terminator != nil {
+		if terminatorId != entity.GetId() {
+			if terminator, _ := store.LoadOneById(tx, terminatorId); terminator != nil {
 				if identity == terminator.Identity {
 					identityTerminators = append(identityTerminators, terminator)
 				}
 			}
 		}
 	}
-
-	for _, terminator := range identityTerminators {
-		if !bytes.Equal(entity.IdentitySecret, terminator.IdentitySecret) {
-			ctx.Bucket.SetError(errors.Errorf("identity secret did not match other terminator(s) with shared identity %v", identity))
-			return
-		}
-	}
+	return identityTerminators, nil
 }
