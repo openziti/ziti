@@ -4,7 +4,23 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/util/cowslice"
+	"github.com/pkg/errors"
+	"reflect"
 )
+
+func init() {
+	RegisterEventType("fabric.sessions", registerSessionEventHandler)
+	RegisterEventType("metrics", registerMetricsEventHandler)
+
+	RegisterEventType("fabric.traces", func(val interface{}, _ map[interface{}]interface{}) error {
+		handler, ok := val.(trace.EventHandler)
+		if !ok {
+			return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/trace/EventHandler interface.", reflect.TypeOf(val))
+		}
+		AddTraceEventHandler(handler)
+		return nil
+	})
+}
 
 func AddSessionEventHandler(handler network.SessionEventHandler) {
 	cowslice.Append(network.SessionEventHandlerRegistry, handler)
