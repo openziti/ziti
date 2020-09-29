@@ -33,11 +33,11 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.14.2
-	github.com/openziti/foundation v0.14.5
-	github.com/openziti/sdk-golang v0.13.47
+	github.com/openziti/foundation v0.14.6
+	github.com/openziti/sdk-golang v0.13.48
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
