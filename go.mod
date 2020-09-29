@@ -20,7 +20,7 @@ require (
 	github.com/go-openapi/spec v0.19.9
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.9
-	github.com/go-openapi/validate v0.19.10
+	github.com/go-openapi/validate v0.19.11
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.2
