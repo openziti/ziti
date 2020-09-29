@@ -1,10 +1,10 @@
 # Release 0.16.3
 
 ## Breaking CLI Change
-  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT must be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt` 
+  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT can be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt`. For now the --jwt flag is still accepted as well. 
 
 ## Deprecations
-  * The `ziti-enroller` command is deprecated and will removed in a future release. It will now display a DEPRECATION warning when it is run 
+  * The `ziti-enroller` command is deprecated and will be removed in a future release. It will now display a DEPRECATION warning when it is run 
 
 ## What's New
   * [ziti#192 CAs default to 10yr expiration](https://github.com/openziti/ziti/issues/192)
@@ -14,6 +14,7 @@
   * [ziti#151 enroll subcommand w/out args should print help](https://github.com/openziti/ziti/issues/192)
   * Fix processing of `--configTypes all` in `ziti edge list services`
   * Addressable Terminators and the eXtensible Terminator Validation framework
+  * GO Edge SDK now respects Service.EncryptionRequired setting
 
 # Config File Changes
 The following should be added to controller configuration files when using the Edge components:

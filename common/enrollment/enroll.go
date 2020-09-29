@@ -32,7 +32,7 @@ import (
 
 // global state used by all subcommands are located here for easy discovery
 var verbose bool
-var outpath, keyPath, certPath, idname, caOverride string
+var jwtpath, outpath, keyPath, certPath, idname, caOverride string
 
 const verboseDesc = "Enable verbose logging."
 const outpathDesc = "Output configuration file."
@@ -48,7 +48,7 @@ func NewEnrollCommand() *cobra.Command {
 		SilenceUsage:  false,
 		Use:           "enroll path/to/jwt",
 		Short:         "enroll an identity",
-		Args:          cobra.ExactArgs(1),
+		Args:          cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
@@ -63,11 +63,19 @@ func NewEnrollCommand() *cobra.Command {
 				PadLevelText:     true,
 			})
 			logrus.SetReportCaller(false) // for enrolling don't bother with this
-			return processEnrollment(args[0])
+			if len(args) > 0 {
+				jwtpath = args[0]
+			}
+			if jwtpath == "" {
+				defer fmt.Printf("\nERROR: no jwt provided\n")
+				return cmd.Help()
+			}
+			return processEnrollment()
 		},
 	}
 
 	enrollSubCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, verboseDesc)
+	enrollSubCmd.Flags().StringVarP(&jwtpath, "jwt", "j", "", jwtpathDesc)
 	enrollSubCmd.Flags().StringVarP(&outpath, outFlag, "o", "", outpathDesc)
 	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
 	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
@@ -85,7 +93,7 @@ func NewEnrollCommand() *cobra.Command {
 	return enrollSubCmd
 }
 
-func processEnrollment(jwtpath string) error {
+func processEnrollment() error {
 	if strings.TrimSpace(outpath) == "" {
 		out, outErr := outPathFromJwt(jwtpath)
 		if outErr != nil {
