@@ -37,11 +37,13 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		BaseEntity: models.BaseEntity{
 			Tags: terminator.Tags,
 		},
-		Service:    stringz.OrEmpty(terminator.Service),
-		Router:     stringz.OrEmpty(terminator.Router),
-		Binding:    terminator.Binding,
-		Address:    stringz.OrEmpty(terminator.Address),
-		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
+		Service:        stringz.OrEmpty(terminator.Service),
+		Router:         stringz.OrEmpty(terminator.Router),
+		Binding:        terminator.Binding,
+		Address:        stringz.OrEmpty(terminator.Address),
+		Identity:       terminator.Identity,
+		IdentitySecret: terminator.IdentitySecret,
+		Precedence:     xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}
 	if terminator.Cost != nil {
 		ret.Cost = uint16(*terminator.Cost)
@@ -126,6 +128,7 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 		Router:     ToEntityRef(router.Name, router, TransitRouterLinkFactory),
 		Binding:    &terminator.Binding,
 		Address:    &terminator.Address,
+		Identity:   &terminator.Identity,
 	}
 
 	cost := rest_model.TerminatorCost(int64(terminator.Cost))

@@ -22,10 +22,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/gateway/internal/fabric"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"time"
 )
 
 type sessionConnectionHandler struct {
@@ -51,13 +49,7 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 		fpg := cert.NewFingerprintGenerator()
 		fingerprints := fpg.FromCerts(certificates)
 
-		sessionCh := handler.stateManager.GetSession(token)
-		var session *edge_ctrl_pb.ApiSession
-		select {
-		case session = <-sessionCh:
-		case <-time.After(250 * time.Millisecond):
-			return errors.New("session token lookup timeout")
-		}
+		session := handler.stateManager.GetSession(token)
 
 		if session == nil {
 			_ = ch.Close()

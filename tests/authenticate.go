@@ -231,8 +231,8 @@ func (request *authenticatedRequests) newAuthenticatedJsonRequest(body interface
 
 func (request *authenticatedRequests) RequireCreateSdkContext() (*identity, ziti.Context) {
 	identity := request.RequireNewIdentityWithOtt(false)
-	config := request.testContext.EnrollIdentity(identity.Id)
-	context := ziti.NewContextWithConfig(config)
+	identity.config = request.testContext.EnrollIdentity(identity.Id)
+	context := ziti.NewContextWithConfig(identity.config)
 	return identity, context
 }
 

@@ -28,6 +28,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"math/big"
 	"sort"
 	"time"
@@ -157,6 +158,7 @@ type identity struct {
 	enrollment     map[string]interface{}
 	roleAttributes []string
 	tags           map[string]interface{}
+	config         *config.Config
 }
 
 func (entity *identity) getId() string {

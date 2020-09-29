@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"go.etcd.io/bbolt"
@@ -105,6 +106,22 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 			},
 		},
 	})
+	ctx.RequireCreate(config)
+	ctx.ValidateBaseline(config)
+
+	configValue := `
+		{
+            "boolArr" : [true, false, false, true],
+            "numArr" : [1, 3, 4],
+            "strArr" : ["hello", "world", "how", "are", "you?"]
+        }
+    `
+
+	configMap := map[string]interface{}{}
+	err = json.Unmarshal([]byte(configValue), &configMap)
+	ctx.NoError(err)
+
+	config = newConfig(eid.New(), configType.Id, configMap)
 	ctx.RequireCreate(config)
 	ctx.ValidateBaseline(config)
 

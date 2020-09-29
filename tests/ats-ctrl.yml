@@ -7,19 +7,23 @@ v: 3
 #  memory:
 #    path: ctrl.memprof
 
-db:                     testdata/${ZITI_TEST_DB}.db
+db: testdata/${ZITI_TEST_DB}.db
 
 identity:
-  cert:                 testdata/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert:          testdata/ca/intermediate/certs/ctrl-server.cert.pem
-  key:                  testdata/ca/intermediate/private/ctrl.key.pem
-  ca:                   testdata/ca/intermediate/certs/ca-chain.cert.pem
+  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
+  key: testdata/ca/intermediate/private/ctrl.key.pem
+  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
 
 ctrl:
-  listener:             tls:127.0.0.1:6262
+  listener: tls:127.0.0.1:6262
 
 mgmt:
-  listener:             tls:127.0.0.1:10000
+  listener: tls:127.0.0.1:10000
+
+terminator:
+  validators:
+    edge: edge
 
 #metrics:
 #  influxdb:
@@ -38,7 +42,7 @@ edge:
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
     # (required) The interface and port that the Edge API should be served on.
-    listener:  127.0.0.1:1281
+    listener: 127.0.0.1:1281
     # (required) The host/port combination that is reported as publicly accessible for the Edge API
     advertise: localhost:1281
     # (optional, defaults to 10) The number of minutes before an Edge API session will timeout. Timeouts are reset by

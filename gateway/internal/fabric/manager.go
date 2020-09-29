@@ -53,7 +53,7 @@ type StateManager interface {
 	GetNetworkSession(token string) *edge_ctrl_pb.Session
 	GetNetworkSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.Session
 	GetSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession
-	GetSession(token string) chan *edge_ctrl_pb.ApiSession
+	GetSession(token string) *edge_ctrl_pb.ApiSession
 	AddNetworkSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 	AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 	StartHeartbeat(channel channel2.Channel, seconds int)
@@ -194,18 +194,13 @@ func (sm *StateManagerImpl) RemoveSession(token string) {
 	}
 }
 
-func (sm *StateManagerImpl) GetSession(token string) chan *edge_ctrl_pb.ApiSession {
-	ch := make(chan *edge_ctrl_pb.ApiSession)
-	go func() {
-		if val, ok := sm.sessionsByToken.Load(token); ok {
-			if session, ok := val.(*edge_ctrl_pb.ApiSession); ok {
-				ch <- session
-				return
-			}
+func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.ApiSession {
+	if val, ok := sm.sessionsByToken.Load(token); ok {
+		if session, ok := val.(*edge_ctrl_pb.ApiSession); ok {
+			return session
 		}
-		ch <- nil
-	}()
-	return ch
+	}
+	return nil
 }
 
 func (sm *StateManagerImpl) GetSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession {
@@ -300,10 +295,10 @@ func (sm *StateManagerImpl) getSessionRemovedEventName(token string) events.Even
 }
 
 func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSeconds int) {
-	sm.heartbeatOperation = newHeartbeatOperation(ctrl, time.Duration(intervalSeconds) * time.Second, sm)
+	sm.heartbeatOperation = newHeartbeatOperation(ctrl, time.Duration(intervalSeconds)*time.Second, sm)
 
 	var err error
-	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24 * time.Hour, func(e error, operation runner.Operation) {
+	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner.Operation) {
 		pfxlog.Logger().WithError(err).Error("error during heartbeat runner")
 	})
 

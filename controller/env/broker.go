@@ -641,11 +641,6 @@ func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, 
 		return nil, fmt.Errorf("could not convert to session proto, could not find service: %s", err)
 	}
 
-	apiSession, err := b.ae.Handlers.ApiSession.Read(ns.ApiSessionId)
-	if err != nil {
-		return nil, fmt.Errorf("could not convert to network session proto, could not find session: %s", err)
-	}
-
 	fps, err := b.getActiveFingerprints(ns.Id)
 
 	if err != nil {
@@ -664,9 +659,8 @@ func (b *Broker) modelSessionToProto(ns *model.Session) (*edge_ctrl_pb.Session, 
 	}
 
 	return &edge_ctrl_pb.Session{
-		Id:               apiSession.Id,
+		Id:               ns.Id,
 		Token:            ns.Token,
-		SessionToken:     apiSession.Token,
 		Service:          svc,
 		CertFingerprints: fps,
 		Type:             sessionType,
