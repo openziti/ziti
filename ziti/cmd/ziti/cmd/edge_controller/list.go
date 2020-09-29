@@ -458,11 +458,12 @@ func outputTerminators(o *commonOptions, children []*gabs.Container, pagingInfo 
 		router := entity.Path("router.id").Data().(string)
 		binding := entity.Path("binding").Data().(string)
 		address := entity.Path("address").Data().(string)
+		identity := entity.Path("identity").Data().(string)
 		staticCost := entity.Path("cost").Data().(float64)
 		precedence := entity.Path("precedence").Data().(string)
 		dynamicCost := entity.Path("dynamicCost").Data().(float64)
-		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
-			id, service, router, binding, address, staticCost, precedence, dynamicCost)
+		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    identity: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
+			id, service, router, binding, address, identity, staticCost, precedence, dynamicCost)
 		if err != nil {
 			return err
 		}
@@ -480,11 +481,15 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 		params.Add("asIdentity", asIdentity)
 	}
 
-	if configTypes, err := mapNamesToIDs("config-types", configTypes...); err != nil {
-		return err
+	if len(configTypes) == 1 && strings.EqualFold("all", configTypes[0]) {
+		params.Add("configTypes", "all")
 	} else {
-		for _, configType := range configTypes {
-			params.Add("configTypes", configType)
+		if configTypes, err := mapNamesToIDs("config-types", configTypes...); err != nil {
+			return err
+		} else {
+			for _, configType := range configTypes {
+				params.Add("configTypes", configType)
+			}
 		}
 	}
 	for _, roleFilter := range roleFilters {
@@ -512,7 +517,7 @@ func outputServices(o *commonOptions, children []*gabs.Container, pagingInfo *pa
 		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
 		roleAttributes := entity.Path("roleAttributes").String()
 
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    encryption required: %v    terminator strategy: %v    role attributes: %v\n", id, name, encryptionRequired , terminatorStrategy, roleAttributes)
+		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    encryption required: %v    terminator strategy: %v    role attributes: %v\n", id, name, encryptionRequired, terminatorStrategy, roleAttributes)
 		if err != nil {
 			return err
 		}
