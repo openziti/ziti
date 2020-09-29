@@ -1,6 +1,12 @@
 # Release 0.16.3
 
-* What's New
+## Breaking CLI Change
+  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT must be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt` 
+
+## Deprecations
+  * The `ziti-enroller` command is deprecated and will removed in a future release. It will now display a DEPRECATION warning when it is run 
+
+## What's New
   * [ziti#192 CAs default to 10yr expiration](https://github.com/openziti/ziti/issues/192)
   * Allow specifying edge config file when using ziti-fabric-test loop2
   * Add grouping data to streaming metrics, so values can be associated with their source metric  

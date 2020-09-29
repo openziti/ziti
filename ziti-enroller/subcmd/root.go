@@ -67,6 +67,7 @@ var rootCmd = &cobra.Command{
 	Use:   "ziti-enroller",
 	Short: "Ziti Enroller",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		logrus.Warnf("ziti-enroller is DEPRECATED and will soon be removed. Please use 'ziti edge enroll' or 'ziti-tunnel enroll' instead.")
 		if verbose {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
