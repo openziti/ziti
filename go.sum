@@ -238,8 +238,6 @@ github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
-github.com/gorilla/handlers v1.4.2 h1:0QniY0USkHQ1RGCLfKxeNHK9bkDHGRYGNDFBCS+YARg=
-github.com/gorilla/handlers v1.4.2/go.mod h1:Qkdc/uu4tH4g6mTK6auzZ766c4CA0Ng8+o/OAirnOIQ=
 github.com/gorilla/handlers v1.5.1 h1:9lRY6j8DEeeBT10CvO9hGW0gmky0BprnvDI5vfhUHH4=
 github.com/gorilla/handlers v1.5.1/go.mod h1:t8XrUpc4KVXb7HGyJ4/cEnwQiaxrX/hz1Zv/4g96P1Q=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
@@ -390,8 +388,8 @@ github.com/openziti/foundation v0.14.5 h1:GifwpaJz1jqkHN65spQQATnLVr2B/JYrBSaGCx
 github.com/openziti/foundation v0.14.5/go.mod h1:BxcI+GProVBiFYRDkrjg+/r5ptd8/iYdsc+bxAxwQCk=
 github.com/openziti/foundation v0.14.6 h1:js65hn84mQxxDZbAjAzS7qJrEKVBpf5UKGWMzsUY1Ys=
 github.com/openziti/foundation v0.14.6/go.mod h1:b8Ox/vvvdObz1JoEno0z7KN1cx0echQ7eP/tOmjbB+4=
-github.com/openziti/sdk-golang v0.13.48 h1:1t220DgGZYfxBQRytfnrdoBhUVGLzogWGI75UKfAAZA=
-github.com/openziti/sdk-golang v0.13.48/go.mod h1:9EFqAuUgRoURRgCB/Abap69XXM58js1HizPK/yTxQuQ=
+github.com/openziti/sdk-golang v0.13.49 h1:UVzaJSiEM4yid+78bnOkGsyJffyZlCI2YXpMfgOAwKo=
+github.com/openziti/sdk-golang v0.13.49/go.mod h1:9EFqAuUgRoURRgCB/Abap69XXM58js1HizPK/yTxQuQ=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
