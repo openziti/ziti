@@ -163,7 +163,7 @@ func (reader *udpReader) generateReadEvents(manager udp_vconn.Manager) {
 		buf := bufPool.AcquireBuffer()
 		n, srcAddr, err := reader.conn.ReadFromUDP(buf.Buf)
 		if err != nil {
-			log.WithError(err).Debug("failure while reading udp message")
+			log.WithError(err).Error("failure while reading udp message. stopping UDP read loop")
 			manager.QueueError(err)
 			return
 		}

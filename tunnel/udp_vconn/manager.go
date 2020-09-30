@@ -59,6 +59,7 @@ func (manager *manager) run() {
 
 			err := event.Handle(manager)
 			if err == io.EOF {
+				log.Errorf("EOF detected. stopping UDP event loop")
 				return
 			}
 			if err != nil {
