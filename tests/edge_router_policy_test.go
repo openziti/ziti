@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/openziti/edge/eid"
 	"testing"
 )
@@ -86,6 +87,72 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 	t.Run("policy 2 has edge routers 1, 2, 3", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.AdminSession.validateAssociations(policy2, "edge-routers", edgeRouter1, edgeRouter2, edgeRouter3)
+	})
+
+	t.Run("policy 2 has display information", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		url := fmt.Sprintf("%v/%v", policy2.getEntityType(), policy2.getId())
+		result := ctx.AdminSession.requireQuery(url)
+
+		t.Run("for edge router 3 and edge router role 1", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			displayValuesContainer := ctx.RequirePath(result, "data.edgeRouterRolesDisplay")
+			displayValuesChildren, err := displayValuesContainer.Children()
+			ctx.Req.NoError(err)
+
+			hasRole1DisplayInfo := false
+			hasRouter3DisplayInfo := false
+
+			for _, child := range displayValuesChildren {
+				roleVal := ctx.RequirePath(child, "role")
+				nameVal := ctx.RequirePath(child, "name")
+
+				role := roleVal.Data().(string)
+				name := nameVal.Data().(string)
+
+				if role == "#"+edgeRouterRole1 && name == "#"+edgeRouterRole1 {
+					hasRole1DisplayInfo = true
+				}
+
+				if role == "@"+edgeRouter3.id && name == "@"+edgeRouter3.name {
+					hasRouter3DisplayInfo = true
+				}
+			}
+
+			ctx.Req.True(hasRole1DisplayInfo, "expected to find role display info for role [%s]", edgeRouterRole1, edgeRouterRole1)
+			ctx.Req.True(hasRouter3DisplayInfo, "expected to find edge router display info for id/role [@%s] and name [%s]", edgeRouter3.id, edgeRouter3.name)
+		})
+
+		t.Run("for identity 3 and identity role 1", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			displayValuesContainer := ctx.RequirePath(result, "data.identityRolesDisplay")
+			displayValuesChildren, err := displayValuesContainer.Children()
+			ctx.Req.NoError(err)
+
+			hasRole1DisplayInfo := false
+			hasIdentity3DisplayInfo := false
+
+			for _, child := range displayValuesChildren {
+				roleVal := ctx.RequirePath(child, "role")
+				nameVal := ctx.RequirePath(child, "name")
+
+				role := roleVal.Data().(string)
+				name := nameVal.Data().(string)
+
+				if role == "#"+identityRole1 && name == "#"+identityRole1 {
+					hasRole1DisplayInfo = true
+				}
+
+				if role == "@"+identity3.Id && name == "@"+identity3.name {
+					hasIdentity3DisplayInfo = true
+				}
+			}
+
+			ctx.Req.True(hasRole1DisplayInfo, "expected to find role display info for role [%s]", edgeRouterRole1)
+			ctx.Req.True(hasIdentity3DisplayInfo, "expected to find identity display info for id/role [@%s] and name [%s]", edgeRouter3.id, edgeRouter3.name)
+		})
 	})
 
 	t.Run("policy 3 has edge routers 2, 3", func(t *testing.T) {

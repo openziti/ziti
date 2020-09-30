@@ -44,11 +44,19 @@ type EdgeRouterPolicyDetail struct {
 
 	// edge router roles
 	// Required: true
-	EdgeRouterRoles []string `json:"edgeRouterRoles"`
+	EdgeRouterRoles Roles `json:"edgeRouterRoles"`
+
+	// edge router roles display
+	// Required: true
+	EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
 
 	// identity roles
 	// Required: true
-	IdentityRoles []string `json:"identityRoles"`
+	IdentityRoles Roles `json:"identityRoles"`
+
+	// identity roles display
+	// Required: true
+	IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
 	// name
 	// Required: true
@@ -70,9 +78,13 @@ func (m *EdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		EdgeRouterRoles []string `json:"edgeRouterRoles"`
+		EdgeRouterRoles Roles `json:"edgeRouterRoles"`
 
-		IdentityRoles []string `json:"identityRoles"`
+		EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
+
+		IdentityRoles Roles `json:"identityRoles"`
+
+		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
 		Name *string `json:"name"`
 
@@ -84,7 +96,11 @@ func (m *EdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 	m.EdgeRouterRoles = dataAO1.EdgeRouterRoles
 
+	m.EdgeRouterRolesDisplay = dataAO1.EdgeRouterRolesDisplay
+
 	m.IdentityRoles = dataAO1.IdentityRoles
+
+	m.IdentityRolesDisplay = dataAO1.IdentityRolesDisplay
 
 	m.Name = dataAO1.Name
 
@@ -103,9 +119,13 @@ func (m EdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		EdgeRouterRoles []string `json:"edgeRouterRoles"`
+		EdgeRouterRoles Roles `json:"edgeRouterRoles"`
 
-		IdentityRoles []string `json:"identityRoles"`
+		EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
+
+		IdentityRoles Roles `json:"identityRoles"`
+
+		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
 		Name *string `json:"name"`
 
@@ -114,7 +134,11 @@ func (m EdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 
 	dataAO1.EdgeRouterRoles = m.EdgeRouterRoles
 
+	dataAO1.EdgeRouterRolesDisplay = m.EdgeRouterRolesDisplay
+
 	dataAO1.IdentityRoles = m.IdentityRoles
+
+	dataAO1.IdentityRolesDisplay = m.IdentityRolesDisplay
 
 	dataAO1.Name = m.Name
 
@@ -141,7 +165,15 @@ func (m *EdgeRouterPolicyDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateEdgeRouterRolesDisplay(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateIdentityRoles(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIdentityRolesDisplay(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -165,12 +197,58 @@ func (m *EdgeRouterPolicyDetail) validateEdgeRouterRoles(formats strfmt.Registry
 		return err
 	}
 
+	if err := m.EdgeRouterRoles.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) validateEdgeRouterRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("edgeRouterRolesDisplay", "body", m.EdgeRouterRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.EdgeRouterRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRolesDisplay")
+		}
+		return err
+	}
+
 	return nil
 }
 
 func (m *EdgeRouterPolicyDetail) validateIdentityRoles(formats strfmt.Registry) error {
 
 	if err := validate.Required("identityRoles", "body", m.IdentityRoles); err != nil {
+		return err
+	}
+
+	if err := m.IdentityRoles.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) validateIdentityRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("identityRolesDisplay", "body", m.IdentityRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.IdentityRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRolesDisplay")
+		}
 		return err
 	}
 

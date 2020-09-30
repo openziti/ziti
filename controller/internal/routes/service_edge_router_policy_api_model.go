@@ -92,7 +92,7 @@ func MapPatchServiceEdgeRouterPolicyToModel(id string, policy *rest_model.Servic
 	return ret
 }
 
-func MapServiceEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapServiceEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	policy, ok := e.(*model.ServiceEdgeRouterPolicy)
 
 	if !ok {
@@ -102,7 +102,7 @@ func MapServiceEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestCo
 		return nil, err
 	}
 
-	restModel, err := MapServiceEdgeRouterPolicyToRestModel(policy)
+	restModel, err := MapServiceEdgeRouterPolicyToRestModel(ae, policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -113,13 +113,15 @@ func MapServiceEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestCo
 	return restModel, nil
 }
 
-func MapServiceEdgeRouterPolicyToRestModel(policy *model.ServiceEdgeRouterPolicy) (*rest_model.ServiceEdgeRouterPolicyDetail, error) {
+func MapServiceEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.ServiceEdgeRouterPolicy) (*rest_model.ServiceEdgeRouterPolicyDetail, error) {
 	ret := &rest_model.ServiceEdgeRouterPolicyDetail{
-		BaseEntity:      BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
-		EdgeRouterRoles: policy.EdgeRouterRoles,
-		Name:            &policy.Name,
-		Semantic:        rest_model.Semantic(policy.Semantic),
-		ServiceRoles:    policy.ServiceRoles,
+		BaseEntity:          BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
+		EdgeRouterRoles:     policy.EdgeRouterRoles,
+		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetHandlers().EdgeRouter, policy.EdgeRouterRoles),
+		Name:                &policy.Name,
+		Semantic:            rest_model.Semantic(policy.Semantic),
+		ServiceRoles:        policy.ServiceRoles,
+		ServiceRolesDisplay: GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
 	}
 
 	return ret, nil
