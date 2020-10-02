@@ -240,6 +240,8 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	}()
 	err = ctx.waitForPort(time.Minute * 5)
 	ctx.Req.NoError(err)
+
+	logrus.StandardLogger().SetLevel(logrus.ErrorLevel)
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
