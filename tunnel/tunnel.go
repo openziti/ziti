@@ -17,7 +17,6 @@
 package tunnel
 
 import (
-	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -71,7 +70,9 @@ func myCopy(dst net.Conn, src net.Conn, done chan int64) {
 
 	defer dst.Close()
 	defer log.WithFields(loggerFields).Info("stopping pipe")
-	copyBuf := make([]byte, info.MaxUdpPacketSize)
+	// use smaller copyBuf so UDP payloads aren't chunked when sending to tunnelers with smaller MTU.
+	// 17 bytes covers encryption overhead.
+	copyBuf := make([]byte, 0x4000-17)
 	n, err := io.CopyBuffer(dst, src, copyBuf)
 	done <- n
 
