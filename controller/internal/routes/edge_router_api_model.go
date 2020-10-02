@@ -174,7 +174,7 @@ func GetNamedEdgeRouterRoles(edgeRouterHandler *model.EdgeRouterHandler, roles [
 
 			edgeRouter, err := edgeRouterHandler.Read(role[1:])
 			if err != nil {
-				pfxlog.Logger().Error("error converting edgeRouter role [%s] to a named role: %v", role, err)
+				pfxlog.Logger().Errorf("error converting edgeRouter role [%s] to a named role: %v", role, err)
 				continue
 			}
 

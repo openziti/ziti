@@ -300,7 +300,7 @@ func GetNamedIdentityRoles(identityHandler *model.IdentityHandler, roles []strin
 
 			identity, err := identityHandler.Read(role[1:])
 			if err != nil {
-				pfxlog.Logger().Error("error converting identity role [%s] to a named role: %v", role, err)
+				pfxlog.Logger().Errorf("error converting identity role [%s] to a named role: %v", role, err)
 				continue
 			}
 

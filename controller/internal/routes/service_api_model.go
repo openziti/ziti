@@ -162,7 +162,7 @@ func GetNamedServiceRoles(serviceHandler *model.EdgeServiceHandler, roles []stri
 
 			service, err := serviceHandler.Read(role[1:])
 			if err != nil {
-				pfxlog.Logger().Error("error converting service role [%s] to a named role: %v", role, err)
+				pfxlog.Logger().Errorf("error converting service role [%s] to a named role: %v", role, err)
 				continue
 			}
 
