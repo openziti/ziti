@@ -541,7 +541,7 @@ func (request *authenticatedRequests) updateIdentityServiceConfigs(method string
 		body, err := json.MarshalIndent(serviceConfigs, "", "   ")
 		request.testContext.Req.NoError(err)
 		if request.testContext.enabledJsonLogging {
-			fmt.Println(string(body))
+			pfxlog.Logger().Trace(string(body))
 		}
 		req.SetBody(body)
 	}
@@ -572,7 +572,7 @@ func (request *authenticatedRequests) updateEntity(entity entity) *resty.Respons
 
 func (request *authenticatedRequests) updateEntityOfType(id string, entityType string, body string, patch bool) *resty.Response {
 	if request.testContext.enabledJsonLogging {
-		fmt.Printf("update body:\n%v\n", body)
+		pfxlog.Logger().Tracef("update body:\n%v\n", body)
 	}
 
 	urlPath := fmt.Sprintf("/%v/%v", entityType, id)

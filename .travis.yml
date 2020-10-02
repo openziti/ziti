@@ -2,8 +2,11 @@ version: "~> 1.0"
 
 gobuild_args: -v --tags apitests
 
+env:
+  - ZITI_TEST_LOG_LEVEL=fatal
+
 script:
-  - go test -v -timeout 8m ./... --tags apitests
+  - go test -v -timeout 8m -level fatal ./... --tags apitests
 
 #script:
 #  - set -e

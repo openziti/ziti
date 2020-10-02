@@ -89,7 +89,6 @@ func Test_Services(t *testing.T) {
 		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole))
 		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole))
 
-		fmt.Printf("Expecting\n%v\n%v\n%v and not\n%v to be in final list\n", service1.Id, service2.Id, service3.Id, service4.Id)
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
 			service1.Id, service2.Id, service3.Id, service4.Id, service5.Id, service6.Id, service7.Id))
 		result := nonAdminUserSession.requireQuery("services?filter=" + query)

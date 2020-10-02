@@ -19,7 +19,7 @@
 package tests
 
 import (
-	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"sync/atomic"
@@ -34,7 +34,6 @@ func Test_HSDataflow(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("weighted")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -53,10 +52,10 @@ func Test_HSDataflow(t *testing.T) {
 				return nil
 			}
 
-			fmt.Printf("%v-%v: received '%v' from client\n", conn.server.idx, conn.id, name)
+			pfxlog.Logger().Tracef("%v-%v: received '%v' from client\n", conn.server.idx, conn.id, name)
 
 			result := "hello, " + name
-			fmt.Printf("%v-%v: returning '%v' to client\n", conn.server.idx, conn.id, result)
+			pfxlog.Logger().Tracef("%v-%v: returning '%v' to client\n", conn.server.idx, conn.id, result)
 			conn.WriteString(result, time.Second)
 			atomic.AddUint32(&conn.server.msgCount, 1)
 		}

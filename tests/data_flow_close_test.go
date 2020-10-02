@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"io"
@@ -36,7 +35,6 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
 	listener, err := context.Listen(service.Name)
@@ -95,7 +93,6 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
 	listener, err := context.Listen(service.Name)
@@ -151,7 +148,6 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
 	listener, err := context.Listen(service.Name)
@@ -199,7 +195,6 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
 	listener, err := context.Listen(service.Name)
@@ -254,7 +249,6 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	fmt.Printf("service id: %v\n", service.Id)
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
 	listener, err := context.Listen(service.Name)

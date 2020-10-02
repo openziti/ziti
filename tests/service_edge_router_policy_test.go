@@ -39,7 +39,6 @@ func Test_ServiceEdgeRouterPolicy(t *testing.T) {
 	edgeRouter2 := ctx.AdminSession.requireNewEdgeRouter(edgeRouterRole1, edgeRouterRole2)
 	edgeRouter3 := ctx.AdminSession.requireNewEdgeRouter()
 
-	ctx.enabledJsonLogging = true
 	service1 := ctx.AdminSession.requireNewService(s(serviceRole1), nil)
 	service2 := ctx.AdminSession.requireNewService(s(serviceRole1, serviceRole2), nil)
 	service3 := ctx.AdminSession.requireNewService(s(serviceRole2), nil)
