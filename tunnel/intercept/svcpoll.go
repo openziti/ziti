@@ -197,8 +197,9 @@ func host(context ziti.Context, svc *entities.Service) {
 				WithField("service", svc.Name).
 				WithField("dialAddr", config.String()).
 				Error("dial failed")
+			conn.Close()
 			continue
 		}
-		tunnel.Run(conn, externalConn)
+		go tunnel.Run(conn, externalConn)
 	}
 }
