@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"strings"
 )
 
 const (
@@ -206,8 +207,8 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 		if entity.Method == persistence.MethodEnrollOtt {
 			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
-				Jwt:   entity.Jwt,
-				Token: entity.Token,
+				Jwt:       entity.Jwt,
+				Token:     entity.Token,
 				ExpiresAt: expiresAt,
 			}
 		}
@@ -220,10 +221,10 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 			}
 
 			ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
-				Ca:    ToEntityRef(ca.Name, ca, CaLinkFactory),
-				CaID:  ca.Id,
-				Jwt:   entity.Jwt,
-				Token: entity.Token,
+				Ca:        ToEntityRef(ca.Name, ca, CaLinkFactory),
+				CaID:      ca.Id,
+				Jwt:       entity.Jwt,
+				Token:     entity.Token,
 				ExpiresAt: expiresAt,
 			}
 		}
@@ -289,5 +290,31 @@ func MapAdvisorServiceReachabilityToRestEntity(entity *model.AdvisorServiceReach
 		CommonRouters:       commonRouters,
 	}
 
+	return result
+}
+
+func GetNamedIdentityRoles(identityHandler *model.IdentityHandler, roles []string) rest_model.NamedRoles {
+	result := rest_model.NamedRoles{}
+	for _, role := range roles {
+		if strings.HasPrefix(role, "@") {
+
+			identity, err := identityHandler.Read(role[1:])
+			if err != nil {
+				pfxlog.Logger().Errorf("error converting identity role [%s] to a named role: %v", role, err)
+				continue
+			}
+
+			result = append(result, &rest_model.NamedRole{
+				Role:   role,
+				Name: "@" + identity.Name,
+			})
+		}else {
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: role,
+			})
+		}
+
+	}
 	return result
 }

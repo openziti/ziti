@@ -51,8 +51,6 @@ func Test_TransitRouters(t *testing.T) {
 		ctx.createAndEnrollTransitRouter()
 		_ = ctx.AdminSession.requireNewTransitRouter()
 
-		ctx.enabledJsonLogging = true
-
 		body := ctx.AdminSession.requireQuery("transit-routers")
 		ctx.logJson(body.Bytes())
 

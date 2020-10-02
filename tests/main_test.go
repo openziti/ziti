@@ -24,6 +24,7 @@ import (
 	"testing"
 )
 
+//for usages with main
 func TestMain(m *testing.M) {
 
 	root := &cobra.Command{
@@ -42,4 +43,3 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 }
-

@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"strings"
 )
 
 const (
@@ -164,4 +165,30 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	}
 
 	return ret, nil
+}
+
+func GetNamedEdgeRouterRoles(edgeRouterHandler *model.EdgeRouterHandler, roles []string) rest_model.NamedRoles {
+	result := rest_model.NamedRoles{}
+	for _, role := range roles {
+		if strings.HasPrefix(role, "@") {
+
+			edgeRouter, err := edgeRouterHandler.Read(role[1:])
+			if err != nil {
+				pfxlog.Logger().Errorf("error converting edgeRouter role [%s] to a named role: %v", role, err)
+				continue
+			}
+
+			result = append(result, &rest_model.NamedRole{
+				Role:   role,
+				Name: "@" + edgeRouter.Name,
+			})
+		}else {
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: role,
+			})
+		}
+
+	}
+	return result
 }

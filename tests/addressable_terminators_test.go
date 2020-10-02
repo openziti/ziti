@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"fmt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -36,7 +35,6 @@ func Test_AddressableTerminators(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
-	fmt.Printf("service id: %v\n", service.Id)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -117,7 +115,6 @@ func Test_AddressableTerminatorSameIdentity(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
-	fmt.Printf("service id: %v\n", service.Id)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -162,7 +159,6 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
-	fmt.Printf("service id: %v\n", service.Id)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 

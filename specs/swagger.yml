@@ -3573,6 +3573,18 @@ definitions:
     x-omitempty: false
     items:
       type: string
+  namedRole:
+    type: object
+    properties:
+      role:
+        type: string
+      name:
+        type: string
+  namedRoles:
+    type: array
+    x-omitempty: false
+    items:
+      $ref: '#/definitions/namedRole'
   semantic:
     type: string
     enum:
@@ -4457,20 +4469,22 @@ definitions:
           - name
           - semantic
           - edgeRouterRoles
+          - edgeRouterRolesDisplay
           - identityRoles
+          - identityRolesDisplay
         properties:
           name:
             type: string
           semantic:
             $ref: '#/definitions/semantic'
           edgeRouterRoles:
-            type: array
-            items:
-              type: string
+            $ref: '#/definitions/roles'
+          edgeRouterRolesDisplay:
+            $ref: '#/definitions/namedRoles'
           identityRoles:
-            type: array
-            items:
-              type: string
+            $ref: '#/definitions/roles'
+          identityRolesDisplay:
+            $ref: '#/definitions/namedRoles'
   ###################################################################
   # Service Policies
   ##################################################################
@@ -4488,7 +4502,9 @@ definitions:
           - type
           - semantic
           - serviceRoles
+          - serviceRolesDisplay
           - identityRoles
+          - identityRolesDisplay
         properties:
           name:
             type: string
@@ -4498,8 +4514,12 @@ definitions:
             $ref: '#/definitions/semantic'
           serviceRoles:
             $ref: '#/definitions/roles'
+          serviceRolesDisplay:
+            $ref: '#/definitions/namedRoles'
           identityRoles:
             $ref: '#/definitions/roles'
+          identityRolesDisplay:
+            $ref: '#/definitions/namedRoles'
   servicePolicyCreate:
     type: object
     required:
@@ -4754,7 +4774,9 @@ definitions:
           - name
           - semantic
           - edgeRouterRoles
+          - edgeRouterRolesDisplay
           - serviceRoles
+          - serviceRolesDisplay
         properties:
           name:
             type: string
@@ -4762,8 +4784,12 @@ definitions:
             $ref: '#/definitions/semantic'
           edgeRouterRoles:
             $ref: '#/definitions/roles'
+          edgeRouterRolesDisplay:
+            $ref: '#/definitions/namedRoles'
           serviceRoles:
             $ref: '#/definitions/roles'
+          serviceRolesDisplay:
+            $ref: '#/definitions/namedRoles'
   serviceEdgeRouterPolicyCreate:
     type: object
     required:

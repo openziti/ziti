@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"testing"
@@ -33,7 +32,6 @@ func Test_Dataflow(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
-	fmt.Printf("service id: %v\n", service.Id)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 	_, hostContext := ctx.AdminSession.RequireCreateSdkContext()
@@ -44,20 +42,15 @@ func Test_Dataflow(t *testing.T) {
 		for {
 			name, eof := conn.ReadString(1024, 1*time.Minute)
 			if eof {
-				fmt.Print("got eof, closing")
 				return conn.server.close()
 			}
 
-			fmt.Printf("received '%v' from client\n", name)
-
 			if name == "quit" {
 				conn.WriteString("ok", time.Second)
-				fmt.Print("quitting")
 				return conn.server.close()
 			}
 
 			result := "hello, " + name
-			fmt.Printf("returning '%v' to client\n", result)
 			conn.WriteString(result, time.Second)
 		}
 	})

@@ -96,7 +96,7 @@ func MapPatchServicePolicyToModel(id string, policy *rest_model.ServicePolicyPat
 	return ret
 }
 
-func MapServicePolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapServicePolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	policy, ok := e.(*model.ServicePolicy)
 
 	if !ok {
@@ -106,7 +106,7 @@ func MapServicePolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e m
 		return nil, err
 	}
 
-	restModel, err := MapServicePolicyToRestModel(policy)
+	restModel, err := MapServicePolicyToRestModel(ae, policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -117,14 +117,16 @@ func MapServicePolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e m
 	return restModel, nil
 }
 
-func MapServicePolicyToRestModel(policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
+func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
 	ret := &rest_model.ServicePolicyDetail{
-		BaseEntity:    BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
-		IdentityRoles: policy.IdentityRoles,
-		Name:          &policy.Name,
-		Semantic:      rest_model.Semantic(policy.Semantic),
-		ServiceRoles:  policy.ServiceRoles,
-		Type:          rest_model.DialBind(policy.PolicyType),
+		BaseEntity:           BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
+		IdentityRoles:        policy.IdentityRoles,
+		IdentityRolesDisplay: GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
+		Name:                 &policy.Name,
+		Semantic:             rest_model.Semantic(policy.Semantic),
+		ServiceRoles:         policy.ServiceRoles,
+		ServiceRolesDisplay:   GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
+		Type:                 rest_model.DialBind(policy.PolicyType),
 	}
 
 	return ret, nil

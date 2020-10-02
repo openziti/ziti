@@ -99,6 +99,7 @@ type TestContext struct {
 	transitRouterEntity *transitRouter
 	router              *router.Router
 	testing             *testing.T
+	LogLevel            string
 }
 
 var defaultTestContext = &TestContext{
@@ -115,7 +116,8 @@ func NewTestContext(t *testing.T) *TestContext {
 			Username: eid.New(),
 			Password: eid.New(),
 		},
-		Req: require.New(t),
+		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
+		Req:      require.New(t),
 	}
 	ret.testContextChanged(t)
 
@@ -193,6 +195,12 @@ func (ctx *TestContext) StartServer() {
 }
 
 func (ctx *TestContext) StartServerFor(test string, clean bool) {
+	if ctx.LogLevel != "" {
+		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
+			logrus.StandardLogger().SetLevel(level)
+		}
+	}
+
 	log := pfxlog.Logger()
 	_ = os.Mkdir("testdata", os.FileMode(0755))
 	if clean {

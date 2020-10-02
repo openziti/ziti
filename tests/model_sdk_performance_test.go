@@ -5,6 +5,7 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
@@ -216,10 +217,10 @@ func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
 		service.Id = id
 		spec.services = append(spec.services, service)
 		if (i+1)%100 == 0 {
-			fmt.Printf("created %v services\n", i)
+			pfxlog.Logger().Trace("created %v services\n", i)
 		}
 	}
-	fmt.Printf("finished creating %v services\n", spec.serviceCount)
+	pfxlog.Logger().Trace("finished creating %v services\n", spec.serviceCount)
 }
 
 func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
@@ -256,10 +257,10 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 			spec.config = ctx.EnrollIdentity(identity.Id)
 		}
 		if (i+1)%100 == 0 {
-			fmt.Printf("created %v identities\n", i+1)
+			pfxlog.Logger().Trace("created %v identities\n", i+1)
 		}
 	}
-	fmt.Printf("finished creating %v identities\n", spec.identityCount)
+	pfxlog.Logger().Trace("finished creating %v identities\n", spec.identityCount)
 }
 
 func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
@@ -279,7 +280,7 @@ func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
 		ctx.Req.NoError(err)
 		spec.edgeRouters = append(spec.edgeRouters, edgeRouter)
 		if (i+1)%100 == 0 {
-			fmt.Printf("created %v edge routers\n", i+1)
+			pfxlog.Logger().Trace("created %v edge routers\n", i+1)
 		}
 	}
 	fmt.Printf("finished creating %v edge routers\n", spec.edgeRouterCount)

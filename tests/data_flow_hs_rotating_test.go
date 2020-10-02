@@ -19,7 +19,6 @@
 package tests
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -68,8 +67,6 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
-
-	fmt.Printf("service id: %v\n", service.Id)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)
@@ -212,7 +209,6 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
-	fmt.Printf("service id: %v\n", service.Id)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)

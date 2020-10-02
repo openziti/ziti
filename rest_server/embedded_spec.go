@@ -5891,20 +5891,22 @@ func init() {
             "name",
             "semantic",
             "edgeRouterRoles",
-            "identityRoles"
+            "edgeRouterRolesDisplay",
+            "identityRoles",
+            "identityRolesDisplay"
           ],
           "properties": {
             "edgeRouterRoles": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "$ref": "#/definitions/roles"
+            },
+            "edgeRouterRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "identityRoles": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "$ref": "#/definitions/roles"
+            },
+            "identityRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -6825,6 +6827,24 @@ func init() {
         }
       }
     },
+    "namedRole": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "namedRoles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/namedRole"
+      },
+      "x-omitempty": false
+    },
     "pagination": {
       "type": "object",
       "required": [
@@ -7145,11 +7165,16 @@ func init() {
             "name",
             "semantic",
             "edgeRouterRoles",
-            "serviceRoles"
+            "edgeRouterRolesDisplay",
+            "serviceRoles",
+            "serviceRolesDisplay"
           ],
           "properties": {
             "edgeRouterRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "edgeRouterRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -7159,6 +7184,9 @@ func init() {
             },
             "serviceRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "serviceRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             }
           }
         }
@@ -7288,11 +7316,16 @@ func init() {
             "type",
             "semantic",
             "serviceRoles",
-            "identityRoles"
+            "serviceRolesDisplay",
+            "identityRoles",
+            "identityRolesDisplay"
           ],
           "properties": {
             "identityRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "identityRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -7302,6 +7335,9 @@ func init() {
             },
             "serviceRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "serviceRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "type": {
               "$ref": "#/definitions/dialBind"
@@ -21704,20 +21740,22 @@ func init() {
             "name",
             "semantic",
             "edgeRouterRoles",
-            "identityRoles"
+            "edgeRouterRolesDisplay",
+            "identityRoles",
+            "identityRolesDisplay"
           ],
           "properties": {
             "edgeRouterRoles": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "$ref": "#/definitions/roles"
+            },
+            "edgeRouterRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "identityRoles": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "$ref": "#/definitions/roles"
+            },
+            "identityRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -22638,6 +22676,24 @@ func init() {
         }
       }
     },
+    "namedRole": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "namedRoles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/namedRole"
+      },
+      "x-omitempty": false
+    },
     "pagination": {
       "type": "object",
       "required": [
@@ -22958,11 +23014,16 @@ func init() {
             "name",
             "semantic",
             "edgeRouterRoles",
-            "serviceRoles"
+            "edgeRouterRolesDisplay",
+            "serviceRoles",
+            "serviceRolesDisplay"
           ],
           "properties": {
             "edgeRouterRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "edgeRouterRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -22972,6 +23033,9 @@ func init() {
             },
             "serviceRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "serviceRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             }
           }
         }
@@ -23101,11 +23165,16 @@ func init() {
             "type",
             "semantic",
             "serviceRoles",
-            "identityRoles"
+            "serviceRolesDisplay",
+            "identityRoles",
+            "identityRolesDisplay"
           ],
           "properties": {
             "identityRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "identityRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "name": {
               "type": "string"
@@ -23115,6 +23184,9 @@ func init() {
             },
             "serviceRoles": {
               "$ref": "#/definitions/roles"
+            },
+            "serviceRolesDisplay": {
+              "$ref": "#/definitions/namedRoles"
             },
             "type": {
               "$ref": "#/definitions/dialBind"

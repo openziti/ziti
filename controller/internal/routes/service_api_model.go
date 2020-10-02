@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"strings"
 )
 
 const EntityNameService = "services"
@@ -152,4 +153,29 @@ func MapServiceToRestModel(service *model.ServiceDetail) (*rest_model.ServiceDet
 	}
 
 	return ret, nil
+}
+
+func GetNamedServiceRoles(serviceHandler *model.EdgeServiceHandler, roles []string) rest_model.NamedRoles {
+	result := rest_model.NamedRoles{}
+	for _, role := range roles {
+		if strings.HasPrefix(role, "@") {
+
+			service, err := serviceHandler.Read(role[1:])
+			if err != nil {
+				pfxlog.Logger().Errorf("error converting service role [%s] to a named role: %v", role, err)
+				continue
+			}
+
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: "@" + service.Name,
+			})
+		} else {
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: role,
+			})
+		}
+	}
+	return result
 }

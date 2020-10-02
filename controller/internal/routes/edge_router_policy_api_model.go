@@ -93,7 +93,7 @@ func MapPatchEdgeRouterPolicyToModel(id string, policy *rest_model.EdgeRouterPol
 	return ret
 }
 
-func MapEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	policy, ok := e.(*model.EdgeRouterPolicy)
 
 	if !ok {
@@ -103,7 +103,7 @@ func MapEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, 
 		return nil, err
 	}
 
-	restModel, err := MapEdgeRouterPolicyToRestModel(policy)
+	restModel, err := MapEdgeRouterPolicyToRestModel(ae, policy)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -114,13 +114,15 @@ func MapEdgeRouterPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, 
 	return restModel, nil
 }
 
-func MapEdgeRouterPolicyToRestModel(policy *model.EdgeRouterPolicy) (*rest_model.EdgeRouterPolicyDetail, error) {
+func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPolicy) (*rest_model.EdgeRouterPolicyDetail, error) {
 	ret := &rest_model.EdgeRouterPolicyDetail{
-		BaseEntity:      BaseEntityToRestModel(policy, EdgeRouterPolicyLinkFactory),
-		EdgeRouterRoles: policy.EdgeRouterRoles,
-		IdentityRoles:   policy.IdentityRoles,
-		Name:            &policy.Name,
-		Semantic:        rest_model.Semantic(policy.Semantic),
+		BaseEntity:             BaseEntityToRestModel(policy, EdgeRouterPolicyLinkFactory),
+		EdgeRouterRoles:        policy.EdgeRouterRoles,
+		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetHandlers().EdgeRouter, policy.EdgeRouterRoles),
+		IdentityRoles:          policy.IdentityRoles,
+		IdentityRolesDisplay:   GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
+		Name:                   &policy.Name,
+		Semantic:               rest_model.Semantic(policy.Semantic),
 	}
 
 	return ret, nil

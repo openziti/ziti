@@ -46,6 +46,10 @@ type ServiceEdgeRouterPolicyDetail struct {
 	// Required: true
 	EdgeRouterRoles Roles `json:"edgeRouterRoles"`
 
+	// edge router roles display
+	// Required: true
+	EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
@@ -57,6 +61,10 @@ type ServiceEdgeRouterPolicyDetail struct {
 	// service roles
 	// Required: true
 	ServiceRoles Roles `json:"serviceRoles"`
+
+	// service roles display
+	// Required: true
+	ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -72,11 +80,15 @@ func (m *ServiceEdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		EdgeRouterRoles Roles `json:"edgeRouterRoles"`
 
+		EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
+
+		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -84,11 +96,15 @@ func (m *ServiceEdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 	m.EdgeRouterRoles = dataAO1.EdgeRouterRoles
 
+	m.EdgeRouterRolesDisplay = dataAO1.EdgeRouterRolesDisplay
+
 	m.Name = dataAO1.Name
 
 	m.Semantic = dataAO1.Semantic
 
 	m.ServiceRoles = dataAO1.ServiceRoles
+
+	m.ServiceRolesDisplay = dataAO1.ServiceRolesDisplay
 
 	return nil
 }
@@ -105,20 +121,28 @@ func (m ServiceEdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		EdgeRouterRoles Roles `json:"edgeRouterRoles"`
 
+		EdgeRouterRolesDisplay NamedRoles `json:"edgeRouterRolesDisplay"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
+
+		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 	}
 
 	dataAO1.EdgeRouterRoles = m.EdgeRouterRoles
+
+	dataAO1.EdgeRouterRolesDisplay = m.EdgeRouterRolesDisplay
 
 	dataAO1.Name = m.Name
 
 	dataAO1.Semantic = m.Semantic
 
 	dataAO1.ServiceRoles = m.ServiceRoles
+
+	dataAO1.ServiceRolesDisplay = m.ServiceRolesDisplay
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -141,6 +165,10 @@ func (m *ServiceEdgeRouterPolicyDetail) Validate(formats strfmt.Registry) error 
 		res = append(res, err)
 	}
 
+	if err := m.validateEdgeRouterRolesDisplay(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -150,6 +178,10 @@ func (m *ServiceEdgeRouterPolicyDetail) Validate(formats strfmt.Registry) error 
 	}
 
 	if err := m.validateServiceRoles(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateServiceRolesDisplay(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -168,6 +200,22 @@ func (m *ServiceEdgeRouterPolicyDetail) validateEdgeRouterRoles(formats strfmt.R
 	if err := m.EdgeRouterRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) validateEdgeRouterRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("edgeRouterRolesDisplay", "body", m.EdgeRouterRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.EdgeRouterRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRolesDisplay")
 		}
 		return err
 	}
@@ -205,6 +253,22 @@ func (m *ServiceEdgeRouterPolicyDetail) validateServiceRoles(formats strfmt.Regi
 	if err := m.ServiceRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) validateServiceRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("serviceRolesDisplay", "body", m.ServiceRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.ServiceRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRolesDisplay")
 		}
 		return err
 	}

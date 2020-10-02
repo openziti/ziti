@@ -46,6 +46,10 @@ type ServicePolicyDetail struct {
 	// Required: true
 	IdentityRoles Roles `json:"identityRoles"`
 
+	// identity roles display
+	// Required: true
+	IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
@@ -57,6 +61,10 @@ type ServicePolicyDetail struct {
 	// service roles
 	// Required: true
 	ServiceRoles Roles `json:"serviceRoles"`
+
+	// service roles display
+	// Required: true
+	ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 
 	// type
 	// Required: true
@@ -76,11 +84,15 @@ func (m *ServicePolicyDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		IdentityRoles Roles `json:"identityRoles"`
 
+		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
+
+		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 
 		Type DialBind `json:"type"`
 	}
@@ -90,11 +102,15 @@ func (m *ServicePolicyDetail) UnmarshalJSON(raw []byte) error {
 
 	m.IdentityRoles = dataAO1.IdentityRoles
 
+	m.IdentityRolesDisplay = dataAO1.IdentityRolesDisplay
+
 	m.Name = dataAO1.Name
 
 	m.Semantic = dataAO1.Semantic
 
 	m.ServiceRoles = dataAO1.ServiceRoles
+
+	m.ServiceRolesDisplay = dataAO1.ServiceRolesDisplay
 
 	m.Type = dataAO1.Type
 
@@ -113,22 +129,30 @@ func (m ServicePolicyDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		IdentityRoles Roles `json:"identityRoles"`
 
+		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
 
+		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
+
 		Type DialBind `json:"type"`
 	}
 
 	dataAO1.IdentityRoles = m.IdentityRoles
+
+	dataAO1.IdentityRolesDisplay = m.IdentityRolesDisplay
 
 	dataAO1.Name = m.Name
 
 	dataAO1.Semantic = m.Semantic
 
 	dataAO1.ServiceRoles = m.ServiceRoles
+
+	dataAO1.ServiceRolesDisplay = m.ServiceRolesDisplay
 
 	dataAO1.Type = m.Type
 
@@ -153,6 +177,10 @@ func (m *ServicePolicyDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateIdentityRolesDisplay(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -162,6 +190,10 @@ func (m *ServicePolicyDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateServiceRoles(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateServiceRolesDisplay(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -184,6 +216,22 @@ func (m *ServicePolicyDetail) validateIdentityRoles(formats strfmt.Registry) err
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) validateIdentityRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("identityRolesDisplay", "body", m.IdentityRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.IdentityRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRolesDisplay")
 		}
 		return err
 	}
@@ -221,6 +269,22 @@ func (m *ServicePolicyDetail) validateServiceRoles(formats strfmt.Registry) erro
 	if err := m.ServiceRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) validateServiceRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("serviceRolesDisplay", "body", m.ServiceRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.ServiceRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRolesDisplay")
 		}
 		return err
 	}
