@@ -64,7 +64,7 @@ func (s *SessionEnforcer) Run() error {
 		})
 
 		if err != nil {
-			pfxlog.Logger().Error("encountered error querying for API sessions to remove: %v", err)
+			pfxlog.Logger().Errorf("encountered error querying for API sessions to remove: %v", err)
 			break
 		}
 
