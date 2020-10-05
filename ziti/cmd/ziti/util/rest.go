@@ -18,6 +18,7 @@ package util
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
@@ -145,6 +146,86 @@ func GetLatestVersionFromArtifactory(verbose bool, staging bool, branch string, 
 	result := (*resp.Result().(*ArtifactoryVersionsData))
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
+}
+
+// Used to parse the '/releases/latest' response from GitHub
+type GitHubReleasesData struct {
+	Version string `json:"tag_name"`
+	Assets  []struct {
+		BrowserDownloadURL string `json:"browser_download_url"`
+	}
+}
+
+func GetLatestGitHubReleaseVersion(verbose bool, appName string) (semver.Version, error) {
+	resp, err := getRequest(verbose).
+		SetQueryParams(map[string]string{}).
+		SetHeader("Accept", "application/vnd.github.v3+json").
+		SetResult(&GitHubReleasesData{}).
+		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
+
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
+	}
+
+	if resp.StatusCode() == http.StatusNotFound {
+		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
+	}
+
+	result := (*resp.Result().(*GitHubReleasesData))
+
+	return semver.Make(strings.TrimPrefix(result.Version, "v"))
+}
+
+func GetLatestGitHubReleaseAsset(verbose bool, appName string) (string, error) {
+	resp, err := getRequest(verbose).
+		SetQueryParams(map[string]string{}).
+		SetHeader("Accept", "application/vnd.github.v3+json").
+		SetResult(&GitHubReleasesData{}).
+		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
+
+	if err != nil {
+		return "", fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
+	}
+
+	if resp.StatusCode() == http.StatusNotFound {
+		return "", fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
+	}
+
+	result := (*resp.Result().(*GitHubReleasesData))
+
+	os := runtime.GOOS
+
+	for _, asset := range result.Assets {
+		ok := strings.Contains(strings.ToLower(asset.BrowserDownloadURL), os)
+		if ok {
+			return asset.BrowserDownloadURL, nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to get latest asset for '%s'", appName)
+}
+
+// DownloadGitHubReleaseAsset will download a file from the given GitHUb release area
+func DownloadGitHubReleaseAsset(fullUrl string, filepath string) (err error) {
+	resp, err := getRequest(false).
+		SetOutput(filepath).
+		Get(fullUrl)
+
+	if err != nil {
+		return fmt.Errorf("unable to download '%s', %s", fullUrl, err)
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("unable to download file, error HTTP status code [%d] returned for url [%s]", resp.StatusCode(), fullUrl)
+	}
+
+	return nil
 }
 
 // Used to parse the '/api/search/aql' response from Artifactory
@@ -385,6 +466,70 @@ func UnTargz(tarball, target string, onlyFiles []string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func Unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	os.MkdirAll(dest, 0755)
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := rc.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			os.MkdirAll(filepath.Dir(path), f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					panic(err)
+				}
+			}()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, f := range r.File {
+		err := extractAndWriteFile(f)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

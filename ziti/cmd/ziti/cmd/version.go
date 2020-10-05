@@ -91,6 +91,7 @@ func (o *VersionOptions) Run() error {
 	o.versionPrintZitiApp(c.ZITI_PROX_C, &table)
 	o.versionPrintZitiApp(c.ZITI_ROUTER, &table)
 	o.versionPrintZitiApp(c.ZITI_TUNNEL, &table)
+	o.versionPrintZitiApp(c.ZITI_EDGE_TUNNEL, &table)
 
 	table.Render()
 
@@ -139,6 +140,7 @@ func (o *VersionOptions) versionCheck() error {
 	o.versionCheckZitiApp(c.ZITI_PROX_C)
 	o.versionCheckZitiApp(c.ZITI_ROUTER)
 	o.versionCheckZitiApp(c.ZITI_TUNNEL)
+	o.versionCheckZitiApp(c.ZITI_EDGE_TUNNEL)
 	return nil
 }
 
@@ -170,6 +172,8 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_ROUTER)
 	case c.ZITI_TUNNEL:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_TUNNEL)
+	case c.ZITI_EDGE_TUNNEL:
+		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL)
 	default:
 		return nil
 	}
@@ -214,6 +218,8 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 						err = o.upgradeZitiRouter()
 					case c.ZITI_TUNNEL:
 						err = o.upgradeZitiTunnel()
+					case c.ZITI_EDGE_TUNNEL:
+						err = o.upgradeZitiEdgeTunnel()
 					default:
 					}
 					if err != nil {
@@ -301,6 +307,15 @@ func (o *VersionOptions) upgradeZitiRouter() error {
 
 func (o *VersionOptions) upgradeZitiTunnel() error {
 	options := &UpgradeZitiTunnelOptions{
+		CreateOptions: CreateOptions{
+			CommonOptions: o.CommonOptions,
+		},
+	}
+	return options.Run()
+}
+
+func (o *VersionOptions) upgradeZitiEdgeTunnel() error {
+	options := &UpgradeZitiEdgeTunnelOptions{
 		CreateOptions: CreateOptions{
 			CommonOptions: o.CommonOptions,
 		},
