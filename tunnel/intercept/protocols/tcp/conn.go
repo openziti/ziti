@@ -78,7 +78,7 @@ func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.
 	for i := 0; i < cap(txq); i++ {
 		txq <- make([]byte, tunMTU)
 	}
-	//goland:noinspection GoVetCopyLock
+	
 	return &ClientConn{
 		clientKey: clientAddr,
 		svcKey:    interceptAddr,
