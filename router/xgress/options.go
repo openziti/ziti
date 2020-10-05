@@ -53,7 +53,7 @@ func LoadOptions(data OptionsData) *Options {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:            16384,
+		Mtu:            64 * 1024,
 		Retransmission: true,
 		RandomDrops:    false,
 		Drop1InN:       100,
