@@ -8,8 +8,16 @@ import (
 	"reflect"
 )
 
+
+const	SessionEventTypeCreated = "created"
+const	SessionEventTypeDeleted = "deleted"
+const	SessionEventTypeCircuitUpdated = "circuitUpdated"
+
+
 func registerSessionEventHandler(val interface{}, config map[interface{}]interface{}) error {
+
 	handler, ok := val.(network.SessionEventHandler)
+
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/controller/network/SessionEventHandler interface.", reflect.TypeOf(val))
 	}
@@ -31,15 +39,15 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 		AddSessionEventHandler(handler)
 	} else {
 		for _, include := range includeList {
-			if include == "created" {
+			if include == SessionEventTypeCreated {
 				AddSessionEventHandler(&fabricSessionCreatedEventAdapter{
 					wrapped: handler,
 				})
-			} else if include == "deleted" {
+			} else if include == SessionEventTypeDeleted {
 				AddSessionEventHandler(&fabricSessionDeletedEventAdapter{
 					wrapped: handler,
 				})
-			} else if include == "circuitUpdated" {
+			} else if include == SessionEventTypeCircuitUpdated {
 				AddSessionEventHandler(&fabricSessionCircuitUpdatedEventAdapter{
 					wrapped: handler,
 				})

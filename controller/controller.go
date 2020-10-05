@@ -121,6 +121,9 @@ func (c *Controller) Run() error {
 	go mgmtAccepter.Run()
 	/* */
 
+	// event handlers
+	events.WireEventHandlers()
+
 	c.network.Run()
 
 	return nil
@@ -196,6 +199,7 @@ func (c *Controller) loadXtvMappings() error {
 }
 
 func (c *Controller) loadEventHandlers() {
+
 	if e, ok := c.config.src["events"]; ok {
 		if em, ok := e.(map[interface{}]interface{}); ok {
 			for k, v := range em {

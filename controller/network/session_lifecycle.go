@@ -34,6 +34,7 @@ type SessionEventHandler interface {
 }
 
 func (network *Network) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit) {
+
 	event := &sessionCreatedEvent{
 		sessionId: sessionId,
 		clientId:  clientId,
