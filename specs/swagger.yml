@@ -4353,6 +4353,11 @@ definitions:
           - hostname
           - supportedProtocols
           - roleAttributes
+          - os
+          - version
+          - arch
+          - builDate
+          - revision
         properties:
           name:
             type: string
@@ -4383,6 +4388,16 @@ definitions:
           roleAttributes:
             $ref: '#/definitions/attributes'
           fingerprint:
+            type: string
+          os:
+            type: string
+          version:
+            type: string
+          arch:
+            type: string
+          builDate:
+            type: string
+          revision:
             type: string
     example:
       id: b0766b8d-bd1a-4d28-8415-639b29d3c83d

@@ -48,7 +48,7 @@ func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			pfxlog.Logger().Info("received server hello, replying")
 
 			clientHello := &edge_ctrl_pb.ClientHello{
-				Version:   build.GetBuildInfo().GetVersion(),
+				Version:   build.GetBuildInfo().Version(),
 				Hostname:  h.hostname,
 				Protocols: h.supportedProtocols,
 			}

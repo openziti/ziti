@@ -25,5 +25,5 @@ import (
 
 func AddVersionHeader(rw http.ResponseWriter) {
 	buildInfo := build.GetBuildInfo()
-	rw.Header().Set(ZitiControllerVersionHeader, fmt.Sprintf("%s/%s/%s", buildInfo.GetVersion(), buildInfo.GetRevision(), version3.GetApiVersion()))
+	rw.Header().Set(ZitiControllerVersionHeader, fmt.Sprintf("%s/%s/%s", buildInfo.Version(), buildInfo.Revision(), version3.GetApiVersion()))
 }

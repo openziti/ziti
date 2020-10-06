@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -35,6 +36,7 @@ type EdgeRouter struct {
 	CertPem             *string
 	Hostname            *string
 	EdgeRouterProtocols map[string]string
+	VersionInfo         *common.VersionInfo
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {

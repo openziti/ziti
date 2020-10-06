@@ -56,10 +56,10 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 	buildInfo := build.GetBuildInfo()
 	data := rest_model.Version{
-		BuildDate:      buildInfo.GetBuildDate(),
-		Revision:       buildInfo.GetRevision(),
+		BuildDate:      buildInfo.BuildDate(),
+		Revision:       buildInfo.Revision(),
 		RuntimeVersion: runtime.Version(),
-		Version:        buildInfo.GetVersion(),
+		Version:        buildInfo.Version(),
 		APIVersions: map[string]map[string]rest_model.APIVersion{
 			"edge": {controller.RestApiV1: mapApiVersionToRestModel(controller.RestApiBaseUrlV1)},
 		},
