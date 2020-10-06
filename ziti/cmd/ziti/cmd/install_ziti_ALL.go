@@ -19,13 +19,13 @@ package cmd
 import (
 	"io"
 
+	"github.com/blang/semver"
+	"github.com/openziti/ziti/common/version"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
-	"github.com/openziti/ziti/common/version"
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 )
 
@@ -136,6 +136,11 @@ func (o *InstallZitiALLOptions) Run() error {
 	}
 
 	err = o.install(c.ZITI_TUNNEL)
+	if err != nil {
+		log.Errorf("Error: install failed  %s \n", err.Error())
+	}
+
+	err = o.install(c.ZITI_EDGE_TUNNEL)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
