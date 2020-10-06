@@ -59,7 +59,7 @@ type ClientConn struct {
 	rcvAckNum   uint32
 	sndUna      uint32 // oldest unacknowledged sequence number
 	sndAckNum   uint32 // bytes received. written in tcpRecv. read in tcpSend
-	seqCond     sync.Cond
+	seqCond     *sync.Cond
 	log         *logrus.Entry
 }
 
@@ -73,11 +73,12 @@ func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.
 		return nil, err
 	}
 	mss := tunMTU - (ip.IPv4MinimumSize + TCPMinimumSize)
-	maxSegCond := sync.Cond{L: &sync.Mutex{}}
+	maxSegCond := &sync.Cond{L: &sync.Mutex{}}
 	txq := make(chan []byte, 16)
 	for i := 0; i < cap(txq); i++ {
 		txq <- make([]byte, tunMTU)
 	}
+	
 	return &ClientConn{
 		clientKey: clientAddr,
 		svcKey:    interceptAddr,

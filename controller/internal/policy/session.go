@@ -24,6 +24,11 @@ import (
 	"time"
 )
 
+const (
+	maxIterations         = 1000
+	maxDeletePerIteration = 500
+)
+
 type SessionEnforcer struct {
 	appEnv         *env.AppEnv
 	sessionTimeout time.Duration
@@ -49,10 +54,28 @@ func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTime
 
 func (s *SessionEnforcer) Run() error {
 	oldest := time.Now().Add(s.sessionTimeout * -1)
-	query := fmt.Sprintf("updatedAt < datetime(%s)", oldest.UTC().Format(time.RFC3339))
+	query := fmt.Sprintf("updatedAt < datetime(%s) limit %d", oldest.UTC().Format(time.RFC3339), maxDeletePerIteration)
 
-	return s.appEnv.GetHandlers().ApiSession.StreamIds(query, func(id string, err error) error {
-		_ = s.appEnv.GetHandlers().ApiSession.Delete(id)
-		return nil
-	})
+	for i := 0; i < maxIterations; i++ {
+		ids := make([]string, maxDeletePerIteration)
+		err := s.appEnv.GetHandlers().ApiSession.StreamIds(query, func(id string, err error) error {
+			ids = append(ids, id)
+			return nil
+		})
+
+		if err != nil {
+			pfxlog.Logger().Errorf("encountered error querying for API sessions to remove: %v", err)
+			break
+		}
+
+		if len(ids) == 0 {
+			break
+		}
+
+		for _, id := range ids {
+			_ = s.appEnv.GetHandlers().ApiSession.Delete(id)
+		}
+	}
+
+	return nil
 }
