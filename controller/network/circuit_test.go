@@ -20,11 +20,14 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
+	"runtime"
 	"testing"
+	"time"
 )
 
 func TestSimpleCircuit2(t *testing.T) {
@@ -32,7 +35,7 @@ func TestSimpleCircuit2(t *testing.T) {
 	defer ctx.Cleanup()
 
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil)
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -94,7 +97,7 @@ func TestTransitCircuit2(t *testing.T) {
 	defer ctx.Cleanup()
 
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil)
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -182,4 +185,37 @@ func newRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 		r.AdvertisedListener = advLstnr.String()
 	}
 	return r
+}
+
+type VersionProviderTest struct {
+}
+
+func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
+	return &common.StdVersionEncDec
+}
+
+func (v VersionProviderTest) Version() string {
+	return "v0.0.0"
+}
+
+func (v VersionProviderTest) BuildDate() string {
+	return time.Now().String()
+}
+
+func (v VersionProviderTest) Revision() string {
+	return ""
+}
+
+func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
+	return &common.VersionInfo{
+		Version:   v.Version(),
+		Revision:  v.Revision(),
+		BuildDate: v.BuildDate(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}
+}
+
+func NewVersionProviderTest() common.VersionProvider {
+	return &VersionProviderTest{}
 }
