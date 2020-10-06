@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
 	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
@@ -63,13 +64,14 @@ type Router struct {
 	isShutdown      concurrenz.AtomicBoolean
 	eventDispatcher event.Dispatcher
 	metricsReporter metrics.Handler
+	versionProvider common.VersionProvider
 }
 
 func (self *Router) Channel() channel2.Channel {
 	return self.ctrl
 }
 
-func Create(config *Config) *Router {
+func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	eventDispatcher := event.NewDispatcher()
 	metricsConfig := &metrics.Config{
 		Source:         config.Id.Token,
@@ -84,6 +86,7 @@ func Create(config *Config) *Router {
 		metricsRegistry: metricsRegistry,
 		shutdownC:       make(chan struct{}),
 		eventDispatcher: eventDispatcher,
+		versionProvider: versionProvider,
 	}
 }
 
@@ -261,9 +264,18 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	var attributes map[int32][]byte
+	attributes := map[int32][]byte{}
+
+	version, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
+
+	if err != nil {
+		return fmt.Errorf("error with version header information value: %v", err)
+	}
+
+	attributes[channel2.HelloVersionHeader] = version
+
 	if len(self.xlinkListeners) == 1 {
-		attributes = make(map[int32][]byte)
+
 		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 

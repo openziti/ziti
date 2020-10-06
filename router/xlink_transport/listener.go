@@ -27,7 +27,7 @@ import (
 )
 
 func (self *listener) Listen() error {
-	listener := channel2.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg)
+	listener := channel2.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg, nil)
 
 	self.listener = listener
 	if err := self.listener.Listen(); err != nil {

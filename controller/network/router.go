@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
@@ -35,6 +36,7 @@ type Router struct {
 	AdvertisedListener string
 	Control            channel2.Channel
 	Connected          concurrenz.AtomicBoolean
+	VersionInfo        *common.VersionInfo
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {

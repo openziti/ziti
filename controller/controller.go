@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
@@ -53,7 +54,7 @@ type Controller struct {
 	isShutdown concurrenz.AtomicBoolean
 }
 
-func NewController(cfg *Config) (*Controller, error) {
+func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
 	c := &Controller{
 		config:    cfg,
 		shutdownC: make(chan struct{}),
@@ -64,7 +65,7 @@ func NewController(cfg *Config) (*Controller, error) {
 		return nil, err
 	}
 
-	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
+	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider); err == nil {
 		c.network = n
 	} else {
 		return nil, err
@@ -83,11 +84,20 @@ func (c *Controller) Run() error {
 	if err := c.registerComponents(); err != nil {
 		return fmt.Errorf("error registering component: %s", err)
 	}
+	versionInfo := c.network.VersionProvider.AsVersionInfo()
+	versionHeader, err := c.network.VersionProvider.EncoderDecoder().Encode(versionInfo)
+
+	if err != nil {
+		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
+	}
+	headers := map[int32][]byte{
+		channel2.HelloVersionHeader: versionHeader,
+	}
 
 	/**
 	 * ctrl listener/accepter.
 	 */
-	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions)
+	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
@@ -99,7 +109,7 @@ func (c *Controller) Run() error {
 	/**
 	 * mgmt listener/accepter.
 	 */
-	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions)
+	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
 	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)

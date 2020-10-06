@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
 	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/identity/identity"
@@ -62,9 +63,10 @@ type Network struct {
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
 	metricsRegistry        metrics.Registry
+	VersionProvider        common.VersionProvider
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
+func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider) (*Network, error) {
 	stores, err := db.InitStores(database)
 	if err != nil {
 		return nil, err
@@ -88,6 +90,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		strategyRegistry:  xt.GlobalRegistry(),
 		lastSnapshot:      time.Now().Add(-time.Hour),
 		metricsRegistry:   metrics.NewRegistry(nodeId.Token, nil),
+		VersionProvider:   versionProvider,
 	}
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
