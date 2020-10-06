@@ -17,27 +17,29 @@
 package loop3
 
 import (
-	"github.com/openziti/foundation/util/info"
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/util/info"
 	"math/rand"
 )
 
 type generator struct {
-	count   int
-	minSize int
-	maxSize int
-	blocks  chan *Block
-	pool    [][]byte
+	count       int
+	minSize     int
+	maxSize     int
+	latencyFreq int
+	blocks      chan *Block
+	pool        [][]byte
 }
 
-func newGenerator(count, minSize, maxSize int) *generator {
+func newGenerator(count, minSize, maxSize, latencyFreq int) *generator {
 	g := &generator{
-		count:   count,
-		minSize: minSize,
-		maxSize: maxSize,
-		blocks:  make(chan *Block, 128),
-		pool:    newPool(),
+		count:       count,
+		minSize:     minSize,
+		maxSize:     maxSize,
+		latencyFreq: latencyFreq,
+		blocks:      make(chan *Block),
+		pool:        newPool(),
 	}
 	return g
 }
@@ -62,8 +64,13 @@ func (g *generator) run() {
 			}
 		}
 		hash := sha512.Sum512(data)
+		blockType := BlockTypePlain
+		if g.latencyFreq > 0 && i%g.latencyFreq == 0 {
+			blockType = BlockTypeLatencyRequest
+		}
 		g.blocks <- &Block{
-			Sequence: int32(i),
+			Type:     blockType,
+			Sequence: uint32(i),
 			Data:     data,
 			Hash:     hash[:],
 		}

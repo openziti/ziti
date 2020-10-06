@@ -2,15 +2,15 @@ module github.com/openziti/ziti
 
 go 1.14
 
-//replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
 // replace github.com/michaelquigley/dilithium => ../../q/research/dilithium
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
-//replace github.com/openziti/sdk-golang => ../sdk-golang
+// replace github.com/openziti/sdk-golang => ../sdk-golang
 
-//replace github.com/openziti/edge => ../edge
+replace github.com/openziti/edge => ../edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -21,6 +21,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.5.2
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0

@@ -19,11 +19,13 @@ package loop3
 import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"time"
 )
 
 type Scenario struct {
 	Workloads       []*Workload `yaml:"workloads"`
 	ConnectionDelay int32       `yaml:"connectionDelay"`
+	Metrics         *Metrics    `yaml:"metrics"`
 }
 
 type Workload struct {
@@ -34,12 +36,19 @@ type Workload struct {
 }
 
 type Test struct {
-	TxRequests      int32 `yaml:"txRequests"`
-	TxPacing        int32 `yaml:"txPacing"`
-	TxMaxJitter     int32 `yaml:"txMaxJitter"`
-	RxTimeout       int32 `yaml:"rxTimeout"`
-	PayloadMinBytes int32 `yaml:"payloadMinBytes"`
-	PayloadMaxBytes int32 `yaml:"payloadMaxBytes"`
+	TxRequests       int32 `yaml:"txRequests"`
+	TxPacing         int32 `yaml:"txPacing"`
+	TxMaxJitter      int32 `yaml:"txMaxJitter"`
+	RxTimeout        int32 `yaml:"rxTimeout"`
+	PayloadMinBytes  int32 `yaml:"payloadMinBytes"`
+	PayloadMaxBytes  int32 `yaml:"payloadMaxBytes"`
+	LatencyFrequency int32 `yaml:"latencyFrequency"`
+}
+
+type Metrics struct {
+	Service        string        `yaml:"service"`
+	ReportInterval time.Duration `yaml:"interval"`
+	ClientId       string        `yaml:"clientId"`
 }
 
 func LoadScenario(path string) (*Scenario, error) {
