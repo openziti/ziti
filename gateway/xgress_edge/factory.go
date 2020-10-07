@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/gateway/internal/gateway"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -35,12 +36,13 @@ const (
 )
 
 type Factory struct {
-	id             *identity.TokenId
-	ctrl           channel2.Channel
-	enabled        bool
-	config         *gateway.Config
-	hostedServices *hostedServiceRegistry
-	stateManager   fabric.StateManager
+	id              *identity.TokenId
+	ctrl            channel2.Channel
+	enabled         bool
+	config          *gateway.Config
+	hostedServices  *hostedServiceRegistry
+	stateManager    fabric.StateManager
+	versionProvider common.VersionProvider
 }
 
 func (factory *Factory) Channel() channel2.Channel {
@@ -97,10 +99,11 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory() *Factory {
+func NewFactory(versionProvider common.VersionProvider) *Factory {
 	factory := &Factory{
-		hostedServices: &hostedServiceRegistry{},
-		stateManager:   fabric.GetStateManager(),
+		hostedServices:  &hostedServiceRegistry{},
+		stateManager:    fabric.GetStateManager(),
+		versionProvider: versionProvider,
 	}
 	return factory
 }
@@ -116,7 +119,18 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 		return nil, err
 	}
 
-	return newListener(factory.id, factory, options), nil
+	versionInfo := factory.versionProvider.AsVersionInfo()
+	versionHeader, err := factory.versionProvider.EncoderDecoder().Encode(versionInfo)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not generate version header: %v", err)
+	}
+
+	headers := map[int32][]byte{
+		channel2.HelloVersionHeader: versionHeader,
+	}
+
+	return newListener(factory.id, factory, options, headers), nil
 }
 
 // CreateDialer creates a new Edge Xgress dialer

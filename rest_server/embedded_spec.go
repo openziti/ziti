@@ -5757,7 +5757,12 @@ func init() {
             "isOnline",
             "hostname",
             "supportedProtocols",
-            "roleAttributes"
+            "roleAttributes",
+            "os",
+            "version",
+            "arch",
+            "builDate",
+            "revision"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -5801,6 +5806,9 @@ func init() {
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "versionInfo": {
+              "$ref": "#/definitions/versionInfo"
             }
           }
         }
@@ -7865,6 +7873,33 @@ func init() {
         "version": {
           "type": "string",
           "example": "v0.9.0"
+        }
+      }
+    },
+    "versionInfo": {
+      "type": "object",
+      "required": [
+        "os",
+        "version",
+        "arch",
+        "builDate",
+        "revision"
+      ],
+      "properties": {
+        "arch": {
+          "type": "string"
+        },
+        "builDate": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
         }
       }
     }
@@ -21606,7 +21641,12 @@ func init() {
             "isOnline",
             "hostname",
             "supportedProtocols",
-            "roleAttributes"
+            "roleAttributes",
+            "os",
+            "version",
+            "arch",
+            "builDate",
+            "revision"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -21650,6 +21690,9 @@ func init() {
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "versionInfo": {
+              "$ref": "#/definitions/versionInfo"
             }
           }
         }
@@ -23715,6 +23758,33 @@ func init() {
         "version": {
           "type": "string",
           "example": "v0.9.0"
+        }
+      }
+    },
+    "versionInfo": {
+      "type": "object",
+      "required": [
+        "os",
+        "version",
+        "arch",
+        "builDate",
+        "revision"
+      ],
+      "properties": {
+        "arch": {
+          "type": "string"
+        },
+        "builDate": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
         }
       }
     }

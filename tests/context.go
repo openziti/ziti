@@ -327,7 +327,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	xgressEdgeFactory := xgress_edge.NewFactory()
+	xgressEdgeFactory := xgress_edge.NewFactory(NewVersionProviderTest())
 	xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
 	ctx.Req.NoError(ctx.router.Start())
