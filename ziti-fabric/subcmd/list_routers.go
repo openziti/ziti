@@ -59,7 +59,7 @@ var listRouters = &cobra.Command{
 					err := proto.Unmarshal(responseMsg.Body, response)
 					if err == nil {
 						out := fmt.Sprintf("\nRouters: (%d)\n\n", len(response.Routers))
-						out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", "Id", "Name", "Fingerprint", "Status")
+						out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", "Id", "Name", "Fingerprint", "Status", "Version")
 						for _, r := range response.Routers {
 							status := ""
 							if r.Connected {
@@ -68,7 +68,7 @@ var listRouters = &cobra.Command{
 							if r.ListenerAddress != "" {
 								status += " (" + r.ListenerAddress + ")"
 							}
-							out += fmt.Sprintf("%-12s | %-30s | %-40s | %s\n", r.Id, r.Name, r.Fingerprint, status)
+							out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", r.Id, r.Name, r.Fingerprint, status, r.Version)
 						}
 						out += "\n"
 						fmt.Print(out)

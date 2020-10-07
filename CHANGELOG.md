@@ -15,6 +15,8 @@
   * Fix processing of `--configTypes all` in `ziti edge list services`
   * Addressable Terminators and the eXtensible Terminator Validation framework
   * GO Edge SDK now respects Service.EncryptionRequired setting
+  * [fabric#133 Add Version Information To Hellos](https://github.com/openziti/fabric/issues/133)
+  * [edge#326 Nested Transaction Deadlock](https://github.com/openziti/edge/issues/326)
 
 # Config File Changes
 The following should be added to controller configuration files when using the Edge components:
