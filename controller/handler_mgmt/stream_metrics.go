@@ -163,6 +163,25 @@ func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metri
 		filterFloatMetric(name+".p9999", value.P9999, event, filters, name)
 	}
 
+	for name, value := range msg.Timers {
+		filterIntMetric(name+".count", value.Count, event, filters, name)
+		filterFloatMetric(name+".mean_rate", value.MeanRate, event, filters, name)
+		filterFloatMetric(name+".m1_rate", value.M1Rate, event, filters, name)
+		filterFloatMetric(name+".m5_rate", value.M5Rate, event, filters, name)
+		filterFloatMetric(name+".m15_rate", value.M15Rate, event, filters, name)
+		filterIntMetric(name+".min", value.Min, event, filters, name)
+		filterIntMetric(name+".max", value.Max, event, filters, name)
+		filterFloatMetric(name+".mean", value.Mean, event, filters, name)
+		filterFloatMetric(name+".std_dev", value.StdDev, event, filters, name)
+		filterFloatMetric(name+".variance", value.Variance, event, filters, name)
+		filterFloatMetric(name+".p50", value.P50, event, filters, name)
+		filterFloatMetric(name+".p75", value.P75, event, filters, name)
+		filterFloatMetric(name+".p95", value.P95, event, filters, name)
+		filterFloatMetric(name+".p99", value.P99, event, filters, name)
+		filterFloatMetric(name+".p999", value.P999, event, filters, name)
+		filterFloatMetric(name+".p9999", value.P9999, event, filters, name)
+	}
+
 	for name, interval := range msg.IntervalCounters {
 		if nameMatches(name, filters) {
 			for _, bucket := range interval.Buckets {
