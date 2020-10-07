@@ -30,11 +30,15 @@ var createTerminatorClient *mgmtClient
 var createTerminatorBinding string
 var createTerminatorCost uint32
 var createTerminatorPrecedence string
+var createTerminatorIdentity string
+var createTerminatorIdentitySecret string
 
 func init() {
 	createTerminator.Flags().StringVar(&createTerminatorBinding, "binding", "transport", "Terminator binding")
 	createTerminator.Flags().Uint32VarP(&createTerminatorCost, "cost", "c", 0, "Set the terminator cost")
 	createTerminator.Flags().StringVarP(&createTerminatorPrecedence, "precedence", "p", "default", "Set the terminator precedence ('default', 'required' or 'failed')")
+	createTerminator.Flags().StringVar(&createTerminatorIdentity, "identity", "", "Set the terminator identity")
+	createTerminator.Flags().StringVar(&createTerminatorIdentitySecret, "identity-secret", "", "Set the terminator identity secret")
 
 	createTerminatorClient = NewMgmtClient(createTerminator)
 	createCmd.AddCommand(createTerminator)
@@ -63,12 +67,14 @@ var createTerminator = &cobra.Command{
 		if ch, err := createTerminatorClient.Connect(); err == nil {
 			request := &mgmt_pb.CreateTerminatorRequest{
 				Terminator: &mgmt_pb.Terminator{
-					ServiceId:  args[0],
-					RouterId:   args[1],
-					Binding:    createTerminatorBinding,
-					Address:    args[2],
-					Precedence: precedence,
-					Cost:       createTerminatorCost,
+					ServiceId:      args[0],
+					RouterId:       args[1],
+					Binding:        createTerminatorBinding,
+					Address:        args[2],
+					Identity:       createTerminatorIdentity,
+					IdentitySecret: []byte(createTerminatorIdentitySecret),
+					Precedence:     precedence,
+					Cost:           createTerminatorCost,
 				},
 			}
 			body, err := proto.Marshal(request)
