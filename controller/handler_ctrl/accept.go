@@ -52,6 +52,16 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 		if err == nil {
 			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
 				if ch.Underlay().Headers() != nil {
+					if versionValue, found := ch.Underlay().Headers()[channel2.HelloVersionHeader]; found {
+						if versionInfo, err := ctrlAccepter.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
+							r.VersionInfo = versionInfo
+						} else {
+							log.Warnf("could not parse version info from router hello: %v", err)
+						}
+					} else {
+						log.Warn("no version info header")
+					}
+
 					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloRouterAdvertisementsHeader]; found {
 						listenerString := string(listenerValue)
 						r.AdvertisedListener = listenerString
