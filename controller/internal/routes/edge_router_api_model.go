@@ -113,6 +113,11 @@ func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_model.EdgeRouterDetail, error) {
 	hostname := ""
 	protocols := map[string]string{}
+	os := ""
+	arch := ""
+	buildDate := ""
+	revision := ""
+	version := ""
 
 	onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(router.Id)
 
@@ -121,6 +126,14 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	if isOnline {
 		hostname = *onlineEdgeRouter.Hostname
 		protocols = onlineEdgeRouter.EdgeRouterProtocols
+
+		if onlineEdgeRouter.VersionInfo != nil {
+			os = onlineEdgeRouter.VersionInfo.OS
+			arch = onlineEdgeRouter.VersionInfo.Arch
+			buildDate = onlineEdgeRouter.VersionInfo.BuildDate
+			revision = onlineEdgeRouter.VersionInfo.Revision
+			version = onlineEdgeRouter.VersionInfo.Version
+		}
 	}
 
 	ret := &rest_model.EdgeRouterDetail{
@@ -136,6 +149,13 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
 		Hostname:            &hostname,
 		SupportedProtocols:  protocols,
+		VersionInfo: &rest_model.VersionInfo{
+			Os:       &os,
+			Arch:     &arch,
+			Revision: &revision,
+			BuilDate: &buildDate,
+			Version:  &version,
+		},
 	}
 
 	if !router.IsVerified {
@@ -179,10 +199,10 @@ func GetNamedEdgeRouterRoles(edgeRouterHandler *model.EdgeRouterHandler, roles [
 			}
 
 			result = append(result, &rest_model.NamedRole{
-				Role:   role,
+				Role: role,
 				Name: "@" + edgeRouter.Name,
 			})
-		}else {
+		} else {
 			result = append(result, &rest_model.NamedRole{
 				Role: role,
 				Name: role,

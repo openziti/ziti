@@ -3599,6 +3599,25 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/dialBind'
+  versionInfo:
+    type: object
+    required:
+      - os
+      - version
+      - arch
+      - builDate
+      - revision
+    properties:
+      os:
+        type: string
+      version:
+        type: string
+      arch:
+        type: string
+      builDate:
+        type: string
+      revision:
+        type: string
   ###################################################################
   # Authentication
   ##################################################################
@@ -4353,6 +4372,11 @@ definitions:
           - hostname
           - supportedProtocols
           - roleAttributes
+          - os
+          - version
+          - arch
+          - builDate
+          - revision
         properties:
           name:
             type: string
@@ -4384,6 +4408,8 @@ definitions:
             $ref: '#/definitions/attributes'
           fingerprint:
             type: string
+          versionInfo:
+            $ref: '#/definitions/versionInfo'
     example:
       id: b0766b8d-bd1a-4d28-8415-639b29d3c83d
       createdAt: '2020-03-16T17:13:31.5807454Z'

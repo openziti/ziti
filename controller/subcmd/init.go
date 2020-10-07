@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/util/term"
 	"github.com/spf13/cobra"
 	"strconv"
@@ -34,18 +35,18 @@ const (
 	maxUsernameLength = 100
 )
 
-func AddCommands(root *cobra.Command) {
-	root.AddCommand(NewEdgeCmd())
+func AddCommands(root *cobra.Command, versionProvider common.VersionProvider) {
+	root.AddCommand(NewEdgeCmd(versionProvider))
 }
 
-func NewEdgeCmd() *cobra.Command {
+func NewEdgeCmd(versionProvider common.VersionProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "edge",
 		Short: "used to perform various edge related functionality",
 		Long:  "used to perform various edge related functionality",
 	}
 
-	cmd.AddCommand(NewEdgeInitializeCmd())
+	cmd.AddCommand(NewEdgeInitializeCmd(versionProvider))
 
 	return cmd
 }
@@ -56,7 +57,7 @@ type edgeInitializeOptions struct {
 	name     string
 }
 
-func NewEdgeInitializeCmd() *cobra.Command {
+func NewEdgeInitializeCmd(versionProvider common.VersionProvider) *cobra.Command {
 	options := &edgeInitializeOptions{}
 
 	cmd := &cobra.Command{
@@ -71,7 +72,7 @@ func NewEdgeInitializeCmd() *cobra.Command {
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctrl := configureController(args[0])
+			ctrl := configureController(args[0], versionProvider)
 
 			if options.username == "" {
 				options.username = promptUsername()
@@ -139,7 +140,7 @@ func validatePasswordLength(password string) error {
 	return nil
 }
 
-func configureController(configPath string) *server.Controller {
+func configureController(configPath string, versionProvider common.VersionProvider) *server.Controller {
 	config, err := controller.LoadConfig(configPath)
 
 	if err != nil {
@@ -147,7 +148,7 @@ func configureController(configPath string) *server.Controller {
 	}
 
 	var c *controller.Controller
-	if c, err = controller.NewController(config); err != nil {
+	if c, err = controller.NewController(config, versionProvider); err != nil {
 		panic(err)
 	}
 

@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/certtools"
 	nfpem "github.com/openziti/foundation/util/pem"
 	sdkconfig "github.com/openziti/sdk-golang/ziti/config"
@@ -47,6 +48,7 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -224,7 +226,7 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("creating fabric controller")
-	ctx.fabricController, err = controller.NewController(config)
+	ctx.fabricController, err = controller.NewController(config, NewVersionProviderTest())
 	ctx.Req.NoError(err)
 
 	log.Info("creating edge controller")
@@ -302,7 +304,7 @@ func (ctx *TestContext) createEnrollAndStartTransitRouter() {
 func (ctx *TestContext) startTransitRouter() {
 	config, err := router.LoadConfig(TransitRouterConfFile)
 	ctx.Req.NoError(err)
-	ctx.router = router.Create(config)
+	ctx.router = router.Create(config, NewVersionProviderTest())
 
 	ctx.Req.NoError(ctx.router.Start())
 }
@@ -323,9 +325,9 @@ func (ctx *TestContext) shutdownRouter() {
 func (ctx *TestContext) startEdgeRouter() {
 	config, err := router.LoadConfig(EdgeRouterConfFile)
 	ctx.Req.NoError(err)
-	ctx.router = router.Create(config)
+	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	xgressEdgeFactory := xgress_edge.NewFactory()
+	xgressEdgeFactory := xgress_edge.NewFactory(NewVersionProviderTest())
 	xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
 	ctx.Req.NoError(ctx.router.Start())
@@ -877,4 +879,37 @@ func (conn *testServerConn) RequireClose() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type VersionProviderTest struct {
+}
+
+func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
+	return &common.StdVersionEncDec
+}
+
+func (v VersionProviderTest) Version() string {
+	return "v0.0.0"
+}
+
+func (v VersionProviderTest) BuildDate() string {
+	return time.Now().String()
+}
+
+func (v VersionProviderTest) Revision() string {
+	return ""
+}
+
+func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
+	return &common.VersionInfo{
+		Version:   v.Version(),
+		Revision:  v.Revision(),
+		BuildDate: v.BuildDate(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}
+}
+
+func NewVersionProviderTest() common.VersionProvider {
+	return &VersionProviderTest{}
 }

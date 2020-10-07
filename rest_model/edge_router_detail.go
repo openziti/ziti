@@ -82,6 +82,9 @@ type EdgeRouterDetail struct {
 	// supported protocols
 	// Required: true
 	SupportedProtocols map[string]string `json:"supportedProtocols"`
+
+	// version info
+	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -116,6 +119,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		SupportedProtocols map[string]string `json:"supportedProtocols"`
+
+		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -142,6 +147,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 	m.RoleAttributes = dataAO1.RoleAttributes
 
 	m.SupportedProtocols = dataAO1.SupportedProtocols
+
+	m.VersionInfo = dataAO1.VersionInfo
 
 	return nil
 }
@@ -177,6 +184,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		SupportedProtocols map[string]string `json:"supportedProtocols"`
+
+		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 
 	dataAO1.EnrollmentCreatedAt = m.EnrollmentCreatedAt
@@ -200,6 +209,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.RoleAttributes = m.RoleAttributes
 
 	dataAO1.SupportedProtocols = m.SupportedProtocols
+
+	dataAO1.VersionInfo = m.VersionInfo
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -247,6 +258,10 @@ func (m *EdgeRouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateSupportedProtocols(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateVersionInfo(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -335,6 +350,24 @@ func (m *EdgeRouterDetail) validateRoleAttributes(formats strfmt.Registry) error
 }
 
 func (m *EdgeRouterDetail) validateSupportedProtocols(formats strfmt.Registry) error {
+
+	return nil
+}
+
+func (m *EdgeRouterDetail) validateVersionInfo(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.VersionInfo) { // not required
+		return nil
+	}
+
+	if m.VersionInfo != nil {
+		if err := m.VersionInfo.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("versionInfo")
+			}
+			return err
+		}
+	}
 
 	return nil
 }

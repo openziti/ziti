@@ -14,21 +14,21 @@ func InitBuildInfo(buildInfo Info) {
 }
 
 type Info interface {
-	GetVersion() string
-	GetRevision() string
-	GetBuildDate() string
+	Version() string
+	Revision() string
+	BuildDate() string
 }
 
 type defaultInfo struct{}
 
-func (d defaultInfo) GetVersion() string {
+func (d defaultInfo) Version() string {
 	return "unknown"
 }
 
-func (d defaultInfo) GetRevision() string {
+func (d defaultInfo) Revision() string {
 	return "unknown"
 }
 
-func (d defaultInfo) GetBuildDate() string {
+func (d defaultInfo) BuildDate() string {
 	return "unknown"
 }

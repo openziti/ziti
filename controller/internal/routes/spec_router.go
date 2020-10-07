@@ -65,9 +65,9 @@ var specs []*Spec
 func init() {
 	info := build.GetBuildInfo()
 	date := time.Now()
-	if info.GetBuildDate() != "unknown" {
+	if info.BuildDate() != "unknown" {
 		var err error
-		date, err = time.Parse("", info.GetBuildDate())
+		date, err = time.Parse("", info.BuildDate())
 		if err != nil {
 			pfxlog.Logger().WithError(err).Warn("could not parse build info date for swagger spec")
 		}

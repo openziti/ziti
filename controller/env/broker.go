@@ -691,7 +691,7 @@ func (b *Broker) RouterConnected(r *network.Router) {
 }
 
 func (b *Broker) sendHello(r *network.Router) {
-	serverVersion := build.GetBuildInfo().GetVersion()
+	serverVersion := build.GetBuildInfo().Version()
 	serverHello := &edge_ctrl_pb.ServerHello{
 		Version: serverVersion,
 	}
@@ -709,14 +709,22 @@ func (b *Broker) sendHello(r *network.Router) {
 }
 
 func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, respHello *edge_ctrl_pb.ClientHello) {
-	serverVersion := build.GetBuildInfo().GetVersion()
+	serverVersion := build.GetBuildInfo().Version()
 
-	pfxlog.Logger().
-		WithField("version", respHello.Version).
+	entry := pfxlog.Logger().
 		WithField("hostname", respHello.Hostname).
 		WithField("protocols", respHello.Protocols).
-		WithField("data", respHello.Data).
-		Info("edge router responded with client hello")
+		WithField("data", respHello.Data)
+
+	if r.VersionInfo != nil {
+		entry.WithField("version", r.VersionInfo.Version).
+			WithField("revision", r.VersionInfo.Revision).
+			WithField("buildDate", r.VersionInfo.BuildDate).
+			WithField("os", r.VersionInfo.OS).
+			WithField("arch", r.VersionInfo.Arch)
+	}
+
+	entry.Info("edge router responded with client hello")
 
 	protocols := map[string]string{}
 	for _, p := range respHello.Protocols {
@@ -724,9 +732,9 @@ func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, r
 		protocols[p] = ingressUrl
 	}
 
-	//in memory only
 	edgeRouter.Hostname = &respHello.Hostname
 	edgeRouter.EdgeRouterProtocols = protocols
+	edgeRouter.VersionInfo = r.VersionInfo
 
 	//todo: restrict version?
 	pfxlog.Logger().Infof("edge router connecting with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
