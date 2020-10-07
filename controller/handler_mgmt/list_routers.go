@@ -65,6 +65,11 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 				if connR := h.network.GetConnectedRouter(router.Id); connR != nil {
 					responseR.Connected = true
 					responseR.ListenerAddress = connR.AdvertisedListener
+					responseR.Version = connR.VersionInfo.Version
+					responseR.Revision = connR.VersionInfo.Revision
+					responseR.BuildDate = connR.VersionInfo.BuildDate
+					responseR.Os = connR.VersionInfo.OS
+					responseR.Arch = connR.VersionInfo.Arch
 				}
 
 				response.Routers = append(response.Routers, responseR)

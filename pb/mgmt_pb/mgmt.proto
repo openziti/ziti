@@ -164,6 +164,12 @@ message Router {
     string fingerprint = 3;
     string listenerAddress = 4;
     bool connected = 5;
+    string version = 6;
+    string revision = 7;
+    string buildDate = 8;
+    string os = 9;
+    string arch = 10;
+
 }
 
 message ListRoutersRequest {
