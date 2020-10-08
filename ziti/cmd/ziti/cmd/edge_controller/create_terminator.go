@@ -19,7 +19,7 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge/gateway/xgress_edge_transport"
+	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
