@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/openziti/edge/gateway/internal/gateway"
+	"github.com/openziti/edge/router/internal/router"
 )
 
 type Csr struct {
@@ -34,7 +34,7 @@ type Csr struct {
 	SanUri   []string
 }
 
-func CreateCsr(key crypto.PrivateKey, algo x509.SignatureAlgorithm, subj *pkix.Name, sans *gateway.Sans) (string, error) {
+func CreateCsr(key crypto.PrivateKey, algo x509.SignatureAlgorithm, subj *pkix.Name, sans *router.Sans) (string, error) {
 	template := x509.CertificateRequest{
 		Subject:            *subj,
 		SignatureAlgorithm: algo,

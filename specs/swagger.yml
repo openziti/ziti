@@ -4420,7 +4420,7 @@ definitions:
         self:
           href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
       tags: { }
-      name: TestGateway-e33c837f-3222-4b40-bcd6-b3458fd5156e
+      name: TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e
       fingerprint:
       roleAttributes:
         - eastCoast

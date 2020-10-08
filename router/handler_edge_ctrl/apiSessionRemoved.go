@@ -20,34 +20,34 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 )
 
-type apiSessionUpdatedHandler struct {
+type apiSessionRemovedHandler struct {
 	sm fabric.StateManager
 }
 
-func NewApiSessionUpdatedHandler(sm fabric.StateManager) *apiSessionUpdatedHandler {
-	return &apiSessionUpdatedHandler{
+func NewApiSessionRemovedHandler(sm fabric.StateManager) *apiSessionRemovedHandler {
+	return &apiSessionRemovedHandler{
 		sm: sm,
 	}
 }
 
-func (h *apiSessionUpdatedHandler) ContentType() int32 {
-	return env.ApiSessionUpdatedType
+func (h *apiSessionRemovedHandler) ContentType() int32 {
+	return env.ApiSessionRemovedType
 }
 
-func (h *apiSessionUpdatedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *apiSessionRemovedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	go func() {
-		req := &edge_ctrl_pb.ApiSessionUpdated{}
+		req := &edge_ctrl_pb.ApiSessionRemoved{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
-			for _, session := range req.ApiSessions {
-				h.sm.UpdateApiSession(session)
+			for _, t := range req.Tokens {
+				h.sm.RemoveApiSession(t)
 			}
 		} else {
-			pfxlog.Logger().Panic("could not convert message as network session updated")
+			pfxlog.Logger().Panic("could not convert message as session removed")
 		}
 	}()
 }

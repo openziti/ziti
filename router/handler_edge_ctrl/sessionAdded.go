@@ -20,34 +20,39 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 )
 
-type sessionRemovedHandler struct {
+type sessionAddedHandler struct {
 	sm fabric.StateManager
 }
 
-func NewSessionRemovedHandler(sm fabric.StateManager) *sessionRemovedHandler {
-	return &sessionRemovedHandler{
+func NewSessionAddedHandler(sm fabric.StateManager) *sessionAddedHandler {
+	return &sessionAddedHandler{
 		sm: sm,
 	}
 }
 
-func (h *sessionRemovedHandler) ContentType() int32 {
-	return env.SessionRemovedType
+func (h *sessionAddedHandler) ContentType() int32 {
+	return env.SessionAddedType
 }
 
-func (h *sessionRemovedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	go func() {
-		req := &edge_ctrl_pb.SessionRemoved{}
+		req := &edge_ctrl_pb.SessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
-			for _, t := range req.Tokens {
-				h.sm.RemoveSession(t)
+			for _, session := range req.Sessions {
+				pfxlog.Logger().Debugf("received new session %+v", session)
+				h.sm.AddSession(session)
+			}
+
+			if req.IsFullState {
+				h.sm.RemoveMissingSessions(req.Sessions)
 			}
 		} else {
-			pfxlog.Logger().Panic("could not convert message as network session removed")
+			pfxlog.Logger().Panic("could not convert message as network session added")
 		}
 	}()
 }

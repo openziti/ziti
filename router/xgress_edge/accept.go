@@ -19,7 +19,7 @@ package xgress_edge
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/gateway/internal/fabric"
+	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
