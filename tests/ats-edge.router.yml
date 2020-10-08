@@ -45,7 +45,7 @@ edge:
     organization: NetFoundry
     organizationalUnit: Ziti
 
-    # (required) SANs that this Gateways certs should contain. At least one IP or DNS SAN should be defined that matches
+    # (required) SANs that this router's certs should contain. At least one IP or DNS SAN should be defined that matches
     # the edge listeners "advertise" value from the "listeners" section.
     sans:
       dns:
@@ -58,7 +58,7 @@ edge:
       ip:
         - "127.0.0.1"
       uri:
-        - "ziti://ziti-dev-gateway01/made/up/example"
+        - "ziti://ziti-dev-router01/made/up/example"
 
 dialers:
   - binding: udp

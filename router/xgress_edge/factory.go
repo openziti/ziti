@@ -18,10 +18,10 @@ package xgress_edge
 
 import (
 	"fmt"
-	"github.com/openziti/edge/gateway/handler_edge_ctrl"
-	"github.com/openziti/edge/gateway/internal/apiproxy"
-	"github.com/openziti/edge/gateway/internal/fabric"
-	"github.com/openziti/edge/gateway/internal/gateway"
+	"github.com/openziti/edge/router/handler_edge_ctrl"
+	"github.com/openziti/edge/router/internal/apiproxy"
+	"github.com/openziti/edge/router/internal/fabric"
+	"github.com/openziti/edge/router/internal/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
@@ -39,7 +39,7 @@ type Factory struct {
 	id              *identity.TokenId
 	ctrl            channel2.Channel
 	enabled         bool
-	config          *gateway.Config
+	config          *router.Config
 	hostedServices  *hostedServiceRegistry
 	stateManager    fabric.StateManager
 	versionProvider common.VersionProvider
@@ -81,7 +81,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := gateway.NewConfig()
+	config := router.NewConfig()
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}

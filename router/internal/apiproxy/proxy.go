@@ -20,7 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/gateway/internal/gateway"
+	"github.com/openziti/edge/router/internal/router"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -39,7 +39,7 @@ type Config struct {
 	DownstreamTlsConfig *tls.Config
 }
 
-func Start(config *gateway.Config) {
+func Start(config *router.Config) {
 
 	if !config.ApiProxy.Enabled {
 		pfxlog.Logger().Debug("API Proxy disabled")
