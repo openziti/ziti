@@ -1,4 +1,4 @@
-# Release 0.16.3
+# Release 0.16.4
 
 ## Breaking CLI Change
   * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT can be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt`. For now the --jwt flag is still accepted as well. 
@@ -1468,7 +1468,7 @@ csr:
     ip:
       - "127.0.0.1"
     uri:
-      - "ziti://ziti-dev-gateway01/made/up/example"
+      - "ziti://ziti-dev-router01/made/up/example"
 
 
 #trace:
