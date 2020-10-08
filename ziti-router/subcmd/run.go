@@ -17,8 +17,8 @@
 package subcmd
 
 import (
-	"github.com/openziti/edge/gateway/xgress_edge"
-	"github.com/openziti/edge/gateway/xgress_edge_transport"
+	"github.com/openziti/edge/router/xgress_edge"
+	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/ziti/common/version"

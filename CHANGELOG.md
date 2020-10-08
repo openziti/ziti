@@ -1468,7 +1468,7 @@ csr:
     ip:
       - "127.0.0.1"
     uri:
-      - "ziti://ziti-dev-gateway01/made/up/example"
+      - "ziti://ziti-dev-router01/made/up/example"
 
 
 #trace:
