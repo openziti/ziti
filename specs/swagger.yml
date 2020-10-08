@@ -1858,6 +1858,24 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}/posture-data':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieve the curent posture data for a specific identity.
+      description: |
+        Returns a nested map data represeting the posture data of the identity.
+        This data should be considered volatile.
+      security:
+        - zgSession: [ ]
+      operationId: getIdentityPostureData
+      responses:
+        '200':
+          $ref: '#/responses/getIdentityPostureData'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
   ###################################################################
   # Identity-Types
   ##################################################################
@@ -2942,6 +2960,173 @@ paths:
         '401':
           $ref: '#/responses/unauthorizedResponse'
 
+  ###################################################################
+  # Posture Check Types
+  ##################################################################
+  '/posture-check-types':
+    get:
+      summary: List a subset of posture check types
+      description: |
+        Retrieves a list of posture check types
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: listPostureCheckTypes
+      produces:
+        - application/json; charset=utf-8
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listPostureCheckTypes'
+  '/posture-check-types/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single posture check type
+      description: Retrieves a single posture check type by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: detailPostureCheckType
+      responses:
+        '200':
+          $ref: '#/responses/detailPostureCheckType'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Posture Checks
+  ##################################################################
+  '/posture-checks':
+    get:
+      summary: List a subset of posture checks
+      description: |
+        Retrieves a list of posture checks
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: listPostureChecks
+      produces:
+        - application/json; charset=utf-8
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listPostureChecks'
+    post:
+      summary: Creates a Posture Checks
+      description: Creates a Posture Checks
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: createPostureCheck
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A Posture Checks to create
+          schema:
+            $ref: '#/definitions/PostureCheckCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/posture-checks/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single Posture Checks
+      description: Retrieves a single Posture Checks by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: detailPostureCheck
+      responses:
+        '200':
+          $ref: '#/responses/detailPostureCheck'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a Posture Checks
+      description: Update all fields on a Posture Checks by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: updatePostureCheck
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A Posture Checks update object
+          schema:
+            $ref: '#/definitions/PostureCheckUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a Posture Checks
+      description: Update only the supplied fields on a Posture Checks by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: patchPostureCheck
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A Posture Checks patch object
+          schema:
+            $ref: '#/definitions/PostureCheckPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Deletes an Posture Checks
+      description: Deletes and Posture Checks by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: deletePostureCheck
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '403':
+          $ref: '#/responses/unauthorizedResponse'
+
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
@@ -3474,6 +3659,14 @@ responses:
       $ref: '#/definitions/getIdentityPolicyAdviceEnvelope'
 
   ###################################################################
+  # Posture Data
+  ##################################################################
+  getIdentityPostureData:
+    description: Returns the document that represents posture data
+    schema:
+      $ref: '#/definitions/getIdentityPostureDataEnvelope'
+
+  ###################################################################
   # Transit Routers
   ##################################################################
   listTransitRouters:
@@ -3492,6 +3685,30 @@ responses:
     description: A list of data integrity issues found
     schema:
       $ref: '#/definitions/dataIntegrityCheckResultEnvelope'
+
+  ###################################################################
+  # Posture Check Types
+  ##################################################################
+  listPostureCheckTypes:
+    description: A list of posture check types
+    schema:
+      $ref: '#/definitions/listPostureCheckTypesEnvelope'
+  detailPostureCheckType:
+    description: Retrieves a singular posture check type by id
+    schema:
+      $ref: '#/definitions/detailPostureCheckTypeEnvelope'
+
+  ###################################################################
+  # Posture Check
+  ##################################################################
+  listPostureChecks:
+    description: A list of posture checks
+    schema:
+      $ref: '#/definitions/listPostureCheckEnvelope'
+  detailPostureCheck:
+    description: Retrieves a singular posture check by id
+    schema:
+      $ref: '#/definitions/detailPostureCheckEnvelope'
 
 #######################################################################################################################
 #
@@ -3618,6 +3835,64 @@ definitions:
         type: string
       revision:
         type: string
+  osType:
+    type: string
+    enum:
+      - Windows
+      - Android
+      - iOS
+      - Linux
+      - macOs
+  operatingSystem:
+    type: object
+    required:
+      - type
+      - version
+    properties:
+      type:
+        $ref: '#/definitions/osType'
+      version:
+        type: string
+  operatingSystemArray:
+    type: array
+    items:
+      $ref: '#/definitions/operatingSystem'
+  operatingSystemMatch:
+    type: object
+    required:
+      - type
+      - version
+    properties:
+      type:
+        $ref: '#/definitions/osType'
+      version:
+        type: array
+        items:
+          type: string
+  operatingSystemMatchArray:
+    type: array
+    items:
+      $ref: '#/definitions/operatingSystemMatch'
+  processMatch:
+    type: object
+    properties:
+      operatingSystemTypeId:
+        $ref: '#/definitions/osType'
+      path:
+        type: string
+      hashes:
+        type: array
+        items:
+          type: string
+      signerFingerprint:
+        type: string
+  postureCheckType:
+    type: string
+    enum:
+      - OS
+      - PROCESS
+      - DOMAIN
+      - MAC
   ###################################################################
   # Authentication
   ##################################################################
@@ -4531,6 +4806,8 @@ definitions:
           - serviceRolesDisplay
           - identityRoles
           - identityRolesDisplay
+          - postureCheckRoles
+          - postureCheckRolesDisplay
         properties:
           name:
             type: string
@@ -4545,6 +4822,10 @@ definitions:
           identityRoles:
             $ref: '#/definitions/roles'
           identityRolesDisplay:
+            $ref: '#/definitions/namedRoles'
+          postureCheckRoles:
+            $ref: '#/definitions/roles'
+          postureCheckRolesDisplay:
             $ref: '#/definitions/namedRoles'
   servicePolicyCreate:
     type: object
@@ -4564,6 +4845,8 @@ definitions:
         $ref: '#/definitions/roles'
       identityRoles:
         $ref: '#/definitions/roles'
+      postureCheckRoles:
+        $ref: '#/definitions/roles'
   servicePolicyUpdate:
     type: object
     required:
@@ -4582,6 +4865,8 @@ definitions:
         $ref: '#/definitions/roles'
       identityRoles:
         $ref: '#/definitions/roles'
+      postureCheckRoles:
+        $ref: '#/definitions/roles'
   servicePolicyPatch:
     type: object
     properties:
@@ -4596,6 +4881,8 @@ definitions:
       serviceRoles:
         $ref: '#/definitions/roles'
       identityRoles:
+        $ref: '#/definitions/roles'
+      postureCheckRoles:
         $ref: '#/definitions/roles'
   ###################################################################
   # Services
@@ -4617,6 +4904,7 @@ definitions:
           - configs
           - config
           - encryptionRequired
+          - postureQueries
         properties:
           name:
             type: string
@@ -4639,6 +4927,8 @@ definitions:
             description: map of config data for this service keyed by the config type name. Only configs of the types requested will be returned.
           encryptionRequired:
             type: boolean
+          postureQueries:
+            $ref: '#/definitions/postureQuery'
   serviceCreate:
     type: object
     required:
@@ -5817,3 +6107,346 @@ definitions:
         type: string
       fixed:
         type: boolean
+
+  ###################################################################
+  # Posture Data
+  ##################################################################
+  getIdentityPostureDataEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/postureData'
+
+  postureData:
+    type: object
+    additionalProperties: true
+
+  ###################################################################
+  # Posture Query
+  ##################################################################
+  postureQuery:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - postureCheckId
+        properties:
+          postureCheckId:
+            type: string
+          queryType:
+            $ref: '#/definitions/postureCheckType'
+          data:
+            type: object
+            additionalProperties: true
+  ###################################################################
+  # Posture Check Types
+  ##################################################################
+  listPostureCheckTypesEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/PostureCheckTypeList'
+  detailPostureCheckTypeEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/PostureCheckTypeDetail'
+  PostureCheckTypeList:
+    type: array
+    items:
+      $ref: '#/definitions/PostureCheckTypeDetail'
+  PostureCheckTypeDetail:
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - operatingSystems
+          - version
+        properties:
+          name:
+            type: string
+          operatingSystems:
+            $ref: '#/definitions/operatingSystemMatchArray'
+          version:
+            type: string
+
+  ###################################################################
+  # Posture Check
+  ##################################################################
+  listPostureCheckEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/PostureCheckList'
+  detailPostureCheckEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/PostureCheckDetail'
+  PostureCheckList:
+    type: array
+    items:
+      $ref: '#/definitions/PostureCheckDetail'
+  PostureCheckDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        discriminator: typeId
+        required:
+          - name
+          - type
+          - typeId
+          - description
+        properties:
+          name:
+            type: string
+          type:
+            type: string
+          typeId:
+            type: string
+          description:
+            type: string
+  PostureCheckCreate:
+    type: object
+    discriminator: typeId
+    required:
+      - name
+      - typeId
+      - description
+    properties:
+      name:
+        type: string
+      typeId:
+        $ref: '#/definitions/postureCheckType'
+      description:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
+  PostureCheckUpdate:
+    type: object
+    discriminator: typeId
+    required:
+      - name
+      - description
+    properties:
+      name:
+        type: string
+      typeId:
+        $ref: '#/definitions/postureCheckType'
+      description:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
+  PostureCheckPatch:
+    type: object
+    discriminator: typeId
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      tags:
+        $ref: '#/definitions/tags'
+
+  ###################################################################
+  # Posture Check Operating System
+  ###################################################################
+  PostureCheckOperatingSystemDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+      - type: object
+        required:
+          - operatingSystems
+        properties:
+          operatingSystems:
+            $ref: '#/definitions/operatingSystemMatchArray'
+  PostureCheckOperatingSystemCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+      - type: object
+        required:
+          - operatingSystems
+        properties:
+          operatingSystems:
+            $ref: '#/definitions/operatingSystemMatchArray'
+  PostureCheckOperatingSystemUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+      - type: object
+        required:
+          - operatingSystems
+        properties:
+          operatingSystems:
+            $ref: '#/definitions/operatingSystemMatchArray'
+  PostureCheckOperatingSystemPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+      - type: object
+        properties:
+          operatingSystems:
+            $ref: '#/definitions/operatingSystemMatchArray'
+
+
+  ###################################################################
+  # Posture Check Domain
+  ###################################################################
+  PostureCheckDomainDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+      - type: object
+        required:
+          - domains
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+
+  PostureCheckDomainCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+      - type: object
+        required:
+          - domains
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+  PostureCheckDomainUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+      - type: object
+        required:
+          - domains
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+  PostureCheckDomainPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+      - type: object
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+
+  ###################################################################
+  # Posture Check MAC Address
+  ###################################################################
+  PostureCheckMACAddressDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+      - type: object
+        required:
+          - macAddresses
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+
+  PostureCheckMACAddressCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+      - type: object
+        required:
+          - macAddresses
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+  PostureCheckMACAddressUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+      - type: object
+        required:
+          - macAddresses
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+  PostureCheckMACAddressPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+      - type: object
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+
+  ###################################################################
+  # Posture Check Process
+  ###################################################################
+  PostureCheckProcessDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+      - type: object
+        required:
+          - process
+        properties:
+          domains:
+            type: array
+            items:
+              type: string
+
+  PostureCheckProcessCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+      - type: object
+        required:
+          - process
+        properties:
+          process:
+            $ref: '#/definitions/processMatch'
+  PostureCheckProcessUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+      - type: object
+        required:
+          - process
+        properties:
+          process:
+            $ref: '#/definitions/processMatch'
+  PostureCheckProcessPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+      - type: object
+        properties:
+          process:
+            $ref: '#/definitions/processMatch'
+

@@ -43,9 +43,9 @@ type Handlers struct {
 	ServicePolicy           *ServicePolicyHandler
 	TransitRouter           *TransitRouterHandler
 	Session                 *SessionHandler
-
-	Authenticator *AuthenticatorHandler
-	Enrollment    *EnrollmentHandler
+	Authenticator           *AuthenticatorHandler
+	Enrollment              *EnrollmentHandler
+	PostureCheck            *PostureCheckHandler
 }
 
 func InitHandlers(env Env) *Handlers {
@@ -73,6 +73,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.ServicePolicy = NewServicePolicyHandler(env)
 	handlers.Session = NewSessionHandler(env)
 	handlers.TransitRouter = NewTransitRouterHandler(env)
+	handlers.PostureCheck = NewPostureCheckHandler(env)
 
 	return handlers
 }

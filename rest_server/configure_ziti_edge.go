@@ -50,6 +50,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/geo_region"
 	"github.com/openziti/edge/rest_server/operations/identity"
 	"github.com/openziti/edge/rest_server/operations/informational"
+	"github.com/openziti/edge/rest_server/operations/posture_checks"
 	"github.com/openziti/edge/rest_server/operations/role_attributes"
 	"github.com/openziti/edge/rest_server/operations/service"
 	"github.com/openziti/edge/rest_server/operations/service_edge_router_policy"
@@ -60,7 +61,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/well_known"
 )
 
-//go:generate swagger generate server --target ../../edge --name ZitiEdge --spec ../specs/swagger.yml --model-package rest_model --server-package rest_server --exclude-main
+//go:generate swagger generate server --target ../../edge --name ZitiEdge --spec ../specs/swagger.yml --model-package rest_model --server-package rest_server --principal interface{} --exclude-main
 
 func configureFlags(api *operations.ZitiEdgeAPI) {
 	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
@@ -75,6 +76,10 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	//
 	// Example:
 	// api.Logger = log.Printf
+
+	api.UseSwaggerUI()
+	// To continue using redoc as your UI, uncomment the following line
+	// api.UseRedoc()
 
 	api.ApplicationPkcs10Consumer = runtime.ConsumerFunc(func(r io.Reader, target interface{}) error {
 		return errors.NotImplemented("applicationPkcs10 consumer has not yet been implemented")
@@ -174,6 +179,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.CreateIdentity has not yet been implemented")
 		})
 	}
+	if api.PostureChecksCreatePostureCheckHandler == nil {
+		api.PostureChecksCreatePostureCheckHandler = posture_checks.CreatePostureCheckHandlerFunc(func(params posture_checks.CreatePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureCheck has not yet been implemented")
+		})
+	}
 	if api.ServiceCreateServiceHandler == nil {
 		api.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
@@ -247,6 +257,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityDeleteIdentityHandler == nil {
 		api.IdentityDeleteIdentityHandler = identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DeleteIdentity has not yet been implemented")
+		})
+	}
+	if api.PostureChecksDeletePostureCheckHandler == nil {
+		api.PostureChecksDeletePostureCheckHandler = posture_checks.DeletePostureCheckHandlerFunc(func(params posture_checks.DeletePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DeletePostureCheck has not yet been implemented")
 		})
 	}
 	if api.ServiceDeleteServiceHandler == nil {
@@ -337,6 +352,16 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityDetailIdentityTypeHandler == nil {
 		api.IdentityDetailIdentityTypeHandler = identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DetailIdentityType has not yet been implemented")
+		})
+	}
+	if api.PostureChecksDetailPostureCheckHandler == nil {
+		api.PostureChecksDetailPostureCheckHandler = posture_checks.DetailPostureCheckHandlerFunc(func(params posture_checks.DetailPostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DetailPostureCheck has not yet been implemented")
+		})
+	}
+	if api.PostureChecksDetailPostureCheckTypeHandler == nil {
+		api.PostureChecksDetailPostureCheckTypeHandler = posture_checks.DetailPostureCheckTypeHandlerFunc(func(params posture_checks.DetailPostureCheckTypeParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DetailPostureCheckType has not yet been implemented")
 		})
 	}
 	if api.ServiceDetailServiceHandler == nil {
@@ -437,6 +462,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityGetIdentityPolicyAdviceHandler == nil {
 		api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
+		})
+	}
+	if api.GetIdentityPostureDataHandler == nil {
+		api.GetIdentityPostureDataHandler = operations.GetIdentityPostureDataHandlerFunc(func(params operations.GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation operations.GetIdentityPostureData has not yet been implemented")
 		})
 	}
 	if api.APISessionListAPISessionsHandler == nil {
@@ -567,6 +597,16 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityListIdentitysServiceConfigsHandler == nil {
 		api.IdentityListIdentitysServiceConfigsHandler = identity.ListIdentitysServiceConfigsHandlerFunc(func(params identity.ListIdentitysServiceConfigsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.ListIdentitysServiceConfigs has not yet been implemented")
+		})
+	}
+	if api.PostureChecksListPostureCheckTypesHandler == nil {
+		api.PostureChecksListPostureCheckTypesHandler = posture_checks.ListPostureCheckTypesHandlerFunc(func(params posture_checks.ListPostureCheckTypesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.ListPostureCheckTypes has not yet been implemented")
+		})
+	}
+	if api.PostureChecksListPostureChecksHandler == nil {
+		api.PostureChecksListPostureChecksHandler = posture_checks.ListPostureChecksHandlerFunc(func(params posture_checks.ListPostureChecksParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.ListPostureChecks has not yet been implemented")
 		})
 	}
 	if api.InformationalListRootHandler == nil {
@@ -719,6 +759,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.PatchIdentity has not yet been implemented")
 		})
 	}
+	if api.PostureChecksPatchPostureCheckHandler == nil {
+		api.PostureChecksPatchPostureCheckHandler = posture_checks.PatchPostureCheckHandlerFunc(func(params posture_checks.PatchPostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.PatchPostureCheck has not yet been implemented")
+		})
+	}
 	if api.ServicePatchServiceHandler == nil {
 		api.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
@@ -782,6 +827,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityUpdateIdentityHandler == nil {
 		api.IdentityUpdateIdentityHandler = identity.UpdateIdentityHandlerFunc(func(params identity.UpdateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.UpdateIdentity has not yet been implemented")
+		})
+	}
+	if api.PostureChecksUpdatePostureCheckHandler == nil {
+		api.PostureChecksUpdatePostureCheckHandler = posture_checks.UpdatePostureCheckHandlerFunc(func(params posture_checks.UpdatePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.UpdatePostureCheck has not yet been implemented")
 		})
 	}
 	if api.ServiceUpdateServiceHandler == nil {

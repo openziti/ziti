@@ -54,6 +54,14 @@ type ServicePolicyDetail struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// posture check roles
+	// Required: true
+	PostureCheckRoles Roles `json:"postureCheckRoles"`
+
+	// posture check roles display
+	// Required: true
+	PostureCheckRolesDisplay NamedRoles `json:"postureCheckRolesDisplay"`
+
 	// semantic
 	// Required: true
 	Semantic Semantic `json:"semantic"`
@@ -88,6 +96,10 @@ func (m *ServicePolicyDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
+		PostureCheckRoles Roles `json:"postureCheckRoles"`
+
+		PostureCheckRolesDisplay NamedRoles `json:"postureCheckRolesDisplay"`
+
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
@@ -105,6 +117,10 @@ func (m *ServicePolicyDetail) UnmarshalJSON(raw []byte) error {
 	m.IdentityRolesDisplay = dataAO1.IdentityRolesDisplay
 
 	m.Name = dataAO1.Name
+
+	m.PostureCheckRoles = dataAO1.PostureCheckRoles
+
+	m.PostureCheckRolesDisplay = dataAO1.PostureCheckRolesDisplay
 
 	m.Semantic = dataAO1.Semantic
 
@@ -133,6 +149,10 @@ func (m ServicePolicyDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
+		PostureCheckRoles Roles `json:"postureCheckRoles"`
+
+		PostureCheckRolesDisplay NamedRoles `json:"postureCheckRolesDisplay"`
+
 		Semantic Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
@@ -147,6 +167,10 @@ func (m ServicePolicyDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IdentityRolesDisplay = m.IdentityRolesDisplay
 
 	dataAO1.Name = m.Name
+
+	dataAO1.PostureCheckRoles = m.PostureCheckRoles
+
+	dataAO1.PostureCheckRolesDisplay = m.PostureCheckRolesDisplay
 
 	dataAO1.Semantic = m.Semantic
 
@@ -182,6 +206,14 @@ func (m *ServicePolicyDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePostureCheckRoles(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePostureCheckRolesDisplay(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -242,6 +274,38 @@ func (m *ServicePolicyDetail) validateIdentityRolesDisplay(formats strfmt.Regist
 func (m *ServicePolicyDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) validatePostureCheckRoles(formats strfmt.Registry) error {
+
+	if err := validate.Required("postureCheckRoles", "body", m.PostureCheckRoles); err != nil {
+		return err
+	}
+
+	if err := m.PostureCheckRoles.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) validatePostureCheckRolesDisplay(formats strfmt.Registry) error {
+
+	if err := validate.Required("postureCheckRolesDisplay", "body", m.PostureCheckRolesDisplay); err != nil {
+		return err
+	}
+
+	if err := m.PostureCheckRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRolesDisplay")
+		}
 		return err
 	}
 
