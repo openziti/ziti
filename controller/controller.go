@@ -122,7 +122,9 @@ func (c *Controller) Run() error {
 	/* */
 
 	// event handlers
-	events.WireEventHandlers()
+	if err := events.WireEventHandlers(); err != nil {
+		panic(err)
+	}
 
 	c.network.Run()
 
