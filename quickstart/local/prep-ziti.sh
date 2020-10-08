@@ -18,5 +18,21 @@ ziti-fabric create router "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/cert
 ziti-fabric create router "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_BLUE_HOSTNAME}-client.cert"
 ziti-fabric create router "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_ROUTER_RED_HOSTNAME}-client.cert"
 
+echo "---------- Creating  edge-router ${ZITI_EDGE_ROUTER_NAME}...."
 ziti edge controller create edge-router "${ZITI_EDGE_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
+    echo "--- DONE"
+    echo ""
+
+echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_NAME}...."
 ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.jwt"
+    echo "--- DONE"
+    echo ""
+
+echo "---------- Creating  edge-router ${ZITI_EDGE_WSS_ROUTER_NAME}...."
+ziti edge controller create edge-router "${ZITI_EDGE_WSS_ROUTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
+    echo "--- DONE"
+    echo ""
+echo "---------- Enrolling edge-router ${ZITI_EDGE_WSS_ROUTER_NAME}...."
+ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
+    echo "--- DONE"
+    echo ""

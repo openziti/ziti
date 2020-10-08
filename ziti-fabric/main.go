@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/openziti/foundation/transport/tls"
 	"github.com/openziti/foundation/transport/transwarp"
+	"github.com/openziti/foundation/transport/wss"
 	"github.com/openziti/ziti/ziti-fabric/subcmd"
 	_ "github.com/openziti/ziti/ziti-fabric/subcmd/trace"
 	"github.com/sirupsen/logrus"
@@ -35,6 +36,7 @@ func init() {
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
 	transport.AddAddressParser(transwarp.AddressParser{})
+	transport.AddAddressParser(wss.AddressParser{})
 }
 
 func main() {

@@ -1,3 +1,112 @@
+# Release 0.16.3
+
+## Breaking CLI Change
+  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT can be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt`. For now the --jwt flag is still accepted as well. 
+
+## Deprecations
+  * The `ziti-enroller` command is deprecated and will be removed in a future release. It will now display a DEPRECATION warning when it is run 
+
+## What's New
+  * [ziti#192 CAs default to 10yr expiration](https://github.com/openziti/ziti/issues/192)
+  * Allow specifying edge config file when using ziti-fabric-test loop2
+  * Add grouping data to streaming metrics, so values can be associated with their source metric  
+  * New WSS underlay to support Edge Router connections from Browser-based webapps using the ziti-sdk-js  
+  * [ziti#151 enroll subcommand w/out args should print help](https://github.com/openziti/ziti/issues/192)
+  * Fix processing of `--configTypes all` in `ziti edge list services`
+  * Addressable Terminators and the eXtensible Terminator Validation framework
+  * GO Edge SDK now respects Service.EncryptionRequired setting
+  * [fabric#133 Add Version Information To Hellos](https://github.com/openziti/fabric/issues/133)
+  * [edge#326 Nested Transaction Deadlock](https://github.com/openziti/edge/issues/326)
+
+# Config File Changes
+The following should be added to controller configuration files when using the Edge components:
+
+    terminator:
+      validators:
+        edge: edge
+        
+This config stanza enables validating edge terminators. If this stanza is not added, everything will continue to work, but different Edge identities will be allowed to bind to the same terminator identity, which is generally not a valid state.
+
+# SDK API changes
+The `Context.ListenWithOptions` method now takes a `ListenOptions` which are defined in the `ziti` package, instead of the `edge` package.
+
+There's a new `Context.DialWithOptions` method which takes a `DialOptions` struct.  
+
+## Addressable Terminators and Terminator Validation
+This release contains two new features related to terminators. The first allows you to connect to a subset of terminators for a service. The second allows developers to plugin validation for terminators with different validation logic per binding type.
+
+### Addressable Terminators
+Terminators define how network traffic for Ziti services exits the fabric and makes its way to the application providing/hosting the service. Each terminator for a service specifies the following:
+ 
+ 1. The router at which traffic terminates
+ 2. The binding, which specifies the Xgress component responsible for providing the connection to the hosting application
+ 3. The address, which the Xgress component can use to create or lookup the connection 
+ 
+ There are currently two kinds of termination. Router terminated services make outbound connections to the hosting applications. SDK hosted servers make inbound connections from the SDK to the router.
+      
+Now that Ziti supports multiple terminators we may want to be able to connect to a specific hosting application. This can be used to allow a service to cover many endpoints, each of which can be connected to individually. Some common use cases for this might be a peer-to-peer application, like a voip service, or a service like SSH covering multiple machines.
+
+What we don't want in these cases is to have to create a new service for each voip client or each new machine that we want to ssh to. 
+We also want to make sure that if an application is making multiple connections (and thus multiple terminators) for redundancy or load balancing purposes, that we can address the application, rather than an individual terminator. 
+
+To this end, terminators now have two new fields: 
+
+1. Identity - defines the name by which a terminator can be addressed (along with other terminators using the same identity)
+1. IdentitySecret - allows verifying that terminators using the same identity are from the same application.
+
+Notes
+ 
+1. Identity here may be related to the concept of the Edge Identity, but is not required to be.
+2. How IdentitySecret is used to validate a terminator is up to the terminator valiator for the binding. The edge has a terminator validator which uses the client's certs to ensure that all terminators for a given terminator identity belong to the same edge identity.  
+
+The identity allows the service to be addressed with that identity. 
+
+This can now be used in the fabric by prefixing the service name with the identity, separated by the `@` symbol. For example, if a service `ssh` has a terminator with identity `web-server`, it could be dialed using `web-server@ssh`. 
+
+The Edge SDK also supports dialing and binding using identity addressing. The `Context` type now supports a new `DialWithOptions` method, which can be used to specify an identity.
+
+    dialOptions := &ziti.DialOptions{
+        Identity:       "555-555-5555",
+        ConnectTimeout: 1 * time.Minute,
+    }
+    conn, err := app.context.DialWithOptions(app.service, dialOptions)
+
+`Context` already has a ListenWithOptions, and the `ListenOptions` now support providing an Identity. Users may also set a flag to automatically set the Identity to the edge identity's name. If an identity is provided, the IdentitySecret will automatically be calculated and passed in as well.
+
+    host.listener, err = host.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
+        Identity: "555-555-5555",
+    })
+
+or
+
+    host.listener, err = host.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
+        BindUsingEdgeIdentity: true,
+    })
+
+For non-Edge SDK terminators the identity can be provided on the command line when creating the terminator.
+
+#### Example
+There is a simple application in the sdk-golang repository `example/call` which shows how identity addressing can be used to implement something like a VoIP service.  
+
+### xvt (eXtensible Termrinator Validation)
+The fabric now supports pluggable validators for terminators. Validators implement the following interface:
+
+    type Validator interface {
+        Validate(tx *bbolt.Tx, terminator Terminator, create bool) error
+    }
+
+Validators can be registered with the controller on startup. For example, here is how the edge terminator validator is registered:
+
+	xtv.RegisterValidator("edge", env.NewEdgeTerminatorValidator(c.AppEnv))
+	
+Validators can then be tied to a binding in the config file:
+
+    terminator:
+      validators:
+        edge: edge
+
+In the example above, terminators with the binding `edge` will use the validator which was registered under the name `edge`. The binding is the key and the validator name is the value. 
+
 # Release 0.16.2
 
 * What's New

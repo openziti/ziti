@@ -18,6 +18,7 @@ package subcmd
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/common/version"
 	"github.com/openziti/ziti/ziti/agent"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
@@ -44,7 +45,7 @@ func run(cmd *cobra.Command, args []string) {
 		}
 
 		var c *controller.Controller
-		if c, err = controller.NewController(config); err != nil {
+		if c, err = controller.NewController(config,  version.GetCmdBuildInfo()); err != nil {
 			fmt.Printf("unable to create fabric controller %+v\n", err)
 			panic(err)
 		}

@@ -50,6 +50,10 @@ metrics:
     #url:                http://localhost:8086
     #database:           ziti
 
+terminator:
+  validators:
+    edge: edge
+
 # xctrl_example
 #
 #example:

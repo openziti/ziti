@@ -19,12 +19,13 @@ package loop2
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/openziti/fabric/router/xgress_transport"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -32,25 +33,41 @@ import (
 )
 
 func init() {
-	dialerCmd.Flags().StringVarP(&dialerCmdIdentity, "identity", "i", "default", ".ziti/identities.yml name")
-	dialerCmd.Flags().StringVarP(&dialerCmdEndpoint, "endpoint", "e", "tls:127.0.0.1:7001", "Endpoint address")
-	dialerCmd.Flags().BoolVarP(&dialerCmdDirect, "direct", "d", false, "Transmit direct (no ingress)")
-	dialerCmd.Flags().StringVarP(&dialerCmdService, "service", "s", "loop", "Service name for ingress")
-	loop2Cmd.AddCommand(dialerCmd)
+	dialerCmd := newDialerCmd()
+	loop2Cmd.AddCommand(dialerCmd.cmd)
 }
 
-var dialerCmd = &cobra.Command{
-	Use:   "dialer <scenarioFile>",
-	Short: "Start loop2 dialer",
-	Args:  cobra.ExactArgs(1),
-	Run:   dialer,
+type dialerCmd struct {
+	cmd            *cobra.Command
+	identity       string
+	endpoint       string
+	direct         bool
+	service        string
+	edgeConfigFile string
 }
-var dialerCmdIdentity string
-var dialerCmdEndpoint string
-var dialerCmdDirect bool
-var dialerCmdService string
 
-func dialer(_ *cobra.Command, args []string) {
+func newDialerCmd() *dialerCmd {
+	result := &dialerCmd{
+		cmd: &cobra.Command{
+			Use:   "dialer <scenarioFile>",
+			Short: "Start loop2 dialer",
+			Args:  cobra.ExactArgs(1),
+		},
+	}
+
+	result.cmd.Run = result.run
+
+	flags := result.cmd.Flags()
+	flags.StringVarP(&result.identity, "identity", "i", "default", ".ziti/identities.yml name")
+	flags.StringVarP(&result.endpoint, "endpoint", "e", "tls:127.0.0.1:7001", "Endpoint address")
+	flags.BoolVarP(&result.direct, "direct", "d", false, "Transmit direct (no ingress)")
+	flags.StringVarP(&result.service, "service", "s", "loop", "Service name for ingress")
+	flags.StringVarP(&result.edgeConfigFile, "config-file", "c", "", "Edge SDK config file")
+
+	return result
+}
+
+func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 
 	scenario, err := LoadScenario(args[0])
@@ -63,43 +80,17 @@ func dialer(_ *cobra.Command, args []string) {
 	for _, workload := range scenario.Workloads {
 		log.Infof("executing workload [%s] with concurrency [%d]", workload.Name, workload.Concurrency)
 
+		var conns []net.Conn
 		for i := 0; i < int(workload.Concurrency); i++ {
+			conns = append(conns, cmd.connect())
+		}
+
+		for i, conn := range conns {
 			name := fmt.Sprintf("%s:%d", workload.Name, i)
 			resultCh := make(chan *loop2_pb.Result, 1)
 			resultChs[name] = resultCh
 
 			go func() {
-				var conn net.Conn
-				if strings.HasPrefix(dialerCmdEndpoint, "edge:") {
-					context := ziti.NewContext()
-					service := strings.TrimPrefix(dialerCmdEndpoint, "edge:")
-					conn, err = context.Dial(service)
-					if err != nil {
-						panic(err)
-					}
-				} else {
-					endpoint, err := transport.ParseAddress(dialerCmdEndpoint)
-					if err != nil {
-						panic(err)
-					}
-
-					_, id, err := dotziti.LoadIdentity(dialerCmdIdentity)
-					if err != nil {
-						panic(err)
-					}
-
-					if dialerCmdDirect {
-						if conn, err = dialDirect(endpoint, id); err != nil {
-							panic(err)
-						}
-					} else {
-						serviceId := &identity.TokenId{Token: dialerCmdService}
-						if conn, err = dialIngress(endpoint, id, serviceId); err != nil {
-							panic(err)
-						}
-					}
-				}
-
 				workload := scenario.Workloads[0]
 				local := &loop2_pb.Test{
 					Name:            name,
@@ -160,6 +151,54 @@ func dialer(_ *cobra.Command, args []string) {
 	} else {
 		log.Info("success")
 	}
+}
+
+func (cmd *dialerCmd) connect() net.Conn {
+	log := pfxlog.Logger()
+
+	var conn net.Conn
+	var err error
+	if strings.HasPrefix(cmd.endpoint, "edge:") {
+
+		var context ziti.Context
+		if cmd.edgeConfigFile != "" {
+			zitiCfg, err := config.NewFromFile(cmd.edgeConfigFile)
+			if err != nil {
+				log.Fatalf("failed to load ziti configuration from %s: %v", cmd.edgeConfigFile, err)
+			}
+			context = ziti.NewContextWithConfig(zitiCfg)
+		} else {
+			context = ziti.NewContext()
+		}
+
+		service := strings.TrimPrefix(cmd.endpoint, "edge:")
+		conn, err = context.Dial(service)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		endpoint, err := transport.ParseAddress(cmd.endpoint)
+		if err != nil {
+			panic(err)
+		}
+
+		_, id, err := dotziti.LoadIdentity(cmd.identity)
+		if err != nil {
+			panic(err)
+		}
+
+		if cmd.direct {
+			if conn, err = dialDirect(endpoint, id); err != nil {
+				panic(err)
+			}
+		} else {
+			serviceId := &identity.TokenId{Token: cmd.service}
+			if conn, err = dialIngress(endpoint, id, serviceId); err != nil {
+				panic(err)
+			}
+		}
+	}
+	return conn
 }
 
 func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, error) {
