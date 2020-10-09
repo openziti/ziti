@@ -32,6 +32,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/controller/xtv"
+	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/profiler"
@@ -64,6 +65,8 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 	if err := c.loadXtvMappings(); err != nil {
 		return nil, err
 	}
+
+	c.loadEventHandlers()
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider); err == nil {
 		c.network = n
@@ -117,6 +120,11 @@ func (c *Controller) Run() error {
 	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
 	/* */
+
+	// event handlers
+	if err := events.WireEventHandlers(); err != nil {
+		panic(err)
+	}
 
 	c.network.Run()
 
@@ -190,6 +198,19 @@ func (c *Controller) loadXtvMappings() error {
 		}
 	}
 	return nil
+}
+
+func (c *Controller) loadEventHandlers() {
+
+	if e, ok := c.config.src["events"]; ok {
+		if em, ok := e.(map[interface{}]interface{}); ok {
+			for k, v := range em {
+				if handlerConfig, ok := v.(map[interface{}]interface{}); ok {
+					events.RegisterEventHandler(k, handlerConfig)
+				}
+			}
+		}
+	}
 }
 
 func (c *Controller) registerXts() {
