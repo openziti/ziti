@@ -57,6 +57,7 @@ type Controller struct {
 	policyEngine    runner.Runner
 	isLoaded        bool
 	initModulesOnce sync.Once
+	initialized     bool
 }
 
 const (
@@ -169,7 +170,13 @@ func (c *Controller) initializeAuthModules() {
 }
 
 func (c *Controller) Initialize() {
+	if !c.config.Enabled {
+		return
+	}
+
 	log := pfxlog.Logger()
+
+	log.Info("initializing edge")
 
 	//done before ae.InitPersistence()
 	c.initializeAuthModules()
@@ -203,10 +210,22 @@ func (c *Controller) Initialize() {
 	if err := xtv.InitializeMappings(); err != nil {
 		log.Fatalf("error initializing xtv: %+v", err)
 	}
+
+	c.initialized = true
 }
 
 func (c *Controller) Run() {
+	if !c.config.Enabled {
+		return
+	}
 	log := pfxlog.Logger()
+
+	if !c.initialized {
+		log.Panic("edge not initialized")
+	}
+
+
+	log.Info("starting edge")
 
 	//after InitPersistence
 	for _, rf := range env.GetRouters() {
@@ -306,14 +325,8 @@ func (c *Controller) Run() {
 	}()
 }
 
-func (c *Controller) InitAndRun() {
-	if !c.config.Enabled {
-		return
-	}
-	log := pfxlog.Logger()
-	log.Info("starting controller")
-
-	c.Initialize()
+// should be called as a go routine, blocks
+func (c *Controller) RunAndWait() {
 	c.Run()
 	c.waitForShutdown()
 }
