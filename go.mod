@@ -2,11 +2,13 @@ module github.com/openziti/edge
 
 go 1.14
 
-//replace github.com/openziti/foundation => ../foundation
+// replace github.com/openziti/foundation => ../foundation
 
-//replace github.com/openziti/fabric => ../fabric
+// replace github.com/openziti/fabric => ../fabric
 
-//replace github.com/openziti/sdk-golang => ../sdk-golang
+// replace github.com/openziti/sdk-golang => ../sdk-golang
+
+// replace github.com/kataras/go-events => ../go-events
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -26,7 +28,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/jessevdk/go-flags v1.4.0
-	github.com/kataras/go-events v0.0.3-0.20170604004442-17d67be645c3
+	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
 	github.com/mdlayher/netlink v1.1.0
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
 	github.com/miekg/dns v1.1.31

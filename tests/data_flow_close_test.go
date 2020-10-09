@@ -19,6 +19,8 @@
 package tests
 
 import (
+	"errors"
+	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/sdk-golang/ziti"
 	"io"
@@ -104,8 +106,13 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 		defer func() {
 			val := recover()
 			if val != nil {
-				err := val.(error)
-				errC <- err
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
 			}
 			close(errC)
 		}()
@@ -159,8 +166,13 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 		defer func() {
 			val := recover()
 			if val != nil {
-				err := val.(error)
-				errC <- err
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
 			}
 			close(errC)
 		}()
@@ -210,8 +222,13 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 		defer func() {
 			val := recover()
 			if val != nil {
-				err := val.(error)
-				errC <- err
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
 			}
 			close(errC)
 		}()
@@ -264,8 +281,13 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 		defer func() {
 			val := recover()
 			if val != nil {
-				err := val.(error)
-				errC <- err
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else if str, ok := val.(string); ok {
+					errC <- errors.New(str)
+				} else {
+					errC <- errors.New(fmt.Sprintf("%v", val))
+				}
 			}
 			close(errC)
 		}()

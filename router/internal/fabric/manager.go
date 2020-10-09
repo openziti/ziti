@@ -268,7 +268,7 @@ func (sm *StateManagerImpl) AddNetworkSessionRemovedListener(token string, callB
 	sm.AddListener(eventName, listener)
 
 	return func() {
-		sm.RemoveListener(eventName, listener)
+		go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
 	}
 }
 
@@ -280,7 +280,7 @@ func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack fun
 	sm.AddListener(eventName, listener)
 
 	return func() {
-		sm.RemoveListener(eventName, listener)
+		go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
 	}
 }
 
