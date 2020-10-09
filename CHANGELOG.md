@@ -1,3 +1,13 @@
+# Release 0.16.5
+
+## Breaking Changes
+
+## What's New
+  * fix [edge#336 Startup Race Condition](https://github.com/openziti/edge/issues/336)
+  * fix api-session and session deletes from ziti CLI
+  * update ziti-fabric-test loop3
+  * allow specifying policy semantic from CLI when creating policies  
+  
 # Release 0.16.4
 
 ## Breaking CLI Change
