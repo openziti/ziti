@@ -34,6 +34,7 @@ import (
 const (
 	svcPollRateFlag = "svcPollRate"
 	resolverCfgFlag = "resolver"
+	dnsSvcIpRangeFlag = "dnsSvcIpRange"
 )
 
 func init() {
@@ -42,6 +43,7 @@ func init() {
 	root.PersistentFlags().Uint(svcPollRateFlag, 15, "Set poll rate for service updates (seconds)")
 	root.PersistentFlags().StringP(resolverCfgFlag, "r", "udp://127.0.0.1:53", "Resolver configuration")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	root.PersistentFlags().StringP(dnsSvcIpRangeFlag, "d", "100.64.0.1/10", "cidr to use when assigning IPs to unresolvable intercept hostnames")
 
 	root.AddCommand(enrollment.NewEnrollCommand())
 }
@@ -96,13 +98,14 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		entities.ServerConfigV1,
 	}
 	rootPrivateContext := ziti.NewContextWithConfig(zitiCfg)
-	if err != nil {
-		log.Fatalf("failed to initialize Ziti SDK: %v", err)
-	}
 
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
 	resolverConfig := cmd.Flag("resolver").Value.String()
 	resolver = dns.NewResolver(resolverConfig)
+	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
+	err = intercept.SetDnsInterceptIpRange(dnsIpRange); if err != nil {
+		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
+	}
 
 	intercept.ServicePoller(rootPrivateContext, interceptor, resolver, time.Duration(svcPollRate)*time.Second)
 }
