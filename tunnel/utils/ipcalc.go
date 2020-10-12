@@ -27,7 +27,7 @@ func NextIP(lower, upper net.IP) (net.IP, error) {
 		return nil, err
 	}
 
-	for ip := lower; !ip.Equal(upper); incIP(ip) {
+	for ip := lower; !ip.Equal(upper); IncIP(ip) {
 		inUse := false
 		for _, usedAddr := range usedAddrs {
 			usedIP, _, _ := net.ParseCIDR(usedAddr.String())
@@ -44,7 +44,7 @@ func NextIP(lower, upper net.IP) (net.IP, error) {
 	return nil, nil
 }
 
-func incIP(ip net.IP) {
+func IncIP(ip net.IP) {
 	for i := len(ip) - 1; i >= 0; i-- {
 		ip[i]++
 		if ip[i] > 0 {
