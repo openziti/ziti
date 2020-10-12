@@ -3,6 +3,9 @@
 ## Breaking Changes
 
 ## What's New
+  * fix [edge#338 configurable IP range for DNS services](https://github.com/openziti/edge/issues/338)
+    The IP range for hostname-configured services defaults to 100.64/10, and can be changed with the
+    `-d` command-line option.
   * fix [edge#336 Startup Race Condition](https://github.com/openziti/edge/issues/336)
   * fix api-session and session deletes from ziti CLI
   * update ziti-fabric-test loop3
