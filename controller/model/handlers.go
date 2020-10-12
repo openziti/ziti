@@ -46,6 +46,7 @@ type Handlers struct {
 	Authenticator           *AuthenticatorHandler
 	Enrollment              *EnrollmentHandler
 	PostureCheck            *PostureCheckHandler
+	PostureCheckType        *PostureCheckTypeHandler
 }
 
 func InitHandlers(env Env) *Handlers {
@@ -74,6 +75,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.Session = NewSessionHandler(env)
 	handlers.TransitRouter = NewTransitRouterHandler(env)
 	handlers.PostureCheck = NewPostureCheckHandler(env)
+	handlers.PostureCheckType = NewPostureCheckTypeHandler(env)
 
 	return handlers
 }

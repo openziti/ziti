@@ -114,6 +114,11 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 	ae.Api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.getPolicyAdvice, params.HTTPRequest, params.ID, params.ServiceID, permissions.IsAdmin())
 	})
+
+	// posture data
+	ae.Api.IdentityGetIdentityPostureDataHandler = identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.getPostureData, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -277,4 +282,27 @@ func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCon
 
 	output := MapAdvisorServiceReachabilityToRestEntity(result)
 	rc.RespondWithOk(output, nil)
+}
+
+func (r *IdentityRouter) getPostureData(_ *env.AppEnv, rc *response.RequestContext) {
+	rc.RespondWithOk(map[string]interface{}{
+		"os": struct {
+			Type    string
+			Version string
+		}{
+			"Linux",
+			"4.19",
+		},
+		"domain": struct {
+			Name string
+		}{
+			"",
+		},
+		"mac": struct {
+			Addresses []string
+		}{
+			[]string{"39979133921d", "e031ca6cd289"},
+		},
+		"processes": []interface{}{},
+	}, nil)
 }

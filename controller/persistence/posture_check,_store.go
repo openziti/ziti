@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -24,37 +25,73 @@ import (
 
 const (
 	//Fields
-	FieldPostureCheckDescription               = "description"
+	FieldPostureCheckTypeId      = "typeId"
+	FieldPostureCheckVersion     = "version"
+	FieldPostureCheckDescription = "description"
 )
+
+var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
+	"OS":      newPostureCheckOperatingSystem,
+	"DOMAIN":  newPostureCheckWindowsDomain,
+	"PROCESS": newPostureCheckProcess,
+	"MAC":     newPostureCheckMacAddresses,
+}
+
+type newPostureCheckSubType func() PostureCheckSubType
+
+type PostureCheckSubType interface {
+	LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket)
+	SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket)
+}
+
+func newPostureCheck(typeId string) PostureCheckSubType {
+	if newChild, found := postureCheckSubTypeMap[typeId]; found {
+		return newChild()
+	}
+	return nil
+}
 
 type PostureCheck struct {
 	boltz.BaseExtEntity
-	Name                      string
-	Fingerprint               string
-	CertPem                   string
-	IsVerified                bool
-	VerificationToken         string
-	IsAutoPostureCheckEnrollmentEnabled bool
-	IsOttPostureCheckEnrollmentEnabled  bool
-	IsAuthEnabled             bool
-	IdentityRoles             []string
-	IdentityNameFormat        string
+	Name        string
+	TypeId      string
+	Description string
+	Version     int64
+	SubType     PostureCheckSubType
 }
 
 func (entity *PostureCheck) GetName() string {
 	return entity.Name
 }
 
-func (entity *PostureCheck) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheck) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.TypeId = bucket.GetStringOrError(FieldPostureCheckTypeId)
+	entity.Description = bucket.GetStringOrError(FieldPostureCheckDescription)
+	entity.Version = bucket.GetInt64WithDefault(FieldPostureCheckVersion, 0)
 
+	entity.SubType = newPostureCheck(entity.TypeId)
+	if entity.SubType == nil {
+		pfxlog.Logger().Panicf("cannot load unsupported posture check type [%v]", entity.TypeId)
+	}
 
+	childBucket := bucket.GetOrCreateBucket(entity.TypeId)
+
+	entity.SubType.LoadValues(store, childBucket)
 }
 
 func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
+	ctx.SetString(FieldPostureCheckTypeId, entity.TypeId)
+	ctx.SetString(FieldPostureCheckDescription, entity.Description)
+	ctx.SetInt64(FieldPostureCheckVersion, entity.Version)
+
+	childBucket := ctx.Bucket.GetOrCreateBucket(entity.TypeId)
+
+	entity.SubType.SetValues(ctx, childBucket)
+
 }
 
 func (entity *PostureCheck) GetEntityType() string {

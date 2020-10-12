@@ -38,6 +38,7 @@ const (
 	EntityTypeEnrollments               = "enrollments"
 	EntityTypeAuthenticators            = "authenticators"
 	EntityTypePostureChecks             = "postureChecks"
+	EntityTypePostureCheckTypes         = "postureCheckTypes"
 	EdgeBucket                          = "edge"
 
 	FieldName           = "name"

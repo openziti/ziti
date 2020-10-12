@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 11
+	CurrentDbVersion = 12
 	FieldVersion     = "version"
 )
 
@@ -100,6 +100,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		step.SetError(m.stores.EdgeRouterPolicy.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
 			log.WithError(err).Debugf("attempting to update session token index. Fixed? %v", fixed)
 		}))
+	}
+
+	if step.CurrentVersion < 12 {
+		m.addPostureCheckTypes(step)
 	}
 
 	// current version

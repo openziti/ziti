@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -51,7 +52,41 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 		BaseEntity: models.BaseEntity{
 			Tags: postureCheck.Tags(),
 		},
-		Name: stringz.OrEmpty(postureCheck.Name()),
+		Name:        stringz.OrEmpty(postureCheck.Name()),
+		TypeId:      string(postureCheck.TypeID()),
+		Description: stringz.OrEmpty(postureCheck.Description()),
+		Version:     1,
+	}
+
+	switch apiSubType := postureCheck.(type) {
+	case *rest_model.PostureCheckOperatingSystemCreate:
+		subType := &model.PostureCheckOperatingSystem{
+			OperatingSystems: []model.OperatingSystem{},
+		}
+
+		for _, os := range apiSubType.OperatingSystems {
+			subType.OperatingSystems = append(subType.OperatingSystems, model.OperatingSystem{
+				OsType:     string(os.Type),
+				OsVersions: os.Versions,
+			})
+		}
+		ret.SubType = subType
+
+	case *rest_model.PostureCheckDomainCreate:
+		ret.SubType = &model.PostureCheckWindowsDomains{
+			Domains: apiSubType.Domains,
+		}
+	case *rest_model.PostureCheckMacAddressCreate:
+		ret.SubType = &model.PostureCheckMacAddresses{
+			MacAddresses: apiSubType.MacAddresses,
+		}
+	case *rest_model.PostureCheckProcessCreate:
+		ret.SubType = &model.PostureCheckProcess{
+			OperatingSystem: string(apiSubType.Process.OsType),
+			Path:            *apiSubType.Process.Path,
+			Hashes:          apiSubType.Process.Hashes,
+			Fingerprint:     apiSubType.Process.SignerFingerprint,
+		}
 	}
 
 	return ret
@@ -103,5 +138,63 @@ func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 }
 
 func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckDetail, error) {
-	return nil, nil
+	var ret rest_model.PostureCheckDetail
+
+	switch subType := i.SubType.(type) {
+	case *model.PostureCheckOperatingSystem:
+		osArray := rest_model.OperatingSystemArray{}
+
+		for _, osMatch := range subType.OperatingSystems {
+			osArray = append(osArray, &rest_model.OperatingSystem{
+				Type:     rest_model.OsType(osMatch.OsType),
+				Versions: osMatch.OsVersions,
+			})
+		}
+
+		ret = &rest_model.PostureCheckOperatingSystemDetail{
+			OperatingSystems: osArray,
+		}
+
+		setBaseEntityDetailsOnPostureCheck(ret, i)
+
+	case *model.PostureCheckProcess:
+		processMatch := &rest_model.Process{
+			Hashes:            subType.Hashes,
+			OsType:            rest_model.OsType(subType.OperatingSystem),
+			Path:              &subType.Path,
+			SignerFingerprint: subType.Fingerprint,
+		}
+
+		ret = &rest_model.PostureCheckProcessDetail{
+			Process: processMatch,
+		}
+
+		setBaseEntityDetailsOnPostureCheck(ret, i)
+	case *model.PostureCheckWindowsDomains:
+		ret = &rest_model.PostureCheckDomainDetail{
+			Domains: subType.Domains,
+		}
+		setBaseEntityDetailsOnPostureCheck(ret, i)
+	case *model.PostureCheckMacAddresses:
+		ret = &rest_model.PostureCheckMacAddressDetail{
+			MacAddresses: subType.MacAddresses,
+		}
+		setBaseEntityDetailsOnPostureCheck(ret, i)
+	}
+
+	return ret, nil
+}
+
+func setBaseEntityDetailsOnPostureCheck(check rest_model.PostureCheckDetail, i *model.PostureCheck) {
+	createdAt := strfmt.DateTime(i.CreatedAt)
+	updatedAt := strfmt.DateTime(i.UpdatedAt)
+	check.SetCreatedAt(&createdAt)
+	check.SetUpdatedAt(&updatedAt)
+	check.SetTags(i.Tags)
+	check.SetID(&i.Id)
+	check.SetLinks(PostureCheckLinkFactory.Links(i))
+	check.SetDescription(&i.Description)
+	check.SetName(&i.Name)
+	check.SetTypeID(i.TypeId)
+	check.SetVersion(&i.Version)
 }
