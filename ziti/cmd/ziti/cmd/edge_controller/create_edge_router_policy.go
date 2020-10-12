@@ -31,6 +31,7 @@ type createEdgeRouterPolicyOptions struct {
 	commonOptions
 	edgeRouterRoles []string
 	identityRoles   []string
+	semantic        string
 }
 
 // newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
@@ -59,6 +60,7 @@ func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the new edge router policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new edge router policy")
+	cmd.Flags().StringVar(&options.semantic, "semantic", "", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -80,6 +82,10 @@ func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
 	setJSONValue(entityData, identityRoles, "identityRoles")
+	if o.semantic != "" {
+		setJSONValue(entityData, o.semantic, "semantic")
+	}
+
 	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {

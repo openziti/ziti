@@ -1,3 +1,91 @@
+# Release 0.16.5
+
+## Breaking Changes
+
+## What's New
+  * fix [edge#336 Startup Race Condition](https://github.com/openziti/edge/issues/336)
+  * fix api-session and session deletes from ziti CLI
+  * update ziti-fabric-test loop3
+  * allow specifying policy semantic from CLI when creating policies
+  * new eventing features
+
+## Event Changes
+### Event Configuration  
+Handlers can now be configured for events via the config file. Here is an example configuration:
+
+    events:
+        jsonLogger:
+            subscriptions:
+                - type: metrics
+                  sourceFilter: .*
+                  metricFilter: .*egress.*m1_rate*
+                - type: fabric.sessions
+                  include:
+                    - created
+                - type: edge.sessions
+                  include:
+                    - created
+                - type: fabric.usage
+            handler:
+                type: file
+                format: json
+                path: /tmp/ziti-events.log
+                
+Each section can include any number of event subscriptions and a single handler. The supported event types are:
+
+* metrics
+* fabric.sessions
+* fabric.usage
+* edge.sessions
+
+### Event Handlers
+There are two new handlers which can be used to output events. 
+
+#### File Handler
+Sends events to disk. Supported options:
+
+* type: file
+* format: json|plain
+* path: Path to the target file
+* bufferSize: size of event queue. When this fills up, processes submitting events will block
+* maxsizemb: max size of the file before it gets rolled. default is 10MB
+* maxbackups: max number of rolling files to keep. default is 0 (keeps all)
+
+#### Stdout Handler
+Sends events to stdout. Supported options:
+
+* type: stdout
+* format: json|plain
+* bufferSize: size of event queue. When this fills up, processes submitting events will block
+
+### Usage Events
+There is a new Usage event type which has been derived from the metrics events. This allows handlers to see discrete usage events, rather than a collection of them.
+
+The Usage event looks like:
+
+    type UsageEvent struct {
+        Namespace        string `json:"namespace"`
+        EventType        string `json:"event_type"`
+        SourceId         string `json:"source_id"`
+        SessionId        string `json:"session_id"`
+        Usage            uint64 `json:"usage"`
+        IntervalStartUTC int64  `json:"interval_start_utc"`
+        IntervalLength   uint64 `json:"interval_length"`
+    }
+
+### Metrics Events
+Metrics events can now be filtered. Metrics events processed through the new event framework no longer sending metrics messages directly. Rather, a flattened (and more easily filterable) event type is provided. The new event type looks like: 
+
+    type MetricsEvent struct {
+        Namespace    string
+        SourceId     string
+        Timestamp    *timestamp.Timestamp
+        Tags         map[string]string
+        IntMetrics   map[string]int64
+        FloatMetrics map[string]float64
+        MetricGroup  map[string]string
+    }
+
 # Release 0.16.4
 
 ## Breaking CLI Change
