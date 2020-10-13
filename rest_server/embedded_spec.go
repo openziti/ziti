@@ -4878,6 +4878,9 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -4891,10 +4894,10 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type",
         "typeId",
         "description",
         "version",
+        "roleAttributes",
         "id",
         "createdAt",
         "updatedAt",
@@ -4918,11 +4921,11 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
-        },
-        "type": {
-          "type": "string"
         },
         "typeId": {
           "type": "string"
@@ -5203,6 +5206,9 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -5326,6 +5332,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -7997,7 +8006,8 @@ func init() {
     "serviceCreate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "encryptionRequired"
       ],
       "properties": {
         "configs": {
@@ -22192,6 +22202,9 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -22205,10 +22218,10 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type",
         "typeId",
         "description",
         "version",
+        "roleAttributes",
         "id",
         "createdAt",
         "updatedAt",
@@ -22232,11 +22245,11 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
-        },
-        "type": {
-          "type": "string"
         },
         "typeId": {
           "type": "string"
@@ -22517,6 +22530,9 @@ func init() {
         "name": {
           "type": "string"
         },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -22640,6 +22656,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "roleAttributes": {
+          "$ref": "#/definitions/attributes"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -25311,7 +25330,8 @@ func init() {
     "serviceCreate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "encryptionRequired"
       ],
       "properties": {
         "configs": {

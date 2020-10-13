@@ -47,6 +47,8 @@ type PostureCheckMacAddressCreate struct {
 
 	nameField *string
 
+	roleAttributesField Attributes
+
 	tagsField Tags
 
 	// mac addresses
@@ -73,6 +75,16 @@ func (m *PostureCheckMacAddressCreate) Name() *string {
 // SetName sets the name of this subtype
 func (m *PostureCheckMacAddressCreate) SetName(val *string) {
 	m.nameField = val
+}
+
+// RoleAttributes gets the role attributes of this subtype
+func (m *PostureCheckMacAddressCreate) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this subtype
+func (m *PostureCheckMacAddressCreate) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this subtype
@@ -118,6 +130,8 @@ func (m *PostureCheckMacAddressCreate) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
+		RoleAttributes Attributes `json:"roleAttributes"`
+
 		Tags Tags `json:"tags"`
 
 		TypeID PostureCheckType `json:"typeId"`
@@ -135,6 +149,8 @@ func (m *PostureCheckMacAddressCreate) UnmarshalJSON(raw []byte) error {
 	result.descriptionField = base.Description
 
 	result.nameField = base.Name
+
+	result.roleAttributesField = base.RoleAttributes
 
 	result.tagsField = base.Tags
 
@@ -172,6 +188,8 @@ func (m PostureCheckMacAddressCreate) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
+		RoleAttributes Attributes `json:"roleAttributes"`
+
 		Tags Tags `json:"tags"`
 
 		TypeID PostureCheckType `json:"typeId"`
@@ -180,6 +198,8 @@ func (m PostureCheckMacAddressCreate) MarshalJSON() ([]byte, error) {
 		Description: m.Description(),
 
 		Name: m.Name(),
+
+		RoleAttributes: m.RoleAttributes(),
 
 		Tags: m.Tags(),
 
@@ -201,6 +221,10 @@ func (m *PostureCheckMacAddressCreate) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRoleAttributes(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -230,6 +254,22 @@ func (m *PostureCheckMacAddressCreate) validateDescription(formats strfmt.Regist
 func (m *PostureCheckMacAddressCreate) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressCreate) validateRoleAttributes(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.RoleAttributes()) { // not required
+		return nil
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
 		return err
 	}
 

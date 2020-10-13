@@ -28,11 +28,12 @@ import (
 
 type PostureCheck struct {
 	models.BaseEntity
-	Name        string
-	TypeId      string
-	Description string
-	Version     int64
-	SubType     PostureCheckSubType
+	Name           string
+	TypeId         string
+	Description    string
+	Version        int64
+	RoleAttributes []string
+	SubType        PostureCheckSubType
 }
 
 type PostureCheckSubType interface {
@@ -68,6 +69,7 @@ func (entity *PostureCheck) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity b
 	entity.TypeId = boltPostureCheck.TypeId
 	entity.Description = boltPostureCheck.Description
 	entity.Version = boltPostureCheck.Version
+	entity.RoleAttributes = boltPostureCheck.RoleAttributes
 
 	subType := newSubType(entity.TypeId)
 
@@ -86,11 +88,12 @@ func (entity *PostureCheck) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity b
 
 func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.PostureCheck{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:          entity.Name,
-		TypeId:        entity.TypeId,
-		Description:   entity.Description,
-		Version:       1,
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:           entity.Name,
+		TypeId:         entity.TypeId,
+		Description:    entity.Description,
+		Version:        1,
+		RoleAttributes: entity.RoleAttributes,
 	}
 
 	var err error

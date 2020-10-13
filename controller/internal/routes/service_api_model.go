@@ -61,7 +61,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 		TerminatorStrategy: service.TerminatorStrategy,
 		RoleAttributes:     service.RoleAttributes,
 		Configs:            service.Configs,
-		EncryptionRequired: service.EncryptionRequired,
+		EncryptionRequired: *service.EncryptionRequired,
 	}
 
 	return ret

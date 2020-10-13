@@ -39,11 +39,12 @@ func newServicePolicy(name string) *ServicePolicy {
 
 type ServicePolicy struct {
 	boltz.BaseExtEntity
-	PolicyType    int32
-	Name          string
-	Semantic      string
-	IdentityRoles []string
-	ServiceRoles  []string
+	PolicyType        int32
+	Name              string
+	Semantic          string
+	IdentityRoles     []string
+	ServiceRoles      []string
+	PostureCheckRoles []string
 }
 
 func (entity *ServicePolicy) GetName() string {
@@ -61,6 +62,7 @@ func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 	entity.ServiceRoles = bucket.GetStringList(FieldServiceRoles)
+	entity.PostureCheckRoles = bucket.GetStringList(FieldPostureCheckRoles)
 }
 
 func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
@@ -78,6 +80,10 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	if err := validateRolesAndIds(FieldServiceRoles, entity.ServiceRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
+	if err := validateRolesAndIds(FieldPostureCheckRoles, entity.PostureCheckRoles); err != nil {
 		ctx.Bucket.SetError(err)
 	}
 
@@ -99,9 +105,15 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
 		servicePolicyStore.identityRolesUpdated(ctx, entity)
 	}
+
 	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
 	if valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
 		servicePolicyStore.serviceRolesUpdated(ctx, entity)
+	}
+
+	oldPostureCheckRoles, valueSet := ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
+	if valueSet && !stringz.EqualSlices(oldPostureCheckRoles, entity.PostureCheckRoles) {
+		servicePolicyStore.postureCheckRolesUpdated(ctx, entity)
 	}
 }
 
@@ -147,9 +159,11 @@ type servicePolicyStoreImpl struct {
 	symbolServiceRoles  boltz.EntitySetSymbol
 	symbolIdentities    boltz.EntitySetSymbol
 	symbolServices      boltz.EntitySetSymbol
+	symbolPostureChecks boltz.EntitySetSymbol
 
-	identityCollection boltz.LinkCollection
-	serviceCollection  boltz.LinkCollection
+	identityCollection     boltz.LinkCollection
+	serviceCollection      boltz.LinkCollection
+	postureCheckCollection boltz.LinkCollection
 }
 
 func (store *servicePolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -170,11 +184,13 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
+	store.symbolPostureChecks = store.AddFkSetSymbol(EntityTypePostureChecks, store.stores.postureCheck)
 }
 
 func (store *servicePolicyStoreImpl) initializeLinked() {
 	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolServicePolicies)
 	store.identityCollection = store.AddLinkCollection(store.symbolIdentities, store.stores.identity.symbolServicePolicies)
+	store.postureCheckCollection = store.AddLinkCollection(store.symbolPostureChecks, store.stores.postureCheck.symbolServicePolicies)
 }
 
 func (store *servicePolicyStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
@@ -232,6 +248,24 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+}
+
+func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    persistCtx.Bucket.Tx(),
+		rolesSymbol:           store.symbolPostureChecks,
+		linkCollection:        store.postureCheckCollection,
+		relatedLinkCollection: store.serviceCollection,
+		ErrorHolder:           persistCtx.Bucket,
+	}
+
+	if policy.PolicyType == PolicyTypeDial {
+		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+	} else {
+		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+	}
+
+	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

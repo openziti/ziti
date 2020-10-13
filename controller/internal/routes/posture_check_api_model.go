@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"strings"
 )
 
 const EntityNamePostureCheck = "posture-checks"
@@ -52,10 +53,11 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 		BaseEntity: models.BaseEntity{
 			Tags: postureCheck.Tags(),
 		},
-		Name:        stringz.OrEmpty(postureCheck.Name()),
-		TypeId:      string(postureCheck.TypeID()),
-		Description: stringz.OrEmpty(postureCheck.Description()),
-		Version:     1,
+		Name:           stringz.OrEmpty(postureCheck.Name()),
+		TypeId:         string(postureCheck.TypeID()),
+		Description:    stringz.OrEmpty(postureCheck.Description()),
+		Version:        1,
+		RoleAttributes: postureCheck.RoleAttributes(),
 	}
 
 	switch apiSubType := postureCheck.(type) {
@@ -98,7 +100,8 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			Tags: postureCheck.Tags(),
 			Id:   id,
 		},
-		Name: stringz.OrEmpty(postureCheck.Name()),
+		Name:           stringz.OrEmpty(postureCheck.Name()),
+		RoleAttributes: postureCheck.RoleAttributes(),
 	}
 
 	return ret
@@ -110,7 +113,8 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 			Tags: postureCheck.Tags(),
 			Id:   id,
 		},
-		Name: postureCheck.Name(),
+		Name:           postureCheck.Name(),
+		RoleAttributes: postureCheck.RoleAttributes(),
 	}
 
 	return ret
@@ -197,4 +201,30 @@ func setBaseEntityDetailsOnPostureCheck(check rest_model.PostureCheckDetail, i *
 	check.SetName(&i.Name)
 	check.SetTypeID(i.TypeId)
 	check.SetVersion(&i.Version)
+	check.SetRoleAttributes(i.RoleAttributes)
+}
+
+func GetNamedPostureCheckRoles(postureCheckHandler *model.PostureCheckHandler, roles []string) rest_model.NamedRoles {
+	result := rest_model.NamedRoles{}
+	for _, role := range roles {
+		if strings.HasPrefix(role, "@") {
+
+			postureCheck, err := postureCheckHandler.Read(role[1:])
+			if err != nil {
+				pfxlog.Logger().Errorf("error converting posture check role [%s] to a named role: %v", role, err)
+				continue
+			}
+
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: "@" + postureCheck.Name,
+			})
+		} else {
+			result = append(result, &rest_model.NamedRole{
+				Role: role,
+				Name: role,
+			})
+		}
+	}
+	return result
 }

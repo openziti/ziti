@@ -45,9 +45,10 @@ const (
 	FieldSemantic       = "semantic"
 	FieldRoleAttributes = "roleAttributes"
 
-	FieldEdgeRouterRoles = "edgeRouterRoles"
-	FieldIdentityRoles   = "identityRoles"
-	FieldServiceRoles    = "serviceRoles"
+	FieldEdgeRouterRoles   = "edgeRouterRoles"
+	FieldIdentityRoles     = "identityRoles"
+	FieldServiceRoles      = "serviceRoles"
+	FieldPostureCheckRoles = "postureCheckRoles"
 
 	SemanticAllOf = "AllOf"
 	SemanticAnyOf = "AnyOf"

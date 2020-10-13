@@ -4925,6 +4925,7 @@ definitions:
     type: object
     required:
       - name
+      - encryptionRequired
     properties:
       name:
         type: string
@@ -6213,10 +6214,10 @@ definitions:
     # see https://github.com/go-swagger/go-swagger/issues/2413
     required:
       - name
-      - type
       - typeId
       - description
       - version
+      - roleAttributes
       - id
       - createdAt
       - updatedAt
@@ -6225,14 +6226,14 @@ definitions:
     properties:
       name:
         type: string
-      type:
-        type: string
       typeId:
         type: string
       description:
         type: string
       version:
         type: integer
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       id:
         type: string
       createdAt:
@@ -6259,6 +6260,8 @@ definitions:
         $ref: '#/definitions/postureCheckType'
       description:
         type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
   PostureCheckUpdate:
@@ -6274,6 +6277,8 @@ definitions:
         $ref: '#/definitions/postureCheckType'
       description:
         type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
   PostureCheckPatch:
@@ -6284,6 +6289,8 @@ definitions:
         type: string
       description:
         type: string
+      roleAttributes:
+        $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
 

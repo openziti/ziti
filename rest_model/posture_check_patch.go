@@ -56,6 +56,10 @@ type PostureCheckPatch interface {
 	Name() string
 	SetName(string)
 
+	// role attributes
+	RoleAttributes() Attributes
+	SetRoleAttributes(Attributes)
+
 	// tags
 	Tags() Tags
 	SetTags(Tags)
@@ -68,6 +72,8 @@ type postureCheckPatch struct {
 	descriptionField string
 
 	nameField string
+
+	roleAttributesField Attributes
 
 	tagsField Tags
 }
@@ -90,6 +96,16 @@ func (m *postureCheckPatch) Name() string {
 // SetName sets the name of this polymorphic type
 func (m *postureCheckPatch) SetName(val string) {
 	m.nameField = val
+}
+
+// RoleAttributes gets the role attributes of this polymorphic type
+func (m *postureCheckPatch) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this polymorphic type
+func (m *postureCheckPatch) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this polymorphic type
@@ -186,6 +202,10 @@ func unmarshalPostureCheckPatch(data []byte, consumer runtime.Consumer) (Posture
 func (m *postureCheckPatch) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateRoleAttributes(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
@@ -193,6 +213,22 @@ func (m *postureCheckPatch) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *postureCheckPatch) validateRoleAttributes(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.RoleAttributes()) { // not required
+		return nil
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
 	return nil
 }
 

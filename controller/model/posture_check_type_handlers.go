@@ -16,10 +16,6 @@
 
 package model
 
-import (
-	"github.com/openziti/foundation/storage/boltz"
-)
-
 func NewPostureCheckTypeHandler(env Env) *PostureCheckTypeHandler {
 	handler := &PostureCheckTypeHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().PostureCheckType),
@@ -45,29 +41,6 @@ func (handler *PostureCheckTypeHandler) Read(id string) (*PostureCheckType, erro
 	if err := handler.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
-	return modelEntity, nil
-}
-
-func (handler *PostureCheckTypeHandler) ReadByIdOrName(idOrName string) (*PostureCheckType, error) {
-	modelEntity := &PostureCheckType{}
-	err := handler.readEntity(idOrName, modelEntity)
-
-	if err == nil {
-		return modelEntity, nil
-	}
-
-	if !boltz.IsErrNotFoundErr(err) {
-		return nil, err
-	}
-
-	if modelEntity.Id == "" {
-		modelEntity, err = handler.ReadByName(idOrName)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
 	return modelEntity, nil
 }
 

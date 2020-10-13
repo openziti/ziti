@@ -27,7 +27,7 @@ import (
 
 type PostureCheckType struct {
 	models.BaseEntity
-	Name             string `json:"name"`
+	Name             string
 	OperatingSystems []OperatingSystem
 }
 

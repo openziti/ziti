@@ -538,6 +538,7 @@ func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 		terminatorStrategy: xt_smartrouting.Name,
 		roleAttributes:     roleAttributes,
 		configs:            configs,
+		encryptionRequired: false,
 		tags:               nil,
 	}
 }

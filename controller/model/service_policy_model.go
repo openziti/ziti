@@ -30,11 +30,12 @@ import (
 
 type ServicePolicy struct {
 	models.BaseEntity
-	Name          string
-	PolicyType    string
-	Semantic      string
-	IdentityRoles []string
-	ServiceRoles  []string
+	Name              string
+	PolicyType        string
+	Semantic          string
+	IdentityRoles     []string
+	ServiceRoles      []string
+	PostureCheckRoles []string
 }
 
 func (entity *ServicePolicy) validatePolicyType() error {
@@ -54,12 +55,13 @@ func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
 	}
 
 	return &persistence.ServicePolicy{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:          entity.Name,
-		PolicyType:    policyType,
-		Semantic:      entity.Semantic,
-		IdentityRoles: entity.IdentityRoles,
-		ServiceRoles:  entity.ServiceRoles,
+		BaseExtEntity:     *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:              entity.Name,
+		PolicyType:        policyType,
+		Semantic:          entity.Semantic,
+		IdentityRoles:     entity.IdentityRoles,
+		ServiceRoles:      entity.ServiceRoles,
+		PostureCheckRoles: entity.PostureCheckRoles,
 	}, nil
 }
 
@@ -94,5 +96,6 @@ func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.E
 	entity.Semantic = boltServicePolicy.Semantic
 	entity.ServiceRoles = boltServicePolicy.ServiceRoles
 	entity.IdentityRoles = boltServicePolicy.IdentityRoles
+	entity.PostureCheckRoles = boltServicePolicy.PostureCheckRoles
 	return nil
 }

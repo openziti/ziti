@@ -52,6 +52,7 @@ type service struct {
 	configs            []string
 	permissions        []string
 	tags               map[string]interface{}
+	encryptionRequired bool
 }
 
 func (entity *service) getId() string {
@@ -72,6 +73,7 @@ func (entity *service) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.setJsonValue(entityData, entity.terminatorStrategy, "terminatorStrategy")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
 	ctx.setJsonValue(entityData, entity.configs, "configs")
+	ctx.setJsonValue(entityData, entity.encryptionRequired, "encryptionRequired")
 
 	if len(entity.tags) > 0 {
 		ctx.setJsonValue(entityData, entity.tags, "tags")

@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 )
 
@@ -53,11 +54,12 @@ func newPostureCheck(typeId string) PostureCheckSubType {
 
 type PostureCheck struct {
 	boltz.BaseExtEntity
-	Name        string
-	TypeId      string
-	Description string
-	Version     int64
-	SubType     PostureCheckSubType
+	Name           string
+	TypeId         string
+	Description    string
+	Version        int64
+	RoleAttributes []string
+	SubType        PostureCheckSubType
 }
 
 func (entity *PostureCheck) GetName() string {
@@ -70,6 +72,7 @@ func (entity *PostureCheck) LoadValues(store boltz.CrudStore, bucket *boltz.Type
 	entity.TypeId = bucket.GetStringOrError(FieldPostureCheckTypeId)
 	entity.Description = bucket.GetStringOrError(FieldPostureCheckDescription)
 	entity.Version = bucket.GetInt64WithDefault(FieldPostureCheckVersion, 0)
+	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 
 	entity.SubType = newPostureCheck(entity.TypeId)
 	if entity.SubType == nil {
@@ -87,11 +90,17 @@ func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldPostureCheckTypeId, entity.TypeId)
 	ctx.SetString(FieldPostureCheckDescription, entity.Description)
 	ctx.SetInt64(FieldPostureCheckVersion, entity.Version)
+	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
 	childBucket := ctx.Bucket.GetOrCreateBucket(entity.TypeId)
 
 	entity.SubType.SetValues(ctx, childBucket)
 
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
+	store := ctx.Store.(*postureCheckStoreImpl)
+	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
+		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+	}
 }
 
 func (entity *PostureCheck) GetEntityType() string {
@@ -103,6 +112,7 @@ type PostureCheckStore interface {
 	LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error)
 	LoadOneByName(tx *bbolt.Tx, id string) (*PostureCheck, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*PostureCheck, error)
+	GetRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
@@ -116,19 +126,39 @@ func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
 type postureCheckStoreImpl struct {
 	*baseStore
 	indexName boltz.ReadIndex
+
+	symbolServicePolicies boltz.EntitySymbol
+	symbolRoleAttributes  boltz.EntitySetSymbol
+	indexRoleAttributes   boltz.SetReadIndex
 }
 
 func (store *postureCheckStoreImpl) NewStoreEntity() boltz.Entity {
 	return &PostureCheck{}
 }
 
+func (store *postureCheckStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexRoleAttributes
+}
+
 func (store *postureCheckStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
 	store.AddSymbol(FieldPostureCheckDescription, ast.NodeTypeString)
+
+	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
+
+	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
+
+	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }
 
 func (store *postureCheckStoreImpl) initializeLinked() {
+	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolPostureChecks)
+}
+
+func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
 }
 
 func (store *postureCheckStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error) {
@@ -161,4 +191,15 @@ func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id strin
 
 func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
 	return store.baseStore.Update(ctx, entity, checker)
+}
+
+func (store *postureCheckStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+	ctx := &roleAttributeChangeContext{
+		tx:                    tx,
+		rolesSymbol:           store.stores.servicePolicy.symbolPostureChecks,
+		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
+		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
+		ErrorHolder:           holder,
+	}
+	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }
