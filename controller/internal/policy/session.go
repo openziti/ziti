@@ -57,7 +57,7 @@ func (s *SessionEnforcer) Run() error {
 	query := fmt.Sprintf("updatedAt < datetime(%s) limit %d", oldest.UTC().Format(time.RFC3339), maxDeletePerIteration)
 
 	for i := 0; i < maxIterations; i++ {
-		ids := make([]string, maxDeletePerIteration)
+		ids := make([]string, 0, maxDeletePerIteration)
 		err := s.appEnv.GetHandlers().ApiSession.StreamIds(query, func(id string, err error) error {
 			ids = append(ids, id)
 			return nil
