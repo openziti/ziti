@@ -1867,7 +1867,9 @@ paths:
         Returns a nested map data represeting the posture data of the identity.
         This data should be considered volatile.
       security:
-        - zgSession: [ ]
+        - ztSession: [ ]
+      tags:
+        - Identity
       operationId: getIdentityPostureData
       responses:
         '200':
@@ -3842,41 +3844,31 @@ definitions:
       - Android
       - iOS
       - Linux
-      - macOs
+      - macOS
   operatingSystem:
     type: object
     required:
       - type
-      - version
+      - versions
     properties:
       type:
         $ref: '#/definitions/osType'
-      version:
-        type: string
-  operatingSystemArray:
-    type: array
-    items:
-      $ref: '#/definitions/operatingSystem'
-  operatingSystemMatch:
-    type: object
-    required:
-      - type
-      - version
-    properties:
-      type:
-        $ref: '#/definitions/osType'
-      version:
+      versions:
         type: array
         items:
           type: string
-  operatingSystemMatchArray:
+  operatingSystemArray:
     type: array
+    minItems: 1
     items:
-      $ref: '#/definitions/operatingSystemMatch'
-  processMatch:
+      $ref: '#/definitions/operatingSystem'
+  process:
     type: object
+    required:
+      - osType
+      - path
     properties:
-      operatingSystemTypeId:
+      osType:
         $ref: '#/definitions/osType'
       path:
         type: string
@@ -6183,7 +6175,7 @@ definitions:
           name:
             type: string
           operatingSystems:
-            $ref: '#/definitions/operatingSystemMatchArray'
+            $ref: '#/definitions/operatingSystemArray'
           version:
             type: string
 
@@ -6216,24 +6208,43 @@ definitions:
       $ref: '#/definitions/PostureCheckDetail'
   PostureCheckDetail:
     type: object
-    allOf:
-      - $ref: '#/definitions/baseEntity'
-      - type: object
-        discriminator: typeId
-        required:
-          - name
-          - type
-          - typeId
-          - description
-        properties:
-          name:
-            type: string
-          type:
-            type: string
-          typeId:
-            type: string
-          description:
-            type: string
+    discriminator: typeId
+    # base is duped here due to a bug in go-swagger that will try to embed a struct in an interface
+    # see https://github.com/go-swagger/go-swagger/issues/2413
+    required:
+      - name
+      - type
+      - typeId
+      - description
+      - version
+      - id
+      - createdAt
+      - updatedAt
+      - _links
+      - tags
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+      typeId:
+        type: string
+      description:
+        type: string
+      version:
+        type: integer
+      id:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      _links:
+        $ref: '#/definitions/links'
+      tags:
+        $ref: '#/definitions/tags'
   PostureCheckCreate:
     type: object
     discriminator: typeId
@@ -6287,7 +6298,9 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemMatchArray'
+            $ref: '#/definitions/operatingSystemArray'
+    x-class: "OS"
+
   PostureCheckOperatingSystemCreate:
     allOf:
       - $ref: '#/definitions/PostureCheckCreate'
@@ -6296,7 +6309,8 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemMatchArray'
+            $ref: '#/definitions/operatingSystemArray'
+    x-class: "OS"
   PostureCheckOperatingSystemUpdate:
     allOf:
       - $ref: '#/definitions/PostureCheckUpdate'
@@ -6305,15 +6319,16 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemMatchArray'
+            $ref: '#/definitions/operatingSystemArray'
+    x-class: "OS"
   PostureCheckOperatingSystemPatch:
     allOf:
       - $ref: '#/definitions/PostureCheckPatch'
       - type: object
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemMatchArray'
-
+            $ref: '#/definitions/operatingSystemArray'
+    x-class: "OS"
 
   ###################################################################
   # Posture Check Domain
@@ -6327,8 +6342,10 @@ definitions:
         properties:
           domains:
             type: array
+            minItems: 1
             items:
               type: string
+    x-class: "DOMAIN"
 
   PostureCheckDomainCreate:
     allOf:
@@ -6339,8 +6356,11 @@ definitions:
         properties:
           domains:
             type: array
+            minItems: 1
             items:
               type: string
+    x-class: "DOMAIN"
+
   PostureCheckDomainUpdate:
     allOf:
       - $ref: '#/definitions/PostureCheckUpdate'
@@ -6350,8 +6370,11 @@ definitions:
         properties:
           domains:
             type: array
+            minItems: 1
             items:
               type: string
+    x-class: "DOMAIN"
+
   PostureCheckDomainPatch:
     allOf:
       - $ref: '#/definitions/PostureCheckPatch'
@@ -6359,55 +6382,68 @@ definitions:
         properties:
           domains:
             type: array
+            minItems: 1
             items:
               type: string
+    x-class: "DOMAIN"
 
   ###################################################################
   # Posture Check MAC Address
   ###################################################################
-  PostureCheckMACAddressDetail:
+  PostureCheckMacAddressDetail:
     allOf:
       - $ref: '#/definitions/PostureCheckDetail'
       - type: object
         required:
           - macAddresses
         properties:
-          domains:
+          macAddresses:
             type: array
+            minItems: 1
             items:
               type: string
 
-  PostureCheckMACAddressCreate:
+    x-class: "MAC"
+
+  PostureCheckMacAddressCreate:
     allOf:
       - $ref: '#/definitions/PostureCheckCreate'
       - type: object
         required:
           - macAddresses
         properties:
-          domains:
+          macAddresses:
             type: array
+            minItems: 1
             items:
               type: string
-  PostureCheckMACAddressUpdate:
+    x-class: "MAC"
+
+  PostureCheckMacAddressUpdate:
     allOf:
       - $ref: '#/definitions/PostureCheckUpdate'
       - type: object
         required:
           - macAddresses
         properties:
-          domains:
+          macAddresses:
             type: array
+            minItems: 1
             items:
               type: string
-  PostureCheckMACAddressPatch:
+    x-class: "MAC"
+
+  PostureCheckMacAddressPatch:
     allOf:
       - $ref: '#/definitions/PostureCheckPatch'
       - type: object
         properties:
-          domains:
+          macAddresses:
             type: array
+            minItems: 1
             items:
               type: string
+    x-class: "MAC"
 
   ###################################################################
   # Posture Check Process
@@ -6419,10 +6455,9 @@ definitions:
         required:
           - process
         properties:
-          domains:
-            type: array
-            items:
-              type: string
+          process:
+            $ref: '#/definitions/process'
+    x-class: "PROCESS"
 
   PostureCheckProcessCreate:
     allOf:
@@ -6432,7 +6467,9 @@ definitions:
           - process
         properties:
           process:
-            $ref: '#/definitions/processMatch'
+            $ref: '#/definitions/process'
+    x-class: "PROCESS"
+
   PostureCheckProcessUpdate:
     allOf:
       - $ref: '#/definitions/PostureCheckUpdate'
@@ -6441,12 +6478,14 @@ definitions:
           - process
         properties:
           process:
-            $ref: '#/definitions/processMatch'
+            $ref: '#/definitions/process'
+    x-class: "PROCESS"
+
   PostureCheckProcessPatch:
     allOf:
       - $ref: '#/definitions/PostureCheckPatch'
       - type: object
         properties:
           process:
-            $ref: '#/definitions/processMatch'
-
+            $ref: '#/definitions/process'
+    x-class: "PROCESS"

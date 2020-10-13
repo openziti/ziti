@@ -2641,10 +2641,13 @@ func init() {
       "get": {
         "security": [
           {
-            "zgSession": []
+            "ztSession": []
           }
         ],
         "description": "Returns a nested map data represeting the posture data of the identity.\nThis data should be considered volatile.\n",
+        "tags": [
+          "Identity"
+        ],
         "summary": "Retrieve the curent posture data for a specific identity.",
         "operationId": "getIdentityPostureData",
         "responses": {
@@ -4886,35 +4889,53 @@ func init() {
     },
     "PostureCheckDetail": {
       "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/baseEntity"
+      "required": [
+        "name",
+        "type",
+        "typeId",
+        "description",
+        "version",
+        "id",
+        "createdAt",
+        "updatedAt",
+        "_links",
+        "tags"
+      ],
+      "properties": {
+        "_links": {
+          "$ref": "#/definitions/links"
         },
-        {
-          "type": "object",
-          "required": [
-            "name",
-            "type",
-            "typeId",
-            "description"
-          ],
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string"
-            },
-            "typeId": {
-              "type": "string"
-            }
-          },
-          "discriminator": "typeId"
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        },
+        "type": {
+          "type": "string"
+        },
+        "typeId": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "version": {
+          "type": "integer"
         }
-      ]
+      },
+      "discriminator": "typeId"
     },
     "PostureCheckDomainCreate": {
       "allOf": [
@@ -4929,13 +4950,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainDetail": {
       "allOf": [
@@ -4950,13 +4973,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainPatch": {
       "allOf": [
@@ -4968,13 +4993,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainUpdate": {
       "allOf": [
@@ -4989,13 +5016,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckList": {
       "type": "array",
@@ -5003,7 +5032,7 @@ func init() {
         "$ref": "#/definitions/PostureCheckDetail"
       }
     },
-    "PostureCheckMACAddressCreate": {
+    "PostureCheckMacAddressCreate": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckCreate"
@@ -5014,17 +5043,19 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressDetail": {
+    "PostureCheckMacAddressDetail": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckDetail"
@@ -5035,17 +5066,19 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressPatch": {
+    "PostureCheckMacAddressPatch": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckPatch"
@@ -5053,17 +5086,19 @@ func init() {
         {
           "type": "object",
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressUpdate": {
+    "PostureCheckMacAddressUpdate": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckUpdate"
@@ -5074,15 +5109,17 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
     "PostureCheckOperatingSystemCreate": {
       "allOf": [
@@ -5096,11 +5133,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemDetail": {
       "allOf": [
@@ -5114,11 +5152,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemPatch": {
       "allOf": [
@@ -5129,11 +5168,12 @@ func init() {
           "type": "object",
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemUpdate": {
       "allOf": [
@@ -5147,11 +5187,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckPatch": {
       "type": "object",
@@ -5180,11 +5221,12 @@ func init() {
           ],
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessDetail": {
       "allOf": [
@@ -5197,15 +5239,13 @@ func init() {
             "process"
           ],
           "properties": {
-            "domains": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "process": {
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessPatch": {
       "allOf": [
@@ -5216,11 +5256,12 @@ func init() {
           "type": "object",
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessUpdate": {
       "allOf": [
@@ -5234,11 +5275,12 @@ func init() {
           ],
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckTypeDetail": {
       "allOf": [
@@ -5257,7 +5299,7 @@ func init() {
               "type": "string"
             },
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             },
             "version": {
               "type": "string"
@@ -6588,7 +6630,7 @@ func init() {
         "id": "b0766b8d-bd1a-4d28-8415-639b29d3c83d",
         "isOnline": false,
         "isVerified": false,
-        "name": "TestGateway-e33c837f-3222-4b40-bcd6-b3458fd5156e",
+        "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
         "roleAttributes": [
           "eastCoast",
           "sales",
@@ -7658,34 +7700,13 @@ func init() {
       "type": "object",
       "required": [
         "type",
-        "version"
+        "versions"
       ],
       "properties": {
         "type": {
           "$ref": "#/definitions/osType"
         },
-        "version": {
-          "type": "string"
-        }
-      }
-    },
-    "operatingSystemArray": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/operatingSystem"
-      }
-    },
-    "operatingSystemMatch": {
-      "type": "object",
-      "required": [
-        "type",
-        "version"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/osType"
-        },
-        "version": {
+        "versions": {
           "type": "array",
           "items": {
             "type": "string"
@@ -7693,10 +7714,11 @@ func init() {
         }
       }
     },
-    "operatingSystemMatchArray": {
+    "operatingSystemArray": {
       "type": "array",
+      "minItems": 1,
       "items": {
-        "$ref": "#/definitions/operatingSystemMatch"
+        "$ref": "#/definitions/operatingSystem"
       }
     },
     "osType": {
@@ -7706,7 +7728,7 @@ func init() {
         "Android",
         "iOS",
         "Linux",
-        "macOs"
+        "macOS"
       ]
     },
     "pagination": {
@@ -7818,8 +7840,12 @@ func init() {
         }
       ]
     },
-    "processMatch": {
+    "process": {
       "type": "object",
+      "required": [
+        "osType",
+        "path"
+      ],
       "properties": {
         "hashes": {
           "type": "array",
@@ -7827,7 +7853,7 @@ func init() {
             "type": "string"
           }
         },
-        "operatingSystemTypeId": {
+        "osType": {
           "$ref": "#/definitions/osType"
         },
         "path": {
@@ -16358,10 +16384,13 @@ func init() {
       "get": {
         "security": [
           {
-            "zgSession": []
+            "ztSession": []
           }
         ],
         "description": "Returns a nested map data represeting the posture data of the identity.\nThis data should be considered volatile.\n",
+        "tags": [
+          "Identity"
+        ],
         "summary": "Retrieve the curent posture data for a specific identity.",
         "operationId": "getIdentityPostureData",
         "responses": {
@@ -22174,35 +22203,53 @@ func init() {
     },
     "PostureCheckDetail": {
       "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/baseEntity"
+      "required": [
+        "name",
+        "type",
+        "typeId",
+        "description",
+        "version",
+        "id",
+        "createdAt",
+        "updatedAt",
+        "_links",
+        "tags"
+      ],
+      "properties": {
+        "_links": {
+          "$ref": "#/definitions/links"
         },
-        {
-          "type": "object",
-          "required": [
-            "name",
-            "type",
-            "typeId",
-            "description"
-          ],
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string"
-            },
-            "typeId": {
-              "type": "string"
-            }
-          },
-          "discriminator": "typeId"
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        },
+        "type": {
+          "type": "string"
+        },
+        "typeId": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "version": {
+          "type": "integer"
         }
-      ]
+      },
+      "discriminator": "typeId"
     },
     "PostureCheckDomainCreate": {
       "allOf": [
@@ -22217,13 +22264,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainDetail": {
       "allOf": [
@@ -22238,13 +22287,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainPatch": {
       "allOf": [
@@ -22256,13 +22307,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckDomainUpdate": {
       "allOf": [
@@ -22277,13 +22330,15 @@ func init() {
           "properties": {
             "domains": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "DOMAIN"
     },
     "PostureCheckList": {
       "type": "array",
@@ -22291,7 +22346,7 @@ func init() {
         "$ref": "#/definitions/PostureCheckDetail"
       }
     },
-    "PostureCheckMACAddressCreate": {
+    "PostureCheckMacAddressCreate": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckCreate"
@@ -22302,17 +22357,19 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressDetail": {
+    "PostureCheckMacAddressDetail": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckDetail"
@@ -22323,17 +22380,19 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressPatch": {
+    "PostureCheckMacAddressPatch": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckPatch"
@@ -22341,17 +22400,19 @@ func init() {
         {
           "type": "object",
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
-    "PostureCheckMACAddressUpdate": {
+    "PostureCheckMacAddressUpdate": {
       "allOf": [
         {
           "$ref": "#/definitions/PostureCheckUpdate"
@@ -22362,15 +22423,17 @@ func init() {
             "macAddresses"
           ],
           "properties": {
-            "domains": {
+            "macAddresses": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
               }
             }
           }
         }
-      ]
+      ],
+      "x-class": "MAC"
     },
     "PostureCheckOperatingSystemCreate": {
       "allOf": [
@@ -22384,11 +22447,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemDetail": {
       "allOf": [
@@ -22402,11 +22466,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemPatch": {
       "allOf": [
@@ -22417,11 +22482,12 @@ func init() {
           "type": "object",
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckOperatingSystemUpdate": {
       "allOf": [
@@ -22435,11 +22501,12 @@ func init() {
           ],
           "properties": {
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             }
           }
         }
-      ]
+      ],
+      "x-class": "OS"
     },
     "PostureCheckPatch": {
       "type": "object",
@@ -22468,11 +22535,12 @@ func init() {
           ],
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessDetail": {
       "allOf": [
@@ -22485,15 +22553,13 @@ func init() {
             "process"
           ],
           "properties": {
-            "domains": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "process": {
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessPatch": {
       "allOf": [
@@ -22504,11 +22570,12 @@ func init() {
           "type": "object",
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckProcessUpdate": {
       "allOf": [
@@ -22522,11 +22589,12 @@ func init() {
           ],
           "properties": {
             "process": {
-              "$ref": "#/definitions/processMatch"
+              "$ref": "#/definitions/process"
             }
           }
         }
-      ]
+      ],
+      "x-class": "PROCESS"
     },
     "PostureCheckTypeDetail": {
       "allOf": [
@@ -22545,7 +22613,7 @@ func init() {
               "type": "string"
             },
             "operatingSystems": {
-              "$ref": "#/definitions/operatingSystemMatchArray"
+              "$ref": "#/definitions/operatingSystemArray"
             },
             "version": {
               "type": "string"
@@ -23876,7 +23944,7 @@ func init() {
         "id": "b0766b8d-bd1a-4d28-8415-639b29d3c83d",
         "isOnline": false,
         "isVerified": false,
-        "name": "TestGateway-e33c837f-3222-4b40-bcd6-b3458fd5156e",
+        "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
         "roleAttributes": [
           "eastCoast",
           "sales",
@@ -24946,34 +25014,13 @@ func init() {
       "type": "object",
       "required": [
         "type",
-        "version"
+        "versions"
       ],
       "properties": {
         "type": {
           "$ref": "#/definitions/osType"
         },
-        "version": {
-          "type": "string"
-        }
-      }
-    },
-    "operatingSystemArray": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/operatingSystem"
-      }
-    },
-    "operatingSystemMatch": {
-      "type": "object",
-      "required": [
-        "type",
-        "version"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/osType"
-        },
-        "version": {
+        "versions": {
           "type": "array",
           "items": {
             "type": "string"
@@ -24981,10 +25028,11 @@ func init() {
         }
       }
     },
-    "operatingSystemMatchArray": {
+    "operatingSystemArray": {
       "type": "array",
+      "minItems": 1,
       "items": {
-        "$ref": "#/definitions/operatingSystemMatch"
+        "$ref": "#/definitions/operatingSystem"
       }
     },
     "osType": {
@@ -24994,7 +25042,7 @@ func init() {
         "Android",
         "iOS",
         "Linux",
-        "macOs"
+        "macOS"
       ]
     },
     "pagination": {
@@ -25106,8 +25154,12 @@ func init() {
         }
       ]
     },
-    "processMatch": {
+    "process": {
       "type": "object",
+      "required": [
+        "osType",
+        "path"
+      ],
       "properties": {
         "hashes": {
           "type": "array",
@@ -25115,7 +25167,7 @@ func init() {
             "type": "string"
           }
         },
-        "operatingSystemTypeId": {
+        "osType": {
           "$ref": "#/definitions/osType"
         },
         "path": {

@@ -33,31 +33,38 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
-// ProcessMatch process match
+// Process process
 //
-// swagger:model processMatch
-type ProcessMatch struct {
+// swagger:model process
+type Process struct {
 
 	// hashes
 	Hashes []string `json:"hashes"`
 
-	// operating system type Id
-	OperatingSystemTypeID OsType `json:"operatingSystemTypeId,omitempty"`
+	// os type
+	// Required: true
+	OsType OsType `json:"osType"`
 
 	// path
-	Path string `json:"path,omitempty"`
+	// Required: true
+	Path *string `json:"path"`
 
 	// signer fingerprint
 	SignerFingerprint string `json:"signerFingerprint,omitempty"`
 }
 
-// Validate validates this process match
-func (m *ProcessMatch) Validate(formats strfmt.Registry) error {
+// Validate validates this process
+func (m *Process) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateOperatingSystemTypeID(formats); err != nil {
+	if err := m.validateOsType(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePath(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -67,15 +74,11 @@ func (m *ProcessMatch) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ProcessMatch) validateOperatingSystemTypeID(formats strfmt.Registry) error {
+func (m *Process) validateOsType(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.OperatingSystemTypeID) { // not required
-		return nil
-	}
-
-	if err := m.OperatingSystemTypeID.Validate(formats); err != nil {
+	if err := m.OsType.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("operatingSystemTypeId")
+			return ve.ValidateName("osType")
 		}
 		return err
 	}
@@ -83,8 +86,17 @@ func (m *ProcessMatch) validateOperatingSystemTypeID(formats strfmt.Registry) er
 	return nil
 }
 
+func (m *Process) validatePath(formats strfmt.Registry) error {
+
+	if err := validate.Required("path", "body", m.Path); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalBinary interface implementation
-func (m *ProcessMatch) MarshalBinary() ([]byte, error) {
+func (m *Process) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -92,8 +104,8 @@ func (m *ProcessMatch) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *ProcessMatch) UnmarshalBinary(b []byte) error {
-	var res ProcessMatch
+func (m *Process) UnmarshalBinary(b []byte) error {
+	var res Process
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

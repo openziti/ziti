@@ -30,40 +30,73 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
+	"bytes"
+	"encoding/json"
 	"github.com/go-openapi/errors"
-	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/validate"
+	"io"
+	"io/ioutil"
 )
 
 // PostureCheckList posture check list
 //
-// swagger:model PostureCheckList
-type PostureCheckList []*PostureCheckDetail
+// swagger:discriminator PostureCheckList
+type PostureCheckList interface {
+	runtime.Validatable
 
-// Validate validates this posture check list
-func (m PostureCheckList) Validate(formats strfmt.Registry) error {
-	var res []error
+	// AdditionalProperties in base type shoud be handled just like regular properties
+	// At this moment, the base type property is pushed down to the subtype
+}
 
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
+type postureCheckList struct {
+}
 
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
+// UnmarshalPostureCheckListSlice unmarshals polymorphic slices of PostureCheckList
+func UnmarshalPostureCheckListSlice(reader io.Reader, consumer runtime.Consumer) ([]PostureCheckList, error) {
+	var elements []json.RawMessage
+	if err := consumer.Consume(reader, &elements); err != nil {
+		return nil, err
 	}
 
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
+	var result []PostureCheckList
+	for _, element := range elements {
+		obj, err := unmarshalPostureCheckList(element, consumer)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, obj)
 	}
-	return nil
+	return result, nil
+}
+
+// UnmarshalPostureCheckList unmarshals polymorphic PostureCheckList
+func UnmarshalPostureCheckList(reader io.Reader, consumer runtime.Consumer) (PostureCheckList, error) {
+	// we need to read this twice, so first into a buffer
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return unmarshalPostureCheckList(data, consumer)
+}
+
+func unmarshalPostureCheckList(data []byte, consumer runtime.Consumer) (PostureCheckList, error) {
+	buf := bytes.NewBuffer(data)
+
+	// the first time this is read is to fetch the value of the  property.
+	var getType struct {
+		Empty string `json:""`
+	}
+	if err := consumer.Consume(buf, &getType); err != nil {
+		return nil, err
+	}
+
+	if err := validate.RequiredString("", "body", getType.Empty); err != nil {
+		return nil, err
+	}
+
+	// The value of  is used to determine which type to create and unmarshal the data into
+	switch getType.Empty {
+	}
+	return nil, errors.New(422, "invalid  value: %q", getType.Empty)
 }

@@ -148,32 +148,32 @@ func unmarshalPostureCheckPatch(data []byte, consumer runtime.Consumer) (Posture
 
 	// The value of typeId is used to determine which type to create and unmarshal the data into
 	switch getType.TypeID {
-	case "PostureCheckDomainPatch":
+	case "DOMAIN":
 		var result PostureCheckDomainPatch
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
 		}
 		return &result, nil
-	case "PostureCheckMACAddressPatch":
-		var result PostureCheckMACAddressPatch
+	case "MAC":
+		var result PostureCheckMacAddressPatch
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
 		}
 		return &result, nil
-	case "PostureCheckOperatingSystemPatch":
+	case "OS":
 		var result PostureCheckOperatingSystemPatch
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	case "PROCESS":
+		var result PostureCheckProcessPatch
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
 		}
 		return &result, nil
 	case "PostureCheckPatch":
 		var result postureCheckPatch
-		if err := consumer.Consume(buf2, &result); err != nil {
-			return nil, err
-		}
-		return &result, nil
-	case "PostureCheckProcessPatch":
-		var result PostureCheckProcessPatch
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
 		}

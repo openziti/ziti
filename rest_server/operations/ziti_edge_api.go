@@ -320,8 +320,8 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityGetIdentityPolicyAdviceHandler: identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
 		}),
-		GetIdentityPostureDataHandler: GetIdentityPostureDataHandlerFunc(func(params GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation GetIdentityPostureData has not yet been implemented")
+		IdentityGetIdentityPostureDataHandler: identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityPostureData has not yet been implemented")
 		}),
 		APISessionListAPISessionsHandler: api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.ListAPISessions has not yet been implemented")
@@ -770,8 +770,8 @@ type ZitiEdgeAPI struct {
 	CurrentAPISessionGetCurrentIdentityHandler current_api_session.GetCurrentIdentityHandler
 	// IdentityGetIdentityPolicyAdviceHandler sets the operation handler for the get identity policy advice operation
 	IdentityGetIdentityPolicyAdviceHandler identity.GetIdentityPolicyAdviceHandler
-	// GetIdentityPostureDataHandler sets the operation handler for the get identity posture data operation
-	GetIdentityPostureDataHandler GetIdentityPostureDataHandler
+	// IdentityGetIdentityPostureDataHandler sets the operation handler for the get identity posture data operation
+	IdentityGetIdentityPostureDataHandler identity.GetIdentityPostureDataHandler
 	// APISessionListAPISessionsHandler sets the operation handler for the list API sessions operation
 	APISessionListAPISessionsHandler api_session.ListAPISessionsHandler
 	// AuthenticatorListAuthenticatorsHandler sets the operation handler for the list authenticators operation
@@ -1241,8 +1241,8 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.IdentityGetIdentityPolicyAdviceHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityPolicyAdviceHandler")
 	}
-	if o.GetIdentityPostureDataHandler == nil {
-		unregistered = append(unregistered, "GetIdentityPostureDataHandler")
+	if o.IdentityGetIdentityPostureDataHandler == nil {
+		unregistered = append(unregistered, "identity.GetIdentityPostureDataHandler")
 	}
 	if o.APISessionListAPISessionsHandler == nil {
 		unregistered = append(unregistered, "api_session.ListAPISessionsHandler")
@@ -1873,7 +1873,7 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/identities/{id}/posture-data"] = NewGetIdentityPostureData(o.context, o.GetIdentityPostureDataHandler)
+	o.handlers["GET"]["/identities/{id}/posture-data"] = identity.NewGetIdentityPostureData(o.context, o.IdentityGetIdentityPostureDataHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

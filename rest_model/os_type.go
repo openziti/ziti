@@ -56,8 +56,8 @@ const (
 	// OsTypeLinux captures enum value "Linux"
 	OsTypeLinux OsType = "Linux"
 
-	// OsTypeMacOs captures enum value "macOs"
-	OsTypeMacOs OsType = "macOs"
+	// OsTypeMacOS captures enum value "macOS"
+	OsTypeMacOS OsType = "macOS"
 )
 
 // for schema
@@ -65,7 +65,7 @@ var osTypeEnum []interface{}
 
 func init() {
 	var res []OsType
-	if err := json.Unmarshal([]byte(`["Windows","Android","iOS","Linux","macOs"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["Windows","Android","iOS","Linux","macOS"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

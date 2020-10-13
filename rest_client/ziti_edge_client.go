@@ -48,7 +48,6 @@ import (
 	"github.com/openziti/edge/rest_client/geo_region"
 	"github.com/openziti/edge/rest_client/identity"
 	"github.com/openziti/edge/rest_client/informational"
-	"github.com/openziti/edge/rest_client/operations"
 	"github.com/openziti/edge/rest_client/posture_checks"
 	"github.com/openziti/edge/rest_client/role_attributes"
 	"github.com/openziti/edge/rest_client/service"
@@ -116,7 +115,6 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiEdge {
 	cli.GeoRegion = geo_region.New(transport, formats)
 	cli.Identity = identity.New(transport, formats)
 	cli.Informational = informational.New(transport, formats)
-	cli.Operations = operations.New(transport, formats)
 	cli.PostureChecks = posture_checks.New(transport, formats)
 	cli.RoleAttributes = role_attributes.New(transport, formats)
 	cli.Service = service.New(transport, formats)
@@ -198,8 +196,6 @@ type ZitiEdge struct {
 
 	Informational informational.ClientService
 
-	Operations operations.ClientService
-
 	PostureChecks posture_checks.ClientService
 
 	RoleAttributes role_attributes.ClientService
@@ -238,7 +234,6 @@ func (c *ZitiEdge) SetTransport(transport runtime.ClientTransport) {
 	c.GeoRegion.SetTransport(transport)
 	c.Identity.SetTransport(transport)
 	c.Informational.SetTransport(transport)
-	c.Operations.SetTransport(transport)
 	c.PostureChecks.SetTransport(transport)
 	c.RoleAttributes.SetTransport(transport)
 	c.Service.SetTransport(transport)

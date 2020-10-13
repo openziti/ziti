@@ -49,7 +49,7 @@ type PostureCheckOperatingSystemPatch struct {
 	tagsField Tags
 
 	// operating systems
-	OperatingSystems OperatingSystemMatchArray `json:"operatingSystems,omitempty"`
+	OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
 }
 
 // Description gets the description of this subtype
@@ -87,7 +87,7 @@ func (m *PostureCheckOperatingSystemPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// operating systems
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems,omitempty"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -136,7 +136,7 @@ func (m PostureCheckOperatingSystemPatch) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// operating systems
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems,omitempty"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
 	}{
 
 		OperatingSystems: m.OperatingSystems,

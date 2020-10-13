@@ -39,65 +39,69 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// PostureCheckMACAddressCreate posture check m a c address create
+// PostureCheckMacAddressUpdate posture check mac address update
 //
-// swagger:model PostureCheckMACAddressCreate
-type PostureCheckMACAddressCreate struct {
+// swagger:model PostureCheckMacAddressUpdate
+type PostureCheckMacAddressUpdate struct {
 	descriptionField *string
 
 	nameField *string
 
 	tagsField Tags
 
-	// domains
-	Domains []string `json:"domains"`
+	// mac addresses
+	// Required: true
+	// Min Items: 1
+	MacAddresses []string `json:"macAddresses"`
 }
 
 // Description gets the description of this subtype
-func (m *PostureCheckMACAddressCreate) Description() *string {
+func (m *PostureCheckMacAddressUpdate) Description() *string {
 	return m.descriptionField
 }
 
 // SetDescription sets the description of this subtype
-func (m *PostureCheckMACAddressCreate) SetDescription(val *string) {
+func (m *PostureCheckMacAddressUpdate) SetDescription(val *string) {
 	m.descriptionField = val
 }
 
 // Name gets the name of this subtype
-func (m *PostureCheckMACAddressCreate) Name() *string {
+func (m *PostureCheckMacAddressUpdate) Name() *string {
 	return m.nameField
 }
 
 // SetName sets the name of this subtype
-func (m *PostureCheckMACAddressCreate) SetName(val *string) {
+func (m *PostureCheckMacAddressUpdate) SetName(val *string) {
 	m.nameField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckMACAddressCreate) Tags() Tags {
+func (m *PostureCheckMacAddressUpdate) Tags() Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckMACAddressCreate) SetTags(val Tags) {
+func (m *PostureCheckMacAddressUpdate) SetTags(val Tags) {
 	m.tagsField = val
 }
 
 // TypeID gets the type Id of this subtype
-func (m *PostureCheckMACAddressCreate) TypeID() PostureCheckType {
-	return "PostureCheckMACAddressCreate"
+func (m *PostureCheckMacAddressUpdate) TypeID() PostureCheckType {
+	return "MAC"
 }
 
 // SetTypeID sets the type Id of this subtype
-func (m *PostureCheckMACAddressCreate) SetTypeID(val PostureCheckType) {
+func (m *PostureCheckMacAddressUpdate) SetTypeID(val PostureCheckType) {
 }
 
 // UnmarshalJSON unmarshals this object with a polymorphic type from a JSON structure
-func (m *PostureCheckMACAddressCreate) UnmarshalJSON(raw []byte) error {
+func (m *PostureCheckMacAddressUpdate) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
-		// domains
-		Domains []string `json:"domains"`
+		// mac addresses
+		// Required: true
+		// Min Items: 1
+		MacAddresses []string `json:"macAddresses"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -116,7 +120,7 @@ func (m *PostureCheckMACAddressCreate) UnmarshalJSON(raw []byte) error {
 
 		Tags Tags `json:"tags"`
 
-		TypeID PostureCheckType `json:"typeId"`
+		TypeID PostureCheckType `json:"typeId,omitempty"`
 	}
 	buf = bytes.NewBuffer(raw)
 	dec = json.NewDecoder(buf)
@@ -126,7 +130,7 @@ func (m *PostureCheckMACAddressCreate) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 
-	var result PostureCheckMACAddressCreate
+	var result PostureCheckMacAddressUpdate
 
 	result.descriptionField = base.Description
 
@@ -139,7 +143,7 @@ func (m *PostureCheckMACAddressCreate) UnmarshalJSON(raw []byte) error {
 		return errors.New(422, "invalid typeId value: %q", base.TypeID)
 	}
 
-	result.Domains = data.Domains
+	result.MacAddresses = data.MacAddresses
 
 	*m = result
 
@@ -147,16 +151,18 @@ func (m *PostureCheckMACAddressCreate) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object with a polymorphic type to a JSON structure
-func (m PostureCheckMACAddressCreate) MarshalJSON() ([]byte, error) {
+func (m PostureCheckMacAddressUpdate) MarshalJSON() ([]byte, error) {
 	var b1, b2, b3 []byte
 	var err error
 	b1, err = json.Marshal(struct {
 
-		// domains
-		Domains []string `json:"domains"`
+		// mac addresses
+		// Required: true
+		// Min Items: 1
+		MacAddresses []string `json:"macAddresses"`
 	}{
 
-		Domains: m.Domains,
+		MacAddresses: m.MacAddresses,
 	})
 	if err != nil {
 		return nil, err
@@ -168,7 +174,7 @@ func (m PostureCheckMACAddressCreate) MarshalJSON() ([]byte, error) {
 
 		Tags Tags `json:"tags"`
 
-		TypeID PostureCheckType `json:"typeId"`
+		TypeID PostureCheckType `json:"typeId,omitempty"`
 	}{
 
 		Description: m.Description(),
@@ -186,8 +192,8 @@ func (m PostureCheckMACAddressCreate) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(b1, b2, b3), nil
 }
 
-// Validate validates this posture check m a c address create
-func (m *PostureCheckMACAddressCreate) Validate(formats strfmt.Registry) error {
+// Validate validates this posture check mac address update
+func (m *PostureCheckMacAddressUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateDescription(formats); err != nil {
@@ -202,13 +208,17 @@ func (m *PostureCheckMACAddressCreate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateMacAddresses(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
 	return nil
 }
 
-func (m *PostureCheckMACAddressCreate) validateDescription(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressUpdate) validateDescription(formats strfmt.Registry) error {
 
 	if err := validate.Required("description", "body", m.Description()); err != nil {
 		return err
@@ -217,7 +227,7 @@ func (m *PostureCheckMACAddressCreate) validateDescription(formats strfmt.Regist
 	return nil
 }
 
-func (m *PostureCheckMACAddressCreate) validateName(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressUpdate) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name()); err != nil {
 		return err
@@ -226,7 +236,7 @@ func (m *PostureCheckMACAddressCreate) validateName(formats strfmt.Registry) err
 	return nil
 }
 
-func (m *PostureCheckMACAddressCreate) validateTags(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressUpdate) validateTags(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.Tags()) { // not required
 		return nil
@@ -242,8 +252,23 @@ func (m *PostureCheckMACAddressCreate) validateTags(formats strfmt.Registry) err
 	return nil
 }
 
+func (m *PostureCheckMacAddressUpdate) validateMacAddresses(formats strfmt.Registry) error {
+
+	if err := validate.Required("macAddresses", "body", m.MacAddresses); err != nil {
+		return err
+	}
+
+	iMacAddressesSize := int64(len(m.MacAddresses))
+
+	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalBinary interface implementation
-func (m *PostureCheckMACAddressCreate) MarshalBinary() ([]byte, error) {
+func (m *PostureCheckMacAddressUpdate) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -251,8 +276,8 @@ func (m *PostureCheckMACAddressCreate) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *PostureCheckMACAddressCreate) UnmarshalBinary(b []byte) error {
-	var res PostureCheckMACAddressCreate
+func (m *PostureCheckMacAddressUpdate) UnmarshalBinary(b []byte) error {
+	var res PostureCheckMacAddressUpdate
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

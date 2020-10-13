@@ -48,7 +48,7 @@ type PostureCheckTypeDetail struct {
 
 	// operating systems
 	// Required: true
-	OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+	OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 
 	// version
 	// Required: true
@@ -68,7 +68,7 @@ func (m *PostureCheckTypeDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Name *string `json:"name"`
 
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 
 		Version *string `json:"version"`
 	}
@@ -97,7 +97,7 @@ func (m PostureCheckTypeDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Name *string `json:"name"`
 
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 
 		Version *string `json:"version"`
 	}

@@ -49,7 +49,7 @@ type PostureCheckProcessPatch struct {
 	tagsField Tags
 
 	// process
-	Process *ProcessMatch `json:"process,omitempty"`
+	Process *Process `json:"process,omitempty"`
 }
 
 // Description gets the description of this subtype
@@ -87,7 +87,7 @@ func (m *PostureCheckProcessPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// process
-		Process *ProcessMatch `json:"process,omitempty"`
+		Process *Process `json:"process,omitempty"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -136,7 +136,7 @@ func (m PostureCheckProcessPatch) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// process
-		Process *ProcessMatch `json:"process,omitempty"`
+		Process *Process `json:"process,omitempty"`
 	}{
 
 		Process: m.Process,

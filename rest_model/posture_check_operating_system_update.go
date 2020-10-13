@@ -51,7 +51,7 @@ type PostureCheckOperatingSystemUpdate struct {
 
 	// operating systems
 	// Required: true
-	OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+	OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 }
 
 // Description gets the description of this subtype
@@ -86,7 +86,7 @@ func (m *PostureCheckOperatingSystemUpdate) SetTags(val Tags) {
 
 // TypeID gets the type Id of this subtype
 func (m *PostureCheckOperatingSystemUpdate) TypeID() PostureCheckType {
-	return "PostureCheckOperatingSystemUpdate"
+	return "OS"
 }
 
 // SetTypeID sets the type Id of this subtype
@@ -99,7 +99,7 @@ func (m *PostureCheckOperatingSystemUpdate) UnmarshalJSON(raw []byte) error {
 
 		// operating systems
 		// Required: true
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -156,7 +156,7 @@ func (m PostureCheckOperatingSystemUpdate) MarshalJSON() ([]byte, error) {
 
 		// operating systems
 		// Required: true
-		OperatingSystems OperatingSystemMatchArray `json:"operatingSystems"`
+		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
 	}{
 
 		OperatingSystems: m.OperatingSystems,

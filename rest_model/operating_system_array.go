@@ -35,6 +35,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // OperatingSystemArray operating system array
@@ -45,6 +46,12 @@ type OperatingSystemArray []*OperatingSystem
 // Validate validates this operating system array
 func (m OperatingSystemArray) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	iOperatingSystemArraySize := int64(len(m))
+
+	if err := validate.MinItems("", "body", iOperatingSystemArraySize, 1); err != nil {
+		return err
+	}
 
 	for i := 0; i < len(m); i++ {
 		if swag.IsZero(m[i]) { // not required

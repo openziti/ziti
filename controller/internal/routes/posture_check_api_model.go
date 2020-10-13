@@ -103,10 +103,5 @@ func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 }
 
 func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckDetail, error) {
-	ret := &rest_model.PostureCheckOperatingSystemDetail{
-		PostureCheckDetail: rest_model.PostureCheckDetail{},
-		OperatingSystems:   []*rest_model.OperatingSystemMatch{},
-	}
-
-	return ret.PostureCheckDetail, nil
+	return nil, nil
 }

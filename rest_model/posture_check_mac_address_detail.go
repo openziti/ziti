@@ -39,10 +39,10 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// PostureCheckOperatingSystemDetail posture check operating system detail
+// PostureCheckMacAddressDetail posture check mac address detail
 //
-// swagger:model PostureCheckOperatingSystemDetail
-type PostureCheckOperatingSystemDetail struct {
+// swagger:model PostureCheckMacAddressDetail
+type PostureCheckMacAddressDetail struct {
 	linksField Links
 
 	createdAtField *strfmt.DateTime
@@ -61,117 +61,119 @@ type PostureCheckOperatingSystemDetail struct {
 
 	versionField *int64
 
-	// operating systems
+	// mac addresses
 	// Required: true
-	OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+	// Min Items: 1
+	MacAddresses []string `json:"macAddresses"`
 }
 
 // Links gets the links of this subtype
-func (m *PostureCheckOperatingSystemDetail) Links() Links {
+func (m *PostureCheckMacAddressDetail) Links() Links {
 	return m.linksField
 }
 
 // SetLinks sets the links of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetLinks(val Links) {
+func (m *PostureCheckMacAddressDetail) SetLinks(val Links) {
 	m.linksField = val
 }
 
 // CreatedAt gets the created at of this subtype
-func (m *PostureCheckOperatingSystemDetail) CreatedAt() *strfmt.DateTime {
+func (m *PostureCheckMacAddressDetail) CreatedAt() *strfmt.DateTime {
 	return m.createdAtField
 }
 
 // SetCreatedAt sets the created at of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetCreatedAt(val *strfmt.DateTime) {
+func (m *PostureCheckMacAddressDetail) SetCreatedAt(val *strfmt.DateTime) {
 	m.createdAtField = val
 }
 
 // Description gets the description of this subtype
-func (m *PostureCheckOperatingSystemDetail) Description() *string {
+func (m *PostureCheckMacAddressDetail) Description() *string {
 	return m.descriptionField
 }
 
 // SetDescription sets the description of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetDescription(val *string) {
+func (m *PostureCheckMacAddressDetail) SetDescription(val *string) {
 	m.descriptionField = val
 }
 
 // ID gets the id of this subtype
-func (m *PostureCheckOperatingSystemDetail) ID() *string {
+func (m *PostureCheckMacAddressDetail) ID() *string {
 	return m.idField
 }
 
 // SetID sets the id of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetID(val *string) {
+func (m *PostureCheckMacAddressDetail) SetID(val *string) {
 	m.idField = val
 }
 
 // Name gets the name of this subtype
-func (m *PostureCheckOperatingSystemDetail) Name() *string {
+func (m *PostureCheckMacAddressDetail) Name() *string {
 	return m.nameField
 }
 
 // SetName sets the name of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetName(val *string) {
+func (m *PostureCheckMacAddressDetail) SetName(val *string) {
 	m.nameField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckOperatingSystemDetail) Tags() Tags {
+func (m *PostureCheckMacAddressDetail) Tags() Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetTags(val Tags) {
+func (m *PostureCheckMacAddressDetail) SetTags(val Tags) {
 	m.tagsField = val
 }
 
 // Type gets the type of this subtype
-func (m *PostureCheckOperatingSystemDetail) Type() *string {
+func (m *PostureCheckMacAddressDetail) Type() *string {
 	return m.typeField
 }
 
 // SetType sets the type of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetType(val *string) {
+func (m *PostureCheckMacAddressDetail) SetType(val *string) {
 	m.typeField = val
 }
 
 // TypeID gets the type Id of this subtype
-func (m *PostureCheckOperatingSystemDetail) TypeID() string {
-	return "OS"
+func (m *PostureCheckMacAddressDetail) TypeID() string {
+	return "MAC"
 }
 
 // SetTypeID sets the type Id of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetTypeID(val string) {
+func (m *PostureCheckMacAddressDetail) SetTypeID(val string) {
 }
 
 // UpdatedAt gets the updated at of this subtype
-func (m *PostureCheckOperatingSystemDetail) UpdatedAt() *strfmt.DateTime {
+func (m *PostureCheckMacAddressDetail) UpdatedAt() *strfmt.DateTime {
 	return m.updatedAtField
 }
 
 // SetUpdatedAt sets the updated at of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetUpdatedAt(val *strfmt.DateTime) {
+func (m *PostureCheckMacAddressDetail) SetUpdatedAt(val *strfmt.DateTime) {
 	m.updatedAtField = val
 }
 
 // Version gets the version of this subtype
-func (m *PostureCheckOperatingSystemDetail) Version() *int64 {
+func (m *PostureCheckMacAddressDetail) Version() *int64 {
 	return m.versionField
 }
 
 // SetVersion sets the version of this subtype
-func (m *PostureCheckOperatingSystemDetail) SetVersion(val *int64) {
+func (m *PostureCheckMacAddressDetail) SetVersion(val *int64) {
 	m.versionField = val
 }
 
 // UnmarshalJSON unmarshals this object with a polymorphic type from a JSON structure
-func (m *PostureCheckOperatingSystemDetail) UnmarshalJSON(raw []byte) error {
+func (m *PostureCheckMacAddressDetail) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
-		// operating systems
+		// mac addresses
 		// Required: true
-		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+		// Min Items: 1
+		MacAddresses []string `json:"macAddresses"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -212,7 +214,7 @@ func (m *PostureCheckOperatingSystemDetail) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 
-	var result PostureCheckOperatingSystemDetail
+	var result PostureCheckMacAddressDetail
 
 	result.linksField = base.Links
 
@@ -236,7 +238,7 @@ func (m *PostureCheckOperatingSystemDetail) UnmarshalJSON(raw []byte) error {
 
 	result.versionField = base.Version
 
-	result.OperatingSystems = data.OperatingSystems
+	result.MacAddresses = data.MacAddresses
 
 	*m = result
 
@@ -244,17 +246,18 @@ func (m *PostureCheckOperatingSystemDetail) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object with a polymorphic type to a JSON structure
-func (m PostureCheckOperatingSystemDetail) MarshalJSON() ([]byte, error) {
+func (m PostureCheckMacAddressDetail) MarshalJSON() ([]byte, error) {
 	var b1, b2, b3 []byte
 	var err error
 	b1, err = json.Marshal(struct {
 
-		// operating systems
+		// mac addresses
 		// Required: true
-		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+		// Min Items: 1
+		MacAddresses []string `json:"macAddresses"`
 	}{
 
-		OperatingSystems: m.OperatingSystems,
+		MacAddresses: m.MacAddresses,
 	})
 	if err != nil {
 		return nil, err
@@ -308,8 +311,8 @@ func (m PostureCheckOperatingSystemDetail) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(b1, b2, b3), nil
 }
 
-// Validate validates this posture check operating system detail
-func (m *PostureCheckOperatingSystemDetail) Validate(formats strfmt.Registry) error {
+// Validate validates this posture check mac address detail
+func (m *PostureCheckMacAddressDetail) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateLinks(formats); err != nil {
@@ -348,7 +351,7 @@ func (m *PostureCheckOperatingSystemDetail) Validate(formats strfmt.Registry) er
 		res = append(res, err)
 	}
 
-	if err := m.validateOperatingSystems(formats); err != nil {
+	if err := m.validateMacAddresses(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -358,7 +361,7 @@ func (m *PostureCheckOperatingSystemDetail) Validate(formats strfmt.Registry) er
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateLinks(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateLinks(formats strfmt.Registry) error {
 
 	if err := validate.Required("_links", "body", m.Links()); err != nil {
 		return err
@@ -374,7 +377,7 @@ func (m *PostureCheckOperatingSystemDetail) validateLinks(formats strfmt.Registr
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateCreatedAt(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateCreatedAt(formats strfmt.Registry) error {
 
 	if err := validate.Required("createdAt", "body", m.CreatedAt()); err != nil {
 		return err
@@ -387,7 +390,7 @@ func (m *PostureCheckOperatingSystemDetail) validateCreatedAt(formats strfmt.Reg
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateDescription(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateDescription(formats strfmt.Registry) error {
 
 	if err := validate.Required("description", "body", m.Description()); err != nil {
 		return err
@@ -396,7 +399,7 @@ func (m *PostureCheckOperatingSystemDetail) validateDescription(formats strfmt.R
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateID(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateID(formats strfmt.Registry) error {
 
 	if err := validate.Required("id", "body", m.ID()); err != nil {
 		return err
@@ -405,7 +408,7 @@ func (m *PostureCheckOperatingSystemDetail) validateID(formats strfmt.Registry) 
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateName(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name()); err != nil {
 		return err
@@ -414,7 +417,7 @@ func (m *PostureCheckOperatingSystemDetail) validateName(formats strfmt.Registry
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateTags(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateTags(formats strfmt.Registry) error {
 
 	if err := validate.Required("tags", "body", m.Tags()); err != nil {
 		return err
@@ -430,7 +433,7 @@ func (m *PostureCheckOperatingSystemDetail) validateTags(formats strfmt.Registry
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateType(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateType(formats strfmt.Registry) error {
 
 	if err := validate.Required("type", "body", m.Type()); err != nil {
 		return err
@@ -439,7 +442,7 @@ func (m *PostureCheckOperatingSystemDetail) validateType(formats strfmt.Registry
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateUpdatedAt(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateUpdatedAt(formats strfmt.Registry) error {
 
 	if err := validate.Required("updatedAt", "body", m.UpdatedAt()); err != nil {
 		return err
@@ -452,7 +455,7 @@ func (m *PostureCheckOperatingSystemDetail) validateUpdatedAt(formats strfmt.Reg
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateVersion(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version()); err != nil {
 		return err
@@ -461,16 +464,15 @@ func (m *PostureCheckOperatingSystemDetail) validateVersion(formats strfmt.Regis
 	return nil
 }
 
-func (m *PostureCheckOperatingSystemDetail) validateOperatingSystems(formats strfmt.Registry) error {
+func (m *PostureCheckMacAddressDetail) validateMacAddresses(formats strfmt.Registry) error {
 
-	if err := validate.Required("operatingSystems", "body", m.OperatingSystems); err != nil {
+	if err := validate.Required("macAddresses", "body", m.MacAddresses); err != nil {
 		return err
 	}
 
-	if err := m.OperatingSystems.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("operatingSystems")
-		}
+	iMacAddressesSize := int64(len(m.MacAddresses))
+
+	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
 		return err
 	}
 
@@ -478,7 +480,7 @@ func (m *PostureCheckOperatingSystemDetail) validateOperatingSystems(formats str
 }
 
 // MarshalBinary interface implementation
-func (m *PostureCheckOperatingSystemDetail) MarshalBinary() ([]byte, error) {
+func (m *PostureCheckMacAddressDetail) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -486,8 +488,8 @@ func (m *PostureCheckOperatingSystemDetail) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *PostureCheckOperatingSystemDetail) UnmarshalBinary(b []byte) error {
-	var res PostureCheckOperatingSystemDetail
+func (m *PostureCheckMacAddressDetail) UnmarshalBinary(b []byte) error {
+	var res PostureCheckMacAddressDetail
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

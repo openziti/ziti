@@ -36,6 +36,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // PostureCheckDomainPatch posture check domain patch
@@ -49,6 +50,7 @@ type PostureCheckDomainPatch struct {
 	tagsField Tags
 
 	// domains
+	// Min Items: 1
 	Domains []string `json:"domains"`
 }
 
@@ -87,6 +89,7 @@ func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// domains
+		// Min Items: 1
 		Domains []string `json:"domains"`
 	}
 	buf := bytes.NewBuffer(raw)
@@ -136,6 +139,7 @@ func (m PostureCheckDomainPatch) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// domains
+		// Min Items: 1
 		Domains []string `json:"domains"`
 	}{
 
@@ -173,6 +177,10 @@ func (m *PostureCheckDomainPatch) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateDomains(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -189,6 +197,21 @@ func (m *PostureCheckDomainPatch) validateTags(formats strfmt.Registry) error {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainPatch) validateDomains(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Domains) { // not required
+		return nil
+	}
+
+	iDomainsSize := int64(len(m.Domains))
+
+	if err := validate.MinItems("domains", "body", iDomainsSize, 1); err != nil {
 		return err
 	}
 

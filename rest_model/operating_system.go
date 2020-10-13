@@ -45,9 +45,9 @@ type OperatingSystem struct {
 	// Required: true
 	Type OsType `json:"type"`
 
-	// version
+	// versions
 	// Required: true
-	Version *string `json:"version"`
+	Versions []string `json:"versions"`
 }
 
 // Validate validates this operating system
@@ -58,7 +58,7 @@ func (m *OperatingSystem) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateVersion(formats); err != nil {
+	if err := m.validateVersions(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -80,9 +80,9 @@ func (m *OperatingSystem) validateType(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *OperatingSystem) validateVersion(formats strfmt.Registry) error {
+func (m *OperatingSystem) validateVersions(formats strfmt.Registry) error {
 
-	if err := validate.Required("version", "body", m.Version); err != nil {
+	if err := validate.Required("versions", "body", m.Versions); err != nil {
 		return err
 	}
 

@@ -51,6 +51,7 @@ type PostureCheckDomainUpdate struct {
 
 	// domains
 	// Required: true
+	// Min Items: 1
 	Domains []string `json:"domains"`
 }
 
@@ -86,7 +87,7 @@ func (m *PostureCheckDomainUpdate) SetTags(val Tags) {
 
 // TypeID gets the type Id of this subtype
 func (m *PostureCheckDomainUpdate) TypeID() PostureCheckType {
-	return "PostureCheckDomainUpdate"
+	return "DOMAIN"
 }
 
 // SetTypeID sets the type Id of this subtype
@@ -99,6 +100,7 @@ func (m *PostureCheckDomainUpdate) UnmarshalJSON(raw []byte) error {
 
 		// domains
 		// Required: true
+		// Min Items: 1
 		Domains []string `json:"domains"`
 	}
 	buf := bytes.NewBuffer(raw)
@@ -156,6 +158,7 @@ func (m PostureCheckDomainUpdate) MarshalJSON() ([]byte, error) {
 
 		// domains
 		// Required: true
+		// Min Items: 1
 		Domains []string `json:"domains"`
 	}{
 
@@ -252,6 +255,12 @@ func (m *PostureCheckDomainUpdate) validateTags(formats strfmt.Registry) error {
 func (m *PostureCheckDomainUpdate) validateDomains(formats strfmt.Registry) error {
 
 	if err := validate.Required("domains", "body", m.Domains); err != nil {
+		return err
+	}
+
+	iDomainsSize := int64(len(m.Domains))
+
+	if err := validate.MinItems("domains", "body", iDomainsSize, 1); err != nil {
 		return err
 	}
 

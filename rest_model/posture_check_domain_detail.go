@@ -30,6 +30,9 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -40,64 +43,311 @@ import (
 //
 // swagger:model PostureCheckDomainDetail
 type PostureCheckDomainDetail struct {
-	PostureCheckDetail
+	linksField Links
+
+	createdAtField *strfmt.DateTime
+
+	descriptionField *string
+
+	idField *string
+
+	nameField *string
+
+	tagsField Tags
+
+	typeField *string
+
+	updatedAtField *strfmt.DateTime
+
+	versionField *int64
 
 	// domains
 	// Required: true
+	// Min Items: 1
 	Domains []string `json:"domains"`
 }
 
-// UnmarshalJSON unmarshals this object from a JSON structure
-func (m *PostureCheckDomainDetail) UnmarshalJSON(raw []byte) error {
-	// AO0
-	var aO0 PostureCheckDetail
-	if err := swag.ReadJSON(raw, &aO0); err != nil {
-		return err
-	}
-	m.PostureCheckDetail = aO0
+// Links gets the links of this subtype
+func (m *PostureCheckDomainDetail) Links() Links {
+	return m.linksField
+}
 
-	// AO1
-	var dataAO1 struct {
+// SetLinks sets the links of this subtype
+func (m *PostureCheckDomainDetail) SetLinks(val Links) {
+	m.linksField = val
+}
+
+// CreatedAt gets the created at of this subtype
+func (m *PostureCheckDomainDetail) CreatedAt() *strfmt.DateTime {
+	return m.createdAtField
+}
+
+// SetCreatedAt sets the created at of this subtype
+func (m *PostureCheckDomainDetail) SetCreatedAt(val *strfmt.DateTime) {
+	m.createdAtField = val
+}
+
+// Description gets the description of this subtype
+func (m *PostureCheckDomainDetail) Description() *string {
+	return m.descriptionField
+}
+
+// SetDescription sets the description of this subtype
+func (m *PostureCheckDomainDetail) SetDescription(val *string) {
+	m.descriptionField = val
+}
+
+// ID gets the id of this subtype
+func (m *PostureCheckDomainDetail) ID() *string {
+	return m.idField
+}
+
+// SetID sets the id of this subtype
+func (m *PostureCheckDomainDetail) SetID(val *string) {
+	m.idField = val
+}
+
+// Name gets the name of this subtype
+func (m *PostureCheckDomainDetail) Name() *string {
+	return m.nameField
+}
+
+// SetName sets the name of this subtype
+func (m *PostureCheckDomainDetail) SetName(val *string) {
+	m.nameField = val
+}
+
+// Tags gets the tags of this subtype
+func (m *PostureCheckDomainDetail) Tags() Tags {
+	return m.tagsField
+}
+
+// SetTags sets the tags of this subtype
+func (m *PostureCheckDomainDetail) SetTags(val Tags) {
+	m.tagsField = val
+}
+
+// Type gets the type of this subtype
+func (m *PostureCheckDomainDetail) Type() *string {
+	return m.typeField
+}
+
+// SetType sets the type of this subtype
+func (m *PostureCheckDomainDetail) SetType(val *string) {
+	m.typeField = val
+}
+
+// TypeID gets the type Id of this subtype
+func (m *PostureCheckDomainDetail) TypeID() string {
+	return "DOMAIN"
+}
+
+// SetTypeID sets the type Id of this subtype
+func (m *PostureCheckDomainDetail) SetTypeID(val string) {
+}
+
+// UpdatedAt gets the updated at of this subtype
+func (m *PostureCheckDomainDetail) UpdatedAt() *strfmt.DateTime {
+	return m.updatedAtField
+}
+
+// SetUpdatedAt sets the updated at of this subtype
+func (m *PostureCheckDomainDetail) SetUpdatedAt(val *strfmt.DateTime) {
+	m.updatedAtField = val
+}
+
+// Version gets the version of this subtype
+func (m *PostureCheckDomainDetail) Version() *int64 {
+	return m.versionField
+}
+
+// SetVersion sets the version of this subtype
+func (m *PostureCheckDomainDetail) SetVersion(val *int64) {
+	m.versionField = val
+}
+
+// UnmarshalJSON unmarshals this object with a polymorphic type from a JSON structure
+func (m *PostureCheckDomainDetail) UnmarshalJSON(raw []byte) error {
+	var data struct {
+
+		// domains
+		// Required: true
+		// Min Items: 1
 		Domains []string `json:"domains"`
 	}
-	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
+	buf := bytes.NewBuffer(raw)
+	dec := json.NewDecoder(buf)
+	dec.UseNumber()
+
+	if err := dec.Decode(&data); err != nil {
 		return err
 	}
 
-	m.Domains = dataAO1.Domains
+	var base struct {
+		/* Just the base type fields. Used for unmashalling polymorphic types.*/
+
+		Links Links `json:"_links"`
+
+		CreatedAt *strfmt.DateTime `json:"createdAt"`
+
+		Description *string `json:"description"`
+
+		ID *string `json:"id"`
+
+		Name *string `json:"name"`
+
+		Tags Tags `json:"tags"`
+
+		Type *string `json:"type"`
+
+		TypeID string `json:"typeId"`
+
+		UpdatedAt *strfmt.DateTime `json:"updatedAt"`
+
+		Version *int64 `json:"version"`
+	}
+	buf = bytes.NewBuffer(raw)
+	dec = json.NewDecoder(buf)
+	dec.UseNumber()
+
+	if err := dec.Decode(&base); err != nil {
+		return err
+	}
+
+	var result PostureCheckDomainDetail
+
+	result.linksField = base.Links
+
+	result.createdAtField = base.CreatedAt
+
+	result.descriptionField = base.Description
+
+	result.idField = base.ID
+
+	result.nameField = base.Name
+
+	result.tagsField = base.Tags
+
+	result.typeField = base.Type
+
+	if base.TypeID != result.TypeID() {
+		/* Not the type we're looking for. */
+		return errors.New(422, "invalid typeId value: %q", base.TypeID)
+	}
+	result.updatedAtField = base.UpdatedAt
+
+	result.versionField = base.Version
+
+	result.Domains = data.Domains
+
+	*m = result
 
 	return nil
 }
 
-// MarshalJSON marshals this object to a JSON structure
+// MarshalJSON marshals this object with a polymorphic type to a JSON structure
 func (m PostureCheckDomainDetail) MarshalJSON() ([]byte, error) {
-	_parts := make([][]byte, 0, 2)
+	var b1, b2, b3 []byte
+	var err error
+	b1, err = json.Marshal(struct {
 
-	aO0, err := swag.WriteJSON(m.PostureCheckDetail)
+		// domains
+		// Required: true
+		// Min Items: 1
+		Domains []string `json:"domains"`
+	}{
+
+		Domains: m.Domains,
+	})
 	if err != nil {
 		return nil, err
 	}
-	_parts = append(_parts, aO0)
-	var dataAO1 struct {
-		Domains []string `json:"domains"`
+	b2, err = json.Marshal(struct {
+		Links Links `json:"_links"`
+
+		CreatedAt *strfmt.DateTime `json:"createdAt"`
+
+		Description *string `json:"description"`
+
+		ID *string `json:"id"`
+
+		Name *string `json:"name"`
+
+		Tags Tags `json:"tags"`
+
+		Type *string `json:"type"`
+
+		TypeID string `json:"typeId"`
+
+		UpdatedAt *strfmt.DateTime `json:"updatedAt"`
+
+		Version *int64 `json:"version"`
+	}{
+
+		Links: m.Links(),
+
+		CreatedAt: m.CreatedAt(),
+
+		Description: m.Description(),
+
+		ID: m.ID(),
+
+		Name: m.Name(),
+
+		Tags: m.Tags(),
+
+		Type: m.Type(),
+
+		TypeID: m.TypeID(),
+
+		UpdatedAt: m.UpdatedAt(),
+
+		Version: m.Version(),
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	dataAO1.Domains = m.Domains
-
-	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
-	if errAO1 != nil {
-		return nil, errAO1
-	}
-	_parts = append(_parts, jsonDataAO1)
-	return swag.ConcatJSON(_parts...), nil
+	return swag.ConcatJSON(b1, b2, b3), nil
 }
 
 // Validate validates this posture check domain detail
 func (m *PostureCheckDomainDetail) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	// validation for a type composition with PostureCheckDetail
-	if err := m.PostureCheckDetail.Validate(formats); err != nil {
+	if err := m.validateLinks(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCreatedAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDescription(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTags(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUpdatedAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateVersion(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -111,9 +361,118 @@ func (m *PostureCheckDomainDetail) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *PostureCheckDomainDetail) validateLinks(formats strfmt.Registry) error {
+
+	if err := validate.Required("_links", "body", m.Links()); err != nil {
+		return err
+	}
+
+	if err := m.Links().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("_links")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateCreatedAt(formats strfmt.Registry) error {
+
+	if err := validate.Required("createdAt", "body", m.CreatedAt()); err != nil {
+		return err
+	}
+
+	if err := validate.FormatOf("createdAt", "body", "date-time", m.CreatedAt().String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateDescription(formats strfmt.Registry) error {
+
+	if err := validate.Required("description", "body", m.Description()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateID(formats strfmt.Registry) error {
+
+	if err := validate.Required("id", "body", m.ID()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateTags(formats strfmt.Registry) error {
+
+	if err := validate.Required("tags", "body", m.Tags()); err != nil {
+		return err
+	}
+
+	if err := m.Tags().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateType(formats strfmt.Registry) error {
+
+	if err := validate.Required("type", "body", m.Type()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateUpdatedAt(formats strfmt.Registry) error {
+
+	if err := validate.Required("updatedAt", "body", m.UpdatedAt()); err != nil {
+		return err
+	}
+
+	if err := validate.FormatOf("updatedAt", "body", "date-time", m.UpdatedAt().String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainDetail) validateVersion(formats strfmt.Registry) error {
+
+	if err := validate.Required("version", "body", m.Version()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *PostureCheckDomainDetail) validateDomains(formats strfmt.Registry) error {
 
 	if err := validate.Required("domains", "body", m.Domains); err != nil {
+		return err
+	}
+
+	iDomainsSize := int64(len(m.Domains))
+
+	if err := validate.MinItems("domains", "body", iDomainsSize, 1); err != nil {
 		return err
 	}
 

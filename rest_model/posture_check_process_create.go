@@ -51,7 +51,7 @@ type PostureCheckProcessCreate struct {
 
 	// process
 	// Required: true
-	Process *ProcessMatch `json:"process"`
+	Process *Process `json:"process"`
 }
 
 // Description gets the description of this subtype
@@ -86,7 +86,7 @@ func (m *PostureCheckProcessCreate) SetTags(val Tags) {
 
 // TypeID gets the type Id of this subtype
 func (m *PostureCheckProcessCreate) TypeID() PostureCheckType {
-	return "PostureCheckProcessCreate"
+	return "PROCESS"
 }
 
 // SetTypeID sets the type Id of this subtype
@@ -99,7 +99,7 @@ func (m *PostureCheckProcessCreate) UnmarshalJSON(raw []byte) error {
 
 		// process
 		// Required: true
-		Process *ProcessMatch `json:"process"`
+		Process *Process `json:"process"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -156,7 +156,7 @@ func (m PostureCheckProcessCreate) MarshalJSON() ([]byte, error) {
 
 		// process
 		// Required: true
-		Process *ProcessMatch `json:"process"`
+		Process *Process `json:"process"`
 	}{
 
 		Process: m.Process,
