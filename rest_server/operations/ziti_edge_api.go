@@ -58,6 +58,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/geo_region"
 	"github.com/openziti/edge/rest_server/operations/identity"
 	"github.com/openziti/edge/rest_server/operations/informational"
+	"github.com/openziti/edge/rest_server/operations/posture_checks"
 	"github.com/openziti/edge/rest_server/operations/role_attributes"
 	"github.com/openziti/edge/rest_server/operations/service"
 	"github.com/openziti/edge/rest_server/operations/service_edge_router_policy"
@@ -80,6 +81,7 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		PreServerShutdown:   func() {},
 		ServerShutdown:      func() {},
 		spec:                spec,
+		useSwaggerUI:        false,
 		ServeError:          errors.ServeError,
 		BasicAuthenticator:  security.BasicAuth,
 		APIKeyAuthenticator: security.APIKeyAuth,
@@ -147,6 +149,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityCreateIdentityHandler: identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.CreateIdentity has not yet been implemented")
 		}),
+		PostureChecksCreatePostureCheckHandler: posture_checks.CreatePostureCheckHandlerFunc(func(params posture_checks.CreatePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureCheck has not yet been implemented")
+		}),
 		ServiceCreateServiceHandler: service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
 		}),
@@ -191,6 +196,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityDeleteIdentityHandler: identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DeleteIdentity has not yet been implemented")
+		}),
+		PostureChecksDeletePostureCheckHandler: posture_checks.DeletePostureCheckHandlerFunc(func(params posture_checks.DeletePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DeletePostureCheck has not yet been implemented")
 		}),
 		ServiceDeleteServiceHandler: service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.DeleteService has not yet been implemented")
@@ -245,6 +253,12 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityDetailIdentityTypeHandler: identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DetailIdentityType has not yet been implemented")
+		}),
+		PostureChecksDetailPostureCheckHandler: posture_checks.DetailPostureCheckHandlerFunc(func(params posture_checks.DetailPostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DetailPostureCheck has not yet been implemented")
+		}),
+		PostureChecksDetailPostureCheckTypeHandler: posture_checks.DetailPostureCheckTypeHandlerFunc(func(params posture_checks.DetailPostureCheckTypeParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.DetailPostureCheckType has not yet been implemented")
 		}),
 		ServiceDetailServiceHandler: service.DetailServiceHandlerFunc(func(params service.DetailServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.DetailService has not yet been implemented")
@@ -305,6 +319,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityGetIdentityPolicyAdviceHandler: identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
+		}),
+		IdentityGetIdentityPostureDataHandler: identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityPostureData has not yet been implemented")
 		}),
 		APISessionListAPISessionsHandler: api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.ListAPISessions has not yet been implemented")
@@ -383,6 +400,12 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityListIdentitysServiceConfigsHandler: identity.ListIdentitysServiceConfigsHandlerFunc(func(params identity.ListIdentitysServiceConfigsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.ListIdentitysServiceConfigs has not yet been implemented")
+		}),
+		PostureChecksListPostureCheckTypesHandler: posture_checks.ListPostureCheckTypesHandlerFunc(func(params posture_checks.ListPostureCheckTypesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.ListPostureCheckTypes has not yet been implemented")
+		}),
+		PostureChecksListPostureChecksHandler: posture_checks.ListPostureChecksHandlerFunc(func(params posture_checks.ListPostureChecksParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.ListPostureChecks has not yet been implemented")
 		}),
 		InformationalListRootHandler: informational.ListRootHandlerFunc(func(params informational.ListRootParams) middleware.Responder {
 			return middleware.NotImplemented("operation informational.ListRoot has not yet been implemented")
@@ -474,6 +497,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityPatchIdentityHandler: identity.PatchIdentityHandlerFunc(func(params identity.PatchIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.PatchIdentity has not yet been implemented")
 		}),
+		PostureChecksPatchPostureCheckHandler: posture_checks.PatchPostureCheckHandlerFunc(func(params posture_checks.PatchPostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.PatchPostureCheck has not yet been implemented")
+		}),
 		ServicePatchServiceHandler: service.PatchServiceHandlerFunc(func(params service.PatchServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
 		}),
@@ -512,6 +538,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityUpdateIdentityHandler: identity.UpdateIdentityHandlerFunc(func(params identity.UpdateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.UpdateIdentity has not yet been implemented")
+		}),
+		PostureChecksUpdatePostureCheckHandler: posture_checks.UpdatePostureCheckHandlerFunc(func(params posture_checks.UpdatePostureCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.UpdatePostureCheck has not yet been implemented")
 		}),
 		ServiceUpdateServiceHandler: service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.UpdateService has not yet been implemented")
@@ -552,6 +581,7 @@ type ZitiEdgeAPI struct {
 	defaultConsumes string
 	defaultProduces string
 	Middleware      func(middleware.Builder) http.Handler
+	useSwaggerUI    bool
 
 	// BasicAuthenticator generates a runtime.Authenticator from the supplied basic auth function.
 	// It has a default implementation in the security package, however you can replace it for your particular usage.
@@ -626,6 +656,8 @@ type ZitiEdgeAPI struct {
 	EdgeRouterPolicyCreateEdgeRouterPolicyHandler edge_router_policy.CreateEdgeRouterPolicyHandler
 	// IdentityCreateIdentityHandler sets the operation handler for the create identity operation
 	IdentityCreateIdentityHandler identity.CreateIdentityHandler
+	// PostureChecksCreatePostureCheckHandler sets the operation handler for the create posture check operation
+	PostureChecksCreatePostureCheckHandler posture_checks.CreatePostureCheckHandler
 	// ServiceCreateServiceHandler sets the operation handler for the create service operation
 	ServiceCreateServiceHandler service.CreateServiceHandler
 	// ServiceEdgeRouterPolicyCreateServiceEdgeRouterPolicyHandler sets the operation handler for the create service edge router policy operation
@@ -656,6 +688,8 @@ type ZitiEdgeAPI struct {
 	EnrollmentDeleteEnrollmentHandler enrollment.DeleteEnrollmentHandler
 	// IdentityDeleteIdentityHandler sets the operation handler for the delete identity operation
 	IdentityDeleteIdentityHandler identity.DeleteIdentityHandler
+	// PostureChecksDeletePostureCheckHandler sets the operation handler for the delete posture check operation
+	PostureChecksDeletePostureCheckHandler posture_checks.DeletePostureCheckHandler
 	// ServiceDeleteServiceHandler sets the operation handler for the delete service operation
 	ServiceDeleteServiceHandler service.DeleteServiceHandler
 	// ServiceEdgeRouterPolicyDeleteServiceEdgeRouterPolicyHandler sets the operation handler for the delete service edge router policy operation
@@ -692,6 +726,10 @@ type ZitiEdgeAPI struct {
 	IdentityDetailIdentityHandler identity.DetailIdentityHandler
 	// IdentityDetailIdentityTypeHandler sets the operation handler for the detail identity type operation
 	IdentityDetailIdentityTypeHandler identity.DetailIdentityTypeHandler
+	// PostureChecksDetailPostureCheckHandler sets the operation handler for the detail posture check operation
+	PostureChecksDetailPostureCheckHandler posture_checks.DetailPostureCheckHandler
+	// PostureChecksDetailPostureCheckTypeHandler sets the operation handler for the detail posture check type operation
+	PostureChecksDetailPostureCheckTypeHandler posture_checks.DetailPostureCheckTypeHandler
 	// ServiceDetailServiceHandler sets the operation handler for the detail service operation
 	ServiceDetailServiceHandler service.DetailServiceHandler
 	// ServiceEdgeRouterPolicyDetailServiceEdgeRouterPolicyHandler sets the operation handler for the detail service edge router policy operation
@@ -732,6 +770,8 @@ type ZitiEdgeAPI struct {
 	CurrentAPISessionGetCurrentIdentityHandler current_api_session.GetCurrentIdentityHandler
 	// IdentityGetIdentityPolicyAdviceHandler sets the operation handler for the get identity policy advice operation
 	IdentityGetIdentityPolicyAdviceHandler identity.GetIdentityPolicyAdviceHandler
+	// IdentityGetIdentityPostureDataHandler sets the operation handler for the get identity posture data operation
+	IdentityGetIdentityPostureDataHandler identity.GetIdentityPostureDataHandler
 	// APISessionListAPISessionsHandler sets the operation handler for the list API sessions operation
 	APISessionListAPISessionsHandler api_session.ListAPISessionsHandler
 	// AuthenticatorListAuthenticatorsHandler sets the operation handler for the list authenticators operation
@@ -784,6 +824,10 @@ type ZitiEdgeAPI struct {
 	IdentityListIdentitysEdgeRouterPoliciesHandler identity.ListIdentitysEdgeRouterPoliciesHandler
 	// IdentityListIdentitysServiceConfigsHandler sets the operation handler for the list identitys service configs operation
 	IdentityListIdentitysServiceConfigsHandler identity.ListIdentitysServiceConfigsHandler
+	// PostureChecksListPostureCheckTypesHandler sets the operation handler for the list posture check types operation
+	PostureChecksListPostureCheckTypesHandler posture_checks.ListPostureCheckTypesHandler
+	// PostureChecksListPostureChecksHandler sets the operation handler for the list posture checks operation
+	PostureChecksListPostureChecksHandler posture_checks.ListPostureChecksHandler
 	// InformationalListRootHandler sets the operation handler for the list root operation
 	InformationalListRootHandler informational.ListRootHandler
 	// ServiceListServiceConfigHandler sets the operation handler for the list service config operation
@@ -844,6 +888,8 @@ type ZitiEdgeAPI struct {
 	EdgeRouterPolicyPatchEdgeRouterPolicyHandler edge_router_policy.PatchEdgeRouterPolicyHandler
 	// IdentityPatchIdentityHandler sets the operation handler for the patch identity operation
 	IdentityPatchIdentityHandler identity.PatchIdentityHandler
+	// PostureChecksPatchPostureCheckHandler sets the operation handler for the patch posture check operation
+	PostureChecksPatchPostureCheckHandler posture_checks.PatchPostureCheckHandler
 	// ServicePatchServiceHandler sets the operation handler for the patch service operation
 	ServicePatchServiceHandler service.PatchServiceHandler
 	// ServiceEdgeRouterPolicyPatchServiceEdgeRouterPolicyHandler sets the operation handler for the patch service edge router policy operation
@@ -870,6 +916,8 @@ type ZitiEdgeAPI struct {
 	EdgeRouterPolicyUpdateEdgeRouterPolicyHandler edge_router_policy.UpdateEdgeRouterPolicyHandler
 	// IdentityUpdateIdentityHandler sets the operation handler for the update identity operation
 	IdentityUpdateIdentityHandler identity.UpdateIdentityHandler
+	// PostureChecksUpdatePostureCheckHandler sets the operation handler for the update posture check operation
+	PostureChecksUpdatePostureCheckHandler posture_checks.UpdatePostureCheckHandler
 	// ServiceUpdateServiceHandler sets the operation handler for the update service operation
 	ServiceUpdateServiceHandler service.UpdateServiceHandler
 	// ServiceEdgeRouterPolicyUpdateServiceEdgeRouterPolicyHandler sets the operation handler for the update service edge router policy operation
@@ -899,6 +947,16 @@ type ZitiEdgeAPI struct {
 
 	// User defined logger function.
 	Logger func(string, ...interface{})
+}
+
+// UseRedoc for documentation at /docs
+func (o *ZitiEdgeAPI) UseRedoc() {
+	o.useSwaggerUI = false
+}
+
+// UseSwaggerUI for documentation at /docs
+func (o *ZitiEdgeAPI) UseSwaggerUI() {
+	o.useSwaggerUI = true
 }
 
 // SetDefaultProduces sets the default produces media type
@@ -1012,6 +1070,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.IdentityCreateIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.CreateIdentityHandler")
 	}
+	if o.PostureChecksCreatePostureCheckHandler == nil {
+		unregistered = append(unregistered, "posture_checks.CreatePostureCheckHandler")
+	}
 	if o.ServiceCreateServiceHandler == nil {
 		unregistered = append(unregistered, "service.CreateServiceHandler")
 	}
@@ -1056,6 +1117,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityDeleteIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.DeleteIdentityHandler")
+	}
+	if o.PostureChecksDeletePostureCheckHandler == nil {
+		unregistered = append(unregistered, "posture_checks.DeletePostureCheckHandler")
 	}
 	if o.ServiceDeleteServiceHandler == nil {
 		unregistered = append(unregistered, "service.DeleteServiceHandler")
@@ -1110,6 +1174,12 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityDetailIdentityTypeHandler == nil {
 		unregistered = append(unregistered, "identity.DetailIdentityTypeHandler")
+	}
+	if o.PostureChecksDetailPostureCheckHandler == nil {
+		unregistered = append(unregistered, "posture_checks.DetailPostureCheckHandler")
+	}
+	if o.PostureChecksDetailPostureCheckTypeHandler == nil {
+		unregistered = append(unregistered, "posture_checks.DetailPostureCheckTypeHandler")
 	}
 	if o.ServiceDetailServiceHandler == nil {
 		unregistered = append(unregistered, "service.DetailServiceHandler")
@@ -1170,6 +1240,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityGetIdentityPolicyAdviceHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityPolicyAdviceHandler")
+	}
+	if o.IdentityGetIdentityPostureDataHandler == nil {
+		unregistered = append(unregistered, "identity.GetIdentityPostureDataHandler")
 	}
 	if o.APISessionListAPISessionsHandler == nil {
 		unregistered = append(unregistered, "api_session.ListAPISessionsHandler")
@@ -1248,6 +1321,12 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityListIdentitysServiceConfigsHandler == nil {
 		unregistered = append(unregistered, "identity.ListIdentitysServiceConfigsHandler")
+	}
+	if o.PostureChecksListPostureCheckTypesHandler == nil {
+		unregistered = append(unregistered, "posture_checks.ListPostureCheckTypesHandler")
+	}
+	if o.PostureChecksListPostureChecksHandler == nil {
+		unregistered = append(unregistered, "posture_checks.ListPostureChecksHandler")
 	}
 	if o.InformationalListRootHandler == nil {
 		unregistered = append(unregistered, "informational.ListRootHandler")
@@ -1339,6 +1418,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.IdentityPatchIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.PatchIdentityHandler")
 	}
+	if o.PostureChecksPatchPostureCheckHandler == nil {
+		unregistered = append(unregistered, "posture_checks.PatchPostureCheckHandler")
+	}
 	if o.ServicePatchServiceHandler == nil {
 		unregistered = append(unregistered, "service.PatchServiceHandler")
 	}
@@ -1377,6 +1459,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityUpdateIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.UpdateIdentityHandler")
+	}
+	if o.PostureChecksUpdatePostureCheckHandler == nil {
+		unregistered = append(unregistered, "posture_checks.UpdatePostureCheckHandler")
 	}
 	if o.ServiceUpdateServiceHandler == nil {
 		unregistered = append(unregistered, "service.UpdateServiceHandler")
@@ -1560,6 +1645,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/posture-checks"] = posture_checks.NewCreatePostureCheck(o.context, o.PostureChecksCreatePostureCheckHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/services"] = service.NewCreateService(o.context, o.ServiceCreateServiceHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1617,6 +1706,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/identities/{id}"] = identity.NewDeleteIdentity(o.context, o.IdentityDeleteIdentityHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/posture-checks/{id}"] = posture_checks.NewDeletePostureCheck(o.context, o.PostureChecksDeletePostureCheckHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
@@ -1689,6 +1782,14 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/identity-types/{id}"] = identity.NewDetailIdentityType(o.context, o.IdentityDetailIdentityTypeHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/posture-checks/{id}"] = posture_checks.NewDetailPostureCheck(o.context, o.PostureChecksDetailPostureCheckHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/posture-check-types/{id}"] = posture_checks.NewDetailPostureCheckType(o.context, o.PostureChecksDetailPostureCheckTypeHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -1769,6 +1870,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/identities/{id}/policy-advice/{serviceId}"] = identity.NewGetIdentityPolicyAdvice(o.context, o.IdentityGetIdentityPolicyAdviceHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/identities/{id}/posture-data"] = identity.NewGetIdentityPostureData(o.context, o.IdentityGetIdentityPostureDataHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -1873,6 +1978,14 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/identities/{id}/service-configs"] = identity.NewListIdentitysServiceConfigs(o.context, o.IdentityListIdentitysServiceConfigsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/posture-check-types"] = posture_checks.NewListPostureCheckTypes(o.context, o.PostureChecksListPostureCheckTypesHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/posture-checks"] = posture_checks.NewListPostureChecks(o.context, o.PostureChecksListPostureChecksHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -1996,6 +2109,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
+	o.handlers["PATCH"]["/posture-checks/{id}"] = posture_checks.NewPatchPostureCheck(o.context, o.PostureChecksPatchPostureCheckHandler)
+	if o.handlers["PATCH"] == nil {
+		o.handlers["PATCH"] = make(map[string]http.Handler)
+	}
 	o.handlers["PATCH"]["/services/{id}"] = service.NewPatchService(o.context, o.ServicePatchServiceHandler)
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
@@ -2048,6 +2165,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
+	o.handlers["PUT"]["/posture-checks/{id}"] = posture_checks.NewUpdatePostureCheck(o.context, o.PostureChecksUpdatePostureCheckHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
 	o.handlers["PUT"]["/services/{id}"] = service.NewUpdateService(o.context, o.ServiceUpdateServiceHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
@@ -2078,6 +2199,9 @@ func (o *ZitiEdgeAPI) Serve(builder middleware.Builder) http.Handler {
 
 	if o.Middleware != nil {
 		return o.Middleware(builder)
+	}
+	if o.useSwaggerUI {
+		return o.context.APIHandlerSwaggerUI(builder)
 	}
 	return o.context.APIHandler(builder)
 }

@@ -46,6 +46,9 @@ type ServicePolicyPatch struct {
 	// name
 	Name string `json:"name,omitempty"`
 
+	// posture check roles
+	PostureCheckRoles Roles `json:"postureCheckRoles"`
+
 	// semantic
 	Semantic Semantic `json:"semantic,omitempty"`
 
@@ -64,6 +67,10 @@ func (m *ServicePolicyPatch) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateIdentityRoles(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePostureCheckRoles(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -98,6 +105,22 @@ func (m *ServicePolicyPatch) validateIdentityRoles(formats strfmt.Registry) erro
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyPatch) validatePostureCheckRoles(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.PostureCheckRoles) { // not required
+		return nil
+	}
+
+	if err := m.PostureCheckRoles.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRoles")
 		}
 		return err
 	}

@@ -65,6 +65,8 @@ type ClientService interface {
 
 	GetIdentityPolicyAdvice(params *GetIdentityPolicyAdviceParams, authInfo runtime.ClientAuthInfoWriter) (*GetIdentityPolicyAdviceOK, error)
 
+	GetIdentityPostureData(params *GetIdentityPostureDataParams, authInfo runtime.ClientAuthInfoWriter) (*GetIdentityPostureDataOK, error)
+
 	ListIdentities(params *ListIdentitiesParams, authInfo runtime.ClientAuthInfoWriter) (*ListIdentitiesOK, error)
 
 	ListIdentityEdgeRouters(params *ListIdentityEdgeRoutersParams, authInfo runtime.ClientAuthInfoWriter) (*ListIdentityEdgeRoutersOK, error)
@@ -346,6 +348,45 @@ func (a *Client) GetIdentityPolicyAdvice(params *GetIdentityPolicyAdviceParams, 
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getIdentityPolicyAdvice: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  GetIdentityPostureData retrieves the curent posture data for a specific identity
+
+  Returns a nested map data represeting the posture data of the identity.
+This data should be considered volatile.
+
+*/
+func (a *Client) GetIdentityPostureData(params *GetIdentityPostureDataParams, authInfo runtime.ClientAuthInfoWriter) (*GetIdentityPostureDataOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetIdentityPostureDataParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "getIdentityPostureData",
+		Method:             "GET",
+		PathPattern:        "/identities/{id}/posture-data",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &GetIdentityPostureDataReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetIdentityPostureDataOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getIdentityPostureData: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

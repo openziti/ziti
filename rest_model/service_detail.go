@@ -62,6 +62,10 @@ type ServiceDetail struct {
 	// Required: true
 	Permissions DialBindArray `json:"permissions"`
 
+	// posture queries
+	// Required: true
+	PostureQueries *PostureQuery `json:"postureQueries"`
+
 	// role attributes
 	// Required: true
 	RoleAttributes Attributes `json:"roleAttributes"`
@@ -92,6 +96,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 
 		Permissions DialBindArray `json:"permissions"`
 
+		PostureQueries *PostureQuery `json:"postureQueries"`
+
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
@@ -109,6 +115,8 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 	m.Name = dataAO1.Name
 
 	m.Permissions = dataAO1.Permissions
+
+	m.PostureQueries = dataAO1.PostureQueries
 
 	m.RoleAttributes = dataAO1.RoleAttributes
 
@@ -137,6 +145,8 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 
 		Permissions DialBindArray `json:"permissions"`
 
+		PostureQueries *PostureQuery `json:"postureQueries"`
+
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
@@ -151,6 +161,8 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Name = m.Name
 
 	dataAO1.Permissions = m.Permissions
+
+	dataAO1.PostureQueries = m.PostureQueries
 
 	dataAO1.RoleAttributes = m.RoleAttributes
 
@@ -190,6 +202,10 @@ func (m *ServiceDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePermissions(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePostureQueries(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -270,6 +286,24 @@ func (m *ServiceDetail) validatePermissions(formats strfmt.Registry) error {
 			return ve.ValidateName("permissions")
 		}
 		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceDetail) validatePostureQueries(formats strfmt.Registry) error {
+
+	if err := validate.Required("postureQueries", "body", m.PostureQueries); err != nil {
+		return err
+	}
+
+	if m.PostureQueries != nil {
+		if err := m.PostureQueries.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("postureQueries")
+			}
+			return err
+		}
 	}
 
 	return nil

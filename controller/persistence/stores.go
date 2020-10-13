@@ -53,6 +53,7 @@ type Stores struct {
 	TransitRouter           TransitRouterStore
 	Enrollment              EnrollmentStore
 	Authenticator           AuthenticatorStore
+	PostureCheck            PostureCheckStore
 
 	storeMap map[reflect.Type]boltz.CrudStore
 }
@@ -137,6 +138,7 @@ type stores struct {
 	transitRouter           *transitRouterStoreImpl
 	enrollment              *enrollmentStoreImpl
 	authenticator           *authenticatorStoreImpl
+	postureCheck            *postureCheckStoreImpl
 }
 
 func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
@@ -167,6 +169,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.serviceEdgeRouterPolicy = newServiceEdgeRouterPolicyStore(internalStores)
 	internalStores.servicePolicy = newServicePolicyStore(internalStores)
 	internalStores.session = newSessionStore(internalStores)
+	internalStores.postureCheck = newPostureCheckStore(internalStores)
 
 	externalStores := &Stores{
 		DbProvider: dbProvider,
@@ -192,6 +195,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Session:                 internalStores.session,
 		Authenticator:           internalStores.authenticator,
 		Enrollment:              internalStores.enrollment,
+		PostureCheck:            internalStores.postureCheck,
 
 		storeMap: make(map[reflect.Type]boltz.CrudStore),
 	}

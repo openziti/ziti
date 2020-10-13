@@ -48,6 +48,9 @@ type ServicePolicyUpdate struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// posture check roles
+	PostureCheckRoles Roles `json:"postureCheckRoles"`
+
 	// semantic
 	Semantic Semantic `json:"semantic,omitempty"`
 
@@ -71,6 +74,10 @@ func (m *ServicePolicyUpdate) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePostureCheckRoles(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -115,6 +122,22 @@ func (m *ServicePolicyUpdate) validateIdentityRoles(formats strfmt.Registry) err
 func (m *ServicePolicyUpdate) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyUpdate) validatePostureCheckRoles(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.PostureCheckRoles) { // not required
+		return nil
+	}
+
+	if err := m.PostureCheckRoles.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRoles")
+		}
 		return err
 	}
 
