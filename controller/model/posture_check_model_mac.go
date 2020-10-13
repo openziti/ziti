@@ -34,7 +34,7 @@ func (p *PostureCheckMacAddresses) fillFrom(handler Handler, tx *bbolt.Tx, check
 	subCheck := subType.(*persistence.PostureCheckMacAddresses)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mac address check to bolt mac address cheeck")
+		return fmt.Errorf("could not covert mac address check to bolt type")
 	}
 
 	p.MacAddresses = subCheck.MacAddresses

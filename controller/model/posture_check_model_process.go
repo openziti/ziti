@@ -37,7 +37,7 @@ func (p *PostureCheckProcess) fillFrom(handler Handler, tx *bbolt.Tx, check *per
 	subCheck := subType.(*persistence.PostureCheckProcess)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mac address check to bolt mac address cheeck")
+		return fmt.Errorf("could not covert process check to bolt type")
 	}
 
 	p.OperatingSystem = subCheck.OperatingSystem

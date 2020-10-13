@@ -39,7 +39,7 @@ func (p *PostureCheckOperatingSystem) fillFrom(handler Handler, tx *bbolt.Tx, ch
 	subCheck := subType.(*persistence.PostureCheckOperatingSystem)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert mac address check to bolt mac address cheeck")
+		return fmt.Errorf("could not covert os check to bolt type")
 	}
 
 	for _, osMatch := range subCheck.OperatingSystems {
