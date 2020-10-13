@@ -53,9 +53,9 @@ type PostureCheckMacAddressDetail struct {
 
 	nameField *string
 
-	tagsField Tags
+	roleAttributesField Attributes
 
-	typeField *string
+	tagsField Tags
 
 	updatedAtField *strfmt.DateTime
 
@@ -117,6 +117,16 @@ func (m *PostureCheckMacAddressDetail) SetName(val *string) {
 	m.nameField = val
 }
 
+// RoleAttributes gets the role attributes of this subtype
+func (m *PostureCheckMacAddressDetail) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this subtype
+func (m *PostureCheckMacAddressDetail) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
+}
+
 // Tags gets the tags of this subtype
 func (m *PostureCheckMacAddressDetail) Tags() Tags {
 	return m.tagsField
@@ -125,16 +135,6 @@ func (m *PostureCheckMacAddressDetail) Tags() Tags {
 // SetTags sets the tags of this subtype
 func (m *PostureCheckMacAddressDetail) SetTags(val Tags) {
 	m.tagsField = val
-}
-
-// Type gets the type of this subtype
-func (m *PostureCheckMacAddressDetail) Type() *string {
-	return m.typeField
-}
-
-// SetType sets the type of this subtype
-func (m *PostureCheckMacAddressDetail) SetType(val *string) {
-	m.typeField = val
 }
 
 // TypeID gets the type Id of this subtype
@@ -196,9 +196,9 @@ func (m *PostureCheckMacAddressDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		Tags Tags `json:"tags"`
+		RoleAttributes Attributes `json:"roleAttributes"`
 
-		Type *string `json:"type"`
+		Tags Tags `json:"tags"`
 
 		TypeID string `json:"typeId"`
 
@@ -226,9 +226,9 @@ func (m *PostureCheckMacAddressDetail) UnmarshalJSON(raw []byte) error {
 
 	result.nameField = base.Name
 
-	result.tagsField = base.Tags
+	result.roleAttributesField = base.RoleAttributes
 
-	result.typeField = base.Type
+	result.tagsField = base.Tags
 
 	if base.TypeID != result.TypeID() {
 		/* Not the type we're looking for. */
@@ -273,9 +273,9 @@ func (m PostureCheckMacAddressDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
-		Tags Tags `json:"tags"`
+		RoleAttributes Attributes `json:"roleAttributes"`
 
-		Type *string `json:"type"`
+		Tags Tags `json:"tags"`
 
 		TypeID string `json:"typeId"`
 
@@ -294,9 +294,9 @@ func (m PostureCheckMacAddressDetail) MarshalJSON() ([]byte, error) {
 
 		Name: m.Name(),
 
-		Tags: m.Tags(),
+		RoleAttributes: m.RoleAttributes(),
 
-		Type: m.Type(),
+		Tags: m.Tags(),
 
 		TypeID: m.TypeID(),
 
@@ -335,11 +335,11 @@ func (m *PostureCheckMacAddressDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateTags(formats); err != nil {
+	if err := m.validateRoleAttributes(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateType(formats); err != nil {
+	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -417,6 +417,22 @@ func (m *PostureCheckMacAddressDetail) validateName(formats strfmt.Registry) err
 	return nil
 }
 
+func (m *PostureCheckMacAddressDetail) validateRoleAttributes(formats strfmt.Registry) error {
+
+	if err := validate.Required("roleAttributes", "body", m.RoleAttributes()); err != nil {
+		return err
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (m *PostureCheckMacAddressDetail) validateTags(formats strfmt.Registry) error {
 
 	if err := validate.Required("tags", "body", m.Tags()); err != nil {
@@ -427,15 +443,6 @@ func (m *PostureCheckMacAddressDetail) validateTags(formats strfmt.Registry) err
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureCheckMacAddressDetail) validateType(formats strfmt.Registry) error {
-
-	if err := validate.Required("type", "body", m.Type()); err != nil {
 		return err
 	}
 

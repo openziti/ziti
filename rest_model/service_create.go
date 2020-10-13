@@ -45,7 +45,8 @@ type ServiceCreate struct {
 	Configs []string `json:"configs"`
 
 	// encryption required
-	EncryptionRequired bool `json:"encryptionRequired,omitempty"`
+	// Required: true
+	EncryptionRequired *bool `json:"encryptionRequired"`
 
 	// name
 	// Required: true
@@ -65,6 +66,10 @@ type ServiceCreate struct {
 func (m *ServiceCreate) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateEncryptionRequired(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -76,6 +81,15 @@ func (m *ServiceCreate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *ServiceCreate) validateEncryptionRequired(formats strfmt.Registry) error {
+
+	if err := validate.Required("encryptionRequired", "body", m.EncryptionRequired); err != nil {
+		return err
+	}
+
 	return nil
 }
 

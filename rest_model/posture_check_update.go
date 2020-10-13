@@ -58,6 +58,10 @@ type PostureCheckUpdate interface {
 	Name() *string
 	SetName(*string)
 
+	// role attributes
+	RoleAttributes() Attributes
+	SetRoleAttributes(Attributes)
+
 	// tags
 	Tags() Tags
 	SetTags(Tags)
@@ -74,6 +78,8 @@ type postureCheckUpdate struct {
 	descriptionField *string
 
 	nameField *string
+
+	roleAttributesField Attributes
 
 	tagsField Tags
 
@@ -98,6 +104,16 @@ func (m *postureCheckUpdate) Name() *string {
 // SetName sets the name of this polymorphic type
 func (m *postureCheckUpdate) SetName(val *string) {
 	m.nameField = val
+}
+
+// RoleAttributes gets the role attributes of this polymorphic type
+func (m *postureCheckUpdate) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this polymorphic type
+func (m *postureCheckUpdate) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this polymorphic type
@@ -211,6 +227,10 @@ func (m *postureCheckUpdate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateRoleAttributes(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
@@ -233,6 +253,22 @@ func (m *postureCheckUpdate) validateDescription(formats strfmt.Registry) error 
 func (m *postureCheckUpdate) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckUpdate) validateRoleAttributes(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.RoleAttributes()) { // not required
+		return nil
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
 		return err
 	}
 

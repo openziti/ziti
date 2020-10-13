@@ -53,9 +53,9 @@ type PostureCheckProcessDetail struct {
 
 	nameField *string
 
-	tagsField Tags
+	roleAttributesField Attributes
 
-	typeField *string
+	tagsField Tags
 
 	updatedAtField *strfmt.DateTime
 
@@ -116,6 +116,16 @@ func (m *PostureCheckProcessDetail) SetName(val *string) {
 	m.nameField = val
 }
 
+// RoleAttributes gets the role attributes of this subtype
+func (m *PostureCheckProcessDetail) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this subtype
+func (m *PostureCheckProcessDetail) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
+}
+
 // Tags gets the tags of this subtype
 func (m *PostureCheckProcessDetail) Tags() Tags {
 	return m.tagsField
@@ -124,16 +134,6 @@ func (m *PostureCheckProcessDetail) Tags() Tags {
 // SetTags sets the tags of this subtype
 func (m *PostureCheckProcessDetail) SetTags(val Tags) {
 	m.tagsField = val
-}
-
-// Type gets the type of this subtype
-func (m *PostureCheckProcessDetail) Type() *string {
-	return m.typeField
-}
-
-// SetType sets the type of this subtype
-func (m *PostureCheckProcessDetail) SetType(val *string) {
-	m.typeField = val
 }
 
 // TypeID gets the type Id of this subtype
@@ -194,9 +194,9 @@ func (m *PostureCheckProcessDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		Tags Tags `json:"tags"`
+		RoleAttributes Attributes `json:"roleAttributes"`
 
-		Type *string `json:"type"`
+		Tags Tags `json:"tags"`
 
 		TypeID string `json:"typeId"`
 
@@ -224,9 +224,9 @@ func (m *PostureCheckProcessDetail) UnmarshalJSON(raw []byte) error {
 
 	result.nameField = base.Name
 
-	result.tagsField = base.Tags
+	result.roleAttributesField = base.RoleAttributes
 
-	result.typeField = base.Type
+	result.tagsField = base.Tags
 
 	if base.TypeID != result.TypeID() {
 		/* Not the type we're looking for. */
@@ -270,9 +270,9 @@ func (m PostureCheckProcessDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
-		Tags Tags `json:"tags"`
+		RoleAttributes Attributes `json:"roleAttributes"`
 
-		Type *string `json:"type"`
+		Tags Tags `json:"tags"`
 
 		TypeID string `json:"typeId"`
 
@@ -291,9 +291,9 @@ func (m PostureCheckProcessDetail) MarshalJSON() ([]byte, error) {
 
 		Name: m.Name(),
 
-		Tags: m.Tags(),
+		RoleAttributes: m.RoleAttributes(),
 
-		Type: m.Type(),
+		Tags: m.Tags(),
 
 		TypeID: m.TypeID(),
 
@@ -332,11 +332,11 @@ func (m *PostureCheckProcessDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateTags(formats); err != nil {
+	if err := m.validateRoleAttributes(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateType(formats); err != nil {
+	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -414,6 +414,22 @@ func (m *PostureCheckProcessDetail) validateName(formats strfmt.Registry) error 
 	return nil
 }
 
+func (m *PostureCheckProcessDetail) validateRoleAttributes(formats strfmt.Registry) error {
+
+	if err := validate.Required("roleAttributes", "body", m.RoleAttributes()); err != nil {
+		return err
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (m *PostureCheckProcessDetail) validateTags(formats strfmt.Registry) error {
 
 	if err := validate.Required("tags", "body", m.Tags()); err != nil {
@@ -424,15 +440,6 @@ func (m *PostureCheckProcessDetail) validateTags(formats strfmt.Registry) error 
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureCheckProcessDetail) validateType(formats strfmt.Registry) error {
-
-	if err := validate.Required("type", "body", m.Type()); err != nil {
 		return err
 	}
 

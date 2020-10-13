@@ -54,11 +54,12 @@ func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *mode
 		BaseEntity: models.BaseEntity{
 			Tags: policy.Tags,
 		},
-		Name:          stringz.OrEmpty(policy.Name),
-		PolicyType:    string(policy.Type),
-		Semantic:      string(policy.Semantic),
-		ServiceRoles:  policy.ServiceRoles,
-		IdentityRoles: policy.IdentityRoles,
+		Name:              stringz.OrEmpty(policy.Name),
+		PolicyType:        string(policy.Type),
+		Semantic:          string(policy.Semantic),
+		ServiceRoles:      policy.ServiceRoles,
+		IdentityRoles:     policy.IdentityRoles,
+		PostureCheckRoles: policy.PostureCheckRoles,
 	}
 
 	return ret
@@ -70,11 +71,12 @@ func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUp
 			Tags: policy.Tags,
 			Id:   id,
 		},
-		Name:          stringz.OrEmpty(policy.Name),
-		PolicyType:    string(policy.Type),
-		Semantic:      string(policy.Semantic),
-		ServiceRoles:  policy.ServiceRoles,
-		IdentityRoles: policy.IdentityRoles,
+		Name:              stringz.OrEmpty(policy.Name),
+		PolicyType:        string(policy.Type),
+		Semantic:          string(policy.Semantic),
+		ServiceRoles:      policy.ServiceRoles,
+		IdentityRoles:     policy.IdentityRoles,
+		PostureCheckRoles: policy.PostureCheckRoles,
 	}
 
 	return ret
@@ -86,11 +88,12 @@ func MapPatchServicePolicyToModel(id string, policy *rest_model.ServicePolicyPat
 			Tags: policy.Tags,
 			Id:   id,
 		},
-		Name:          policy.Name,
-		PolicyType:    string(policy.Type),
-		Semantic:      string(policy.Semantic),
-		ServiceRoles:  policy.ServiceRoles,
-		IdentityRoles: policy.IdentityRoles,
+		Name:              policy.Name,
+		PolicyType:        string(policy.Type),
+		Semantic:          string(policy.Semantic),
+		ServiceRoles:      policy.ServiceRoles,
+		IdentityRoles:     policy.IdentityRoles,
+		PostureCheckRoles: policy.PostureCheckRoles,
 	}
 
 	return ret
@@ -119,14 +122,16 @@ func MapServicePolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 
 func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
 	ret := &rest_model.ServicePolicyDetail{
-		BaseEntity:           BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
-		IdentityRoles:        policy.IdentityRoles,
-		IdentityRolesDisplay: GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
-		Name:                 &policy.Name,
-		Semantic:             rest_model.Semantic(policy.Semantic),
-		ServiceRoles:         policy.ServiceRoles,
-		ServiceRolesDisplay:   GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
-		Type:                 rest_model.DialBind(policy.PolicyType),
+		BaseEntity:               BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
+		IdentityRoles:            policy.IdentityRoles,
+		IdentityRolesDisplay:     GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
+		Name:                     &policy.Name,
+		Semantic:                 rest_model.Semantic(policy.Semantic),
+		ServiceRoles:             policy.ServiceRoles,
+		ServiceRolesDisplay:      GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
+		Type:                     rest_model.DialBind(policy.PolicyType),
+		PostureCheckRoles:        policy.PostureCheckRoles,
+		PostureCheckRolesDisplay: GetNamedPostureCheckRoles(ae.GetHandlers().PostureCheck, policy.PostureCheckRoles),
 	}
 
 	return ret, nil

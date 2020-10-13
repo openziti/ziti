@@ -73,15 +73,15 @@ type PostureCheckDetail interface {
 	Name() *string
 	SetName(*string)
 
+	// role attributes
+	// Required: true
+	RoleAttributes() Attributes
+	SetRoleAttributes(Attributes)
+
 	// tags
 	// Required: true
 	Tags() Tags
 	SetTags(Tags)
-
-	// type
-	// Required: true
-	Type() *string
-	SetType(*string)
 
 	// type Id
 	// Required: true
@@ -114,9 +114,9 @@ type postureCheckDetail struct {
 
 	nameField *string
 
-	tagsField Tags
+	roleAttributesField Attributes
 
-	typeField *string
+	tagsField Tags
 
 	typeIdField string
 
@@ -175,6 +175,16 @@ func (m *postureCheckDetail) SetName(val *string) {
 	m.nameField = val
 }
 
+// RoleAttributes gets the role attributes of this polymorphic type
+func (m *postureCheckDetail) RoleAttributes() Attributes {
+	return m.roleAttributesField
+}
+
+// SetRoleAttributes sets the role attributes of this polymorphic type
+func (m *postureCheckDetail) SetRoleAttributes(val Attributes) {
+	m.roleAttributesField = val
+}
+
 // Tags gets the tags of this polymorphic type
 func (m *postureCheckDetail) Tags() Tags {
 	return m.tagsField
@@ -183,16 +193,6 @@ func (m *postureCheckDetail) Tags() Tags {
 // SetTags sets the tags of this polymorphic type
 func (m *postureCheckDetail) SetTags(val Tags) {
 	m.tagsField = val
-}
-
-// Type gets the type of this polymorphic type
-func (m *postureCheckDetail) Type() *string {
-	return m.typeField
-}
-
-// SetType sets the type of this polymorphic type
-func (m *postureCheckDetail) SetType(val *string) {
-	m.typeField = val
 }
 
 // TypeID gets the type Id of this polymorphic type
@@ -328,11 +328,11 @@ func (m *postureCheckDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateTags(formats); err != nil {
+	if err := m.validateRoleAttributes(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateType(formats); err != nil {
+	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -402,11 +402,15 @@ func (m *postureCheckDetail) validateName(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *postureCheckDetail) validateTags(formats strfmt.Registry) error {
+func (m *postureCheckDetail) validateRoleAttributes(formats strfmt.Registry) error {
 
-	if err := m.Tags().Validate(formats); err != nil {
+	if err := validate.Required("roleAttributes", "body", m.RoleAttributes()); err != nil {
+		return err
+	}
+
+	if err := m.RoleAttributes().Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+			return ve.ValidateName("roleAttributes")
 		}
 		return err
 	}
@@ -414,9 +418,12 @@ func (m *postureCheckDetail) validateTags(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *postureCheckDetail) validateType(formats strfmt.Registry) error {
+func (m *postureCheckDetail) validateTags(formats strfmt.Registry) error {
 
-	if err := validate.Required("type", "body", m.Type()); err != nil {
+	if err := m.Tags().Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
 		return err
 	}
 

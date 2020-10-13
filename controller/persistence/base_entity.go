@@ -38,15 +38,17 @@ const (
 	EntityTypeEnrollments               = "enrollments"
 	EntityTypeAuthenticators            = "authenticators"
 	EntityTypePostureChecks             = "postureChecks"
+	EntityTypePostureCheckTypes         = "postureCheckTypes"
 	EdgeBucket                          = "edge"
 
 	FieldName           = "name"
 	FieldSemantic       = "semantic"
 	FieldRoleAttributes = "roleAttributes"
 
-	FieldEdgeRouterRoles = "edgeRouterRoles"
-	FieldIdentityRoles   = "identityRoles"
-	FieldServiceRoles    = "serviceRoles"
+	FieldEdgeRouterRoles   = "edgeRouterRoles"
+	FieldIdentityRoles     = "identityRoles"
+	FieldServiceRoles      = "serviceRoles"
+	FieldPostureCheckRoles = "postureCheckRoles"
 
 	SemanticAllOf = "AllOf"
 	SemanticAnyOf = "AnyOf"
