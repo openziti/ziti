@@ -17,44 +17,98 @@
 package loop3
 
 import (
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/spf13/cobra"
+	"net"
+	"strings"
 )
 
 func init() {
-	listenerCmd.Flags().StringVarP(&listenerCmdIdentity, "identity", "i", "default", ".ziti/identities.yml name")
-	listenerCmd.Flags().StringVarP(&listenerCmdBindAddress, "bind", "b", "tcp:127.0.0.1:8171", "Listener bind address")
-	loop3Cmd.AddCommand(listenerCmd)
+	listenerCmd := newListenerCmd()
+	loop3Cmd.AddCommand(listenerCmd.cmd)
 }
 
-var listenerCmd = &cobra.Command{
-	Use:   "listener",
-	Short: "Start loop3 listener",
-	Args:  cobra.ExactArgs(0),
-	Run:   listener,
+type listenerCmd struct {
+	cmd            *cobra.Command
+	identity       string
+	bindAddress    string
+	edgeConfigFile string
 }
-var listenerCmdIdentity string
-var listenerCmdBindAddress string
 
-func listener(_ *cobra.Command, _ []string) {
-	_, id, err := dotziti.LoadIdentity(listenerCmdIdentity)
+func newListenerCmd() *listenerCmd {
+	result := &listenerCmd{
+		cmd: &cobra.Command{
+			Use:   "listener",
+			Short: "Start loop2 listener",
+			Args:  cobra.ExactArgs(0),
+		},
+	}
+
+	result.cmd.Run = result.run
+
+	flags := result.cmd.Flags()
+	flags.StringVarP(&result.identity, "identity", "i", "default", ".ziti/identities.yml name")
+	flags.StringVarP(&result.bindAddress, "bind", "b", "tcp:127.0.0.1:8171", "Listener bind address")
+	flags.StringVarP(&result.edgeConfigFile, "config-file", "c", "", "Edge SDK config file")
+
+	return result
+}
+
+func (cmd *listenerCmd) run(_ *cobra.Command, _ []string) {
+	if strings.HasPrefix(cmd.bindAddress, "edge") {
+		cmd.listenEdge()
+	} else {
+		_, id, err := dotziti.LoadIdentity(cmd.identity)
+		if err != nil {
+			panic(err)
+		}
+
+		bindAddress, err := transport.ParseAddress(cmd.bindAddress)
+		if err != nil {
+			panic(err)
+		}
+
+		cmd.listen(bindAddress, id)
+	}
+}
+
+func (cmd *listenerCmd) listenEdge() {
+	log := pfxlog.ContextLogger(cmd.bindAddress)
+	defer log.Error("exited")
+	log.Info("started")
+
+	var context ziti.Context
+	if cmd.edgeConfigFile != "" {
+		zitiCfg, err := config.NewFromFile(cmd.edgeConfigFile)
+		if err != nil {
+			log.Fatalf("failed to load ziti configuration from %s: %v", cmd.edgeConfigFile, err)
+		}
+		context = ziti.NewContextWithConfig(zitiCfg)
+	} else {
+		context = ziti.NewContext()
+	}
+
+	service := strings.TrimPrefix(cmd.bindAddress, "edge:")
+	listener, err := context.Listen(service)
 	if err != nil {
 		panic(err)
 	}
 
-	bindAddress, err := transport.ParseAddress(listenerCmdBindAddress)
-	if err != nil {
-		panic(err)
+	for {
+		if conn, err := listener.Accept(); err != nil {
+			panic(err)
+		} else {
+			go cmd.handle(conn, cmd.bindAddress)
+		}
 	}
-
-	listen(bindAddress, id)
 }
 
-func listen(bind transport.Address, i *identity.TokenId) {
+func (cmd *listenerCmd) listen(bind transport.Address, i *identity.TokenId) {
 	log := pfxlog.ContextLogger(bind.String())
 	defer log.Error("exited")
 	log.Info("started")
@@ -69,7 +123,7 @@ func listen(bind transport.Address, i *identity.TokenId) {
 		select {
 		case peer := <-incoming:
 			if peer != nil {
-				go handle(peer)
+				go cmd.handle(peer.Conn(), peer.Detail().String())
 			} else {
 				return
 			}
@@ -77,17 +131,17 @@ func listen(bind transport.Address, i *identity.TokenId) {
 	}
 }
 
-func handle(peer transport.Connection) {
-	log := pfxlog.ContextLogger(peer.Detail().String())
-	if proto, err := newProtocol(peer.Conn()); err == nil {
+func (cmd *listenerCmd) handle(conn net.Conn, context string) {
+	log := pfxlog.ContextLogger(context)
+	if proto, err := newProtocol(conn); err == nil {
 		if test, err := proto.rxTest(); err == nil {
-			var result *loop3_pb.Result
+			var result *Result
 			if err := proto.run(test); err == nil {
-				result = &loop3_pb.Result{Success: true}
+				result = &Result{Success: true}
 			} else {
-				result = &loop3_pb.Result{Success: false, Message: err.Error()}
+				result = &Result{Success: false, Message: err.Error()}
 			}
-			if err := proto.txResult(result); err != nil {
+			if err := result.Tx(proto); err != nil {
 				log.Errorf("unable to tx result (%s)", err)
 			}
 		}

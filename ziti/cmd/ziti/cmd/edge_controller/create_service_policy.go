@@ -34,6 +34,7 @@ type createServicePolicyOptions struct {
 	commonOptions
 	serviceRoles  []string
 	identityRoles []string
+	semantic      string
 }
 
 // newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
@@ -62,6 +63,7 @@ func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the new service policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
+	cmd.Flags().StringVar(&options.semantic, "semantic", "", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -89,6 +91,9 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	setJSONValue(entityData, o.Args[1], "type")
 	setJSONValue(entityData, serviceRoles, "serviceRoles")
 	setJSONValue(entityData, identityRoles, "identityRoles")
+	if o.semantic != "" {
+		setJSONValue(entityData, o.semantic, "semantic")
+	}
 	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
 
 	if err != nil {

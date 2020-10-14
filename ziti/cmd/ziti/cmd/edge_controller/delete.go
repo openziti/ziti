@@ -96,7 +96,7 @@ func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, optio
 func runDeleteEntityOfType(o *commonOptions, entityType string) error {
 	var err error
 	ids := []string{o.Args[0]}
-	if entityType != "terminators" {
+	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" {
 		ids, err = mapNamesToIDs(entityType, o.Args[0])
 	}
 	if err != nil {
