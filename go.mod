@@ -27,7 +27,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/openziti/edge v0.16.45
+	github.com/openziti/edge v0.16.48
 	github.com/openziti/fabric v0.14.10
 	github.com/openziti/foundation v0.14.10
 	github.com/openziti/sdk-golang v0.13.55
@@ -45,7 +45,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/negroni v1.0.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
-	google.golang.org/grpc v1.25.1
+	google.golang.org/grpc v1.27.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.3.0
