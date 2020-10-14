@@ -39,7 +39,7 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		},
 		Service:        stringz.OrEmpty(terminator.Service),
 		Router:         stringz.OrEmpty(terminator.Router),
-		Binding:        terminator.Binding,
+		Binding:        stringz.OrEmpty(terminator.Binding),
 		Address:        stringz.OrEmpty(terminator.Address),
 		Identity:       terminator.Identity,
 		IdentitySecret: terminator.IdentitySecret,
@@ -59,7 +59,7 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 		},
 		Service:    stringz.OrEmpty(terminator.Service),
 		Router:     stringz.OrEmpty(terminator.Router),
-		Binding:    terminator.Binding,
+		Binding:    stringz.OrEmpty(terminator.Binding),
 		Address:    stringz.OrEmpty(terminator.Address),
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}

@@ -46,7 +46,8 @@ type TerminatorUpdate struct {
 	Address *string `json:"address"`
 
 	// binding
-	Binding string `json:"binding,omitempty"`
+	// Required: true
+	Binding *string `json:"binding"`
 
 	// cost
 	Cost *TerminatorCost `json:"cost,omitempty"`
@@ -71,6 +72,10 @@ func (m *TerminatorUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAddress(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateBinding(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -103,6 +108,15 @@ func (m *TerminatorUpdate) Validate(formats strfmt.Registry) error {
 func (m *TerminatorUpdate) validateAddress(formats strfmt.Registry) error {
 
 	if err := validate.Required("address", "body", m.Address); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *TerminatorUpdate) validateBinding(formats strfmt.Registry) error {
+
+	if err := validate.Required("binding", "body", m.Binding); err != nil {
 		return err
 	}
 
