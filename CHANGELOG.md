@@ -11,9 +11,10 @@
   * update ziti-fabric-test loop3
   * allow specifying policy semantic from CLI when creating policies
   * new eventing features
+  * Posture Check Configuration API
 
 ## Event Changes
-### Event Configuration  
+### Event Configuration
 Handlers can now be configured for events via the config file. Here is an example configuration:
 
     events:
@@ -33,7 +34,7 @@ Handlers can now be configured for events via the config file. Here is an exampl
                 type: file
                 format: json
                 path: /tmp/ziti-events.log
-                
+
 Each section can include any number of event subscriptions and a single handler. The supported event types are:
 
 * metrics
@@ -42,7 +43,7 @@ Each section can include any number of event subscriptions and a single handler.
 * edge.sessions
 
 ### Event Handlers
-There are two new handlers which can be used to output events. 
+There are two new handlers which can be used to output events.
 
 #### File Handler
 Sends events to disk. Supported options:
@@ -77,7 +78,7 @@ The Usage event looks like:
     }
 
 ### Metrics Events
-Metrics events can now be filtered. Metrics events processed through the new event framework no longer sending metrics messages directly. Rather, a flattened (and more easily filterable) event type is provided. The new event type looks like: 
+Metrics events can now be filtered. Metrics events processed through the new event framework no longer sending metrics messages directly. Rather, a flattened (and more easily filterable) event type is provided. The new event type looks like:
 
     type MetricsEvent struct {
         Namespace    string
@@ -89,19 +90,47 @@ Metrics events can now be filtered. Metrics events processed through the new eve
         MetricGroup  map[string]string
     }
 
+## Posture Check Configuration API
+
+Edge API endpoints have been added to configure posture checks. Posture
+checks not currently enforced. However it is possible for integrations
+to being developed against the API.
+
+This section contains an overview of the new endpoints. See the OpenAPI
+2.0 API definition (swagger.yml) for complete details.
+
+### New Endpoints
+
+- `GET /posture-checks` - retrieve a list of existing Posture Checks
+- `POST /posture-checks` - create a new Posture Check
+- `PUT/PATCH /posture-checks/<id>` - update an existing Posture Check
+- `DELETE /posture-checks/<id>` - delete an existing Posture Check
+- `GET /posture-check-types` - retrieve a list of existing Posture Check
+  Types
+- `GET /posture-check-types/<id>` - retrieve a an existing Posture Check
+  Type
+- `GET /identities/<id>/posture-data` - retrieve the Posture Data for a
+  specific identity
+
+### Modified Endpoints
+
+- `GET/POST /service-policies` - now accepts/returns field
+  `postureCheckRoles` and `postureCheckRolesDisplay`
+- `PUT/PATCH /service-policies/<id>` - now accepts `postureCheckRoles`
+
 # Release 0.16.4
 
 ## Breaking CLI Change
-  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT can be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt`. For now the --jwt flag is still accepted as well. 
+  * The `ziti edge enroll` and `ziti-tunnel enroll` subcommands no longer require a --jwt argument. Instead the JWT can be supplied as the first argument. So `ziti edge enroll --jwt /path/to/my.jwt` would become `ziti edge enroll /path/to/my.jwt`. For now the --jwt flag is still accepted as well.
 
 ## Deprecations
-  * The `ziti-enroller` command is deprecated and will be removed in a future release. It will now display a DEPRECATION warning when it is run 
+  * The `ziti-enroller` command is deprecated and will be removed in a future release. It will now display a DEPRECATION warning when it is run
 
 ## What's New
   * [ziti#192 CAs default to 10yr expiration](https://github.com/openziti/ziti/issues/192)
   * Allow specifying edge config file when using ziti-fabric-test loop2
-  * Add grouping data to streaming metrics, so values can be associated with their source metric  
-  * New WSS underlay to support Edge Router connections from Browser-based webapps using the ziti-sdk-js  
+  * Add grouping data to streaming metrics, so values can be associated with their source metric
+  * New WSS underlay to support Edge Router connections from Browser-based webapps using the ziti-sdk-js
   * [ziti#151 enroll subcommand w/out args should print help](https://github.com/openziti/ziti/issues/192)
   * Fix processing of `--configTypes all` in `ziti edge list services`
   * Addressable Terminators and the eXtensible Terminator Validation framework
@@ -115,44 +144,44 @@ The following should be added to controller configuration files when using the E
     terminator:
       validators:
         edge: edge
-        
+
 This config stanza enables validating edge terminators. If this stanza is not added, everything will continue to work, but different Edge identities will be allowed to bind to the same terminator identity, which is generally not a valid state.
 
 # SDK API changes
 The `Context.ListenWithOptions` method now takes a `ListenOptions` which are defined in the `ziti` package, instead of the `edge` package.
 
-There's a new `Context.DialWithOptions` method which takes a `DialOptions` struct.  
+There's a new `Context.DialWithOptions` method which takes a `DialOptions` struct.
 
 ## Addressable Terminators and Terminator Validation
 This release contains two new features related to terminators. The first allows you to connect to a subset of terminators for a service. The second allows developers to plugin validation for terminators with different validation logic per binding type.
 
 ### Addressable Terminators
 Terminators define how network traffic for Ziti services exits the fabric and makes its way to the application providing/hosting the service. Each terminator for a service specifies the following:
- 
+
  1. The router at which traffic terminates
  2. The binding, which specifies the Xgress component responsible for providing the connection to the hosting application
- 3. The address, which the Xgress component can use to create or lookup the connection 
- 
+ 3. The address, which the Xgress component can use to create or lookup the connection
+
  There are currently two kinds of termination. Router terminated services make outbound connections to the hosting applications. SDK hosted servers make inbound connections from the SDK to the router.
-      
+
 Now that Ziti supports multiple terminators we may want to be able to connect to a specific hosting application. This can be used to allow a service to cover many endpoints, each of which can be connected to individually. Some common use cases for this might be a peer-to-peer application, like a voip service, or a service like SSH covering multiple machines.
 
-What we don't want in these cases is to have to create a new service for each voip client or each new machine that we want to ssh to. 
-We also want to make sure that if an application is making multiple connections (and thus multiple terminators) for redundancy or load balancing purposes, that we can address the application, rather than an individual terminator. 
+What we don't want in these cases is to have to create a new service for each voip client or each new machine that we want to ssh to.
+We also want to make sure that if an application is making multiple connections (and thus multiple terminators) for redundancy or load balancing purposes, that we can address the application, rather than an individual terminator.
 
-To this end, terminators now have two new fields: 
+To this end, terminators now have two new fields:
 
 1. Identity - defines the name by which a terminator can be addressed (along with other terminators using the same identity)
 1. IdentitySecret - allows verifying that terminators using the same identity are from the same application.
 
 Notes
- 
+
 1. Identity here may be related to the concept of the Edge Identity, but is not required to be.
-2. How IdentitySecret is used to validate a terminator is up to the terminator valiator for the binding. The edge has a terminator validator which uses the client's certs to ensure that all terminators for a given terminator identity belong to the same edge identity.  
+2. How IdentitySecret is used to validate a terminator is up to the terminator valiator for the binding. The edge has a terminator validator which uses the client's certs to ensure that all terminators for a given terminator identity belong to the same edge identity.
 
-The identity allows the service to be addressed with that identity. 
+The identity allows the service to be addressed with that identity.
 
-This can now be used in the fabric by prefixing the service name with the identity, separated by the `@` symbol. For example, if a service `ssh` has a terminator with identity `web-server`, it could be dialed using `web-server@ssh`. 
+This can now be used in the fabric by prefixing the service name with the identity, separated by the `@` symbol. For example, if a service `ssh` has a terminator with identity `web-server`, it could be dialed using `web-server@ssh`.
 
 The Edge SDK also supports dialing and binding using identity addressing. The `Context` type now supports a new `DialWithOptions` method, which can be used to specify an identity.
 
@@ -177,7 +206,7 @@ or
 For non-Edge SDK terminators the identity can be provided on the command line when creating the terminator.
 
 #### Example
-There is a simple application in the sdk-golang repository `example/call` which shows how identity addressing can be used to implement something like a VoIP service.  
+There is a simple application in the sdk-golang repository `example/call` which shows how identity addressing can be used to implement something like a VoIP service.
 
 ### xvt (eXtensible Termrinator Validation)
 The fabric now supports pluggable validators for terminators. Validators implement the following interface:
@@ -189,14 +218,14 @@ The fabric now supports pluggable validators for terminators. Validators impleme
 Validators can be registered with the controller on startup. For example, here is how the edge terminator validator is registered:
 
 	xtv.RegisterValidator("edge", env.NewEdgeTerminatorValidator(c.AppEnv))
-	
+
 Validators can then be tied to a binding in the config file:
 
     terminator:
       validators:
         edge: edge
 
-In the example above, terminators with the binding `edge` will use the validator which was registered under the name `edge`. The binding is the key and the validator name is the value. 
+In the example above, terminators with the binding `edge` will use the validator which was registered under the name `edge`. The binding is the key and the validator name is the value.
 
 # Release 0.16.2
 
@@ -210,7 +239,7 @@ In the example above, terminators with the binding `edge` will use the validator
     * [Fix service policy denormalization migration](https://github.com/openziti/edge/issues/291)
   * [sdk-golang#84](https://github.com/openziti/sdk-golang/issues/84) Fixes go routine leak that would slowly kill SDK application (i.e. ziti-probe)
   * REST API doc via ReDoc available at `https://<host>:<port>/docs`
-  
+
 # Release 0.16.1
 
 * What's New
