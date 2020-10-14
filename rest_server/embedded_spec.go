@@ -8554,7 +8554,8 @@ func init() {
       "required": [
         "service",
         "router",
-        "address"
+        "address",
+        "binding"
       ],
       "properties": {
         "address": {
@@ -8687,7 +8688,8 @@ func init() {
       "required": [
         "service",
         "router",
-        "address"
+        "address",
+        "binding"
       ],
       "properties": {
         "address": {
@@ -25879,7 +25881,8 @@ func init() {
       "required": [
         "service",
         "router",
-        "address"
+        "address",
+        "binding"
       ],
       "properties": {
         "address": {
@@ -26012,7 +26015,8 @@ func init() {
       "required": [
         "service",
         "router",
-        "address"
+        "address",
+        "binding"
       ],
       "properties": {
         "address": {

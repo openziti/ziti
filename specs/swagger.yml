@@ -5806,6 +5806,7 @@ definitions:
       - service
       - router
       - address
+      - binding
     properties:
       service:
         type: string
@@ -5832,6 +5833,7 @@ definitions:
       - service
       - router
       - address
+      - binding
     properties:
       service:
         type: string
