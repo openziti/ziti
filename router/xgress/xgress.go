@@ -339,15 +339,12 @@ func (self *Xgress) rx() {
 
 			return
 		}
-		if n < 1 && !self.closed.Get() {
-			continue
-		}
 
 		if !self.closed.Get() {
 			start := 0
 			remaining := n
 			payloads := 0
-			for remaining > 0 {
+			for {
 				length := mathz.MinInt(remaining, int(self.Options.Mtu))
 				payload := &Payload{
 					Header: Header{
@@ -365,6 +362,10 @@ func (self *Xgress) rx() {
 				self.forwardPayload(payload)
 				payloadLogger := log.WithFields(payload.GetLoggerFields())
 				payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
+
+				if remaining < 1 {
+					break
+				}
 			}
 
 			logrus.Debugf("received [%d] payloads for [%d] bytes", payloads, n)
