@@ -20,7 +20,7 @@ func NewChannelAccepter(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwar
 	}
 }
 
-func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channel) error {
+func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channel, trackLatency bool) error {
 	ch.SetLogicalName("l/" + xlink.Id().Token)
 	ch.SetUserData(xlink.Id().Token)
 	ch.AddCloseHandler(newCloseHandler(xlink, self.ctrl, self.forwarder))
@@ -31,11 +31,13 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id(), ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 
-	go metrics.ProbeLatency(
-		ch,
-		self.metricsRegistry.Histogram("link."+xlink.Id().Token+".latency"),
-		self.forwarderOptions.LatencyProbeInterval,
-	)
+	if trackLatency {
+		go metrics.ProbeLatency(
+			ch,
+			self.metricsRegistry.Histogram("link."+xlink.Id().Token+".latency"),
+			self.forwarderOptions.LatencyProbeInterval,
+		)
+	}
 
 	return nil
 }

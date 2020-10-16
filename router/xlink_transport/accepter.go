@@ -9,5 +9,5 @@ import (
 // tasks at accept time.
 //
 type ChannelAccepter interface {
-	AcceptChannel(xlink xlink.Xlink, ch channel2.Channel) error
+	AcceptChannel(xlink xlink.Xlink, payloadCh channel2.Channel, latency bool) error
 }

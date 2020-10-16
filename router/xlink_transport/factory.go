@@ -23,6 +23,14 @@ import (
 	"github.com/openziti/foundation/transport"
 )
 
+const (
+	LinkHeaderConnId = 0
+	LinkHeaderType   = 1
+
+	PayloadChannel = 1
+	AckChannel     = 2
+)
+
 func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter, c transport.Configuration) xlink.Factory {
 	return &factory{accepter: accepter, chAccepter: chAccepter, tcfg: c}
 }
@@ -33,11 +41,13 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 		return nil, fmt.Errorf("error loading listener configuration (%w)", err)
 	}
 	return &listener{
-		id:         id,
-		config:     config,
-		accepter:   self.accepter,
-		chAccepter: self.chAccepter,
-		tcfg:       self.tcfg,
+		id:              id,
+		config:          config,
+		accepter:        self.accepter,
+		chAccepter:      self.chAccepter,
+		tcfg:            self.tcfg,
+		eventC:          make(chan linkEvent, 2),
+		pendingChannels: map[string]*newChannelEvent{},
 	}, nil
 }
 
