@@ -38,6 +38,7 @@ import (
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -174,6 +175,13 @@ func (c *Controller) showOptions() error {
 func (c *Controller) startProfiling() {
 	if c.config.Profile.Memory.Path != "" {
 		go profiler.NewMemoryWithShutdown(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval, c.shutdownC).Run()
+	}
+	if c.config.Profile.CPU.Path != "" {
+		if cpu, err := profiler.NewCPUWithShutdown(c.config.Profile.CPU.Path, c.shutdownC); err == nil {
+			go cpu.Run()
+		} else {
+			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
+		}
 	}
 }
 
