@@ -24,7 +24,7 @@ require (
 	github.com/go-openapi/strfmt v0.19.6
 	github.com/go-openapi/swag v0.19.9
 	github.com/go-openapi/validate v0.19.11
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1
@@ -37,8 +37,8 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.14.10
-	github.com/openziti/foundation v0.14.12
-	github.com/openziti/sdk-golang v0.13.58
+	github.com/openziti/foundation v0.14.14
+	github.com/openziti/sdk-golang v0.13.59
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0

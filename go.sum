@@ -248,6 +248,8 @@ github.com/golang/protobuf v1.4.0/go.mod h1:jodUvKwWbYaEsadDk5Fwe5c77LiNKVO9IDvq
 github.com/golang/protobuf v1.4.1/go.mod h1:U8fpvMrcmy5pZrNK1lt4xCsGvpyWQ/VVv6QDs8UjoX8=
 github.com/golang/protobuf v1.4.2 h1:+Z5KGCizgyZCbGh1KZqA0fcLLkwbsjIzS4aV2v7wJX0=
 github.com/golang/protobuf v1.4.2/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
+github.com/golang/protobuf v1.4.3 h1:JjCZWpVbqXDqFVmTfYWEVTMIYrL/NPdPSCHPJ0T/raM=
+github.com/golang/protobuf v1.4.3/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/golangci/lint-1 v0.0.0-20181222135242-d2cdd8c08219/go.mod h1:/X8TswGSh1pIozq4ZwCfxS0WA5JGXguxk94ar/4c87Y=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
@@ -461,10 +463,10 @@ github.com/openziti/fabric v0.14.10 h1:H+5l0K9OrmpSA+N9mETmhxgG0vxmThQs6ho7W9d90
 github.com/openziti/fabric v0.14.10/go.mod h1:v1eqj73dzfdBZJw48z8xMYqH4vgoWkpnhkg+qq1Nkb4=
 github.com/openziti/foundation v0.14.10 h1:y5V1s/Iz2Ulsm06tMe9QhNr6YqAHFmznN7gYsI03j4Y=
 github.com/openziti/foundation v0.14.10/go.mod h1:tmvDNdFW5EKKYZM4s3zyiwarvkLLpnDL+WBvtREtYbY=
-github.com/openziti/foundation v0.14.12 h1:U46mVPeuxenmmiUHZCt2izMseGEIhsrDgGwHMTdC7yY=
-github.com/openziti/foundation v0.14.12/go.mod h1:/YKvBcBeDmnim6qC5gOLgvuGbzHQapMuNpNXpsUnr7k=
-github.com/openziti/sdk-golang v0.13.58 h1:mp95eEAlcAWNfg7M+GlvAdQrOM9qAnL93RAhtKzR10U=
-github.com/openziti/sdk-golang v0.13.58/go.mod h1:3S+tLA4IbPqLz+fLIvGCiBYCTzRdls+4hxDgM2y/pxk=
+github.com/openziti/foundation v0.14.14 h1:6LnRuk3LKZ3fAZcWjhqFrszqmUQExd/yJQ6e3xCKI70=
+github.com/openziti/foundation v0.14.14/go.mod h1:jIzqUL4D2vZYnwiGlJ1n/++7wT1w1Ormv7JruVI2Y4g=
+github.com/openziti/sdk-golang v0.13.59 h1:x+zcdFN0iHKfRGLQHutRf+pwK6o2ccavYxr2kq1hmco=
+github.com/openziti/sdk-golang v0.13.59/go.mod h1:SgRyiV6czKi0Q8ogWzuaBp5Ny/WSgD4iDgKW5KzKT7Y=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
