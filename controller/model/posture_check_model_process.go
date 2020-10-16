@@ -23,10 +23,39 @@ import (
 )
 
 type PostureCheckProcess struct {
+	PostureCheckId  string
 	OperatingSystem string
 	Path            string
 	Hashes          []string
 	Fingerprint     string
+}
+
+func (p *PostureCheckProcess) Evaluate(pd *PostureData) bool {
+	for _, process := range pd.Processes {
+		if process.PostureCheckId == p.PostureCheckId {
+			if process.TimedOut {
+				return false
+			}
+
+			if p.Fingerprint != "" {
+				if p.Fingerprint != process.SignerFingerprint {
+					return false
+				}
+			}
+
+			if len(p.Hashes) > 0 {
+				for _, hash := range p.Hashes {
+					if hash == process.BinaryHash {
+						return true
+					}
+				}
+			} else {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func newPostureCheckProcess() PostureCheckSubType {
@@ -40,6 +69,7 @@ func (p *PostureCheckProcess) fillFrom(handler Handler, tx *bbolt.Tx, check *per
 		return fmt.Errorf("could not covert process check to bolt type")
 	}
 
+	p.PostureCheckId = check.Id
 	p.OperatingSystem = subCheck.OperatingSystem
 	p.Path = subCheck.Path
 	p.Hashes = subCheck.Hashes

@@ -43,8 +43,6 @@ import (
 //
 // swagger:model PostureCheckMacAddressCreate
 type PostureCheckMacAddressCreate struct {
-	descriptionField *string
-
 	nameField *string
 
 	roleAttributesField Attributes
@@ -55,16 +53,6 @@ type PostureCheckMacAddressCreate struct {
 	// Required: true
 	// Min Items: 1
 	MacAddresses []string `json:"macAddresses"`
-}
-
-// Description gets the description of this subtype
-func (m *PostureCheckMacAddressCreate) Description() *string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this subtype
-func (m *PostureCheckMacAddressCreate) SetDescription(val *string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this subtype
@@ -126,8 +114,6 @@ func (m *PostureCheckMacAddressCreate) UnmarshalJSON(raw []byte) error {
 	var base struct {
 		/* Just the base type fields. Used for unmashalling polymorphic types.*/
 
-		Description *string `json:"description"`
-
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -145,8 +131,6 @@ func (m *PostureCheckMacAddressCreate) UnmarshalJSON(raw []byte) error {
 	}
 
 	var result PostureCheckMacAddressCreate
-
-	result.descriptionField = base.Description
 
 	result.nameField = base.Name
 
@@ -184,8 +168,6 @@ func (m PostureCheckMacAddressCreate) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	b2, err = json.Marshal(struct {
-		Description *string `json:"description"`
-
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -194,8 +176,6 @@ func (m PostureCheckMacAddressCreate) MarshalJSON() ([]byte, error) {
 
 		TypeID PostureCheckType `json:"typeId"`
 	}{
-
-		Description: m.Description(),
 
 		Name: m.Name(),
 
@@ -216,10 +196,6 @@ func (m PostureCheckMacAddressCreate) MarshalJSON() ([]byte, error) {
 func (m *PostureCheckMacAddressCreate) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateDescription(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -239,15 +215,6 @@ func (m *PostureCheckMacAddressCreate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *PostureCheckMacAddressCreate) validateDescription(formats strfmt.Registry) error {
-
-	if err := validate.Required("description", "body", m.Description()); err != nil {
-		return err
-	}
-
 	return nil
 }
 

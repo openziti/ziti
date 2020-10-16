@@ -20,8 +20,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_server/operations/posture_checks"
+	"github.com/openziti/fabric/controller/models"
 )
 
 func init() {
@@ -66,7 +68,47 @@ func (r *PostureCheckRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.PostureCheck, MapPostureCheckToRestEntity)
+	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+		query, err := queryOptions.getFullQuery(ae.Handlers.PostureCheck.GetStore())
+		if err != nil {
+			return nil, err
+		}
+
+		roleFilters := rc.Request.URL.Query()["roleFilter"]
+		roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
+
+		var apiEntities []interface{}
+		var qmd *models.QueryMetaData
+		if len(roleFilters) > 0 {
+			cursorProvider, err := ae.GetStores().PostureCheck.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
+			if err != nil {
+				return nil, err
+			}
+
+			result, err := ae.Handlers.PostureCheck.BasePreparedListIndexed(cursorProvider, query)
+
+			if err != nil {
+				return nil, err
+			}
+
+			apiEntities, err = modelToApi(ae, rc, MapPostureCheckToRestEntity, result.GetEntities())
+			if err != nil {
+				return nil, err
+			}
+			qmd = &result.QueryMetaData
+		} else {
+			result, err := ae.Handlers.PostureCheck.QueryPostureChecks(query)
+			if err != nil {
+				return nil, err
+			}
+			apiEntities, err = MapPostureChecksToRestEntity(ae, rc, result.PostureChecks)
+			if err != nil {
+				return nil, err
+			}
+			qmd = &result.QueryMetaData
+		}
+		return NewQueryResult(apiEntities, qmd), nil
+	})
 }
 
 func (r *PostureCheckRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
@@ -91,6 +133,28 @@ func (r *PostureCheckRouter) Update(ae *env.AppEnv, rc *response.RequestContext,
 
 func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.PatchPostureCheckParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.PostureCheck.Patch(MapPatchPostureCheckToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+		check := MapPatchPostureCheckToModel(params.ID, params.Body)
+
+		if fields.IsUpdated("operatingSystems") {
+			fields.AddField(persistence.FieldPostureCheckOsType)
+			fields.AddField(persistence.FieldPostureCheckOsVersions)
+		}
+
+		if fields.IsUpdated("process.hashes") {
+			fields.AddField(persistence.FieldPostureCheckProcessHashes)
+		}
+		if fields.IsUpdated("process.path") {
+			fields.AddField(persistence.FieldPostureCheckProcessPath)
+		}
+
+		if fields.IsUpdated("process.osType") {
+			fields.AddField(persistence.FieldPostureCheckProcessOs)
+		}
+
+		if fields.IsUpdated("process.signerFingerprint") {
+			fields.AddField(persistence.FieldPostureCheckProcessFingerprint)
+		}
+
+		return ae.Handlers.PostureCheck.Patch(check, fields.FilterMaps("tags"))
 	})
 }

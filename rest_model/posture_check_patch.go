@@ -48,10 +48,6 @@ import (
 type PostureCheckPatch interface {
 	runtime.Validatable
 
-	// description
-	Description() string
-	SetDescription(string)
-
 	// name
 	Name() string
 	SetName(string)
@@ -69,23 +65,11 @@ type PostureCheckPatch interface {
 }
 
 type postureCheckPatch struct {
-	descriptionField string
-
 	nameField string
 
 	roleAttributesField Attributes
 
 	tagsField Tags
-}
-
-// Description gets the description of this polymorphic type
-func (m *postureCheckPatch) Description() string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this polymorphic type
-func (m *postureCheckPatch) SetDescription(val string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this polymorphic type

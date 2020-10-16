@@ -31,6 +31,7 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 	policyTypeSymbol := store.stores.servicePolicy.symbolPolicyType
 
 	isServices := ctx.rolesSymbol == store.stores.servicePolicy.symbolServiceRoles
+	isIdentity := ctx.rolesSymbol == store.stores.servicePolicy.symbolIdentityRoles
 
 	for ; cursor.IsValid(); cursor.Next() {
 		policyId := cursor.Current()
@@ -52,13 +53,17 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 		if policyType == PolicyTypeDial {
 			if isServices {
 				ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
-			} else {
+			} else if isIdentity {
 				ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+			} else {
+				ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
 			}
 		} else if isServices {
 			ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
-		} else {
+		} else if isIdentity {
 			ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+		} else {
+			ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
 		}
 		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles)
 	}

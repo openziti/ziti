@@ -182,4 +182,8 @@ const (
 	TimeoutCode    string = "TIMEOUT"
 	TimeoutMessage string = "The requested operation took too much time to reply"
 	TimeoutStatus  int    = http.StatusServiceUnavailable
+
+	InvalidPostureCode    string = "INVALID_POSTURE"
+	InvalidPostureMessage string = "Posture response data is missing or wrong"
+	InvalidPostureStatus  int    = http.StatusConflict
 )

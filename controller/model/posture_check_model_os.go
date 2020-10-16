@@ -26,6 +26,29 @@ type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
 }
 
+func (p *PostureCheckOperatingSystem) Evaluate(pd *PostureData) bool {
+	if pd.Os.TimedOut {
+		return false
+	}
+
+	validOses := map[string]map[string]struct{}{}
+
+	for _, os := range p.OperatingSystems {
+		for _, version := range os.OsVersions {
+			validOses[os.OsType] = map[string]struct{}{}
+			validOses[os.OsType][version] = struct{}{}
+		}
+	}
+
+	if validOs, isValidOs := validOses[pd.Os.Type]; isValidOs {
+		if _, isValidVersion := validOs[pd.Os.Version]; isValidVersion {
+			return true
+		}
+	}
+
+	return false
+}
+
 type OperatingSystem struct {
 	OsType     string
 	OsVersions []string

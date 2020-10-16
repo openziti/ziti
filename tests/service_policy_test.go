@@ -43,12 +43,12 @@ func Test_ServicePolicy(t *testing.T) {
 	identity2 := ctx.AdminSession.requireNewIdentity(false, identityRole1, identityRole2)
 	identity3 := ctx.AdminSession.requireNewIdentity(false, identityRole2)
 
-	policy1 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1))
-	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.Id), s("#"+identityRole1, "@"+identity3.Id))
-	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.Id, "@"+service3.Id), s("@"+identity2.Id, "@"+identity3.Id))
-	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"))
-	policy5 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
-	policy6 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2))
+	policy1 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1), s("#"+identityRole1), s())
+	policy2 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+serviceRole1, "@"+service3.Id), s("#"+identityRole1, "@"+identity3.Id), s())
+	policy3 := ctx.AdminSession.requireNewServicePolicy("Dial", s("@"+service2.Id, "@"+service3.Id), s("@"+identity2.Id, "@"+identity3.Id), s())
+	policy4 := ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
+	policy5 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2), s())
+	policy6 := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AnyOf", s("#"+serviceRole1, "#"+serviceRole2), s("#"+identityRole1, "#"+identityRole2), s())
 
 	ctx.AdminSession.validateEntityWithQuery(policy1)
 	ctx.AdminSession.validateEntityWithLookup(policy2)

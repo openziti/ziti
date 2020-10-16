@@ -328,3 +328,11 @@ func NewTimeoutError() *ApiError {
 		Status:  TimeoutStatus,
 	}
 }
+
+func NewInvalidPosture() *ApiError {
+	return &ApiError{
+		Code:    InvalidPostureCode,
+		Message: InvalidPostureMessage,
+		Status:  InvalidPostureStatus,
+	}
+}

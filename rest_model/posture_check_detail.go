@@ -58,11 +58,6 @@ type PostureCheckDetail interface {
 	CreatedAt() *strfmt.DateTime
 	SetCreatedAt(*strfmt.DateTime)
 
-	// description
-	// Required: true
-	Description() *string
-	SetDescription(*string)
-
 	// id
 	// Required: true
 	ID() *string
@@ -108,8 +103,6 @@ type postureCheckDetail struct {
 
 	createdAtField *strfmt.DateTime
 
-	descriptionField *string
-
 	idField *string
 
 	nameField *string
@@ -143,16 +136,6 @@ func (m *postureCheckDetail) CreatedAt() *strfmt.DateTime {
 // SetCreatedAt sets the created at of this polymorphic type
 func (m *postureCheckDetail) SetCreatedAt(val *strfmt.DateTime) {
 	m.createdAtField = val
-}
-
-// Description gets the description of this polymorphic type
-func (m *postureCheckDetail) Description() *string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this polymorphic type
-func (m *postureCheckDetail) SetDescription(val *string) {
-	m.descriptionField = val
 }
 
 // ID gets the id of this polymorphic type
@@ -316,10 +299,6 @@ func (m *postureCheckDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateDescription(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateID(formats); err != nil {
 		res = append(res, err)
 	}
@@ -369,15 +348,6 @@ func (m *postureCheckDetail) validateCreatedAt(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("createdAt", "body", "date-time", m.CreatedAt().String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *postureCheckDetail) validateDescription(formats strfmt.Registry) error {
-
-	if err := validate.Required("description", "body", m.Description()); err != nil {
 		return err
 	}
 

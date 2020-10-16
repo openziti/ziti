@@ -53,6 +53,8 @@ type Client struct {
 type ClientService interface {
 	CreatePostureCheck(params *CreatePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureCheckOK, error)
 
+	CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseOK, error)
+
 	DeletePostureCheck(params *DeletePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*DeletePostureCheckOK, error)
 
 	DetailPostureCheck(params *DetailPostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*DetailPostureCheckOK, error)
@@ -104,6 +106,43 @@ func (a *Client) CreatePostureCheck(params *CreatePostureCheckParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createPostureCheck: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  CreatePostureResponse submits a posture response to a posture query
+
+  Submits posture responses
+*/
+func (a *Client) CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreatePostureResponseParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "createPostureResponse",
+		Method:             "POST",
+		PathPattern:        "/posture-response",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &CreatePostureResponseReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreatePostureResponseOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createPostureResponse: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

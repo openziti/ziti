@@ -47,8 +47,6 @@ type PostureCheckProcessDetail struct {
 
 	createdAtField *strfmt.DateTime
 
-	descriptionField *string
-
 	idField *string
 
 	nameField *string
@@ -84,16 +82,6 @@ func (m *PostureCheckProcessDetail) CreatedAt() *strfmt.DateTime {
 // SetCreatedAt sets the created at of this subtype
 func (m *PostureCheckProcessDetail) SetCreatedAt(val *strfmt.DateTime) {
 	m.createdAtField = val
-}
-
-// Description gets the description of this subtype
-func (m *PostureCheckProcessDetail) Description() *string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this subtype
-func (m *PostureCheckProcessDetail) SetDescription(val *string) {
-	m.descriptionField = val
 }
 
 // ID gets the id of this subtype
@@ -188,8 +176,6 @@ func (m *PostureCheckProcessDetail) UnmarshalJSON(raw []byte) error {
 
 		CreatedAt *strfmt.DateTime `json:"createdAt"`
 
-		Description *string `json:"description"`
-
 		ID *string `json:"id"`
 
 		Name *string `json:"name"`
@@ -217,8 +203,6 @@ func (m *PostureCheckProcessDetail) UnmarshalJSON(raw []byte) error {
 	result.linksField = base.Links
 
 	result.createdAtField = base.CreatedAt
-
-	result.descriptionField = base.Description
 
 	result.idField = base.ID
 
@@ -264,8 +248,6 @@ func (m PostureCheckProcessDetail) MarshalJSON() ([]byte, error) {
 
 		CreatedAt *strfmt.DateTime `json:"createdAt"`
 
-		Description *string `json:"description"`
-
 		ID *string `json:"id"`
 
 		Name *string `json:"name"`
@@ -284,8 +266,6 @@ func (m PostureCheckProcessDetail) MarshalJSON() ([]byte, error) {
 		Links: m.Links(),
 
 		CreatedAt: m.CreatedAt(),
-
-		Description: m.Description(),
 
 		ID: m.ID(),
 
@@ -317,10 +297,6 @@ func (m *PostureCheckProcessDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateCreatedAt(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateDescription(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -381,15 +357,6 @@ func (m *PostureCheckProcessDetail) validateCreatedAt(formats strfmt.Registry) e
 	}
 
 	if err := validate.FormatOf("createdAt", "body", "date-time", m.CreatedAt().String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureCheckProcessDetail) validateDescription(formats strfmt.Registry) error {
-
-	if err := validate.Required("description", "body", m.Description()); err != nil {
 		return err
 	}
 

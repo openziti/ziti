@@ -55,7 +55,6 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 		},
 		Name:           stringz.OrEmpty(postureCheck.Name()),
 		TypeId:         string(postureCheck.TypeID()),
-		Description:    stringz.OrEmpty(postureCheck.Description()),
 		Version:        1,
 		RoleAttributes: postureCheck.RoleAttributes(),
 	}
@@ -104,6 +103,39 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 		RoleAttributes: postureCheck.RoleAttributes(),
 	}
 
+	switch postureCheck.(type) {
+	case *rest_model.PostureCheckDomainUpdate:
+		check := postureCheck.(*rest_model.PostureCheckDomainUpdate)
+		ret.SubType = &model.PostureCheckWindowsDomains{
+			Domains: check.Domains,
+		}
+	case *rest_model.PostureCheckMacAddressUpdate:
+		check := postureCheck.(*rest_model.PostureCheckMacAddressUpdate)
+		ret.SubType = &model.PostureCheckMacAddresses{
+			MacAddresses: check.MacAddresses,
+		}
+	case *rest_model.PostureCheckProcessUpdate:
+		check := postureCheck.(*rest_model.PostureCheckProcessUpdate)
+		ret.SubType = &model.PostureCheckProcess{
+			OperatingSystem: string(check.Process.OsType),
+			Path:            stringz.OrEmpty(check.Process.Path),
+			Hashes:          check.Process.Hashes,
+			Fingerprint:     check.Process.SignerFingerprint,
+		}
+	case *rest_model.PostureCheckOperatingSystemUpdate:
+		check := postureCheck.(*rest_model.PostureCheckOperatingSystemUpdate)
+		osCheck := &model.PostureCheckOperatingSystem{}
+		ret.SubType = osCheck
+
+		for _, restOs := range check.OperatingSystems {
+			modelOs := model.OperatingSystem{
+				OsType:     string(restOs.Type),
+				OsVersions: restOs.Versions,
+			}
+			osCheck.OperatingSystems = append(osCheck.OperatingSystems, modelOs)
+		}
+	}
+
 	return ret
 }
 
@@ -114,10 +146,72 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 			Id:   id,
 		},
 		Name:           postureCheck.Name(),
+		Version:        1,
 		RoleAttributes: postureCheck.RoleAttributes(),
 	}
 
+	switch postureCheck.(type) {
+	case *rest_model.PostureCheckDomainPatch:
+		check := postureCheck.(*rest_model.PostureCheckDomainPatch)
+		ret.SubType = &model.PostureCheckWindowsDomains{
+			Domains: check.Domains,
+		}
+		ret.TypeId = model.PostureCheckTypeDomain
+
+	case *rest_model.PostureCheckMacAddressPatch:
+		check := postureCheck.(*rest_model.PostureCheckMacAddressPatch)
+		ret.SubType = &model.PostureCheckMacAddresses{
+			MacAddresses: check.MacAddresses,
+		}
+		ret.TypeId = model.PostureCheckTypeMAC
+
+	case *rest_model.PostureCheckProcessPatch:
+		check := postureCheck.(*rest_model.PostureCheckProcessPatch)
+		subType := &model.PostureCheckProcess{}
+		ret.SubType = subType
+
+		if check.Process != nil {
+			subType.OperatingSystem = string(check.Process.OsType)
+			subType.Path = stringz.OrEmpty(check.Process.Path)
+			subType.Hashes = check.Process.Hashes
+			subType.Fingerprint = check.Process.SignerFingerprint
+		}
+		ret.TypeId = model.PostureCheckTypeProcess
+
+	case *rest_model.PostureCheckOperatingSystemPatch:
+		check := postureCheck.(*rest_model.PostureCheckOperatingSystemPatch)
+		osCheck := &model.PostureCheckOperatingSystem{}
+		ret.SubType = osCheck
+
+		for _, restOs := range check.OperatingSystems {
+			modelOs := model.OperatingSystem{
+				OsType:     string(restOs.Type),
+				OsVersions: restOs.Versions,
+			}
+			osCheck.OperatingSystems = append(osCheck.OperatingSystems, modelOs)
+		}
+
+		ret.TypeId = model.PostureCheckTypeOs
+	}
+
 	return ret
+}
+
+func MapPostureChecksToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*model.PostureCheck) ([]interface{}, error) {
+	// can't use modelToApi b/c it require list of network.Entity
+	restModel := make([]interface{}, 0)
+
+	for _, e := range es {
+		al, err := MapPostureCheckToRestEntity(ae, rc, e)
+
+		if err != nil {
+			return nil, err
+		}
+
+		restModel = append(restModel, al)
+	}
+
+	return restModel, nil
 }
 
 func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
@@ -197,7 +291,6 @@ func setBaseEntityDetailsOnPostureCheck(check rest_model.PostureCheckDetail, i *
 	check.SetTags(i.Tags)
 	check.SetID(&i.Id)
 	check.SetLinks(PostureCheckLinkFactory.Links(i))
-	check.SetDescription(&i.Description)
 	check.SetName(&i.Name)
 	check.SetTypeID(i.TypeId)
 	check.SetVersion(&i.Version)

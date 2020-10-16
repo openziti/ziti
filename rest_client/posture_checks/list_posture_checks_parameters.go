@@ -91,6 +91,10 @@ type ListPostureChecksParams struct {
 	Limit *int64
 	/*Offset*/
 	Offset *int64
+	/*RoleFilter*/
+	RoleFilter []string
+	/*RoleSemantic*/
+	RoleSemantic *string
 
 	timeout    time.Duration
 	Context    context.Context
@@ -163,6 +167,28 @@ func (o *ListPostureChecksParams) SetOffset(offset *int64) {
 	o.Offset = offset
 }
 
+// WithRoleFilter adds the roleFilter to the list posture checks params
+func (o *ListPostureChecksParams) WithRoleFilter(roleFilter []string) *ListPostureChecksParams {
+	o.SetRoleFilter(roleFilter)
+	return o
+}
+
+// SetRoleFilter adds the roleFilter to the list posture checks params
+func (o *ListPostureChecksParams) SetRoleFilter(roleFilter []string) {
+	o.RoleFilter = roleFilter
+}
+
+// WithRoleSemantic adds the roleSemantic to the list posture checks params
+func (o *ListPostureChecksParams) WithRoleSemantic(roleSemantic *string) *ListPostureChecksParams {
+	o.SetRoleSemantic(roleSemantic)
+	return o
+}
+
+// SetRoleSemantic adds the roleSemantic to the list posture checks params
+func (o *ListPostureChecksParams) SetRoleSemantic(roleSemantic *string) {
+	o.RoleSemantic = roleSemantic
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *ListPostureChecksParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -213,6 +239,30 @@ func (o *ListPostureChecksParams) WriteToRequest(r runtime.ClientRequest, reg st
 		qOffset := swag.FormatInt64(qrOffset)
 		if qOffset != "" {
 			if err := r.SetQueryParam("offset", qOffset); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	valuesRoleFilter := o.RoleFilter
+
+	joinedRoleFilter := swag.JoinByFormat(valuesRoleFilter, "multi")
+	// query array param roleFilter
+	if err := r.SetQueryParam("roleFilter", joinedRoleFilter...); err != nil {
+		return err
+	}
+
+	if o.RoleSemantic != nil {
+
+		// query param roleSemantic
+		var qrRoleSemantic string
+		if o.RoleSemantic != nil {
+			qrRoleSemantic = *o.RoleSemantic
+		}
+		qRoleSemantic := qrRoleSemantic
+		if qRoleSemantic != "" {
+			if err := r.SetQueryParam("roleSemantic", qRoleSemantic); err != nil {
 				return err
 			}
 		}

@@ -48,11 +48,6 @@ import (
 type PostureCheckUpdate interface {
 	runtime.Validatable
 
-	// description
-	// Required: true
-	Description() *string
-	SetDescription(*string)
-
 	// name
 	// Required: true
 	Name() *string
@@ -75,8 +70,6 @@ type PostureCheckUpdate interface {
 }
 
 type postureCheckUpdate struct {
-	descriptionField *string
-
 	nameField *string
 
 	roleAttributesField Attributes
@@ -84,16 +77,6 @@ type postureCheckUpdate struct {
 	tagsField Tags
 
 	typeIdField PostureCheckType
-}
-
-// Description gets the description of this polymorphic type
-func (m *postureCheckUpdate) Description() *string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this polymorphic type
-func (m *postureCheckUpdate) SetDescription(val *string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this polymorphic type
@@ -219,10 +202,6 @@ func unmarshalPostureCheckUpdate(data []byte, consumer runtime.Consumer) (Postur
 func (m *postureCheckUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateDescription(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -238,15 +217,6 @@ func (m *postureCheckUpdate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *postureCheckUpdate) validateDescription(formats strfmt.Registry) error {
-
-	if err := validate.Required("description", "body", m.Description()); err != nil {
-		return err
-	}
-
 	return nil
 }
 

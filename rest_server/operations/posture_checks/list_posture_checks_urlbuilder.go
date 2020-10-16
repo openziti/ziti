@@ -39,9 +39,11 @@ import (
 
 // ListPostureChecksURL generates an URL for the list posture checks operation
 type ListPostureChecksURL struct {
-	Filter *string
-	Limit  *int64
-	Offset *int64
+	Filter       *string
+	Limit        *int64
+	Offset       *int64
+	RoleFilter   []string
+	RoleSemantic *string
 
 	_basePath string
 	// avoid unkeyed usage
@@ -99,6 +101,28 @@ func (o *ListPostureChecksURL) Build() (*url.URL, error) {
 	}
 	if offsetQ != "" {
 		qs.Set("offset", offsetQ)
+	}
+
+	var roleFilterIR []string
+	for _, roleFilterI := range o.RoleFilter {
+		roleFilterIS := roleFilterI
+		if roleFilterIS != "" {
+			roleFilterIR = append(roleFilterIR, roleFilterIS)
+		}
+	}
+
+	roleFilter := swag.JoinByFormat(roleFilterIR, "multi")
+
+	for _, qsv := range roleFilter {
+		qs.Add("roleFilter", qsv)
+	}
+
+	var roleSemanticQ string
+	if o.RoleSemantic != nil {
+		roleSemanticQ = *o.RoleSemantic
+	}
+	if roleSemanticQ != "" {
+		qs.Set("roleSemantic", roleSemanticQ)
 	}
 
 	_result.RawQuery = qs.Encode()

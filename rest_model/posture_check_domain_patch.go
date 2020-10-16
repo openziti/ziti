@@ -43,8 +43,6 @@ import (
 //
 // swagger:model PostureCheckDomainPatch
 type PostureCheckDomainPatch struct {
-	descriptionField string
-
 	nameField string
 
 	roleAttributesField Attributes
@@ -54,16 +52,6 @@ type PostureCheckDomainPatch struct {
 	// domains
 	// Min Items: 1
 	Domains []string `json:"domains"`
-}
-
-// Description gets the description of this subtype
-func (m *PostureCheckDomainPatch) Description() string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this subtype
-func (m *PostureCheckDomainPatch) SetDescription(val string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this subtype
@@ -115,8 +103,6 @@ func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 	var base struct {
 		/* Just the base type fields. Used for unmashalling polymorphic types.*/
 
-		Description string `json:"description,omitempty"`
-
 		Name string `json:"name,omitempty"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -132,8 +118,6 @@ func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 	}
 
 	var result PostureCheckDomainPatch
-
-	result.descriptionField = base.Description
 
 	result.nameField = base.Name
 
@@ -165,16 +149,12 @@ func (m PostureCheckDomainPatch) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	b2, err = json.Marshal(struct {
-		Description string `json:"description,omitempty"`
-
 		Name string `json:"name,omitempty"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		Tags Tags `json:"tags"`
 	}{
-
-		Description: m.Description(),
 
 		Name: m.Name(),
 

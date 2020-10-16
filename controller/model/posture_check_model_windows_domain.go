@@ -26,6 +26,20 @@ type PostureCheckWindowsDomains struct {
 	Domains []string
 }
 
+func (p *PostureCheckWindowsDomains) Evaluate(pd *PostureData) bool {
+	if pd.Domain.TimedOut {
+		return false
+	}
+
+	for _, domain := range p.Domains {
+		if domain == pd.Domain.Name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func newPostureCheckWindowsDomains() PostureCheckSubType {
 	return &PostureCheckWindowsDomains{}
 }
