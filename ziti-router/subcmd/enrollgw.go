@@ -18,7 +18,7 @@ package subcmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/gateway/enroll"
+	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/fabric/router"
 	"github.com/spf13/cobra"
 	"io/ioutil"

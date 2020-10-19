@@ -3,9 +3,9 @@
 package version
 
 const (
-	Version   = "v0.16.2-beta07"
+	Version   = "v0.0.0"
 	Revision  = "local"
 	Branch    = "local"
-	BuildUser = "Andrew Martinez"
-	BuildDate = "2020-08-24 09:00:00"
+	BuildUser = "local"
+	BuildDate = "2020-01-01 01:01:01"
 )

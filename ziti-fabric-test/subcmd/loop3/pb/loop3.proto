@@ -11,9 +11,5 @@ message Test {
     int32 rxTimeout = 6;
     int32 payloadMinBytes = 7;
     int32 payloadMaxBytes = 8;
-}
-
-message Result {
-    bool success = 1;
-    string message = 2;
+    int32 latencyFrequency = 9;
 }
