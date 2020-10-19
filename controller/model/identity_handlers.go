@@ -26,14 +26,21 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/validation"
+	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"
+	"sync"
 	"time"
+)
+
+const (
+	IdentityActiveIntervalSeconds = 60
 )
 
 type IdentityHandler struct {
 	baseHandler
 	allowedFieldsChecker boltz.FieldChecker
 	updateSdkInfoTimer   metrics.Timer
+	identityStatusMap    *identityStatusMap
 }
 
 func NewIdentityHandler(env Env) *IdentityHandler {
@@ -47,6 +54,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 			boltz.FieldTags:                         struct{}{},
 		},
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
+		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
 	handler.impl = handler
 	return handler
@@ -443,4 +451,68 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 	handler.updateSdkInfoTimer.UpdateSince(start)
 
 	return err
+}
+
+func (handler IdentityHandler) SetActive(id string) {
+	handler.identityStatusMap.SetActive(id)
+}
+
+func (handler IdentityHandler) IsActive(id string) bool {
+	return handler.identityStatusMap.IsActive(id)
+}
+
+type identityStatusMap struct {
+	identities     cmap.ConcurrentMap // identityId -> status{expiresAt}
+	initOnce       sync.Once
+	activeDuration time.Duration
+}
+
+type status struct {
+	expiresAt time.Time
+}
+
+func newIdentityStatusMap(activeDuration time.Duration) *identityStatusMap {
+	return &identityStatusMap{
+		identities:     cmap.New(),
+		activeDuration: activeDuration,
+	}
+}
+
+func (statusMap *identityStatusMap) SetActive(identityId string) {
+	statusMap.initOnce.Do(statusMap.start)
+
+	statusMap.identities.Set(identityId, &status{
+		expiresAt: time.Now().Add(statusMap.activeDuration),
+	})
+}
+
+func (statusMap *identityStatusMap) IsActive(identityId string) bool {
+	if val, ok := statusMap.identities.Get(identityId); ok {
+		if status, ok := val.(*status); ok {
+			return status.expiresAt.After(time.Now())
+		}
+	}
+	return false
+}
+
+func (statusMap *identityStatusMap) start() {
+	ticker := time.NewTicker(30 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				var toRemove []string
+				now := time.Now()
+				statusMap.identities.IterCb(func(key string, val interface{}) {
+					if status, ok := val.(*status); !ok || status.expiresAt.Before(now) {
+						toRemove = append(toRemove, key)
+					}
+				})
+
+				for _, identityId := range toRemove {
+					statusMap.identities.Remove(identityId)
+				}
+			}
+		}
+	}()
 }

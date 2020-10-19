@@ -72,7 +72,6 @@ type ApiSessionStore interface {
 	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error)
 	GetTokenIndex() boltz.ReadIndex
-	MarkActivity(tx *bbolt.Tx, tokens []string) error
 }
 
 func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
@@ -132,18 +131,4 @@ func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*A
 		return nil, err
 	}
 	return entity, nil
-}
-
-func (store *apiSessionStoreImpl) MarkActivity(tx *bbolt.Tx, tokens []string) error {
-	mutCtx := boltz.NewMutateContext(tx)
-	for _, token := range tokens {
-		apiSession, err := store.LoadOneByToken(tx, token)
-		if err != nil {
-			return err
-		}
-		if err = store.Update(mutCtx, apiSession, UpdateTimeOnlyFieldChecker{}); err != nil {
-			return err
-		}
-	}
-	return nil
 }

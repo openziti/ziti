@@ -19,6 +19,7 @@ package router
 import (
 	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -26,6 +27,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+)
+
+const (
+	DefaultHeartbeatIntervalSeconds = 60
+	MinHeartbeatIntervalSeconds     = 10
+	MaxHeartbeatIntervalSeconds     = 60
 )
 
 type Config struct {
@@ -102,8 +109,9 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		config.HeartbeatIntervalSeconds = val.(int)
 	}
 
-	if config.HeartbeatIntervalSeconds == 0 {
-		config.HeartbeatIntervalSeconds = 60
+	if config.HeartbeatIntervalSeconds > DefaultHeartbeatIntervalSeconds || config.HeartbeatIntervalSeconds <= MinHeartbeatIntervalSeconds {
+		pfxlog.Logger().Warnf("Invalid heartbeat interval [%v] (min: %v, max: %v), setting to default [%v]", config.HeartbeatIntervalSeconds, MaxHeartbeatIntervalSeconds, MinHeartbeatIntervalSeconds, DefaultHeartbeatIntervalSeconds)
+		config.HeartbeatIntervalSeconds = DefaultHeartbeatIntervalSeconds
 	}
 
 	if err = config.loadApiProxy(edgeConfigMap); err != nil {

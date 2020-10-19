@@ -4052,6 +4052,8 @@ definitions:
           - envInfo
           - sdkInfo
           - roleAttributes
+          - hasEdgeRouterConnection
+          - hasApiSession
         properties:
           name:
             type: string
@@ -4073,6 +4075,10 @@ definitions:
             $ref: '#/definitions/sdkInfo'
           roleAttributes:
             $ref: '#/definitions/attributes'
+          hasEdgeRouterConnection:
+            type: boolean
+          hasApiSession:
+            type: boolean
   identityAuthenticators:
     type: object
     properties:
