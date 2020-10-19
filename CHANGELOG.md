@@ -13,6 +13,7 @@
   * allow specifying policy semantic from CLI when creating policies
   * new eventing features
   * Posture Check Configuration API
+  * fix [edge#349 Using 'edge_transport' binding on non-encrypted service leads to Dial failure](https://github.com/openziti/edge/issues/349)
 
 ## Event Changes
 ### Event Configuration
