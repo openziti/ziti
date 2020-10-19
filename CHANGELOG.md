@@ -1,6 +1,7 @@
 # Release 0.16.5
 
-## Breaking Changes
+## Breaking CLI Change
+  * The `ziti edge controller create service` and `ziti edge controller update service` subcommands no longer support the `--encryption-optional` and `--encryption-required` flags. Instead, these subcommands now have the `--encryption=ON|OFF` flag.  If this flag is not specified, the default is `ON`.
 
 ## What's New
   * fix [edge#338 configurable IP range for DNS services](https://github.com/openziti/edge/issues/338)
