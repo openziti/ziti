@@ -461,12 +461,10 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/fabric v0.14.16 h1:l+5ZX4FoXHusYDq7bFRaqOFtLpIVuZ/lqYibTKEJwg0=
 github.com/openziti/fabric v0.14.16/go.mod h1:aNECd87kH0bKntsHwPHtjbYf/9bk3MnlzQj21maO6FQ=
-github.com/openziti/foundation v0.14.14 h1:6LnRuk3LKZ3fAZcWjhqFrszqmUQExd/yJQ6e3xCKI70=
-github.com/openziti/foundation v0.14.14/go.mod h1:jIzqUL4D2vZYnwiGlJ1n/++7wT1w1Ormv7JruVI2Y4g=
 github.com/openziti/foundation v0.14.15 h1:9QqOqo82wzws8zf5bfqezrmRj9E7AU1hnZHz8wiI9JY=
 github.com/openziti/foundation v0.14.15/go.mod h1:z98OIbCyr2B57EtamNgvDVIoQXct+zVVxOif9KsOOaM=
-github.com/openziti/sdk-golang v0.13.59 h1:x+zcdFN0iHKfRGLQHutRf+pwK6o2ccavYxr2kq1hmco=
-github.com/openziti/sdk-golang v0.13.59/go.mod h1:SgRyiV6czKi0Q8ogWzuaBp5Ny/WSgD4iDgKW5KzKT7Y=
+github.com/openziti/sdk-golang v0.13.61 h1:MWoqH04LkDVFHTpUwgo02c/WdwOxafQeRxQsz3h3M8E=
+github.com/openziti/sdk-golang v0.13.61/go.mod h1:oIpkQERshTJxFE1k0c3Nw+i4mG+w07t3fhjCvxQXqHc=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
@@ -550,8 +548,6 @@ github.com/spf13/cast v1.3.0/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkU
 github.com/spf13/cobra v0.0.3/go.mod h1:1l0Ry5zgKvJasoi3XT1TypsSe7PqH0Sj9dhYf7v3XqQ=
 github.com/spf13/cobra v1.0.0 h1:6m/oheQuQ13N9ks4hubMG6BnvwOeaJrqSPLahSnczz8=
 github.com/spf13/cobra v1.0.0/go.mod h1:/6GTrnGXV9HjY+aR4k0oJ5tcvakLuG6EuKReYlHNrgE=
-github.com/spf13/cobra v1.1.0 h1:aq3wCKjTPmzcNWLVGnsFVN4rflK7Uzn10F8/aw8MhdQ=
-github.com/spf13/cobra v1.1.0/go.mod h1:yk5b0mALVusDL5fMM6Rd1wgnoO5jUPhwsQ6LQAJTidQ=
 github.com/spf13/cobra v1.1.1 h1:KfztREH0tPxJJ+geloSLaAkaPkr4ki2Er5quFV1TDo4=
 github.com/spf13/cobra v1.1.1/go.mod h1:WnodtKOvamDL/PwE2M4iKs8aMDBZ5Q5klgD3qfVJQMI=
 github.com/spf13/jwalterweatherman v1.0.0/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
