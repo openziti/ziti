@@ -137,37 +137,35 @@ func New() (intercept.Interceptor, error) {
 }
 
 func (t *tProxyInterceptor) Start(context ziti.Context) {
-	t.accept(context)
-	t.acceptUDP(context)
+	go t.accept(context)
+	go t.acceptUDP(context)
 }
 
 func (t *tProxyInterceptor) accept(context ziti.Context) {
 	log := pfxlog.Logger()
-	go func() {
-		for {
-			client, err := t.tcpLn.Accept()
-			if err != nil {
-				log.Errorf("error while accepting: %v", err)
-			}
-			if client == nil {
-				log.Info("shutting down")
-				return
-			}
-			log.Infof("received connection: %s --> %s", client.LocalAddr().String(), client.RemoteAddr().String())
-			service, err := t.interceptLUT.GetByAddress(client.LocalAddr())
-			if service == nil {
-				log.Warnf("received connection for %s, which does not map to an intercepted service", client.LocalAddr().String())
-				client.Close()
-				continue
-			}
-			go tunnel.DialAndRun(context, service.Name, client)
+	for {
+		client, err := t.tcpLn.Accept()
+		if err != nil {
+			log.Errorf("error while accepting: %v", err)
 		}
-	}()
+		if client == nil {
+			log.Info("shutting down")
+			return
+		}
+		log.Infof("received connection: %s --> %s", client.LocalAddr().String(), client.RemoteAddr().String())
+		service, err := t.interceptLUT.GetByAddress(client.LocalAddr())
+		if service == nil {
+			log.Warnf("received connection for %s, which does not map to an intercepted service", client.LocalAddr().String())
+			client.Close()
+			continue
+		}
+		go tunnel.DialAndRun(context, service.Name, client)
+	}
 }
 
 func (t *tProxyInterceptor) acceptUDP(context ziti.Context) {
 	vconnMgr := udp_vconn.NewManager(context, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
-	go t.generateReadEvents(vconnMgr)
+	t.generateReadEvents(vconnMgr)
 }
 
 func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {

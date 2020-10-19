@@ -26,6 +26,19 @@ import (
 	"io"
 )
 
+const (
+	PayloadFlagsHeader uint8 = 0x10
+)
+
+// headers to pass through fabric to the other side
+var headersTofabric = map[int32]uint8{
+	edge.FlagsHeader: PayloadFlagsHeader,
+}
+
+var headersFromFabric = map[uint8]int32{
+	PayloadFlagsHeader: edge.FlagsHeader,
+}
+
 type localMessageSink struct {
 	edge.MsgChannel
 	seq       sequencer.Sequencer
@@ -94,7 +107,15 @@ func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 
 func (conn *localMessageSink) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
 	msgUUID := headers[xgress.HeaderKeyUUID]
-	return conn.WriteTraced(p, msgUUID)
+
+	edgeHdrs := make(map[int32][]byte)
+	for k, v := range headers {
+		if edgeHeader, found := headersFromFabric[k]; found {
+			edgeHdrs[edgeHeader] = v
+		}
+	}
+
+	return conn.WriteTraced(p, msgUUID, edgeHdrs)
 }
 
 func (conn *localMessageSink) Close() error {
@@ -141,9 +162,17 @@ func (conn *localMessageSink) Accept(event *edge.MsgEvent) {
 }
 
 func (conn *localMessageSink) getHeaderMap(message *channel2.Message) map[uint8][]byte {
+	headers := make(map[uint8][]byte)
 	msgUUID, found := message.Headers[edge.UUIDHeader]
 	if found {
-		return map[uint8][]byte{xgress.HeaderKeyUUID: msgUUID}
+		headers[xgress.HeaderKeyUUID] = msgUUID
 	}
-	return nil
+
+	for k, v := range message.Headers {
+		if pHdr, found := headersTofabric[k]; found {
+			headers[pHdr] = v
+		}
+	}
+
+	return headers
 }
