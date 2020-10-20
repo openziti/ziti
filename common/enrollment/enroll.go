@@ -32,6 +32,7 @@ import (
 
 // global state used by all subcommands are located here for easy discovery
 var verbose bool
+var keyType keyTypeVar
 var jwtpath, outpath, keyPath, certPath, idname, caOverride string
 
 const verboseDesc = "Enable verbose logging."
@@ -80,6 +81,8 @@ func NewEnrollCommand() *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
 	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
 	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
+	keyType.Set("EC") // set default
+	enrollSubCmd.Flags().VarP(&keyType, "keyType", "t", "Type of private key to emit")
 
 	var keyDesc = ""
 	engines := certtools.ListEngines()
@@ -130,6 +133,7 @@ func processEnrollment() error {
 	flags := enroll.EnrollmentFlags{
 		CertFile:      certPath,
 		KeyFile:       keyPath,
+		KeyType:       keyType.Get(),
 		Token:         tkn,
 		IDName:        idname,
 		AdditionalCAs: caOverride,
