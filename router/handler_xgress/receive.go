@@ -23,12 +23,11 @@ import (
 )
 
 type receiveHandler struct {
-	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
 }
 
-func NewReceiveHandler(ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *receiveHandler {
-	return &receiveHandler{ctrl: ctrl, forwarder: forwarder}
+func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
+	return &receiveHandler{forwarder: forwarder}
 }
 
 func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {

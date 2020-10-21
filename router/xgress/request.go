@@ -193,7 +193,7 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	}
 
 	x := NewXgress(sessionInfo.SessionId, sessionInfo.Address, peer, Initiator, options)
-	bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, Initiator, x)
+	bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}

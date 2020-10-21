@@ -17,15 +17,14 @@
 package forwarder
 
 import (
-	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/info"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -60,12 +59,12 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forw
 		Options:         options,
 	}
 
-	forwarder.payloadBufferController = xgress.NewPayloadBufferController(forwarder)
+	forwarder.payloadBufferController = xgress.NewPayloadBufferController(forwarder, metricsRegistry)
 	return forwarder
 }
 
-func (forwarder *Forwarder) PayloadBuffer(sessionId *identity.TokenId, address xgress.Address) *xgress.PayloadBuffer {
-	return forwarder.payloadBufferController.BufferForSession(sessionId, address)
+func (forwarder *Forwarder) PayloadBuffer(x *xgress.Xgress) *xgress.PayloadBuffer {
+	return xgress.NewPayloadBuffer(x, forwarder.payloadBufferController)
 }
 
 func (forwarder *Forwarder) PayloadBufferController() *xgress.PayloadBufferController {
@@ -80,17 +79,17 @@ func (forwarder *Forwarder) TraceController() trace.Controller {
 	return forwarder.traceController
 }
 
-func (forwarder *Forwarder) RegisterDestination(sessionId *identity.TokenId, address xgress.Address, destination Destination) {
+func (forwarder *Forwarder) RegisterDestination(sessionId string, address xgress.Address, destination Destination) {
 	forwarder.destinations.addDestination(address, destination)
 	forwarder.destinations.linkDestinationToSession(sessionId, address)
 }
 
-func (forwarder *Forwarder) UnregisterDestinations(sessionId *identity.TokenId) {
+func (forwarder *Forwarder) UnregisterDestinations(sessionId string) {
 	if addresses, found := forwarder.destinations.getAddressesForSession(sessionId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				forwarder.destinations.removeDestination(address)
-				destination.(XgressDestination).Close()
+				go destination.(XgressDestination).Close() // create close queue?
 			}
 		}
 		forwarder.destinations.unlinkSession(sessionId)
@@ -111,7 +110,7 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
 }
 
 func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
-	sessionId := &identity.TokenId{Token: route.SessionId}
+	sessionId := route.SessionId
 	var sessionFt *forwardTable
 	if ft, found := forwarder.sessions.getForwardTable(sessionId); found {
 		sessionFt = ft
@@ -124,7 +123,7 @@ func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
 	forwarder.sessions.setForwardTable(sessionId, sessionFt)
 }
 
-func (forwarder *Forwarder) Unroute(sessionId *identity.TokenId, now bool) {
+func (forwarder *Forwarder) Unroute(sessionId string, now bool) {
 	if now {
 		forwarder.sessions.removeForwardTable(sessionId)
 		forwarder.EndSession(sessionId)
@@ -133,15 +132,14 @@ func (forwarder *Forwarder) Unroute(sessionId *identity.TokenId, now bool) {
 	}
 }
 
-func (forwarder *Forwarder) EndSession(sessionId *identity.TokenId) {
+func (forwarder *Forwarder) EndSession(sessionId string) {
 	forwarder.UnregisterDestinations(sessionId)
-	forwarder.payloadBufferController.EndSession(sessionId)
 }
 
 func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
-	sessionId := &identity.TokenId{Token: payload.GetSessionId()}
+	sessionId := payload.GetSessionId()
 	if forwardTable, found := forwarder.sessions.getForwardTable(sessionId); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
@@ -152,20 +150,20 @@ func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgre
 				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
 			} else {
-				return errors.New("no destination")
+				return errors.Errorf("cannot forward payload, no destination for session=%v src=%v dst=%v", sessionId, srcAddr, dstAddr)
 			}
 		} else {
-			return errors.New("no destination address")
+			return errors.Errorf("cannot forward payload, no destination address for session=%v src=%v", sessionId, srcAddr)
 		}
 	} else {
-		return errors.New("cannot forward payload, no forward table")
+		return errors.Errorf("cannot forward payload, no forward table for session=%v src=%v", sessionId, srcAddr)
 	}
 }
 
 func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error {
 	log := pfxlog.ContextLogger(string(srcAddr))
 
-	sessionId := &identity.TokenId{Token: acknowledgement.SessionId}
+	sessionId := acknowledgement.SessionId
 	if forwardTable, found := forwarder.sessions.getForwardTable(sessionId); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
@@ -177,15 +175,15 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 				return nil
 
 			} else {
-				return errors.New("no destination")
+				return errors.Errorf("cannot acknowledge, no destination for session=%v src=%v dst=%v", sessionId, srcAddr, dstAddr)
 			}
 
 		} else {
-			return errors.New("no destination address")
+			return errors.Errorf("cannot acknowledge, no destination address for session=%v src=%v", sessionId, srcAddr)
 		}
 
 	} else {
-		return errors.New("cannot acknowledge, no forward table")
+		return errors.Errorf("cannot acknowledge, no forward table for session=%v src=%v", sessionId, srcAddr)
 	}
 }
 
@@ -197,8 +195,8 @@ func (forwarder *Forwarder) Debug() string {
 // for a session, it will be checked repeatedly, looking to see if the session has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
 //
-func (forwarder *Forwarder) unrouteTimeout(sessionId *identity.TokenId, ms int64) {
-	log := pfxlog.ContextLogger("s/" + sessionId.Token)
+func (forwarder *Forwarder) unrouteTimeout(sessionId string, ms int64) {
+	log := pfxlog.ContextLogger("s/" + sessionId)
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 

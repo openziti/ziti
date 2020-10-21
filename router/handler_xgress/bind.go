@@ -20,7 +20,6 @@ import (
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type bindHandler struct {
@@ -39,18 +38,14 @@ func NewBindHandler(receiveHandler xgress.ReceiveHandler, closeHandler xgress.Cl
 	}
 }
 
-func (bindHandler *bindHandler) HandleXgressBind(sessionId *identity.TokenId, address xgress.Address, originator xgress.Originator, x *xgress.Xgress) {
+func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 	x.SetReceiveHandler(bindHandler.receiveHandler)
 	x.AddPeekHandler(bindHandler.metricsPeekHandler)
 
-	if x.Options.Retransmission {
-		payloadBuffer := bindHandler.forwarder.PayloadBuffer(sessionId, address)
-		payloadBuffer.Originator = originator
-		payloadBuffer.SrcAddress = address
-		x.SetPayloadBuffer(payloadBuffer)
-	}
+	payloadBuffer := bindHandler.forwarder.PayloadBuffer(x)
+	x.SetPayloadBuffer(payloadBuffer)
 
 	x.SetCloseHandler(bindHandler.closeHandler)
 
-	bindHandler.forwarder.RegisterDestination(sessionId, x.Address(), x)
+	bindHandler.forwarder.RegisterDestination(x.SessionId(), x.Address(), x)
 }

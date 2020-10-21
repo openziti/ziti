@@ -79,6 +79,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		EventSink:      metrics.NewDispatchWrapper(eventDispatcher.Dispatch),
 	}
 	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig)
+	xgress.InitMetrics(metricsRegistry)
 
 	return &Router{
 		config:          config,
@@ -250,7 +251,7 @@ func (self *Router) startXgressListeners() {
 		if address, found := binding.options["address"]; found {
 			err = listener.Listen(address.(string),
 				handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(self, self.forwarder),
+					handler_xgress.NewReceiveHandler(self.forwarder),
 					handler_xgress.NewCloseHandler(self, self.forwarder),
 					self.forwarder,
 				),

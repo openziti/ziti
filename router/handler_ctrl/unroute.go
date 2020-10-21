@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type unrouteHandler struct {
@@ -40,7 +39,7 @@ func (h *unrouteHandler) ContentType() int32 {
 func (h *unrouteHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	removeRoute := &ctrl_pb.Unroute{}
 	if err := proto.Unmarshal(msg.Body, removeRoute); err == nil {
-		h.forwarder.Unroute(&identity.TokenId{Token: removeRoute.SessionId}, removeRoute.Now)
+		h.forwarder.Unroute(removeRoute.SessionId, removeRoute.Now)
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}

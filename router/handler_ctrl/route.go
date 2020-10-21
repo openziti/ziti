@@ -117,7 +117,7 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel
 				sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
 
 				bindHandler := handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(rh.ctrl, rh.forwarder),
+					handler_xgress.NewReceiveHandler(rh.forwarder),
 					handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
 					rh.forwarder)
 

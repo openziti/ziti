@@ -203,12 +203,12 @@ type xgressPeekHandler struct {
 func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressRxUsageCounter.Update(x.SessionId().Token, time.Now(), uint64(msgSize))
+		handler.ingressRxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
 		handler.ingressRxMsgMeter.Mark(1)
 		handler.ingressRxBytesMeter.Mark(msgSize)
 		handler.ingressRxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressRxUsageCounter.Update(x.SessionId().Token, time.Now(), uint64(msgSize))
+		handler.egressRxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
 		handler.egressRxMsgMeter.Mark(1)
 		handler.egressRxBytesMeter.Mark(msgSize)
 		handler.egressRxMsgSizeHistogram.Update(msgSize)
@@ -218,12 +218,12 @@ func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) 
 func (handler *xgressPeekHandler) Tx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressTxUsageCounter.Update(x.SessionId().Token, time.Now(), uint64(msgSize))
+		handler.ingressTxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
 		handler.ingressTxMsgMeter.Mark(1)
 		handler.ingressTxBytesMeter.Mark(msgSize)
 		handler.ingressTxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressTxUsageCounter.Update(x.SessionId().Token, time.Now(), uint64(msgSize))
+		handler.egressTxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
 		handler.egressTxMsgMeter.Mark(1)
 		handler.egressTxBytesMeter.Mark(msgSize)
 		handler.egressTxMsgSizeHistogram.Update(msgSize)

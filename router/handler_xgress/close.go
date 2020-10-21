@@ -51,7 +51,7 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	txc.forwarder.EndSession(x.SessionId())
 
 	// Notify the controller of the xgress fault
-	fault := &ctrl_pb.Fault{Id: x.SessionId().Token}
+	fault := &ctrl_pb.Fault{Id: x.SessionId()}
 	if x.Originator() == xgress.Initiator {
 		fault.Subject = ctrl_pb.FaultSubject_IngressFault
 	} else if x.Originator() == xgress.Terminator {

@@ -22,16 +22,24 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
+	"time"
 )
 
 type ackHandler struct {
 	link      xlink.Xlink
 	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
+	timer     metrics.Timer
 }
 
 func newAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *ackHandler {
-	return &ackHandler{link: link, ctrl: ctrl, forwarder: forwarder}
+	return &ackHandler{
+		link:      link,
+		ctrl:      ctrl,
+		forwarder: forwarder,
+		timer:     forwarder.MetricsRegistry().Timer("xgress.ack.handle_time"),
+	}
 }
 
 func (self *ackHandler) ContentType() int32 {
@@ -39,6 +47,7 @@ func (self *ackHandler) ContentType() int32 {
 }
 
 func (self *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	start := time.Now()
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
@@ -48,4 +57,5 @@ func (self *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 	} else {
 		log.Errorf("unexpected error (%v)", err)
 	}
+	self.timer.UpdateSince(start)
 }

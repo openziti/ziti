@@ -19,11 +19,14 @@ package xgress
 import (
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
+	"github.com/michaelquigley/pfxlog"
+	"sync/atomic"
 )
 
 type TransmitBuffer struct {
 	tree     *btree.Tree
 	sequence int32
+	size     uint32
 }
 
 func NewTransmitBuffer() *TransmitBuffer {
@@ -33,9 +36,20 @@ func NewTransmitBuffer() *TransmitBuffer {
 	}
 }
 
+func (buffer *TransmitBuffer) Size() uint32 {
+	return atomic.LoadUint32(&buffer.size)
+}
+
 func (buffer *TransmitBuffer) ReceiveUnordered(payload *Payload) {
 	if payload.GetSequence() > buffer.sequence {
+		treeSize := buffer.tree.Size()
 		buffer.tree.Put(payload.GetSequence(), payload)
+		if buffer.tree.Size() > treeSize {
+			payloadSize := len(payload.Data)
+			size := atomic.AddUint32(&buffer.size, uint32(payloadSize))
+			pfxlog.Logger().Tracef("Payload %v of size %v added to transmit buffer. New size: %v", payload.Sequence, payloadSize, size)
+			localTxBufferSizeHistogram.Update(int64(size))
+		}
 	}
 }
 
@@ -46,6 +60,7 @@ func (buffer *TransmitBuffer) ReadyForTransmit() []*Payload {
 		nextSequence := buffer.tree.LeftKey().(int32)
 		for nextSequence == buffer.sequence+1 {
 			payload := buffer.tree.LeftValue().(*Payload)
+
 			buffer.tree.Remove(nextSequence)
 			buffer.sequence = nextSequence
 
@@ -58,4 +73,19 @@ func (buffer *TransmitBuffer) ReadyForTransmit() []*Payload {
 	}
 
 	return ready
+}
+
+func (buffer *TransmitBuffer) NextReadyPayload() *Payload {
+	if buffer.tree.LeftKey() != nil {
+		if nextSequence := buffer.tree.LeftKey().(int32); nextSequence == buffer.sequence+1 {
+			return buffer.tree.LeftValue().(*Payload)
+		}
+	}
+	return nil
+}
+
+func (buffer *TransmitBuffer) RemoveReadyPayload() {
+	nextSequence := buffer.tree.LeftKey().(int32)
+	buffer.tree.Remove(nextSequence)
+	buffer.sequence = nextSequence
 }

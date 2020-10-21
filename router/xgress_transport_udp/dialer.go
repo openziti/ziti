@@ -42,7 +42,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	logrus.Infof("bound on [%v]", conn.LocalAddr())
 
 	x := xgress.NewXgress(sessionId, address, newPacketConn(conn), xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
+	bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	return nil, nil

@@ -19,7 +19,6 @@ package forwarder
 import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
 	"reflect"
@@ -37,19 +36,19 @@ func newSessionTable() *sessionTable {
 	}
 }
 
-func (st *sessionTable) setForwardTable(sessionId *identity.TokenId, ft *forwardTable) {
-	st.sessions.Set(sessionId.Token, ft)
+func (st *sessionTable) setForwardTable(sessionId string, ft *forwardTable) {
+	st.sessions.Set(sessionId, ft)
 }
 
-func (st *sessionTable) getForwardTable(sessionId *identity.TokenId) (*forwardTable, bool) {
-	if ft, found := st.sessions.Get(sessionId.Token); found {
+func (st *sessionTable) getForwardTable(sessionId string) (*forwardTable, bool) {
+	if ft, found := st.sessions.Get(sessionId); found {
 		return ft.(*forwardTable), true
 	}
 	return nil, false
 }
 
-func (st *sessionTable) removeForwardTable(sessionId *identity.TokenId) {
-	st.sessions.Remove(sessionId.Token)
+func (st *sessionTable) removeForwardTable(sessionId string) {
+	st.sessions.Remove(sessionId)
 }
 
 func (st *sessionTable) debug() string {
@@ -125,26 +124,26 @@ func (dt *destinationTable) removeDestination(addr xgress.Address) {
 	dt.destinations.Remove(string(addr))
 }
 
-func (dt *destinationTable) linkDestinationToSession(sessionId *identity.TokenId, address xgress.Address) {
+func (dt *destinationTable) linkDestinationToSession(sessionId string, address xgress.Address) {
 	var addresses []xgress.Address
-	if i, found := dt.xgress.Get(sessionId.Token); found {
+	if i, found := dt.xgress.Get(sessionId); found {
 		addresses = i.([]xgress.Address)
 	} else {
 		addresses = make([]xgress.Address, 0)
 	}
 	addresses = append(addresses, address)
-	dt.xgress.Set(sessionId.Token, addresses)
+	dt.xgress.Set(sessionId, addresses)
 }
 
-func (dt *destinationTable) getAddressesForSession(sessionId *identity.TokenId) ([]xgress.Address, bool) {
-	if addresses, found := dt.xgress.Get(sessionId.Token); found {
+func (dt *destinationTable) getAddressesForSession(sessionId string) ([]xgress.Address, bool) {
+	if addresses, found := dt.xgress.Get(sessionId); found {
 		return addresses.([]xgress.Address), found
 	}
 	return nil, false
 }
 
-func (dt *destinationTable) unlinkSession(sessionId *identity.TokenId) {
-	dt.xgress.Remove(sessionId.Token)
+func (dt *destinationTable) unlinkSession(sessionId string) {
+	dt.xgress.Remove(sessionId)
 }
 
 func (dt *destinationTable) debug() string {

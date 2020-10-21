@@ -22,10 +22,10 @@ import (
 
 // Options contains common Xgress configuration options
 type Options struct {
-	Mtu            int32
-	Retransmission bool
-	RandomDrops    bool
-	Drop1InN       int32
+	Mtu         int32
+	RandomDrops bool
+	Drop1InN    int32
+	TxQueueSize int32
 }
 
 func LoadOptions(data OptionsData) *Options {
@@ -37,14 +37,14 @@ func LoadOptions(data OptionsData) *Options {
 		if value, found := data["mtu"]; found {
 			options.Mtu = int32(value.(int))
 		}
-		if value, found := data["retransmission"]; found {
-			options.Retransmission = value.(bool)
-		}
 		if value, found := data["randomDrops"]; found {
 			options.RandomDrops = value.(bool)
 		}
 		if value, found := data["drop1InN"]; found {
 			options.Drop1InN = int32(value.(int))
+		}
+		if value, found := data["txQueueSize"]; found {
+			options.TxQueueSize = int32(value.(int))
 		}
 	}
 
@@ -53,10 +53,10 @@ func LoadOptions(data OptionsData) *Options {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:            64 * 1024,
-		Retransmission: true,
-		RandomDrops:    false,
-		Drop1InN:       100,
+		Mtu:         64 * 1024,
+		RandomDrops: false,
+		Drop1InN:    100,
+		TxQueueSize: 2,
 	}
 }
 
