@@ -17,6 +17,7 @@
 package tcp
 
 import (
+	"fmt"
 	"github.com/openziti/edge/tunnel/intercept/protocols/ip"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -54,6 +55,7 @@ type ClientConn struct {
 	mss       uint
 
 	tState      tcpState
+	tStateMtx   sync.Locker
 	rcvAdv      uint16 // advertised window from peer  - written in tcpRecv. read in tcpSend (waitForClientAcks)
 	rcvWndScale uint8
 	rcvAckNum   uint32
@@ -61,6 +63,10 @@ type ClientConn struct {
 	sndAckNum   uint32 // bytes received. written in tcpRecv. read in tcpSend
 	seqCond     *sync.Cond
 	log         *logrus.Entry
+}
+
+func (conn ClientConn) String() string {
+	return fmt.Sprintf("tcpConn(%v -> %v)", conn.srcAddr, conn.dstAddr)
 }
 
 func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.ReadWriter, tunMTU uint) (*ClientConn, error) {
@@ -78,7 +84,7 @@ func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.
 	for i := 0; i < cap(txq); i++ {
 		txq <- make([]byte, tunMTU)
 	}
-	
+
 	return &ClientConn{
 		clientKey: clientAddr,
 		svcKey:    interceptAddr,
@@ -89,6 +95,7 @@ func NewClientConn(clientAddr, interceptAddr string, rxq chan *tcpQItem, dev io.
 		dev:       dev,
 		mss:       mss,
 		tState:    tcpsListen,
+		tStateMtx: new(sync.Mutex),
 		seqCond:   maxSegCond,
 		log:       log.WithFields(logrus.Fields{"src": srcAddr.String(), "dst": dstAddr.String()}),
 	}, nil
@@ -98,6 +105,7 @@ func (conn *ClientConn) tcpRecv(segment TCP, buf []byte) (int, error) {
 	conn.log.Debugf("got packet: flags=%d, state=%d", segment.Flags(), conn.tState)
 
 	conn.seqCond.L.Lock()
+	defer conn.seqCond.L.Unlock()
 	conn.rcvAdv = segment.WindowSize()
 	if segment.HasFlags(TCPFlagAck) {
 		conn.rcvAckNum = segment.AckNumber()
@@ -110,11 +118,15 @@ func (conn *ClientConn) tcpRecv(segment TCP, buf []byte) (int, error) {
 	if segment.HasFlags(TCPFlagFin) {
 		conn.sndAckNum += 1
 	}
+	n := 0
+
+	conn.tStateMtx.Lock()
+	defer conn.tStateMtx.Unlock()
 
 	switch {
 	// LISTEN --> SYN_RCVD
 	case conn.tState == tcpsListen && segment.HasFlags(TCPFlagSyn):
-		synOpts := ParseSynOptions([]byte(segment[TCPMinimumSize:segment.DataOffset()]), segment.HasFlags(TCPFlagAck))
+		synOpts := ParseSynOptions(segment[TCPMinimumSize:segment.DataOffset()], segment.HasFlags(TCPFlagAck))
 		if synOpts.WS > 0 {
 			conn.rcvWndScale = uint8(synOpts.WS)
 		}
@@ -132,12 +144,11 @@ func (conn *ClientConn) tcpRecv(segment TCP, buf []byte) (int, error) {
 			conn.tcpSend(nil, TCPFlagAck)
 		} else {
 			// DATA TRANSFER
-			n := len(segment.Payload())
+			n = len(segment.Payload())
 			if n > 0 {
 				conn.sndAckNum += uint32(n)
 				conn.log.Debugf("writing %d bytes to ziti", n)
 				conn.tcpSend(nil, TCPFlagAck)
-				conn.seqCond.L.Unlock()
 				copy(buf, segment.Payload())
 				return n, nil
 			}
@@ -148,20 +159,29 @@ func (conn *ClientConn) tcpRecv(segment TCP, buf []byte) (int, error) {
 
 	// CONNECTION TERMINATED by ziti service
 	case conn.tState == tcpsFinWait1:
+		n = len(segment.Payload())
+		conn.sndAckNum += uint32(n)
+		copy(buf, segment.Payload())
+		if n > 0 || segment.HasFlags(TCPFlagFin) {
+			conn.tcpSend(nil, TCPFlagAck)
+		}
 		switch {
 		case segment.HasFlags(TCPFlagFin | TCPFlagAck):
-			conn.tcpSend(nil, TCPFlagAck)
 			conn.tState = tcpsTimeWait
 		case segment.HasFlags(TCPFlagFin):
-			conn.tcpSend(nil, TCPFlagAck)
 			conn.tState = tcpsClosing
 		case segment.HasFlags(TCPFlagAck):
 			conn.tState = tcpsFinWait2
 		}
 
-	case conn.tState == tcpsFinWait2 && segment.HasFlags(TCPFlagFin):
+	case conn.tState == tcpsFinWait2:
+		n = len(segment.Payload())
+		conn.sndAckNum += uint32(n)
+		copy(buf, segment.Payload())
+		if segment.HasFlags(TCPFlagFin) {
+			conn.tState = tcpsTimeWait
+		}
 		conn.tcpSend(nil, TCPFlagAck)
-		conn.tState = tcpsTimeWait
 
 	case conn.tState == tcpsClosing && segment.HasFlags(TCPFlagAck):
 		conn.tState = tcpsTimeWait
@@ -181,14 +201,11 @@ func (conn *ClientConn) tcpRecv(segment TCP, buf []byte) (int, error) {
 		conn.log.Infof("closing %s", conn.clientKey)
 		// TODO return 0, io.EOF?
 	case tcpsCloseWait:
-		conn.tState = tcpsLastAck
 		conn.tcpSend(nil, TCPFlagFin)
-		conn.seqCond.L.Unlock()
 		return 0, io.EOF
 	}
 
-	conn.seqCond.L.Unlock()
-	return 0, nil
+	return n, nil
 }
 
 // Reads the next packet from the local client
@@ -262,6 +279,14 @@ func (conn *ClientConn) tcpSend(payload []byte, flags uint8) {
 }
 
 func (conn *ClientConn) Write(payload []byte) (int, error) {
+
+	switch conn.tState {
+	case tcpsSynReceived, tcpsEstablished, tcpsCloseWait: // allowed write states
+	default:
+		conn.log.Errorf("attempted write in %v", conn.tState)
+		return 0, fmt.Errorf("attempted write in %v state", conn.tState)
+	}
+
 	n := uint(len(payload))
 	var chunkLen uint
 	for i := uint(0); i < n; i += conn.mss {
@@ -292,22 +317,37 @@ func (conn *ClientConn) waitForClientAcks(i uint32) {
 	}
 }
 
+func (conn *ClientConn) CloseWrite() error {
+	conn.log.Debug("CloseWrite()")
+	conn.tStateMtx.Lock()
+	defer conn.tStateMtx.Unlock()
+
+	sendFin := true
+	switch conn.tState {
+	case tcpsEstablished, tcpsSynReceived:
+		conn.tState = tcpsFinWait1
+	case tcpsCloseWait:
+		conn.tState = tcpsLastAck
+	default:
+		sendFin = false
+	}
+
+	if sendFin {
+		conn.tcpSend(nil, TCPFlagFin|TCPFlagAck)
+		conn.log.Debug("FIN sent")
+	}
+
+	return nil
+}
+
 func (conn *ClientConn) Close() error {
+	_ = conn.CloseWrite()
+
 	queuesMtx.Lock()
 	delete(queues, conn.clientKey) // prevent writes on outQueue which is about to be closed
 	queuesMtx.Unlock()
 
 	close(conn.rxq)
-
-	conn.log.Debugf("closing state = %d", conn.tState)
-	if conn.tState == tcpsEstablished || conn.tState == tcpsSynReceived {
-		conn.seqCond.L.Lock()
-		conn.waitForClientAcks(0)
-		conn.tcpSend(nil, TCPFlagFin)
-		conn.seqCond.L.Unlock()
-		conn.log.Debug("FIN sent")
-		conn.tState = tcpsFinWait1
-	}
 
 	return nil
 }

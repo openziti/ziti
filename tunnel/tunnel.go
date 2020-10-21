@@ -77,7 +77,6 @@ func myCopy(dst net.Conn, src net.Conn, done chan int64) {
 	logger := log.WithFields(loggerFields)
 	defer func() {
 		if cw, ok := dst.(edge.CloseWriter); ok {
-			logger.Infof("calling CloseWrite on (%v)", dst)
 			_ = cw.CloseWrite()
 		} else {
 			_ = dst.Close()
