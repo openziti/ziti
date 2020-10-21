@@ -40,8 +40,8 @@ link:
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
 # Router.
 edge:
-  # (optional) Determines the rate at which API session heartbeats are sent for connected SDK clients (default: 60)
-  heartbeatIntervalSeconds: 60
+  # (required to engage this router for WSS)
+  underlay_type: wss
   # (required) Information used to generate the initial registration CSR. For documentation on these fields please
   # refer to the openssl documentation. These values MUST be supplied and have no defaults.
   csr:
@@ -79,18 +79,12 @@ dialers:
   - binding: transport
 
 listeners:
-  - binding: edge
-    address: tls:0.0.0.0:3022
+  - binding: edge_wss
+    address: tls:0.0.0.0:3023
+    identity:
+      server_cert:          ${ZITI_DATA}/edge-router-server.cert.pem
+      key:                  ${ZITI_DATA}/edge-router.key.pem
     options:
       # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
-      advertise: 127.0.0.1:3022
-      # (optional) settings
-      # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-      #maxQueuedConnects:      50
-      # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-      #maxOutstandingConnects: 100
-      # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-      #connectTimeoutMs:       3000
-  - binding: transport
-    address: tls:0.0.0.0:7099
+      advertise: 127.0.0.1:3023
 

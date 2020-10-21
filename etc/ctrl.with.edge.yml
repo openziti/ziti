@@ -50,6 +50,28 @@ metrics:
     #url:                http://localhost:8086
     #database:           ziti
 
+#events:
+#  jsonLogger:
+#    subscriptions:
+#      - type: metrics
+#        sourceFilter: .*
+#        metricFilter: .*egress.*m1_rate*
+#      - type: fabric.sessions
+#        include:
+#          - created
+#      - type: edge.sessions
+#        include:
+#          - created
+#      - type: fabric.usage
+#    handler:
+#      type: file
+#      format: json
+#      path: /tmp/ziti-events.log
+
+terminator:
+  validators:
+    edge: edge
+
 # xctrl_example
 #
 #example:

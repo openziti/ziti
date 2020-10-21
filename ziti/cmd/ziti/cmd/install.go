@@ -74,6 +74,7 @@ func NewCmdInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	cmd.AddCommand(NewCmdInstallZitiMgmtGw(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiRouter(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiTunnel(f, out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiEnroller(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiProxy(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiProxC(f, out, errOut))

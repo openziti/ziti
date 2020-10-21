@@ -19,7 +19,7 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge/gateway/xgress_edge_transport"
+	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -34,6 +34,7 @@ type createTerminatorOptions struct {
 	binding    string
 	cost       int32
 	precedence string
+	identity   string
 }
 
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
@@ -67,6 +68,7 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().StringVar(&options.binding, "binding", xgress_edge_transport.BindingName, "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
+	cmd.Flags().StringVar(&options.identity, "identity", "", "Set the terminator identity")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -89,6 +91,7 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	setJSONValue(entityData, router, "router")
 	setJSONValue(entityData, o.binding, "binding")
 	setJSONValue(entityData, o.Args[2], "address")
+	setJSONValue(entityData, o.identity, "identity")
 	if o.cost > 0 {
 		if o.cost > math.MaxUint16 {
 			if _, err = fmt.Fprintf(o.Out, "Invalid cost %v. Must be positive number less than or equal to %v\n", o.cost, math.MaxUint16); err != nil {

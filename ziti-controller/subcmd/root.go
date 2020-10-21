@@ -17,9 +17,10 @@
 package subcmd
 
 import (
-	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
+	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,7 @@ func init() {
 	root.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", false, "Enable CLI Agent (use in dev only)")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 
-	edgeSubCmd.AddCommands(root)
+	edgeSubCmd.AddCommands(root, version.GetCmdBuildInfo())
 }
 
 var root = &cobra.Command{

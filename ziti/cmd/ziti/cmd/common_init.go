@@ -17,9 +17,9 @@
 package cmd
 
 import (
+	"fmt"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
-	"fmt"
 	"github.com/spf13/viper"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"os"
@@ -37,6 +37,7 @@ var ZITI_COMPONENTS = []string{
 	c.ZITI_PROX_C,
 	c.ZITI_ROUTER,
 	c.ZITI_TUNNEL,
+	c.ZITI_EDGE_TUNNEL,
 }
 
 func (o *CommonOptions) GetZitiComponent(p string) (string, error) {

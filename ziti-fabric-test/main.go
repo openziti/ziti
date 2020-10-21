@@ -23,10 +23,12 @@ import (
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/openziti/foundation/transport/tls"
 	"github.com/openziti/foundation/transport/transwarp"
+	"github.com/openziti/foundation/transport/wss"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/client"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2"
+	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3"
 	"github.com/sirupsen/logrus"
 	"math/rand"
 )
@@ -38,6 +40,7 @@ func init() {
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
 	transport.AddAddressParser(transwarp.AddressParser{})
+	transport.AddAddressParser(wss.AddressParser{})
 }
 
 func main() {

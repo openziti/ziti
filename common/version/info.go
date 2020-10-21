@@ -17,25 +17,39 @@
 package version
 
 import (
-	"github.com/openziti/edge/build"
+	"github.com/openziti/foundation/common"
 	"runtime"
 )
 
 type cmdBuildInfo struct{}
 
-func (c cmdBuildInfo) GetVersion() string {
+func (c cmdBuildInfo) EncoderDecoder() common.VersionEncDec {
+	return &common.StdVersionEncDec
+}
+
+func (c cmdBuildInfo) Version() string {
 	return Version
 }
 
-func (c cmdBuildInfo) GetRevision() string {
+func (c cmdBuildInfo) Revision() string {
 	return Revision
 }
 
-func (c cmdBuildInfo) GetBuildDate() string {
+func (c cmdBuildInfo) BuildDate() string {
 	return BuildDate
 }
 
-func GetCmdBuildInfo() build.Info {
+func (c cmdBuildInfo) AsVersionInfo() *common.VersionInfo {
+	return &common.VersionInfo{
+		Version:   c.Version(),
+		Revision:  c.Revision(),
+		BuildDate: c.BuildDate(),
+		OS:        GetOS(),
+		Arch:      GetArchitecture(),
+	}
+}
+
+func GetCmdBuildInfo() common.VersionProvider {
 	return cmdBuildInfo{}
 }
 

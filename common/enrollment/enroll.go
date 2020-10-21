@@ -45,9 +45,10 @@ const outFlag = "out"
 func NewEnrollCommand() *cobra.Command {
 	var enrollSubCmd = &cobra.Command{
 		SilenceErrors: true,
-		SilenceUsage:  true,
-		Use:           "enroll",
+		SilenceUsage:  false,
+		Use:           "enroll path/to/jwt",
 		Short:         "enroll an identity",
+		Args:          cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
@@ -62,6 +63,13 @@ func NewEnrollCommand() *cobra.Command {
 				PadLevelText:     true,
 			})
 			logrus.SetReportCaller(false) // for enrolling don't bother with this
+			if len(args) > 0 {
+				jwtpath = args[0]
+			}
+			if jwtpath == "" {
+				defer fmt.Printf("\nERROR: no jwt provided\n")
+				return cmd.Help()
+			}
 			return processEnrollment()
 		},
 	}
@@ -82,9 +90,6 @@ func NewEnrollCommand() *cobra.Command {
 	}
 
 	enrollSubCmd.Flags().StringVarP(&keyPath, "key", "k", "", keyDesc)
-
-	_ = enrollSubCmd.MarkFlagRequired("jwt")
-
 	return enrollSubCmd
 }
 

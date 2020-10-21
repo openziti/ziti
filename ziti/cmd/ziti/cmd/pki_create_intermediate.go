@@ -69,7 +69,7 @@ func (o *PKICreateIntermediateOptions) addPKICreateIntermediateFlags(cmd *cobra.
 	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "ca", "Name of CA (within PKI_ROOT) to use to sign the new Intermediate CA")
 	cmd.Flags().StringVarP(&o.Flags.IntermediateFile, "intermediate-file", "", "intermediate", "Dir/File name (within PKI_ROOT) in which to store new Intermediate CA")
 	cmd.Flags().StringVarP(&o.Flags.IntermediateName, "intermediate-name", "", "NetFoundry, Inc. Intermediate CA", "Common Name (CN) to use for new Intermediate CA")
-	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
+	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", 0, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
 }
