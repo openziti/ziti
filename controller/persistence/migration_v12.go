@@ -1,11 +1,23 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/storage/boltz"
 	"time"
 )
 
 func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
+
+	_, count, err := m.stores.PostureCheckType.QueryIds(step.Ctx.Tx(), "true limit 500")
+
+	if err != nil {
+		step.SetError(fmt.Errorf("could not query posture check types: %v", err))
+	}
+
+	if count > 0 {
+		return //already added
+	}
+
 	windows := OperatingSystem{
 		OsType:     "Windows",
 		OsVersions: []string{"Vista", "7", "8", "10", "2000"},

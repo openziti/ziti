@@ -34,6 +34,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.createGeoRegionsV1(step)
 	m.createIdentityTypesV1(step)
 	m.createInitialTunnelerConfigTypes(step)
+	m.addPostureCheckTypes(step)
 
 	return CurrentDbVersion
 }
