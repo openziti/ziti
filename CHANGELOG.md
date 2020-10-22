@@ -1,7 +1,7 @@
 # Release 0.17.0
 
 ## Breaking CLI Change
-  * The `ziti edge enroll` subcommand now supports the `--keyAlg=EC|RSA` flag which controls the algorithm used to generate the private key of the identity.  If this flag is not specified, the default is `EC`.
+  * The `ziti edge enroll` subcommand now supports the `--keyAlg=RSA|EC` flag which controls the algorithm used to generate the private key of the identity.  If this flag is not specified, the default is `RSA`.  Prior to this release, the the algorithm used to generate the private key of the identity was forced to `EC`.  You now have a choice (although RSA usage should be used if you desire utilization of the future Ziti Browser support).
 
 ## What's New
   * [TCP half-close](#tcp-half-close-support-in-ziti-tunnel) [edge#368 Implement half-close support](https://github.com/openziti/edge/issues/368)
