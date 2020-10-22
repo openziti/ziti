@@ -9,7 +9,22 @@ ziti-controller run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-controll
 # wait for the controller to come up...
 sleep 2
 
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "---------- Logging into Controller with:   ziti edge controller login ${ZITI_EDGE_API_HOSTNAME} -u ${ZITI_USER} -p ${ZITI_PWD} -c ${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
 ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
+echo "==============="
 
 ziti edge controller create edge-router-policy allEdgeRouters --edge-router-roles '#all' --identity-roles '#all'
 ziti edge controller create service-edge-router-policy allSvcRouter --edge-router-roles '#all' --service-roles '#all'
@@ -33,6 +48,6 @@ ziti edge controller create edge-router "${ZITI_EDGE_WSS_ROUTER_NAME}" -o "${ZIT
     echo "--- DONE"
     echo ""
 echo "---------- Enrolling edge-router ${ZITI_EDGE_WSS_ROUTER_NAME}...."
-ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.yaml" -a rsa --jwt "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
+ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
     echo "--- DONE"
     echo ""

@@ -32,7 +32,7 @@ var keyAlg config.KeyAlgVar
 func init() {
 	jwtPath = enrollEdgeRouterCmd.Flags().StringP("jwt", "j", "", "The path to a JWT file")
 	engine = enrollEdgeRouterCmd.Flags().StringP("engine", "e", "", "An engine")
-	keyAlg.Set("EC") // set default
+	keyAlg.Set("RSA") // set default
 	enrollEdgeRouterCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 	root.AddCommand(enrollEdgeRouterCmd)
 }
