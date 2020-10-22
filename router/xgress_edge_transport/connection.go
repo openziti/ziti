@@ -184,7 +184,7 @@ func (c *edgeTransportXgressConn) WritePayload(p []byte, headers map[uint8][]byt
 	}
 
 	if flags, found := headers[xgress_edge.PayloadFlagsHeader]; found {
-		if flags[0]|edge.FIN != 0 {
+		if flags[0]&edge.FIN != 0 {
 			c.finSent = true
 			conn, ok := c.Conn().(edge.CloseWriter)
 			// if connection does not support half-close just let xgress tear it down
