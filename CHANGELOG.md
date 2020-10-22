@@ -4,7 +4,7 @@
   * The `ziti edge enroll` subcommand now supports the `--keyAlg=EC|RSA` flag which controls the algorithm used to generate the private key of the identity.  If this flag is not specified, the default is `EC`.
 
 ## What's New
-  * [TCP half-close](tcp-half-close-support-in-ziti-tunnel) [edge#368 Implement half-close support](https://github.com/openziti/edge/issues/368)
+  * [TCP half-close](#tcp-half-close-support-in-ziti-tunnel) [edge#368 Implement half-close support](https://github.com/openziti/edge/issues/368)
 
 ### TCP half close support in ziti tunnel
 This release implements a more graceful termination of TCP connections proxied over Ziti network. One side of TCP connection
