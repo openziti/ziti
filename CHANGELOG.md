@@ -1,3 +1,11 @@
+# Release 0.17.0
+
+## Breaking CLI Change
+  * The `ziti edge enroll` subcommand now supports the `--keyAlg=EC|RSA` flag which controls the algorithm used to generate the private key of the identity.  If this flag is not specified, the default is `EC`.
+
+## What's New
+
+
 # Release 0.16.5
 
 ## Breaking CLI Change
