@@ -17,9 +17,13 @@
 package xgress_edge_transport
 
 import (
+	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/secretstream"
+	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/foundation/transport"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"io"
 	"sync"
 )
@@ -37,6 +41,10 @@ type edgeTransportXgressConn struct {
 	readCh      chan *readResult
 	startRead   sync.Once
 	startCrypto sync.Once
+
+	writeDone chan bool
+	finSent   bool
+	finRecv   bool
 }
 
 func newEdgeTransportXgressConn(conn transport.Connection) *edgeTransportXgressConn {
@@ -44,6 +52,7 @@ func newEdgeTransportXgressConn(conn transport.Connection) *edgeTransportXgressC
 		Connection: conn,
 		cryptoCtx:  nil,
 		readCh:     make(chan *readResult),
+		writeDone:  make(chan bool),
 	}
 }
 
@@ -65,7 +74,7 @@ func (c *edgeTransportXgressConn) readFromServer() {
 
 		c.readCh <- result
 
-		if err == io.EOF {
+		if err != nil {
 			return
 		}
 	}
@@ -75,8 +84,26 @@ func (c *edgeTransportXgressConn) read() *readResult {
 	return <-c.readCh
 }
 
+var finHeaders = map[uint8][]byte{
+	xgress_edge.PayloadFlagsHeader: {0x1, 0, 0, 0},
+}
+
 func (c *edgeTransportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
+	log := pfxlog.ContextLogger(c.Conn().RemoteAddr().String())
+
+	// block read to prevent xgress from tearing down connection until write side is also done
+	if c.finRecv {
+		log.Debug("waiting for write done")
+		<-c.writeDone
+		return nil, nil, io.EOF
+	}
+
 	readResult := c.read()
+	if readResult.err == io.EOF {
+		log.Debug("received EOF, returning FIN")
+		c.finRecv = true
+		return nil, finHeaders, nil
+	}
 
 	if readResult.err != nil {
 		return nil, nil, readResult.err
@@ -148,5 +175,24 @@ func (c *edgeTransportXgressConn) Write(p []byte) (n int, err error) {
 }
 
 func (c *edgeTransportXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
-	return c.Write(p)
+	if c.finSent {
+		return 0, errors.New("unexpected writePayload")
+	}
+
+	if len(p) > 0 {
+		n, err = c.Write(p)
+	}
+
+	if flags, found := headers[xgress_edge.PayloadFlagsHeader]; found {
+		if flags[0]|edge.FIN != 0 {
+			c.finSent = true
+			conn, ok := c.Conn().(edge.CloseWriter)
+			// if connection does not support half-close just let xgress tear it down
+			if ok {
+				_ = conn.CloseWrite()
+			}
+			close(c.writeDone)
+		}
+	}
+	return n, err
 }
