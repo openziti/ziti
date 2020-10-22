@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -32,6 +33,7 @@ import (
 
 // global state used by all subcommands are located here for easy discovery
 var verbose bool
+var keyAlg config.KeyAlgVar
 var jwtpath, outpath, keyPath, certPath, idname, caOverride string
 
 const verboseDesc = "Enable verbose logging."
@@ -80,6 +82,8 @@ func NewEnrollCommand() *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
 	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
 	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
+	keyAlg.Set("EC") // set default
+	enrollSubCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	var keyDesc = ""
 	engines := certtools.ListEngines()
@@ -130,6 +134,7 @@ func processEnrollment() error {
 	flags := enroll.EnrollmentFlags{
 		CertFile:      certPath,
 		KeyFile:       keyPath,
+		KeyAlg:        keyAlg,
 		Token:         tkn,
 		IDName:        idname,
 		AdditionalCAs: caOverride,
