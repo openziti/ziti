@@ -82,7 +82,7 @@ func NewEnrollCommand() *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
 	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
 	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
-	keyAlg.Set("EC") // set default
+	keyAlg.Set("RSA") // set default
 	enrollSubCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	var keyDesc = ""
