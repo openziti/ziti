@@ -16,6 +16,10 @@ listeners:
     address: wss:0.0.0.0:3023
     options:
       advertise: ${ZITI_EDGE_WSS_ROUTER_HOSTNAME}:3023
+  - binding: edge
+    address: ws:0.0.0.0:3024
+    options:
+      advertise: ${ZITI_EDGE_WSS_ROUTER_HOSTNAME}:3024
 
 edge:
   csr:
@@ -36,6 +40,18 @@ dialers:
 
 transport:
   wss:
+    writeTimeout:      10
+    readTimeout:       5
+    idleTimeout:       5
+    pongTimeout:       60
+    pingInterval:      54
+    handshakeTimeout:  10
+    readBufferSize:    4096
+    writeBufferSize:   4096
+    enableCompression: true
+    server_cert:       ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.cert
+    key:               ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.key
+  ws:
     writeTimeout:      10
     readTimeout:       5
     idleTimeout:       5

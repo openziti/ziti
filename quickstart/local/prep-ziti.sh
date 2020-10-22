@@ -33,6 +33,6 @@ ziti edge controller create edge-router "${ZITI_EDGE_WSS_ROUTER_NAME}" -o "${ZIT
     echo "--- DONE"
     echo ""
 echo "---------- Enrolling edge-router ${ZITI_EDGE_WSS_ROUTER_NAME}...."
-ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
+ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.yaml" -a rsa --jwt "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_NAME}.jwt"
     echo "--- DONE"
     echo ""
