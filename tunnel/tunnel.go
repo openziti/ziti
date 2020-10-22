@@ -18,6 +18,7 @@ package tunnel
 
 import (
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -51,6 +52,11 @@ func Run(zitiConn net.Conn, clientConn net.Conn) {
 
 	go myCopy(zitiConn, clientConn, doneRecv)
 
+	defer func() {
+		_ = clientConn.Close()
+		_ = zitiConn.Close()
+	}()
+
 	var n1, n2 int64
 	for count := 2; count > 0; {
 		select {
@@ -68,8 +74,17 @@ func myCopy(dst net.Conn, src net.Conn, done chan int64) {
 		"src-remote": src.RemoteAddr(), "src-local": src.LocalAddr(),
 		"dst-local": dst.LocalAddr(), "dst-remote": dst.RemoteAddr()}
 
-	defer dst.Close()
-	defer log.WithFields(loggerFields).Info("stopping pipe")
+	logger := log.WithFields(loggerFields)
+	defer func() {
+		if cw, ok := dst.(edge.CloseWriter); ok {
+			_ = cw.CloseWrite()
+		} else {
+			_ = dst.Close()
+		}
+
+	}()
+
+	defer logger.Info("stopping pipe")
 	// use smaller copyBuf so UDP payloads aren't chunked when sending to tunnelers with smaller MTU.
 	// 17 bytes covers encryption overhead.
 	copyBuf := make([]byte, 0x4000-17)
