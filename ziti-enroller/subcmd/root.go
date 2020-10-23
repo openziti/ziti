@@ -125,6 +125,7 @@ func processEnrollment() error {
 		Token:         tkn,
 		IDName:        idname,
 		AdditionalCAs: caOverride,
+		KeyAlg:        "RSA",
 	}
 	conf, err := enroll.Enroll(flags)
 	if err != nil {
