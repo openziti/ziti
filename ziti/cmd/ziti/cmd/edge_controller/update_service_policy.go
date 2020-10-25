@@ -31,9 +31,10 @@ import (
 
 type updateServicePolicyOptions struct {
 	commonOptions
-	name          string
-	serviceRoles  []string
-	identityRoles []string
+	name              string
+	serviceRoles      []string
+	identityRoles     []string
+	postureCheckRoles []string
 }
 
 func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -62,6 +63,7 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the service policy")
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the service policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the service policy")
+	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture Check roles of the service policy")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -83,6 +85,11 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 		return err
 	}
 
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks")
+	if err != nil {
+		return err
+	}
+
 	entityData := gabs.New()
 	change := false
 
@@ -98,6 +105,11 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 
 	if o.Cmd.Flags().Changed("identity-roles") {
 		setJSONValue(entityData, identityRoles, "identityRoles")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("posture-check-roles") {
+		setJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
 		change = true
 	}
 
