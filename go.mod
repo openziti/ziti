@@ -33,7 +33,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mdlayher/netlink v1.1.1
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/miekg/dns v1.1.31
+	github.com/miekg/dns v1.1.35
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.14.16
