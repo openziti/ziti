@@ -11,10 +11,6 @@ services:
         network_mode: host
         cap_add:
         - NET_ADMIN
-        build:
-            context: .
-            args:
-                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         environment:
@@ -23,10 +19,6 @@ services:
 #        command: tproxy --resolver udp://127.0.0.123:53
     ziti-iproxy:
         image: netfoundry/ziti-tunnel:tproxy
-        build:
-            context: .
-            args:
-                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
@@ -37,10 +29,6 @@ services:
         command: tproxy --resolver none
     ziti-tun:
         image: netfoundry/ziti-tunnel:tun
-        build:
-            context: .
-            args:
-                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         network_mode: host
@@ -53,10 +41,6 @@ services:
         - "/dev/net/tun:/dev/net/tun"
     ziti-proxy:
         image: netfoundry/ziti-tunnel:proxy
-        build:
-            context: .
-            args:
-                ZITI_VERSION: 0.15.3
         volumes:
         - .:/netfoundry
         environment:

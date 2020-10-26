@@ -1,6 +1,20 @@
+# Release 0.17.0
+
+## Breaking CLI Change
+  * The `ziti edge enroll` subcommand now supports the `--keyAlg=RSA|EC` flag which controls the algorithm used to generate the private key of the identity.  If this flag is not specified, the default is `RSA`.  Prior to this release, the the algorithm used to generate the private key of the identity was forced to `EC`.  You now have a choice (although RSA usage should be used if you desire utilization of the future Ziti Browser support).
+
+## What's New
+  * [TCP half-close](#tcp-half-close-support-in-ziti-tunnel) [edge#368 Implement half-close support](https://github.com/openziti/edge/issues/368)
+
+### TCP half close support in ziti tunnel
+This release implements a more graceful termination of TCP connections proxied over Ziti network. One side of TCP connection
+can sent TCP FIN to its peer while continuing to receive data from connection. This avoids loss of data that could 
+still be in flight in the network.
+
 # Release 0.16.5
 
-## Breaking Changes
+## Breaking CLI Change
+  * The `ziti edge controller create service` and `ziti edge controller update service` subcommands no longer support the `--encryption-optional` and `--encryption-required` flags. Instead, these subcommands now have the `--encryption=ON|OFF` flag.  If this flag is not specified, the default is `ON`.
 
 ## What's New
   * fix [edge#338 configurable IP range for DNS services](https://github.com/openziti/edge/issues/338)
@@ -12,6 +26,7 @@
   * allow specifying policy semantic from CLI when creating policies
   * new eventing features
   * Posture Check Configuration API
+  * fix [edge#349 Using 'edge_transport' binding on non-encrypted service leads to Dial failure](https://github.com/openziti/edge/issues/349)
 
 ## Event Changes
 ### Event Configuration
