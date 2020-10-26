@@ -35,6 +35,8 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.createIdentityTypesV1(step)
 	m.createInitialTunnelerConfigTypes(step)
 	m.addPostureCheckTypes(step)
+	m.createInterceptV1ConfigType(step)
+	m.createHostV1ConfigType(step)
 
 	return CurrentDbVersion
 }
@@ -99,7 +101,6 @@ func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep)
 				"port",
 			},
 			"properties": map[string]interface{}{
-				// TODO: Add protocol list here, so we know which protocols to listen on
 				"hostname": map[string]interface{}{
 					"type": "string",
 				},

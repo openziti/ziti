@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 13
+	CurrentDbVersion = 14
 	FieldVersion     = "version"
 )
 
@@ -109,6 +109,11 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 13 {
 		//do again because in v12 the init wasn't run so some instances at v12 don't have posture check types
 		m.addPostureCheckTypes(step)
+	}
+
+	if step.CurrentVersion < 14 {
+		m.createInterceptV1ConfigType(step)
+		m.createHostV1ConfigType(step)
 	}
 
 	// current version
