@@ -183,15 +183,21 @@ func (c *edgeTransportXgressConn) WritePayload(p []byte, headers map[uint8][]byt
 		n, err = c.Write(p)
 	}
 
-	if flags, found := headers[xgress_edge.PayloadFlagsHeader]; found {
-		if flags[0]&edge.FIN != 0 {
-			c.finSent = true
-			conn, ok := c.Conn().(edge.CloseWriter)
-			// if connection does not support half-close just let xgress tear it down
-			if ok {
-				_ = conn.CloseWrite()
+	if err != nil {
+		pfxlog.ContextLogger(c.LogContext()).WithError(err).Error("write failed, closing connection")
+		close(c.writeDone)
+		_ = c.Conn().Close()
+	} else {
+		if flags, found := headers[xgress_edge.PayloadFlagsHeader]; found {
+			if flags[0]&edge.FIN != 0 {
+				c.finSent = true
+				conn, ok := c.Conn().(edge.CloseWriter)
+				// if connection does not support half-close just let xgress tear it down
+				if ok {
+					_ = conn.CloseWrite()
+				}
+				close(c.writeDone)
 			}
-			close(c.writeDone)
 		}
 	}
 	return n, err
