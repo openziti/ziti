@@ -34,7 +34,7 @@ do_enroll()
     if [ ! -f "${cfgfile}" ]; then
         echo -n $"Enrolling ${service}: "
         if [ -f "${jwtfile}" ]; then
-            "${ziti_dir}/bin/ziti-enroller" --jwt "${jwtfile}" --out "${cfgfile}" >> "${logfile}" 2>&1
+            "${ziti_dir}/bin/ziti-tunnel" enroll --jwt "${jwtfile}" --out "${cfgfile}" >> "${logfile}" 2>&1
             if [ ${?} -ne 0 -o ! -f "${cfgfile}" ]; then
                 failure $"Enrolling ${service}"
                 echo ""
