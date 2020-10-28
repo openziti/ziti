@@ -5,11 +5,24 @@
 
 ## What's New
   * [TCP half-close](#tcp-half-close-support-in-ziti-tunnel) [edge#368 Implement half-close support](https://github.com/openziti/edge/issues/368)
+  * [edge/#382](https://github.com/openziti/edge/issues/382) Add configuration types that support VoIP, SCTP use cases
 
 ### TCP half close support in ziti tunnel
 This release implements a more graceful termination of TCP connections proxied over Ziti network. One side of TCP connection
 can sent TCP FIN to its peer while continuing to receive data from connection. This avoids loss of data that could 
 still be in flight in the network.
+
+### New configuration types for tunneled services
+
+The `intercept.v1` configuration type can be used when defining services that:
+
+* intercept CIDRs and/or multiple addresses
+* intercept multiple ports and/or port ranges
+* use identity dial
+* require source IP spoofing at the hosting tunneler
+
+The `host.v1` configuration type enables configuration of hosted services with bind-by-identity and
+protocol/address/port pass-through of services that use `intercept.v1` to intercept multiple addresses.
 
 # Release 0.16.5
 
