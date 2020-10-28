@@ -502,8 +502,6 @@ func runCreatePostureCheckOs(o *createPostureCheckOsOptions) error {
 		panic(err)
 	}
 
-	return err
-
 	return nil
 }
 
@@ -536,5 +534,4 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 		Type:     osType,
 		Versions: cleanVersions,
 	}, nil
-
 }

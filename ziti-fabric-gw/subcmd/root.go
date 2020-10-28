@@ -39,6 +39,6 @@ var verbose bool
 
 func Execute() {
 	if err := root.Execute(); err != nil {
-		fmt.Errorf("error: %s", err)
+		println(fmt.Errorf("error: %s", err))
 	}
 }
