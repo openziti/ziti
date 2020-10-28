@@ -14,14 +14,14 @@ still be in flight in the network.
 
 ### New configuration types for tunneled services
 
-The `intercept.v1` configuration can be used when defining services that:
+The `intercept.v1` configuration type can be used when defining services that:
 
 * intercept CIDRs and/or multiple addresses
 * intercept multiple ports and/or port ranges
 * use identity dial
 * require source IP spoofing at the hosting tunneler
 
-The `host.v1` configuration type enabled configuration of hosted services with bind-by-identity and
+The `host.v1` configuration type enables configuration of hosted services with bind-by-identity and
 protocol/address/port pass-through of services that use `intercept.v1` to intercept multiple addresses.
 
 # Release 0.16.5
