@@ -1,3 +1,19 @@
+# Release 0.17.1
+## Breaking Changes
+  * None
+
+## What's New
+  * Posture Check CLI Commands
+
+## Posture Check CLI Commands
+The following commands have been added to the `ziti` CLI:
+* `ziti edge list posture-checks <flags>`
+* `ziti edge delete posture-check <idOrName> <flags>`
+* `ziti edge update posture-check <type> <flags>`
+* `ziti edge create posture-check <type> <reqValues> <flags>`
+
+See the `-h` usage for more information on each command.
+
 # Release 0.17.0
 
 ## Breaking CLI Change

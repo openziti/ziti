@@ -49,6 +49,7 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newUpdateServicePolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateTerminatorCmd(f, out, errOut))
+	cmd.AddCommand(newUpdatePostureCheckCmd(f, out, errOut))
 
 	return cmd
 }
