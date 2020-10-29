@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/boltz"
 )
 
@@ -67,12 +68,18 @@ func (entity *PostureCheckOperatingSystem) SetValues(ctx *boltz.PersistContext, 
 
 	cursor := bucket.Cursor()
 	for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
-		if _, found := osMap[string(key)]; !found {
-			_ = bucket.Delete(key)
+		osType := string(key)
+		if _, found := osMap[osType]; !found {
+			err := bucket.DeleteBucket(key)
+			if err != nil {
+				pfxlog.Logger().Errorf(err.Error())
+			}
 		}
 	}
 
+	seenOs := map[string]struct{}{}
 	for _, os := range entity.OperatingSystems {
+		seenOs[os.OsType] = struct{}{}
 		existing := bucket.GetOrCreateBucket(os.OsType)
 		existing.SetString(FieldPostureCheckOsType, os.OsType, ctx.FieldChecker)
 		existing.SetStringList(FieldPostureCheckOsVersions, os.OsVersions, ctx.FieldChecker)

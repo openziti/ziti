@@ -61,6 +61,8 @@ type ClientService interface {
 
 	ListServicePolicyIdentities(params *ListServicePolicyIdentitiesParams, authInfo runtime.ClientAuthInfoWriter) (*ListServicePolicyIdentitiesOK, error)
 
+	ListServicePolicyPostureChecks(params *ListServicePolicyPostureChecksParams, authInfo runtime.ClientAuthInfoWriter) (*ListServicePolicyPostureChecksOK, error)
+
 	ListServicePolicyServices(params *ListServicePolicyServicesParams, authInfo runtime.ClientAuthInfoWriter) (*ListServicePolicyServicesOK, error)
 
 	PatchServicePolicy(params *PatchServicePolicyParams, authInfo runtime.ClientAuthInfoWriter) (*PatchServicePolicyOK, error)
@@ -254,6 +256,44 @@ func (a *Client) ListServicePolicyIdentities(params *ListServicePolicyIdentities
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listServicePolicyIdentities: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ListServicePolicyPostureChecks lists posture check a service policy includes
+
+  Retrieves a list of posture check resources that are affected by a service policy; supports filtering, sorting, and pagination. Requires admin access.
+
+*/
+func (a *Client) ListServicePolicyPostureChecks(params *ListServicePolicyPostureChecksParams, authInfo runtime.ClientAuthInfoWriter) (*ListServicePolicyPostureChecksOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListServicePolicyPostureChecksParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "listServicePolicyPostureChecks",
+		Method:             "GET",
+		PathPattern:        "/service-policies/{id}/posture-checks",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ListServicePolicyPostureChecksReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListServicePolicyPostureChecksOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for listServicePolicyPostureChecks: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

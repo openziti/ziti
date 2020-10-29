@@ -284,25 +284,8 @@ func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCon
 	rc.RespondWithOk(output, nil)
 }
 
-func (r *IdentityRouter) getPostureData(_ *env.AppEnv, rc *response.RequestContext) {
-	rc.RespondWithOk(map[string]interface{}{
-		"os": struct {
-			Type    string
-			Version string
-		}{
-			"Linux",
-			"4.19",
-		},
-		"domain": struct {
-			Name string
-		}{
-			"",
-		},
-		"mac": struct {
-			Addresses []string
-		}{
-			[]string{"39979133921d", "e031ca6cd289"},
-		},
-		"processes": []interface{}{},
-	}, nil)
+func (r *IdentityRouter) getPostureData(ae *env.AppEnv, rc *response.RequestContext) {
+	postureData := ae.GetHandlers().PostureResponse.PostureData(rc.Identity.Id)
+
+	rc.RespondWithOk(postureData, nil)
 }

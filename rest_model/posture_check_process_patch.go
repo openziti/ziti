@@ -42,8 +42,6 @@ import (
 //
 // swagger:model PostureCheckProcessPatch
 type PostureCheckProcessPatch struct {
-	descriptionField string
-
 	nameField string
 
 	roleAttributesField Attributes
@@ -52,16 +50,6 @@ type PostureCheckProcessPatch struct {
 
 	// process
 	Process *Process `json:"process,omitempty"`
-}
-
-// Description gets the description of this subtype
-func (m *PostureCheckProcessPatch) Description() string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this subtype
-func (m *PostureCheckProcessPatch) SetDescription(val string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this subtype
@@ -112,8 +100,6 @@ func (m *PostureCheckProcessPatch) UnmarshalJSON(raw []byte) error {
 	var base struct {
 		/* Just the base type fields. Used for unmashalling polymorphic types.*/
 
-		Description string `json:"description,omitempty"`
-
 		Name string `json:"name,omitempty"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -129,8 +115,6 @@ func (m *PostureCheckProcessPatch) UnmarshalJSON(raw []byte) error {
 	}
 
 	var result PostureCheckProcessPatch
-
-	result.descriptionField = base.Description
 
 	result.nameField = base.Name
 
@@ -161,16 +145,12 @@ func (m PostureCheckProcessPatch) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	b2, err = json.Marshal(struct {
-		Description string `json:"description,omitempty"`
-
 		Name string `json:"name,omitempty"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		Tags Tags `json:"tags"`
 	}{
-
-		Description: m.Description(),
 
 		Name: m.Name(),
 

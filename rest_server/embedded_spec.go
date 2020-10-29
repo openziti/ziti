@@ -3025,6 +3025,12 @@ func init() {
           },
           {
             "$ref": "#/parameters/filter"
+          },
+          {
+            "$ref": "#/parameters/roleFilter"
+          },
+          {
+            "$ref": "#/parameters/roleSemantic"
           }
         ],
         "responses": {
@@ -3199,6 +3205,43 @@ func init() {
           "$ref": "#/parameters/id"
         }
       ]
+    },
+    "/posture-response": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Submits posture responses",
+        "tags": [
+          "Posture Checks"
+        ],
+        "summary": "Submit a posture response to a posture query",
+        "operationId": "createPostureResponse",
+        "parameters": [
+          {
+            "description": "A Posture Response",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PostureResponseCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
     },
     "/service-edge-router-policies": {
       "get": {
@@ -3695,6 +3738,48 @@ func init() {
         "responses": {
           "200": {
             "$ref": "#/responses/listIdentities"
+          },
+          "400": {
+            "$ref": "#/responses/notFoundResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
+    },
+    "/service-policies/{id}/posture-checks": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of posture check resources that are affected by a service policy; supports filtering, sorting, and pagination. Requires admin access.\n",
+        "tags": [
+          "Service Policy"
+        ],
+        "summary": "List posture check a service policy includes",
+        "operationId": "listServicePolicyPostureChecks",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/listPostureChecks"
           },
           "400": {
             "$ref": "#/responses/notFoundResponse"
@@ -4868,13 +4953,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "typeId",
-        "description"
+        "typeId"
       ],
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -4895,7 +4976,6 @@ func init() {
       "required": [
         "name",
         "typeId",
-        "description",
         "version",
         "roleAttributes",
         "id",
@@ -4911,9 +4991,6 @@ func init() {
         "createdAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "description": {
-          "type": "string"
         },
         "id": {
           "type": "string"
@@ -5200,9 +5277,6 @@ func init() {
     "PostureCheckPatch": {
       "type": "object",
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -5323,13 +5397,9 @@ func init() {
     "PostureCheckUpdate": {
       "type": "object",
       "required": [
-        "name",
-        "description"
+        "name"
       ],
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -5344,6 +5414,118 @@ func init() {
         }
       },
       "discriminator": "typeId"
+    },
+    "PostureResponseCreate": {
+      "type": "object",
+      "required": [
+        "id",
+        "typeId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "typeId": {
+          "$ref": "#/definitions/postureCheckType"
+        }
+      },
+      "discriminator": "typeId"
+    },
+    "PostureResponseDomainCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "domain"
+          ],
+          "properties": {
+            "domain": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "DOMAIN"
+    },
+    "PostureResponseMacAddressCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "macAddresses"
+          ],
+          "properties": {
+            "macAddresses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "x-class": "MAC"
+    },
+    "PostureResponseOperatingSystemCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "version"
+          ],
+          "properties": {
+            "build": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "OS"
+    },
+    "PostureResponseProcessCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "process"
+          ],
+          "properties": {
+            "hash": {
+              "type": "string"
+            },
+            "isRunning": {
+              "type": "boolean"
+            },
+            "isSigned": {
+              "type": "boolean"
+            },
+            "signerFingerprint": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS"
     },
     "apiError": {
       "type": "object",
@@ -7823,6 +8005,28 @@ func init() {
       "type": "object",
       "additionalProperties": true
     },
+    "postureQueries": {
+      "type": "object",
+      "required": [
+        "policyId",
+        "isPassing",
+        "postureQueries"
+      ],
+      "properties": {
+        "isPassing": {
+          "type": "boolean"
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "postureQueries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/postureQuery"
+          }
+        }
+      }
+    },
     "postureQuery": {
       "type": "object",
       "allOf": [
@@ -7832,15 +8036,15 @@ func init() {
         {
           "type": "object",
           "required": [
-            "postureCheckId"
+            "queryType",
+            "isPassing"
           ],
           "properties": {
-            "data": {
-              "type": "object",
-              "additionalProperties": true
+            "isPassing": {
+              "type": "boolean"
             },
-            "postureCheckId": {
-              "type": "string"
+            "process": {
+              "$ref": "#/definitions/postureQueryProcess"
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
@@ -7848,6 +8052,17 @@ func init() {
           }
         }
       ]
+    },
+    "postureQueryProcess": {
+      "type": "object",
+      "properties": {
+        "osType": {
+          "$ref": "#/definitions/osType"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
     },
     "process": {
       "type": "object",
@@ -8081,7 +8296,10 @@ func init() {
               "$ref": "#/definitions/dialBindArray"
             },
             "postureQueries": {
-              "$ref": "#/definitions/postureQuery"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureQueries"
+              }
             },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"
@@ -17323,6 +17541,20 @@ func init() {
             "type": "string",
             "name": "filter",
             "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi",
+            "name": "roleFilter",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "roleSemantic",
+            "in": "query"
           }
         ],
         "responses": {
@@ -17818,6 +18050,101 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/posture-response": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Submits posture responses",
+        "tags": [
+          "Posture Checks"
+        ],
+        "summary": "Submit a posture response to a posture query",
+        "operationId": "createPostureResponse",
+        "parameters": [
+          {
+            "description": "A Posture Response",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PostureResponseCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/service-edge-router-policies": {
       "get": {
@@ -19186,6 +19513,105 @@ func init() {
             "description": "A list of identities",
             "schema": {
               "$ref": "#/definitions/listIdentitiesEnvelope"
+            }
+          },
+          "400": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/service-policies/{id}/posture-checks": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of posture check resources that are affected by a service policy; supports filtering, sorting, and pagination. Requires admin access.\n",
+        "tags": [
+          "Service Policy"
+        ],
+        "summary": "List posture check a service policy includes",
+        "operationId": "listServicePolicyPostureChecks",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of posture checks",
+            "schema": {
+              "$ref": "#/definitions/listPostureCheckEnvelope"
             }
           },
           "400": {
@@ -22194,13 +22620,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "typeId",
-        "description"
+        "typeId"
       ],
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -22221,7 +22643,6 @@ func init() {
       "required": [
         "name",
         "typeId",
-        "description",
         "version",
         "roleAttributes",
         "id",
@@ -22237,9 +22658,6 @@ func init() {
         "createdAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "description": {
-          "type": "string"
         },
         "id": {
           "type": "string"
@@ -22526,9 +22944,6 @@ func init() {
     "PostureCheckPatch": {
       "type": "object",
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -22649,13 +23064,9 @@ func init() {
     "PostureCheckUpdate": {
       "type": "object",
       "required": [
-        "name",
-        "description"
+        "name"
       ],
       "properties": {
-        "description": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
@@ -22670,6 +23081,118 @@ func init() {
         }
       },
       "discriminator": "typeId"
+    },
+    "PostureResponseCreate": {
+      "type": "object",
+      "required": [
+        "id",
+        "typeId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "typeId": {
+          "$ref": "#/definitions/postureCheckType"
+        }
+      },
+      "discriminator": "typeId"
+    },
+    "PostureResponseDomainCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "domain"
+          ],
+          "properties": {
+            "domain": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "DOMAIN"
+    },
+    "PostureResponseMacAddressCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "macAddresses"
+          ],
+          "properties": {
+            "macAddresses": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "x-class": "MAC"
+    },
+    "PostureResponseOperatingSystemCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "version"
+          ],
+          "properties": {
+            "build": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "OS"
+    },
+    "PostureResponseProcessCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureResponseCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "process"
+          ],
+          "properties": {
+            "hash": {
+              "type": "string"
+            },
+            "isRunning": {
+              "type": "boolean"
+            },
+            "isSigned": {
+              "type": "boolean"
+            },
+            "signerFingerprint": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS"
     },
     "apiError": {
       "type": "object",
@@ -25149,6 +25672,28 @@ func init() {
       "type": "object",
       "additionalProperties": true
     },
+    "postureQueries": {
+      "type": "object",
+      "required": [
+        "policyId",
+        "isPassing",
+        "postureQueries"
+      ],
+      "properties": {
+        "isPassing": {
+          "type": "boolean"
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "postureQueries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/postureQuery"
+          }
+        }
+      }
+    },
     "postureQuery": {
       "type": "object",
       "allOf": [
@@ -25158,15 +25703,15 @@ func init() {
         {
           "type": "object",
           "required": [
-            "postureCheckId"
+            "queryType",
+            "isPassing"
           ],
           "properties": {
-            "data": {
-              "type": "object",
-              "additionalProperties": true
+            "isPassing": {
+              "type": "boolean"
             },
-            "postureCheckId": {
-              "type": "string"
+            "process": {
+              "$ref": "#/definitions/postureQueryProcess"
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
@@ -25174,6 +25719,17 @@ func init() {
           }
         }
       ]
+    },
+    "postureQueryProcess": {
+      "type": "object",
+      "properties": {
+        "osType": {
+          "$ref": "#/definitions/osType"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
     },
     "process": {
       "type": "object",
@@ -25407,7 +25963,10 @@ func init() {
               "$ref": "#/definitions/dialBindArray"
             },
             "postureQueries": {
-              "$ref": "#/definitions/postureQuery"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureQueries"
+              }
             },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"

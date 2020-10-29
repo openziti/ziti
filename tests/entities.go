@@ -44,6 +44,59 @@ type entity interface {
 	validate(ctx *TestContext, c *gabs.Container)
 }
 
+type postureCheck struct {
+	id             string
+	name           string
+	typeId         string
+	roleAttributes []string
+	tags           map[string]interface{}
+}
+
+type postureCheckDomain struct {
+	postureCheck
+	domains []string
+}
+
+func (entity *postureCheckDomain) getId() string {
+	return entity.id
+}
+
+func (entity *postureCheckDomain) setId(id string) {
+	entity.id = id
+}
+
+func (entity *postureCheckDomain) getEntityType() string {
+	return "posture-checks"
+}
+
+func (entity *postureCheckDomain) toJson(_ bool, ctx *TestContext, _ ...string) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, entity.name, "name")
+	ctx.setJsonValue(entityData, entity.domains, "domains")
+	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
+	ctx.setJsonValue(entityData, entity.typeId, "typeId")
+
+	if len(entity.tags) > 0 {
+		ctx.setJsonValue(entityData, entity.tags, "tags")
+	}
+
+	return entityData.String()
+}
+
+func (entity *postureCheckDomain) validate(ctx *TestContext, c *gabs.Container) {
+	if entity.tags == nil {
+		entity.tags = map[string]interface{}{}
+	}
+	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.tags, path("tags"))
+
+	sort.Strings(entity.domains)
+	ctx.pathEqualsStringSlice(c, entity.domains, path("domains"))
+
+	sort.Strings(entity.roleAttributes)
+	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
+}
+
 type service struct {
 	Id                 string
 	Name               string
@@ -376,24 +429,26 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles []string) *servicePolicy {
+func newServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
 	return &servicePolicy{
-		name:          eid.New(),
-		policyType:    policyType,
-		semantic:      semantic,
-		serviceRoles:  serviceRoles,
-		identityRoles: identityRoles,
+		name:              eid.New(),
+		policyType:        policyType,
+		semantic:          semantic,
+		serviceRoles:      serviceRoles,
+		identityRoles:     identityRoles,
+		postureCheckRoles: postureCheckRoles,
 	}
 }
 
 type servicePolicy struct {
-	id            string
-	name          string
-	policyType    string
-	semantic      *string
-	identityRoles []string
-	serviceRoles  []string
-	tags          map[string]interface{}
+	id                string
+	name              string
+	policyType        string
+	semantic          *string
+	identityRoles     []string
+	serviceRoles      []string
+	tags              map[string]interface{}
+	postureCheckRoles []string
 }
 
 func (entity *servicePolicy) getId() string {
@@ -417,6 +472,7 @@ func (entity *servicePolicy) toJson(_ bool, ctx *TestContext, _ ...string) strin
 	}
 	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
 	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
+	ctx.setJsonValue(entityData, entity.postureCheckRoles, "postureCheckRoles")
 
 	if len(entity.tags) > 0 {
 		ctx.setJsonValue(entityData, entity.tags, "tags")
@@ -439,6 +495,8 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
 	sort.Strings(entity.serviceRoles)
 	ctx.pathEqualsStringSlice(c, entity.serviceRoles, path("serviceRoles"))
+	sort.Strings(entity.postureCheckRoles)
+	ctx.pathEqualsStringSlice(c, entity.postureCheckRoles, path("postureCheckRoles"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
@@ -503,7 +561,7 @@ func (entity *configType) getEntityType() string {
 	return "config-types"
 }
 
-func (entity *configType) toJson(isCreate bool, ctx *TestContext, fields ...string) string {
+func (entity *configType) toJson(_ bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
 	ctx.setValue(entityData, entity.Name, fields, "name")
 	ctx.setValue(entityData, entity.Schema, fields, "schema")
@@ -540,7 +598,7 @@ func (entity *apiSession) getEntityType() string {
 	return "apiSessions"
 }
 
-func (entity *apiSession) toJson(_ bool, ctx *TestContext, fields ...string) string {
+func (entity *apiSession) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	ctx.Req.FailNow("should not be called")
 	return ""
 }

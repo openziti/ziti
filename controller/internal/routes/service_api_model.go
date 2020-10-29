@@ -99,7 +99,7 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 	return ret
 }
 
-func MapServiceToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapServiceToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (interface{}, error) {
 	service, ok := e.(*model.ServiceDetail)
 
 	if !ok {
@@ -109,7 +109,7 @@ func MapServiceToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.
 		return nil, err
 	}
 
-	restModel, err := MapServiceToRestModel(service)
+	restModel, err := MapServiceToRestModel(ae, rc, service)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -137,7 +137,7 @@ func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*
 	return restModel, nil
 }
 
-func MapServiceToRestModel(service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
+func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
 	ret := &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,
@@ -146,13 +146,64 @@ func MapServiceToRestModel(service *model.ServiceDetail) (*rest_model.ServiceDet
 		Configs:            service.Configs,
 		Config:             service.Config,
 		EncryptionRequired: &service.EncryptionRequired,
+		PostureQueries:     []*rest_model.PostureQueries{},
 	}
 
 	for _, permission := range service.Permissions {
 		ret.Permissions = append(ret.Permissions, rest_model.DialBind(permission))
 	}
+	
+	validChecks := map[string]bool{} //cache individual check status
+
+	for policyId, postureChecks := range ae.GetHandlers().EdgeService.GetPostureChecks(rc.Identity.Id, *ret.ID) {
+
+		isPolicyPassing := true
+		querySet := &rest_model.PostureQueries{
+			PolicyID:       &policyId,
+			PostureQueries: []*rest_model.PostureQuery{},
+		}
+
+		for _, postureCheck := range postureChecks {
+			query := PostureCheckToQuery(postureCheck)
+
+			isCheckPassing := false
+			found := false
+			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
+				isCheckPassing = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, postureCheck)
+				validChecks[postureCheck.Id] = isCheckPassing
+			}
+
+			query.IsPassing = &isCheckPassing
+			querySet.PostureQueries = append(querySet.PostureQueries, query)
+
+			if !isCheckPassing {
+				isPolicyPassing = false
+			}
+		}
+		querySet.IsPassing = &isPolicyPassing
+		ret.PostureQueries = append(ret.PostureQueries, querySet)
+	}
 
 	return ret, nil
+}
+
+func PostureCheckToQuery(check *model.PostureCheck) *rest_model.PostureQuery {
+	isPassing := false
+	ret := &rest_model.PostureQuery{
+		BaseEntity: BaseEntityToRestModel(check, PostureCheckLinkFactory),
+		IsPassing:  &isPassing,
+		QueryType:  rest_model.PostureCheckType(check.TypeId),
+	}
+
+	if ret.QueryType == rest_model.PostureCheckTypePROCESS {
+		processCheck := check.SubType.(*model.PostureCheckProcess)
+		ret.Process = &rest_model.PostureQueryProcess{
+			OsType: rest_model.OsType(processCheck.OperatingSystem),
+			Path:   processCheck.Path,
+		}
+	}
+
+	return ret
 }
 
 func GetNamedServiceRoles(serviceHandler *model.EdgeServiceHandler, roles []string) rest_model.NamedRoles {

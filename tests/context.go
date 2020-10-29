@@ -29,9 +29,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/xgress_edge"
-	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
@@ -531,6 +531,18 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt))
 
 	return createdAt
+}
+
+func (ctx *TestContext) newPostureCheckDomain(domains []string, roleAttributes []string) *postureCheckDomain {
+	return &postureCheckDomain{
+		postureCheck: postureCheck{
+			name:           eid.New(),
+			typeId:         "DOMAIN",
+			roleAttributes: roleAttributes,
+			tags:           nil,
+		},
+		domains: domains,
+	}
 }
 
 func (ctx *TestContext) newService(roleAttributes, configs []string) *service {

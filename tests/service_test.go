@@ -86,8 +86,8 @@ func Test_Services(t *testing.T) {
 		service6 := ctx.AdminSession.requireNewService(nil, nil)
 		service7 := ctx.AdminSession.requireNewService(nil, nil)
 
-		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole))
-		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole))
+		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole), s())
+		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole), s())
 
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
 			service1.Id, service2.Id, service3.Id, service4.Id, service5.Id, service6.Id, service7.Id))
@@ -129,8 +129,8 @@ func Test_Services(t *testing.T) {
 		service3 := ctx.AdminSession.requireNewService(s(dialRole, bindRole), nil)
 		service3.permissions = []string{"Dial", "Bind"}
 
-		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole))
-		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole))
+		ctx.AdminSession.requireNewServicePolicy("Dial", s("#"+dialRole), s("#"+identityRole), s())
+		ctx.AdminSession.requireNewServicePolicy("Bind", s("#"+bindRole), s("#"+identityRole), s())
 
 		nonAdminUserSession.validateEntityWithLookup(service1)
 		nonAdminUserSession.validateEntityWithLookup(service2)
@@ -226,7 +226,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 
 	services := []*configValidatingService{service1V, service2V, service3V, service4V}
 
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"))
+	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), s())
 
 	session := ctx.AdminSession.createUserAndLogin(false, nil, nil)
 	for _, service := range services {

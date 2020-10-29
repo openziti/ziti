@@ -247,3 +247,64 @@ func (handler *EdgeServiceHandler) mergeConfigs(tx *bbolt.Tx, configTypes map[st
 		}
 	}
 }
+
+func (handler *EdgeServiceHandler) StreamByServicePolicyId(servicePolicyId string, collect func(*ServiceDetail, error) error) error {
+	query := fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, servicePolicyId)
+
+	return handler.Stream(query, collect)
+}
+
+func (handler *EdgeServiceHandler) Stream(query string, collect func(*ServiceDetail, error) error) error {
+	filter, err := ast.Parse(handler.Store, query)
+
+	if err != nil {
+		return fmt.Errorf("could not parse query for streaming edge services: %v", err)
+	}
+
+	return handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for cursor := handler.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
+			current := cursor.Current()
+
+			service, err := handler.readInTx(tx, string(current))
+			if err := collect(service, err); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string) map[string][]*PostureCheck {
+
+	servicePolicyQuery := fmt.Sprintf(`anyOf(services) = "%v" and anyOf(identities) = "%v"`, serviceId, identityId) //`a`, identityId )// and
+
+	policyIdToChecks := map[string][]*PostureCheck{}
+
+	postureCheckCache := map[string]*PostureCheck{}
+
+	_ = handler.GetDb().View(func(tx *bbolt.Tx) error {
+		policyIds, _, err := handler.env.GetStores().ServicePolicy.QueryIds(tx, servicePolicyQuery)
+
+		if err != nil {
+			pfxlog.Logger().Errorf("could not query posture checks: %v", err)
+		}
+
+		for _, policyId := range policyIds {
+			checkIds, _, _ := handler.env.GetStores().PostureCheck.QueryIds(tx, fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, policyId))
+			for _, checkId := range checkIds {
+				var postureCheck *PostureCheck
+				var found bool
+				if postureCheck, found = postureCheckCache[checkId]; !found {
+					postureCheck, _ := handler.env.GetHandlers().PostureCheck.Read(checkId)
+					postureCheckCache[checkId] = postureCheck
+					policyIdToChecks[policyId] = append(policyIdToChecks[policyId], postureCheck)
+				} else {
+					policyIdToChecks[policyId] = append(policyIdToChecks[policyId], postureCheck)
+				}
+			}
+		}
+		return nil
+	})
+
+	return policyIdToChecks
+}

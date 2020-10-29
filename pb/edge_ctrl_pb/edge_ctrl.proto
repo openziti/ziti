@@ -92,3 +92,89 @@ message SessionUpdated {
     repeated string urls = 2;
     Service service = 3;
 }
+
+message PostureQuery {
+    string id = 1;
+    string postureCheckId = 20;
+    string displayName = 30;
+    PostureQuery.Type type = 40;
+    string version = 50;
+    oneof parameters {
+        PostureQuery.None na = 60;
+        PostureQuery.Process process = 70;
+
+    }
+
+    enum Type {
+        OS = 0;
+        MAC = 10;
+        WINDOWS_DOMAIN = 20;
+        PROCESS = 30;
+    }
+
+    enum HashAlgorithm {
+        SHA512 = 0;
+    }
+
+    message None {
+
+    }
+
+    message Process {
+        repeated string paths = 1;
+        HashAlgorithm hashAlgorithm = 10;
+    }
+}
+
+
+message PostureResponse {
+    string id = 1;
+    oneof payload {
+        PostureResponse.Error error = 20;
+        PostureResponse.Proc process = 30;
+        PostureResponse.MacAddresses mac = 40;
+        PostureResponse.WindowsDomain domain = 50;
+        PostureResponse.OperatingSystem os = 60;
+    }
+
+
+    message Error {
+        enum Code {
+            UNKNOWN = 0;
+            UNSUPPORTED_QUERY_TYPE = 10;
+            UNSUPPORTED_HASH_ALGORITHM = 20;
+        }
+
+        PostureResponse.Error.Code code = 1;
+        string message = 10;
+        map<string, string> data = 20;
+    }
+
+    message Proc {
+        string binaryHash = 1;
+        string signerFingerprint = 10;
+    }
+
+    message MacAddresses {
+        repeated string addresses = 1;
+    }
+
+    message WindowsDomain {
+        string name = 1;
+    }
+
+    message OperatingSystem {
+        PostureResponse.OperatingSystem.Type type = 1;
+        string version = 10;
+        string build = 20;
+
+        enum Type {
+            Android = 0;
+            iOS = 10;
+            Linux = 20;
+            macOS = 30;
+            Windows = 40;
+        }
+    }
+}
+

@@ -42,15 +42,16 @@ import (
 type PostureQuery struct {
 	BaseEntity
 
-	// data
-	Data interface{} `json:"data,omitempty"`
-
-	// posture check Id
+	// is passing
 	// Required: true
-	PostureCheckID *string `json:"postureCheckId"`
+	IsPassing *bool `json:"isPassing"`
+
+	// process
+	Process *PostureQueryProcess `json:"process,omitempty"`
 
 	// query type
-	QueryType PostureCheckType `json:"queryType,omitempty"`
+	// Required: true
+	QueryType PostureCheckType `json:"queryType"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -64,19 +65,19 @@ func (m *PostureQuery) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		Data interface{} `json:"data,omitempty"`
+		IsPassing *bool `json:"isPassing"`
 
-		PostureCheckID *string `json:"postureCheckId"`
+		Process *PostureQueryProcess `json:"process,omitempty"`
 
-		QueryType PostureCheckType `json:"queryType,omitempty"`
+		QueryType PostureCheckType `json:"queryType"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
 
-	m.Data = dataAO1.Data
+	m.IsPassing = dataAO1.IsPassing
 
-	m.PostureCheckID = dataAO1.PostureCheckID
+	m.Process = dataAO1.Process
 
 	m.QueryType = dataAO1.QueryType
 
@@ -93,16 +94,16 @@ func (m PostureQuery) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		Data interface{} `json:"data,omitempty"`
+		IsPassing *bool `json:"isPassing"`
 
-		PostureCheckID *string `json:"postureCheckId"`
+		Process *PostureQueryProcess `json:"process,omitempty"`
 
-		QueryType PostureCheckType `json:"queryType,omitempty"`
+		QueryType PostureCheckType `json:"queryType"`
 	}
 
-	dataAO1.Data = m.Data
+	dataAO1.IsPassing = m.IsPassing
 
-	dataAO1.PostureCheckID = m.PostureCheckID
+	dataAO1.Process = m.Process
 
 	dataAO1.QueryType = m.QueryType
 
@@ -123,7 +124,11 @@ func (m *PostureQuery) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validatePostureCheckID(formats); err != nil {
+	if err := m.validateIsPassing(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateProcess(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -137,20 +142,34 @@ func (m *PostureQuery) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *PostureQuery) validatePostureCheckID(formats strfmt.Registry) error {
+func (m *PostureQuery) validateIsPassing(formats strfmt.Registry) error {
 
-	if err := validate.Required("postureCheckId", "body", m.PostureCheckID); err != nil {
+	if err := validate.Required("isPassing", "body", m.IsPassing); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *PostureQuery) validateQueryType(formats strfmt.Registry) error {
+func (m *PostureQuery) validateProcess(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.QueryType) { // not required
+	if swag.IsZero(m.Process) { // not required
 		return nil
 	}
+
+	if m.Process != nil {
+		if err := m.Process.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("process")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *PostureQuery) validateQueryType(formats strfmt.Registry) error {
 
 	if err := m.QueryType.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {

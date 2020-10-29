@@ -30,7 +30,6 @@ type PostureCheck struct {
 	models.BaseEntity
 	Name           string
 	TypeId         string
-	Description    string
 	Version        int64
 	RoleAttributes []string
 	SubType        PostureCheckSubType
@@ -41,15 +40,23 @@ type PostureCheckSubType interface {
 	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
 	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
 	fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
+	Evaluate(pd *PostureData) bool
 }
 
 type newPostureCheckSubType func() PostureCheckSubType
 
+const (
+	PostureCheckTypeOs      = "OS"
+	PostureCheckTypeDomain  = "DOMAIN"
+	PostureCheckTypeProcess = "PROCESS"
+	PostureCheckTypeMAC     = "MAC"
+)
+
 var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
-	"OS":      newPostureCheckOperatingSystem,
-	"DOMAIN":  newPostureCheckWindowsDomains,
-	"PROCESS": newPostureCheckProcess,
-	"MAC":     newPostureCheckMacAddresses,
+	PostureCheckTypeOs:      newPostureCheckOperatingSystem,
+	PostureCheckTypeDomain:  newPostureCheckWindowsDomains,
+	PostureCheckTypeProcess: newPostureCheckProcess,
+	PostureCheckTypeMAC:     newPostureCheckMacAddresses,
 }
 
 func newSubType(typeId string) PostureCheckSubType {
@@ -67,7 +74,6 @@ func (entity *PostureCheck) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity b
 	entity.FillCommon(boltPostureCheck)
 	entity.Name = boltPostureCheck.Name
 	entity.TypeId = boltPostureCheck.TypeId
-	entity.Description = boltPostureCheck.Description
 	entity.Version = boltPostureCheck.Version
 	entity.RoleAttributes = boltPostureCheck.RoleAttributes
 
@@ -91,7 +97,6 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler)
 		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:           entity.Name,
 		TypeId:         entity.TypeId,
-		Description:    entity.Description,
 		Version:        1,
 		RoleAttributes: entity.RoleAttributes,
 	}
@@ -110,4 +115,8 @@ func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler)
 
 func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
+}
+
+func (entity *PostureCheck) Evaluate(pd *PostureData) bool {
+	return entity.SubType.Evaluate(pd)
 }

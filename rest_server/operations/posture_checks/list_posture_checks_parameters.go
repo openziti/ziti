@@ -67,6 +67,15 @@ type ListPostureChecksParams struct {
 	  In: query
 	*/
 	Offset *int64
+	/*
+	  In: query
+	  Collection Format: multi
+	*/
+	RoleFilter []string
+	/*
+	  In: query
+	*/
+	RoleSemantic *string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -92,6 +101,16 @@ func (o *ListPostureChecksParams) BindRequest(r *http.Request, route *middleware
 
 	qOffset, qhkOffset, _ := qs.GetOK("offset")
 	if err := o.bindOffset(qOffset, qhkOffset, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qRoleFilter, qhkRoleFilter, _ := qs.GetOK("roleFilter")
+	if err := o.bindRoleFilter(qRoleFilter, qhkRoleFilter, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qRoleSemantic, qhkRoleSemantic, _ := qs.GetOK("roleSemantic")
+	if err := o.bindRoleSemantic(qRoleSemantic, qhkRoleSemantic, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -159,6 +178,48 @@ func (o *ListPostureChecksParams) bindOffset(rawData []string, hasKey bool, form
 		return errors.InvalidType("offset", "query", "int64", raw)
 	}
 	o.Offset = &value
+
+	return nil
+}
+
+// bindRoleFilter binds and validates array parameter RoleFilter from query.
+//
+// Arrays are parsed according to CollectionFormat: "multi" (defaults to "csv" when empty).
+func (o *ListPostureChecksParams) bindRoleFilter(rawData []string, hasKey bool, formats strfmt.Registry) error {
+
+	// CollectionFormat: multi
+	roleFilterIC := rawData
+
+	if len(roleFilterIC) == 0 {
+		return nil
+	}
+
+	var roleFilterIR []string
+	for _, roleFilterIV := range roleFilterIC {
+		roleFilterI := roleFilterIV
+
+		roleFilterIR = append(roleFilterIR, roleFilterI)
+	}
+
+	o.RoleFilter = roleFilterIR
+
+	return nil
+}
+
+// bindRoleSemantic binds and validates parameter RoleSemantic from query.
+func (o *ListPostureChecksParams) bindRoleSemantic(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+	if raw == "" { // empty values pass all other validations
+		return nil
+	}
+
+	o.RoleSemantic = &raw
 
 	return nil
 }

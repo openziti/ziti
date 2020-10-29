@@ -100,6 +100,7 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 
 	sort.Strings(entity.ServiceRoles)
 	sort.Strings(entity.IdentityRoles)
+	sort.Strings(entity.PostureCheckRoles)
 
 	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
 	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
@@ -152,14 +153,17 @@ func newServicePolicyStore(stores *stores) *servicePolicyStoreImpl {
 type servicePolicyStoreImpl struct {
 	*baseStore
 
-	indexName           boltz.ReadIndex
-	symbolPolicyType    boltz.EntitySymbol
-	symbolSemantic      boltz.EntitySymbol
-	symbolIdentityRoles boltz.EntitySetSymbol
-	symbolServiceRoles  boltz.EntitySetSymbol
-	symbolIdentities    boltz.EntitySetSymbol
-	symbolServices      boltz.EntitySetSymbol
-	symbolPostureChecks boltz.EntitySetSymbol
+	indexName               boltz.ReadIndex
+	symbolPolicyType        boltz.EntitySymbol
+	symbolSemantic          boltz.EntitySymbol
+
+	symbolIdentityRoles     boltz.EntitySetSymbol
+	symbolServiceRoles      boltz.EntitySetSymbol
+	symbolPostureCheckRoles boltz.EntitySetSymbol
+
+	symbolIdentities        boltz.EntitySetSymbol
+	symbolServices          boltz.EntitySetSymbol
+	symbolPostureChecks     boltz.EntitySetSymbol
 
 	identityCollection     boltz.LinkCollection
 	serviceCollection      boltz.LinkCollection
@@ -180,8 +184,11 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 	store.symbolPolicyType = store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
+
 	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
+	store.symbolPostureCheckRoles = store.AddSetSymbol(FieldPostureCheckRoles, ast.NodeTypeString)
+
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
 	store.symbolPostureChecks = store.AddFkSetSymbol(EntityTypePostureChecks, store.stores.postureCheck)
@@ -253,16 +260,16 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
 	ctx := &roleAttributeChangeContext{
 		tx:                    persistCtx.Bucket.Tx(),
-		rolesSymbol:           store.symbolPostureChecks,
+		rolesSymbol:           store.symbolPostureCheckRoles,
 		linkCollection:        store.postureCheckCollection,
 		relatedLinkCollection: store.serviceCollection,
 		ErrorHolder:           persistCtx.Bucket,
 	}
 
 	if policy.PolicyType == PolicyTypeDial {
-		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+		ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
 	} else {
-		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+		ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes)
@@ -275,6 +282,8 @@ func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id stri
 	}
 	policy.IdentityRoles = nil
 	policy.ServiceRoles = nil
+	policy.PostureCheckRoles = nil
+
 	err = store.Update(ctx, policy, nil)
 	if err != nil {
 		return fmt.Errorf("failure while clearing policy before delete: %w", err)

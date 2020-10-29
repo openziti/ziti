@@ -43,8 +43,6 @@ import (
 //
 // swagger:model PostureCheckOperatingSystemCreate
 type PostureCheckOperatingSystemCreate struct {
-	descriptionField *string
-
 	nameField *string
 
 	roleAttributesField Attributes
@@ -54,16 +52,6 @@ type PostureCheckOperatingSystemCreate struct {
 	// operating systems
 	// Required: true
 	OperatingSystems OperatingSystemArray `json:"operatingSystems"`
-}
-
-// Description gets the description of this subtype
-func (m *PostureCheckOperatingSystemCreate) Description() *string {
-	return m.descriptionField
-}
-
-// SetDescription sets the description of this subtype
-func (m *PostureCheckOperatingSystemCreate) SetDescription(val *string) {
-	m.descriptionField = val
 }
 
 // Name gets the name of this subtype
@@ -124,8 +112,6 @@ func (m *PostureCheckOperatingSystemCreate) UnmarshalJSON(raw []byte) error {
 	var base struct {
 		/* Just the base type fields. Used for unmashalling polymorphic types.*/
 
-		Description *string `json:"description"`
-
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -143,8 +129,6 @@ func (m *PostureCheckOperatingSystemCreate) UnmarshalJSON(raw []byte) error {
 	}
 
 	var result PostureCheckOperatingSystemCreate
-
-	result.descriptionField = base.Description
 
 	result.nameField = base.Name
 
@@ -181,8 +165,6 @@ func (m PostureCheckOperatingSystemCreate) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	b2, err = json.Marshal(struct {
-		Description *string `json:"description"`
-
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -191,8 +173,6 @@ func (m PostureCheckOperatingSystemCreate) MarshalJSON() ([]byte, error) {
 
 		TypeID PostureCheckType `json:"typeId"`
 	}{
-
-		Description: m.Description(),
 
 		Name: m.Name(),
 
@@ -213,10 +193,6 @@ func (m PostureCheckOperatingSystemCreate) MarshalJSON() ([]byte, error) {
 func (m *PostureCheckOperatingSystemCreate) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateDescription(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -236,15 +212,6 @@ func (m *PostureCheckOperatingSystemCreate) Validate(formats strfmt.Registry) er
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *PostureCheckOperatingSystemCreate) validateDescription(formats strfmt.Registry) error {
-
-	if err := validate.Required("description", "body", m.Description()); err != nil {
-		return err
-	}
-
 	return nil
 }
 

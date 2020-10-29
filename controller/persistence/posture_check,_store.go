@@ -26,9 +26,10 @@ import (
 
 const (
 	//Fields
-	FieldPostureCheckTypeId      = "typeId"
-	FieldPostureCheckVersion     = "version"
-	FieldPostureCheckDescription = "description"
+	FieldPostureCheckTypeId        = "typeId"
+	FieldPostureCheckVersion       = "version"
+	FieldPostureCheckBindServices = "bindServices"
+	FieldPostureCheckDialServices = "dialServices"
 )
 
 var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
@@ -56,7 +57,6 @@ type PostureCheck struct {
 	boltz.BaseExtEntity
 	Name           string
 	TypeId         string
-	Description    string
 	Version        int64
 	RoleAttributes []string
 	SubType        PostureCheckSubType
@@ -70,7 +70,6 @@ func (entity *PostureCheck) LoadValues(store boltz.CrudStore, bucket *boltz.Type
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.TypeId = bucket.GetStringOrError(FieldPostureCheckTypeId)
-	entity.Description = bucket.GetStringOrError(FieldPostureCheckDescription)
 	entity.Version = bucket.GetInt64WithDefault(FieldPostureCheckVersion, 0)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 
@@ -88,7 +87,6 @@ func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldPostureCheckTypeId, entity.TypeId)
-	ctx.SetString(FieldPostureCheckDescription, entity.Description)
 	ctx.SetInt64(FieldPostureCheckVersion, entity.Version)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 
@@ -113,6 +111,7 @@ type PostureCheckStore interface {
 	LoadOneByName(tx *bbolt.Tx, id string) (*PostureCheck, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*PostureCheck, error)
 	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(filters []string, semantic string) (ast.SetCursorProvider, error)
 }
 
 func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
@@ -125,11 +124,16 @@ func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
 
 type postureCheckStoreImpl struct {
 	*baseStore
-	indexName boltz.ReadIndex
+	indexName           boltz.ReadIndex
+	indexRoleAttributes boltz.SetReadIndex
 
-	symbolServicePolicies boltz.EntitySymbol
+	symbolServicePolicies boltz.EntitySetSymbol
 	symbolRoleAttributes  boltz.EntitySetSymbol
-	indexRoleAttributes   boltz.SetReadIndex
+	symbolBindServices    boltz.EntitySetSymbol
+	symbolDialServices    boltz.EntitySetSymbol
+
+	bindServicesCollection boltz.RefCountedLinkCollection
+	dialServicesCollection boltz.RefCountedLinkCollection
 }
 
 func (store *postureCheckStoreImpl) NewStoreEntity() boltz.Entity {
@@ -143,10 +147,12 @@ func (store *postureCheckStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex 
 func (store *postureCheckStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
-	store.AddSymbol(FieldPostureCheckDescription, ast.NodeTypeString)
 
 	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
+
+	store.symbolBindServices = store.AddFkSetSymbol(FieldPostureCheckBindServices, store.stores.edgeService)
+	store.symbolDialServices = store.AddFkSetSymbol(FieldPostureCheckDialServices, store.stores.edgeService)
 
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 
@@ -155,6 +161,9 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 
 func (store *postureCheckStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolPostureChecks)
+
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
 }
 
 func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -186,6 +195,14 @@ func (store *postureCheckStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (
 }
 
 func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+
+	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		// Remove entity from PostureCheckRoles in service policies
+		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolPostureCheckRoles); err != nil {
+			return err
+		}
+	}
+
 	return store.baseStore.DeleteById(ctx, id)
 }
 
@@ -196,10 +213,13 @@ func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity boltz
 func (store *postureCheckStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
 		tx:                    tx,
-		rolesSymbol:           store.stores.servicePolicy.symbolPostureChecks,
+		rolesSymbol:           store.stores.servicePolicy.symbolPostureCheckRoles,
 		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
 		ErrorHolder:           holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
+}
+func (store *postureCheckStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
+	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
 }

@@ -53,7 +53,8 @@ type IdentityLinkFactoryImpl struct {
 func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
 	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
-	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+	links[EntityNameServicePolicy] = factory.NewNestedLink(entity, EntityNameServicePolicy)
+	links[EntityNamePostureData] = factory.NewNestedLink(entity, EntityNamePostureData)
 
 	return links
 }
@@ -305,10 +306,10 @@ func GetNamedIdentityRoles(identityHandler *model.IdentityHandler, roles []strin
 			}
 
 			result = append(result, &rest_model.NamedRole{
-				Role:   role,
+				Role: role,
 				Name: "@" + identity.Name,
 			})
-		}else {
+		} else {
 			result = append(result, &rest_model.NamedRole{
 				Role: role,
 				Name: role,

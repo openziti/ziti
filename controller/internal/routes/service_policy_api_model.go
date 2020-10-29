@@ -45,6 +45,7 @@ func (factory *ServicePolicyLinkFactoryImpl) Links(entity models.Entity) rest_mo
 	links := factory.BasicLinkFactory.Links(entity)
 	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
 	links[EntityNameIdentity] = factory.NewNestedLink(entity, EntityNameIdentity)
+	links[EntityNamePostureCheck] = factory.NewNestedLink(entity, EntityNamePostureCheck)
 
 	return links
 }

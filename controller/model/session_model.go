@@ -68,6 +68,40 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
+	validChecks := map[string]bool{} //cache individual check status
+	validPosture := true
+
+	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
+
+	if len(postureCheckMap) > 0 {
+		validPosture = false
+	}
+
+	for _, postureChecks := range postureCheckMap {
+		isPolicyPassing := true
+		for _, postureCheck := range postureChecks {
+			isCheckPassing := true
+			found := false
+			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
+				isCheckPassing = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, postureCheck)
+				validChecks[postureCheck.Id] = isCheckPassing
+			}
+
+			if !isCheckPassing {
+				isPolicyPassing = false //failed, move to next policy
+				continue
+			}
+		}
+		if isPolicyPassing {
+			validPosture = true
+			break
+		}
+	}
+
+	if !validPosture {
+		return nil, apierror.NewInvalidPosture()
+	}
+
 	maxRows := 1
 	result, err := handler.GetEnv().GetHandlers().EdgeRouter.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, entity.ServiceId, &maxRows)
 	if err != nil {

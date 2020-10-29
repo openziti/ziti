@@ -73,6 +73,10 @@ func (r *ServicePolicyRouter) Register(ae *env.AppEnv) {
 	ae.Api.ServicePolicyListServicePolicyIdentitiesHandler = service_policy.ListServicePolicyIdentitiesHandlerFunc(func(params service_policy.ListServicePolicyIdentitiesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.ListIdentities, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
+
+	ae.Api.ServicePolicyListServicePolicyPostureChecksHandler = service_policy.ListServicePolicyPostureChecksHandlerFunc(func(params service_policy.ListServicePolicyPostureChecksParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ListPostureChecks, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func (r *ServicePolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -110,5 +114,9 @@ func (r *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (r *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToRestEntity)
+ 	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToRestEntity)
+}
+
+func (r *ServicePolicyRouter) ListPostureChecks(ae *env.AppEnv, rc *response.RequestContext) {
+	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.PostureCheck, MapPostureCheckToRestEntity)
 }

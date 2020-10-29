@@ -26,6 +26,25 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
 
+func (p *PostureCheckMacAddresses) Evaluate(pd *PostureData) bool {
+	if pd.Mac.TimedOut {
+		return false
+	}
+
+	validAddresses := map[string]struct{}{}
+	for _, address := range p.MacAddresses {
+		validAddresses[address] = struct{}{}
+	}
+
+	for _, address := range pd.Mac.Addresses {
+		if _, found := validAddresses[address]; found {
+			return true
+		}
+	}
+
+	return false
+}
+
 func newPostureCheckMacAddresses() PostureCheckSubType {
 	return &PostureCheckMacAddresses{}
 }

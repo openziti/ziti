@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -62,7 +63,16 @@ func (handler *PostureCheckHandler) readInTx(tx *bbolt.Tx, id string) (*PostureC
 
 func (handler *PostureCheckHandler) IsUpdated(field string) bool {
 	return strings.EqualFold(field, persistence.FieldName) ||
-		strings.EqualFold(field, boltz.FieldTags)
+		strings.EqualFold(field, boltz.FieldTags) ||
+		strings.EqualFold(field, persistence.FieldRoleAttributes) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckOsType) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckOsVersions) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckMacAddresses) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckDomains) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessFingerprint) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessOs) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessPath) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessHashes)
 }
 
 func (handler *PostureCheckHandler) Update(ca *PostureCheck) error {
@@ -81,6 +91,15 @@ func (handler *PostureCheckHandler) Delete(id string) error {
 func (handler *PostureCheckHandler) Query(query string) (*PostureCheckListResult, error) {
 	result := &PostureCheckListResult{handler: handler}
 	if err := handler.list(query, result.collect); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (handler *PostureCheckHandler) QueryPostureChecks(query ast.Query) (*PostureCheckListResult, error) {
+	result := &PostureCheckListResult{handler: handler}
+	err := handler.preparedList(query, result.collect)
+	if err != nil {
 		return nil, err
 	}
 	return result, nil

@@ -253,6 +253,58 @@ func (request *authenticatedRequests) requireCreateIdentity(name string, isAdmin
 	return id
 }
 
+type postureResponseDomain struct {
+	Id     string `json:"id"`
+	TypeId string `json:"typeId"`
+	Domain string `json:"domain"`
+}
+
+func (request *authenticatedRequests) requireNewPostureResponseDomain(postureCheckId, domain string) {
+	entity := &postureResponseDomain{
+		Id:     postureCheckId,
+		TypeId: "DOMAIN",
+		Domain: domain,
+	}
+
+	entityJson, err := json.Marshal(entity)
+	request.testContext.Req.NoError(err)
+
+	resp, err := request.newAuthenticatedRequest().
+		SetBody(entityJson).
+		Post("/posture-response")
+
+	request.testContext.Req.NoError(err)
+	request.testContext.logJson(resp.Body())
+
+	request.testContext.Req.Equal(http.StatusCreated, resp.StatusCode())
+}
+
+type SessionRequest struct {
+	ServiceId string `json:"serviceId"`
+}
+
+func (request *authenticatedRequests) requireNewSession(serviceId string) string {
+	resp, err := request.createNewSession(serviceId)
+	request.testContext.Req.NoError(err)
+	request.testContext.logJson(resp.Body())
+
+	request.testContext.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+	return request.testContext.getEntityId(resp.Body())
+}
+
+func (request *authenticatedRequests) createNewSession(serviceId string) (*resty.Response, error) {
+	entity := &SessionRequest{
+		ServiceId: serviceId,
+	}
+	entityJson, err := json.Marshal(entity)
+	request.testContext.Req.NoError(err)
+
+	return request.newAuthenticatedRequest().
+		SetBody(entityJson).
+		Post("/sessions")
+}
+
 func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) (string, *updbAuthenticator) {
 	userAuth := &updbAuthenticator{
 		Username: name,
@@ -317,6 +369,12 @@ func (request *authenticatedRequests) requireCreateIdentityOttEnrollmentUnfinish
 	return id
 }
 
+func (request *authenticatedRequests) requireNewPostureCheckDomain(domains []string, roleAttributes []string) *postureCheckDomain {
+	postureCheck := request.testContext.newPostureCheckDomain(domains, roleAttributes)
+	request.requireCreateEntity(postureCheck)
+	return postureCheck
+}
+
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
 	request.requireCreateEntity(service)
@@ -330,8 +388,8 @@ func (request *authenticatedRequests) newServiceBulk(roleAttributes, configs []s
 }
 
 func (request *authenticatedRequests) RequireNewServiceAccessibleToAll(terminatorStrategy string) *service {
-	request.requireNewServicePolicy("Dial", s("#all"), s("#all"))
-	request.requireNewServicePolicy("Bind", s("#all"), s("#all"))
+	request.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
+	request.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
 	request.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
 	request.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
@@ -360,14 +418,14 @@ func (request *authenticatedRequests) requireNewTransitRouter() *transitRouter {
 	return transitRouter
 }
 
-func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles []string) *servicePolicy {
-	policy := newServicePolicy(policyType, nil, serviceRoles, identityRoles)
+func (request *authenticatedRequests) requireNewServicePolicy(policyType string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
+	policy := newServicePolicy(policyType, nil, serviceRoles, identityRoles, postureCheckRoles)
 	request.requireCreateEntity(policy)
 	return policy
 }
 
-func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles []string) *servicePolicy {
-	policy := newServicePolicy(policyType, &semantic, serviceRoles, identityRoles)
+func (request *authenticatedRequests) requireNewServicePolicyWithSemantic(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
+	policy := newServicePolicy(policyType, &semantic, serviceRoles, identityRoles, postureCheckRoles)
 	request.requireCreateEntity(policy)
 	return policy
 }
@@ -694,6 +752,11 @@ func (request *authenticatedRequests) validateEntityWithLookup(entity entity) *g
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
 	jsonEntity := request.testContext.RequirePath(result, "data")
 	return request.testContext.validateEntity(entity, jsonEntity)
+}
+
+func (request *authenticatedRequests) requireNotFoundEntityLookup(entityType string, entityId string) {
+	statusCode, _ := request.query(entityType + "/" + entityId)
+	request.testContext.Req.Equal(http.StatusNotFound, statusCode)
 }
 
 func (request *authenticatedRequests) validateUpdate(entity entity) *gabs.Container {
