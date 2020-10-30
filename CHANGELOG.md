@@ -1,9 +1,10 @@
 # Release 0.17.1
 ## Breaking Changes
-  * None
+  * Configuring posture checks with current and previous Ziti App endpoint software will cause them to not be able to connect to services. Updated Ziti Apps will be released in future versions.
 
 ## What's New
   * Posture Check CLI Commands
+  * Posture Check Enforcement
 
 ## Posture Check CLI Commands
 The following commands have been added to the `ziti` CLI:
@@ -13,6 +14,15 @@ The following commands have been added to the `ziti` CLI:
 * `ziti edge create posture-check <type> <reqValues> <flags>`
 
 See the `-h` usage for more information on each command.
+
+## Posture Check Enforcement
+
+This release includes the logic necessary to accept posture responses and notify clients of posture queries necessary to connect to services.
+Posture data can be submitted via `POST /posture-response` and can be viewed via `GET /identities/<id>/posture-data`.
+
+As noted above, configuring posture checks will cause all current Ziti App (any endpoint7 software using a Ziti SDK) to fail the checks
+as they currently do not submit posture response data. The ability for Ziti Apps to supply this information will be included in a
+subsequent release.
 
 # Release 0.17.0
 
