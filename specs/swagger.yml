@@ -6612,7 +6612,6 @@ definitions:
         properties:
           macAddresses:
             type: array
-            minItems: 1
             items:
               type: string
     x-class: "MAC"

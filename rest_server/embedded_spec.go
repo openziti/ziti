@@ -5463,7 +5463,6 @@ func init() {
           "properties": {
             "macAddresses": {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "string"
               }
@@ -23130,7 +23129,6 @@ func init() {
           "properties": {
             "macAddresses": {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "string"
               }

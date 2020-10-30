@@ -47,7 +47,6 @@ type PostureResponseMacAddressCreate struct {
 
 	// mac addresses
 	// Required: true
-	// Min Items: 1
 	MacAddresses []string `json:"macAddresses"`
 }
 
@@ -76,7 +75,6 @@ func (m *PostureResponseMacAddressCreate) UnmarshalJSON(raw []byte) error {
 
 		// mac addresses
 		// Required: true
-		// Min Items: 1
 		MacAddresses []string `json:"macAddresses"`
 	}
 	buf := bytes.NewBuffer(raw)
@@ -126,7 +124,6 @@ func (m PostureResponseMacAddressCreate) MarshalJSON() ([]byte, error) {
 
 		// mac addresses
 		// Required: true
-		// Min Items: 1
 		MacAddresses []string `json:"macAddresses"`
 	}{
 
@@ -182,12 +179,6 @@ func (m *PostureResponseMacAddressCreate) validateID(formats strfmt.Registry) er
 func (m *PostureResponseMacAddressCreate) validateMacAddresses(formats strfmt.Registry) error {
 
 	if err := validate.Required("macAddresses", "body", m.MacAddresses); err != nil {
-		return err
-	}
-
-	iMacAddressesSize := int64(len(m.MacAddresses))
-
-	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
 		return err
 	}
 
