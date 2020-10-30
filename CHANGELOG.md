@@ -1,6 +1,7 @@
 # Release 0.17.1
 ## Breaking Changes
   * Configuring posture checks with current and previous Ziti App endpoint software will cause them to not be able to connect to services. Updated Ziti Apps will be released in future versions.
+  * The 'golang' SDK application included and updated Ziti SDK that supports posture checks
 
 ## What's New
   * Posture Check CLI Commands
