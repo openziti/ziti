@@ -285,7 +285,8 @@ func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCon
 }
 
 func (r *IdentityRouter) getPostureData(ae *env.AppEnv, rc *response.RequestContext) {
-	postureData := ae.GetHandlers().PostureResponse.PostureData(rc.Identity.Id)
+	id, _ := rc.GetEntityId()
+	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
 
 	rc.RespondWithOk(postureData, nil)
 }

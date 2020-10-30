@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
+	"strings"
 )
 
 type PostureCheckOperatingSystem struct {
@@ -34,14 +35,22 @@ func (p *PostureCheckOperatingSystem) Evaluate(pd *PostureData) bool {
 	validOses := map[string]map[string]struct{}{}
 
 	for _, os := range p.OperatingSystems {
+		osType := strings.ToLower(os.OsType)
+		validOses[osType] = map[string]struct{}{}
 		for _, version := range os.OsVersions {
-			validOses[os.OsType] = map[string]struct{}{}
-			validOses[os.OsType][version] = struct{}{}
+			validOses[osType][strings.ToLower(version)] = struct{}{}
 		}
 	}
 
-	if validOs, isValidOs := validOses[pd.Os.Type]; isValidOs {
-		if _, isValidVersion := validOs[pd.Os.Version]; isValidVersion {
+	osType := strings.ToLower(pd.Os.Type)
+	osVersion := strings.ToLower(pd.Os.Version)
+	if validOs, isValidOs := validOses[osType]; isValidOs {
+		if len(validOs) == 0 {
+			//any version
+			return true
+		}
+
+		if _, isValidVersion := validOs[osVersion]; isValidVersion {
 			return true
 		}
 	}
