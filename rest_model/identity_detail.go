@@ -54,6 +54,14 @@ type IdentityDetail struct {
 	// Required: true
 	EnvInfo *EnvInfo `json:"envInfo"`
 
+	// has Api session
+	// Required: true
+	HasAPISession *bool `json:"hasApiSession"`
+
+	// has edge router connection
+	// Required: true
+	HasEdgeRouterConnection *bool `json:"hasEdgeRouterConnection"`
+
 	// is admin
 	// Required: true
 	IsAdmin *bool `json:"isAdmin"`
@@ -100,6 +108,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		EnvInfo *EnvInfo `json:"envInfo"`
 
+		HasAPISession *bool `json:"hasApiSession"`
+
+		HasEdgeRouterConnection *bool `json:"hasEdgeRouterConnection"`
+
 		IsAdmin *bool `json:"isAdmin"`
 
 		IsDefaultAdmin *bool `json:"isDefaultAdmin"`
@@ -123,6 +135,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	m.Enrollment = dataAO1.Enrollment
 
 	m.EnvInfo = dataAO1.EnvInfo
+
+	m.HasAPISession = dataAO1.HasAPISession
+
+	m.HasEdgeRouterConnection = dataAO1.HasEdgeRouterConnection
 
 	m.IsAdmin = dataAO1.IsAdmin
 
@@ -157,6 +173,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		EnvInfo *EnvInfo `json:"envInfo"`
 
+		HasAPISession *bool `json:"hasApiSession"`
+
+		HasEdgeRouterConnection *bool `json:"hasEdgeRouterConnection"`
+
 		IsAdmin *bool `json:"isAdmin"`
 
 		IsDefaultAdmin *bool `json:"isDefaultAdmin"`
@@ -177,6 +197,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Enrollment = m.Enrollment
 
 	dataAO1.EnvInfo = m.EnvInfo
+
+	dataAO1.HasAPISession = m.HasAPISession
+
+	dataAO1.HasEdgeRouterConnection = m.HasEdgeRouterConnection
 
 	dataAO1.IsAdmin = m.IsAdmin
 
@@ -218,6 +242,14 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEnvInfo(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateHasAPISession(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateHasEdgeRouterConnection(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -304,6 +336,24 @@ func (m *IdentityDetail) validateEnvInfo(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateHasAPISession(formats strfmt.Registry) error {
+
+	if err := validate.Required("hasApiSession", "body", m.HasAPISession); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateHasEdgeRouterConnection(formats strfmt.Registry) error {
+
+	if err := validate.Required("hasEdgeRouterConnection", "body", m.HasEdgeRouterConnection); err != nil {
+		return err
 	}
 
 	return nil

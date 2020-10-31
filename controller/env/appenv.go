@@ -280,11 +280,11 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
-		AuthCookieName: constants.ZitiSession,
-		AuthHeaderName: constants.ZitiSession,
-		AuthRegistry:   &model.AuthProcessorRegistryImpl{},
-		EnrollRegistry: &model.EnrollmentRegistryImpl{},
-		Api:            api,
+		AuthCookieName:    constants.ZitiSession,
+		AuthHeaderName:    constants.ZitiSession,
+		AuthRegistry:      &model.AuthProcessorRegistryImpl{},
+		EnrollRegistry:    &model.EnrollmentRegistryImpl{},
+		Api:               api,
 	}
 
 	api.APIAuthorizer = authorizer{}

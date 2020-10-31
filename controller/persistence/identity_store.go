@@ -91,7 +91,7 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Identity) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
@@ -271,6 +271,7 @@ func (store *identityStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Identity,
 	if err := store.baseLoadOneById(tx, id, entity); err != nil {
 		return nil, err
 	}
+
 	return entity, nil
 }
 

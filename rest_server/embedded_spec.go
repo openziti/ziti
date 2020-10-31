@@ -7284,7 +7284,9 @@ func init() {
             "enrollment",
             "envInfo",
             "sdkInfo",
-            "roleAttributes"
+            "roleAttributes",
+            "hasEdgeRouterConnection",
+            "hasApiSession"
           ],
           "properties": {
             "authenticators": {
@@ -7295,6 +7297,12 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "hasApiSession": {
+              "type": "boolean"
+            },
+            "hasEdgeRouterConnection": {
+              "type": "boolean"
             },
             "isAdmin": {
               "type": "boolean"
@@ -24950,7 +24958,9 @@ func init() {
             "enrollment",
             "envInfo",
             "sdkInfo",
-            "roleAttributes"
+            "roleAttributes",
+            "hasEdgeRouterConnection",
+            "hasApiSession"
           ],
           "properties": {
             "authenticators": {
@@ -24961,6 +24971,12 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "hasApiSession": {
+              "type": "boolean"
+            },
+            "hasEdgeRouterConnection": {
+              "type": "boolean"
             },
             "isAdmin": {
               "type": "boolean"

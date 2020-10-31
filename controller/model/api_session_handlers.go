@@ -18,8 +18,10 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -83,7 +85,20 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 
 func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
 	return handler.GetDb().Batch(func(tx *bbolt.Tx) error {
-		return handler.GetEnv().GetStores().ApiSession.MarkActivity(tx, tokens)
+		store := handler.Store.(persistence.ApiSessionStore)
+		mutCtx := boltz.NewMutateContext(tx)
+		for _, token := range tokens {
+			apiSession, err := store.LoadOneByToken(tx, token)
+			if err != nil {
+				return err
+			}
+			if err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{}); err != nil {
+				return err
+			}
+
+			handler.env.GetHandlers().Identity.SetActive(apiSession.IdentityId)
+		}
+		return nil
 	})
 }
 

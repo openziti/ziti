@@ -17,6 +17,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
@@ -41,13 +42,15 @@ type SdkInfo struct {
 
 type Identity struct {
 	models.BaseEntity
-	Name           string
-	IdentityTypeId string
-	IsDefaultAdmin bool
-	IsAdmin        bool
-	RoleAttributes []string
-	EnvInfo        *EnvInfo
-	SdkInfo        *SdkInfo
+	Name            string
+	IdentityTypeId  string
+	IsDefaultAdmin  bool
+	IsAdmin         bool
+	RoleAttributes  []string
+	EnvInfo         *EnvInfo
+	SdkInfo         *SdkInfo
+	HasHeartbeat    bool
+	ApiSessionCount int64
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -139,7 +142,7 @@ func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (bol
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
@@ -150,8 +153,17 @@ func (entity *Identity) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
+	entity.HasHeartbeat = handler.GetEnv().GetHandlers().Identity.IsActive(entity.Id)
 
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
+
+	_, sessionCount, err := handler.GetEnv().GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%s"`, entity.Id))
+
+	if err != nil {
+		return err
+	}
+
+	entity.ApiSessionCount = sessionCount
 
 	return nil
 }

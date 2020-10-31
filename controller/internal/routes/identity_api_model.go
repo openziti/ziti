@@ -161,14 +161,18 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		return nil, err
 	}
 
+	hasApiSession := identity.ApiSessionCount > 0
+
 	ret := &rest_model.IdentityDetail{
-		BaseEntity:     BaseEntityToRestModel(identity, IdentityLinkFactory),
-		IsAdmin:        &identity.IsAdmin,
-		IsDefaultAdmin: &identity.IsDefaultAdmin,
-		Name:           &identity.Name,
-		RoleAttributes: identity.RoleAttributes,
-		Type:           ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
-		TypeID:         &identityType.Id,
+		BaseEntity:              BaseEntityToRestModel(identity, IdentityLinkFactory),
+		IsAdmin:                 &identity.IsAdmin,
+		IsDefaultAdmin:          &identity.IsDefaultAdmin,
+		Name:                    &identity.Name,
+		RoleAttributes:          identity.RoleAttributes,
+		Type:                    ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
+		TypeID:                  &identityType.Id,
+		HasEdgeRouterConnection: &identity.HasHeartbeat,
+		HasAPISession:           &hasApiSession,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 
