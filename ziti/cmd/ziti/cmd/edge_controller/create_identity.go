@@ -35,6 +35,7 @@ type createIdentityOptions struct {
 	isAdmin        bool
 	roleAttributes []string
 	jwtOutputFile  string
+	username       string
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
@@ -78,6 +79,7 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
+	cmd.Flags().StringVar(&options.username, "updb", "", "username to give the identity, will create a UPDB enrollment")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 	options.AddCommonFlags(cmd)
@@ -89,7 +91,13 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	entityData := gabs.New()
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, strings.Title(idType), "type")
-	setJSONValue(entityData, true, "enrollment", "ott")
+
+	o.username = strings.TrimSpace(o.username)
+	if o.username != "" {
+		setJSONValue(entityData, o.username, "enrollment", "updb")
+	} else {
+		setJSONValue(entityData, true, "enrollment", "ott")
+	}
 	setJSONValue(entityData, o.isAdmin, "isAdmin")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 
@@ -124,7 +132,13 @@ func getIdentityJwt(o *createIdentityOptions, id string) error {
 		return fmt.Errorf("no error during identity creation, but identity with id %v not found... unable to extract JWT", id)
 	}
 
-	dataContainer := newIdentity.Path("enrollment.ott.jwt")
+	var dataContainer *gabs.Container
+	if o.username != "" {
+		dataContainer = newIdentity.Path("enrollment.updb.jwt")
+	} else {
+		dataContainer = newIdentity.Path("enrollment.ott.jwt")
+	}
+
 	data := dataContainer.Data()
 	jwt, ok := dataContainer.Data().(string)
 
