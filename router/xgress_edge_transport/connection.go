@@ -185,6 +185,7 @@ func (c *edgeTransportXgressConn) WritePayload(p []byte, headers map[uint8][]byt
 
 	if err != nil {
 		pfxlog.ContextLogger(c.LogContext()).WithError(err).Error("write failed, closing connection")
+		c.finSent = true
 		close(c.writeDone)
 		_ = c.Conn().Close()
 	} else {
