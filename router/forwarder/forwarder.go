@@ -29,12 +29,11 @@ import (
 )
 
 type Forwarder struct {
-	sessions                *sessionTable
-	destinations            *destinationTable
-	payloadBufferController *xgress.PayloadBufferController
-	metricsRegistry         metrics.UsageRegistry
-	traceController         trace.Controller
-	Options                 *Options
+	sessions        *sessionTable
+	destinations    *destinationTable
+	metricsRegistry metrics.UsageRegistry
+	traceController trace.Controller
+	Options         *Options
 }
 
 type Destination interface {
@@ -59,16 +58,10 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forw
 		Options:         options,
 	}
 
-	forwarder.payloadBufferController = xgress.NewPayloadBufferController(forwarder, metricsRegistry)
+	xgress.InitPayloadIngester()
+	xgress.InitAcker(forwarder, metricsRegistry)
+	xgress.InitRetransmitter(forwarder, metricsRegistry)
 	return forwarder
-}
-
-func (forwarder *Forwarder) PayloadBuffer(x *xgress.Xgress) *xgress.PayloadBuffer {
-	return xgress.NewPayloadBuffer(x, forwarder.payloadBufferController)
-}
-
-func (forwarder *Forwarder) PayloadBufferController() *xgress.PayloadBufferController {
-	return forwarder.payloadBufferController
 }
 
 func (forwarder *Forwarder) MetricsRegistry() metrics.UsageRegistry {

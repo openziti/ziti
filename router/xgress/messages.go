@@ -30,11 +30,11 @@ const (
 	MinHeaderKey = 2000
 	MaxHeaderKey = MinHeaderKey + int32(math.MaxUint8)
 
-	HeaderKeySessionId    = 2256
-	HeaderKeySequence     = 2257
-	HeaderKeyFlags        = 2258
-	HeaderKeyTxBufferSize = 2259
-	HeaderKeyRTT          = 2260
+	HeaderKeySessionId      = 2256
+	HeaderKeySequence       = 2257
+	HeaderKeyFlags          = 2258
+	HeaderKeyRecvBufferSize = 2259
+	HeaderKeyRTT            = 2260
 
 	ContentTypePayloadType         = 1100
 	ContentTypeAcknowledgementType = 1101
@@ -68,10 +68,10 @@ const (
 )
 
 type Header struct {
-	SessionId    string
-	Flags        uint32
-	TxBufferSize uint32
-	RTT          uint16
+	SessionId      string
+	Flags          uint32
+	RecvBufferSize uint32
+	RTT            uint16
 }
 
 func (header *Header) GetSessionId() string {
@@ -100,8 +100,8 @@ func (header *Header) unmarshallHeader(msg *channel2.Message) error {
 
 	header.SessionId = string(sessionId)
 	header.Flags = flags
-	if header.TxBufferSize, ok = msg.GetUint32Header(HeaderKeyTxBufferSize); !ok {
-		header.TxBufferSize = math.MaxUint32
+	if header.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
+		header.RecvBufferSize = math.MaxUint32
 	}
 
 	header.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
@@ -114,8 +114,12 @@ func (header *Header) marshallHeader(msg *channel2.Message) {
 	if header.Flags != 0 {
 		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
 	}
-	msg.PutUint32Header(HeaderKeyTxBufferSize, header.TxBufferSize)
-	msg.PutUint16Header(HeaderKeyRTT, header.RTT)
+
+	msg.PutUint32Header(HeaderKeyRecvBufferSize, header.RecvBufferSize)
+
+	if header.RTT > 0 {
+		msg.PutUint16Header(HeaderKeyRTT, header.RTT)
+	}
 }
 
 func NewAcknowledgement(sessionId string, originator Originator) *Acknowledgement {
@@ -188,10 +192,10 @@ func UnmarshallAcknowledgement(msg *channel2.Message) (*Acknowledgement, error) 
 
 func (ack *Acknowledgement) GetLoggerFields() logrus.Fields {
 	return logrus.Fields{
-		"session":      ack.SessionId,
-		"txBufferSize": ack.TxBufferSize,
-		"seq":          fmt.Sprintf("%+v", ack.Sequence),
-		"RTT":          ack.RTT,
+		"session":            ack.SessionId,
+		"linkRecvBufferSize": ack.RecvBufferSize,
+		"seq":                fmt.Sprintf("%+v", ack.Sequence),
+		"RTT":                ack.RTT,
 	}
 }
 

@@ -42,9 +42,6 @@ func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 	x.SetReceiveHandler(bindHandler.receiveHandler)
 	x.AddPeekHandler(bindHandler.metricsPeekHandler)
 
-	payloadBuffer := bindHandler.forwarder.PayloadBuffer(x)
-	x.SetPayloadBuffer(payloadBuffer)
-
 	x.SetCloseHandler(bindHandler.closeHandler)
 
 	bindHandler.forwarder.RegisterDestination(x.SessionId(), x.Address(), x)

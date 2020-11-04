@@ -21,7 +21,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/mathz"
@@ -93,39 +92,6 @@ type Connection interface {
 	WritePayload([]byte, map[uint8][]byte) (int, error)
 }
 
-var ackTxMeter metrics.Meter
-var ackRxMeter metrics.Meter
-var droppedPayloadsMeter metrics.Meter
-var retransmissions metrics.Meter
-var retransmissionFailures metrics.Meter
-
-var ackFailures metrics.Meter
-var rttHistogram metrics.Histogram
-var rxBufferSizeHistogram metrics.Histogram
-var localTxBufferSizeHistogram metrics.Histogram
-var remoteTxBufferSizeHistogram metrics.Histogram
-var payloadWriteTimer metrics.Timer
-var ackWriteTimer metrics.Timer
-var payloadBufferTimer metrics.Timer
-var payloadRelayTimer metrics.Timer
-
-func InitMetrics(registry metrics.UsageRegistry) {
-	droppedPayloadsMeter = registry.Meter("xgress.dropped_payloads")
-	retransmissions = registry.Meter("xgress.retransmissions")
-	retransmissionFailures = registry.Meter("xgress.retransmission_failures")
-	ackRxMeter = registry.Meter("xgress.rx.acks")
-	ackTxMeter = registry.Meter("xgress.tx.acks")
-	ackFailures = registry.Meter("xgress.ack_failures")
-	rttHistogram = registry.Histogram("xgress.rtt")
-	rxBufferSizeHistogram = registry.Histogram("xgress.rx_buffer_size")
-	localTxBufferSizeHistogram = registry.Histogram("xgress.local.tx_buffer_size")
-	remoteTxBufferSizeHistogram = registry.Histogram("xgress.remote.tx_buffer_size")
-	payloadWriteTimer = registry.Timer("xgress.tx_write_time")
-	ackWriteTimer = registry.Timer("xgress.ack_write_time")
-	payloadBufferTimer = registry.Timer("xgress.payload_buffer_time")
-	payloadRelayTimer = registry.Timer("xgress.payload_relay_time")
-}
-
 type Xgress struct {
 	sessionId      string
 	address        Address
@@ -133,25 +99,31 @@ type Xgress struct {
 	originator     Originator
 	Options        *Options
 	txQueue        chan *Payload
+	closeNotify    chan struct{}
 	rxSequence     int32
 	rxSequenceLock sync.Mutex
 	receiveHandler ReceiveHandler
-	payloadBuffer  *PayloadBuffer
+	payloadBuffer  *LinkSendBuffer
+	linkRxBuffer   *LinkReceiveBuffer
 	closed         concurrenz.AtomicBoolean
 	closeHandler   CloseHandler
 	peekHandlers   []PeekHandler
 }
 
 func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
-	return &Xgress{
-		sessionId:  sessionId.Token,
-		address:    address,
-		peer:       peer,
-		originator: originator,
-		Options:    options,
-		txQueue:    make(chan *Payload, options.TxQueueSize),
-		rxSequence: 0,
+	result := &Xgress{
+		sessionId:    sessionId.Token,
+		address:      address,
+		peer:         peer,
+		originator:   originator,
+		Options:      options,
+		txQueue:      make(chan *Payload, options.TxQueueSize),
+		closeNotify:  make(chan struct{}),
+		rxSequence:   0,
+		linkRxBuffer: NewLinkReceiveBuffer(),
 	}
+	result.payloadBuffer = NewLinkSendBuffer(result)
+	return result
 }
 
 func (self *Xgress) SessionId() string {
@@ -172,10 +144,6 @@ func (self *Xgress) IsTerminator() bool {
 
 func (self *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
 	self.receiveHandler = receiveHandler
-}
-
-func (self *Xgress) SetPayloadBuffer(payloadBuffer *PayloadBuffer) {
-	self.payloadBuffer = payloadBuffer
 }
 
 func (self *Xgress) SetCloseHandler(closeHandler CloseHandler) {
@@ -239,7 +207,7 @@ func (self *Xgress) Close() {
 
 	if self.closed.CompareAndSwap(false, true) {
 		log.Debug("closing tx queue")
-		close(self.txQueue)
+		close(self.closeNotify)
 
 		self.payloadBuffer.Close()
 
@@ -266,19 +234,11 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 		return nil
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).
-				WithField("error", r).Error("send on closed channel")
-			return
-		}
-	}()
-
 	if payload.IsSessionEndFlagSet() {
 		pfxlog.ContextLogger(self.Label()).Debug("received end of session Payload")
 	}
 
-	self.payloadIngester(payload)
+	payloadIngester.ingest(payload, self)
 
 	return nil
 }
@@ -290,34 +250,59 @@ func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error 
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
-	log := pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields())
-
 	if payload.IsSessionStartFlagSet() {
-		log.Debug("received session start, starting xgress receiver")
+		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received session start, starting xgress receiver")
 		go self.rx()
 	}
 
 	start := time.Now()
 	if !self.Options.RandomDrops || rand.Int31n(self.Options.Drop1InN) != 1 {
-		log.Debug("adding to transmit buffer")
-		self.payloadBuffer.PayloadReceived(payload)
+		self.PayloadReceived(payload)
 	} else {
-		log.Error("drop!")
+		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Error("drop!")
 	}
 	next := time.Now()
 	payloadBufferTimer.Update(next.Sub(start))
+	self.queueSends()
+	payloadRelayTimer.UpdateSince(next)
+}
 
-	txPayload := self.payloadBuffer.transmitBuffer.NextReadyPayload()
-	for txPayload != nil {
+func (self *Xgress) queueSends() {
+	payload := self.linkRxBuffer.PeekHead()
+	for payload != nil {
 		select {
-		case self.txQueue <- txPayload:
-			self.payloadBuffer.transmitBuffer.RemoveReadyPayload()
-			txPayload = self.payloadBuffer.transmitBuffer.NextReadyPayload()
+		case self.txQueue <- payload:
+			self.linkRxBuffer.Remove(payload)
+			payload = self.linkRxBuffer.PeekHead()
 		default:
-			txPayload = nil
+			payload = nil
 		}
 	}
-	payloadRelayTimer.UpdateSince(next)
+}
+
+func (self *Xgress) nextPayload() *Payload {
+	select {
+	case payload := <-self.txQueue:
+		return payload
+	default:
+	}
+
+	// nothing was availabe in the txQueue, request more, then wait on txQueue
+	payloadIngester.payloadSendReq <- self
+
+	select {
+	case payload := <-self.txQueue:
+		return payload
+	case <-self.closeNotify:
+	}
+
+	// closed, check if there's anything pending in the queue
+	select {
+	case payload := <-self.txQueue:
+		return payload
+	default:
+		return nil
+	}
 }
 
 func (self *Xgress) tx() {
@@ -329,7 +314,8 @@ func (self *Xgress) tx() {
 	var payload *Payload
 
 	for {
-		payload = <-self.txQueue
+		payload = self.nextPayload()
+
 		if payload == nil || payload.IsSessionEndFlagSet() {
 			return
 		}
@@ -347,17 +333,17 @@ func (self *Xgress) tx() {
 				return
 			} else {
 				payloadWriteTimer.UpdateSince(start)
-				payloadLogger.Debugf("sent (#%d) [%s]", payload.GetSequence(), info.ByteCount(int64(n)))
+				payloadLogger.Debugf("sent [%s]", info.ByteCount(int64(n)))
 			}
 		}
 		payloadSize := len(payload.Data)
-		size := atomic.AddUint32(&self.payloadBuffer.transmitBuffer.size, ^uint32(payloadSize-1))
+		size := atomic.AddUint32(&self.linkRxBuffer.size, ^uint32(payloadSize-1))
 		pfxlog.Logger().Debugf("Payload %v of size %v removed from transmit buffer. New size: %v", payload.Sequence, payloadSize, size)
-		localTxBufferSizeHistogram.Update(int64(size))
+		localRecvBufferSizeBytesHistogram.Update(int64(size))
 
-		lastBufferSizeSent := self.payloadBuffer.getLastBufferSizeSent()
-		if lastBufferSizeSent > 10000 && (size<<1) > lastBufferSizeSent {
-			self.payloadBuffer.SendEmptyAck()
+		lastBufferSizeSent := self.linkRxBuffer.getLastBufferSizeSent()
+		if lastBufferSizeSent > 10000 && (lastBufferSizeSent>>1) > size {
+			self.SendEmptyAck()
 		}
 	}
 }
@@ -457,4 +443,34 @@ func (self *Xgress) nextReceiveSequence() int32 {
 func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
 	time.Sleep(duration)
 	self.Close()
+}
+
+func (self *Xgress) PayloadReceived(payload *Payload) {
+	log := pfxlog.Logger().WithFields(payload.GetLoggerFields())
+	log.Debug("payload received")
+	if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
+		if self.sessionId != payload.SessionId {
+			pfxlog.Logger().WithField("session", self.sessionId).Errorf("payload for session=%v routed to wrong xgress", payload.SessionId)
+			return
+		}
+
+		log := pfxlog.Logger().WithFields(payload.GetLoggerFields())
+		log.Debug("ready to acknowledge")
+
+		ack := NewAcknowledgement(self.sessionId, self.originator)
+		ack.RecvBufferSize = self.linkRxBuffer.Size()
+		ack.Sequence = append(ack.Sequence, payload.Sequence)
+		ack.RTT = payload.RTT
+
+		atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
+		acker.ack(ack, self.address)
+	}
+}
+
+func (self *Xgress) SendEmptyAck() {
+	pfxlog.Logger().WithField("session", self.sessionId).Debug("sending empty ack")
+	ack := NewAcknowledgement(self.sessionId, self.originator)
+	ack.RecvBufferSize = self.linkRxBuffer.Size()
+	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
+	acker.ack(ack, self.address)
 }

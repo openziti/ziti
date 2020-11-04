@@ -20,24 +20,29 @@ import (
 	"github.com/openziti/foundation/transport"
 )
 
-type transportXgresscConn struct {
+type transportXgressConn struct {
 	transport.Connection
 }
 
-func (c *transportXgresscConn) LogContext() string {
+func (c *transportXgressConn) LogContext() string {
 	return c.Detail().String()
 }
 
-func (c *transportXgresscConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
+func (c *transportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	buffer := make([]byte, 10240)
 	n, err := c.Reader().Read(buffer)
+	if err == nil {
+		if len(buffer) < (5 * 1024) {
+			buffer = append([]byte(nil), buffer[:n]...)
+		}
+	}
 	return buffer[:n], nil, err
 }
 
-func (c *transportXgresscConn) Write(p []byte) (n int, err error) {
+func (c *transportXgressConn) Write(p []byte) (n int, err error) {
 	return c.Writer().Write(p)
 }
 
-func (c *transportXgresscConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
+func (c *transportXgressConn) WritePayload(p []byte, _ map[uint8][]byte) (n int, err error) {
 	return c.Writer().Write(p)
 }

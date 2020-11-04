@@ -56,7 +56,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 		return nil, err
 	}
 
-	conn := &transportXgresscConn{peer}
+	conn := &transportXgressConn{peer}
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)
 	x.Start()

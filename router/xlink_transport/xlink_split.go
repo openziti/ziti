@@ -44,7 +44,7 @@ func (self *splitImpl) Close() error {
 	if err2 == nil {
 		return err
 	}
-	return errors.Errorf("multiple failures while closing transport link (%w) (%w)", err, err2)
+	return errors.Errorf("multiple failures while closing transport link (%v) (%v)", err, err2)
 }
 
 type splitImpl struct {

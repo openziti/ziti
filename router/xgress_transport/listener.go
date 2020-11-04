@@ -71,7 +71,7 @@ func (listener *listener) Close() error {
 }
 
 func (listener *listener) handleConnect(peer transport.Connection, bindHandler xgress.BindHandler) {
-	conn := &transportXgresscConn{peer}
+	conn := &transportXgressConn{peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
 
 	request, err := xgress.ReceiveRequest(peer)
