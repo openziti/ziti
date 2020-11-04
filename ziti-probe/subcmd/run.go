@@ -142,7 +142,7 @@ func (p *probe) run(_ *cobra.Command, args []string) {
 	for {
 		if _, err = p.ctx.GetServices(); err != nil {
 			sleepDuration := 5 * time.Second
-			log.Error("failed to load available services, try again in %.2f seconds: %v", sleepDuration.Seconds(), err)
+			log.Errorf("failed to load available services, try again in %.2f seconds: %v", sleepDuration.Seconds(), err)
 			time.Sleep(sleepDuration)
 		} else {
 			break

@@ -74,6 +74,9 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd.AddCommand(newListCmdForEntityType("identity-role-attributes", runListIdentityRoleAttributes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("service-role-attributes", runListServiceRoleAttributes, newOptions()))
 
+	cmd.AddCommand(newListCmdForEntityType("posture-checks", runListPostureChecks, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("posture-check-types", runListPostureCheckTypes, newOptions()))
+
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
@@ -109,6 +112,7 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	servicePolicyListRootCmd := newEntityListRootCmd("service-policy")
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", outputServices, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
+	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "posture-checks", outputPostureChecks, newOptions()))
 
 	cmd.AddCommand(configTypeListRootCmd,
 		edgeRouterListRootCmd,
@@ -605,8 +609,12 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingI
 		if err != nil {
 			return err
 		}
+		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles", "posture-checks")
+		if err != nil {
+			return err
+		}
 
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v\n", id, name, policyType, serviceRoles, identityRoles)
+		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v posture check roles: %v\n", id, name, policyType, serviceRoles, identityRoles, postureCheckRoles)
 		if err != nil {
 			return err
 		}
@@ -671,6 +679,79 @@ func outputIdentities(o *commonOptions, children []*gabs.Container, pagingInfo *
 		typeName, _ := entity.Path("type.name").Data().(string)
 		roleAttributes := entity.Path("roleAttributes").String()
 		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    role attributes: %v\n", id, name, typeName, roleAttributes); err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+
+	return nil
+}
+
+func outputPostureCheck(o *commonOptions, entity *gabs.Container) error {
+	id, _ := entity.Path("id").Data().(string)
+	typeId, _ := entity.Path("typeId").Data().(string)
+	name, _ := entity.Path("name").Data().(string)
+	roleAttributes := entity.Path("roleAttributes").String()
+
+	config := ""
+
+	switch typeId {
+	case "MAC":
+		containers, _ := entity.Path("macAddresses").Children()
+		config = containerArrayToString(containers, 4)
+	case "DOMAIN":
+		containers, _ := entity.Path("domains").Children()
+		config = containerArrayToString(containers, 4)
+	case "OS":
+		operatingSystems, _ := entity.Path("operatingSystems").Children()
+		config = strings.Join(postureCheckOsToStrings(operatingSystems), ",")
+	case "PROCESS":
+		process := entity.Path("process")
+
+		os := process.Path("osType").Data().(string)
+		path := process.Path("path").Data().(string)
+
+		var hashStrings []string
+		if val := process.Path("hashes").Data(); val != nil {
+			hashes := val.([]interface{})
+
+			for _, hash := range hashes {
+				hashStr := hash.(string)
+				if hashStr != "" {
+					hashStr = hashStr[0:4] + "..." + hashStr[len(hashStr)-2:]
+					hashStrings = append(hashStrings, hashStr)
+				}
+
+			}
+		}
+		signerFingerprint := "N/A"
+		if val := process.Path("signerFingerprint").Data(); val != nil {
+			if valStr := val.(string); valStr != "" {
+				signerFingerprint = valStr[0:4] + "..." + valStr[len(valStr)-2:]
+			}
+		}
+
+		if len(hashStrings) == 0 {
+			hashStrings = append(hashStrings, "N/A")
+		}
+
+		config = fmt.Sprintf("(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)", os, path, strings.Join(hashStrings, ","), signerFingerprint)
+	}
+
+	if _, err := fmt.Fprintf(o.Out, "id: %-10v    type: %-10v    name: %-15v    role attributes: %-10s     param: %v\n", id, typeId, name, roleAttributes, config); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func outputPostureChecks(o *commonOptions, children []*gabs.Container, pagingInfo *paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		if err := outputPostureCheck(o, entity); err != nil {
 			return err
 		}
 	}
@@ -874,4 +955,78 @@ func runListChilden(parentType, childType string, o *commonOptions, outputF outp
 	}
 
 	return outputF(o, children, pagingInfo)
+}
+
+func runListPostureChecks(o *commonOptions) error {
+	children, pagingInfo, err := listEntitiesWithOptions("posture-checks", o)
+
+	if err != nil {
+		return err
+	}
+
+	if err := outputPostureChecks(o, children, pagingInfo); err != nil {
+		return err
+	}
+
+	return err
+}
+
+func containerArrayToString(containers []*gabs.Container, limit int) string {
+	var values []string
+	for _, container := range containers {
+		value := container.Data().(string)
+		values = append(values, value)
+	}
+	valuesLength := len(values)
+	if valuesLength > limit {
+		values = values[:limit-1]
+		values = append(values, fmt.Sprintf(" and %d more", valuesLength-limit))
+	}
+	return strings.Join(values, ",")
+}
+
+func runListPostureCheckTypes(o *commonOptions) error {
+	children, pagingInfo, err := listEntitiesWithOptions("posture-check-types", o)
+
+	if err != nil {
+		return err
+	}
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		operatingSystems, _ := entity.Path("operatingSystems").Children()
+		osInfo := postureCheckOsToStrings(operatingSystems)
+
+		if _, err := fmt.Fprintf(o.Out, "id: %-8s    os: %s\n", id, strings.Join(osInfo, ",")); err != nil {
+			return err
+		}
+	}
+	pagingInfo.output(o)
+	return err
+}
+
+func postureCheckOsToStrings(osContainers []*gabs.Container) []string {
+	var ret []string
+	for _, os := range osContainers {
+		osType := os.Path("type").Data().(string)
+		var osVersions []string
+		versionsContainer, _ := os.Path("versions").Children()
+		for _, versionContainer := range versionsContainer {
+			if version := versionContainer.Data().(string); version != "" {
+				osVersions = append(osVersions, version)
+			}
+		}
+
+		if len(osVersions) == 0 {
+			osVersions = append(osVersions, "any")
+		}
+
+		ret = append(ret, fmt.Sprintf("%s (%s)", osType, strings.Join(osVersions, ",")))
+	}
+
+	return ret
 }

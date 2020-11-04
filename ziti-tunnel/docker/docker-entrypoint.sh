@@ -46,7 +46,7 @@ if [ ! -f "${json}" ]; then
         exit 1
     fi
     echo "enrolling ${jwt}"
-    ziti-enroller --jwt "${jwt}" --out "${json}"
+    ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
 echo "running ziti-tunnel"

@@ -1,3 +1,43 @@
+# Release 0.17.2
+## Breaking Changes
+  * Configuring posture checks with current and previous Ziti App endpoint software will cause them to not be able to connect to services. Updated Ziti Apps will be released in future versions.
+  * The 'golang' SDK application included and updated Ziti SDK that supports posture checks
+
+## What's New
+  * Posture Check CLI Commands
+  * Posture Check Enforcement
+  * [edge/#382](https://github.com/openziti/edge/issues/382) Add configuration types that support VoIP, SCTP use cases
+
+## Posture Check CLI Commands
+The following commands have been added to the `ziti` CLI:
+* `ziti edge list posture-checks <flags>`
+* `ziti edge delete posture-check <idOrName> <flags>`
+* `ziti edge update posture-check <type> <flags>`
+* `ziti edge create posture-check <type> <reqValues> <flags>`
+
+See the `-h` usage for more information on each command.
+
+## Posture Check Enforcement
+
+This release includes the logic necessary to accept posture responses and notify clients of posture queries necessary to connect to services.
+Posture data can be submitted via `POST /posture-response` and can be viewed via `GET /identities/<id>/posture-data`.
+
+As noted above, configuring posture checks will cause all current Ziti App (any endpoint7 software using a Ziti SDK) to fail the checks
+as they currently do not submit posture response data. The ability for Ziti Apps to supply this information will be included in a
+subsequent release.
+
+### New configuration types for tunneled services
+
+The `intercept.v1` configuration type can be used when defining services that:
+
+* intercept CIDRs and/or multiple addresses
+* intercept multiple ports and/or port ranges
+* use identity dial
+* require source IP spoofing at the hosting tunneler
+
+The `host.v1` configuration type enables configuration of hosted services with bind-by-identity and
+protocol/address/port pass-through of services that use `intercept.v1` to intercept multiple addresses.
+
 # Release 0.17.0
 
 ## Breaking CLI Change
