@@ -1,3 +1,10 @@
+# Release 0.17.3
+
+## What's New
+
+  * [edge/#392](https://github.com/openziti/edge/issues/392) Pass AppData message headers
+
+
 # Release 0.17.2
 ## Breaking Changes
   * Configuring posture checks with current and previous Ziti App endpoint software will cause them to not be able to connect to services. Updated Ziti Apps will be released in future versions.
