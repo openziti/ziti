@@ -162,6 +162,10 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		peerData[edge.CallerIdHeader] = callerId
 	}
 
+	if appData, found := req.Headers[edge.AppDataHeader]; found {
+		peerData[edge.AppDataHeader] = appData
+	}
+
 	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
 		msg := "encryption required on service, initiator did not send public header"
 		proxy.sendStateClosedReply(msg, req)
