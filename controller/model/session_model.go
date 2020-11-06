@@ -77,9 +77,21 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		validPosture = false
 	}
 
-	for _, postureChecks := range postureCheckMap {
+	for policyId, postureChecks := range postureCheckMap {
+		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
+
+		if err != nil {
+			continue
+		}
+
+		if policy.PolicyType != entity.Type {
+			continue
+		}
+
 		isPolicyPassing := true
+
 		for _, postureCheck := range postureChecks {
+
 			isCheckPassing := true
 			found := false
 			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {

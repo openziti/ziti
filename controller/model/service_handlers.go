@@ -276,7 +276,7 @@ func (handler *EdgeServiceHandler) Stream(query string, collect func(*ServiceDet
 
 func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string) map[string][]*PostureCheck {
 
-	servicePolicyQuery := fmt.Sprintf(`anyOf(services) = "%v" and anyOf(identities) = "%v"`, serviceId, identityId) //`a`, identityId )// and
+	servicePolicyQuery := fmt.Sprintf(`anyOf(services) = "%v" and anyOf(identities) = "%v"`, serviceId, identityId)
 
 	policyIdToChecks := map[string][]*PostureCheck{}
 
