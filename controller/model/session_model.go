@@ -60,6 +60,10 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		return nil, err
 	}
 
+	if entity.Type == "" {
+		entity.Type = persistence.SessionTypeDial
+	}
+
 	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
 		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
@@ -68,14 +72,11 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	validChecks := map[string]bool{} //cache individual check status
-	validPosture := true
+	checkCache := map[string]bool{} //cache individual check status
+	validPosture := false
+	hasMatchingPolicies := false
 
 	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
-
-	if len(postureCheckMap) > 0 {
-		validPosture = false
-	}
 
 	for policyId, postureChecks := range postureCheckMap {
 		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
@@ -87,21 +88,21 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		if policy.PolicyType != entity.Type {
 			continue
 		}
-
+		hasMatchingPolicies = true
 		isPolicyPassing := true
 
 		for _, postureCheck := range postureChecks {
 
 			isCheckPassing := true
 			found := false
-			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
+			if isCheckPassing, found = checkCache[postureCheck.Id]; !found {
 				isCheckPassing = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, postureCheck)
-				validChecks[postureCheck.Id] = isCheckPassing
+				checkCache[postureCheck.Id] = isCheckPassing
 			}
 
 			if !isCheckPassing {
 				isPolicyPassing = false //failed, move to next policy
-				continue
+				break
 			}
 		}
 		if isPolicyPassing {
@@ -110,7 +111,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		}
 	}
 
-	if !validPosture {
+	if hasMatchingPolicies && !validPosture {
 		return nil, apierror.NewInvalidPosture()
 	}
 
