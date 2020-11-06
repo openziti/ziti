@@ -1,3 +1,12 @@
+# Release 0.17.3
+
+## Breaking Changes
+  * None
+
+## What's New
+  * [edge] Addressed an issue where session type was not taken into account for posture checks
+
+
 # Release 0.17.2
 ## Breaking Changes
   * Configuring posture checks with current and previous Ziti App endpoint software will cause them to not be able to connect to services. Updated Ziti Apps will be released in future versions.
