@@ -11,6 +11,18 @@ identity:
 ctrl:
   endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
 
+link:
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:6003
+      advertise:        tls:127.0.0.1:6003
+      options:
+        outQueueSize:   16
+  dialers:
+    - binding:          transport
+      options:
+        outQueueSize:   32
+
 listeners:
   - binding: edge
     address: wss:0.0.0.0:3023
