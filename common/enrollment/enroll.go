@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
@@ -34,7 +35,7 @@ import (
 // global state used by all subcommands are located here for easy discovery
 var verbose bool
 var keyAlg config.KeyAlgVar
-var jwtpath, outpath, keyPath, certPath, idname, caOverride string
+var jwtpath, outpath, keyPath, certPath, idname, caOverride, username, password string
 
 const verboseDesc = "Enable verbose logging."
 const outpathDesc = "Output configuration file."
@@ -82,6 +83,9 @@ func NewEnrollCommand() *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
 	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
 	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
+	enrollSubCmd.Flags().StringVarP(&username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
+	enrollSubCmd.Flags().StringVarP(&password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
+
 	keyAlg.Set("RSA") // set default
 	enrollSubCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
@@ -138,7 +142,21 @@ func processEnrollment() error {
 		Token:         tkn,
 		IDName:        idname,
 		AdditionalCAs: caOverride,
+		Username:      username,
+		Password:      password,
 	}
+
+	if tkn.EnrollmentMethod == "updb" {
+		if password == "" {
+			password, err = term.PromptPassword("updb enrollment requires a password", false)
+			if err != nil {
+				return fmt.Errorf("failed to complete enrollment, updb requires a non-empty password")
+			}
+		}
+
+		return enroll.EnrollUpdb(flags)
+	}
+
 	conf, err := enroll.Enroll(flags)
 	if err != nil {
 		return fmt.Errorf("failed to enroll: %v", err)

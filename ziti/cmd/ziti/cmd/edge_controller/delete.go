@@ -63,6 +63,7 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("session", runDeleteEntityOfType, newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", runDeleteEntityOfType, newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("posture-check", runDeleteEntityOfType, newOptions()))
 
 	return cmd
 }
