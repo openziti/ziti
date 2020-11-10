@@ -32,7 +32,6 @@ RUN apt-get -q update && apt-get -q install -y --no-install-recommends iptables
 RUN if [ "$(uname -m)" = "aarch64" ]; then dpkg --add-architecture armhf; apt update; apt install -y libc6:armhf; fi
 COPY --from=fetch-ziti-artifacts /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
 COPY --from=fetch-ziti-artifacts /tmp/ziti-tunnel /usr/local/bin
-COPY --from=fetch-ziti-artifacts /tmp/ziti-enroller /usr/local/bin
 COPY ./docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 
