@@ -56,8 +56,14 @@ iptables-nft -t mangle -S --wait &>/dev/null || {
     done
 }
 
-echo "running ziti-tunnel"
-set -x
-ziti-tunnel -i "${json}" "${@}" &
-ZITI_TUNNEL_PID=$!
-wait $ZITI_TUNNEL_PID
+# optionally run an alternative shell CMD
+[[ $# -ne 0 && $1 =~ .*sh ]] && {
+    echo "running $@"
+    exec "$@"
+} || {
+    echo "running ziti-tunnel"
+    set -x
+    ziti-tunnel -i "${json}" "${@}" &
+    ZITI_TUNNEL_PID=$!
+    wait $ZITI_TUNNEL_PID
+}
