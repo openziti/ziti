@@ -49,10 +49,11 @@ if [ ! -f "${json}" ]; then
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
-# TODO: solve for ARMv8 aka arm64
-# WORKAROUND: use iptables-legacy if not iptables
-iptables &>/dev/null || {
-    update-alternatives --set iptables $(which iptables-legacy)
+# use iptables-legacy if nftables fails to accept iptables translations
+iptables-nft -t mangle -S --wait &>/dev/null || {
+    for LEGACY in {ip{,6},eb,arp}tables; do
+        update-alternatives --set $LEGACY /usr/sbin/${LEGACY}-legacy
+    done
 }
 
 echo "running ziti-tunnel"
