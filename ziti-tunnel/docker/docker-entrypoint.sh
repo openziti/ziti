@@ -52,7 +52,7 @@ fi
 # use iptables-legacy if nftables fails to accept iptables translations
 iptables-nft -t mangle -S --wait &>/dev/null || {
     for LEGACY in {ip{,6},eb,arp}tables; do
-        update-alternatives --set $LEGACY /usr/sbin/${LEGACY}-legacy
+        [[ -x /usr/sbin/${LEGACY}-legacy ]] && update-alternatives --set $LEGACY /usr/sbin/${LEGACY}-legacy
     done
 }
 
