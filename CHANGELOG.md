@@ -1,3 +1,10 @@
+# Release 0.17.4
+
+## What's New
+
+  * [edge/#392](https://github.com/openziti/edge/issues/392) Pass AppData message headers
+
+
 # Release 0.17.3
 
 ## Breaking Changes
