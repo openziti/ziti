@@ -1,3 +1,11 @@
+# Release 0.17.4
+
+## Breaking Changes
+  * None
+
+## What's New
+  * New WS underlay to support Controller connections, and Edge Router connections, from Browser-based webapps using the ziti-sdk-js
+
 # Release 0.17.3
 
 ## Breaking Changes
