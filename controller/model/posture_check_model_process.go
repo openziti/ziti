@@ -37,6 +37,10 @@ func (p *PostureCheckProcess) Evaluate(pd *PostureData) bool {
 				return false
 			}
 
+			if !process.IsRunning {
+				return false
+			}
+
 			if p.Fingerprint != "" {
 				if p.Fingerprint != process.SignerFingerprint {
 					return false

@@ -86,22 +86,26 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 					validServices[session.ServiceId] = false
 					checkMap := handler.env.GetHandlers().EdgeService.GetPostureChecks(identityId, session.ServiceId)
 
-					for policyId, checks := range checkMap {
-						isValidPolicy, isEvaluatedPolicy := validPolicies[policyId]
+					if len(checkMap) == 0 {
+						isValidService = true
+					} else {
+						for policyId, checks := range checkMap {
+							isValidPolicy, isEvaluatedPolicy := validPolicies[policyId]
 
-						if !isEvaluatedPolicy { //not checked yet
-							validPolicies[policyId] = false
-							isValidPolicy = false
-							if handler.postureCache.Evaluate(identityId, checks) {
-								isValidService = true
-								isValidPolicy = true
+							if !isEvaluatedPolicy { //not checked yet
+								validPolicies[policyId] = false
+								isValidPolicy = false
+								if handler.postureCache.Evaluate(identityId, checks) {
+									isValidService = true
+									isValidPolicy = true
+								}
 							}
-						}
 
-						validPolicies[policyId] = isValidPolicy
+							validPolicies[policyId] = isValidPolicy
 
-						if isValidPolicy {
-							break //found 1 valid policy, stop
+							if isValidPolicy {
+								break //found 1 valid policy, stop
+							}
 						}
 					}
 
