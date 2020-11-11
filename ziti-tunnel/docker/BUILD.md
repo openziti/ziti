@@ -55,7 +55,7 @@ Run `docker buildx` like this:
 
     $ ziti_version="0.15.3"
     $ docker buildx build \
-        --platform linux/amd64,linux/arm/v7,linux/arm/v8 \
+        --platform linux/amd64,linux/arm/v7,linux/aarch64 \
         --build-arg ZITI_VERSION="${ziti_version}" \
         -t "netfoundry/ziti-tunnel:${ziti_version}" .
 

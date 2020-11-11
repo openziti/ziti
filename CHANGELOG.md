@@ -4,7 +4,9 @@
   * None
 
 ## What's New
+  * [edge/#392](https://github.com/openziti/edge/issues/392) Pass AppData message headers
   * New WS underlay to support Controller connections, and Edge Router connections, from Browser-based webapps using the ziti-sdk-js
+
 
 # Release 0.17.3
 
