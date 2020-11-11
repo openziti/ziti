@@ -226,7 +226,6 @@ func (pr *PostureResponseOs) Apply(postureData *PostureData) {
 type PostureResponseProcess struct {
 	*PostureResponse
 	IsRunning         bool   `json:"isRunning"`
-	IsSigned          bool   `json:"isSigned"`
 	BinaryHash        string `json:"binaryHash"`
 	SignerFingerprint string `json:"signerFingerprint"`
 }

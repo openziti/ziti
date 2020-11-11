@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
+	"strings"
 )
 
 type PostureCheckProcess struct {
@@ -42,14 +43,14 @@ func (p *PostureCheckProcess) Evaluate(pd *PostureData) bool {
 			}
 
 			if p.Fingerprint != "" {
-				if p.Fingerprint != process.SignerFingerprint {
+				if !strings.EqualFold(p.Fingerprint, process.SignerFingerprint) {
 					return false
 				}
 			}
 
 			if len(p.Hashes) > 0 {
 				for _, hash := range p.Hashes {
-					if hash == process.BinaryHash {
+					if strings.EqualFold(hash, process.BinaryHash) {
 						return true
 					}
 				}

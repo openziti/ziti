@@ -5515,9 +5515,6 @@ func init() {
             "isRunning": {
               "type": "boolean"
             },
-            "isSigned": {
-              "type": "boolean"
-            },
             "signerFingerprint": {
               "type": "string"
             }
@@ -23187,9 +23184,6 @@ func init() {
               "type": "string"
             },
             "isRunning": {
-              "type": "boolean"
-            },
-            "isSigned": {
               "type": "boolean"
             },
             "signerFingerprint": {

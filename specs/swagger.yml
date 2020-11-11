@@ -6631,8 +6631,6 @@ definitions:
         properties:
           isRunning:
             type: boolean
-          isSigned:
-            type: boolean
           hash:
             type: string
           signerFingerprint:
