@@ -185,7 +185,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].IsRunning = false
 		postureData.Processes[0].BinaryHash = "does not match"
-		postureData.Processes[0].BinaryHash = "does not match"
+		postureData.Processes[0].SignerFingerprint = "does not match"
 
 		result := processCheck.Evaluate(postureData)
 
