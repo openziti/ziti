@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"github.com/openziti/foundation/storage/boltz"
+	"strings"
 )
 
 const (
@@ -51,6 +52,13 @@ func (entity *PostureCheckProcess) LoadValues(_ boltz.CrudStore, bucket *boltz.T
 }
 
 func (entity *PostureCheckProcess) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
+
+	entity.Fingerprint = strings.ToLower(entity.Fingerprint)
+
+	for i, hash := range entity.Hashes {
+		entity.Hashes[i] = strings.ToLower(hash)
+	}
+
 	bucket.SetString(FieldPostureCheckProcessOs, entity.OperatingSystem, ctx.FieldChecker)
 	bucket.SetString(FieldPostureCheckProcessPath, entity.Path, ctx.FieldChecker)
 	bucket.SetStringList(FieldPostureCheckProcessHashes, entity.Hashes, ctx.FieldChecker)

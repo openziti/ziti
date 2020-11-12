@@ -51,9 +51,6 @@ type PostureResponseProcessCreate struct {
 	// is running
 	IsRunning bool `json:"isRunning,omitempty"`
 
-	// is signed
-	IsSigned bool `json:"isSigned,omitempty"`
-
 	// signer fingerprint
 	SignerFingerprint string `json:"signerFingerprint,omitempty"`
 }
@@ -86,9 +83,6 @@ func (m *PostureResponseProcessCreate) UnmarshalJSON(raw []byte) error {
 
 		// is running
 		IsRunning bool `json:"isRunning,omitempty"`
-
-		// is signed
-		IsSigned bool `json:"isSigned,omitempty"`
 
 		// signer fingerprint
 		SignerFingerprint string `json:"signerFingerprint,omitempty"`
@@ -127,7 +121,6 @@ func (m *PostureResponseProcessCreate) UnmarshalJSON(raw []byte) error {
 
 	result.Hash = data.Hash
 	result.IsRunning = data.IsRunning
-	result.IsSigned = data.IsSigned
 	result.SignerFingerprint = data.SignerFingerprint
 
 	*m = result
@@ -147,9 +140,6 @@ func (m PostureResponseProcessCreate) MarshalJSON() ([]byte, error) {
 		// is running
 		IsRunning bool `json:"isRunning,omitempty"`
 
-		// is signed
-		IsSigned bool `json:"isSigned,omitempty"`
-
 		// signer fingerprint
 		SignerFingerprint string `json:"signerFingerprint,omitempty"`
 	}{
@@ -157,8 +147,6 @@ func (m PostureResponseProcessCreate) MarshalJSON() ([]byte, error) {
 		Hash: m.Hash,
 
 		IsRunning: m.IsRunning,
-
-		IsSigned: m.IsSigned,
 
 		SignerFingerprint: m.SignerFingerprint,
 	})
