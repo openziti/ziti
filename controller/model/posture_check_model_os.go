@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
-	"strconv"
 	"strings"
 )
 
@@ -105,23 +104,6 @@ func getValidOses(oses []OperatingSystem) map[string][]*semver.Range {
 	}
 
 	return validOses
-}
-
-func parseVersion(version string) []int64 {
-	strVersions := strings.Split(version, ".")
-	var intVersions []int64
-
-	for _, version := range strVersions {
-		parsedVersion, err := strconv.ParseInt(version, 10, 64)
-		if err != nil {
-			pfxlog.Logger().Errorf("error converting version %s to int: %v", version, err)
-			break
-		} else {
-			intVersions = append(intVersions, parsedVersion)
-		}
-	}
-
-	return intVersions
 }
 
 type OperatingSystem struct {
