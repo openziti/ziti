@@ -18,7 +18,10 @@ package model
 
 import (
 	"fmt"
+	"github.com/blang/semver"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -32,30 +35,75 @@ func (p *PostureCheckOperatingSystem) Evaluate(pd *PostureData) bool {
 		return false
 	}
 
-	validOses := map[string]map[string]struct{}{}
-
-	for _, os := range p.OperatingSystems {
-		osType := strings.ToLower(os.OsType)
-		validOses[osType] = map[string]struct{}{}
-		for _, version := range os.OsVersions {
-			validOses[osType][strings.ToLower(version)] = struct{}{}
-		}
-	}
+	validOses := getValidOses(p.OperatingSystems)
 
 	osType := strings.ToLower(pd.Os.Type)
-	osVersion := strings.ToLower(pd.Os.Version)
-	if validOs, isValidOs := validOses[osType]; isValidOs {
-		if len(validOs) == 0 {
-			//any version
+
+	if validOsVersions, isValidOs := validOses[osType]; isValidOs {
+		if len(validOsVersions) == 0 {
 			return true
 		}
 
-		if _, isValidVersion := validOs[osVersion]; isValidVersion {
-			return true
+		dataVersion, err := semver.Make(pd.Os.Version)
+		if err != nil {
+			pfxlog.Logger().Errorf("could not parse versions %s: %v", pd.Os.Version, err)
+			return false
+		}
+
+		for _, validOsVersion := range validOsVersions {
+			if (*validOsVersion)(dataVersion) {
+				return true
+			}
 		}
 	}
 
 	return false
+}
+
+type version struct {
+	value       int64
+	orHigher    bool
+	subVersions map[int64]*version
+}
+
+func (version *version) isValid(checkVersions []int64) bool {
+	if len(checkVersions) == 0 {
+		return false //not enough versions to check
+	}
+
+	if checkVersions[0] == version.value {
+		if len(version.subVersions) == 0 {
+			return true
+		}
+
+		for _, subVersion := range version.subVersions {
+			return subVersion.isValid(checkVersions[1:])
+		}
+	} else if version.orHigher && checkVersions[0] > version.value {
+		return true
+	}
+
+	return false
+}
+
+func getValidOses(oses []OperatingSystem) map[string][]*semver.Range {
+	validOses := map[string][]*semver.Range{}
+
+	for _, os := range oses {
+		osType := strings.ToLower(os.OsType)
+		validOses[osType] = []*semver.Range{} //last os definition wins if redeclared
+
+		for _, strVersion := range os.OsVersions {
+			semVer, err := semver.ParseRange(strVersion)
+			if err != nil {
+				pfxlog.Logger().Errorf("could not parse version %s: %v", strVersion, err)
+				continue
+			}
+			validOses[osType] = append(validOses[osType], &semVer)
+		}
+	}
+
+	return validOses
 }
 
 type OperatingSystem struct {
@@ -84,9 +132,26 @@ func (p *PostureCheckOperatingSystem) fillFrom(handler Handler, tx *bbolt.Tx, ch
 	return nil
 }
 
+func (p *PostureCheckOperatingSystem) validateOsVersions() error {
+	for _, os := range p.OperatingSystems {
+		for versionIdx, version := range os.OsVersions {
+			if _, err := semver.ParseRange(version); err != nil {
+				msg := fmt.Sprintf("invalid version for os: [%s], version: [%s]: %v ", os, version, err)
+				return validation.NewFieldError(msg, fmt.Sprintf("operatingSystems[%s][%d]", os, versionIdx), msg)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
+	}
+
+	if err := p.validateOsVersions(); err != nil {
+		return nil, err
 	}
 
 	for _, osMatch := range p.OperatingSystems {
@@ -104,6 +169,10 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(tx *bbolt.Tx, handle
 		OperatingSystems: []persistence.OperatingSystem{},
 	}
 
+	if err := p.validateOsVersions(); err != nil {
+		return nil, err
+	}
+
 	for _, osMatch := range p.OperatingSystems {
 		ret.OperatingSystems = append(ret.OperatingSystems, persistence.OperatingSystem{
 			OsType:     osMatch.OsType,
@@ -117,6 +186,10 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(tx *bbolt.Tx, handle
 func (p *PostureCheckOperatingSystem) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
+	}
+
+	if err := p.validateOsVersions(); err != nil {
+		return nil, err
 	}
 
 	for _, osMatch := range p.OperatingSystems {

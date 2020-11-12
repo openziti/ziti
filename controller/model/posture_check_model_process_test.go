@@ -60,7 +60,9 @@ func newMatchingProcessCheckAndData() (*PostureCheckProcess, *PostureData) {
 		OperatingSystem: "Windows",
 		Path:            `C:\some\path\some.exe`,
 		Hashes: []string{
+			"something that will never match 1",
 			binaryHash,
+			"something that will never match 2",
 		},
 		Fingerprint: signerFingerprint,
 	}
