@@ -3,7 +3,8 @@
 ## What's New
 
   * [edge/#392](https://github.com/openziti/edge/issues/392) Pass AppData message headers
-
+  * [edge/#394](https://github.com/openziti/edge/issues/394) Posture Checks evaluate to false for existing sessions that lose all checks
+  * [edge/#396](https://github.com/openziti/edge/issues/396) Process checks can incorrectly pass
 
 # Release 0.17.3
 
