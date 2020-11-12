@@ -176,7 +176,7 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 	}
 
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("process <name> <os=%s|%s|%s> <absolutePath>", OsLinux, OsMacOs, OsWindows),
+		Use:   fmt.Sprintf("process <name> <os=%s|%s|%s|%s> <absolutePath>", OsLinux, OsMacOs, OsWindows, OsWindowsServer),
 		Short: "creates a posture check for an OS specific process",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if err := cobra.ExactArgs(3)(cmd, args); err != nil {
@@ -184,7 +184,7 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 			}
 			os := normalizeOsType(args[1])
 			if os == "" || os == OsAndroid || os == OsIOS {
-				return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s", args[1], OsLinux, OsMacOs, OsWindows)
+				return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s|%s", args[1], OsLinux, OsMacOs, OsWindows, OsWindowsServer)
 			}
 
 			options.normalizedOs = os
@@ -214,11 +214,12 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 }
 
 const (
-	OsAndroid = "Android"
-	OsWindows = "Windows"
-	OsMacOs   = "macOS"
-	OsIOS     = "iOS"
-	OsLinux   = "Linux"
+	OsAndroid       = "Android"
+	OsWindows       = "Windows"
+	OsWindowsServer = "WindowsServer"
+	OsMacOs         = "macOS"
+	OsIOS           = "iOS"
+	OsLinux         = "Linux"
 
 	PostureCheckTypeDomain  = "DOMAIN"
 	PostureCheckTypeProcess = "PROCESS"
@@ -240,6 +241,8 @@ func normalizeOsType(os string) string {
 		return OsIOS
 	case "linux":
 		return OsLinux
+	case "windowsserver":
+		return OsWindowsServer
 	}
 
 	return ""
