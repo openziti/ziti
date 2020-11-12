@@ -174,6 +174,7 @@ message PostureResponse {
             Linux = 20;
             macOS = 30;
             Windows = 40;
+            WindowsServer = 50;
         }
     }
 }
