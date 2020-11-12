@@ -43,7 +43,16 @@ func (p *PostureCheckProcess) Evaluate(pd *PostureData) bool {
 			}
 
 			if p.Fingerprint != "" {
-				if !strings.EqualFold(p.Fingerprint, process.SignerFingerprint) {
+				isFingerprintValid := false
+
+				for _, fingerprint := range process.SignerFingerprints {
+					if strings.EqualFold(p.Fingerprint, fingerprint) {
+						isFingerprintValid = true
+						break
+					}
+				}
+
+				if !isFingerprintValid {
 					return false
 				}
 			}

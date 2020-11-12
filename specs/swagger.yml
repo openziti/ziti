@@ -6633,6 +6633,8 @@ definitions:
             type: boolean
           hash:
             type: string
-          signerFingerprint:
-            type: string
+          signerFingerprints:
+            type: array
+            items:
+              type: string
     x-class: "PROCESS"

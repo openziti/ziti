@@ -23,53 +23,6 @@ import (
 	"time"
 )
 
-// Returns a process check and posture data that will pass with matching id, hash, signer, and running state. Can
-// be altered to test various pass/fail states
-func newMatchingProcessCheckAndData() (*PostureCheckProcess, *PostureData) {
-	postureCheckId := "30qhj45"
-	binaryHash := "b4f3228217a2bae3f21f6b6df3750d0723a5c3973db9aad360a8f25bc31e3676d38180cf0abc89d7fca7a26e1919a1e52739ed3116011acc7e96630313da56b8"
-	signerFingerprint := "950248b9e8b0dd41938018a871a13dd92bed4614"
-
-	postureResponse := &PostureResponse{
-		PostureCheckId: postureCheckId,
-		TypeId:         PostureCheckTypeProcess,
-		TimedOut:       false,
-		LastUpdatedAt:  time.Now(),
-	}
-
-	postureResponseProcess := &PostureResponseProcess{
-		IsRunning:         true,
-		BinaryHash:        binaryHash,
-		SignerFingerprint: signerFingerprint,
-	}
-
-	postureResponse.SubType = postureResponseProcess
-	postureResponseProcess.PostureResponse = postureResponse
-
-	validPostureData := &PostureData{
-		Mac:    nil,
-		Domain: nil,
-		Os:     nil,
-		Processes: []*PostureResponseProcess{
-			postureResponseProcess,
-		},
-	}
-
-	processCheck := &PostureCheckProcess{
-		PostureCheckId:  postureCheckId,
-		OperatingSystem: "Windows",
-		Path:            `C:\some\path\some.exe`,
-		Hashes: []string{
-			"something that will never match 1",
-			binaryHash,
-			"something that will never match 2",
-		},
-		Fingerprint: signerFingerprint,
-	}
-
-	return processCheck, validPostureData
-}
-
 func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 
 	t.Run("returns true for valid id, running, hash, and fingerprint", func(t *testing.T) {
@@ -103,7 +56,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 
 	t.Run("returns true for valid id, running, hash, and fingerprint with mismatched signer case", func(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
-		postureData.Processes[0].SignerFingerprint = strings.ToUpper(postureData.Processes[0].SignerFingerprint)
+		postureData.Processes[0].SignerFingerprints[0] = strings.ToUpper(postureData.Processes[0].SignerFingerprints[0])
 
 		result := processCheck.Evaluate(postureData)
 		req := require.New(t)
@@ -165,7 +118,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 
 	t.Run("returns false if signers do not match", func(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
-		postureData.Processes[0].SignerFingerprint = "does not match"
+		postureData.Processes[0].SignerFingerprints = []string{"does not match"}
 
 		result := processCheck.Evaluate(postureData)
 
@@ -187,11 +140,58 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].IsRunning = false
 		postureData.Processes[0].BinaryHash = "does not match"
-		postureData.Processes[0].SignerFingerprint = "does not match"
+		postureData.Processes[0].SignerFingerprints = []string{"does not match"}
 
 		result := processCheck.Evaluate(postureData)
 
 		req := require.New(t)
 		req.False(result)
 	})
+}
+
+// Returns a process check and posture data that will pass with matching id, hash, signer, and running state. Can
+// be altered to test various pass/fail states
+func newMatchingProcessCheckAndData() (*PostureCheckProcess, *PostureData) {
+	postureCheckId := "30qhj45"
+	binaryHash := "b4f3228217a2bae3f21f6b6df3750d0723a5c3973db9aad360a8f25bc31e3676d38180cf0abc89d7fca7a26e1919a1e52739ed3116011acc7e96630313da56b8"
+	signerFingerprint := "950248b9e8b0dd41938018a871a13dd92bed4614"
+
+	postureResponse := &PostureResponse{
+		PostureCheckId: postureCheckId,
+		TypeId:         PostureCheckTypeProcess,
+		TimedOut:       false,
+		LastUpdatedAt:  time.Now(),
+	}
+
+	postureResponseProcess := &PostureResponseProcess{
+		IsRunning:          true,
+		BinaryHash:         binaryHash,
+		SignerFingerprints: []string{signerFingerprint},
+	}
+
+	postureResponse.SubType = postureResponseProcess
+	postureResponseProcess.PostureResponse = postureResponse
+
+	validPostureData := &PostureData{
+		Mac:    nil,
+		Domain: nil,
+		Os:     nil,
+		Processes: []*PostureResponseProcess{
+			postureResponseProcess,
+		},
+	}
+
+	processCheck := &PostureCheckProcess{
+		PostureCheckId:  postureCheckId,
+		OperatingSystem: "Windows",
+		Path:            `C:\some\path\some.exe`,
+		Hashes: []string{
+			"something that will never match 1",
+			binaryHash,
+			"something that will never match 2",
+		},
+		Fingerprint: signerFingerprint,
+	}
+
+	return processCheck, validPostureData
 }

@@ -103,7 +103,7 @@ func (r *PostureResponseRouter) Create(ae *env.AppEnv, rc *response.RequestConte
 			subType := &model.PostureResponseProcess{
 				IsRunning:         apiPostureResponse.IsRunning,
 				BinaryHash:        apiPostureResponse.Hash,
-				SignerFingerprint: apiPostureResponse.SignerFingerprint,
+				SignerFingerprints: apiPostureResponse.SignerFingerprints,
 			}
 
 			subType.PostureResponse = postureResponse

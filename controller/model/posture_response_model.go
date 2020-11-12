@@ -225,15 +225,18 @@ func (pr *PostureResponseOs) Apply(postureData *PostureData) {
 
 type PostureResponseProcess struct {
 	*PostureResponse
-	IsRunning         bool   `json:"isRunning"`
-	BinaryHash        string `json:"binaryHash"`
-	SignerFingerprint string `json:"signerFingerprint"`
+	IsRunning          bool     `json:"isRunning"`
+	BinaryHash         string   `json:"binaryHash"`
+	SignerFingerprints []string `json:"signerFingerprints"`
 }
 
 func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
 	found := false
 
-	pr.SignerFingerprint = CleanHexString(pr.SignerFingerprint)
+	for i, fingerprint := range pr.SignerFingerprints {
+		pr.SignerFingerprints[i] = CleanHexString(fingerprint)
+	}
+	
 	pr.BinaryHash = CleanHexString(pr.BinaryHash)
 
 	for i, process := range postureData.Processes {
