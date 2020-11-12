@@ -191,7 +191,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 
 	t.Run("returns false for posture data with valid os and partial os major version match with dangling period", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
-		postureData.Os.Version = "10"
+		postureData.Os.Version = "10."
 
 		result := osCheck.Evaluate(postureData)
 
@@ -200,6 +200,17 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 	})
 
 	t.Run("returns false for posture data with valid os and partial os major and minor version match with dangling period", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		postureData.Os.Version = "10.5."
+
+		result := osCheck.Evaluate(postureData)
+
+		req := require.New(t)
+		req.False(result)
+	})
+
+
+	t.Run("returns false for posture data with valid os and partial os major and dangling periods", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10.5."
 
