@@ -14,6 +14,7 @@
   * [edge/#396](https://github.com/openziti/edge/issues/396) Process checks can incorrectly pass
   * [edge/#403](https://github.com/openziti/edge/issues/403) Support multiple executable signers signatures per process
   * [edge/#401](https://github.com/openziti/edge/issues/401) Improve OS checks to support X.Y.Z semver comparisons
+  * [edge/#406](https://github.com/openziti/edge/issues/406) Adds `WindowsServer` in addition to `Windows` for server vs desktop os checks
 
 
 ### Improve OS checks to support X.Y.Z semver comparisons
