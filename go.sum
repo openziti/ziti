@@ -59,7 +59,6 @@ github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kB
 github.com/biogo/store v0.0.0-20190426020002-884f370e325d h1:vu2gsANkGtqYaQNXhmAAiJ7b1eKTbX3/aPAvDCasBgE=
 github.com/biogo/store v0.0.0-20190426020002-884f370e325d/go.mod h1:Iev9Q3MErcn+w3UOJD/DkEzllvugfdx7bGcMOFhvr/4=
 github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c/go.mod h1:MKsuJmJgSg28kpZDP6UIiPt0e0Oz0kqKNGyRaWEPv84=
-github.com/blang/semver v1.1.0 h1:ol1rO7QQB5uy7umSNV7VAmLugfLRD+17sYJujRNYPhg=
 github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdnnjpJbkM4JQ=
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=
@@ -478,8 +477,8 @@ github.com/openziti/foundation v0.14.15 h1:9QqOqo82wzws8zf5bfqezrmRj9E7AU1hnZHz8
 github.com/openziti/foundation v0.14.15/go.mod h1:z98OIbCyr2B57EtamNgvDVIoQXct+zVVxOif9KsOOaM=
 github.com/openziti/foundation v0.14.16 h1:37jQVIVc3ZB/5Eb6FNS5uH6jQauTEbMWeIgblZCCnyQ=
 github.com/openziti/foundation v0.14.16/go.mod h1:z98OIbCyr2B57EtamNgvDVIoQXct+zVVxOif9KsOOaM=
-github.com/openziti/sdk-golang v0.14.8 h1:b1BELh/n0heuwaCmjOKJvyLRhtc3ePOPRWnpuXcRuPY=
-github.com/openziti/sdk-golang v0.14.8/go.mod h1:oD18qkd+NQrT0oRuq6eckKcmvgCum8lmP3wV7R8yWBg=
+github.com/openziti/sdk-golang v0.14.9 h1:R6tv7ZH313uGUtyeq+D0tsbcDntHR57rEXI+0wphkwE=
+github.com/openziti/sdk-golang v0.14.9/go.mod h1:oD18qkd+NQrT0oRuq6eckKcmvgCum8lmP3wV7R8yWBg=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
