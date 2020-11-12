@@ -47,6 +47,9 @@ const (
 	// OsTypeWindows captures enum value "Windows"
 	OsTypeWindows OsType = "Windows"
 
+	// OsTypeWindowsServer captures enum value "WindowsServer"
+	OsTypeWindowsServer OsType = "WindowsServer"
+
 	// OsTypeAndroid captures enum value "Android"
 	OsTypeAndroid OsType = "Android"
 
@@ -65,7 +68,7 @@ var osTypeEnum []interface{}
 
 func init() {
 	var res []OsType
-	if err := json.Unmarshal([]byte(`["Windows","Android","iOS","Linux","macOS"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["Windows","WindowsServer","Android","iOS","Linux","macOS"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {
