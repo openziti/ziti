@@ -3890,6 +3890,7 @@ definitions:
     type: string
     enum:
       - Windows
+      - WindowsServer
       - Android
       - iOS
       - Linux

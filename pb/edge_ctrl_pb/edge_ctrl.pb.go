@@ -200,6 +200,7 @@ var PostureResponse_OperatingSystem_Type_name = map[int32]string{
 	20: "Linux",
 	30: "macOS",
 	40: "Windows",
+	50: "WindowsServer",
 }
 
 var PostureResponse_OperatingSystem_Type_value = map[string]int32{

@@ -7923,6 +7923,7 @@ func init() {
       "type": "string",
       "enum": [
         "Windows",
+        "WindowsServer",
         "Android",
         "iOS",
         "Linux",
@@ -25597,6 +25598,7 @@ func init() {
       "type": "string",
       "enum": [
         "Windows",
+        "WindowsServer",
         "Android",
         "iOS",
         "Linux",
