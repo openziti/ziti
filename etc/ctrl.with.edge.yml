@@ -86,7 +86,7 @@ edge:
     # (required) The interface and port that the Edge API should be served on.
     listener:  127.0.0.1:1280
     # (required) The host/port combination that is reported as publicly accessible for the Edge API
-    advertise: localhost:1280
+    advertise: 127.0.0.1:1280
     # (optional, defaults to 10) The number of minutes before an Edge API session will timeout. Timeouts are reset by
     # API requests and connections that are maintained to Edge Routers
     sessionTimeoutMinutes: 30

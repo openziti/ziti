@@ -304,7 +304,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 		os := normalizeOsType(o.os)
 
 		if os == "" || os == OsAndroid || os == OsIOS {
-			return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s", o.os, OsLinux, OsMacOs, OsWindows)
+			return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s|%s", o.os, OsLinux, OsMacOs, OsWindows, OsWindowsServer)
 		}
 
 		setJSONValue(entityData, o.os, "process", "osType")
