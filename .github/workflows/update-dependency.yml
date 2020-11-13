@@ -1,0 +1,38 @@
+name: update-dependency
+on:
+  workflow_dispatch:
+    inputs:
+      updated-dependency:
+        description: The dependency that was updated
+        required: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/update-dependency'
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.0'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Update Dependency
+        env:
+          gh_ci_key: ${{ secrets.GH_CI_KEY }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci update-go-dependency  ${{ github.event.inputs.updated-dependency }}
+
+      - name: Build and Test
+        run: go test ./...
+
+      - name: Complete Dependency Update
+        run: $(go env GOPATH)/bin/ziti-ci complete-update-go-dependency

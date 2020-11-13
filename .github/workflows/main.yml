@@ -1,0 +1,34 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+      - release-*
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.0'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Build and Test
+        run: go test ./...
+
+      - name: Release
+        env:
+          gh_ci_key: ${{ secrets.GH_CI_KEY }}
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci tag -v -f version
