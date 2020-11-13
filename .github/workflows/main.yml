@@ -32,3 +32,4 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
+          $(go env GOPATH)/bin/ziti-ci trigger-github-build openziti/edge update-dependency --token ${{ secrets.ZITI_CI_GH_TOKEN }}
