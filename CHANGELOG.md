@@ -1,3 +1,9 @@
+# Release 0.17.5
+
+## What's New 
+  * Builds have been moved from travis.org to Github Actions
+
+
 # Release 0.17.4
 ## Breaking Changes
   * Process posture checks now accept process posture responses with `signerFingerprints` instead of a single
