@@ -37,9 +37,6 @@ type PsOptions struct {
 	CommonOptions
 
 	Flags PsFlags
-
-	DisableImport bool
-	OutDir        string
 }
 
 type PsFlags struct {

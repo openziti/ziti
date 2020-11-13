@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -31,57 +30,6 @@ import (
 	"github.com/openziti/ziti/ziti/signal"
 	"github.com/openziti/ziti/ziti/util"
 )
-
-var pscmds = map[string](func(addr net.TCPAddr, params []string) error){
-	"stack":      stackTrace,
-	"gc":         gc,
-	"memstats":   memStats,
-	"goversion":  goversion,
-	"pprof-heap": pprofHeap,
-	"pprof-cpu":  pprofCPU,
-	"stats":      stats,
-	"trace":      trace,
-	"setgc":      setGC,
-}
-
-func setGC(addr net.TCPAddr, params []string) error {
-	if len(params) != 1 {
-		return errors.New("missing gc percentage")
-	}
-	perc, err := strconv.ParseInt(params[0], 10, strconv.IntSize)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, binary.MaxVarintLen64)
-	binary.PutVarint(buf, perc)
-	return cmdWithPrint(addr, signal.SetGCPercent, buf...)
-}
-
-func stackTrace(addr net.TCPAddr, _ []string) error {
-	return cmdWithPrint(addr, signal.StackTrace)
-}
-
-func gc(addr net.TCPAddr, _ []string) error {
-	_, err := cmd(addr, signal.GC)
-	return err
-}
-
-func memStats(addr net.TCPAddr, _ []string) error {
-	return cmdWithPrint(addr, signal.MemStats)
-}
-
-func goversion(addr net.TCPAddr, _ []string) error {
-	return cmdWithPrint(addr, signal.Version)
-}
-
-func pprofHeap(addr net.TCPAddr, _ []string) error {
-	return pprof(addr, signal.HeapProfile)
-}
-
-func pprofCPU(addr net.TCPAddr, _ []string) error {
-	fmt.Println("Profiling CPU now, will take 30 secs...")
-	return pprof(addr, signal.CPUProfile)
-}
 
 func trace(addr net.TCPAddr, _ []string) error {
 	fmt.Println("Tracing now, will take 5 secs...")
@@ -111,71 +59,6 @@ func trace(addr net.TCPAddr, _ []string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func pprof(addr net.TCPAddr, p byte) error {
-
-	tmpDumpFile, err := ioutil.TempFile("", "profile")
-	if err != nil {
-		return err
-	}
-	{
-		out, err := cmd(addr, p)
-		if err != nil {
-			return err
-		}
-		if len(out) == 0 {
-			return errors.New("failed to read the profile")
-		}
-		if err := ioutil.WriteFile(tmpDumpFile.Name(), out, 0); err != nil {
-			return err
-		}
-		fmt.Printf("Profile dump saved to: %s\n", tmpDumpFile.Name())
-		// If go tool chain not found, stopping here and keep dump file.
-		if _, err := exec.LookPath("go"); err != nil {
-			return nil
-		}
-		defer os.Remove(tmpDumpFile.Name())
-	}
-	// Download running binary
-	tmpBinFile, err := ioutil.TempFile("", "binary")
-	if err != nil {
-		return err
-	}
-	{
-		out, err := cmd(addr, signal.BinaryDump)
-		if err != nil {
-			return fmt.Errorf("failed to read the binary: %v", err)
-		}
-		if len(out) == 0 {
-			return errors.New("failed to read the binary")
-		}
-		defer os.Remove(tmpBinFile.Name())
-		if err := ioutil.WriteFile(tmpBinFile.Name(), out, 0); err != nil {
-			return err
-		}
-	}
-	fmt.Printf("Profiling dump saved to: %s\n", tmpDumpFile.Name())
-	fmt.Printf("Binary file saved to: %s\n", tmpBinFile.Name())
-	cmd := exec.Command("go", "tool", "pprof", tmpBinFile.Name(), tmpDumpFile.Name())
-	cmd.Env = os.Environ()
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func stats(addr net.TCPAddr, _ []string) error {
-	return cmdWithPrint(addr, signal.Stats)
-}
-
-func cmdWithPrint(addr net.TCPAddr, c byte, params ...byte) error {
-	out, err := cmd(addr, c, params...)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s", out)
-	return nil
 }
 
 // targetToAddr tries to parse the target string, be it remote host:port

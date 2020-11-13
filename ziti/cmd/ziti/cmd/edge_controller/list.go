@@ -819,7 +819,7 @@ func outputConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *pag
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		configType, _ := entity.Path("type").Data().(string)
+		configType, _ := entity.Path("configType.name").Data().(string)
 		data, _ := entity.Path("data").Data().(map[string]interface{})
 		formattedData, err := json.MarshalIndent(data, "      ", "    ")
 		if err != nil {
