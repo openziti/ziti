@@ -148,3 +148,41 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 
 	return ret, nil
 }
+
+func MapLimitedTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	terminator, ok := e.(*network.Terminator)
+
+	if !ok {
+		err := fmt.Errorf("entity is not a Terminator \"%s\"", e.GetId())
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+
+	restModel, err := MapLimitedTerminatorToRestModel(ae, terminator)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
+}
+
+func MapLimitedTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetailLimited, error) {
+	service, err := ae.Handlers.EdgeService.Read(terminator.Service)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &rest_model.TerminatorDetailLimited{
+		BaseEntity: BaseEntityToRestModel(terminator, TerminatorLinkFactory),
+		ServiceID:  &terminator.Service,
+		Service:    ToEntityRef(service.Name, service, ServiceLinkFactory),
+		RouterID:   &terminator.Router,
+		Identity:   &terminator.Identity,
+	}
+
+	return ret, nil
+}
