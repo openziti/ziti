@@ -92,7 +92,7 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.Api.ServiceListServiceTerminatorsHandler = service.ListServiceTerminatorsHandlerFunc(func(params service.ListServiceTerminatorsParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.listTerminators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+		return ae.IsAllowed(r.listTerminators, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 }
 
@@ -208,7 +208,36 @@ func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext)
 }
 
 func (r *ServiceRouter) listTerminators(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
+	if rc.Identity.IsAdmin {
+		r.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
+		return
+	} else {
+		serviceId, err := rc.GetEntityId()
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		svc, err := ae.Handlers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
+
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				rc.RespondWithNotFound()
+			} else {
+				rc.RespondWithError(err)
+			}
+			return
+		}
+
+		if svc == nil {
+			rc.RespondWithNotFound()
+			return
+		}
+
+		r.listAssociations(ae, rc, ae.Handlers.Terminator, MapLimitedTerminatorToRestEntity)
+		return
+	}
 }
 
 func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {

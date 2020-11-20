@@ -4282,7 +4282,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination. Requires admin access.\n",
+        "description": "Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.\n",
         "tags": [
           "Service"
         ],
@@ -8855,6 +8855,37 @@ func init() {
             },
             "router": {
               "$ref": "#/definitions/entityRef"
+            },
+            "routerId": {
+              "type": "string"
+            },
+            "service": {
+              "$ref": "#/definitions/entityRef"
+            },
+            "serviceId": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "terminatorDetailLimited": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "serviceId",
+            "service",
+            "routerId",
+            "identity"
+          ],
+          "properties": {
+            "identity": {
+              "type": "string"
             },
             "routerId": {
               "type": "string"
@@ -20817,7 +20848,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination. Requires admin access.\n",
+        "description": "Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.\n",
         "tags": [
           "Service"
         ],
@@ -26531,6 +26562,37 @@ func init() {
             },
             "router": {
               "$ref": "#/definitions/entityRef"
+            },
+            "routerId": {
+              "type": "string"
+            },
+            "service": {
+              "$ref": "#/definitions/entityRef"
+            },
+            "serviceId": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "terminatorDetailLimited": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "serviceId",
+            "service",
+            "routerId",
+            "identity"
+          ],
+          "properties": {
+            "identity": {
+              "type": "string"
             },
             "routerId": {
               "type": "string"

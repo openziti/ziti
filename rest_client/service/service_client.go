@@ -382,7 +382,7 @@ func (a *Client) ListServiceServicePolicies(params *ListServiceServicePoliciesPa
 /*
   ListServiceTerminators lists of terminators assigned to a service
 
-  Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination. Requires admin access.
+  Retrieves a list of terminator resources that are assigned specific service; supports filtering, sorting, and pagination.
 
 */
 func (a *Client) ListServiceTerminators(params *ListServiceTerminatorsParams, authInfo runtime.ClientAuthInfoWriter) (*ListServiceTerminatorsOK, error) {
