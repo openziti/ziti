@@ -614,6 +614,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation posture_checks.ListPostureChecks has not yet been implemented")
 		})
 	}
+	if api.InformationalListProtocolsHandler == nil {
+		api.InformationalListProtocolsHandler = informational.ListProtocolsHandlerFunc(func(params informational.ListProtocolsParams) middleware.Responder {
+			return middleware.NotImplemented("operation informational.ListProtocols has not yet been implemented")
+		})
+	}
 	if api.InformationalListRootHandler == nil {
 		api.InformationalListRootHandler = informational.ListRootHandlerFunc(func(params informational.ListRootParams) middleware.Responder {
 			return middleware.NotImplemented("operation informational.ListRoot has not yet been implemented")
