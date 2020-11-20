@@ -2,6 +2,7 @@
 
 ## What's New 
   * Builds have been moved from travis.org to Github Actions
+  * IDs generated for entities in the Edge no longer use underscores and instead use periods to avoid issues when used as a common name in CSRs
   * [edge#424](https://github.com/openziti/edge/issues/424) Authenticated, non-admin, clients can query service terminators
   * [sdk-golang#112](https://github.com/openziti/sdk-golang/issues/112) Process checks for Windows are case-insensitive
 
