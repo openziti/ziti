@@ -38,7 +38,7 @@ jobs:
           go get github.com/mitchellh/gox
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
 
   windows-build:
     name: Build Windows binaries
@@ -66,7 +66,7 @@ jobs:
           go get github.com/mitchellh/gox
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
 
   tag-and-publish:
     name: Build Linux Binaries, Tag and Publish
@@ -92,6 +92,7 @@ jobs:
           jenkins_user: ${{ secrets.JENKINS_USER }}
           jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
           jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
           pip install --upgrade --user pip
@@ -101,10 +102,15 @@ jobs:
           go get github.com/mitchellh/gox
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
-          $(go env GOPATH)/bin/ziti-ci tag --only-for-branch master -v -f version
-          aws s3 sync s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
+          aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
           $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
           $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
-          echo "ZITI_VERSION=$($(go env GOPATH)/bin/ziti-ci get-version -q)" >> $GITHUB_ENV
 
+      - name: Publish
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci tag -v -f version
+          $(go env GOPATH)/bin/ziti-ci publish-to-github
