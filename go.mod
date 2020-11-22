@@ -25,7 +25,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/openziti/edge v0.17.21
+	github.com/openziti/edge v0.17.22
 	github.com/openziti/fabric v0.14.19
 	github.com/openziti/foundation v0.14.20
 	github.com/openziti/sdk-golang v0.14.13
