@@ -1,7 +1,11 @@
 
 # set a variable to the location of the script running in case it's needed
 export curdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-export network_name="${USER}"
+if [[ $# -ne 0 ]]; then
+    export network_name=$1
+else
+    export network_name="${USER}"
+fi
 
 . ${curdir}/env.sh
 
