@@ -93,16 +93,16 @@ fi
 . ${curdir}/start-ziti.sh
 . ${curdir}/test-ziti.sh
 
-echo "staring a new bash shell to retain all environment variables without polluting the initial shell"
+echo "starting a new bash shell to retain all environment variables without polluting the initial shell"
 bash --rcfile <(cat << HERE
-. ~/.bashrc 
+. ~/.bashrc
 . ~/.bash_aliases
 export PS1="ZITI IS RUNNING ${network_name}: "
 
 echo "adding pki-functions to bash shell"
 . ${curdir}/pki-functions.sh
 
-alias zec='ziti edge controller'
+alias zec='ziti edge'
 alias zlogin='ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"'
 alias psz='ps -ef | grep ziti'
 
