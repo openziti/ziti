@@ -64,6 +64,9 @@ echo "   example:"
 echo "   127.0.0.1 ${ZITI_CONTROLLER_HOSTNAME} ${ZITI_EDGE_HOSTNAME} ${ZITI_ZAC_HOSTNAME} ${ZITI_EDGE_ROUTER_HOSTNAME} ${ZITI_EDGE_WSS_ROUTER_HOSTNAME} ${ZITI_ROUTER_BR_HOSTNAME} ${ZITI_ROUTER_BLUE_HOSTNAME} ${ZITI_ROUTER_RED_HOSTNAME}"
 echo ""
 
+DIRNAME=$(dirname $0)
+[[ ${USE_DNSMASQ:-} -eq 1 ]] && source ${DIRNAME}/run-dns.sh
+
 while true; do
     read -p "Are the hosts in your hosts file? " yn
     case $yn in
