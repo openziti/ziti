@@ -1,6 +1,8 @@
 #!/dev/null
+#
 # blame(ken)
-# SOUCE THIS after sourcing env.sh to append required domain names to the dnsmasq.conf in the same dir which is mounted on dnsmasq server by docker-compose.yml
+#
+# source this after sourcing env.sh to append required domain names to the dnsmasq.conf in the same dir which is mounted on dnsmasq server by docker-compose.yml
 
 # DIRNAME defined by init.sh before sourcing this because it's problematic to determine the value of the sourced file in a shell-portable manner
 [[ ! -z ${DIRNAME:-} ]] || {
