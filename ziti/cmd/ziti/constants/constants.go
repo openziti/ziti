@@ -29,6 +29,7 @@ const (
 	ZITI_ENROLLER           = "ziti-enroller"
 	ZITI_PROXY              = "ziti-proxy"
 	ZITI_PROX_C             = "ziti-prox-c"
+	ZITI_SDK_C_GITHUB       = "ziti-sdk-c"
 
 	TERRAFORM_PROVIDER_PREFIX          = "terraform-provider-"
 	TERRAFORM_PROVIDER_EDGE_CONTROLLER = "edgecontroller"
