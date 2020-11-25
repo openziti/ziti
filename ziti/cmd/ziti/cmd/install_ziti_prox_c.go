@@ -19,13 +19,13 @@ package cmd
 import (
 	"io"
 
+	"github.com/blang/semver"
+	"github.com/openziti/ziti/common/version"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
-	"github.com/openziti/ziti/common/version"
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 )
 
@@ -79,7 +79,7 @@ func NewCmdInstallZitiProxC(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // Run implements the command
 func (o *InstallZitiProxCOptions) Run() error {
-	newVersion, err := o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_PROX_C)
+	newVersion, err := o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
 	if err != nil {
 		return err
 	}
@@ -90,5 +90,5 @@ func (o *InstallZitiProxCOptions) Run() error {
 
 	log.Infoln("Attempting to install '" + c.ZITI_PROX_C + "' version: " + newVersion.String())
 
-	return o.installZitiApp(version.GetBranch(), c.ZITI_PROX_C, false, newVersion.String())
+	return o.installGitHubRelease(version.GetBranch(), c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, false, newVersion.String())
 }
