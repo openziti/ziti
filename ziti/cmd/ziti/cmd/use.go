@@ -145,10 +145,6 @@ func (o *UseOptions) Run() error {
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
-	err = o.install(branch, c.ZITI_PROXY)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
 	err = o.install(branch, c.ZITI_PROX_C)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())

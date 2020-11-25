@@ -27,7 +27,6 @@ const (
 	ZITI_EDGE_TUNNEL        = "ziti-edge-tunnel"
 	ZITI_EDGE_TUNNEL_GITHUB = "ziti-tunnel-sdk-c"
 	ZITI_ENROLLER           = "ziti-enroller"
-	ZITI_PROXY              = "ziti-proxy"
 	ZITI_PROX_C             = "ziti-prox-c"
 	ZITI_SDK_C_GITHUB       = "ziti-sdk-c"
 
