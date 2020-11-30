@@ -55,6 +55,8 @@ type ClientService interface {
 
 	DetailSpecBody(params *DetailSpecBodyParams) (*DetailSpecBodyOK, error)
 
+	ListProtocols(params *ListProtocolsParams) (*ListProtocolsOK, error)
+
 	ListRoot(params *ListRootParams) (*ListRootOK, error)
 
 	ListSpecs(params *ListSpecsParams) (*ListSpecsOK, error)
@@ -135,6 +137,40 @@ func (a *Client) DetailSpecBody(params *DetailSpecBodyParams) (*DetailSpecBodyOK
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for detailSpecBody: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ListProtocols returns a list of the listening edge protocols
+*/
+func (a *Client) ListProtocols(params *ListProtocolsParams) (*ListProtocolsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListProtocolsParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "listProtocols",
+		Method:             "GET",
+		PathPattern:        "/protocols",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ListProtocolsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListProtocolsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for listProtocols: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -131,6 +131,16 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listVersion'
+  '/protocols':
+    get:
+      summary: Return a list of the listening Edge protocols
+      security: [ ]
+      tags:
+        - Informational
+      operationId: listProtocols
+      responses:
+        '200':
+          $ref: '#/responses/listProtocols'
   ###################################################################
   # Informational
   ##################################################################
@@ -3522,6 +3532,10 @@ responses:
     description: Entity counts scopped to the current identitie's access
     schema:
       $ref: '#/definitions/listSummaryCountsEnvelope'
+  listProtocols:
+    description: A list of supported Edge protocols
+    schema:
+      $ref: '#/definitions/listProtocolsEnvelope'
   ###################################################################
   # Enrollments
   ##################################################################
@@ -5386,10 +5400,21 @@ definitions:
         type: string
       path:
         type: string
+  protocol:
+    type: object
+    required:
+      - address
+    properties:
+      address:
+        type: string
   listSummaryCounts:
     type: object
     additionalProperties:
       type: integer
+  listProtocols:
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/protocol'
   enrollmentCerts:
     type: object
     properties:
@@ -5538,6 +5563,16 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/listSummaryCounts'
+  listProtocolsEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/listProtocols'
   listEnrollmentsEnvelope:
     type: object
     required:

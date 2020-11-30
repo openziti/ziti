@@ -410,6 +410,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		PostureChecksListPostureChecksHandler: posture_checks.ListPostureChecksHandlerFunc(func(params posture_checks.ListPostureChecksParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.ListPostureChecks has not yet been implemented")
 		}),
+		InformationalListProtocolsHandler: informational.ListProtocolsHandlerFunc(func(params informational.ListProtocolsParams) middleware.Responder {
+			return middleware.NotImplemented("operation informational.ListProtocols has not yet been implemented")
+		}),
 		InformationalListRootHandler: informational.ListRootHandlerFunc(func(params informational.ListRootParams) middleware.Responder {
 			return middleware.NotImplemented("operation informational.ListRoot has not yet been implemented")
 		}),
@@ -836,6 +839,8 @@ type ZitiEdgeAPI struct {
 	PostureChecksListPostureCheckTypesHandler posture_checks.ListPostureCheckTypesHandler
 	// PostureChecksListPostureChecksHandler sets the operation handler for the list posture checks operation
 	PostureChecksListPostureChecksHandler posture_checks.ListPostureChecksHandler
+	// InformationalListProtocolsHandler sets the operation handler for the list protocols operation
+	InformationalListProtocolsHandler informational.ListProtocolsHandler
 	// InformationalListRootHandler sets the operation handler for the list root operation
 	InformationalListRootHandler informational.ListRootHandler
 	// ServiceListServiceConfigHandler sets the operation handler for the list service config operation
@@ -1340,6 +1345,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.PostureChecksListPostureChecksHandler == nil {
 		unregistered = append(unregistered, "posture_checks.ListPostureChecksHandler")
+	}
+	if o.InformationalListProtocolsHandler == nil {
+		unregistered = append(unregistered, "informational.ListProtocolsHandler")
 	}
 	if o.InformationalListRootHandler == nil {
 		unregistered = append(unregistered, "informational.ListRootHandler")
@@ -2006,6 +2014,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/posture-checks"] = posture_checks.NewListPostureChecks(o.context, o.PostureChecksListPostureChecksHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/protocols"] = informational.NewListProtocols(o.context, o.InformationalListProtocolsHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

@@ -3243,6 +3243,21 @@ func init() {
         }
       }
     },
+    "/protocols": {
+      "get": {
+        "security": [],
+        "tags": [
+          "Informational"
+        ],
+        "summary": "Return a list of the listening Edge protocols",
+        "operationId": "listProtocols",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/listProtocols"
+          }
+        }
+      }
+    },
     "/service-edge-router-policies": {
       "get": {
         "security": [
@@ -7684,6 +7699,27 @@ func init() {
         }
       }
     },
+    "listProtocols": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/protocol"
+      }
+    },
+    "listProtocolsEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/listProtocols"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "listRoleAttributesEnvelope": {
       "type": "object",
       "required": [
@@ -8092,6 +8128,17 @@ func init() {
           "type": "string"
         },
         "signerFingerprint": {
+          "type": "string"
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
           "type": "string"
         }
       }
@@ -9626,6 +9673,12 @@ func init() {
       "description": "A list of posture checks",
       "schema": {
         "$ref": "#/definitions/listPostureCheckEnvelope"
+      }
+    },
+    "listProtocols": {
+      "description": "A list of supported Edge protocols",
+      "schema": {
+        "$ref": "#/definitions/listProtocolsEnvelope"
       }
     },
     "listRoleAttributes": {
@@ -18185,6 +18238,24 @@ func init() {
         }
       }
     },
+    "/protocols": {
+      "get": {
+        "security": [],
+        "tags": [
+          "Informational"
+        ],
+        "summary": "Return a list of the listening Edge protocols",
+        "operationId": "listProtocols",
+        "responses": {
+          "200": {
+            "description": "A list of supported Edge protocols",
+            "schema": {
+              "$ref": "#/definitions/listProtocolsEnvelope"
+            }
+          }
+        }
+      }
+    },
     "/service-edge-router-policies": {
       "get": {
         "security": [
@@ -25390,6 +25461,27 @@ func init() {
         }
       }
     },
+    "listProtocols": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/protocol"
+      }
+    },
+    "listProtocolsEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/listProtocols"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "listRoleAttributesEnvelope": {
       "type": "object",
       "required": [
@@ -25798,6 +25890,17 @@ func init() {
           "type": "string"
         },
         "signerFingerprint": {
+          "type": "string"
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
           "type": "string"
         }
       }
@@ -27333,6 +27436,12 @@ func init() {
       "description": "A list of posture checks",
       "schema": {
         "$ref": "#/definitions/listPostureCheckEnvelope"
+      }
+    },
+    "listProtocols": {
+      "description": "A list of supported Edge protocols",
+      "schema": {
+        "$ref": "#/definitions/listProtocolsEnvelope"
       }
     },
     "listRoleAttributes": {
