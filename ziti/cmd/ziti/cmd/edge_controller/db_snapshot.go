@@ -58,6 +58,6 @@ func newDbSnapshotCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra
 }
 
 func runSnapshotDb(o *dbSnapshotOptions) error {
-	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false)
+	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	return err
 }

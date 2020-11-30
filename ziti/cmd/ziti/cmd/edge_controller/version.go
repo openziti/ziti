@@ -59,7 +59,7 @@ func newVersionCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 
 // Run implements this command
 func (o *versionOptions) Run() error {
-	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out)
+	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	if err != nil {
 		return err
 	}

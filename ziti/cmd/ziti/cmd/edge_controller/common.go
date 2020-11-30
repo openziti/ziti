@@ -23,8 +23,8 @@ import (
 	"strings"
 )
 
-func mapNameToID(entityType string, val string) (string, error) {
-	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("id=\"%s\"", val), false, nil)
+func mapNameToID(entityType string, val string, o commonOptions) (string, error) {
+	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("id=\"%s\"", val), false, nil, o.Timeout, o.Verbose)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +33,7 @@ func mapNameToID(entityType string, val string) (string, error) {
 		return val, nil
 	}
 
-	list, _, err = filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", val), false, nil)
+	list, _, err = filterEntitiesOfType(entityType, fmt.Sprintf("name=\"%s\"", val), false, nil, o.Timeout, o.Verbose)
 	if err != nil {
 		return "", err
 	}
@@ -54,8 +54,8 @@ func mapNameToID(entityType string, val string) (string, error) {
 	return entityId, nil
 }
 
-func mapIdToName(entityType string, val string) (string, error) {
-	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil)
+func mapIdToName(entityType string, val string, o commonOptions) (string, error) {
+	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil, o.Timeout, o.Verbose)
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +69,7 @@ func mapIdToName(entityType string, val string) (string, error) {
 	return name, nil
 }
 
-func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
+func mapNamesToIDs(entityType string, o commonOptions, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
 		if strings.HasPrefix(val, "id") {
@@ -81,7 +81,7 @@ func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 				name := strings.TrimPrefix(val, "name:")
 				query = fmt.Sprintf(`name="%s"`, name)
 			}
-			list, _, err := filterEntitiesOfType(entityType, query, false, nil)
+			list, _, err := filterEntitiesOfType(entityType, query, false, nil, o.Timeout, o.Verbose)
 			if err != nil {
 				return nil, err
 			}
@@ -103,10 +103,10 @@ func mapNamesToIDs(entityType string, list ...string) ([]string, error) {
 	return result, nil
 }
 
-func mapIdentityNameToID(nameOrId string) (string, error) {
-	return mapNameToID("identities", nameOrId)
+func mapIdentityNameToID(nameOrId string, o commonOptions) (string, error) {
+	return mapNameToID("identities", nameOrId, o)
 }
 
-func mapCaNameToID(nameOrId string) (string, error) {
-	return mapNameToID("cas", nameOrId)
+func mapCaNameToID(nameOrId string, o commonOptions) (string, error) {
+	return mapNameToID("cas", nameOrId, o)
 }

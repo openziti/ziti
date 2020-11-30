@@ -110,12 +110,12 @@ func newPolicyAdvisorServicesCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 // runIdentitiesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
 func runIdentitiesPolicyAdvisor(o *policyAdvisorOptions) error {
 	if len(o.Args) > 0 {
-		identityId, err := mapNameToID("identities", o.Args[0])
+		identityId, err := mapNameToID("identities", o.Args[0], o.commonOptions)
 		if err != nil {
 			return err
 		}
 		if len(o.Args) > 1 {
-			serviceId, err := mapNameToID("services", o.Args[1])
+			serviceId, err := mapNameToID("services", o.Args[1], o.commonOptions)
 			if err != nil {
 				return err
 			}
@@ -140,13 +140,13 @@ func runIdentitiesPolicyAdvisor(o *policyAdvisorOptions) error {
 // runServicesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
 func runServicesPolicyAdvisor(o *policyAdvisorOptions) error {
 	if len(o.Args) > 0 {
-		serviceId, err := mapNameToID("services", o.Args[0])
+		serviceId, err := mapNameToID("services", o.Args[0], o.commonOptions)
 		if err != nil {
 			return err
 		}
 
 		if len(o.Args) > 1 {
-			identityId, err := mapNameToID("identities", o.Args[1])
+			identityId, err := mapNameToID("identities", o.Args[1], o.commonOptions)
 			if err != nil {
 				return err
 			}
@@ -206,7 +206,7 @@ func runPolicyAdvisorForIdentities(o *policyAdvisorOptions) error {
 	done := false
 	for !done {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, _, err := filterEntitiesOfType("identities", filter, false, o.Out)
+		children, _, err := filterEntitiesOfType("identities", filter, false, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -236,7 +236,7 @@ func runPolicyAdvisorForServices(o *policyAdvisorOptions) error {
 	done := false
 	for !done {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
-		children, _, err := filterEntitiesOfType("services", filter, false, o.Out)
+		children, _, err := filterEntitiesOfType("services", filter, false, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -285,7 +285,7 @@ func runPolicyAdvisorForIdentity(identityId string, o *policyAdvisorOptions) err
 	}
 
 	if skip == 0 {
-		identityName, err := mapIdToName("identities", identityId)
+		identityName, err := mapIdToName("identities", identityId, o.commonOptions)
 		if err != nil {
 			return err
 		}
@@ -320,7 +320,7 @@ func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error
 	}
 
 	if skip == 0 {
-		serviceName, err := mapIdToName("services", serviceId)
+		serviceName, err := mapIdToName("services", serviceId, o.commonOptions)
 		if err != nil {
 			return err
 		}
@@ -332,7 +332,7 @@ func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error
 }
 
 func runPolicyAdvisorForIdentityAndService(identityId, serviceId string, o *policyAdvisorOptions) error {
-	result, err := util.EdgeControllerList("identities/"+identityId+"/policy-advice/"+serviceId, nil, o.OutputJSONResponse, o.Out)
+	result, err := util.EdgeControllerList("identities/"+identityId+"/policy-advice/"+serviceId, nil, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	if err != nil || o.OutputJSONResponse {
 		return err
 	}

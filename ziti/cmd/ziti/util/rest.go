@@ -534,7 +534,7 @@ func Unzip(src, dest string) error {
 }
 
 // EdgeControllerLogin will authenticate to the given Edge Controller
-func EdgeControllerLogin(url string, cert string, authentication string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerLogin(url string, cert string, authentication string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
 	client := newClient()
 
 	if cert != "" {
@@ -542,6 +542,8 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetQueryParam("method", "password").
 		SetHeader("Content-Type", "application/json").
@@ -581,7 +583,7 @@ func outputJson(out io.Writer, data []byte) {
 	}
 }
 
-func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out io.Writer) (*gabs.Container, error) {
+func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -595,7 +597,10 @@ func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out i
 
 	queryUrl := session.GetBaseUrl() + "/" + path.Join(entityType, entityId)
 
-	resp, err := client.R().
+	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
+		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.GetToken()).
 		Get(queryUrl)
@@ -623,16 +628,16 @@ func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out i
 }
 
 // EdgeControllerListSubEntities will list entities of the given type in the given Edge Controller
-func EdgeControllerListSubEntities(entityType, subType, entityId string, filter string, logJSON bool, out io.Writer) (*gabs.Container, error) {
+func EdgeControllerListSubEntities(entityType, subType, entityId string, filter string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
 	params := url.Values{}
 	if filter != "" {
 		params.Add("filter", filter)
 	}
-	return EdgeControllerList(entityType+"/"+entityId+"/"+subType, params, logJSON, out)
+	return EdgeControllerList(entityType+"/"+entityId+"/"+subType, params, logJSON, out, timeout, verbose)
 }
 
 // EdgeControllerList will list entities of the given type in the given Edge Controller
-func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Writer) (*gabs.Container, error) {
+func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -651,6 +656,8 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 	}
 
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.GetToken()).
@@ -679,7 +686,7 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 }
 
 // EdgeControllerCreate will create entities of the given type in the given Edge Controller
-func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -691,6 +698,8 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 		client.SetRootCertificate(session.Cert)
 	}
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.Token).
@@ -720,7 +729,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 }
 
 // EdgeControllerDelete will delete entities of the given type in the given Edge Controller
-func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON bool) (*gabs.Container, error) {
+func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -735,6 +744,8 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 	fullUrl := session.Host + "/" + entityPath
 
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.Token).
@@ -763,7 +774,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 }
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
-func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logRequestJson, logResponseJSON bool) (*gabs.Container, error) {
+func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logRequestJson, logResponseJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -781,6 +792,8 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 	}
 
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.Token).
@@ -814,7 +827,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 }
 
 // EdgeControllerVerify will create entities of the given type in the given Edge Controller
-func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bool) error {
+func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bool, timeout int, verbose bool) error {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return err
@@ -826,6 +839,8 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 		client.SetRootCertificate(session.Cert)
 	}
 	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "text/plain").
 		SetHeader(constants.ZitiSession, session.Token).
@@ -848,7 +863,7 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 	return nil
 }
 
-func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doRequest func(*resty.Request, string) (*resty.Response, error)) (*gabs.Container, error) {
+func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeout int, verbose bool, doRequest func(*resty.Request, string) (*resty.Response, error)) (*gabs.Container, error) {
 	session := &Session{}
 	if err := session.Load(); err != nil {
 		return nil, err
@@ -861,6 +876,8 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, doReq
 	}
 
 	request := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, session.Token)

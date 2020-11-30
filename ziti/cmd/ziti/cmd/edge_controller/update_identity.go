@@ -68,7 +68,7 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 
 // runUpdateIdentity update a new identity on the Ziti Edge Controller
 func runUpdateIdentity(o *updateIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0])
+	id, err := mapNameToID("identities", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
