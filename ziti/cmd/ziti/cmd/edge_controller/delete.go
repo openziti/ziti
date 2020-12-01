@@ -98,13 +98,13 @@ func runDeleteEntityOfType(o *commonOptions, entityType string) error {
 	var err error
 	ids := []string{o.Args[0]}
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" {
-		ids, err = mapNamesToIDs(entityType, o.Args[0])
+		ids, err = mapNamesToIDs(entityType, *o, o.Args[0])
 	}
 	if err != nil {
 		return err
 	}
 	for _, id := range ids {
-		_, err := util.EdgeControllerDelete(entityType, id, o.Out, o.OutputJSONResponse)
+		_, err := util.EdgeControllerDelete(entityType, id, o.Out, o.OutputJSONResponse, o.Timeout, o.Verbose)
 		if err != nil {
 			return err
 		}
@@ -120,5 +120,5 @@ func getPlural(entityType string) string {
 }
 
 func deleteEntityOfType(entityType string, id string, options *commonOptions) (*gabs.Container, error) {
-	return util.EdgeControllerDelete(entityType, id, options.Out, options.OutputJSONResponse)
+	return util.EdgeControllerDelete(entityType, id, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

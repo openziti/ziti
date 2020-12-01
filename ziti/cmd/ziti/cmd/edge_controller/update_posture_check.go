@@ -109,7 +109,7 @@ func newUpdatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 // runUpdatePostureCheckMac update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0])
+	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func newUpdatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.
 
 // runUpdatePostureCheckDomain update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0])
+	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func newUpdatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 
 // runUpdatePostureCheckProcess update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0])
+	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
@@ -358,7 +358,7 @@ func newUpdatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writ
 
 // runUpdatePostureCheckOs update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0])
+	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}

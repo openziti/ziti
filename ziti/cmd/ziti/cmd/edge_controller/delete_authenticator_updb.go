@@ -53,7 +53,7 @@ func newDeleteAuthenticatorUpdb(idType string, options *commonOptions) *cobra.Co
 
 func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
 
-	id, err := mapIdentityNameToID(idOrName)
+	id, err := mapIdentityNameToID(idOrName, options.commonOptions)
 
 	if err != nil {
 		return err

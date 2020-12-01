@@ -78,7 +78,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	configs, err := mapNamesToIDs("configs", o.configs...)
+	configs, err := mapNamesToIDs("configs", o.commonOptions, o.configs...)
 	if err != nil {
 		return err
 	}

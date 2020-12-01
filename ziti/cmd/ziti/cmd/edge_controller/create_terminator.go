@@ -77,12 +77,12 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 // runCreateTerminator implements the command to create a Terminator
 func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := mapNameToID("services", o.Args[0])
+	service, err := mapNameToID("services", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	router, err := mapNameToID("edge-routers", o.Args[1])
+	router, err := mapNameToID("edge-routers", o.Args[1], o.commonOptions)
 	if err != nil {
 		router = o.Args[1] // might be a pure fabric router, id might not be UUID
 	}

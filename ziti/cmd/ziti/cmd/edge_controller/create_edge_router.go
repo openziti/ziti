@@ -96,7 +96,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	if err != nil {
 		return err
 	}

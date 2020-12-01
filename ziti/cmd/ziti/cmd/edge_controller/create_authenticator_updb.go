@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -78,7 +78,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 		return errors.New("an identity must be specified")
 	}
 
-	id, err := mapIdentityNameToID(options.idOrName)
+	id, err := mapIdentityNameToID(options.idOrName, options.commonOptions)
 
 	if err != nil {
 		return err

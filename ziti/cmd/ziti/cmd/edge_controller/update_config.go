@@ -72,7 +72,7 @@ func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 // runUpdateConfig update a new config on the Ziti Edge Controller
 func runUpdateConfig(o *updateConfigOptions) error {
-	id, err := mapNameToID("configs", o.Args[0])
+	id, err := mapNameToID("configs", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}

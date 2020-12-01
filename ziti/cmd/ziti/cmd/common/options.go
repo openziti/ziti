@@ -33,4 +33,5 @@ type CommonOptions struct {
 	Verbose        bool
 	Staging        bool
 	ConfigIdentity string
+	Timeout        int
 }

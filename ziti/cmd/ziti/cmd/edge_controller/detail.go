@@ -22,8 +22,8 @@ import (
 	"io"
 )
 
-func DetailEntityOfType(entityType, entityId string, logJSON bool, out io.Writer) (*gabs.Container, error) {
-	jsonParsed, err := util.EdgeControllerDetailEntity(entityType, entityId, logJSON, out)
+func DetailEntityOfType(entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
+	jsonParsed, err := util.EdgeControllerDetailEntity(entityType, entityId, logJSON, out, timeout, verbose)
 
 	if err != nil {
 		return nil, err

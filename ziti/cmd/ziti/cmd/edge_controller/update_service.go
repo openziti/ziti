@@ -73,7 +73,7 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runUpdateService update a new service on the Ziti Edge Controller
 func runUpdateService(o *updateServiceOptions) error {
-	id, err := mapNameToID("services", o.Args[0])
+	id, err := mapNameToID("services", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}

@@ -70,22 +70,22 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 }
 
 func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
-	id, err := mapNameToID("service-policies", o.Args[0])
+	id, err := mapNameToID("service-policies", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities")
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks")
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.commonOptions)
 	if err != nil {
 		return err
 	}
