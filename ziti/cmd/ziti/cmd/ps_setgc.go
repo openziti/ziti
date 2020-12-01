@@ -17,11 +17,14 @@
 package cmd
 
 import (
+	"encoding/binary"
+	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"errors"
+	"github.com/openziti/ziti/ziti/signal"
 	"github.com/spf13/cobra"
 	"io"
+	"os"
 	"strconv"
 )
 
@@ -44,7 +47,8 @@ func NewCmdPsSetgc(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use: "setgc",
+		Use:  "setgc target gc-percentage",
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -54,30 +58,33 @@ func NewCmdPsSetgc(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	}
 
 	options.addCommonFlags(cmd)
-	cmd.Flags().StringVarP(&options.Flags.Pid, "pid", "", "", "pid (target of sub-cmd)")
 
 	return cmd
 }
 
 // Run implements the command
 func (o *PsSetgcOptions) Run() error {
-	pidStr := o.Args[0]
-	_, err := strconv.Atoi(o.Args[0])
+	var addr string
+	var err error
+	var pctArg string
+	if len(o.Args) == 1 {
+		addr, err = agent.ParseGopsAddress(nil)
+		pctArg = o.Args[0]
+	} else {
+		addr, err = agent.ParseGopsAddress(o.Args)
+		pctArg = o.Args[1]
+	}
+
 	if err != nil {
 		return err
 	}
-	addr, err := targetToAddr(pidStr)
+
+	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)
 	if err != nil {
-		return errors.New("Could not resolve pid -- may not have 'cliagent' enabled")
-	}
-	fn, ok := pscmds["setgc"]
-	if !ok {
-		return errors.New("internal error")
-	}
-	var params []string
-	params = append(params, o.Args[1])
-	if err := fn(*addr, params); err != nil {
 		return err
 	}
-	return nil
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutVarint(buf, perc)
+
+	return agent.MakeRequest(addr, signal.SetGCPercent, buf, os.Stdout)
 }

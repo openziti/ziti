@@ -17,12 +17,13 @@
 package cmd
 
 import (
+	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"errors"
+	"github.com/openziti/ziti/ziti/signal"
 	"github.com/spf13/cobra"
 	"io"
-	"strconv"
+	"os"
 )
 
 // PsGoversionOptions the options for the create spring command
@@ -44,7 +45,8 @@ func NewCmdPsGoversion(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobr
 	}
 
 	cmd := &cobra.Command{
-		Use: "goversion",
+		Use:  "goversion <optional-target>",
+		Args: cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -54,30 +56,15 @@ func NewCmdPsGoversion(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobr
 	}
 
 	options.addCommonFlags(cmd)
-	cmd.Flags().StringVarP(&options.Flags.Pid, "pid", "", "", "pid (target of sub-cmd)")
 
 	return cmd
 }
 
 // Run implements the command
 func (o *PsGoversionOptions) Run() error {
-	pidStr := o.Args[0]
-	_, err := strconv.Atoi(o.Args[0])
+	addr, err := agent.ParseGopsAddress(o.Args)
 	if err != nil {
 		return err
 	}
-	addr, err := targetToAddr(pidStr)
-	if err != nil {
-		return errors.New("Could not resolve pid -- may not have 'cliagent' enabled")
-	}
-	fn, ok := pscmds["goversion"]
-	if !ok {
-		return errors.New("internal error")
-	}
-	var params []string
-	params = append(params, pidStr)
-	if err := fn(*addr, params); err != nil {
-		return err
-	}
-	return nil
+	return agent.MakeRequest(addr, signal.Version, nil, os.Stdout)
 }

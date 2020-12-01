@@ -17,10 +17,12 @@
 package subcmd
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/agent"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,6 +42,12 @@ var runCmd = &cobra.Command{
 
 func run(cmd *cobra.Command, args []string) {
 	if config, err := router.LoadConfig(args[0]); err == nil {
+		if cliAgentEnabled {
+			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+			}
+		}
+
 		config.SetFlags(getFlags(cmd))
 
 		r := router.Create(config, version.GetCmdBuildInfo())

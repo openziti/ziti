@@ -31,7 +31,7 @@ func (r *Result) getSuccessBytes() []byte {
 
 func (r *Result) Tx(p *protocol) error {
 	dataLen := 1 + len(r.Message)
-	if err := p.txHeader(dataLen); err != nil {
+	if err := p.txHeader(p.peer, dataLen); err != nil {
 		return err
 	}
 
@@ -129,16 +129,17 @@ func (block *Block) Tx(p *protocol) error {
 
 	dataLen := 1 /* block type */ + len(tsBytes) + 4 /* sequence bytes */ + len(block.Hash) + len(block.Data)
 
-	if err := p.txHeader(dataLen); err != nil {
+	buf := &bytes.Buffer{}
+	if err := p.txHeader(buf, dataLen); err != nil {
 		return err
 	}
 
-	if _, err := p.peer.Write([]byte{block.Type}); err != nil {
+	if _, err := buf.Write([]byte{block.Type}); err != nil {
 		return err
 	}
 
 	if len(tsBytes) > 0 {
-		if _, err := p.peer.Write(tsBytes); err != nil {
+		if _, err := buf.Write(tsBytes); err != nil {
 			return err
 		}
 	}
@@ -146,15 +147,19 @@ func (block *Block) Tx(p *protocol) error {
 	seqBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(seqBytes, block.Sequence)
 
-	if _, err := p.peer.Write(seqBytes); err != nil {
+	if _, err := buf.Write(seqBytes); err != nil {
 		return err
 	}
 
-	if _, err := p.peer.Write(block.Hash); err != nil {
+	if _, err := buf.Write(block.Hash); err != nil {
 		return err
 	}
 
-	if _, err := p.peer.Write(block.Data); err != nil {
+	if _, err := buf.Write(block.Data); err != nil {
+		return err
+	}
+
+	if _, err := p.peer.Write(buf.Bytes()); err != nil {
 		return err
 	}
 

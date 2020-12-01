@@ -18,10 +18,11 @@ package subcmd
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
+	"github.com/openziti/foundation/agent"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/ziti/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -39,8 +40,8 @@ var runCmd = &cobra.Command{
 func run(cmd *cobra.Command, args []string) {
 	if config, err := controller.LoadConfig(args[0]); err == nil {
 		if cliAgentEnabled {
-			if err := agent.Listen(agent.Options{}); err != nil {
-				panic(err)
+			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 			}
 		}
 

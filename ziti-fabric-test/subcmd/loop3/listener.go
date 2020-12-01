@@ -18,6 +18,7 @@ package loop3
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -60,6 +61,10 @@ func newListenerCmd() *listenerCmd {
 }
 
 func (cmd *listenerCmd) run(_ *cobra.Command, _ []string) {
+	if err := agent.Listen(agent.Options{}); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+	}
+
 	if strings.HasPrefix(cmd.bindAddress, "edge") {
 		cmd.listenEdge()
 	} else {

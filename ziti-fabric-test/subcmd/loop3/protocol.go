@@ -24,10 +24,12 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/pkg/errors"
 	"io"
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
@@ -39,6 +41,7 @@ type protocol struct {
 	rxBlocks    chan *Block
 	txCount     int32
 	rxCount     int32
+	lastRx      int64
 	latencies   chan *time.Time
 	errors      chan error
 }
@@ -90,7 +93,7 @@ func (p *protocol) txer(done chan bool) {
 	defer log.Debug("complete")
 
 	var latency *time.Time
-
+	var lastSend time.Time
 	for p.txCount < p.test.TxRequests {
 		select {
 		case block := <-p.txGenerator.blocks:
@@ -109,16 +112,24 @@ func (p *protocol) txer(done chan bool) {
 					}
 				}
 
-				if err := block.Tx(p); err == nil {
-					p.txCount++
-					if p.test.TxPacing > 0 {
-						jitter := 0
-						if p.test.TxMaxJitter > 0 {
-							jitter = rand.Intn(int(p.test.TxMaxJitter))
-						}
-						time.Sleep(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
+				if p.test.TxPacing > 0 {
+					jitter := 0
+					if p.test.TxMaxJitter > 0 {
+						jitter = rand.Intn(int(p.test.TxMaxJitter))
 					}
 
+					nextSend := lastSend.Add(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
+					now := time.Now()
+					if nextSend.After(now) {
+						time.Sleep(nextSend.Sub(now))
+						lastSend = nextSend
+					} else {
+						lastSend = now
+					}
+				}
+
+				if err := block.Tx(p); err == nil {
+					atomic.AddInt32(&p.txCount, 1)
 				} else {
 					log.Errorf("error sending block (%s)", err)
 					p.errors <- err
@@ -156,8 +167,9 @@ func (p *protocol) rxer(done chan bool) {
 			}
 		}
 
+		atomic.AddInt32(&p.rxCount, 1)
+		atomic.StoreInt64(&p.lastRx, info.NowInMilliseconds())
 		p.rxBlocks <- block
-		p.rxCount++
 	}
 
 	close(p.rxBlocks)
@@ -201,12 +213,15 @@ func (p *protocol) verifier() {
 			}
 
 		case <-time.After(time.Duration(p.test.RxTimeout) * time.Millisecond):
-			err := fmt.Errorf("rx timeout exceeded (%d ms.)", p.test.RxTimeout)
-			p.errors <- err
-			if closeErr := p.peer.Close(); closeErr != nil {
-				log.Error(closeErr)
-			}
-			log.Error(err)
+			timeSinceLastRx := info.NowInMilliseconds() - atomic.LoadInt64(&p.lastRx)
+			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
+				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
+			// err := errors.New(errStr)
+			log.Errorf(errStr)
+			// p.errors <- err
+			//if closeErr := p.peer.Close(); closeErr != nil {
+			//	log.Error(closeErr)
+			//}
 			return
 		}
 	}
@@ -251,10 +266,10 @@ func (p *protocol) txPb(pb proto.Message) error {
 	if err != nil {
 		return err
 	}
-	if err = p.txMagicHeader(); err != nil {
+	if err = p.txMagicHeader(p.peer); err != nil {
 		return err
 	}
-	if err := p.txLength(len(data)); err != nil {
+	if err := p.txLength(p.peer, len(data)); err != nil {
 		return err
 	}
 	n, err := p.peer.Write(data)
@@ -297,8 +312,8 @@ func (p *protocol) rxPb(pb proto.Message) error {
 	return nil
 }
 
-func (p *protocol) txMagicHeader() error {
-	n, err := p.peer.Write(MagicHeader)
+func (p *protocol) txMagicHeader(w io.Writer) error {
+	n, err := w.Write(MagicHeader)
 	if err != nil {
 		return err
 	}
@@ -308,10 +323,10 @@ func (p *protocol) txMagicHeader() error {
 	return nil
 }
 
-func (p *protocol) txLength(length int) error {
+func (p *protocol) txLength(w io.Writer, length int) error {
 	out := make([]byte, 4)
 	binary.LittleEndian.PutUint32(out, uint32(length))
-	n, err := p.peer.Write(out)
+	n, err := w.Write(out)
 	if err != nil {
 		return err
 	}
@@ -321,12 +336,12 @@ func (p *protocol) txLength(length int) error {
 	return nil
 }
 
-func (p *protocol) txHeader(msgLen int) error {
-	if err := p.txMagicHeader(); err != nil {
+func (p *protocol) txHeader(w io.Writer, msgLen int) error {
+	if err := p.txMagicHeader(w); err != nil {
 		return err
 	}
 
-	if err := p.txLength(msgLen); err != nil {
+	if err := p.txLength(w, msgLen); err != nil {
 		return err
 	}
 	return nil
