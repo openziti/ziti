@@ -80,7 +80,7 @@ func (listener *listener) Close() error {
 }
 
 type ingressProxy struct {
-	msgMux       *edge.MsgMux
+	msgMux       edge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
 	ch           channel2.Channel
@@ -138,7 +138,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	conn := &localMessageSink{
 		MsgChannel: *edge.NewEdgeMsgChannel(proxy.ch, connId),
-		seq:        sequencer.NewSingleWriterSeq(proxy.listener.options.MaxOutOfOrderMsgs),
+		seq:        sequencer.NewNoopSequencer(4),
 		closeCB: func(connId uint32) {
 			removeListener()
 		},
@@ -267,7 +267,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	messageSink := &localListener{
 		localMessageSink: localMessageSink{
 			MsgChannel: *edge.NewEdgeMsgChannel(ch, connId),
-			seq:        sequencer.NewSingleWriterSeq(proxy.listener.options.MaxOutOfOrderMsgs),
+			seq:        sequencer.NewNoopSequencer(4),
 			closeCB: func(closeConnId uint32) {
 				if closeConnId == connId {
 					removeListener()

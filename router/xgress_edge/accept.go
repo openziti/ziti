@@ -19,8 +19,8 @@ package xgress_edge
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
@@ -41,7 +41,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 	fpg := cert.NewFingerprintGenerator()
 	proxy := &ingressProxy{
-		msgMux:       edge.NewMsgMux(),
+		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     handler.listener,
 		fingerprints: fpg.FromCerts(ch.Certificates()),
 		ch:           ch,

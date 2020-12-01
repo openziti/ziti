@@ -628,7 +628,7 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(len(entity.configs), len(children))
 	for configType, config := range entity.configs {
-		ctx.pathEquals(configs, config.Data, path(configType))
+		ctx.pathEquals(configs, config.Data, s(configType))
 	}
 }
 

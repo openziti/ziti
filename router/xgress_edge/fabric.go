@@ -54,10 +54,10 @@ type localListener struct {
 	parent          *ingressProxy
 }
 
-func (conn *localMessageSink) newSink(connId uint32, options *Options) *localMessageSink {
+func (conn *localMessageSink) newSink(connId uint32, _ *Options) *localMessageSink {
 	result := &localMessageSink{
 		MsgChannel: *edge.NewEdgeMsgChannel(conn.Channel, connId),
-		seq:        sequencer.NewSingleWriterSeq(options.MaxOutOfOrderMsgs),
+		seq:        sequencer.NewNoopSequencer(4),
 		closeCB:    conn.closeCB,
 		newSinkCB:  conn.newSinkCB,
 	}
@@ -84,14 +84,14 @@ func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 		}
 
-		em := next.(*edge.MsgEvent)
-		log = log.WithFields(em.GetLoggerFields())
+		msg := next.(*channel2.Message)
+		log = log.WithFields(edge.GetLoggerFields(msg))
 		log.Debug("processing")
 
-		switch em.Msg.ContentType {
+		switch msg.ContentType {
 		case edge.ContentTypeData:
-			log.Debugf("received data message with payload size %v", len(em.Msg.Body))
-			return em.Msg.Body, conn.getHeaderMap(em.Msg), nil
+			log.Debugf("received data message with payload size %v", len(msg.Body))
+			return msg.Body, conn.getHeaderMap(msg), nil
 
 		case edge.ContentTypeStateClosed:
 			log.Debug("received close message, closing connection and returning EOF")
@@ -100,7 +100,10 @@ func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 
 		default:
-			log.Error("unexpected message type")
+			log.Error("unexpected message type, closing connection")
+			conn.close(false, "close message received")
+			conn.closeCB(conn.Id())
+			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 		}
 	}
 }
@@ -155,9 +158,10 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	conn.seq.Close()
 }
 
-func (conn *localMessageSink) Accept(event *edge.MsgEvent) {
-	if err := conn.seq.PutSequenced(event.Seq, event); err != nil {
-		pfxlog.Logger().WithFields(event.GetLoggerFields()).Errorf("failed to dispatch to fabric: (%v)", err)
+func (conn *localMessageSink) Accept(msg *channel2.Message) {
+	seq, _ := msg.GetUint32Header(edge.SeqHeader)
+	if err := conn.seq.PutSequenced(seq, msg); err != nil {
+		pfxlog.Logger().Errorf("failed to dispatch to fabric: (%v)", err)
 	}
 }
 

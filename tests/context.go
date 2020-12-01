@@ -339,7 +339,7 @@ func (ctx *TestContext) EnrollIdentity(identityId string) *sdkconfig.Config {
 	ctx.Req.NoError(err)
 
 	flags := sdkenroll.EnrollmentFlags{
-		Token: tkn,
+		Token:  tkn,
 		KeyAlg: "EC",
 	}
 	conf, err := sdkenroll.Enroll(flags)

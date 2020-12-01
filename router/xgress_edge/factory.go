@@ -28,11 +28,6 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
-	"math"
-)
-
-const (
-	DefaultMaxOutOfOrderMsgs = 1000
 )
 
 type Factory struct {
@@ -67,7 +62,7 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	return nil
 }
 
-func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{}) error {
+func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, _ chan struct{}) error {
 	factory.ctrl = ctrl
 	factory.stateManager.StartHeartbeat(ctrl, factory.config.HeartbeatIntervalSeconds)
 	return nil
@@ -149,14 +144,11 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type Options struct {
 	xgress.Options
-	MaxOutOfOrderMsgs uint32
-	channelOptions    *channel2.Options
+	channelOptions *channel2.Options
 }
 
 func (options *Options) load(data xgress.OptionsData) error {
 	options.Options = *xgress.LoadOptions(data)
-
-	options.MaxOutOfOrderMsgs = DefaultMaxOutOfOrderMsgs
 
 	if value, found := data["options"]; found {
 		data = value.(map[interface{}]interface{})
@@ -164,14 +156,6 @@ func (options *Options) load(data xgress.OptionsData) error {
 		options.channelOptions = channel2.LoadOptions(data)
 		if err := options.channelOptions.Validate(); err != nil {
 			return fmt.Errorf("error loading options for [edge/options]: %v", err)
-		}
-
-		if value, found := data["maxOutOfOrderMsgs"]; found {
-			iVal, ok := value.(int)
-			if !ok || iVal < 0 || iVal > math.MaxInt32 {
-				return errors.Errorf("maxOutOfOrderMsgs must be int value between 0 and %v", math.MaxInt32)
-			}
-			options.MaxOutOfOrderMsgs = uint32(iVal)
 		}
 	} else {
 		options.channelOptions = channel2.DefaultOptions()
