@@ -12,4 +12,7 @@ message Test {
     int32 payloadMinBytes = 7;
     int32 payloadMaxBytes = 8;
     int32 latencyFrequency = 9;
+    string txBlockType = 10;
+    string rxBlockType = 11;
+    int32 rxSeqBlockSize = 12;
 }

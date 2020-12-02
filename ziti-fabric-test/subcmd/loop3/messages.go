@@ -2,7 +2,10 @@ package loop3
 
 import (
 	"bytes"
+	"crypto/sha512"
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
@@ -90,7 +93,13 @@ const (
 	BlockTypeLatencyResponse      = 3
 )
 
-type Block struct {
+type Block interface {
+	PrepForSend(p *protocol)
+	Tx(p *protocol) error
+	Verify(p *protocol) error
+}
+
+type RandHashedBlock struct {
 	Type      byte
 	Sequence  uint32
 	Hash      []byte
@@ -98,7 +107,7 @@ type Block struct {
 	Timestamp time.Time
 }
 
-func (block *Block) getTimestampBytes() ([]byte, error) {
+func (block *RandHashedBlock) getTimestampBytes() ([]byte, error) {
 	if block.Type == BlockTypeLatencyRequest {
 		block.Timestamp = time.Now()
 	}
@@ -121,7 +130,23 @@ func (block *Block) getTimestampBytes() ([]byte, error) {
 	return tsBuf.Bytes(), nil
 }
 
-func (block *Block) Tx(p *protocol) error {
+func (block *RandHashedBlock) PrepForSend(p *protocol) {
+	var latency *time.Time
+	if block.Type == BlockTypePlain {
+		select {
+		case latency = <-p.latencies:
+		default:
+			latency = nil
+		}
+
+		if latency != nil {
+			block.Type = BlockTypeLatencyResponse
+			block.Timestamp = *latency
+		}
+	}
+}
+
+func (block *RandHashedBlock) Tx(p *protocol) error {
 	tsBytes, err := block.getTimestampBytes()
 	if err != nil {
 		return err
@@ -171,7 +196,7 @@ func (block *Block) Tx(p *protocol) error {
 	return nil
 }
 
-func (block *Block) Rx(p *protocol) error {
+func (block *RandHashedBlock) Rx(p *protocol) error {
 	length, err := p.rxHeader()
 	if err != nil {
 		return err
@@ -214,5 +239,45 @@ func (block *Block) Rx(p *protocol) error {
 
 	pfxlog.ContextLogger(p.test.Name).Infof("<- #%d (%s)", block.Sequence, info.ByteCount(int64(len(block.Data))))
 
+	return nil
+}
+
+func (block *RandHashedBlock) Verify(p *protocol) error {
+	if block.Sequence != uint32(p.rxSequence) {
+		return fmt.Errorf("expected sequence [%d] got sequence [%d]", p.rxSequence, block.Sequence)
+	}
+
+	hash := sha512.Sum512(block.Data)
+	if hex.EncodeToString(hash[:]) != hex.EncodeToString(block.Hash) {
+		return errors.New("mismatched hashes")
+	}
+	p.rxSequence++
+
+	return nil
+}
+
+type SeqBlock []byte
+
+func (s SeqBlock) PrepForSend(*protocol) {
+	// does nothing
+}
+
+func (s SeqBlock) Tx(p *protocol) error {
+	_, err := p.peer.Write(s)
+	if err == nil {
+		pfxlog.ContextLogger(p.test.Name).Infof("-> #%d (%s)", p.txCount, info.ByteCount(int64(len(s))))
+	}
+	return err
+}
+
+func (block SeqBlock) Verify(p *protocol) error {
+	for _, b := range block {
+		cmp := byte(p.rxSequence)
+		if cmp != b {
+			err := fmt.Errorf("expected sequence [%d] got sequence [%d]", cmp, b)
+			panic(err)
+		}
+		p.rxSequence++
+	}
 	return nil
 }
