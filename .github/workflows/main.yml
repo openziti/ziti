@@ -88,7 +88,6 @@ jobs:
 
       - name: Build and Test
         env:
-          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
@@ -112,6 +111,7 @@ jobs:
 
       - name: Trigger Smoketest
         env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
           jenkins_user: ${{ secrets.JENKINS_USER }}
           jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
           jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
