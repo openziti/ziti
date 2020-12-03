@@ -68,7 +68,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // runUpdateEdgeRouter update a new edgeRouter on the Ziti Edge Controller
 func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
-	id, err := mapNameToID("edge-routers", o.Args[0])
+	id, err := mapNameToID("edge-routers", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}

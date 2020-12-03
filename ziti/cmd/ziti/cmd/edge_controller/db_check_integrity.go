@@ -51,9 +51,9 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 	var body *gabs.Container
 
 	if o.fix {
-		body, err = util.EdgeControllerUpdate("database/fix-data-integrity", "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse)
+		body, err = util.EdgeControllerUpdate("database/fix-data-integrity", "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	} else {
-		body, err = util.EdgeControllerList("database/check-data-integrity", nil, o.OutputJSONResponse, o.Out)
+		body, err = util.EdgeControllerList("database/check-data-integrity", nil, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
 	}
 
 	if err != nil {

@@ -3,7 +3,9 @@ v: 3
 #trace:
 #  path:                 ctrl.trace
 
-#profile:
+profile:
+#   cpu:
+#       path: /home/plorenz/tmp/ctrl.cpu.pprof
 #  memory:
 #    path: ctrl.memprof
 

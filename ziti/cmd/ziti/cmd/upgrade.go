@@ -74,8 +74,8 @@ func NewCmdUpgrade(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	cmd.AddCommand(NewCmdUpgradeZitiRouter(f, out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiTunnel(f, out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiEnroller(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiProxy(f, out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiProxC(f, out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiEdgeTunnel(f, out, errOut))
 
 	return cmd
 }

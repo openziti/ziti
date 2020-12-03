@@ -114,16 +114,16 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 
 	if o.jwtOutputFile != "" {
-		if err := getIdentityJwt(o, id); err != nil {
+		if err := getIdentityJwt(o, id, o.commonOptions.Timeout, o.commonOptions.Verbose); err != nil {
 			return err
 		}
 	}
 	return err
 }
 
-func getIdentityJwt(o *createIdentityOptions, id string) error {
+func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bool) error {
 
-	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out)
+	newIdentity, err := DetailEntityOfType("identities", id, o.OutputJSONResponse, o.Out, timeout, verbose)
 	if err != nil {
 		return err
 	}

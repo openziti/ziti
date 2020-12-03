@@ -95,7 +95,7 @@ func (o *loginOptions) Run() error {
 
 	body := container.String()
 
-	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse)
+	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.commonOptions.Timeout, o.commonOptions.Verbose)
 
 	if err != nil {
 		return err

@@ -307,18 +307,18 @@ func listEntitiesWithOptions(entityType string, options *commonOptions) ([]*gabs
 		params.Add("filter", options.Args[0])
 	}
 
-	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out)
+	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 }
 
-func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer) ([]*gabs.Container, *paging, error) {
+func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, logJSON, out)
+	return listEntitiesOfType(entityType, params, logJSON, out, timeout, verbose)
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer) ([]*gabs.Container, *paging, error) {
-	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out)
+func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
+	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out, timeout, verbose)
 
 	if err != nil {
 		return nil, nil, err
@@ -357,7 +357,7 @@ func getPaging(c *gabs.Container) *paging {
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
 func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *commonOptions) ([]*gabs.Container, *paging, error) {
-	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out)
+	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 
 	if err != nil {
 		return nil, nil, err
@@ -381,7 +381,7 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *comm
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, paging, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out)
+	children, paging, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -424,12 +424,12 @@ func outputEdgeRouterPolicies(o *commonOptions, children []*gabs.Container, pagi
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
 
-		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities", *o)
 		if err != nil {
 			return err
 		}
 
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers", *o)
 		if err != nil {
 			return err
 		}
@@ -488,7 +488,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if len(configTypes) == 1 && strings.EqualFold("all", configTypes[0]) {
 		params.Add("configTypes", "all")
 	} else {
-		if configTypes, err := mapNamesToIDs("config-types", configTypes...); err != nil {
+		if configTypes, err := mapNamesToIDs("config-types", *options, configTypes...); err != nil {
 			return err
 		} else {
 			for _, configType := range configTypes {
@@ -502,7 +502,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out)
+	children, pagingInfo, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -537,9 +537,9 @@ func outputServiceConfigs(o *commonOptions, children []*gabs.Container, pagingIn
 
 	for _, entity := range children {
 		service, _ := entity.Path("service").Data().(string)
-		serviceName, _ := mapIdToName("services", service)
+		serviceName, _ := mapIdToName("services", service, *o)
 		config, _ := entity.Path("config").Data().(string)
-		configName, _ := mapIdToName("configs", config)
+		configName, _ := mapIdToName("configs", config, *o)
 		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
 		if err != nil {
 			return err
@@ -565,11 +565,11 @@ func outputServiceEdgeRouterPolicies(o *commonOptions, children []*gabs.Containe
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers")
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers", *o)
 		if err != nil {
 			return err
 		}
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services", *o)
 		if err != nil {
 			return err
 		}
@@ -600,16 +600,16 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingI
 		name, _ := entity.Path("name").Data().(string)
 		policyType, _ := entity.Path("type").Data().(string)
 
-		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities")
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities", *o)
 		if err != nil {
 			return err
 		}
 
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services")
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services", *o)
 		if err != nil {
 			return err
 		}
-		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles", "posture-checks")
+		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles", "posture-checks", *o)
 		if err != nil {
 			return err
 		}
@@ -623,7 +623,7 @@ func outputServicePolicies(o *commonOptions, children []*gabs.Container, pagingI
 	return nil
 }
 
-func mapRoleIdsToNames(c *gabs.Container, path string, entityType string) ([]string, error) {
+func mapRoleIdsToNames(c *gabs.Container, path string, entityType string, o commonOptions) ([]string, error) {
 	jsonValues := c.Path(path).Data()
 	if jsonValues == nil {
 		return nil, nil
@@ -636,7 +636,7 @@ func mapRoleIdsToNames(c *gabs.Container, path string, entityType string) ([]str
 		str := val.(string)
 		if strings.HasPrefix(str, "@") {
 			id := strings.TrimPrefix(str, "@")
-			name, err := mapIdToName(entityType, id)
+			name, err := mapIdToName(entityType, id, o)
 			if err != nil {
 				return nil, err
 			}
@@ -660,7 +660,7 @@ func runListIdentities(roleFilters []string, roleSemantic string, options *commo
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out)
+	children, pagingInfo, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -819,7 +819,7 @@ func outputConfigs(o *commonOptions, children []*gabs.Container, pagingInfo *pag
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		configType, _ := entity.Path("type").Data().(string)
+		configType, _ := entity.Path("configType.name").Data().(string)
 		data, _ := entity.Path("data").Data().(map[string]interface{})
 		formattedData, err := json.MarshalIndent(data, "      ", "    ")
 		if err != nil {
@@ -935,7 +935,7 @@ func runListRoleAttributes(entityType string, o *commonOptions) error {
 
 func runListChilden(parentType, childType string, o *commonOptions, outputF outputFunction) error {
 	idOrName := o.Args[0]
-	parentId, err := mapNameToID(parentType, idOrName)
+	parentId, err := mapNameToID(parentType, idOrName, *o)
 	if err != nil {
 		return err
 	}

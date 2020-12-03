@@ -68,12 +68,12 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 
 // runCreateServiceEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
 func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) error {
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.commonOptions)
 	if err != nil {
 		return err
 	}

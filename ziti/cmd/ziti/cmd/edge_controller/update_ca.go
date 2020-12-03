@@ -108,7 +108,7 @@ func runUpdateCa(options updateCaOptions) error {
 		return runVerifyCa(options)
 	}
 
-	id, err := mapCaNameToID(options.nameOrId)
+	id, err := mapCaNameToID(options.nameOrId, options.commonOptions)
 
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func runUpdateCa(options updateCaOptions) error {
 }
 
 func runVerifyCa(options updateCaOptions) error {
-	id, err := mapCaNameToID(options.nameOrId)
+	id, err := mapCaNameToID(options.nameOrId, options.commonOptions)
 
 	if err != nil {
 		return err

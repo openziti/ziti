@@ -17,10 +17,10 @@
 package cmd
 
 import (
+	"fmt"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
-	"fmt"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -38,6 +38,7 @@ type CommonOptions struct {
 	Verbose        bool
 	Staging        bool
 	ConfigIdentity string
+	Timeout        int
 }
 
 type ServerFlags struct {
@@ -72,6 +73,7 @@ func (options *CommonOptions) addCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
 	cmd.Flags().BoolVarP(&options.Staging, "staging", "", false, "Install/Upgrade components from the ziti-staging repo")
 	cmd.Flags().StringVarP(&options.ConfigIdentity, "configIdentity", "i", "", "Which configIdentity to use")
+	cmd.Flags().IntVarP(&options.Timeout, "timeout", "t", 5, "Timeout for REST operations (specified in seconds)")
 	options.Cmd = cmd
 }
 

@@ -1,3 +1,17 @@
+# Release 0.17.5
+
+## What's New 
+  * Builds have been moved from travis.org to Github Actions
+  * IDs generated for entities in the Edge no longer use underscores and instead use periods to avoid issues when used as a common name in CSRs
+  * [edge#424](https://github.com/openziti/edge/issues/424) Authenticated, non-admin, clients can query service terminators
+  * [sdk-golang#112](https://github.com/openziti/sdk-golang/issues/112) Process checks for Windows are case-insensitive
+  * The CLI agent now runs over unix sockets and is enabled by default. See doc/ops-agent.md for details in the ziti repository.
+  * [ziti#245](https://github.com/openziti/ziti/issues/245) Make timeout used by CLI's internal REST client configurable via cmd line arg
+
+    All `ziti edge controller` subcommands now support the `--timeout=n` flag which controls the internal REST-client timeout used when communicating with the Controller. The timeout resolution is in seconds.  If this flag is not specified, the default is `5`.  Prior to this release, the the REST-client timeout was always `2`.  You now have the opportunity to increase the timeout if necessary (e.g. if large amounts of data are being queried).
+
+    All `ziti edge controller` subcommands now support the `--verbose` flag which will cause internal REST-client to emit debugging information concerning HTTP headers, status, raw json response data, and more.  You now have the opportunity to see much more information, which could be valuable during trouble-shooting.
+
 # Release 0.17.4
 ## Breaking Changes
   * Process posture checks now accept process posture responses with `signerFingerprints` instead of a single

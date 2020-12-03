@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -69,6 +70,10 @@ func newDialerCmd() *dialerCmd {
 
 func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
+
+	if err := agent.Listen(agent.Options{}); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+	}
 
 	scenario, err := LoadScenario(args[0])
 	if err != nil {

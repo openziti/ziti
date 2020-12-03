@@ -68,17 +68,17 @@ func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 }
 
 func runUpdateEdgeRouterPolicy(o *updateEdgeRouterPolicyOptions) error {
-	id, err := mapNameToID("edge-router-policies", o.Args[0])
+	id, err := mapNameToID("edge-router-policies", o.Args[0], o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers")
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities")
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
 	if err != nil {
 		return err
 	}

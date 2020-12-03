@@ -78,17 +78,17 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services")
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities")
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "postureChecks")
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "postureChecks", o.commonOptions)
 	if err != nil {
 		return err
 	}
@@ -118,12 +118,12 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	return err
 }
 
-func convertNamesToIds(roles []string, entityType string) ([]string, error) {
+func convertNamesToIds(roles []string, entityType string, o commonOptions) ([]string, error) {
 	var result []string
 	for _, val := range roles {
 		if strings.HasPrefix(val, "@") {
 			idOrName := strings.TrimPrefix(val, "@")
-			id, err := mapNameToID(entityType, idOrName)
+			id, err := mapNameToID(entityType, idOrName, o)
 			if err != nil {
 				return nil, err
 			}

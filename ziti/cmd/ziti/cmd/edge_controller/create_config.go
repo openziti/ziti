@@ -95,7 +95,7 @@ func runCreateConfig(o *createConfigOptions) error {
 		return errors.Errorf("unable to parse data as json: %v", err)
 	}
 
-	configTypeId, err := mapNameToID("config-types", o.Args[1])
+	configTypeId, err := mapNameToID("config-types", o.Args[1], o.commonOptions)
 	if err != nil {
 		return err
 	}

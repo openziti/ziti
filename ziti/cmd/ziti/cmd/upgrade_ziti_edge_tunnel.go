@@ -90,5 +90,5 @@ func (o *UpgradeZitiEdgeTunnelOptions) Run() error {
 
 	o.deleteInstalledBinary(c.ZITI_EDGE_TUNNEL)
 
-	return o.installZitiApp(version.GetBranch(), c.ZITI_EDGE_TUNNEL, true, newVersionStr)
+	return o.installGitHubRelease(version.GetBranch(), c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, true, newVersionStr)
 }

@@ -100,7 +100,7 @@ func updateSelfPassword(current string, new string, options commonOptions) error
 	setJSONValue(passwordData, current, "currentPassword")
 	setJSONValue(passwordData, new, "password")
 
-	respEnvelope, err := util.EdgeControllerList("current-identity/authenticators", map[string][]string{"filter": {`method="updb"`}}, options.OutputJSONResponse, options.Out)
+	respEnvelope, err := util.EdgeControllerList("current-identity/authenticators", map[string][]string{"filter": {`method="updb"`}}, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func updateSelfPassword(current string, new string, options commonOptions) error
 }
 
 func setIdentityPassword(identity, password string, options commonOptions) error {
-	id, err := mapIdentityNameToID(identity)
+	id, err := mapIdentityNameToID(identity, options)
 
 	if err != nil {
 		return err

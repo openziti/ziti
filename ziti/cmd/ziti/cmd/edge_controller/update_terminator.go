@@ -79,7 +79,7 @@ func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
 
-	router, err := mapNameToID("edge-routers", o.router)
+	router, err := mapNameToID("edge-routers", o.router, o.commonOptions)
 	if err != nil {
 		router = o.router // might be a pure fabric router, id might not be UUID
 	}
