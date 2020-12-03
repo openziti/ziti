@@ -89,9 +89,6 @@ jobs:
       - name: Build and Test
         env:
           JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
-          jenkins_user: ${{ secrets.JENKINS_USER }}
-          jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
-          jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
@@ -105,7 +102,6 @@ jobs:
           aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
           $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
-          $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
 
       - name: Publish
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
@@ -114,3 +110,12 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github
+
+      - name: Trigger Smoketest
+        env:
+          jenkins_user: ${{ secrets.JENKINS_USER }}
+          jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
+          jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
