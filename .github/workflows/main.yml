@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - release-*
+      - release-v*
   pull_request:
 
 env:
@@ -102,7 +102,7 @@ jobs:
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
 
       - name: Publish
-        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-v')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
