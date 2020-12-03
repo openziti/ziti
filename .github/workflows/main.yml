@@ -101,7 +101,6 @@ jobs:
           CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
-          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
 
       - name: Publish
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
@@ -118,4 +117,5 @@ jobs:
           jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
           $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
