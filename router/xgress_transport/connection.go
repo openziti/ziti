@@ -32,15 +32,13 @@ func (c *transportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	buffer := make([]byte, 10240)
 	n, err := c.Reader().Read(buffer)
 	if err == nil {
-		if len(buffer) < (5 * 1024) {
+		if n < (5 * 1024) {
 			buffer = append([]byte(nil), buffer[:n]...)
 		}
 	}
-	return buffer[:n], nil, err
-}
 
-func (c *transportXgressConn) Write(p []byte) (n int, err error) {
-	return c.Writer().Write(p)
+	data := buffer[:n]
+	return data, nil, err
 }
 
 func (c *transportXgressConn) WritePayload(p []byte, _ map[uint8][]byte) (n int, err error) {

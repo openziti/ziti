@@ -108,6 +108,7 @@ type Xgress struct {
 	closed         concurrenz.AtomicBoolean
 	closeHandler   CloseHandler
 	peekHandlers   []PeekHandler
+	rxerStarted    concurrenz.AtomicBoolean
 }
 
 func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
@@ -250,7 +251,7 @@ func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error 
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
-	if payload.IsSessionStartFlagSet() {
+	if payload.IsSessionStartFlagSet() && self.rxerStarted.CompareAndSwap(false, true) {
 		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received session start, starting xgress receiver")
 		go self.rx()
 	}
@@ -351,7 +352,7 @@ func (self *Xgress) tx() {
 func (self *Xgress) rx() {
 	log := pfxlog.ContextLogger(self.Label())
 
-	log.Debug("started")
+	log.Debugf("started with peer: %v", self.peer.LogContext())
 	defer log.Debug("exited")
 
 	defer func() {
@@ -378,39 +379,37 @@ func (self *Xgress) rx() {
 			return
 		}
 
-		if !self.closed.Get() {
-			start := 0
-			remaining := n
-			payloads := 0
-			for {
-				length := mathz.MinInt(remaining, int(self.Options.Mtu))
-				payload := &Payload{
-					Header: Header{
-						SessionId: self.sessionId,
-						Flags:     SetOriginatorFlag(0, self.originator),
-					},
-					Sequence: self.nextReceiveSequence(),
-					Data:     buffer[start : start+length],
-					Headers:  headers,
-				}
-				start += length
-				remaining -= length
-				payloads++
-
-				self.forwardPayload(payload)
-				payloadLogger := log.WithFields(payload.GetLoggerFields())
-				payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
-
-				if remaining < 1 {
-					break
-				}
-			}
-
-			logrus.Debugf("received [%d] payloads for [%d] bytes", payloads, n)
-
-		} else {
+		if self.closed.Get() {
 			return
 		}
+		start := 0
+		remaining := n
+		payloads := 0
+		for {
+			length := mathz.MinInt(remaining, int(self.Options.Mtu))
+			payload := &Payload{
+				Header: Header{
+					SessionId: self.sessionId,
+					Flags:     SetOriginatorFlag(0, self.originator),
+				},
+				Sequence: self.nextReceiveSequence(),
+				Data:     buffer[start : start+length],
+				Headers:  headers,
+			}
+			start += length
+			remaining -= length
+			payloads++
+
+			self.forwardPayload(payload)
+			payloadLogger := log.WithFields(payload.GetLoggerFields())
+			payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
+
+			if remaining < 1 {
+				break
+			}
+		}
+
+		logrus.Debugf("received [%d] payloads for [%d] bytes", payloads, n)
 	}
 }
 
