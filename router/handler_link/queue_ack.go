@@ -105,12 +105,11 @@ func (self *queuingAckHandler) ackIngester() {
 func (self *queuingAckHandler) ackForwarder() {
 	logger := pfxlog.Logger()
 	for ack := range self.ackForward {
-		// now := time.Now()
+		now := time.Now()
 		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
 			logger.WithError(err).Debugf("unable to forward acknowledgement (%v)", err)
+		} else {
+			self.timer.UpdateSince(now)
 		}
-		//} else {
-		//	self.timer.UpdateSince(now)
-		//}
 	}
 }

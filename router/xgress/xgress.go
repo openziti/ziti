@@ -448,11 +448,6 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 	log := pfxlog.Logger().WithFields(payload.GetLoggerFields())
 	log.Debug("payload received")
 	if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
-		if self.sessionId != payload.SessionId {
-			pfxlog.Logger().WithField("session", self.sessionId).Errorf("payload for session=%v routed to wrong xgress", payload.SessionId)
-			return
-		}
-
 		log := pfxlog.Logger().WithFields(payload.GetLoggerFields())
 		log.Debug("ready to acknowledge")
 

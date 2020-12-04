@@ -109,10 +109,6 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 }
 
 func (buffer *LinkSendBuffer) BufferPayload(payload *Payload) (func(), error) {
-	if buffer.x.sessionId != payload.GetSessionId() {
-		return nil, errors.Errorf("bad payload. should have session %v, but had %v", buffer.x.sessionId, payload.GetSessionId())
-	}
-
 	txPayload := &txPayload{payload: payload, age: math.MaxInt64, x: buffer.x}
 	select {
 	case buffer.newlyBuffered <- txPayload:
@@ -240,10 +236,6 @@ func (buffer *LinkSendBuffer) close() {
 
 func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 	log := pfxlog.Logger().WithFields(ack.GetLoggerFields())
-	if buffer.x.sessionId != ack.SessionId {
-		log.Errorf("unexpected acknowledgement. session=%v, but ack is for session=%v", buffer.x.sessionId, ack.Sequence)
-		return
-	}
 
 	for _, sequence := range ack.Sequence {
 		if txPayload, found := buffer.buffer[sequence]; found {
