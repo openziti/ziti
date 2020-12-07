@@ -58,6 +58,21 @@ func Test_SpecMedium(t *testing.T) {
 	p.runScenario(spec)
 }
 
+func Test_SpecCurrent(t *testing.T) {
+	spec := &perfScenarioSpec{
+		name:                         "medium",
+		serviceCount:                 2,
+		identityCount:                10000,
+		edgeRouterCount:              2,
+		servicePolicyCount:           1,
+		edgeRouterPolicyCount:        1,
+		serviceEdgeRouterPolicyCount: 1,
+	}
+
+	p := &modelPerf{TestContext: NewTestContext(t)}
+	p.runScenario(spec)
+}
+
 func Test_SpecSmall(t *testing.T) {
 	spec := &perfScenarioSpec{
 		name:                         "small",
@@ -217,10 +232,10 @@ func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
 		service.Id = id
 		spec.services = append(spec.services, service)
 		if (i+1)%100 == 0 {
-			pfxlog.Logger().Trace("created %v services\n", i)
+			pfxlog.Logger().Tracef("created %v services\n", i)
 		}
 	}
-	pfxlog.Logger().Trace("finished creating %v services\n", spec.serviceCount)
+	pfxlog.Logger().Tracef("finished creating %v services\n", spec.serviceCount)
 }
 
 func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
@@ -257,10 +272,10 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 			spec.config = ctx.EnrollIdentity(identity.Id)
 		}
 		if (i+1)%100 == 0 {
-			pfxlog.Logger().Trace("created %v identities\n", i+1)
+			pfxlog.Logger().Tracef("created %v identities\n", i+1)
 		}
 	}
-	pfxlog.Logger().Trace("finished creating %v identities\n", spec.identityCount)
+	pfxlog.Logger().Tracef("finished creating %v identities\n", spec.identityCount)
 }
 
 func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
@@ -280,7 +295,7 @@ func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
 		ctx.Req.NoError(err)
 		spec.edgeRouters = append(spec.edgeRouters, edgeRouter)
 		if (i+1)%100 == 0 {
-			pfxlog.Logger().Trace("created %v edge routers\n", i+1)
+			pfxlog.Logger().Tracef("created %v edge routers\n", i+1)
 		}
 	}
 	fmt.Printf("finished creating %v edge routers\n", spec.edgeRouterCount)

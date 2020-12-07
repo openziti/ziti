@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"time"
 )
@@ -138,7 +137,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	conn := &localMessageSink{
 		MsgChannel: *edge.NewEdgeMsgChannel(proxy.ch, connId),
-		seq:        sequencer.NewNoopSequencer(4),
+		seq:        NewMsgQueue(4),
 		closeCB: func(connId uint32) {
 			removeListener()
 		},
@@ -192,7 +191,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 
 	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
-	proxy.listener.bindHandler.HandleXgressBind(sessionInfo.SessionId, sessionInfo.Address, xgress.Initiator, x)
+	proxy.listener.bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
@@ -267,7 +266,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	messageSink := &localListener{
 		localMessageSink: localMessageSink{
 			MsgChannel: *edge.NewEdgeMsgChannel(ch, connId),
-			seq:        sequencer.NewNoopSequencer(4),
+			seq:        NewMsgQueue(4),
 			closeCB: func(closeConnId uint32) {
 				if closeConnId == connId {
 					removeListener()

@@ -107,10 +107,10 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
 	}
 
-	conn := listenConn.newSink(result.NewConnId, dialer.options)
+	conn := listenConn.newSink(result.NewConnId)
 
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
-	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
+	bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	start := edge.NewStateConnectedMsg(result.ConnId)

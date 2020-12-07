@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"io"
 )
@@ -41,7 +40,7 @@ var headersFromFabric = map[uint8]int32{
 
 type localMessageSink struct {
 	edge.MsgChannel
-	seq       sequencer.Sequencer
+	seq       MsgQueue
 	closeCB   func(connId uint32)
 	newSinkCB func(sink *localMessageSink)
 	closed    concurrenz.AtomicBoolean
@@ -54,10 +53,10 @@ type localListener struct {
 	parent          *ingressProxy
 }
 
-func (conn *localMessageSink) newSink(connId uint32, _ *Options) *localMessageSink {
+func (conn *localMessageSink) newSink(connId uint32) *localMessageSink {
 	result := &localMessageSink{
 		MsgChannel: *edge.NewEdgeMsgChannel(conn.Channel, connId),
-		seq:        sequencer.NewNoopSequencer(4),
+		seq:        NewMsgQueue(4),
 		closeCB:    conn.closeCB,
 		newSinkCB:  conn.newSinkCB,
 	}
@@ -76,49 +75,67 @@ func (conn *localMessageSink) LogContext() string {
 func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
 
-	for {
-		next := conn.seq.GetNext()
-		if next == nil {
-			log.Debug("sequencer closed, return EOF")
-			conn.closeCB(conn.Id())
-			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
-		}
+	msg := conn.seq.Pop()
+	if msg == nil {
+		log.Debug("sequencer closed, return EOF")
+		conn.closeCB(conn.Id())
+		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
+	}
 
-		msg := next.(*channel2.Message)
-		log = log.WithFields(edge.GetLoggerFields(msg))
-		log.Debug("processing")
+	log = log.WithFields(edge.GetLoggerFields(msg))
+	log.Debug("processing")
 
-		switch msg.ContentType {
-		case edge.ContentTypeData:
-			log.Debugf("received data message with payload size %v", len(msg.Body))
-			return msg.Body, conn.getHeaderMap(msg), nil
+	switch msg.ContentType {
+	case edge.ContentTypeData:
+		log.Debugf("received data message with payload size %v", len(msg.Body))
+		return msg.Body, conn.getHeaderMap(msg), nil
 
-		case edge.ContentTypeStateClosed:
-			log.Debug("received close message, closing connection and returning EOF")
-			conn.close(false, "close message received")
-			conn.closeCB(conn.Id())
-			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
+	case edge.ContentTypeStateClosed:
+		log.Debug("received close message, closing connection and returning EOF")
+		conn.close(false, "close message received")
+		conn.closeCB(conn.Id())
+		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 
-		default:
-			log.Error("unexpected message type, closing connection")
-			conn.close(false, "close message received")
-			conn.closeCB(conn.Id())
-			return nil, nil, io.EOF // io.EOF signals xgress to shutdown
-		}
+	default:
+		log.Error("unexpected message type, closing connection")
+		conn.close(false, "close message received")
+		conn.closeCB(conn.Id())
+		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 	}
 }
 
 func (conn *localMessageSink) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
-	msgUUID := headers[xgress.HeaderKeyUUID]
+	var msgUUID []byte
+	var edgeHdrs map[int32][]byte
 
-	edgeHdrs := make(map[int32][]byte)
-	for k, v := range headers {
-		if edgeHeader, found := headersFromFabric[k]; found {
-			edgeHdrs[edgeHeader] = v
+	if headers != nil {
+		msgUUID = headers[xgress.HeaderKeyUUID]
+
+		edgeHdrs = make(map[int32][]byte)
+		for k, v := range headers {
+			if edgeHeader, found := headersFromFabric[k]; found {
+				edgeHdrs[edgeHeader] = v
+			}
 		}
 	}
 
-	return conn.WriteTraced(p, msgUUID, edgeHdrs)
+	msg := edge.NewDataMsg(conn.Id(), conn.NextMsgId(), p)
+	if msgUUID != nil {
+		msg.Headers[edge.UUIDHeader] = msgUUID
+	}
+
+	for k, v := range edgeHdrs {
+		msg.Headers[k] = v
+	}
+
+	conn.TraceMsg("write", msg)
+	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Tracef("writing %v bytes", len(p))
+
+	if err = conn.Channel.Send(msg); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
 }
 
 func (conn *localMessageSink) Close() error {
@@ -159,9 +176,8 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 }
 
 func (conn *localMessageSink) Accept(msg *channel2.Message) {
-	seq, _ := msg.GetUint32Header(edge.SeqHeader)
-	if err := conn.seq.PutSequenced(seq, msg); err != nil {
-		pfxlog.Logger().Errorf("failed to dispatch to fabric: (%v)", err)
+	if err := conn.seq.Push(msg); err != nil {
+		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)
 	}
 }
 

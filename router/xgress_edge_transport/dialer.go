@@ -111,7 +111,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	}
 
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(sessionId, address, xgress.Terminator, x)
+	bindHandler.HandleXgressBind(x)
 	x.Start()
 
 	return peerData, nil
