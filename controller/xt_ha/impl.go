@@ -40,7 +40,7 @@ func (f factory) GetStrategyName() string {
 }
 
 func (f factory) NewStrategy() xt.Strategy {
-	return strategy{}
+	return &strategy{}
 }
 
 type strategy struct {
@@ -48,25 +48,25 @@ type strategy struct {
 	failCount int32
 }
 
-func (s strategy) VisitDialFailed(event xt.TerminatorEvent) {
+func (s *strategy) VisitDialFailed(event xt.TerminatorEvent) {
 	failCount := atomic.AddInt32(&s.failCount, 1)
 	if failCount >= 3 {
 		xt.GlobalCosts().SetPrecedence(event.GetTerminator().GetId(), xt.Precedences.Failed)
 	}
 }
 
-func (s strategy) VisitDialSucceeded(xt.TerminatorEvent) {
+func (s *strategy) VisitDialSucceeded(xt.TerminatorEvent) {
 	atomic.StoreInt32(&s.failCount, 0)
 }
 
-func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (s *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 
-func (s strategy) NotifyEvent(event xt.TerminatorEvent) {
+func (s *strategy) NotifyEvent(event xt.TerminatorEvent) {
 	event.Accept(s)
 }
 
-func (s strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+func (s *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
 	return nil
 }
