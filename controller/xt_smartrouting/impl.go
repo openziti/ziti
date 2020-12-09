@@ -35,41 +35,41 @@ will only reduce costs by the amount that failures have previously increased it.
 */
 
 func NewFactory() xt.Factory {
-	return factory{}
+	return &factory{}
 }
 
 type factory struct{}
 
-func (f factory) GetStrategyName() string {
+func (self *factory) GetStrategyName() string {
 	return Name
 }
 
-func (f factory) NewStrategy() xt.Strategy {
+func (self *factory) NewStrategy() xt.Strategy {
 	strategy := strategy{
-		CostVisitor: &xt_common.CostVisitor{
+		CostVisitor: xt_common.CostVisitor{
 			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
 			SessionCost:  2,
 		},
 	}
 	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
-	return strategy
+	return &strategy
 }
 
 type strategy struct {
-	*xt_common.CostVisitor
+	xt_common.CostVisitor
 }
 
-func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 
-func (s strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(s.CostVisitor)
+func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {
+	event.Accept(&self.CostVisitor)
 }
 
-func (s strategy) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
+func (self *strategy) HandleTerminatorChange(event xt.StrategyChangeEvent) error {
 	for _, t := range event.GetRemoved() {
-		s.FailureCosts.Clear(t.GetId())
+		self.FailureCosts.Clear(t.GetId())
 	}
 	return nil
 }

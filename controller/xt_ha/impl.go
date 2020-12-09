@@ -22,7 +22,7 @@ import (
 )
 
 func NewFactory() xt.Factory {
-	return factory{}
+	return &factory{}
 }
 
 /**
@@ -35,11 +35,11 @@ primary as Required again when it has recovered.
 */
 type factory struct{}
 
-func (f factory) GetStrategyName() string {
+func (self *factory) GetStrategyName() string {
 	return "ha"
 }
 
-func (f factory) NewStrategy() xt.Strategy {
+func (self *factory) NewStrategy() xt.Strategy {
 	return &strategy{}
 }
 

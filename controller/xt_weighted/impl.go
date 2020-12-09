@@ -31,18 +31,18 @@ as often.
 */
 
 func NewFactory() xt.Factory {
-	return factory{}
+	return &factory{}
 }
 
 type factory struct{}
 
-func (f factory) GetStrategyName() string {
+func (self *factory) GetStrategyName() string {
 	return "weighted"
 }
 
-func (f factory) NewStrategy() xt.Strategy {
-	strategy := strategy{
-		CostVisitor: &xt_common.CostVisitor{
+func (self *factory) NewStrategy() xt.Strategy {
+	strategy := &strategy{
+		CostVisitor: xt_common.CostVisitor{
 			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
 			SessionCost:  2,
 		},
@@ -52,10 +52,10 @@ func (f factory) NewStrategy() xt.Strategy {
 }
 
 type strategy struct {
-	*xt_common.CostVisitor
+	xt_common.CostVisitor
 }
 
-func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	if len(terminators) == 1 {
 		return terminators[0], nil
@@ -88,10 +88,10 @@ func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, erro
 	return terminators[0], nil
 }
 
-func (s strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(s.CostVisitor)
+func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {
+	event.Accept(&self.CostVisitor)
 }
 
-func (s strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+func (self *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
 	return nil
 }
