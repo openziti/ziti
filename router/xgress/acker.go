@@ -83,7 +83,7 @@ func (acker *Acker) ackSender() {
 	for nextAck := range acker.ackSend {
 		now := time.Now()
 		if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
-			logger.WithError(err).Errorf("unexpected error while sending ack from %v", nextAck.Address)
+			logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
 			ackFailures.Mark(1)
 		} else {
 			ackWriteTimer.UpdateSince(now)

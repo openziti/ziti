@@ -48,25 +48,25 @@ type strategy struct {
 	failCount int32
 }
 
-func (s *strategy) VisitDialFailed(event xt.TerminatorEvent) {
-	failCount := atomic.AddInt32(&s.failCount, 1)
+func (self *strategy) VisitDialFailed(event xt.TerminatorEvent) {
+	failCount := atomic.AddInt32(&self.failCount, 1)
 	if failCount >= 3 {
 		xt.GlobalCosts().SetPrecedence(event.GetTerminator().GetId(), xt.Precedences.Failed)
 	}
 }
 
-func (s *strategy) VisitDialSucceeded(xt.TerminatorEvent) {
-	atomic.StoreInt32(&s.failCount, 0)
+func (self *strategy) VisitDialSucceeded(xt.TerminatorEvent) {
+	atomic.StoreInt32(&self.failCount, 0)
 }
 
-func (s *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 
-func (s *strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(s)
+func (self *strategy) NotifyEvent(event xt.TerminatorEvent) {
+	event.Accept(self)
 }
 
-func (s *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+func (self *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
 	return nil
 }

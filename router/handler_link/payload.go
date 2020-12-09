@@ -53,7 +53,7 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err == nil {
 		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
-			log.Debugf("unable to forward (%v)", err)
+			log.WithError(err).Debug("unable to forward")
 		}
 		if payload.IsSessionEndFlagSet() {
 			self.forwarder.EndSession(payload.GetSessionId())
