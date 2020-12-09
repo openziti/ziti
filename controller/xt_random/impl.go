@@ -27,22 +27,22 @@ match the precedence of the first terminator, which is presumably of the highest
 */
 
 func NewFactory() xt.Factory {
-	return factory{}
+	return &factory{}
 }
 
 type factory struct{}
 
-func (f factory) GetStrategyName() string {
+func (self *factory) GetStrategyName() string {
 	return "random"
 }
 
-func (f factory) NewStrategy() xt.Strategy {
-	return strategy{}
+func (self *factory) NewStrategy() xt.Strategy {
+	return &strategy{}
 }
 
 type strategy struct{}
 
-func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	count := len(terminators)
 	if count == 1 {
@@ -52,8 +52,8 @@ func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, erro
 	return terminators[selected], nil
 }
 
-func (s strategy) NotifyEvent(xt.TerminatorEvent) {}
+func (self *strategy) NotifyEvent(xt.TerminatorEvent) {}
 
-func (s strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+func (self *strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
 	return nil
 }
