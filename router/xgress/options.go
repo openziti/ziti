@@ -18,6 +18,7 @@ package xgress
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // Options contains common Xgress configuration options
@@ -41,6 +42,7 @@ type Options struct {
 	RetxInitial  uint32
 	RetxScale    float64
 	RetxAddMs    uint32
+	MaxCloseWait time.Duration
 }
 
 func LoadOptions(data OptionsData) *Options {
@@ -102,6 +104,10 @@ func LoadOptions(data OptionsData) *Options {
 		if value, found := data["retxAddMs"]; found {
 			options.RetxAddMs = uint32(value.(int))
 		}
+		if value, found := data["maxCloseWaitMs"]; found {
+			options.MaxCloseWait = time.Duration(value.(int)) * time.Millisecond
+		}
+
 	}
 
 	return options
@@ -125,6 +131,7 @@ func DefaultOptions() *Options {
 		RxBufferSize:           4 * 1024 * 1024,
 		RetxScale:              2.0,
 		RetxAddMs:              100,
+		MaxCloseWait:           30 * time.Second,
 	}
 }
 
