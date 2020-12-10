@@ -93,27 +93,61 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		dialRequest.Headers[edge.AppDataHeader] = appData
 	}
 
-	reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
-	if err != nil {
-		return nil, err
+	if listenConn.assignIds {
+		connId := listenConn.nextDialConnId()
+		dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
+
+		conn := listenConn.newSink(connId)
+
+		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		bindHandler.HandleXgressBind(x)
+
+		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		if err != nil {
+			conn.close(false, err.Error())
+			x.Close()
+			return nil, err
+		}
+		result, err := edge.UnmarshalDialResult(reply)
+
+		if err != nil {
+			conn.close(false, err.Error())
+			x.Close()
+			return nil, err
+		}
+
+		if !result.Success {
+			msg := fmt.Sprintf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+			conn.close(false, msg)
+			x.Close()
+			return nil, fmt.Errorf(msg)
+		}
+
+		x.Start()
+		return nil, nil
+	} else {
+		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		if err != nil {
+			return nil, err
+		}
+		result, err := edge.UnmarshalDialResult(reply)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !result.Success {
+			return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+		}
+
+		conn := listenConn.newSink(result.NewConnId)
+
+		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		bindHandler.HandleXgressBind(x)
+		x.Start()
+
+		start := edge.NewStateConnectedMsg(result.ConnId)
+		start.ReplyTo(reply)
+		return nil, listenConn.SendState(start)
 	}
-	result, err := edge.UnmarshalDialResult(reply)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !result.Success {
-		return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
-	}
-
-	conn := listenConn.newSink(result.NewConnId)
-
-	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
-	bindHandler.HandleXgressBind(x)
-	x.Start()
-
-	start := edge.NewStateConnectedMsg(result.ConnId)
-	start.ReplyTo(reply)
-	return nil, listenConn.SendState(start)
 }
