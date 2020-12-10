@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	svcPollRateFlag = "svcPollRate"
-	resolverCfgFlag = "resolver"
+	svcPollRateFlag   = "svcPollRate"
+	resolverCfgFlag   = "resolver"
 	dnsSvcIpRangeFlag = "dnsSvcIpRange"
 )
 
@@ -61,6 +61,7 @@ var logFormatter string
 func Execute() {
 	if err := root.Execute(); err != nil {
 		pfxlog.Logger().Errorf("error: %s", err)
+		os.Exit(1)
 	}
 }
 
@@ -103,7 +104,8 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	resolverConfig := cmd.Flag("resolver").Value.String()
 	resolver = dns.NewResolver(resolverConfig)
 	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
-	err = intercept.SetDnsInterceptIpRange(dnsIpRange); if err != nil {
+	err = intercept.SetDnsInterceptIpRange(dnsIpRange)
+	if err != nil {
 		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
 	}
 
