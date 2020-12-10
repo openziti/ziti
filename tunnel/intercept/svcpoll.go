@@ -175,18 +175,20 @@ func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.
 
 func host(context ziti.Context, svc *entities.Service) {
 	log := pfxlog.Logger()
-	listener, err := context.Listen(svc.Name)
+	options := ziti.DefaultListenOptions()
+	options.ManualStart = true
+	listener, err := context.ListenWithOptions(svc.Name, options)
 	if err != nil {
 		log.WithError(err).WithField("service", svc.Name).Errorf("error listening for service: %v", err)
 		return
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	config := svc.ServerConfig
 	for {
 		log.WithField("service", svc.Name).
 			WithField("dialAddr", config.String()).
 			Info("hosting service, waiting for connections")
-		conn, err := listener.Accept()
+		conn, err := listener.AcceptEdge()
 		if err != nil {
 			log.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
 			return
@@ -197,8 +199,16 @@ func host(context ziti.Context, svc *entities.Service) {
 				WithField("service", svc.Name).
 				WithField("dialAddr", config.String()).
 				Error("dial failed")
-			conn.Close()
+			conn.CompleteAcceptFailed(err)
+			_ = conn.Close()
 			continue
+		}
+		if err := conn.CompleteAcceptSuccess(); err != nil {
+			log.WithError(err).
+				WithField("service", svc.Name).
+				WithField("dialAddr", config.String()).
+				Error("complete accept success failed")
+			_ = conn.Close()
 		}
 		go tunnel.Run(conn, externalConn)
 	}

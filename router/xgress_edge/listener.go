@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"math"
 	"time"
 )
 
@@ -84,6 +83,7 @@ type ingressProxy struct {
 	listener     *listener
 	fingerprints cert.Fingerprints
 	ch           channel2.Channel
+	idSeq        uint32
 }
 
 func (proxy *ingressProxy) HandleClose(_ channel2.Channel) {
@@ -194,9 +194,10 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
 	proxy.listener.bindHandler.HandleXgressBind(x)
-	x.Start()
 
+	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
+	x.Start()
 }
 
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
@@ -289,7 +290,6 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		service:         ns.Service.Id,
 		parent:          proxy,
 		assignIds:       assignIds,
-		idSeq:           math.MaxUint32 / 2,
 	}
 
 	proxy.listener.factory.hostedServices.Put(token, messageSink)

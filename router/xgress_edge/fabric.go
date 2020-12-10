@@ -54,14 +54,13 @@ type localListener struct {
 	service         string
 	parent          *ingressProxy
 	assignIds       bool
-	idSeq           uint32
 }
 
 func (listener *localListener) nextDialConnId() uint32 {
-	nextId := atomic.AddUint32(&listener.idSeq, 1)
+	nextId := atomic.AddUint32(&listener.parent.idSeq, 1)
 	if nextId < math.MaxUint32/2 {
-		atomic.StoreUint32(&listener.idSeq, math.MaxUint32/2)
-		nextId = atomic.AddUint32(&listener.idSeq, 1)
+		atomic.StoreUint32(&listener.parent.idSeq, math.MaxUint32/2)
+		nextId = atomic.AddUint32(&listener.parent.idSeq, 1)
 	}
 	return nextId
 }
