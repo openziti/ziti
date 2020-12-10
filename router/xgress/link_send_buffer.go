@@ -17,12 +17,10 @@
 package xgress
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"math"
 	"sync/atomic"
 	"time"
@@ -52,6 +50,7 @@ type LinkSendBuffer struct {
 	retxScale             float64
 	retxThreshold         uint32
 	lastRetransmitTime    int64
+	closeWhenEmpty        concurrenz.AtomicBoolean
 }
 
 type txPayload struct {
@@ -108,11 +107,15 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 	return buffer
 }
 
+func (buffer *LinkSendBuffer) CloseWhenEmpty() {
+	buffer.closeWhenEmpty.Set(true)
+}
+
 func (buffer *LinkSendBuffer) BufferPayload(payload *Payload) (func(), error) {
 	txPayload := &txPayload{payload: payload, age: math.MaxInt64, x: buffer.x}
 	select {
 	case buffer.newlyBuffered <- txPayload:
-		pfxlog.ContextLogger("s/"+payload.GetSessionId()).Debugf("buffered [%d]", payload.GetSequence())
+		pfxlog.ContextLogger(buffer.x.Label()).Debugf("buffered [%d]", payload.GetSequence())
 		return txPayload.markSent, nil
 	case <-buffer.closeNotify:
 		return nil, errors.Errorf("payload buffer closed")
@@ -120,7 +123,7 @@ func (buffer *LinkSendBuffer) BufferPayload(payload *Payload) (func(), error) {
 }
 
 func (buffer *LinkSendBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
-	log := pfxlog.Logger().WithFields(ack.GetLoggerFields())
+	log := pfxlog.ContextLogger(buffer.x.Label()).WithFields(ack.GetLoggerFields())
 	log.Debug("ack received")
 	select {
 	case buffer.newlyReceivedAcks <- ack:
@@ -131,7 +134,7 @@ func (buffer *LinkSendBuffer) ReceiveAcknowledgement(ack *Acknowledgement) {
 }
 
 func (buffer *LinkSendBuffer) Close() {
-	logrus.Debugf("[%p] closing", buffer)
+	pfxlog.ContextLogger(buffer.x.Label()).Debugf("[%p] closing", buffer)
 	if buffer.closed.CompareAndSwap(false, true) {
 		close(buffer.closeNotify)
 	}
@@ -163,14 +166,14 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 	}
 
 	if blocked {
-		pfxlog.Logger().Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkRecvBufferSize, buffer.linkSendBufferSize)
+		pfxlog.ContextLogger(buffer.x.Label()).Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkRecvBufferSize, buffer.linkSendBufferSize)
 	}
 
 	return blocked
 }
 
 func (buffer *LinkSendBuffer) run() {
-	log := pfxlog.ContextLogger("s/" + buffer.x.sessionId)
+	log := pfxlog.ContextLogger(buffer.x.Label())
 	defer log.Debugf("[%p] exited", buffer)
 	log.Debugf("[%p] started", buffer)
 
@@ -205,6 +208,9 @@ func (buffer *LinkSendBuffer) run() {
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
+			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 {
+				go buffer.x.Close()
+			}
 
 		case txPayload := <-buffered:
 			buffer.buffer[txPayload.payload.GetSequence()] = txPayload
@@ -235,7 +241,7 @@ func (buffer *LinkSendBuffer) close() {
 }
 
 func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
-	log := pfxlog.Logger().WithFields(ack.GetLoggerFields())
+	log := pfxlog.ContextLogger(buffer.x.Label()).WithFields(ack.GetLoggerFields())
 
 	for _, sequence := range ack.Sequence {
 		if txPayload, found := buffer.buffer[sequence]; found {
@@ -289,7 +295,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 func (buffer *LinkSendBuffer) retransmit() {
 	now := info.NowInMilliseconds()
 	if len(buffer.buffer) > 0 && (now-buffer.lastRetransmitTime) > 64 {
-		log := pfxlog.ContextLogger(fmt.Sprintf("s/" + buffer.x.sessionId))
+		log := pfxlog.ContextLogger(buffer.x.Label())
 
 		retransmitted := 0
 		for _, v := range buffer.buffer {
