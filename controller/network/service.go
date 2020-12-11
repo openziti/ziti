@@ -99,7 +99,7 @@ func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
 				}
 				serviceId = t.Service
 			}
-			pfxlog.Logger().Infof("clearing service from cache: %v", serviceId)
+			pfxlog.Logger().Debugf("clearing service from cache: %v", serviceId)
 			ctrl.RemoveFromCache(serviceId)
 		}
 	}

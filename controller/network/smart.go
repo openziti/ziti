@@ -68,7 +68,7 @@ func (network *Network) smart() {
 						count++
 						candidates = append(candidates, session)
 						newCircuits[session] = updatedCircuit
-						log.Infof("rerouting [s/%s] [l:%d] %s ==> %s", session.Id.Token, sessionLatencies[session.Id], session.Circuit.String(), updatedCircuit.String())
+						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", session.Id.Token, sessionLatencies[session.Id], session.Circuit.String(), updatedCircuit.String())
 					}
 				}
 			}
