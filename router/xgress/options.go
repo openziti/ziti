@@ -39,7 +39,7 @@ type Options struct {
 	TxPortalDupAckScale    float64
 
 	RxBufferSize uint32
-	RetxInitial  uint32
+	RetxStartMs  uint32
 	RetxScale    float64
 	RetxAddMs    uint32
 	MaxCloseWait time.Duration
@@ -95,8 +95,8 @@ func LoadOptions(data OptionsData) *Options {
 		if value, found := data["rxBufferSize"]; found {
 			options.RxBufferSize = uint32(value.(int))
 		}
-		if value, found := data["retxInitial"]; found {
-			options.RetxInitial = uint32(value.(int))
+		if value, found := data["retxStartMs"]; found {
+			options.RetxStartMs = uint32(value.(int))
 		}
 		if value, found := data["retxScale"]; found {
 			options.RetxScale = value.(float64)
@@ -129,6 +129,7 @@ func DefaultOptions() *Options {
 		TxPortalDupAckThresh:   64,
 		TxPortalDupAckScale:    0.9,
 		RxBufferSize:           4 * 1024 * 1024,
+		RetxStartMs:            200,
 		RetxScale:              2.0,
 		RetxAddMs:              100,
 		MaxCloseWait:           30 * time.Second,

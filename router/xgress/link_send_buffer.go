@@ -99,7 +99,7 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 		newlyReceivedAcks: make(chan *Acknowledgement),
 		closeNotify:       make(chan struct{}),
 		windowsSize:       x.Options.TxPortalStartSize,
-		retxThreshold:     x.Options.RetxInitial,
+		retxThreshold:     x.Options.RetxStartMs,
 		retxScale:         x.Options.RetxScale,
 	}
 
