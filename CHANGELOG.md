@@ -13,14 +13,25 @@
 * Allow hosting applications to mark incoming connections as failed. Update go tunneler so when a
   dial fails for hosted services, the failure gets propagated back to controller
 * Streamline edge hosting protocol by allowing router to assign connection ids
+* Edge REST query failures should now result in 4xx errors instead of 500 internal server errors
 
 ## Xgress Rewrite
+
+### Overview
 
 This rewrite fixed several deadlocks observed at high throughput. It also tries to ensure that slow
 clients attached to a router can't block traffic/processing for faster clients. It does this by
 dropping data for a client if the client isn't handling incoming traffic quickly enough. Dropped
 payloads will be retransmitted. The new xgress implementation uses similar windowing and
 retransmission strategies to the upcoming transwarp work.
+
+### Backwards Compatability
+
+0.18+ routers will probably work with older router versions, but probably not well. 0.18+ xgress
+instances expect to get round trip times and receive buffer sizes on ack messages. If they don't get
+them then retransmission will likely be either too agressive or not aggressive enough.
+
+Mixing 0.18+ routers with older router versions is not recommended without doing more testing first.
 
 ### Xgress Options Changes
 
@@ -122,6 +133,16 @@ The new metrics include:
     * Count of payloads in the transmit buffer
 * xgress.tx_unacked_payload_bytes
     * Size in bytes of the transmit buffer
+
+### Split Links
+
+The fabric will now create two channels for each link, one for data and the other for acks. When
+establishing links the dialing side will attach headers indicating the channel type and a shared
+link ID. If the receiving side doesn't support split links then it will treat both channels as
+regular links and send both data and acks over both.
+
+If an older router dials a router expecting split links it won't have the link type and will be
+treated as a regular, non-split link.
 
 ## Allow SDK Hosting Applications to propagate Dial Failures
 
