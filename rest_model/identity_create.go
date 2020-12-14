@@ -41,6 +41,12 @@ import (
 // swagger:model identityCreate
 type IdentityCreate struct {
 
+	// default hosting cost
+	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+
+	// default hosting precedence
+	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
 	// enrollment
 	Enrollment *IdentityCreateEnrollment `json:"enrollment,omitempty"`
 
@@ -66,6 +72,14 @@ type IdentityCreate struct {
 // Validate validates this identity create
 func (m *IdentityCreate) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	if err := m.validateDefaultHostingCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDefaultHostingPrecedence(formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.validateEnrollment(formats); err != nil {
 		res = append(res, err)
@@ -94,6 +108,40 @@ func (m *IdentityCreate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *IdentityCreate) validateDefaultHostingCost(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingCost) { // not required
+		return nil
+	}
+
+	if m.DefaultHostingCost != nil {
+		if err := m.DefaultHostingCost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("defaultHostingCost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityCreate) validateDefaultHostingPrecedence(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingPrecedence) { // not required
+		return nil
+	}
+
+	if err := m.DefaultHostingPrecedence.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingPrecedence")
+		}
+		return err
+	}
+
 	return nil
 }
 

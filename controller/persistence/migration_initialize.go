@@ -88,6 +88,148 @@ func (m *Migrations) createIdentityTypesV1(step *boltz.MigrationStep) {
 var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
 var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
 
+var serverConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
+	Name:          "ziti-tunneler-server.v1",
+	Schema: map[string]interface{}{
+		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"definitions": map[string]interface{}{
+			"duration": map[string]interface{}{
+				"type":    "string",
+				"pattern": "[0-9]+(h|m|s|ms)",
+			},
+			"method": map[string]interface{}{
+				"type": "string",
+				"enum": []interface{}{
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+				},
+			},
+			"action": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"trigger",
+					"action",
+				},
+				"properties": map[string]interface{}{
+					"trigger": map[string]interface{}{
+						"type": "string",
+						"enum": []interface{}{
+							"fail",
+							"pass",
+						},
+					},
+					"consecutiveEvents": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(0),
+						"maximum": float64(math.MaxUint16),
+					},
+					"duration": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"action": map[string]interface{}{
+						"type":    "string",
+						"pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+)",
+					},
+				},
+			},
+			"actionList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/action",
+				},
+				"minItems": 1,
+				"maxItems": 20,
+			},
+			"portCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"address",
+				},
+				"properties": map[string]interface{}{
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"address":  map[string]interface{}{"type": "string"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+				},
+			},
+			"httpCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"url",
+				},
+				"properties": map[string]interface{}{
+					"url":      map[string]interface{}{"type": "string"},
+					"method":   map[string]interface{}{"$ref": "#/definitions/method"},
+					"body":     map[string]interface{}{"type": "string"},
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+					"expectStatus": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(100),
+						"maximum": float64(599),
+					},
+					"expectInBody": map[string]interface{}{"type": "string"},
+				},
+			},
+			"portCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/portCheck",
+				},
+			},
+			"httpCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/httpCheck",
+				},
+			},
+		},
+		"required": []interface{}{
+			"hostname",
+			"port",
+		},
+		"properties": map[string]interface{}{
+			"protocol": map[string]interface{}{
+				"type": []interface{}{
+					"string",
+					"null",
+				},
+				"enum": []interface{}{
+					"tcp",
+					"udp",
+				},
+			},
+			"hostname": map[string]interface{}{
+				"type": "string",
+			},
+			"port": map[string]interface{}{
+				"type":    "integer",
+				"minimum": float64(0),
+				"maximum": float64(math.MaxUint16),
+			},
+			"portChecks": map[string]interface{}{
+				"$ref": "#/definitions/portCheckList",
+			},
+			"httpChecks": map[string]interface{}{
+				"$ref": "#/definitions/httpCheckList",
+			},
+		},
+	},
+}
+
 func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
 	clientConfigTypeV1 := &ConfigType{
 		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
@@ -113,39 +255,5 @@ func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep)
 		},
 	}
 	step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
-
-	serverConfigTypeV1 := &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
-		Name:          "ziti-tunneler-server.v1",
-		Schema: map[string]interface{}{
-			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
-			"type":                 "object",
-			"additionalProperties": false,
-			"required": []interface{}{
-				"hostname",
-				"port",
-			},
-			"properties": map[string]interface{}{
-				"protocol": map[string]interface{}{
-					"type": []interface{}{
-						"string",
-						"null",
-					},
-					"enum": []interface{}{
-						"tcp",
-						"udp",
-					},
-				},
-				"hostname": map[string]interface{}{
-					"type": "string",
-				},
-				"port": map[string]interface{}{
-					"type":    "integer",
-					"minimum": float64(0),
-					"maximum": float64(math.MaxUint16),
-				},
-			},
-		},
-	}
 	step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
 }

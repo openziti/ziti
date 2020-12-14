@@ -11,6 +11,7 @@ go 1.15
 // replace github.com/kataras/go-events => ../go-events
 
 require (
+	github.com/AppsFlyer/go-sundheit v0.2.0
 	github.com/Jeffail/gabs v1.4.0
 	github.com/achanda/go-sysctl v0.0.0-20160222034550-6be7678c45d2
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
