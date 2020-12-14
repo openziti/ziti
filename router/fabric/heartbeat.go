@@ -35,7 +35,8 @@ type heartbeatOperation struct {
 }
 
 type TokenProvider interface {
-	ActiveSessionTokens() []string
+	ActiveApiSessionTokens() []string
+	flushRecentlyRemoved()
 }
 
 func newHeartbeatOperation(ctrl channel2.Channel, frequency time.Duration, tokenProvider TokenProvider) *heartbeatOperation {
@@ -46,9 +47,10 @@ func newHeartbeatOperation(ctrl channel2.Channel, frequency time.Duration, token
 }
 
 func (operation *heartbeatOperation) Run() error {
-	tokens := operation.tokenProvider.ActiveSessionTokens()
+	tokens := operation.tokenProvider.ActiveApiSessionTokens()
 
 	operation.beat(tokens)
+	operation.tokenProvider.flushRecentlyRemoved()
 
 	return nil
 }

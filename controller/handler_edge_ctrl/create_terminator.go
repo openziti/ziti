@@ -50,16 +50,6 @@ func (self *createTerminatorHandler) Label() string {
 	return "create.terminator"
 }
 
-func (self *createTerminatorHandler) sendResponse(ctx *CreateTerminatorRequestContext, terminatorId string) {
-	log := pfxlog.ContextLogger(self.ch.Label())
-
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_CreateTerminatorResponseType), []byte(terminatorId))
-	responseMsg.ReplyTo(ctx.msg)
-	if err := self.ch.Send(responseMsg); err != nil {
-		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to send create circuit response")
-	}
-}
-
 func (self *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	req := &edge_ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
@@ -68,8 +58,8 @@ func (self *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch cha
 	}
 
 	ctx := &CreateTerminatorRequestContext{
-		baseRequestContext: baseRequestContext{handler: self, msg: msg},
-		req:                req,
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
 	}
 
 	go self.CreateTerminator(ctx)
@@ -102,7 +92,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	terminator := &network.Terminator{
 		Service:        ctx.session.ServiceId,
 		Router:         ctx.sourceRouter.Id,
-		Binding:        edge_common.Binding,
+		Binding:        edge_common.EdgeBinding,
 		Address:        "hosted:" + ctx.session.Token,
 		Identity:       ctx.req.Identity,
 		IdentitySecret: ctx.req.IdentitySecret,
@@ -120,11 +110,15 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 
 	log.WithField("terminator", id).Info("created terminator")
 
-	self.sendResponse(ctx, id)
+	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_CreateTerminatorResponseType), []byte(id))
+	responseMsg.ReplyTo(ctx.msg)
+	if err := self.ch.Send(responseMsg); err != nil {
+		log.WithError(err).Error("failed to send create terminator response")
+	}
 }
 
 type CreateTerminatorRequestContext struct {
-	baseRequestContext
+	baseSessionRequestContext
 	req *edge_ctrl_pb.CreateTerminatorRequest
 }
 

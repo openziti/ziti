@@ -40,6 +40,9 @@ import (
 // swagger:model edgeRouterPatch
 type EdgeRouterPatch struct {
 
+	// is tunneler enabled
+	IsTunnelerEnabled bool `json:"isTunnelerEnabled,omitempty"`
+
 	// name
 	Name string `json:"name,omitempty"`
 

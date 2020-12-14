@@ -21,14 +21,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/storage/boltz"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"math"
 )
 
 type updateTerminatorHandler struct {
@@ -52,16 +48,6 @@ func (self *updateTerminatorHandler) Label() string {
 	return "update.terminator"
 }
 
-func (self *updateTerminatorHandler) sendResponse(ctx *UpdateTerminatorRequestContext) {
-	log := pfxlog.ContextLogger(self.ch.Label())
-
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_UpdateTerminatorResponseType), nil)
-	responseMsg.ReplyTo(ctx.msg)
-	if err := self.ch.Send(responseMsg); err != nil {
-		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to send update terminator response")
-	}
-}
-
 func (self *updateTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	req := &edge_ctrl_pb.UpdateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
@@ -70,8 +56,8 @@ func (self *updateTerminatorHandler) HandleReceive(msg *channel2.Message, ch cha
 	}
 
 	ctx := &UpdateTerminatorRequestContext{
-		baseRequestContext: baseRequestContext{handler: self, msg: msg},
-		req:                req,
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
 	}
 
 	go self.UpdateTerminator(ctx)
@@ -85,63 +71,30 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 	ctx.loadSession(ctx.req.SessionToken)
 	ctx.checkSessionType(persistence.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
-	terminator := ctx.verifyTerminator(ctx.req.TerminatorId)
+	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.EdgeBinding)
+	ctx.updateTerminator(terminator, ctx.req)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
 		return
 	}
 
-	request := ctx.req
-
-	if !request.UpdateCost && !request.UpdatePrecedence {
-		// nothing to do
-		self.sendResponse(ctx)
-		return
-	}
-
-	checker := boltz.MapFieldChecker{}
-
-	if request.UpdateCost {
-		if request.Cost > math.MaxUint16 {
-			self.returnError(ctx, errors.Errorf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16))
-			return
-		}
-		terminator.Cost = uint16(request.Cost)
-		checker[db.FieldTerminatorCost] = struct{}{}
-	}
-
-	if request.UpdatePrecedence {
-		if request.UpdatePrecedence {
-			if request.Precedence == edge_ctrl_pb.TerminatorPrecedence_Default {
-				terminator.Precedence = xt.Precedences.Default
-			} else if request.Precedence == edge_ctrl_pb.TerminatorPrecedence_Required {
-				terminator.Precedence = xt.Precedences.Required
-			} else if request.Precedence == edge_ctrl_pb.TerminatorPrecedence_Failed {
-				terminator.Precedence = xt.Precedences.Failed
-			} else {
-				self.returnError(ctx, errors.Errorf("invalid precedence: %v", request.Precedence))
-				return
-			}
-		}
-		checker[db.FieldTerminatorPrecedence] = struct{}{}
-	}
-
-	if err := self.getNetwork().Terminators.Patch(terminator, checker); err != nil {
-		self.returnError(ctx, err)
-		return
-	}
-
-	logrus.
+	logger := logrus.
+		WithField("router", self.ch.Id().Token).
 		WithField("token", ctx.req.SessionToken).
-		WithField("terminator", ctx.req.TerminatorId).
-		Info("updated terminator")
+		WithField("terminator", ctx.req.TerminatorId)
 
-	self.sendResponse(ctx)
+	logger.Info("updated terminator")
+
+	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_UpdateTerminatorResponseType), nil)
+	responseMsg.ReplyTo(ctx.msg)
+	if err := self.ch.Send(responseMsg); err != nil {
+		logger.WithError(err).Error("failed to send update terminator response")
+	}
 }
 
 type UpdateTerminatorRequestContext struct {
-	baseRequestContext
+	baseSessionRequestContext
 	req *edge_ctrl_pb.UpdateTerminatorRequest
 }
 

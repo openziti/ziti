@@ -1,5 +1,6 @@
 package edge_common
 
 const (
-	Binding = "edge"
+	EdgeBinding   = "edge"
+	TunnelBinding = "tunnel"
 )

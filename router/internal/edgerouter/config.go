@@ -234,7 +234,7 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		if value, found := submap["binding"]; found {
 			binding := value.(string)
 
-			if binding == edge_common.Binding {
+			if binding == edge_common.EdgeBinding {
 
 				if value, found := submap["address"]; found {
 					address := value.(string)

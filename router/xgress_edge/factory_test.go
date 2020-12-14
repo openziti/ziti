@@ -112,7 +112,7 @@ const (
 
 func newTestConfigWithConnectOptions() xgress.OptionsData {
 	return xgress.OptionsData{
-		"binding": edge_common.Binding,
+		"binding": edge_common.EdgeBinding,
 		"address": "tls:0.0.0.0:3022",
 		"options": map[interface{}]interface{}{
 			"advertise":              "127.0.0.1:3022",
@@ -125,7 +125,7 @@ func newTestConfigWithConnectOptions() xgress.OptionsData {
 
 func newTestConfigWithoutConnectOptions() xgress.OptionsData {
 	return xgress.OptionsData{
-		"binding": edge_common.Binding,
+		"binding": edge_common.EdgeBinding,
 		"address": "tls:0.0.0.0:3022",
 		"options": map[interface{}]interface{}{
 			"advertise": "127.0.0.1:3022",

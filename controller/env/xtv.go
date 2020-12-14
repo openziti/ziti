@@ -71,7 +71,7 @@ func (v *EdgeTerminatorValidator) Validate(tx *bbolt.Tx, terminator xtv.Terminat
 }
 
 func (v *EdgeTerminatorValidator) getTerminatorSession(tx *bbolt.Tx, terminator xtv.Terminator, context string) (*persistence.Session, error) {
-	if terminator.GetBinding() != edge_common.Binding {
+	if terminator.GetBinding() != edge_common.EdgeBinding {
 		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
 	}
 

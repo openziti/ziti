@@ -113,12 +113,12 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
 
 	entity.SdkInfo = &SdkInfo{
-		Branch:   bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
-		Revision: bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
-		Type:     bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
-		Version:  bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
-		AppId:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
-		AppVersion:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
+		Branch:     bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
+		Revision:   bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
+		Type:       bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
+		Version:    bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
+		AppId:      bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
+		AppVersion: bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
 	}
 
 	entity.EnvInfo = &EnvInfo{
@@ -138,7 +138,11 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
-	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
+	if oldValue, changed := ctx.GetAndSetString(FieldIdentityType, entity.IdentityTypeId); changed {
+		if oldValue != nil && *oldValue == RouterIdentityType {
+			ctx.Bucket.SetError(errors.New("cannot change type of router identity"))
+		}
+	}
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
@@ -313,6 +317,14 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 	}
 
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		if entity.IdentityTypeId == RouterIdentityType {
+			if !ctx.IsSystemContext() {
+				if router, _ := store.stores.Router.LoadOneByName(ctx.Tx(), entity.Name); router != nil {
+					err := errors.Errorf("cannot delete router identity %v until associated router is deleted", entity.Name)
+					return errorz.NewEntityCanNotBeDeletedFrom(err)
+				}
+			}
+		}
 		// Remove entity from IdentityRoles in edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolIdentityRoles); err != nil {
 			return err

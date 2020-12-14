@@ -21,6 +21,10 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+const (
+	RouterIdentityType = "Router"
+)
+
 type IdentityType struct {
 	boltz.BaseExtEntity
 	Name string

@@ -135,6 +135,7 @@ func (c *Controller) SetHostController(h env.HostController) {
 }
 
 func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHandler {
+	tunnelState := &handler_edge_ctrl.TunnelState{}
 	return []channel2.ReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
@@ -142,6 +143,12 @@ func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHand
 		handler_edge_ctrl.NewUpdateTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewValidateSessionsHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewCreateApiSessionHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewCreateCircuitForTunnelHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewCreateTunnelTerminatorHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewUpdateTunnelTerminatorHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewRemoveTunnelTerminatorHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewListTunnelServicesHandler(c.AppEnv, ch, tunnelState),
 	}
 }
 
@@ -227,7 +234,7 @@ func (c *Controller) Initialize() {
 
 	}
 
-	xtv.RegisterValidator(edge_common.Binding, env.NewEdgeTerminatorValidator(c.AppEnv))
+	xtv.RegisterValidator(edge_common.EdgeBinding, env.NewEdgeTerminatorValidator(c.AppEnv))
 	if err := xtv.InitializeMappings(); err != nil {
 		log.Fatalf("error initializing xtv: %+v", err)
 	}

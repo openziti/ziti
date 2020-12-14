@@ -61,6 +61,10 @@ type EdgeRouterDetail struct {
 	// fingerprint
 	Fingerprint string `json:"fingerprint,omitempty"`
 
+	// is tunneler enabled
+	// Required: true
+	IsTunnelerEnabled *bool `json:"isTunnelerEnabled"`
+
 	// is verified
 	// Required: true
 	IsVerified *bool `json:"isVerified"`
@@ -101,6 +105,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Fingerprint string `json:"fingerprint,omitempty"`
 
+		IsTunnelerEnabled *bool `json:"isTunnelerEnabled"`
+
 		IsVerified *bool `json:"isVerified"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -120,6 +126,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 	m.EnrollmentToken = dataAO2.EnrollmentToken
 
 	m.Fingerprint = dataAO2.Fingerprint
+
+	m.IsTunnelerEnabled = dataAO2.IsTunnelerEnabled
 
 	m.IsVerified = dataAO2.IsVerified
 
@@ -156,6 +164,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 		Fingerprint string `json:"fingerprint,omitempty"`
 
+		IsTunnelerEnabled *bool `json:"isTunnelerEnabled"`
+
 		IsVerified *bool `json:"isVerified"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -172,6 +182,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO2.EnrollmentToken = m.EnrollmentToken
 
 	dataAO2.Fingerprint = m.Fingerprint
+
+	dataAO2.IsTunnelerEnabled = m.IsTunnelerEnabled
 
 	dataAO2.IsVerified = m.IsVerified
 
@@ -205,6 +217,10 @@ func (m *EdgeRouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEnrollmentExpiresAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsTunnelerEnabled(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -246,6 +262,15 @@ func (m *EdgeRouterDetail) validateEnrollmentExpiresAt(formats strfmt.Registry) 
 	}
 
 	if err := validate.FormatOf("enrollmentExpiresAt", "body", "date-time", m.EnrollmentExpiresAt.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterDetail) validateIsTunnelerEnabled(formats strfmt.Registry) error {
+
+	if err := validate.Required("isTunnelerEnabled", "body", m.IsTunnelerEnabled); err != nil {
 		return err
 	}
 

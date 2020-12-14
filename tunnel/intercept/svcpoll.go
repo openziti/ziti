@@ -244,7 +244,7 @@ func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
 	return self.options
 }
 
-func (self *hostingContext) Dial() (net.Conn, error) {
+func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, error) {
 	config := self.service.ServerConfig
 	return net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
 }

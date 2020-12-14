@@ -268,6 +268,7 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 
 	return entityData.String()
 }
+
 func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
@@ -278,6 +279,14 @@ func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
+func (entity *identity) fromJson(ctx *TestContext, c *gabs.Container) {
+	entity.Id = ctx.requireString(c, "id")
+	entity.identityType = ctx.requireString(c, "type", "id")
+	entity.isAdmin = ctx.requireBool(c, "isAdmin")
+	entity.name = ctx.requireString(c, "name")
+	entity.roleAttributes = ctx.requireStringSlice(c, "roleAttributes")
+}
+
 func newTestEdgeRouter(roleAttributes ...string) *edgeRouter {
 	return &edgeRouter{
 		name:           eid.New(),
@@ -286,10 +295,11 @@ func newTestEdgeRouter(roleAttributes ...string) *edgeRouter {
 }
 
 type edgeRouter struct {
-	id             string
-	name           string
-	roleAttributes []string
-	tags           map[string]interface{}
+	id                string
+	name              string
+	isTunnelerEnabled bool
+	roleAttributes    []string
+	tags              map[string]interface{}
 }
 
 func (entity *edgeRouter) getId() string {
@@ -308,7 +318,7 @@ func (entity *edgeRouter) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
-
+	ctx.setJsonValue(entityData, entity.isTunnelerEnabled, "isTunnelerEnabled")
 	ctx.setJsonValue(entityData, entity.tags, "tags")
 
 	return entityData.String()
@@ -319,6 +329,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 		entity.tags = map[string]interface{}{}
 	}
 	ctx.pathEquals(c, entity.name, path("name"))
+	ctx.pathEquals(c, entity.isTunnelerEnabled, path("isTunnelerEnabled"))
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
@@ -367,6 +378,15 @@ func (entity *edgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) st
 		ctx.setJsonValue(entityData, entity.tags, "tags")
 	}
 	return entityData.String()
+}
+
+func (entity *edgeRouterPolicy) fromJson(ctx *TestContext, c *gabs.Container) {
+	entity.id = ctx.requireString(c, "id")
+	entity.name = ctx.requireString(c, "name")
+	semantic := ctx.requireString(c, "semantic")
+	entity.semantic = &semantic
+	entity.edgeRouterRoles = ctx.requireStringSlice(c, "edgeRouterRoles")
+	entity.identityRoles = ctx.requireStringSlice(c, "identityRoles")
 }
 
 func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
@@ -646,8 +666,8 @@ func (entity *configValidatingService) validate(ctx *TestContext, c *gabs.Contai
 	children, err := configs.Children()
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(len(entity.configs), len(children))
-	for configType, config := range entity.configs {
-		ctx.pathEquals(configs, config.Data, s(configType))
+	for configType, cfg := range entity.configs {
+		ctx.pathEquals(configs, cfg.Data, s(configType))
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 )
 
@@ -116,6 +117,16 @@ func (entity *Authenticator) SetValues(ctx *boltz.PersistContext) {
 			ctx.SetString(FieldAuthenticatorUpdbSalt, authUpdb.Salt)
 		} else {
 			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorUpdb")
+		}
+	}
+
+	store := ctx.Store.(*authenticatorStoreImpl)
+	_, identityId := store.symbolIdentityId.Eval(ctx.Tx(), []byte(entity.Id))
+	if identityId != nil {
+		identityType := boltz.FieldToString(store.stores.identity.symbolIdentityTypeId.Eval(ctx.Tx(), identityId))
+		if identityType != nil && *identityType == RouterIdentityType {
+			err := errorz.NewFieldError("may not create authenticators for router identities", "identityId", string(identityId))
+			ctx.Bucket.SetError(errorz.NewFieldApiError(err))
 		}
 	}
 }

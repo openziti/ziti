@@ -432,7 +432,7 @@ func newPerfStats(ctx *TestContext, config *config.Config, description string, s
 	id, err := idloader.LoadIdentity(config.ID)
 	ctx.Req.NoError(err)
 
-	client, err := api.NewClient(zitiUrl, id.ClientTLSConfig())
+	client, err := api.NewClient(zitiUrl, id.ClientTLSConfig(), s("all"))
 	ctx.Req.NoError(err)
 
 	return &perfStats{
@@ -511,9 +511,8 @@ func (s *perfStats) time(h metrics.Histogram, f func()) {
 
 func (s *perfStats) timeCreateApiSession() {
 	s.time(s.createApiSession, func() {
-		info, ok := sdkinfo.GetSdkInfo().(map[string]interface{})
-		s.Req.True(ok)
-		_, err := s.client.Login(info, []string{"all"})
+		info := sdkinfo.GetSdkInfo()
+		_, err := s.client.Login(info)
 		s.Req.NoError(err)
 	})
 }

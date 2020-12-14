@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -136,7 +137,15 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 }
 
-func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+	return entity.toBoltEntityForChange(tx, handler, nil)
+}
+
+func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+	return entity.toBoltEntityForChange(tx, handler, checker)
+}
+
+func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
 		Name:                     entity.Name,
 		IdentityTypeId:           entity.IdentityTypeId,
@@ -146,13 +155,26 @@ func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity,
 		DefaultHostingCost:       entity.DefaultHostingCost,
 	}
 
+	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
+	if string(currentType) == persistence.RouterIdentityType {
+		if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId != persistence.RouterIdentityType {
+			fieldErr := errorz.NewFieldError("may not change type of router identities", "typeId", entity.IdentityTypeId)
+			return nil, errorz.NewFieldApiError(fieldErr)
+		}
+
+		_, currentName := handler.GetStore().GetSymbol(persistence.FieldName).Eval(tx, []byte(entity.Id))
+		if (checker == nil || checker.IsUpdated(persistence.FieldName)) && string(currentName) != entity.Name {
+			fieldErr := errorz.NewFieldError("may not change name of router identities", "name", entity.Name)
+			return nil, errorz.NewFieldApiError(fieldErr)
+		}
+	} else if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId == persistence.RouterIdentityType {
+		fieldErr := errorz.NewFieldError("may not change type to router", "typeId", entity.IdentityTypeId)
+		return nil, errorz.NewFieldApiError(fieldErr)
+	}
+
 	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
 
 	return boltEntity, nil
-}
-
-func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
 func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {

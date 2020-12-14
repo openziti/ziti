@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/router/internal/fabric"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
@@ -74,7 +74,7 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 					}
 				})
 
-				handler.stateManager.AddConnectedApiSession(token, removeListener, ch)
+				handler.stateManager.AddConnectedApiSessionWithChannel(token, removeListener, ch)
 
 				return nil
 			}
@@ -91,7 +91,7 @@ func (handler *sessionConnectionHandler) HandleClose(ch channel2.Channel) {
 	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
 		token = string(byteToken)
 
-		handler.stateManager.RemoveConnectedApiSession(token, ch)
+		handler.stateManager.RemoveConnectedApiSessionWithChannel(token, ch)
 	} else {
 		pfxlog.Logger().
 			WithField("id", ch.Id()).

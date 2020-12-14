@@ -73,9 +73,10 @@ func (m *Migrations) createGeoRegionsV1(step *boltz.MigrationStep) {
 }
 
 var IdentityTypesV1 = map[string]string{
-	"577104f2-1e3a-4947-a927-7383baefbc9a": "User",
-	"5b53fb49-51b1-4a87-a4e4-edda9716a970": "Device",
-	"c4d66f9d-fe18-4143-85d3-74329c54282b": "Service",
+	"User":    "User",
+	"Device":  "Device",
+	"Service": "Service",
+	"Router":  "Router",
 }
 
 func (m *Migrations) createIdentityTypesV1(step *boltz.MigrationStep) {
