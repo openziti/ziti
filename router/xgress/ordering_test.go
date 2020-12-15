@@ -52,9 +52,10 @@ func (n noopForwarder) ForwardAcknowledgement(srcAddr Address, acknowledgement *
 
 func Test_Ordering(t *testing.T) {
 	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{})
-	InitPayloadIngester()
+	closeNotify := make(chan struct{})
+	InitPayloadIngester(closeNotify)
 	InitMetrics(metricsRegistry)
-	InitAcker(&noopForwarder{}, metricsRegistry)
+	InitAcker(&noopForwarder{}, metricsRegistry, closeNotify)
 
 	conn := &testConn{
 		ch:          make(chan uint64, 1),

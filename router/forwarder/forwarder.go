@@ -49,7 +49,7 @@ type XgressDestination interface {
 	Label() string
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options, closeNotify <-chan struct{}) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
@@ -58,9 +58,9 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forw
 		Options:         options,
 	}
 
-	xgress.InitPayloadIngester()
-	xgress.InitAcker(forwarder, metricsRegistry)
-	xgress.InitRetransmitter(forwarder, metricsRegistry)
+	xgress.InitPayloadIngester(closeNotify)
+	xgress.InitAcker(forwarder, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(forwarder, metricsRegistry, closeNotify)
 	return forwarder
 }
 

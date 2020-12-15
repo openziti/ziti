@@ -2,8 +2,8 @@ package xgress
 
 var payloadIngester *PayloadIngester
 
-func InitPayloadIngester() {
-	payloadIngester = NewPayloadIngester()
+func InitPayloadIngester(closeNotify <-chan struct{}) {
+	payloadIngester = NewPayloadIngester(closeNotify)
 }
 
 type payloadEntry struct {
@@ -14,12 +14,14 @@ type payloadEntry struct {
 type PayloadIngester struct {
 	payloadIngest  chan *payloadEntry
 	payloadSendReq chan *Xgress
+	closeNotify    <-chan struct{}
 }
 
-func NewPayloadIngester() *PayloadIngester {
+func NewPayloadIngester(closeNotify <-chan struct{}) *PayloadIngester {
 	pi := &PayloadIngester{
 		payloadIngest:  make(chan *payloadEntry, 16),
 		payloadSendReq: make(chan *Xgress, 16),
+		closeNotify:    closeNotify,
 	}
 
 	go pi.run()
@@ -41,6 +43,8 @@ func (payloadIngester *PayloadIngester) run() {
 			payloadEntry.x.payloadIngester(payloadEntry.payload)
 		case x := <-payloadIngester.payloadSendReq:
 			x.queueSends()
+		case <-payloadIngester.closeNotify:
+			return
 		}
 	}
 }
