@@ -82,7 +82,11 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	xgress.InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
-	fwd := forwarder.NewForwarder(metricsRegistry, config.Forwarder, closeNotify)
+	fwd := forwarder.NewForwarder(metricsRegistry, config.Forwarder)
+
+	xgress.InitPayloadIngester(closeNotify)
+	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(fwd, metricsRegistry, closeNotify)
 
 	return &Router{
 		config:          config,
