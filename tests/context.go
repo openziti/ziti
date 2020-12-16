@@ -76,7 +76,7 @@ const (
 )
 
 func init() {
-	pfxlog.Global(logrus.InfoLevel)
+	pfxlog.Global(logrus.DebugLevel)
 	pfxlog.SetPrefix("github.com/openziti/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 
@@ -672,26 +672,24 @@ func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Containe
 	ctx.Req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
 }
 
-func (ctx *TestContext) WrapNetConn(conn net.Conn, err error) *testConn {
+func (ctx *TestContext) WrapNetConn(conn edge.Conn, err error) *testConn {
 	ctx.Req.NoError(err)
-	serviceConn, ok := conn.(edge.ServiceConn)
-	ctx.Req.True(ok)
 	return &testConn{
-		ServiceConn: serviceConn,
-		ctx:         ctx,
+		Conn: conn,
+		ctx:  ctx,
 	}
 }
 
-func (ctx *TestContext) WrapConn(conn edge.ServiceConn, err error) *testConn {
+func (ctx *TestContext) WrapConn(conn edge.Conn, err error) *testConn {
 	ctx.Req.NoError(err)
 	return &testConn{
-		ServiceConn: conn,
-		ctx:         ctx,
+		Conn: conn,
+		ctx:  ctx,
 	}
 }
 
 type testConn struct {
-	edge.ServiceConn
+	edge.Conn
 	ctx *TestContext
 }
 
@@ -711,13 +709,13 @@ func (conn *testConn) ReadString(maxSize int, timeout time.Duration) string {
 
 	buf := make([]byte, maxSize)
 	n, err := conn.Read(buf)
-	conn.ctx.Req.NoError(err)
+	conn.ctx.Req.NoError(err, "read timeout on connId=%v", conn.Id())
 	return string(buf[:n])
 }
 
 func (conn *testConn) ReadExpected(expected string, timeout time.Duration) {
 	val := conn.ReadString(len(expected)+1, timeout)
-	conn.ctx.Req.Equal(expected, val)
+	conn.ctx.Req.Equal(expected, val, "read failure on connId=%v", conn.Id())
 }
 
 func (conn *testConn) RequireClose() {

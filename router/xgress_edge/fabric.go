@@ -23,6 +23,8 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"io"
+	"math"
+	"sync/atomic"
 )
 
 const (
@@ -51,6 +53,16 @@ type localListener struct {
 	terminatorIdRef *concurrenz.AtomicString
 	service         string
 	parent          *ingressProxy
+	assignIds       bool
+}
+
+func (listener *localListener) nextDialConnId() uint32 {
+	nextId := atomic.AddUint32(&listener.parent.idSeq, 1)
+	if nextId < math.MaxUint32/2 {
+		atomic.StoreUint32(&listener.parent.idSeq, math.MaxUint32/2)
+		nextId = atomic.AddUint32(&listener.parent.idSeq, 1)
+	}
+	return nextId
 }
 
 func (conn *localMessageSink) newSink(connId uint32) *localMessageSink {
@@ -93,13 +105,11 @@ func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	case edge.ContentTypeStateClosed:
 		log.Debug("received close message, closing connection and returning EOF")
 		conn.close(false, "close message received")
-		conn.closeCB(conn.Id())
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 
 	default:
 		log.Error("unexpected message type, closing connection")
 		conn.close(false, "close message received")
-		conn.closeCB(conn.Id())
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 	}
 }

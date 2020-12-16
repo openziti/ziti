@@ -58,7 +58,7 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.WrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.AcceptEdge())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		conn.RequireClose()
@@ -117,7 +117,7 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.WrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.AcceptEdge())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		context.Close()
@@ -177,7 +177,7 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.WrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.AcceptEdge())
 		name := conn.ReadString(512, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		ctx.Req.NoError(listener.Close())
@@ -239,7 +239,7 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 		conn.RequireClose()
 	}()
 
-	conn := ctx.WrapNetConn(listener.Accept())
+	conn := ctx.WrapNetConn(listener.AcceptEdge())
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -299,7 +299,7 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 		clientContext.Close()
 	}()
 
-	conn := ctx.WrapNetConn(listener.Accept())
+	conn := ctx.WrapNetConn(listener.AcceptEdge())
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -362,7 +362,7 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 		conn.RequireClose()
 	}()
 
-	conn := ctx.WrapNetConn(listener.Accept())
+	conn := ctx.WrapNetConn(listener.AcceptEdge())
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	_ = conn.CloseWrite()
@@ -412,7 +412,7 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 			close(errC)
 		}()
 
-		conn := ctx.WrapNetConn(listener.Accept())
+		conn := ctx.WrapNetConn(listener.AcceptEdge())
 		name := conn.ReadString(512, time.Second)
 		n, err := conn.Read(make([]byte, 128))
 		if err != io.EOF {

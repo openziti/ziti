@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"math"
 )
 
 type Accepter struct {
@@ -45,6 +46,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 		listener:     handler.listener,
 		fingerprints: fpg.FromCerts(ch.Certificates()),
 		ch:           ch,
+		idSeq:        math.MaxUint32 / 2,
 	}
 
 	log.Debug("peer fingerprints ", proxy.fingerprints)

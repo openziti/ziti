@@ -110,7 +110,7 @@ func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 
 func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
 
-	service, err := ae.Handlers.EdgeService.Read(terminator.Service)
+	service, err := ae.Handlers.Service.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}

@@ -60,7 +60,7 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 }
 
 func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
-	log := pfxlog.Logger().WithField("token", sessionId.Token)
+	log := pfxlog.Logger().WithField("session", sessionId.Token)
 	destParts := strings.Split(destination, ":")
 	if len(destParts) != 2 {
 		return nil, fmt.Errorf("destination '%v' format is incorrect", destination)
@@ -77,6 +77,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	if !found {
 		return nil, fmt.Errorf("host for token '%v' not found", token)
 	}
+	log = log.WithField("bindConnId", listenConn.Id())
 
 	callerId := ""
 	if sessionId.Data != nil {
@@ -93,27 +94,67 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		dialRequest.Headers[edge.AppDataHeader] = appData
 	}
 
-	reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
-	if err != nil {
-		return nil, err
+	if listenConn.assignIds {
+		connId := listenConn.nextDialConnId()
+		log = log.WithField("connId", connId)
+		log.Debug("router assigned connId for dial")
+		dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
+
+		conn := listenConn.newSink(connId)
+
+		// On the terminator, which this is, this only starts the txer, which pulls data from the link
+		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
+		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		bindHandler.HandleXgressBind(x)
+		x.Start()
+
+		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		if err != nil {
+			conn.close(false, err.Error())
+			x.Close()
+			return nil, err
+		}
+		result, err := edge.UnmarshalDialResult(reply)
+
+		if err != nil {
+			conn.close(false, err.Error())
+			x.Close()
+			return nil, err
+		}
+
+		if !result.Success {
+			msg := fmt.Sprintf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+			conn.close(false, msg)
+			x.Close()
+			return nil, fmt.Errorf(msg)
+		}
+		log.Debug("dial success")
+
+		return nil, nil
+	} else {
+		log.Debug("router not assigning connId for dial")
+		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		if err != nil {
+			return nil, err
+		}
+		result, err := edge.UnmarshalDialResult(reply)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !result.Success {
+			return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
+		}
+
+		conn := listenConn.newSink(result.NewConnId)
+
+		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		bindHandler.HandleXgressBind(x)
+		x.Start()
+
+		start := edge.NewStateConnectedMsg(result.ConnId)
+		start.ReplyTo(reply)
+		return nil, listenConn.SendState(start)
 	}
-	result, err := edge.UnmarshalDialResult(reply)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !result.Success {
-		return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
-	}
-
-	conn := listenConn.newSink(result.NewConnId)
-
-	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
-	bindHandler.HandleXgressBind(x)
-	x.Start()
-
-	start := edge.NewStateConnectedMsg(result.ConnId)
-	start.ReplyTo(reply)
-	return nil, listenConn.SendState(start)
 }

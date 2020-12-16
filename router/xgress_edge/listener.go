@@ -83,6 +83,7 @@ type ingressProxy struct {
 	listener     *listener
 	fingerprints cert.Fingerprints
 	ch           channel2.Channel
+	idSeq        uint32
 }
 
 func (proxy *ingressProxy) HandleClose(_ channel2.Channel) {
@@ -178,8 +179,9 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, service, peerData)
 	if err != nil {
-		log.Warn("failed to dial fabric ", err)
+		log.WithError(err).Warn("failed to dial fabric")
 		proxy.sendStateClosedReply(err.Error(), req)
+		conn.close(false, "failed to dial fabric")
 		return
 	}
 
@@ -192,9 +194,10 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
 	proxy.listener.bindHandler.HandleXgressBind(x)
-	x.Start()
 
+	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
+	x.Start()
 }
 
 func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
@@ -262,6 +265,9 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		}
 	})
 
+	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
+	log.Debugf("client requested router provided connection ids: %v", assignIds)
+
 	log.Debug("establishing listener")
 	messageSink := &localListener{
 		localMessageSink: localMessageSink{
@@ -283,6 +289,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		terminatorIdRef: terminatorIdRef,
 		service:         ns.Service.Id,
 		parent:          proxy,
+		assignIds:       assignIds,
 	}
 
 	proxy.listener.factory.hostedServices.Put(token, messageSink)
@@ -400,24 +407,20 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
+
+	if assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId); assignIds {
+		msg.PutBoolHeader(edge.RouterProvidedConnId, true)
+	}
+
 	for k, v := range hostData {
 		msg.Headers[int32(k)] = v
 	}
 	msg.ReplyTo(req)
 
-	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
+	err := proxy.ch.SendPrioritizedWithTimeout(msg, channel2.High, time.Second*5)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
-	}
-
-	select {
-	case err = <-syncC:
-		if err != nil {
-			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
-		}
-	case <-time.After(time.Second * 5):
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
 	}
 }
 
