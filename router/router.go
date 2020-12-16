@@ -81,11 +81,18 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig)
 	xgress.InitMetrics(metricsRegistry)
 
+	closeNotify := make(chan struct{})
+	fwd := forwarder.NewForwarder(metricsRegistry, config.Forwarder)
+
+	xgress.InitPayloadIngester(closeNotify)
+	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(fwd, metricsRegistry, closeNotify)
+
 	return &Router{
 		config:          config,
-		forwarder:       forwarder.NewForwarder(metricsRegistry, config.Forwarder),
+		forwarder:       fwd,
 		metricsRegistry: metricsRegistry,
-		shutdownC:       make(chan struct{}),
+		shutdownC:       closeNotify,
 		eventDispatcher: eventDispatcher,
 		versionProvider: versionProvider,
 	}

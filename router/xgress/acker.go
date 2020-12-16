@@ -10,8 +10,8 @@ import (
 
 var acker *Acker
 
-func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry) {
-	acker = NewAcker(forwarder, metrics)
+func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
+	acker = NewAcker(forwarder, metrics, closeNotify)
 }
 
 type ackEntry struct {
@@ -25,14 +25,16 @@ type Acker struct {
 	ackIngest     chan *ackEntry
 	ackSend       chan *ackEntry
 	acksQueueSize int64
+	closeNotify   <-chan struct{}
 }
 
-func NewAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry) *Acker {
+func NewAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Acker {
 	result := &Acker{
-		forwarder: forwarder,
-		acks:      deque.New(),
-		ackIngest: make(chan *ackEntry, 16),
-		ackSend:   make(chan *ackEntry, 1),
+		forwarder:   forwarder,
+		acks:        deque.New(),
+		ackIngest:   make(chan *ackEntry, 16),
+		ackSend:     make(chan *ackEntry, 1),
+		closeNotify: closeNotify,
 	}
 
 	go result.ackIngester()
@@ -65,6 +67,8 @@ func (acker *Acker) ackIngester() {
 			select {
 			case ack := <-acker.ackIngest:
 				acker.acks.PushBack(ack)
+			case <-acker.closeNotify:
+				return
 			}
 		} else {
 			select {
@@ -72,6 +76,8 @@ func (acker *Acker) ackIngester() {
 				acker.acks.PushBack(ack)
 			case acker.ackSend <- next:
 				next = nil
+			case <-acker.closeNotify:
+				return
 			}
 		}
 		atomic.StoreInt64(&acker.acksQueueSize, int64(acker.acks.Len()))
@@ -80,14 +86,19 @@ func (acker *Acker) ackIngester() {
 
 func (acker *Acker) ackSender() {
 	logger := pfxlog.Logger()
-	for nextAck := range acker.ackSend {
-		now := time.Now()
-		if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
-			logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
-			ackFailures.Mark(1)
-		} else {
-			ackWriteTimer.UpdateSince(now)
-			ackTxMeter.Mark(1)
+	for {
+		select {
+		case nextAck := <-acker.ackSend:
+			now := time.Now()
+			if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
+				logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
+				ackFailures.Mark(1)
+			} else {
+				ackWriteTimer.UpdateSince(now)
+				ackTxMeter.Mark(1)
+			}
+		case <-acker.closeNotify:
+			return
 		}
 	}
 }

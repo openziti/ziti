@@ -8,8 +8,8 @@ import (
 
 var retransmitter *Retransmitter
 
-func InitRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry) {
-	retransmitter = NewRetransmitter(forwarder, metrics)
+func InitRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
+	retransmitter = NewRetransmitter(forwarder, metrics, closeNotify)
 }
 
 type Retransmitter struct {
@@ -19,13 +19,15 @@ type Retransmitter struct {
 	retransmitIngest     chan *txPayload
 	retransmitSend       chan *txPayload
 	retransmitsQueueSize int64
+	closeNotify          <-chan struct{}
 }
 
-func NewRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry) *Retransmitter {
+func NewRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
 	ctrl := &Retransmitter{
 		forwarder:        forwarder,
 		retransmitIngest: make(chan *txPayload, 16),
 		retransmitSend:   make(chan *txPayload, 1),
+		closeNotify:      closeNotify,
 	}
 
 	go ctrl.retransmitIngester()
@@ -107,6 +109,8 @@ func (retransmitter *Retransmitter) retransmitIngester() {
 			select {
 			case retransmit := <-retransmitter.retransmitIngest:
 				retransmitter.acceptRetransmit(retransmit)
+			case <-retransmitter.closeNotify:
+				return
 			}
 		} else {
 			select {
@@ -114,6 +118,8 @@ func (retransmitter *Retransmitter) retransmitIngester() {
 				retransmitter.acceptRetransmit(retransmit)
 			case retransmitter.retransmitSend <- next:
 				next = nil
+			case <-retransmitter.closeNotify:
+				return
 			}
 		}
 	}
@@ -129,16 +135,21 @@ func (retransmitter *Retransmitter) acceptRetransmit(txp *txPayload) {
 
 func (retransmitter *Retransmitter) retransmitSender() {
 	logger := pfxlog.Logger()
-	for retransmit := range retransmitter.retransmitSend {
-		if !retransmit.isAcked() {
-			if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
-				logger.WithError(err).Errorf("unexpected error while retransmitting payload from %v", retransmit.x.address)
-				retransmissionFailures.Mark(1)
-			} else {
-				retransmit.markSent()
-				retransmissions.Mark(1)
+	for {
+		select {
+		case retransmit := <-retransmitter.retransmitSend:
+			if !retransmit.isAcked() {
+				if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
+					logger.WithError(err).Errorf("unexpected error while retransmitting payload from %v", retransmit.x.address)
+					retransmissionFailures.Mark(1)
+				} else {
+					retransmit.markSent()
+					retransmissions.Mark(1)
+				}
+				retransmit.dequeued()
 			}
-			retransmit.dequeued()
+		case <-retransmitter.closeNotify:
+			return
 		}
 	}
 }

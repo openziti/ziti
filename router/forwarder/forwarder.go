@@ -58,9 +58,6 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forw
 		Options:         options,
 	}
 
-	xgress.InitPayloadIngester()
-	xgress.InitAcker(forwarder, metricsRegistry)
-	xgress.InitRetransmitter(forwarder, metricsRegistry)
 	return forwarder
 }
 
