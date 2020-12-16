@@ -14,6 +14,8 @@
   dial fails for hosted services, the failure gets propagated back to controller
 * Streamline edge hosting protocol by allowing router to assign connection ids
 * Edge REST query failures should now result in 4xx errors instead of 500 internal server errors
+* Fixed bug where listing terminators via `ziti edge` would fail when terminators referenced pure
+  fabric services
 
 ## Xgress Rewrite
 
