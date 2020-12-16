@@ -142,11 +142,13 @@ func NewInvalidFilter(cause error) *ApiError {
 		AppendCause: true,
 	}
 }
-func NewInvalidPagination() *ApiError {
+func NewInvalidPagination(err error) *ApiError {
 	return &ApiError{
-		Code:    InvalidPaginationCode,
-		Message: InvalidPaginationMessage,
-		Status:  InvalidPaginationStatus,
+		Code:        InvalidPaginationCode,
+		Message:     InvalidPaginationMessage,
+		Status:      InvalidPaginationStatus,
+		Cause:       err,
+		AppendCause: true,
 	}
 }
 func NewNoEdgeRoutersAvailable() *ApiError {
@@ -156,11 +158,13 @@ func NewNoEdgeRoutersAvailable() *ApiError {
 		Status:  NoEdgeRoutersAvailableStatus,
 	}
 }
-func NewInvalidSort() *ApiError {
+func NewInvalidSort(err error) *ApiError {
 	return &ApiError{
-		Code:    InvalidSortCode,
-		Message: InvalidSortMessage,
-		Status:  InvalidSortStatus,
+		Code:        InvalidSortCode,
+		Message:     InvalidSortMessage,
+		Status:      InvalidSortStatus,
+		Cause:       err,
+		AppendCause: true,
 	}
 }
 func NewCouldNotValidate(err error) *ApiError {
