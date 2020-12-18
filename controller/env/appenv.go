@@ -126,6 +126,10 @@ func (ae *AppEnv) GetMetricsRegistry() metrics.Registry {
 	return ae.HostController.GetNetwork().GetMetricsRegistry()
 }
 
+func (ae *AppEnv) GetFingerprintGenerator() cert.FingerprintGenerator {
+	return ae.FingerprintGenerator
+}
+
 type HostController interface {
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
@@ -280,11 +284,11 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
-		AuthCookieName:    constants.ZitiSession,
-		AuthHeaderName:    constants.ZitiSession,
-		AuthRegistry:      &model.AuthProcessorRegistryImpl{},
-		EnrollRegistry:    &model.EnrollmentRegistryImpl{},
-		Api:               api,
+		AuthCookieName: constants.ZitiSession,
+		AuthHeaderName: constants.ZitiSession,
+		AuthRegistry:   &model.AuthProcessorRegistryImpl{},
+		EnrollRegistry: &model.EnrollmentRegistryImpl{},
+		Api:            api,
 	}
 
 	api.APIAuthorizer = authorizer{}

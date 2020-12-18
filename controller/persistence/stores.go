@@ -36,6 +36,7 @@ type Stores struct {
 	Terminator db.TerminatorStore
 
 	ApiSession              ApiSessionStore
+	ApiSessionCertificate   ApiSessionCertificateStore
 	Ca                      CaStore
 	Config                  ConfigStore
 	ConfigType              ConfigTypeStore
@@ -141,6 +142,7 @@ type stores struct {
 	authenticator           *authenticatorStoreImpl
 	postureCheck            *postureCheckStoreImpl
 	postureCheckType        *postureCheckTypeStoreImpl
+	apiSessionCertificate   *ApiSessionCertificateStoreImpl
 }
 
 func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
@@ -155,6 +157,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.Service = dbProvider.GetStores().Service
 
 	internalStores.apiSession = newApiSessionStore(internalStores)
+	internalStores.apiSessionCertificate = newApiSessionCertificateStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.config = newConfigsStore(internalStores)
@@ -182,6 +185,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Service:    dbProvider.GetStores().Service,
 
 		ApiSession:              internalStores.apiSession,
+		ApiSessionCertificate:   internalStores.apiSessionCertificate,
 		Ca:                      internalStores.ca,
 		Config:                  internalStores.config,
 		ConfigType:              internalStores.configType,
