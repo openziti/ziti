@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
@@ -53,7 +53,14 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 
 		if session == nil {
 			_ = ch.Close()
-			return fmt.Errorf("no api session found for token [%s]", token)
+
+			subjects := []string{}
+
+			for _, cert := range certificates {
+				subjects = append(subjects, cert.Subject.String())
+			}
+
+			return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
 		}
 
 		for _, fingerprint := range session.CertFingerprints {
