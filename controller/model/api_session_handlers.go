@@ -79,6 +79,10 @@ func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
 	return handler.updateEntity(apiSession, handler)
 }
 
+func (handler *ApiSessionHandler) MfaCompleted(apiSession *ApiSession) error {
+	return handler.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldAPiSessionMfaComplete), handler})
+}
+
 func (handler *ApiSessionHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }

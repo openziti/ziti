@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateEdgeRouter(params *CreateEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateEdgeRouterOK, error)
+	CreateEdgeRouter(params *CreateEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateEdgeRouterCreated, error)
 
 	DeleteEdgeRouter(params *DeleteEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteEdgeRouterOK, error)
 
@@ -79,7 +79,7 @@ type ClientService interface {
 
   Create a edge router resource. Requires admin access.
 */
-func (a *Client) CreateEdgeRouter(params *CreateEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateEdgeRouterOK, error) {
+func (a *Client) CreateEdgeRouter(params *CreateEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateEdgeRouterCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateEdgeRouterParams()
@@ -101,7 +101,7 @@ func (a *Client) CreateEdgeRouter(params *CreateEdgeRouterParams, authInfo runti
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateEdgeRouterOK)
+	success, ok := result.(*CreateEdgeRouterCreated)
 	if ok {
 		return success, nil
 	}

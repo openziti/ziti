@@ -28,6 +28,8 @@ const (
 	FieldApiSessionToken       = "token"
 	FieldApiSessionConfigTypes = "configTypes"
 	FieldApiSessionIPAddress   = "ipAddress"
+	FieldAPiSessionMfaComplete = "mfaComplete"
+	FieldAPiSessionMfaRequired = "mfaRequired"
 )
 
 type ApiSession struct {
@@ -36,6 +38,8 @@ type ApiSession struct {
 	Token       string
 	IPAddress   string
 	ConfigTypes []string
+	MfaComplete bool
+	MfaRequired bool
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -52,6 +56,8 @@ func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
 	entity.ConfigTypes = bucket.GetStringList(FieldApiSessionConfigTypes)
 	entity.IPAddress = bucket.GetStringWithDefault(FieldApiSessionIPAddress, "")
+	entity.MfaComplete = bucket.GetBoolWithDefault(FieldAPiSessionMfaComplete, false)
+	entity.MfaRequired = bucket.GetBoolWithDefault(FieldAPiSessionMfaRequired, false)
 }
 
 func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
@@ -60,6 +66,8 @@ func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldApiSessionToken, entity.Token)
 	ctx.SetStringList(FieldApiSessionConfigTypes, entity.ConfigTypes)
 	ctx.SetString(FieldApiSessionIPAddress, entity.IPAddress)
+	ctx.SetBool(FieldAPiSessionMfaComplete, entity.MfaComplete)
+	ctx.SetBool(FieldAPiSessionMfaRequired, entity.MfaRequired)
 }
 
 func (entity *ApiSession) GetEntityType() string {

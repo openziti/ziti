@@ -53,7 +53,7 @@ type Client struct {
 type ClientService interface {
 	DeleteCurrentAPISession(params *DeleteCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCurrentAPISessionOK, error)
 
-	CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateOK, error)
+	CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateCreated, error)
 
 	DeleteCurrentAPISessionCertificate(params *DeleteCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCurrentAPISessionCertificateOK, error)
 
@@ -62,8 +62,6 @@ type ClientService interface {
 	DetailCurrentIdentityAuthenticator(params *DetailCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*DetailCurrentIdentityAuthenticatorOK, error)
 
 	GetCurrentAPISession(params *GetCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentAPISessionOK, error)
-
-	GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityOK, error)
 
 	ListCurrentAPISessionCertificates(params *ListCurrentAPISessionCertificatesParams, authInfo runtime.ClientAuthInfoWriter) (*ListCurrentAPISessionCertificatesOK, error)
 
@@ -120,7 +118,7 @@ func (a *Client) DeleteCurrentAPISession(params *DeleteCurrentAPISessionParams, 
 
   Creates an ephemeral certificate for the current API Session. This endpoint expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload. It is up to the client to manage the private key backing the CSR request.
 */
-func (a *Client) CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateOK, error) {
+func (a *Client) CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateCurrentAPISessionCertificateParams()
@@ -142,7 +140,7 @@ func (a *Client) CreateCurrentAPISessionCertificate(params *CreateCurrentAPISess
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateCurrentAPISessionCertificateOK)
+	success, ok := result.(*CreateCurrentAPISessionCertificateCreated)
 	if ok {
 		return success, nil
 	}
@@ -298,43 +296,6 @@ func (a *Client) GetCurrentAPISession(params *GetCurrentAPISessionParams, authIn
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getCurrentAPISession: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-  GetCurrentIdentity returns the current identity
-
-  Returns the identity associated with the API sessions used to issue the current request
-*/
-func (a *Client) GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetCurrentIdentityParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "getCurrentIdentity",
-		Method:             "GET",
-		PathPattern:        "/current-identity",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &GetCurrentIdentityReader{formats: a.formats},
-		AuthInfo:           authInfo,
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetCurrentIdentityOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getCurrentIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

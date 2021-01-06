@@ -135,6 +135,10 @@ func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.Req = require.New(t)
 }
 
+func (ctx *TestContext) T() *testing.T {
+	return ctx.testing
+}
+
 func (ctx *TestContext) Transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -177,6 +181,7 @@ func (ctx *TestContext) NewClient() *resty.Client {
 func (ctx *TestContext) DefaultClient() *resty.Client {
 	if ctx.client == nil {
 		ctx.client, _, _ = ctx.NewClientComponents()
+		ctx.client.AllowGetMethodPayload = true
 	}
 	return ctx.client
 }

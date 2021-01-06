@@ -37,6 +37,9 @@ const (
 
 	enrollmentDurationMin     = 5
 	enrollmentDurationDefault = 1440
+
+	minDataSecretLen = 32
+	maxDataSecretLen = 256
 )
 
 type Enrollment struct {
@@ -67,9 +70,14 @@ type Config struct {
 	Enabled            bool
 	Api                Api
 	Enrollment         Enrollment
+	Data               Data
 	caPems             [][]byte
 	caPemsBuf          []byte
 	caPemsOnce         sync.Once
+}
+
+type Data struct {
+	Secret string
 }
 
 func (c *Config) SessionTimeoutDuration() time.Duration {

@@ -40,6 +40,7 @@ import (
 	"github.com/openziti/edge/rest_client/certificate_authority"
 	"github.com/openziti/edge/rest_client/config"
 	"github.com/openziti/edge/rest_client/current_api_session"
+	"github.com/openziti/edge/rest_client/current_identity"
 	"github.com/openziti/edge/rest_client/database"
 	"github.com/openziti/edge/rest_client/edge_router"
 	"github.com/openziti/edge/rest_client/edge_router_policy"
@@ -107,6 +108,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiEdge {
 	cli.CertificateAuthority = certificate_authority.New(transport, formats)
 	cli.Config = config.New(transport, formats)
 	cli.CurrentAPISession = current_api_session.New(transport, formats)
+	cli.CurrentIdentity = current_identity.New(transport, formats)
 	cli.Database = database.New(transport, formats)
 	cli.EdgeRouter = edge_router.New(transport, formats)
 	cli.EdgeRouterPolicy = edge_router_policy.New(transport, formats)
@@ -180,6 +182,8 @@ type ZitiEdge struct {
 
 	CurrentAPISession current_api_session.ClientService
 
+	CurrentIdentity current_identity.ClientService
+
 	Database database.ClientService
 
 	EdgeRouter edge_router.ClientService
@@ -226,6 +230,7 @@ func (c *ZitiEdge) SetTransport(transport runtime.ClientTransport) {
 	c.CertificateAuthority.SetTransport(transport)
 	c.Config.SetTransport(transport)
 	c.CurrentAPISession.SetTransport(transport)
+	c.CurrentIdentity.SetTransport(transport)
 	c.Database.SetTransport(transport)
 	c.EdgeRouter.SetTransport(transport)
 	c.EdgeRouterPolicy.SetTransport(transport)

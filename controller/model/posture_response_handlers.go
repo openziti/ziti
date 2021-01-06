@@ -75,8 +75,8 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 				return fmt.Errorf("could not query for sessions: %v", err)
 			}
 
-			validServices := map[string]bool{} //cache services access
-			validPolicies := map[string]bool{} //cache policy posture check results
+			validServices := map[string]bool{} //cache services access, scoped by apiSessionId
+			validPolicies := map[string]bool{} //cache policy posture check results, scoped by apiSessionId
 
 			for _, session := range result.Sessions {
 				isValidService, isEvaluatedService := validServices[session.ServiceId]
@@ -95,7 +95,7 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 							if !isEvaluatedPolicy { //not checked yet
 								validPolicies[policyId] = false
 								isValidPolicy = false
-								if handler.postureCache.Evaluate(identityId, checks) {
+								if handler.postureCache.Evaluate(identityId, apiSessionId, checks) {
 									isValidService = true
 									isValidPolicy = true
 								}
@@ -135,8 +135,8 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 
 }
 
-func (handler *PostureResponseHandler) Evaluate(identityId string, check *PostureCheck) bool {
-	return handler.postureCache.Evaluate(identityId, []*PostureCheck{check})
+func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string, check *PostureCheck) bool {
+	return handler.postureCache.Evaluate(identityId, apiSessionId, []*PostureCheck{check})
 }
 
 func (handler *PostureResponseHandler) PostureData(id string) *PostureData {

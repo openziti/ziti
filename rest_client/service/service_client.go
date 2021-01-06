@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateService(params *CreateServiceParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceOK, error)
+	CreateService(params *CreateServiceParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceCreated, error)
 
 	DeleteService(params *DeleteServiceParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteServiceOK, error)
 
@@ -83,7 +83,7 @@ type ClientService interface {
 
   Create a services resource. Requires admin access.
 */
-func (a *Client) CreateService(params *CreateServiceParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceOK, error) {
+func (a *Client) CreateService(params *CreateServiceParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateServiceParams()
@@ -105,7 +105,7 @@ func (a *Client) CreateService(params *CreateServiceParams, authInfo runtime.Cli
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateServiceOK)
+	success, ok := result.(*CreateServiceCreated)
 	if ok {
 		return success, nil
 	}

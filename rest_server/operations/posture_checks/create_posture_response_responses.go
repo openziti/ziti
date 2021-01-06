@@ -37,42 +37,42 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreatePostureResponseOKCode is the HTTP code returned for type CreatePostureResponseOK
-const CreatePostureResponseOKCode int = 200
+// CreatePostureResponseCreatedCode is the HTTP code returned for type CreatePostureResponseCreated
+const CreatePostureResponseCreatedCode int = 201
 
-/*CreatePostureResponseOK Base empty response
+/*CreatePostureResponseCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createPostureResponseOK
+swagger:response createPostureResponseCreated
 */
-type CreatePostureResponseOK struct {
+type CreatePostureResponseCreated struct {
 
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.Empty `json:"body,omitempty"`
+	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreatePostureResponseOK creates CreatePostureResponseOK with default headers values
-func NewCreatePostureResponseOK() *CreatePostureResponseOK {
+// NewCreatePostureResponseCreated creates CreatePostureResponseCreated with default headers values
+func NewCreatePostureResponseCreated() *CreatePostureResponseCreated {
 
-	return &CreatePostureResponseOK{}
+	return &CreatePostureResponseCreated{}
 }
 
-// WithPayload adds the payload to the create posture response o k response
-func (o *CreatePostureResponseOK) WithPayload(payload *rest_model.Empty) *CreatePostureResponseOK {
+// WithPayload adds the payload to the create posture response created response
+func (o *CreatePostureResponseCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreatePostureResponseCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create posture response o k response
-func (o *CreatePostureResponseOK) SetPayload(payload *rest_model.Empty) {
+// SetPayload sets the payload to the create posture response created response
+func (o *CreatePostureResponseCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreatePostureResponseOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreatePostureResponseCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

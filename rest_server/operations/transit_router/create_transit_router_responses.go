@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateTransitRouterOKCode is the HTTP code returned for type CreateTransitRouterOK
-const CreateTransitRouterOKCode int = 200
+// CreateTransitRouterCreatedCode is the HTTP code returned for type CreateTransitRouterCreated
+const CreateTransitRouterCreatedCode int = 201
 
-/*CreateTransitRouterOK The create request was successful and the resource has been added at the following location
+/*CreateTransitRouterCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createTransitRouterOK
+swagger:response createTransitRouterCreated
 */
-type CreateTransitRouterOK struct {
+type CreateTransitRouterCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateTransitRouterOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateTransitRouterOK creates CreateTransitRouterOK with default headers values
-func NewCreateTransitRouterOK() *CreateTransitRouterOK {
+// NewCreateTransitRouterCreated creates CreateTransitRouterCreated with default headers values
+func NewCreateTransitRouterCreated() *CreateTransitRouterCreated {
 
-	return &CreateTransitRouterOK{}
+	return &CreateTransitRouterCreated{}
 }
 
-// WithPayload adds the payload to the create transit router o k response
-func (o *CreateTransitRouterOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateTransitRouterOK {
+// WithPayload adds the payload to the create transit router created response
+func (o *CreateTransitRouterCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateTransitRouterCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create transit router o k response
-func (o *CreateTransitRouterOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create transit router created response
+func (o *CreateTransitRouterCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateTransitRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateTransitRouterCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

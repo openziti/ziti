@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateTransitRouter(params *CreateTransitRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTransitRouterOK, error)
+	CreateTransitRouter(params *CreateTransitRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTransitRouterCreated, error)
 
 	DeleteTransitRouter(params *DeleteTransitRouterParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteTransitRouterOK, error)
 
@@ -71,7 +71,7 @@ type ClientService interface {
 
   Create a transit router resource. Requires admin access.
 */
-func (a *Client) CreateTransitRouter(params *CreateTransitRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTransitRouterOK, error) {
+func (a *Client) CreateTransitRouter(params *CreateTransitRouterParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTransitRouterCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateTransitRouterParams()
@@ -93,7 +93,7 @@ func (a *Client) CreateTransitRouter(params *CreateTransitRouterParams, authInfo
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateTransitRouterOK)
+	success, ok := result.(*CreateTransitRouterCreated)
 	if ok {
 		return success, nil
 	}

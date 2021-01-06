@@ -160,6 +160,12 @@ func unmarshalPostureCheckPatch(data []byte, consumer runtime.Consumer) (Posture
 			return nil, err
 		}
 		return &result, nil
+	case "MFA":
+		var result PostureCheckMfaPatch
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "OS":
 		var result PostureCheckOperatingSystemPatch
 		if err := consumer.Consume(buf2, &result); err != nil {

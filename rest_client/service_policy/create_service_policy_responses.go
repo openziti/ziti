@@ -47,8 +47,8 @@ type CreateServicePolicyReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateServicePolicyReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateServicePolicyOK()
+	case 201:
+		result := NewCreateServicePolicyCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateServicePolicyReader) ReadResponse(response runtime.ClientResponse
 	}
 }
 
-// NewCreateServicePolicyOK creates a CreateServicePolicyOK with default headers values
-func NewCreateServicePolicyOK() *CreateServicePolicyOK {
-	return &CreateServicePolicyOK{}
+// NewCreateServicePolicyCreated creates a CreateServicePolicyCreated with default headers values
+func NewCreateServicePolicyCreated() *CreateServicePolicyCreated {
+	return &CreateServicePolicyCreated{}
 }
 
-/*CreateServicePolicyOK handles this case with default header values.
+/*CreateServicePolicyCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateServicePolicyOK struct {
+type CreateServicePolicyCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateServicePolicyOK) Error() string {
-	return fmt.Sprintf("[POST /service-policies][%d] createServicePolicyOK  %+v", 200, o.Payload)
+func (o *CreateServicePolicyCreated) Error() string {
+	return fmt.Sprintf("[POST /service-policies][%d] createServicePolicyCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateServicePolicyOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateServicePolicyCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateServicePolicyOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateServicePolicyCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

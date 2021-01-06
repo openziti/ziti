@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateServiceEdgeRouterPolicyOKCode is the HTTP code returned for type CreateServiceEdgeRouterPolicyOK
-const CreateServiceEdgeRouterPolicyOKCode int = 200
+// CreateServiceEdgeRouterPolicyCreatedCode is the HTTP code returned for type CreateServiceEdgeRouterPolicyCreated
+const CreateServiceEdgeRouterPolicyCreatedCode int = 201
 
-/*CreateServiceEdgeRouterPolicyOK The create request was successful and the resource has been added at the following location
+/*CreateServiceEdgeRouterPolicyCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createServiceEdgeRouterPolicyOK
+swagger:response createServiceEdgeRouterPolicyCreated
 */
-type CreateServiceEdgeRouterPolicyOK struct {
+type CreateServiceEdgeRouterPolicyCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateServiceEdgeRouterPolicyOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateServiceEdgeRouterPolicyOK creates CreateServiceEdgeRouterPolicyOK with default headers values
-func NewCreateServiceEdgeRouterPolicyOK() *CreateServiceEdgeRouterPolicyOK {
+// NewCreateServiceEdgeRouterPolicyCreated creates CreateServiceEdgeRouterPolicyCreated with default headers values
+func NewCreateServiceEdgeRouterPolicyCreated() *CreateServiceEdgeRouterPolicyCreated {
 
-	return &CreateServiceEdgeRouterPolicyOK{}
+	return &CreateServiceEdgeRouterPolicyCreated{}
 }
 
-// WithPayload adds the payload to the create service edge router policy o k response
-func (o *CreateServiceEdgeRouterPolicyOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateServiceEdgeRouterPolicyOK {
+// WithPayload adds the payload to the create service edge router policy created response
+func (o *CreateServiceEdgeRouterPolicyCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateServiceEdgeRouterPolicyCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create service edge router policy o k response
-func (o *CreateServiceEdgeRouterPolicyOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create service edge router policy created response
+func (o *CreateServiceEdgeRouterPolicyCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateServiceEdgeRouterPolicyOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateServiceEdgeRouterPolicyCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

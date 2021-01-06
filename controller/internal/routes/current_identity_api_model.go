@@ -17,14 +17,21 @@
 package routes
 
 import (
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"path"
 )
 
 const EntityNameCurrentIdentity = "current-identity"
+const EntityNameMfa = "mfa"
 
 var CurrentIdentityLinkFactory FullLinkFactory = NewCurrentIdentityLinkFactory()
+var CurrentIdentityMfaLinkFactory FullLinkFactory = NewCurrentIdentityMfaLinkFactory()
 
 type CurrentIdentityLinkFactoryImpl struct {
 	BasicLinkFactory
@@ -40,7 +47,6 @@ func (factory *CurrentIdentityLinkFactoryImpl) SelfUrlString(_ string) string {
 	return "./" + factory.entityName
 }
 
-
 func (factory CurrentIdentityLinkFactoryImpl) NewNestedLink(_ models.Entity, elem ...string) rest_model.Link {
 	elem = append([]string{factory.SelfUrlString("")}, elem...)
 	return NewLink("./" + path.Join(elem...))
@@ -53,6 +59,82 @@ func (factory *CurrentIdentityLinkFactoryImpl) SelfLink(_ models.Entity) rest_mo
 func (factory *CurrentIdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 	return rest_model.Links{
 		EntityNameSelf: factory.SelfLink(entity),
-		EntityNameAuthenticator: factory.NewNestedLink(nil, EntityNameAuthenticator),
+		EntityNameMfa:  factory.NewNestedLink(nil, "mfa"),
 	}
+}
+
+type CurrentIdentityMfaLinkFactoryImpl struct {
+	BasicLinkFactory
+}
+
+func NewCurrentIdentityMfaLinkFactory() *CurrentIdentityMfaLinkFactoryImpl {
+	return &CurrentIdentityMfaLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameCurrentIdentity + "/" + EntityNameMfa),
+	}
+}
+
+func (factory *CurrentIdentityMfaLinkFactoryImpl) SelfUrlString(_ string) string {
+	return "./" + factory.entityName
+}
+
+func (factory CurrentIdentityMfaLinkFactoryImpl) NewNestedLink(_ models.Entity, elem ...string) rest_model.Link {
+	elem = append([]string{factory.SelfUrlString("")}, elem...)
+	return NewLink("./" + path.Join(elem...))
+}
+
+func (factory *CurrentIdentityMfaLinkFactoryImpl) SelfLink(_ models.Entity) rest_model.Link {
+	return NewLink("./" + factory.entityName)
+}
+
+func (factory *CurrentIdentityMfaLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := rest_model.Links{
+		EntityNameSelf:            factory.SelfLink(entity),
+		EntityNameCurrentIdentity: CurrentIdentityLinkFactory.SelfLink(entity),
+	}
+
+	if mfa := entity.(*model.Mfa); mfa != nil {
+		if !mfa.IsVerified {
+			links["verify"] = factory.NewNestedLink(nil, "verify")
+			links["qr"] = factory.NewNestedLink(nil, "qr-code")
+		} else {
+			links["recovery-codes"] = factory.NewNestedLink(nil, "recovery-codes")
+		}
+	}
+
+	return links
+}
+
+func MapMfaToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	mfa, ok := e.(*model.Mfa)
+
+	if !ok {
+		err := fmt.Errorf("entity is not a Mfa \"%s\"", e.GetId())
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+
+	restModel, err := MapMfaToRestModel(ae, mfa)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
+}
+
+func MapMfaToRestModel(ae *env.AppEnv, mfa *model.Mfa) (*rest_model.DetailMfa, error) {
+	result := &rest_model.DetailMfa{
+		BaseEntity: BaseEntityToRestModel(mfa, CurrentIdentityMfaLinkFactory),
+		IsVerified: &mfa.IsVerified,
+	}
+
+	if !mfa.IsVerified {
+		result.RecoveryCodes = mfa.RecoveryCodes
+		result.ProvisioningURL = ae.Handlers.Mfa.GetProvisioningUrl(mfa)
+	}
+
+	return result, nil
 }

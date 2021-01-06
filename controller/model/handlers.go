@@ -49,6 +49,7 @@ type Handlers struct {
 	PostureCheck            *PostureCheckHandler
 	PostureCheckType        *PostureCheckTypeHandler
 	PostureResponse         *PostureResponseHandler
+	Mfa                     *MfaHandler
 }
 
 func InitHandlers(env Env) *Handlers {
@@ -80,6 +81,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.PostureCheck = NewPostureCheckHandler(env)
 	handlers.PostureCheckType = NewPostureCheckTypeHandler(env)
 	handlers.PostureResponse = NewPostureResponseHandler(env)
+	handlers.Mfa = NewMfaHandler(env)
 
 	return handlers
 }

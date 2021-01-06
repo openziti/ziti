@@ -47,8 +47,8 @@ type CreateCaReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateCaReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateCaOK()
+	case 201:
+		result := NewCreateCaCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateCaReader) ReadResponse(response runtime.ClientResponse, consumer 
 	}
 }
 
-// NewCreateCaOK creates a CreateCaOK with default headers values
-func NewCreateCaOK() *CreateCaOK {
-	return &CreateCaOK{}
+// NewCreateCaCreated creates a CreateCaCreated with default headers values
+func NewCreateCaCreated() *CreateCaCreated {
+	return &CreateCaCreated{}
 }
 
-/*CreateCaOK handles this case with default header values.
+/*CreateCaCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateCaOK struct {
+type CreateCaCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateCaOK) Error() string {
-	return fmt.Sprintf("[POST /cas][%d] createCaOK  %+v", 200, o.Payload)
+func (o *CreateCaCreated) Error() string {
+	return fmt.Sprintf("[POST /cas][%d] createCaCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateCaOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateCaCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateCaOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateCaCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

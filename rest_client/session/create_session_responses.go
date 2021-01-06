@@ -47,8 +47,8 @@ type CreateSessionReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateSessionReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateSessionOK()
+	case 201:
+		result := NewCreateSessionCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateSessionReader) ReadResponse(response runtime.ClientResponse, cons
 	}
 }
 
-// NewCreateSessionOK creates a CreateSessionOK with default headers values
-func NewCreateSessionOK() *CreateSessionOK {
-	return &CreateSessionOK{}
+// NewCreateSessionCreated creates a CreateSessionCreated with default headers values
+func NewCreateSessionCreated() *CreateSessionCreated {
+	return &CreateSessionCreated{}
 }
 
-/*CreateSessionOK handles this case with default header values.
+/*CreateSessionCreated handles this case with default header values.
 
-The create request was successful and the resource has been added at the following location.
+The create request was successful and the resource has been added at the following location
 */
-type CreateSessionOK struct {
+type CreateSessionCreated struct {
 	Payload *rest_model.SessionCreateEnvelope
 }
 
-func (o *CreateSessionOK) Error() string {
-	return fmt.Sprintf("[POST /sessions][%d] createSessionOK  %+v", 200, o.Payload)
+func (o *CreateSessionCreated) Error() string {
+	return fmt.Sprintf("[POST /sessions][%d] createSessionCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateSessionOK) GetPayload() *rest_model.SessionCreateEnvelope {
+func (o *CreateSessionCreated) GetPayload() *rest_model.SessionCreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateSessionOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateSessionCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.SessionCreateEnvelope)
 

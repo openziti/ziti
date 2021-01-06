@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateAuthenticatorOKCode is the HTTP code returned for type CreateAuthenticatorOK
-const CreateAuthenticatorOKCode int = 200
+// CreateAuthenticatorCreatedCode is the HTTP code returned for type CreateAuthenticatorCreated
+const CreateAuthenticatorCreatedCode int = 201
 
-/*CreateAuthenticatorOK The create was successful
+/*CreateAuthenticatorCreated The create was successful
 
-swagger:response createAuthenticatorOK
+swagger:response createAuthenticatorCreated
 */
-type CreateAuthenticatorOK struct {
+type CreateAuthenticatorCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateAuthenticatorOK struct {
 	Payload *rest_model.AuthenticatorCreate `json:"body,omitempty"`
 }
 
-// NewCreateAuthenticatorOK creates CreateAuthenticatorOK with default headers values
-func NewCreateAuthenticatorOK() *CreateAuthenticatorOK {
+// NewCreateAuthenticatorCreated creates CreateAuthenticatorCreated with default headers values
+func NewCreateAuthenticatorCreated() *CreateAuthenticatorCreated {
 
-	return &CreateAuthenticatorOK{}
+	return &CreateAuthenticatorCreated{}
 }
 
-// WithPayload adds the payload to the create authenticator o k response
-func (o *CreateAuthenticatorOK) WithPayload(payload *rest_model.AuthenticatorCreate) *CreateAuthenticatorOK {
+// WithPayload adds the payload to the create authenticator created response
+func (o *CreateAuthenticatorCreated) WithPayload(payload *rest_model.AuthenticatorCreate) *CreateAuthenticatorCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create authenticator o k response
-func (o *CreateAuthenticatorOK) SetPayload(payload *rest_model.AuthenticatorCreate) {
+// SetPayload sets the payload to the create authenticator created response
+func (o *CreateAuthenticatorCreated) SetPayload(payload *rest_model.AuthenticatorCreate) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateAuthenticatorOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateAuthenticatorCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

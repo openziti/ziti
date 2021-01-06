@@ -96,7 +96,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 			isCheckPassing := true
 			found := false
 			if isCheckPassing, found = checkCache[postureCheck.Id]; !found {
-				isCheckPassing = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, postureCheck)
+				isCheckPassing = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, apiSession.Id, postureCheck)
 				checkCache[postureCheck.Id] = isCheckPassing
 			}
 

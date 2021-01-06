@@ -340,3 +340,27 @@ func NewInvalidPosture() *ApiError {
 		Status:  InvalidPostureStatus,
 	}
 }
+
+func NewMfaExistsError() *ApiError {
+	return &ApiError{
+		Code:    MfaExistsCode,
+		Message: MfaExistsMessage,
+		Status:  MfaExistsStatus,
+	}
+}
+
+func NewMfaNotEnrolledError() *ApiError {
+	return &ApiError{
+		Code:    MfaNotEnrolledCode,
+		Message: MfaNotEnrolledMessage,
+		Status:  MfaNotEnrolledStatus,
+	}
+}
+
+func NewInvalidMfaTokenError() *ApiError {
+	return &ApiError{
+		Code:    MfaInvalidTokenCode,
+		Message: MfaInvalidTokenMessage,
+		Status:  MfaInvalidTokenStatus,
+	}
+}

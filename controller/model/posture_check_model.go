@@ -40,7 +40,7 @@ type PostureCheckSubType interface {
 	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
 	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
 	fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
-	Evaluate(pd *PostureData) bool
+	Evaluate(apiSessionId string, pd *PostureData) bool
 }
 
 type newPostureCheckSubType func() PostureCheckSubType
@@ -50,6 +50,7 @@ const (
 	PostureCheckTypeDomain  = "DOMAIN"
 	PostureCheckTypeProcess = "PROCESS"
 	PostureCheckTypeMAC     = "MAC"
+	PostureCheckTypeMFA     = "MFA"
 )
 
 var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
@@ -57,6 +58,7 @@ var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
 	PostureCheckTypeDomain:  newPostureCheckWindowsDomains,
 	PostureCheckTypeProcess: newPostureCheckProcess,
 	PostureCheckTypeMAC:     newPostureCheckMacAddresses,
+	PostureCheckTypeMFA:     newPostureCheckMfa,
 }
 
 func newSubType(typeId string) PostureCheckSubType {
@@ -117,6 +119,6 @@ func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) 
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *PostureCheck) Evaluate(pd *PostureData) bool {
-	return entity.SubType.Evaluate(pd)
+func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) bool {
+	return entity.SubType.Evaluate(apiSessionId, pd)
 }

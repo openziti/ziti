@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTerminatorOK, error)
+	CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTerminatorCreated, error)
 
 	DeleteTerminator(params *DeleteTerminatorParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteTerminatorOK, error)
 
@@ -71,7 +71,7 @@ type ClientService interface {
 
   Create a terminator resource. Requires admin access.
 */
-func (a *Client) CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTerminatorOK, error) {
+func (a *Client) CreateTerminator(params *CreateTerminatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateTerminatorCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateTerminatorParams()
@@ -93,7 +93,7 @@ func (a *Client) CreateTerminator(params *CreateTerminatorParams, authInfo runti
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateTerminatorOK)
+	success, ok := result.(*CreateTerminatorCreated)
 	if ok {
 		return success, nil
 	}

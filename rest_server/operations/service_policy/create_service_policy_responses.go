@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateServicePolicyOKCode is the HTTP code returned for type CreateServicePolicyOK
-const CreateServicePolicyOKCode int = 200
+// CreateServicePolicyCreatedCode is the HTTP code returned for type CreateServicePolicyCreated
+const CreateServicePolicyCreatedCode int = 201
 
-/*CreateServicePolicyOK The create request was successful and the resource has been added at the following location
+/*CreateServicePolicyCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createServicePolicyOK
+swagger:response createServicePolicyCreated
 */
-type CreateServicePolicyOK struct {
+type CreateServicePolicyCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateServicePolicyOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateServicePolicyOK creates CreateServicePolicyOK with default headers values
-func NewCreateServicePolicyOK() *CreateServicePolicyOK {
+// NewCreateServicePolicyCreated creates CreateServicePolicyCreated with default headers values
+func NewCreateServicePolicyCreated() *CreateServicePolicyCreated {
 
-	return &CreateServicePolicyOK{}
+	return &CreateServicePolicyCreated{}
 }
 
-// WithPayload adds the payload to the create service policy o k response
-func (o *CreateServicePolicyOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateServicePolicyOK {
+// WithPayload adds the payload to the create service policy created response
+func (o *CreateServicePolicyCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateServicePolicyCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create service policy o k response
-func (o *CreateServicePolicyOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create service policy created response
+func (o *CreateServicePolicyCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateServicePolicyOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateServicePolicyCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

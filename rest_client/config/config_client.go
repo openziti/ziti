@@ -51,9 +51,9 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateConfig(params *CreateConfigParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigOK, error)
+	CreateConfig(params *CreateConfigParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigCreated, error)
 
-	CreateConfigType(params *CreateConfigTypeParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigTypeOK, error)
+	CreateConfigType(params *CreateConfigTypeParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigTypeCreated, error)
 
 	DeleteConfig(params *DeleteConfigParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteConfigOK, error)
 
@@ -85,7 +85,7 @@ type ClientService interface {
 
   Create a config resource. Requires admin access.
 */
-func (a *Client) CreateConfig(params *CreateConfigParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigOK, error) {
+func (a *Client) CreateConfig(params *CreateConfigParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateConfigParams()
@@ -107,7 +107,7 @@ func (a *Client) CreateConfig(params *CreateConfigParams, authInfo runtime.Clien
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateConfigOK)
+	success, ok := result.(*CreateConfigCreated)
 	if ok {
 		return success, nil
 	}
@@ -120,7 +120,7 @@ func (a *Client) CreateConfig(params *CreateConfigParams, authInfo runtime.Clien
 /*
   CreateConfigType creates a config type requires admin access
 */
-func (a *Client) CreateConfigType(params *CreateConfigTypeParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigTypeOK, error) {
+func (a *Client) CreateConfigType(params *CreateConfigTypeParams, authInfo runtime.ClientAuthInfoWriter) (*CreateConfigTypeCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateConfigTypeParams()
@@ -142,7 +142,7 @@ func (a *Client) CreateConfigType(params *CreateConfigTypeParams, authInfo runti
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateConfigTypeOK)
+	success, ok := result.(*CreateConfigTypeCreated)
 	if ok {
 		return success, nil
 	}

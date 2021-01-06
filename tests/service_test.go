@@ -92,7 +92,7 @@ func Test_Services(t *testing.T) {
 		query := url.QueryEscape(fmt.Sprintf(`id in ["%v", "%v", "%v", "%v", "%v", "%v", "%v"]`,
 			service1.Id, service2.Id, service3.Id, service4.Id, service5.Id, service6.Id, service7.Id))
 		result := nonAdminUserSession.requireQuery("services?filter=" + query)
-		data := ctx.RequirePath(result, "data")
+		data := ctx.RequireGetNonNilPathValue(result, "data")
 		ctx.RequireNoChildWith(data, "id", service4.Id)
 		ctx.RequireNoChildWith(data, "id", service5.Id)
 		ctx.RequireNoChildWith(data, "id", service6.Id)
@@ -174,7 +174,7 @@ func Test_Services(t *testing.T) {
 		ctx.AdminSession.requireUpdateEntity(service)
 
 		result := ctx.AdminSession.requireQuery("services/" + service.Id)
-		jsonService := ctx.RequirePath(result, "data")
+		jsonService := ctx.RequireGetNonNilPathValue(result, "data")
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
 	})

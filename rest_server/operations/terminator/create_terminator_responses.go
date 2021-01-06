@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateTerminatorOKCode is the HTTP code returned for type CreateTerminatorOK
-const CreateTerminatorOKCode int = 200
+// CreateTerminatorCreatedCode is the HTTP code returned for type CreateTerminatorCreated
+const CreateTerminatorCreatedCode int = 201
 
-/*CreateTerminatorOK The create request was successful and the resource has been added at the following location
+/*CreateTerminatorCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createTerminatorOK
+swagger:response createTerminatorCreated
 */
-type CreateTerminatorOK struct {
+type CreateTerminatorCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateTerminatorOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateTerminatorOK creates CreateTerminatorOK with default headers values
-func NewCreateTerminatorOK() *CreateTerminatorOK {
+// NewCreateTerminatorCreated creates CreateTerminatorCreated with default headers values
+func NewCreateTerminatorCreated() *CreateTerminatorCreated {
 
-	return &CreateTerminatorOK{}
+	return &CreateTerminatorCreated{}
 }
 
-// WithPayload adds the payload to the create terminator o k response
-func (o *CreateTerminatorOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateTerminatorOK {
+// WithPayload adds the payload to the create terminator created response
+func (o *CreateTerminatorCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateTerminatorCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create terminator o k response
-func (o *CreateTerminatorOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create terminator created response
+func (o *CreateTerminatorCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateTerminatorOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateTerminatorCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

@@ -265,6 +265,12 @@ func unmarshalPostureCheckDetail(data []byte, consumer runtime.Consumer) (Postur
 			return nil, err
 		}
 		return &result, nil
+	case "MFA":
+		var result PostureCheckMfaDetail
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "OS":
 		var result PostureCheckOperatingSystemDetail
 		if err := consumer.Consume(buf2, &result); err != nil {

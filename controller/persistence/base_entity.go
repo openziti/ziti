@@ -32,6 +32,7 @@ const (
 	EntityTypeGeoRegions                = "geoRegions"
 	EntityTypeIdentities                = "identities"
 	EntityTypeIdentityTypes             = "identityTypes"
+	EntityTypeMfas                      = "mfas"
 	EntityTypeServicePolicies           = "servicePolicies"
 	EntityTypeServiceEdgeRouterPolicies = "serviceEdgeRouterPolicies"
 	EntityTypeSessions                  = "sessions"

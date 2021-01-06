@@ -60,13 +60,22 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 	expiresAt := strfmt.DateTime(s.UpdatedAt.Add(sessionTimeout))
 	expirationSeconds := int64(s.ExpirationDuration.Seconds())
+
+	authQueries := rest_model.AuthQueryList{}
+
+	if s.MfaRequired && !s.MfaComplete {
+		authQueries = append(authQueries, newAuthCheckZitiMfa())
+	}
+
 	apiSession := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail: rest_model.APISessionDetail{
 			BaseEntity:  BaseEntityToRestModel(s, CurrentApiSessionLinkFactory),
-			Identity:    ToEntityRef(s.Identity.Name, s.Identity, IdentityLinkFactory),
-			Token:       &s.Token,
 			ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
+			Identity:    ToEntityRef(s.Identity.Name, s.Identity, IdentityLinkFactory),
+			IdentityID:  &s.IdentityId,
 			IPAddress:   &s.IPAddress,
+			Token:       &s.Token,
+			AuthQueries: authQueries,
 		},
 		ExpiresAt:         &expiresAt,
 		ExpirationSeconds: &expirationSeconds,

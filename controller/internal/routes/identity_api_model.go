@@ -175,6 +175,10 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		return nil, err
 	}
 
+	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)
+
+	isMfaEnabled := mfa != nil && mfa.IsVerified
+
 	hasApiSession := identity.ApiSessionCount > 0
 
 	defaultCost := rest_model.TerminatorCost(identity.DefaultHostingCost)
@@ -191,6 +195,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		HasAPISession:            &hasApiSession,
 		DefaultHostingPrecedence: rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
 		DefaultHostingCost:       &defaultCost,
+		IsMfaEnabled:            &isMfaEnabled,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

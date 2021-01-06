@@ -30,7 +30,7 @@ type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
 }
 
-func (p *PostureCheckOperatingSystem) Evaluate(pd *PostureData) bool {
+func (p *PostureCheckOperatingSystem) Evaluate(_ string, pd *PostureData) bool {
 	if pd.Os.TimedOut {
 		return false
 	}

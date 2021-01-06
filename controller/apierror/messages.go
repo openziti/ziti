@@ -108,7 +108,7 @@ const (
 	InvalidSortStatus  int    = http.StatusBadRequest
 
 	CouldNotValidateCode    string = "COULD_NOT_VALIDATE"
-	CouldNotValidateMessage string = "The supplied request contains an invalid document"
+	CouldNotValidateMessage string = "The supplied request contains an invalid document or no valid accept content were available, see cause"
 	CouldNotValidateStatus  int    = http.StatusBadRequest
 
 	UnauthorizedCode    string = "UNAUTHORIZED"
@@ -186,4 +186,16 @@ const (
 	InvalidPostureCode    string = "INVALID_POSTURE"
 	InvalidPostureMessage string = "Posture response data is missing or wrong"
 	InvalidPostureStatus  int    = http.StatusConflict
+
+	MfaExistsCode    string = "MFA_EXISTS"
+	MfaExistsMessage string = "An MFA record already exists, try removing it"
+	MfaExistsStatus  int    = http.StatusConflict
+
+	MfaInvalidTokenCode    string = "MFA_INVALID_TOKEN"
+	MfaInvalidTokenMessage string = "An invalid token/code was provided"
+	MfaInvalidTokenStatus  int    = http.StatusBadRequest
+
+	MfaNotEnrolledCode    string = "MFA_NOT_ENROLLED"
+	MfaNotEnrolledMessage string = "The current identity is not enrolled in MFA"
+	MfaNotEnrolledStatus  int    = http.StatusConflict
 )

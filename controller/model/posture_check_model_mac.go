@@ -26,7 +26,7 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
 
-func (p *PostureCheckMacAddresses) Evaluate(pd *PostureData) bool {
+func (p *PostureCheckMacAddresses) Evaluate(_ string, pd *PostureData) bool {
 	if pd.Mac.TimedOut {
 		return false
 	}

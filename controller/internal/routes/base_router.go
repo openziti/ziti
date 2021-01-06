@@ -283,7 +283,7 @@ func Detail(rc *response.RequestContext, f ModelDetailF) {
 		return
 	}
 
-	rc.RespondWithOk(apiEntity, nil)
+	rc.RespondWithOk(apiEntity, &rest_model.Meta{})
 }
 
 type ModelDeleteF func(rc *response.RequestContext, id string) error

@@ -264,7 +264,12 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	}
 
 	if rc.Identity != nil {
-		rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+		if !rc.ApiSession.MfaRequired || rc.ApiSession.MfaComplete {
+			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+
+		} else {
+			rc.ActivePermissions = append(rc.ActivePermissions, permissions.PartiallyAuthenticatePermission)
+		}
 
 		if rc.Identity.IsAdmin {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)

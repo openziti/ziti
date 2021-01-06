@@ -42,11 +42,11 @@ func NewCurrentSessionRouter() *CurrentSessionRouter {
 
 func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 	ae.Api.CurrentAPISessionGetCurrentAPISessionHandler = current_api_session.GetCurrentAPISessionHandlerFunc(func(params current_api_session.GetCurrentAPISessionParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(router.Detail, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(router.Detail, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 
 	ae.Api.CurrentAPISessionDeleteCurrentAPISessionHandler = current_api_session.DeleteCurrentAPISessionHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 
 	ae.Api.CurrentAPISessionListCurrentAPISessionCertificatesHandler = current_api_session.ListCurrentAPISessionCertificatesHandlerFunc(func(params current_api_session.ListCurrentAPISessionCertificatesParams, i interface{}) middleware.Responder {
