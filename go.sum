@@ -452,8 +452,6 @@ github.com/michaelquigley/dilithium v0.2.0 h1:JNVb9ckXDTAxYVpPHPzkBuXObh0TYymuZg
 github.com/michaelquigley/dilithium v0.2.0/go.mod h1:MIqCw2+ObUwmS7G+8N8hWiwNMjItUEBzeTlipmiZqOw=
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc h1:PQrqw9XKYcPRI9rKwoGZucMjWvfZpyfb5j8Lc13j8YY=
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc/go.mod h1:Z0K0l/NScHvLeGoy4SZTps+ZxGv85ql4AvZqTqOxBY8=
-github.com/michaelquigley/pfxlog v0.3.0 h1:rekOTtAL6TwVVuSQ1dlyxvR+nL/2VscvmAcw2Ayk1GA=
-github.com/michaelquigley/pfxlog v0.3.0/go.mod h1:pwJmJ9nN787xk9U+0z8/5nP2GMhU6GGCTfgBWGpiXaQ=
 github.com/michaelquigley/pfxlog v0.3.1 h1:MwDUlWURv5b8jfAzi2D5tcr8yg3ZDgH2uPI/+faucaQ=
 github.com/michaelquigley/pfxlog v0.3.1/go.mod h1:pwJmJ9nN787xk9U+0z8/5nP2GMhU6GGCTfgBWGpiXaQ=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
@@ -509,8 +507,8 @@ github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoT
 github.com/onsi/gomega v1.10.1 h1:o0+MgICZLuZ7xjH7Vx6zS/zcu93/BEp1VwkIW1mEXCE=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/edge v0.17.28 h1:oW1iEwEl9eCQvTlE6sfwYEY/hRWKPwVqlMYrjBtlNnA=
-github.com/openziti/edge v0.17.28/go.mod h1:jkGzkuu5vZ8XgqddxZjmzDU2OjtU/7N0/5x7vXaouLI=
+github.com/openziti/edge v0.17.30 h1:cS33nStCVU0clVPzoEkkrEP8miMGH8v+8d8ZXq0uc78=
+github.com/openziti/edge v0.17.30/go.mod h1:jkGzkuu5vZ8XgqddxZjmzDU2OjtU/7N0/5x7vXaouLI=
 github.com/openziti/fabric v0.15.5 h1:qaHsjkoGLb+0lHEmvZPSYnR5jKhdh59k3O4xYSzAkEM=
 github.com/openziti/fabric v0.15.5/go.mod h1:A31vRi5JrbNw1mHOnNMTEDID5ga2kKyTD6TzzUqA5rQ=
 github.com/openziti/foundation v0.14.24 h1:bJ9Ni/QecYDx0tNS7tXzdF1789dI/87F9NzUisjpfBY=
