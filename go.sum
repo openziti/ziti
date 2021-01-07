@@ -454,6 +454,8 @@ github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc h1:PQrqw9XKY
 github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc/go.mod h1:Z0K0l/NScHvLeGoy4SZTps+ZxGv85ql4AvZqTqOxBY8=
 github.com/michaelquigley/pfxlog v0.3.0 h1:rekOTtAL6TwVVuSQ1dlyxvR+nL/2VscvmAcw2Ayk1GA=
 github.com/michaelquigley/pfxlog v0.3.0/go.mod h1:pwJmJ9nN787xk9U+0z8/5nP2GMhU6GGCTfgBWGpiXaQ=
+github.com/michaelquigley/pfxlog v0.3.1 h1:MwDUlWURv5b8jfAzi2D5tcr8yg3ZDgH2uPI/+faucaQ=
+github.com/michaelquigley/pfxlog v0.3.1/go.mod h1:pwJmJ9nN787xk9U+0z8/5nP2GMhU6GGCTfgBWGpiXaQ=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.35 h1:oTfOaDH+mZkdcgdIjH6yBajRGtIwcwcaR+rt23ZSrJs=
