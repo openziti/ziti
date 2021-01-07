@@ -23,8 +23,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
-	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/openziti/edge v0.17.28
+	github.com/michaelquigley/pfxlog v0.3.1
+	github.com/openziti/edge v0.17.30
 	github.com/openziti/fabric v0.15.5
 	github.com/openziti/foundation v0.14.24
 	github.com/openziti/sdk-golang v0.15.2

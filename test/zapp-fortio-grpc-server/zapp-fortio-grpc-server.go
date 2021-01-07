@@ -36,6 +36,7 @@ import (
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
 	pfxlog.SetPrefix("github.com/openziti/")
+	pfxlog.SetDefaultNoColor()
 }
 
 func init() {
