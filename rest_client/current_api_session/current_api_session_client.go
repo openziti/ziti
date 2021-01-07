@@ -53,11 +53,19 @@ type Client struct {
 type ClientService interface {
 	DeleteCurrentAPISession(params *DeleteCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCurrentAPISessionOK, error)
 
+	CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateOK, error)
+
+	DeleteCurrentAPISessionCertificate(params *DeleteCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCurrentAPISessionCertificateOK, error)
+
+	DetailCurrentAPISessionCertificate(params *DetailCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*DetailCurrentAPISessionCertificateOK, error)
+
 	DetailCurrentIdentityAuthenticator(params *DetailCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*DetailCurrentIdentityAuthenticatorOK, error)
 
 	GetCurrentAPISession(params *GetCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentAPISessionOK, error)
 
 	GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityOK, error)
+
+	ListCurrentAPISessionCertificates(params *ListCurrentAPISessionCertificatesParams, authInfo runtime.ClientAuthInfoWriter) (*ListCurrentAPISessionCertificatesOK, error)
 
 	ListCurrentIdentityAuthenticators(params *ListCurrentIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter) (*ListCurrentIdentityAuthenticatorsOK, error)
 
@@ -102,6 +110,118 @@ func (a *Client) DeleteCurrentAPISession(params *DeleteCurrentAPISessionParams, 
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for DeleteCurrentAPISession: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  CreateCurrentAPISessionCertificate creates an ephemeral certificate for the current API session
+
+  Creates an ephemeral certificate for the current API Session. This endpoint expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload. It is up to the client to manage the private key backing the CSR request.
+*/
+func (a *Client) CreateCurrentAPISessionCertificate(params *CreateCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCurrentAPISessionCertificateOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreateCurrentAPISessionCertificateParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "createCurrentApiSessionCertificate",
+		Method:             "POST",
+		PathPattern:        "/current-api-session/certificates",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &CreateCurrentAPISessionCertificateReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateCurrentAPISessionCertificateOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createCurrentApiSessionCertificate: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  DeleteCurrentAPISessionCertificate deletes an ephemeral certificate
+
+  Delete an ephemeral certificateby id
+
+*/
+func (a *Client) DeleteCurrentAPISessionCertificate(params *DeleteCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCurrentAPISessionCertificateOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewDeleteCurrentAPISessionCertificateParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "deleteCurrentApiSessionCertificate",
+		Method:             "DELETE",
+		PathPattern:        "/current-api-session/certificates/{id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &DeleteCurrentAPISessionCertificateReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeleteCurrentAPISessionCertificateOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for deleteCurrentApiSessionCertificate: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  DetailCurrentAPISessionCertificate retrieves an ephemeral certificate
+
+  Retrieves a single ephemeral certificate by id
+*/
+func (a *Client) DetailCurrentAPISessionCertificate(params *DetailCurrentAPISessionCertificateParams, authInfo runtime.ClientAuthInfoWriter) (*DetailCurrentAPISessionCertificateOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewDetailCurrentAPISessionCertificateParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "detailCurrentApiSessionCertificate",
+		Method:             "GET",
+		PathPattern:        "/current-api-session/certificates/{id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &DetailCurrentAPISessionCertificateReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DetailCurrentAPISessionCertificateOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for detailCurrentApiSessionCertificate: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -213,6 +333,43 @@ func (a *Client) GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getCurrentIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ListCurrentAPISessionCertificates lists the ephemeral certificates available for the current API session
+
+  Retrieves a list of certificate resources for the current API session; supports filtering, sorting, and pagination
+*/
+func (a *Client) ListCurrentAPISessionCertificates(params *ListCurrentAPISessionCertificatesParams, authInfo runtime.ClientAuthInfoWriter) (*ListCurrentAPISessionCertificatesOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListCurrentAPISessionCertificatesParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "listCurrentApiSessionCertificates",
+		Method:             "GET",
+		PathPattern:        "/current-api-session/certificates",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ListCurrentAPISessionCertificatesReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListCurrentAPISessionCertificatesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for listCurrentApiSessionCertificates: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

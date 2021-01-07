@@ -35,42 +35,43 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// DeleteCurrentAPISessionHandlerFunc turns a function with the right signature into a delete current API session handler
-type DeleteCurrentAPISessionHandlerFunc func(DeleteCurrentAPISessionParams, interface{}) middleware.Responder
+// DeleteCurrentAPISessionCertificateHandlerFunc turns a function with the right signature into a delete current Api session certificate handler
+type DeleteCurrentAPISessionCertificateHandlerFunc func(DeleteCurrentAPISessionCertificateParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn DeleteCurrentAPISessionHandlerFunc) Handle(params DeleteCurrentAPISessionParams, principal interface{}) middleware.Responder {
+func (fn DeleteCurrentAPISessionCertificateHandlerFunc) Handle(params DeleteCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// DeleteCurrentAPISessionHandler interface for that can handle valid delete current API session params
-type DeleteCurrentAPISessionHandler interface {
-	Handle(DeleteCurrentAPISessionParams, interface{}) middleware.Responder
+// DeleteCurrentAPISessionCertificateHandler interface for that can handle valid delete current Api session certificate params
+type DeleteCurrentAPISessionCertificateHandler interface {
+	Handle(DeleteCurrentAPISessionCertificateParams, interface{}) middleware.Responder
 }
 
-// NewDeleteCurrentAPISession creates a new http.Handler for the delete current API session operation
-func NewDeleteCurrentAPISession(ctx *middleware.Context, handler DeleteCurrentAPISessionHandler) *DeleteCurrentAPISession {
-	return &DeleteCurrentAPISession{Context: ctx, Handler: handler}
+// NewDeleteCurrentAPISessionCertificate creates a new http.Handler for the delete current Api session certificate operation
+func NewDeleteCurrentAPISessionCertificate(ctx *middleware.Context, handler DeleteCurrentAPISessionCertificateHandler) *DeleteCurrentAPISessionCertificate {
+	return &DeleteCurrentAPISessionCertificate{Context: ctx, Handler: handler}
 }
 
-/*DeleteCurrentAPISession swagger:route DELETE /current-api-session Current API Session deleteCurrentApiSession
+/*DeleteCurrentAPISessionCertificate swagger:route DELETE /current-api-session/certificates/{id} Current API Session deleteCurrentApiSessionCertificate
 
-Logout
+Delete an ephemeral certificate
 
-Terminates the current API session
+Delete an ephemeral certificateby id
+
 
 */
-type DeleteCurrentAPISession struct {
+type DeleteCurrentAPISessionCertificate struct {
 	Context *middleware.Context
-	Handler DeleteCurrentAPISessionHandler
+	Handler DeleteCurrentAPISessionCertificateHandler
 }
 
-func (o *DeleteCurrentAPISession) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *DeleteCurrentAPISessionCertificate) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		r = rCtx
 	}
-	var Params = NewDeleteCurrentAPISessionParams()
+	var Params = NewDeleteCurrentAPISessionCertificateParams()
 
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {

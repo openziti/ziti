@@ -54,11 +54,13 @@ message Session {
     repeated string urls = 4;
     Service service = 5;
     string id = 7;
+    string apiSessionId = 8;
 }
 
 message ApiSession {
     string token = 1;
     repeated string certFingerprints = 2;
+    string id = 3;
 }
 
 message ApiSessionAdded {

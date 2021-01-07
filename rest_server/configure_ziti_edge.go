@@ -159,6 +159,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation config.CreateConfigType has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionCreateCurrentAPISessionCertificateHandler == nil {
+		api.CurrentAPISessionCreateCurrentAPISessionCertificateHandler = current_api_session.CreateCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.CreateCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.CreateCurrentAPISessionCertificate has not yet been implemented")
+		})
+	}
 	if api.DatabaseCreateDatabaseSnapshotHandler == nil {
 		api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
@@ -244,6 +249,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation config.DeleteConfigType has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler == nil {
+		api.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler = current_api_session.DeleteCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.DeleteCurrentAPISessionCertificate has not yet been implemented")
+		})
+	}
 	if api.EdgeRouterDeleteEdgeRouterHandler == nil {
 		api.EdgeRouterDeleteEdgeRouterHandler = edge_router.DeleteEdgeRouterHandlerFunc(func(params edge_router.DeleteEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.DeleteEdgeRouter has not yet been implemented")
@@ -322,6 +332,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.ConfigDetailConfigTypeHandler == nil {
 		api.ConfigDetailConfigTypeHandler = config.DetailConfigTypeHandlerFunc(func(params config.DetailConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.DetailConfigType has not yet been implemented")
+		})
+	}
+	if api.CurrentAPISessionDetailCurrentAPISessionCertificateHandler == nil {
+		api.CurrentAPISessionDetailCurrentAPISessionCertificateHandler = current_api_session.DetailCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DetailCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.DetailCurrentAPISessionCertificate has not yet been implemented")
 		})
 	}
 	if api.CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler == nil {
@@ -502,6 +517,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.ConfigListConfigsForConfigTypeHandler == nil {
 		api.ConfigListConfigsForConfigTypeHandler = config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.ListConfigsForConfigType has not yet been implemented")
+		})
+	}
+	if api.CurrentAPISessionListCurrentAPISessionCertificatesHandler == nil {
+		api.CurrentAPISessionListCurrentAPISessionCertificatesHandler = current_api_session.ListCurrentAPISessionCertificatesHandlerFunc(func(params current_api_session.ListCurrentAPISessionCertificatesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ListCurrentAPISessionCertificates has not yet been implemented")
 		})
 	}
 	if api.CurrentAPISessionListCurrentIdentityAuthenticatorsHandler == nil {

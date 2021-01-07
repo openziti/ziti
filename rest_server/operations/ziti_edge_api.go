@@ -137,6 +137,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		ConfigCreateConfigTypeHandler: config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.CreateConfigType has not yet been implemented")
 		}),
+		CurrentAPISessionCreateCurrentAPISessionCertificateHandler: current_api_session.CreateCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.CreateCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.CreateCurrentAPISessionCertificate has not yet been implemented")
+		}),
 		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
 		}),
@@ -188,6 +191,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		ConfigDeleteConfigTypeHandler: config.DeleteConfigTypeHandlerFunc(func(params config.DeleteConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.DeleteConfigType has not yet been implemented")
 		}),
+		CurrentAPISessionDeleteCurrentAPISessionCertificateHandler: current_api_session.DeleteCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.DeleteCurrentAPISessionCertificate has not yet been implemented")
+		}),
 		EdgeRouterDeleteEdgeRouterHandler: edge_router.DeleteEdgeRouterHandlerFunc(func(params edge_router.DeleteEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.DeleteEdgeRouter has not yet been implemented")
 		}),
@@ -235,6 +241,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		ConfigDetailConfigTypeHandler: config.DetailConfigTypeHandlerFunc(func(params config.DetailConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.DetailConfigType has not yet been implemented")
+		}),
+		CurrentAPISessionDetailCurrentAPISessionCertificateHandler: current_api_session.DetailCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DetailCurrentAPISessionCertificateParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.DetailCurrentAPISessionCertificate has not yet been implemented")
 		}),
 		CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler: current_api_session.DetailCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.DetailCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.DetailCurrentIdentityAuthenticator has not yet been implemented")
@@ -343,6 +352,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		ConfigListConfigsForConfigTypeHandler: config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation config.ListConfigsForConfigType has not yet been implemented")
+		}),
+		CurrentAPISessionListCurrentAPISessionCertificatesHandler: current_api_session.ListCurrentAPISessionCertificatesHandlerFunc(func(params current_api_session.ListCurrentAPISessionCertificatesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ListCurrentAPISessionCertificates has not yet been implemented")
 		}),
 		CurrentAPISessionListCurrentIdentityAuthenticatorsHandler: current_api_session.ListCurrentIdentityAuthenticatorsHandlerFunc(func(params current_api_session.ListCurrentIdentityAuthenticatorsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.ListCurrentIdentityAuthenticators has not yet been implemented")
@@ -657,6 +669,8 @@ type ZitiEdgeAPI struct {
 	ConfigCreateConfigHandler config.CreateConfigHandler
 	// ConfigCreateConfigTypeHandler sets the operation handler for the create config type operation
 	ConfigCreateConfigTypeHandler config.CreateConfigTypeHandler
+	// CurrentAPISessionCreateCurrentAPISessionCertificateHandler sets the operation handler for the create current Api session certificate operation
+	CurrentAPISessionCreateCurrentAPISessionCertificateHandler current_api_session.CreateCurrentAPISessionCertificateHandler
 	// DatabaseCreateDatabaseSnapshotHandler sets the operation handler for the create database snapshot operation
 	DatabaseCreateDatabaseSnapshotHandler database.CreateDatabaseSnapshotHandler
 	// EdgeRouterCreateEdgeRouterHandler sets the operation handler for the create edge router operation
@@ -691,6 +705,8 @@ type ZitiEdgeAPI struct {
 	ConfigDeleteConfigHandler config.DeleteConfigHandler
 	// ConfigDeleteConfigTypeHandler sets the operation handler for the delete config type operation
 	ConfigDeleteConfigTypeHandler config.DeleteConfigTypeHandler
+	// CurrentAPISessionDeleteCurrentAPISessionCertificateHandler sets the operation handler for the delete current Api session certificate operation
+	CurrentAPISessionDeleteCurrentAPISessionCertificateHandler current_api_session.DeleteCurrentAPISessionCertificateHandler
 	// EdgeRouterDeleteEdgeRouterHandler sets the operation handler for the delete edge router operation
 	EdgeRouterDeleteEdgeRouterHandler edge_router.DeleteEdgeRouterHandler
 	// EdgeRouterPolicyDeleteEdgeRouterPolicyHandler sets the operation handler for the delete edge router policy operation
@@ -723,6 +739,8 @@ type ZitiEdgeAPI struct {
 	ConfigDetailConfigHandler config.DetailConfigHandler
 	// ConfigDetailConfigTypeHandler sets the operation handler for the detail config type operation
 	ConfigDetailConfigTypeHandler config.DetailConfigTypeHandler
+	// CurrentAPISessionDetailCurrentAPISessionCertificateHandler sets the operation handler for the detail current Api session certificate operation
+	CurrentAPISessionDetailCurrentAPISessionCertificateHandler current_api_session.DetailCurrentAPISessionCertificateHandler
 	// CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler sets the operation handler for the detail current identity authenticator operation
 	CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler current_api_session.DetailCurrentIdentityAuthenticatorHandler
 	// EdgeRouterDetailEdgeRouterHandler sets the operation handler for the detail edge router operation
@@ -795,6 +813,8 @@ type ZitiEdgeAPI struct {
 	ConfigListConfigsHandler config.ListConfigsHandler
 	// ConfigListConfigsForConfigTypeHandler sets the operation handler for the list configs for config type operation
 	ConfigListConfigsForConfigTypeHandler config.ListConfigsForConfigTypeHandler
+	// CurrentAPISessionListCurrentAPISessionCertificatesHandler sets the operation handler for the list current Api session certificates operation
+	CurrentAPISessionListCurrentAPISessionCertificatesHandler current_api_session.ListCurrentAPISessionCertificatesHandler
 	// CurrentAPISessionListCurrentIdentityAuthenticatorsHandler sets the operation handler for the list current identity authenticators operation
 	CurrentAPISessionListCurrentIdentityAuthenticatorsHandler current_api_session.ListCurrentIdentityAuthenticatorsHandler
 	// EdgeRouterListEdgeRouterEdgeRouterPoliciesHandler sets the operation handler for the list edge router edge router policies operation
@@ -1073,6 +1093,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.ConfigCreateConfigTypeHandler == nil {
 		unregistered = append(unregistered, "config.CreateConfigTypeHandler")
 	}
+	if o.CurrentAPISessionCreateCurrentAPISessionCertificateHandler == nil {
+		unregistered = append(unregistered, "current_api_session.CreateCurrentAPISessionCertificateHandler")
+	}
 	if o.DatabaseCreateDatabaseSnapshotHandler == nil {
 		unregistered = append(unregistered, "database.CreateDatabaseSnapshotHandler")
 	}
@@ -1124,6 +1147,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.ConfigDeleteConfigTypeHandler == nil {
 		unregistered = append(unregistered, "config.DeleteConfigTypeHandler")
 	}
+	if o.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler == nil {
+		unregistered = append(unregistered, "current_api_session.DeleteCurrentAPISessionCertificateHandler")
+	}
 	if o.EdgeRouterDeleteEdgeRouterHandler == nil {
 		unregistered = append(unregistered, "edge_router.DeleteEdgeRouterHandler")
 	}
@@ -1171,6 +1197,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.ConfigDetailConfigTypeHandler == nil {
 		unregistered = append(unregistered, "config.DetailConfigTypeHandler")
+	}
+	if o.CurrentAPISessionDetailCurrentAPISessionCertificateHandler == nil {
+		unregistered = append(unregistered, "current_api_session.DetailCurrentAPISessionCertificateHandler")
 	}
 	if o.CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler == nil {
 		unregistered = append(unregistered, "current_api_session.DetailCurrentIdentityAuthenticatorHandler")
@@ -1279,6 +1308,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.ConfigListConfigsForConfigTypeHandler == nil {
 		unregistered = append(unregistered, "config.ListConfigsForConfigTypeHandler")
+	}
+	if o.CurrentAPISessionListCurrentAPISessionCertificatesHandler == nil {
+		unregistered = append(unregistered, "current_api_session.ListCurrentAPISessionCertificatesHandler")
 	}
 	if o.CurrentAPISessionListCurrentIdentityAuthenticatorsHandler == nil {
 		unregistered = append(unregistered, "current_api_session.ListCurrentIdentityAuthenticatorsHandler")
@@ -1653,6 +1685,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/current-api-session/certificates"] = current_api_session.NewCreateCurrentAPISessionCertificate(o.context, o.CurrentAPISessionCreateCurrentAPISessionCertificateHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/database/snapshot"] = database.NewCreateDatabaseSnapshot(o.context, o.DatabaseCreateDatabaseSnapshotHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1721,6 +1757,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
+	o.handlers["DELETE"]["/current-api-session/certificates/{id}"] = current_api_session.NewDeleteCurrentAPISessionCertificate(o.context, o.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
 	o.handlers["DELETE"]["/edge-routers/{id}"] = edge_router.NewDeleteEdgeRouter(o.context, o.EdgeRouterDeleteEdgeRouterHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
@@ -1782,6 +1822,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/config-types/{id}"] = config.NewDetailConfigType(o.context, o.ConfigDetailConfigTypeHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/current-api-session/certificates/{id}"] = current_api_session.NewDetailCurrentAPISessionCertificate(o.context, o.CurrentAPISessionDetailCurrentAPISessionCertificateHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -1926,6 +1970,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/config-types/{id}/configs"] = config.NewListConfigsForConfigType(o.context, o.ConfigListConfigsForConfigTypeHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/current-api-session/certificates"] = current_api_session.NewListCurrentAPISessionCertificates(o.context, o.CurrentAPISessionListCurrentAPISessionCertificatesHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

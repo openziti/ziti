@@ -1154,7 +1154,7 @@ func init() {
         ],
         "description": "Terminates the current API session",
         "tags": [
-          "CurrentAPI Session"
+          "Current API Session"
         ],
         "summary": "Logout",
         "responses": {
@@ -1166,6 +1166,127 @@ func init() {
           }
         }
       }
+    },
+    "/current-api-session/certificates": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of certificate resources for the current API session; supports filtering, sorting, and pagination",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "List the ephemeral certificates available for the current API Session",
+        "operationId": "listCurrentApiSessionCertificates",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/listCurrentApiSessionCertificates"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates an ephemeral certificate for the current API Session. This endpoint expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload. It is up to the client to manage the private key backing the CSR request.",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Creates an ephemeral certificate for the current API Session",
+        "operationId": "createCurrentApiSessionCertificate",
+        "parameters": [
+          {
+            "description": "The payload describing the CSR used to create a session certificate",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/currentApiSessionCertificateCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/createCurrentApiSessionCertificateResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
+    "/current-api-session/certificates/{id}": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single ephemeral certificate by id",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Retrieves an ephemeral certificate",
+        "operationId": "detailCurrentApiSessionCertificate",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailCurrentApiSessionCertificate"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Delete an ephemeral certificateby id\n",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Delete an ephemeral certificate",
+        "operationId": "deleteCurrentApiSessionCertificate",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/deleteResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
     },
     "/current-identity": {
       "get": {
@@ -6290,6 +6411,20 @@ func init() {
         "name": "example-config-name"
       }
     },
+    "createCurrentApiSessionCertificateEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateCreateResponse"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -6325,6 +6460,81 @@ func init() {
         "meta": {
           "$ref": "#/definitions/meta"
         }
+      }
+    },
+    "currentApiSessionCertificateCreate": {
+      "type": "object",
+      "required": [
+        "csr"
+      ],
+      "properties": {
+        "csr": {
+          "type": "string"
+        }
+      }
+    },
+    "currentApiSessionCertificateCreateResponse": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/createLocation"
+        },
+        {
+          "type": "object",
+          "required": [
+            "certificate"
+          ],
+          "properties": {
+            "cas": {
+              "type": "string"
+            },
+            "certificate": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "currentApiSessionCertificateDetail": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "subject",
+            "fingerprint",
+            "validFrom",
+            "validTo",
+            "certificate"
+          ],
+          "properties": {
+            "certificate": {
+              "type": "string"
+            },
+            "fingerprint": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "validFrom": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "validTo": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      ]
+    },
+    "currentApiSessionCertificateList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/currentApiSessionCertificateDetail"
       }
     },
     "currentApiSessionDetail": {
@@ -6468,6 +6678,20 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/configTypeDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailCurrentApiSessionCertificateEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -7573,6 +7797,20 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/configList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listCurrentAPISessionCertificatesEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -9313,6 +9551,12 @@ func init() {
         }
       }
     },
+    "createCurrentApiSessionCertificateResponse": {
+      "description": "A response of a create API Session certificate",
+      "schema": {
+        "$ref": "#/definitions/createCurrentApiSessionCertificateEnvelope"
+      }
+    },
     "createResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -9401,6 +9645,12 @@ func init() {
           },
           "meta": {}
         }
+      }
+    },
+    "detailCurrentApiSessionCertificate": {
+      "description": "A response containing a single API Session certificate",
+      "schema": {
+        "$ref": "#/definitions/detailCurrentApiSessionCertificateEnvelope"
       }
     },
     "detailCurrentIdentity": {
@@ -9625,6 +9875,12 @@ func init() {
       "description": "A list of configs",
       "schema": {
         "$ref": "#/definitions/listConfigsEnvelope"
+      }
+    },
+    "listCurrentApiSessionCertificates": {
+      "description": "A list of the current API Session's certificate",
+      "schema": {
+        "$ref": "#/definitions/listCurrentAPISessionCertificatesEnvelope"
       }
     },
     "listEdgeRouterPolicies": {
@@ -12788,7 +13044,7 @@ func init() {
         ],
         "description": "Terminates the current API session",
         "tags": [
-          "CurrentAPI Session"
+          "Current API Session"
         ],
         "summary": "Logout",
         "responses": {
@@ -12824,6 +13080,303 @@ func init() {
           }
         }
       }
+    },
+    "/current-api-session/certificates": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of certificate resources for the current API session; supports filtering, sorting, and pagination",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "List the ephemeral certificates available for the current API Session",
+        "operationId": "listCurrentApiSessionCertificates",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of the current API Session's certificate",
+            "schema": {
+              "$ref": "#/definitions/listCurrentAPISessionCertificatesEnvelope"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates an ephemeral certificate for the current API Session. This endpoint expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload. It is up to the client to manage the private key backing the CSR request.",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Creates an ephemeral certificate for the current API Session",
+        "operationId": "createCurrentApiSessionCertificate",
+        "parameters": [
+          {
+            "description": "The payload describing the CSR used to create a session certificate",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/currentApiSessionCertificateCreate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A response of a create API Session certificate",
+            "schema": {
+              "$ref": "#/definitions/createCurrentApiSessionCertificateEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/current-api-session/certificates/{id}": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single ephemeral certificate by id",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Retrieves an ephemeral certificate",
+        "operationId": "detailCurrentApiSessionCertificate",
+        "responses": {
+          "200": {
+            "description": "A response containing a single API Session certificate",
+            "schema": {
+              "$ref": "#/definitions/detailCurrentApiSessionCertificateEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Delete an ephemeral certificateby id\n",
+        "tags": [
+          "Current API Session"
+        ],
+        "summary": "Delete an ephemeral certificate",
+        "operationId": "deleteCurrentApiSessionCertificate",
+        "responses": {
+          "200": {
+            "description": "The delete request was successful and the resource has been removed",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
     },
     "/current-identity": {
       "get": {
@@ -24052,6 +24605,20 @@ func init() {
         "name": "example-config-name"
       }
     },
+    "createCurrentApiSessionCertificateEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateCreateResponse"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -24087,6 +24654,81 @@ func init() {
         "meta": {
           "$ref": "#/definitions/meta"
         }
+      }
+    },
+    "currentApiSessionCertificateCreate": {
+      "type": "object",
+      "required": [
+        "csr"
+      ],
+      "properties": {
+        "csr": {
+          "type": "string"
+        }
+      }
+    },
+    "currentApiSessionCertificateCreateResponse": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/createLocation"
+        },
+        {
+          "type": "object",
+          "required": [
+            "certificate"
+          ],
+          "properties": {
+            "cas": {
+              "type": "string"
+            },
+            "certificate": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "currentApiSessionCertificateDetail": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "subject",
+            "fingerprint",
+            "validFrom",
+            "validTo",
+            "certificate"
+          ],
+          "properties": {
+            "certificate": {
+              "type": "string"
+            },
+            "fingerprint": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "validFrom": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "validTo": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      ]
+    },
+    "currentApiSessionCertificateList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/currentApiSessionCertificateDetail"
       }
     },
     "currentApiSessionDetail": {
@@ -24230,6 +24872,20 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/configTypeDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailCurrentApiSessionCertificateEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -25335,6 +25991,20 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/configList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listCurrentAPISessionCertificatesEnvelope": {
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/currentApiSessionCertificateList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -27076,6 +27746,12 @@ func init() {
         }
       }
     },
+    "createCurrentApiSessionCertificateResponse": {
+      "description": "A response of a create API Session certificate",
+      "schema": {
+        "$ref": "#/definitions/createCurrentApiSessionCertificateEnvelope"
+      }
+    },
     "createResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -27164,6 +27840,12 @@ func init() {
           },
           "meta": {}
         }
+      }
+    },
+    "detailCurrentApiSessionCertificate": {
+      "description": "A response containing a single API Session certificate",
+      "schema": {
+        "$ref": "#/definitions/detailCurrentApiSessionCertificateEnvelope"
       }
     },
     "detailCurrentIdentity": {
@@ -27388,6 +28070,12 @@ func init() {
       "description": "A list of configs",
       "schema": {
         "$ref": "#/definitions/listConfigsEnvelope"
+      }
+    },
+    "listCurrentApiSessionCertificates": {
+      "description": "A list of the current API Session's certificate",
+      "schema": {
+        "$ref": "#/definitions/listCurrentAPISessionCertificatesEnvelope"
       }
     },
     "listEdgeRouterPolicies": {

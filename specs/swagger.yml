@@ -884,11 +884,85 @@ paths:
       security:
         - ztSession: [ ]
       tags:
-        - CurrentAPI Session
+        - Current API Session
       responses:
         200:
           $ref: '#/responses/emptyResponse'
         401:
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-api-session/certificates':
+    get:
+      summary: List the ephemeral certificates available for the current API Session
+      description: Retrieves a list of certificate resources for the current API session; supports filtering, sorting, and pagination
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: listCurrentApiSessionCertificates
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listCurrentApiSessionCertificates'
+    post:
+      summary: Creates an ephemeral certificate for the current API Session
+      description: Creates an ephemeral certificate for the current API Session. This endpoint
+        expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload.
+        It is up to the client to manage the private key backing the CSR request.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: createCurrentApiSessionCertificate
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: The payload describing the CSR used to create a session certificate
+          schema:
+            $ref: '#/definitions/currentApiSessionCertificateCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createCurrentApiSessionCertificateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-api-session/certificates/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves an ephemeral certificate
+      description: Retrieves a single ephemeral certificate by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: detailCurrentApiSessionCertificate
+      responses:
+        '200':
+          $ref: '#/responses/detailCurrentApiSessionCertificate'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an ephemeral certificate
+      description: |
+        Delete an ephemeral certificateby id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: deleteCurrentApiSessionCertificate
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
           $ref: '#/responses/unauthorizedResponse'
   '/current-identity':
     get:
@@ -3464,7 +3538,18 @@ responses:
           enrollment: { }
           roleAttributes:
             $ref: '#/definitions/attributes'
-
+  listCurrentApiSessionCertificates:
+    description: A list of the current API Session's certificate
+    schema:
+      $ref: '#/definitions/listCurrentAPISessionCertificatesEnvelope'
+  createCurrentApiSessionCertificateResponse:
+    description: A response of a create API Session certificate
+    schema:
+      $ref: '#/definitions/createCurrentApiSessionCertificateEnvelope'
+  detailCurrentApiSessionCertificate:
+    description: A response containing a single API Session certificate
+    schema:
+      $ref: '#/definitions/detailCurrentApiSessionCertificateEnvelope'
   ###################################################################
   # API Session
   ##################################################################
@@ -3774,6 +3859,7 @@ responses:
     description: Retrieves a singular posture check by id
     schema:
       $ref: '#/definitions/detailPostureCheckEnvelope'
+
 
 #######################################################################################################################
 #
@@ -5456,6 +5542,33 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/apiSessionList'
+  listCurrentAPISessionCertificatesEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateList'
+  createCurrentApiSessionCertificateEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateCreateResponse'
+  detailCurrentApiSessionCertificateEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateDetail'
   detailAPISessionEnvelope:
     required:
       - meta
@@ -6189,7 +6302,6 @@ definitions:
       - default
       - required
       - failed
-
   dataIntegrityCheckResultEnvelope:
     type: object
     required:
@@ -6693,3 +6805,50 @@ definitions:
             items:
               type: string
     x-class: "PROCESS"
+
+  currentApiSessionCertificateList:
+    type: array
+    items:
+      $ref: '#/definitions/currentApiSessionCertificateDetail'
+  currentApiSessionCertificateDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - subject
+          - fingerprint
+          - validFrom
+          - validTo
+          - certificate
+        properties:
+          subject:
+            type: string
+          fingerprint:
+            type: string
+          validFrom:
+            type: string
+            format: date-time
+          validTo:
+            type: string
+            format: date-time
+          certificate:
+            type: string
+  currentApiSessionCertificateCreate:
+    type: object
+    required:
+      - csr
+    properties:
+      csr:
+        type: string
+  currentApiSessionCertificateCreateResponse:
+    allOf:
+      - $ref: '#/definitions/createLocation'
+      - type: object
+        required:
+          - certificate
+        properties:
+          certificate:
+            type: string
+          cas:
+            type: string

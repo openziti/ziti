@@ -49,9 +49,9 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 		fpg := cert.NewFingerprintGenerator()
 		fingerprints := fpg.FromCerts(certificates)
 
-		session := handler.stateManager.GetSession(token)
+		apiSession := handler.stateManager.GetApiSession(token)
 
-		if session == nil {
+		if apiSession == nil {
 			_ = ch.Close()
 
 			subjects := []string{}
@@ -63,25 +63,25 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 			return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)
 		}
 
-		for _, fingerprint := range session.CertFingerprints {
+		for _, fingerprint := range apiSession.CertFingerprints {
 			if fingerprints.Contains(fingerprint) {
-				removeListener := handler.stateManager.AddSessionRemovedListener(token, func(token string) {
+				removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
 					if !ch.IsClosed() {
 						err := ch.Close()
 
 						if err != nil {
-							pfxlog.Logger().WithError(err).Error("could not close channel during session removal")
+							pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
 						}
 					}
 				})
 
-				handler.stateManager.AddConnectedSession(token, removeListener, ch)
+				handler.stateManager.AddConnectedApiSession(token, removeListener, ch)
 
 				return nil
 			}
 		}
 		_ = ch.Close()
-		return errors.New("invalid client certificate for session")
+		return errors.New("invalid client certificate for api session")
 	}
 	_ = ch.Close()
 	return errors.New("no token attribute provided")
@@ -92,7 +92,7 @@ func (handler *sessionConnectionHandler) HandleClose(ch channel2.Channel) {
 	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
 		token = string(byteToken)
 
-		handler.stateManager.RemoveConnectedSession(token, ch)
+		handler.stateManager.RemoveConnectedApiSession(token, ch)
 	} else {
 		pfxlog.Logger().
 			WithField("id", ch.Id()).

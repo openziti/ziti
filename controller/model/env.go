@@ -40,6 +40,7 @@ type Env interface {
 	GetHostController() HostController
 	IsEdgeRouterOnline(id string) bool
 	GetMetricsRegistry() metrics.Registry
+	GetFingerprintGenerator() cert.FingerprintGenerator
 }
 
 type HostController interface {

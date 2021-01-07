@@ -50,6 +50,9 @@ type SigningOpts struct {
 	EmailAddresses []string
 	IPAddresses    []net.IP
 	URIs           []*url.URL
+
+	NotBefore *time.Time
+	NotAfter  *time.Time
 }
 
 func (so *SigningOpts) Apply(c *x509.Certificate) {
@@ -57,6 +60,14 @@ func (so *SigningOpts) Apply(c *x509.Certificate) {
 	c.EmailAddresses = so.EmailAddresses
 	c.IPAddresses = so.IPAddresses
 	c.URIs = so.URIs
+
+	if so.NotBefore != nil {
+		c.NotBefore = *so.NotBefore
+	}
+
+	if so.NotAfter != nil {
+		c.NotAfter = *so.NotAfter
+	}
 }
 
 type SerialGenerator interface {
