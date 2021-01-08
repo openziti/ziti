@@ -1,35 +1,423 @@
+# Release 0.18.2
+
+## What's New
+
+* Default hosting precedence and cost can now be configured for identities
+* Health checks can now be configured for the go based tunneler (ziti-tunnel) using server configs
+* [ziti#177](https://github.com/openziti/ziti/issues/177) ziti-tunnel has a new `host` mode, if you
+  are only hosting services
+* Changes to terminators (add/updated/delete/router online/router offline) will now generate events
+  that can be emitted
+* fabric and edge session events now contain a timestamp
+
+## Setting precedence and cost for tunneler hosted services
+
+When the tunneler hosts services there was previously no way to specify the precedence and cost
+associated with those services.
+See [Ziti XT documentation](https://openziti.github.io/ziti/services/overview.html?tabs=create-service-ui#xt)
+for an overview of how precedence and cost relate to HA and load balancing.
+
+There are now two new fields on identity:
+
+* defaultHostingPrecedence - value values are `default`, `required` and `failed`. Defaults
+  to `default`.
+* defaultHostingCost - valid values are between 0 and 65535. Defaults to 0.
+
+When hosting a service via the tunneler, the terminator for the SDK hosted service will be created
+with the precedence and cost of the identity used by the tunneler.
+
+**NOTE:** This means all services hosted by an identity will have the same precedence and cost.
+We'll likely add support for service specific overrides in the future if/when use cases arise which
+call for it. In the meantime, a work-around is to use multiple identities if you need different
+values for different services.
+
+### CLI Support
+
+The ziti CLI supports setting the default hosting precedence and cost when creating identities
+
+### SDK API Change
+
+The GO SDK has a new API method `GetCurrentIdentity() (*edge.CurrentIdentity, error)` which lets SDK
+users retrieve the currently logged in identity, including the default hosting precedence and cost.
+This could be used by other SDK applications which may want to use the fields for the same reason
+when hosting services.
+
+## Tunneler Health Checks
+
+The go tunneler now supports health checks. Support for health checks may be added to other
+tunnelers (such as ziti-edge-tunnel) in the future, but that is not guaranteed.
+
+Health checks can be configured in the service configuration using the `ziti-tunneler-server.v1`
+config type. Support in the `host.v1` config type will be added when support for that config type is
+added to the go tunneler.
+
+### Check Types
+
+The tunneler supports two types of health check.
+
+#### Port Checks
+
+Port checks look to see if a host/port can be dialed. This is simple check which just ensures that
+something is listening on a give host/port.
+
+Port checks have the following properties:
+
+* interval - how often the check is performanced
+* timeout - how long to wait before declaring the check failed
+* address - the address to dial. Should be of the form <host or ip>:<port>. Example: localhost:5432
+* actions - an array of actions to perform based on health check results. Actions will be discussed
+  in more detail below
+
+#### HTTP Checks
+
+Http checks a specific URL. They support the following properties:
+
+* interval - how often the check is performanced
+* timeout - how long to wait before declaring the check failed
+* url - the url to connect to
+* method - the HTTP method to use. Maybe one of `GET`, `POST`, `PUT` or `PATCH`. Defaults to `GET`
+* body - the body of the HTTP request. Defaults to an empty string
+* expectStatus - the HTTP status to expect in the response. Defaults to 200
+* expectBody - an optional string to look for in the response body.
+* actions - an array of actions to perform based on health check results. Actions will be discussed
+  in more detail below
+
+### Health Check Actions
+
+Each health check may specify actions to execute when a health check runs.
+
+Each action may specify:
+
+* trigger - valid values `pass` or `fail`. Specifies if the action should run when the check is
+  passing or failing
+* consecutiveEvents - specifies if the action should only run after N consecutive passes or fails
+* duration - specifies if the action should only run after the check has been passing or failing for
+  some period of time
+* action - specifies what to do when the action is run. valid values are:
+    * `mark healthy` - the terminator precedence will be set to the default hosting precedence of
+      the hosting identity
+    * `mark unhealthy` - the terminator precedence will be set to `failed`
+    * `increase cost N` - the terminator cost will be increased by N. This will only happen while
+      the terminator precedence is not failed. Once the terminator has failed we don't keep
+      increasing cost, otherwise it will likely reach max cost and take a long time to recover after
+      it goes back to healthy.
+    * `decrease cost N` - the terminator cost will be decrease by N to a minimuim. The terminator
+      cost will not go below the hosting identity's default hosting cost
+
+#### Examples
+
+The following config defines a TCP service which can be reach at port 8171 on `localhost`. It has a
+port check defined which runs every 5 seconds, with a timeout of 500 milliseconds. The following
+actions are defined on the health check:
+
+1. The terminator will be marked failed after the health check has failed 10 times in a row.
+1. The terminator cost will be increased by 100 each time the health check fails while the
+   terminator is not in failed state
+1. The terminator will be returned to a non-failed state if the health check is healthy for 10
+   seconds
+1. Every time the health check passes the cost will be reduced by 25, until it hits the baseline
+   cost defined by the hosting identity
+
+```
+{
+    "protocol" : "tcp",
+    "hostname" : "localhost",
+    "port" : 8171,
+    "portChecks" : [
+        {
+            "interval" : "5s",
+            "timeout" : "500ms",
+            "address" : "localhost:8171",
+            "actions": [
+                {
+                    "action": "mark unhealthy",
+                    "consecutiveEvents": 10,
+                    "trigger": "fail"
+                },
+                {
+                    "action": "increase cost 100",
+                    "trigger": "fail"
+                },
+                {
+                    "action": "mark healthy",
+                    "duration": "10s",
+                    "trigger": "pass"
+                },
+                {
+                    "action": "decrease cost 25",
+                    "trigger": "pass"
+                }
+            ]
+        }
+    ]
+}
+
+```
+
+## ziti-tunnel host command
+
+The ziti-tunnel can now be run in a mode where it will only host services and will not intercept any
+services.
+
+Ex: `ziti-tunnel host -i /path/to/identity.json`
+
+## Schema Reference
+
+For reference, here is the full, updated `ziti-tunneler-server.v1` schema:
+
+```
+{
+    "$id": "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
+    "additionalProperties": false,
+    "definitions": {
+        "action": {
+            "additionalProperties": false,
+            "properties": {
+                "action": {
+                    "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+)",
+                    "type": "string"
+                },
+                "consecutiveEvents": {
+                    "maximum": 65535,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "duration": {
+                    "$ref": "#/definitions/duration"
+                },
+                "trigger": {
+                    "enum": [
+                        "fail",
+                        "pass"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "trigger",
+                "action"
+            ],
+            "type": "object"
+        },
+        "actionList": {
+            "items": {
+                "$ref": "#/definitions/action"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+        },
+        "duration": {
+            "pattern": "[0-9]+(h|m|s|ms)",
+            "type": "string"
+        },
+        "httpCheck": {
+            "additionalProperties": false,
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "expectInBody": {
+                    "type": "string"
+                },
+                "expectStatus": {
+                    "maximum": 599,
+                    "minimum": 100,
+                    "type": "integer"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "method": {
+                    "$ref": "#/definitions/method"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "interval",
+                "timeout",
+                "url"
+            ],
+            "type": "object"
+        },
+        "httpCheckList": {
+            "items": {
+                "$ref": "#/definitions/httpCheck"
+            },
+            "type": "array"
+        },
+        "method": {
+            "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH"
+            ],
+            "type": "string"
+        },
+        "portCheck": {
+            "additionalProperties": false,
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                }
+            },
+            "required": [
+                "interval",
+                "timeout",
+                "address"
+            ],
+            "type": "object"
+        },
+        "portCheckList": {
+            "items": {
+                "$ref": "#/definitions/portCheck"
+            },
+            "type": "array"
+        }
+    },
+    "properties": {
+        "hostname": {
+            "type": "string"
+        },
+        "httpChecks": {
+            "$ref": "#/definitions/httpCheckList"
+        },
+        "port": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+        },
+        "portChecks": {
+            "$ref": "#/definitions/portCheckList"
+        },
+        "protocol": {
+            "enum": [
+                "tcp",
+                "udp"
+            ],
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "hostname",
+        "port"
+    ],
+    "type": "object"
+}
+```
+
+## Terminator Events
+
+Terminator events are now generated and can be found the fabric events/ package along with other
+fabric events. They can also be emitted in json or plain text to a file or stdout, same as other
+events. Events are generated when:
+
+* A terminator is created
+* A terminator is updated (generally precedence or static cost change)
+* A terminator is deleted
+* A router goes offline. Every terminator on that router will have an event generated
+* A router goes online. Every terminator on that router will have an event generated
+
+A terminator event will have the following properties:
+
+* namespace - will always be `fabric.terminators`
+* event_type - one of: created, updated, deleted, router-online, router-offline
+* timestamp - when the event was generated
+* service_id - id of the service that the terminator belongs to
+* terminator_id - id of the terminator
+* router_id - id of the router the terminator is on
+* router_onlne - boolean flag indicating if the router is online
+* precedence - the router precedence
+* static_cost - the static cost of the terminator (managed externally, by admin or sdk)
+* dynamic_cost - the dynamic cost of the terminator (managed by the terminator strategy for the
+  service)
+* total_terminators - the number of terminators currently existing on the service
+* usable_default_terminators - the number of terminators on the service that have precedence default
+* usable_required_terminators - the number of terminators on the service that have precedence
+  required and are on an online router
+
+Example: To register for json events
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+       - type: fabric.terminators
+```
+
+Example JSON output:
+
+```
+{
+  "namespace": "fabric.terminators",
+  "event_type": "updated",
+  "timestamp": "2021-01-08T16:26:08.0005535-05:00",
+  "service_id": "49Gc41SuL",
+  "terminator_id": "y8qR",
+  "router_id": "T-8CFqqtB",
+  "router_online": true,
+  "precedence": "required",
+  "static_cost": 1100,
+  "dynamic_cost": 0,
+  "total_terminators": 1,
+  "usable_default_terminators": 1,
+  "usable_required_terminators": 0
+}
+```
+
 # Release 0.18.1
 
 * Improve log output for invalid API Session Tokens used to connect to Edge Routers
 * Logs default to no color output
 * API Session Certificate Support Added
 
-###  Logs default to no color output
+### Logs default to no color output
 
-Logs generated by Ziti components written in Go (Controller, Router, SDK) will
-no longer output ANSI color control characters by default. Color logs can be
-enabled by setting in the environment variable `PFXLOG_USE_COLOR` to any
-truthy value: 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.
+Logs generated by Ziti components written in Go (Controller, Router, SDK) will no longer output ANSI
+color control characters by default. Color logs can be enabled by setting in the environment
+variable `PFXLOG_USE_COLOR` to any truthy value: 1, t, T, TRUE, true, True, 0, f, F, FALSE, false,
+False.
 
 ### API Session Certificate Support Added
 
-All authentication mechanisms can now bootstrap key pairs via an authenticated session
-using API Session Certificates. These key pairs involve authenticating, preparing an
-X509 Certificate Signing Request (CSR), and then submitting the CSR for processing.
-The output is an ephemeral certificate tied to that session that can be used to
-connect to Edge Routers for session dial/binds.
+All authentication mechanisms can now bootstrap key pairs via an authenticated session using API
+Session Certificates. These key pairs involve authenticating, preparing an X509 Certificate Signing
+Request (CSR), and then submitting the CSR for processing. The output is an ephemeral certificate
+tied to that session that can be used to connect to Edge Routers for session dial/binds.
 
 New Endpoints:
-- current-api-session/certificates
-  - GET - lists current API Session Certificates
-  - POST - create a new API Session Certificate (accepts a JSON payload with a `csr` field)
-- current-api-session/certificates/<id>
-  - GET - retrieves a specific API Session Certificate
-  - DELETE - removes a specific API Session Certificate
-  - 
 
-API Session Certificates have a 12hr life span. New certificates can be created
-before previous ones expire and be used for reconnection.
+- current-api-session/certificates
+    - GET - lists current API Session Certificates
+    - POST - create a new API Session Certificate (accepts a JSON payload with a `csr` field)
+- current-api-session/certificates/<id>
+    - GET - retrieves a specific API Session Certificate
+    - DELETE - removes a specific API Session Certificate
+    -
+
+API Session Certificates have a 12hr life span. New certificates can be created before previous ones
+expire and be used for reconnection.
 
 # Release 0.18.0
 
