@@ -9,23 +9,25 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
 	"reflect"
+	"time"
 )
 
 const SessionEventTypeCreated = "created"
 const SessionEventTypeDeleted = "deleted"
 
 type EdgeSessionEvent struct {
-	Namespace    string `json:"namespace"`
-	EventType    string `json:"event_type"`
-	Id           string `json:"id"`
-	Token        string `json:"token"`
-	ApiSessionId string `json:"api_session_id"`
-	IdentityId   string `json:"identity_id"`
+	Namespace    string    `json:"namespace"`
+	EventType    string    `json:"event_type"`
+	Id           string    `json:"id"`
+	Timestamp    time.Time `json:"timestamp"`
+	Token        string    `json:"token"`
+	ApiSessionId string    `json:"api_session_id"`
+	IdentityId   string    `json:"identity_id"`
 }
 
 func (event *EdgeSessionEvent) String() string {
-	return fmt.Sprintf("%v.%v id=%v token=%v apiSessionId=%v identityId=%v",
-		event.Namespace, event.EventType, event.Id, event.Token, event.ApiSessionId, event.IdentityId)
+	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v apiSessionId=%v identityId=%v",
+		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.ApiSessionId, event.IdentityId)
 }
 
 type EdgeSessionEventHandler interface {
@@ -59,6 +61,7 @@ func sessionCreated(args ...interface{}) {
 		Namespace:    "edge.sessions",
 		EventType:    "created",
 		Id:           session.Id,
+		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
 		IdentityId:   session.ApiSession.IdentityId,
@@ -85,6 +88,7 @@ func sessionDeleted(args ...interface{}) {
 		Namespace: "edge.session",
 		EventType: "deleted",
 		Id:        session.Id,
+		Timestamp: time.Now(),
 		Token:     session.Token,
 	}
 
