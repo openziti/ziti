@@ -32,10 +32,12 @@ import (
 
 type createIdentityOptions struct {
 	commonOptions
-	isAdmin        bool
-	roleAttributes []string
-	jwtOutputFile  string
-	username       string
+	isAdmin                  bool
+	roleAttributes           []string
+	jwtOutputFile            string
+	username                 string
+	defaultHostingPrecedence string
+	defaultHostingCost       uint16
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
@@ -82,6 +84,9 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().StringVar(&options.username, "updb", "", "username to give the identity, will create a UPDB enrollment")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
+	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
+	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -100,6 +105,11 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 	setJSONValue(entityData, o.isAdmin, "isAdmin")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+
+	if o.defaultHostingPrecedence != "" {
+		setJSONValue(entityData, o.defaultHostingPrecedence, "defaultHostingPrecedence")
+	}
+	setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 
 	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
 
