@@ -288,8 +288,6 @@ github.com/google/pprof v0.0.0-20190515194954-54271f7e092f/go.mod h1:zfwlbNMJ+OI
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
-github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.4 h1:0ecGp3skIrHWPNGPJDaBIghfA6Sp7Ruo2Io8eLKzWm0=
 github.com/google/uuid v1.1.4/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
@@ -463,10 +461,8 @@ github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoT
 github.com/onsi/gomega v1.10.1 h1:o0+MgICZLuZ7xjH7Vx6zS/zcu93/BEp1VwkIW1mEXCE=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.15.5 h1:qaHsjkoGLb+0lHEmvZPSYnR5jKhdh59k3O4xYSzAkEM=
-github.com/openziti/fabric v0.15.5/go.mod h1:A31vRi5JrbNw1mHOnNMTEDID5ga2kKyTD6TzzUqA5rQ=
-github.com/openziti/foundation v0.14.24 h1:bJ9Ni/QecYDx0tNS7tXzdF1789dI/87F9NzUisjpfBY=
-github.com/openziti/foundation v0.14.24/go.mod h1:jb1fNtW+s4I43Zo7etlCwoDkOglBhR6E0g6D6dp0Bu4=
+github.com/openziti/fabric v0.15.6 h1:0fCMp4R4ArDxaFK3wcvCwSPHL+Uu4UcAGPFANISh1ZI=
+github.com/openziti/fabric v0.15.6/go.mod h1:Ve+jgkgvIqWAR6mK+hs8+5s2kcPRbIL8I4k0BNEYwss=
 github.com/openziti/foundation v0.14.25 h1:8hHudVSERTxr6xcrGLyJifcBn/dUsVfmBMGBBgI1wN8=
 github.com/openziti/foundation v0.14.25/go.mod h1:ERwYDcVXSKiPmoasmEUHcHJbNuu14pJMnv9OQniVteU=
 github.com/openziti/sdk-golang v0.15.3 h1:cIxuec3iZnKJ+hhAdxyZhA8EYbjsyAJ3mDSMh02e1ws=
