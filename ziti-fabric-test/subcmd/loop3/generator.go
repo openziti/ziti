@@ -23,28 +23,28 @@ import (
 	"math/rand"
 )
 
-type generator struct {
+type randomHashedBlockGenerator struct {
 	count       int
 	minSize     int
 	maxSize     int
 	latencyFreq int
-	blocks      chan *Block
+	blocks      chan Block
 	pool        [][]byte
 }
 
-func newGenerator(count, minSize, maxSize, latencyFreq int) *generator {
-	g := &generator{
+func newRandomHashedBlockGenerator(count, minSize, maxSize, latencyFreq int) *randomHashedBlockGenerator {
+	g := &randomHashedBlockGenerator{
 		count:       count,
 		minSize:     minSize,
 		maxSize:     maxSize,
 		latencyFreq: latencyFreq,
-		blocks:      make(chan *Block),
+		blocks:      make(chan Block),
 		pool:        newPool(),
 	}
 	return g
 }
 
-func (g *generator) run() {
+func (g *randomHashedBlockGenerator) run() {
 	log := pfxlog.Logger()
 	log.Debug("started")
 	defer log.Debug("complete")
@@ -68,7 +68,7 @@ func (g *generator) run() {
 		if g.latencyFreq > 0 && i%g.latencyFreq == 0 {
 			blockType = BlockTypeLatencyRequest
 		}
-		g.blocks <- &Block{
+		g.blocks <- &RandHashedBlock{
 			Type:     blockType,
 			Sequence: uint32(i),
 			Data:     data,
@@ -95,4 +95,43 @@ func newPool() [][]byte {
 		}
 	}
 	return pool
+}
+
+func newSeqGenerator(count, minSize, maxSize int) *seqGenerator {
+	g := &seqGenerator{
+		count:   count,
+		minSize: minSize,
+		maxSize: maxSize,
+		blocks:  make(chan Block),
+	}
+	return g
+}
+
+func (g *seqGenerator) run() {
+	log := pfxlog.Logger()
+	log.Debug("started")
+	defer log.Debug("complete")
+
+	var seq uint64
+
+	for i := 0; i < g.count; i++ {
+		size := g.minSize
+		distance := g.maxSize - g.minSize
+		if distance > 0 {
+			size += rand.Intn(distance)
+		}
+		data := make([]byte, size)
+		for idx := 0; idx < size; idx++ {
+			data[idx] = byte(seq)
+			seq++
+		}
+		g.blocks <- SeqBlock(data)
+	}
+}
+
+type seqGenerator struct {
+	count   int
+	minSize int
+	maxSize int
+	blocks  chan Block
 }
