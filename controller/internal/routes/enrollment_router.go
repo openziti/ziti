@@ -59,7 +59,7 @@ func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapEnrollmentToRestEntity)
+	DetailWithHandler(ae, rc, ae.Handlers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
