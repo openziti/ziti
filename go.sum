@@ -285,6 +285,8 @@ github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.1.4 h1:0ecGp3skIrHWPNGPJDaBIghfA6Sp7Ruo2Io8eLKzWm0=
+github.com/google/uuid v1.1.4/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
@@ -460,8 +462,10 @@ github.com/openziti/fabric v0.15.5 h1:qaHsjkoGLb+0lHEmvZPSYnR5jKhdh59k3O4xYSzAkE
 github.com/openziti/fabric v0.15.5/go.mod h1:A31vRi5JrbNw1mHOnNMTEDID5ga2kKyTD6TzzUqA5rQ=
 github.com/openziti/foundation v0.14.24 h1:bJ9Ni/QecYDx0tNS7tXzdF1789dI/87F9NzUisjpfBY=
 github.com/openziti/foundation v0.14.24/go.mod h1:jb1fNtW+s4I43Zo7etlCwoDkOglBhR6E0g6D6dp0Bu4=
-github.com/openziti/sdk-golang v0.15.2 h1:A/ZXY7DZvLsuBUxtA7R5zltx1espHFFlsfkoki9hsFY=
-github.com/openziti/sdk-golang v0.15.2/go.mod h1:wpMXCScWQ8Sdj/SX8GCp+/n/vQ4ZFJYTdZdOx9rdG/Y=
+github.com/openziti/foundation v0.14.25 h1:8hHudVSERTxr6xcrGLyJifcBn/dUsVfmBMGBBgI1wN8=
+github.com/openziti/foundation v0.14.25/go.mod h1:ERwYDcVXSKiPmoasmEUHcHJbNuu14pJMnv9OQniVteU=
+github.com/openziti/sdk-golang v0.15.3 h1:cIxuec3iZnKJ+hhAdxyZhA8EYbjsyAJ3mDSMh02e1ws=
+github.com/openziti/sdk-golang v0.15.3/go.mod h1:y11gUBfnW/UWnjUeidu7LdVBSzwAjSlCUAZYp2PCJ2Y=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
