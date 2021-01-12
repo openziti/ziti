@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/sdk-golang/ziti"
 	"strings"
 )
 
@@ -59,6 +60,13 @@ func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.L
 	return links
 }
 
+func getTerminatorCost(v *rest_model.TerminatorCost) uint16 {
+	if v == nil {
+		return 0
+	}
+	return uint16(*v)
+}
+
 func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeId string) (*model.Identity, []*model.Enrollment) {
 	var enrollments []*model.Enrollment
 
@@ -66,11 +74,13 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 		BaseEntity: models.BaseEntity{
 			Tags: identity.Tags,
 		},
-		Name:           stringz.OrEmpty(identity.Name),
-		IdentityTypeId: identityTypeId,
-		IsDefaultAdmin: false,
-		IsAdmin:        *identity.IsAdmin,
-		RoleAttributes: identity.RoleAttributes,
+		Name:                     stringz.OrEmpty(identity.Name),
+		IdentityTypeId:           identityTypeId,
+		IsDefaultAdmin:           false,
+		IsAdmin:                  *identity.IsAdmin,
+		RoleAttributes:           identity.RoleAttributes,
+		DefaultHostingPrecedence: ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
+		DefaultHostingCost:       getTerminatorCost(identity.DefaultHostingCost),
 	}
 
 	if identity.Enrollment != nil {
@@ -108,10 +118,12 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 			Tags: identity.Tags,
 			Id:   id,
 		},
-		Name:           stringz.OrEmpty(identity.Name),
-		IdentityTypeId: identityTypeId,
-		IsAdmin:        *identity.IsAdmin,
-		RoleAttributes: identity.RoleAttributes,
+		Name:                     stringz.OrEmpty(identity.Name),
+		IdentityTypeId:           identityTypeId,
+		IsAdmin:                  *identity.IsAdmin,
+		RoleAttributes:           identity.RoleAttributes,
+		DefaultHostingPrecedence: ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
+		DefaultHostingCost:       getTerminatorCost(identity.DefaultHostingCost),
 	}
 
 	return ret
@@ -123,10 +135,12 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 			Tags: identity.Tags,
 			Id:   id,
 		},
-		Name:           identity.Name,
-		IdentityTypeId: identityTypeId,
-		IsAdmin:        identity.IsAdmin,
-		RoleAttributes: identity.RoleAttributes,
+		Name:                     identity.Name,
+		IdentityTypeId:           identityTypeId,
+		IsAdmin:                  identity.IsAdmin,
+		RoleAttributes:           identity.RoleAttributes,
+		DefaultHostingPrecedence: ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
+		DefaultHostingCost:       getTerminatorCost(identity.DefaultHostingCost),
 	}
 
 	return ret
@@ -163,16 +177,20 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	hasApiSession := identity.ApiSessionCount > 0
 
+	defaultCost := rest_model.TerminatorCost(identity.DefaultHostingCost)
+
 	ret := &rest_model.IdentityDetail{
-		BaseEntity:              BaseEntityToRestModel(identity, IdentityLinkFactory),
-		IsAdmin:                 &identity.IsAdmin,
-		IsDefaultAdmin:          &identity.IsDefaultAdmin,
-		Name:                    &identity.Name,
-		RoleAttributes:          identity.RoleAttributes,
-		Type:                    ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
-		TypeID:                  &identityType.Id,
-		HasEdgeRouterConnection: &identity.HasHeartbeat,
-		HasAPISession:           &hasApiSession,
+		BaseEntity:               BaseEntityToRestModel(identity, IdentityLinkFactory),
+		IsAdmin:                  &identity.IsAdmin,
+		IsDefaultAdmin:           &identity.IsDefaultAdmin,
+		Name:                     &identity.Name,
+		RoleAttributes:           identity.RoleAttributes,
+		Type:                     ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
+		TypeID:                   &identityType.Id,
+		HasEdgeRouterConnection:  &identity.HasHeartbeat,
+		HasAPISession:            &hasApiSession,
+		DefaultHostingPrecedence: rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
+		DefaultHostingCost:       &defaultCost,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

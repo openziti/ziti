@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -44,8 +45,10 @@ const (
 	FieldIdentitySdkInfoType      = "sdkInfoType"
 	FieldIdentitySdkInfoVersion   = "sdkInfoVersion"
 
-	FieldIdentityBindServices = "bindServices"
-	FieldIdentityDialServices = "dialServices"
+	FieldIdentityBindServices             = "bindServices"
+	FieldIdentityDialServices             = "dialServices"
+	FieldIdentityDefaultHostingPrecedence = "hostingPrecedence"
+	FieldIdentityDefaultHostingCost       = "hostingCost"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -73,15 +76,17 @@ type SdkInfo struct {
 
 type Identity struct {
 	boltz.BaseExtEntity
-	Name           string
-	IdentityTypeId string
-	IsDefaultAdmin bool
-	IsAdmin        bool
-	Enrollments    []string
-	Authenticators []string
-	RoleAttributes []string
-	SdkInfo        *SdkInfo
-	EnvInfo        *EnvInfo
+	Name                     string
+	IdentityTypeId           string
+	IsDefaultAdmin           bool
+	IsAdmin                  bool
+	Enrollments              []string
+	Authenticators           []string
+	RoleAttributes           []string
+	SdkInfo                  *SdkInfo
+	EnvInfo                  *EnvInfo
+	DefaultHostingPrecedence ziti.Precedence
+	DefaultHostingCost       uint16
 }
 
 type ServiceConfig struct {
@@ -91,7 +96,7 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-func (entity *Identity) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
@@ -100,6 +105,8 @@ func (entity *Identity) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBuc
 	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
 	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
+	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
 
 	entity.SdkInfo = &SdkInfo{
 		Branch:   bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
@@ -127,6 +134,8 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
+	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
 
 	if entity.EnvInfo != nil {
 		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)

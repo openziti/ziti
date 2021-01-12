@@ -7473,6 +7473,12 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "enrollment": {
           "type": "object",
           "properties": {
@@ -7530,6 +7536,12 @@ func init() {
           "properties": {
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
+            },
+            "defaultHostingCost": {
+              "$ref": "#/definitions/terminatorCost"
+            },
+            "defaultHostingPrecedence": {
+              "$ref": "#/definitions/terminatorPrecedence"
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"
@@ -7634,6 +7646,12 @@ func init() {
     "identityPatch": {
       "type": "object",
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "isAdmin": {
           "type": "boolean"
         },
@@ -7689,6 +7707,12 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "isAdmin": {
           "type": "boolean"
         },
@@ -25667,6 +25691,12 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "enrollment": {
           "type": "object",
           "properties": {
@@ -25724,6 +25754,12 @@ func init() {
           "properties": {
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
+            },
+            "defaultHostingCost": {
+              "$ref": "#/definitions/terminatorCost"
+            },
+            "defaultHostingPrecedence": {
+              "$ref": "#/definitions/terminatorPrecedence"
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"
@@ -25828,6 +25864,12 @@ func init() {
     "identityPatch": {
       "type": "object",
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "isAdmin": {
           "type": "boolean"
         },
@@ -25883,6 +25925,12 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "defaultHostingCost": {
+          "$ref": "#/definitions/terminatorCost"
+        },
+        "defaultHostingPrecedence": {
+          "$ref": "#/definitions/terminatorPrecedence"
+        },
         "isAdmin": {
           "type": "boolean"
         },

@@ -83,6 +83,7 @@ func Test_ConfigTypes(t *testing.T) {
 		configType := ctx.newConfigType()
 		configType.Schema = map[string]interface{}{
 			"$id":                  "http://ziti-edge.netfoundry.io/schemas/test.config.json",
+			"$schema":              "http://json-schema.org/draft-07/schema#",
 			"type":                 "object",
 			"additionalProperties": false,
 			"required": []interface{}{

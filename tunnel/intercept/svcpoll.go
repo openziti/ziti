@@ -17,8 +17,10 @@
 package intercept
 
 import (
+	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"net"
 	"os"
 	"os/signal"
@@ -33,13 +35,15 @@ import (
 )
 
 func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {
+	healthCheckMgr := health.NewManager()
+
 	interceptor.Start(context)
 	knownServices := make(map[string]*entities.Service)
 	log := pfxlog.Logger()
 
 	//signal.Notify expects a buffered chan of at least 1
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
 	if pollRate < time.Second {
 		pollRate = 15 * time.Second
@@ -61,7 +65,7 @@ func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.R
 			tunnelServices = append(tunnelServices, &entities.Service{Service: edgeService})
 		}
 		added, removed := diffServices(tunnelServices, knownServices)
-		updateServices(context, interceptor, resolver, added, removed, knownServices)
+		updateServices(context, interceptor, resolver, added, removed, knownServices, healthCheckMgr)
 
 		select {
 		case <-time.After(pollRate):
@@ -78,7 +82,7 @@ func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.R
 
 done:
 	// use `updateServices` to stop each intercepted service one-at-a-time.
-	updateServices(context, interceptor, resolver, nil, knownServices, knownServices)
+	updateServices(context, interceptor, resolver, nil, knownServices, knownServices, healthCheckMgr)
 	interceptor.Stop()
 }
 
@@ -110,7 +114,7 @@ func diffServices(edgeServices []*entities.Service, knownServices map[string]*en
 	return
 }
 
-func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]*entities.Service) {
+func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]*entities.Service, healthCheckMgr health.Manager) {
 	log := pfxlog.Logger()
 	for _, svc := range added {
 		if stringz.Contains(svc.Permissions, "Dial") {
@@ -140,7 +144,7 @@ func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.
 			if found && err == nil {
 				svc.ServerConfig = serverConfig
 				log.Infof("Hosting newly available service %s", svc.Name)
-				go host(context, svc)
+				go host(context, svc, healthCheckMgr)
 			} else if !found {
 				log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
 			} else if err != nil {
@@ -173,16 +177,55 @@ func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.
 	}
 }
 
-func host(context ziti.Context, svc *entities.Service) {
+func setupHealthChecks(healthCheckMgr health.Manager, listener edge.Listener, service *entities.Service, identity *edge.CurrentIdentity) error {
+	precedence := ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
+	serviceState := health.NewServiceState(service.Name, precedence, identity.DefaultHostingCost, listener)
+
+	var checkDefinitions []health.CheckDefinition
+
+	for _, checkDef := range service.ServerConfig.PortChecks {
+		checkDefinitions = append(checkDefinitions, checkDef)
+	}
+
+	for _, checkDef := range service.ServerConfig.HttpChecks {
+		checkDefinitions = append(checkDefinitions, checkDef)
+	}
+
+	if len(checkDefinitions) > 0 {
+		return healthCheckMgr.RegisterServiceChecks(serviceState, checkDefinitions)
+	}
+
+	return nil
+}
+
+func host(context ziti.Context, svc *entities.Service, healthCheckMgr health.Manager) {
 	log := pfxlog.Logger()
-	options := ziti.DefaultListenOptions()
-	options.ManualStart = true
-	listener, err := context.ListenWithOptions(svc.Name, options)
+
+	currentIdentity, err := context.GetCurrentIdentity()
 	if err != nil {
-		log.WithError(err).WithField("service", svc.Name).Errorf("error listening for service: %v", err)
+		log.WithError(err).WithField("service", svc.Name).Errorf("error getting current identity information")
 		return
 	}
+
+	options := ziti.DefaultListenOptions()
+	options.ManualStart = true
+	options.Precedence = ziti.GetPrecedenceForLabel(currentIdentity.DefaultHostingPrecedence)
+	options.Cost = currentIdentity.DefaultHostingCost
+
+	listener, err := context.ListenWithOptions(svc.Name, options)
+	if err != nil {
+		log.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
+		return
+	}
+
 	defer func() { _ = listener.Close() }()
+	defer healthCheckMgr.UnregisterServiceChecks(svc.Id)
+
+	if err := setupHealthChecks(healthCheckMgr, listener, svc, currentIdentity); err != nil {
+		log.WithError(err).WithField("service", svc.Name).Error("error setting up health checks")
+		return
+	}
+
 	config := svc.ServerConfig
 	for {
 		log.WithField("service", svc.Name).

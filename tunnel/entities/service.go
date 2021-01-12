@@ -2,6 +2,7 @@ package entities
 
 import (
 	"fmt"
+	"github.com/openziti/edge/health"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
 
@@ -11,9 +12,11 @@ const (
 )
 
 type ServiceConfig struct {
-	Protocol string
-	Hostname string
-	Port     int
+	Protocol   string
+	Hostname   string
+	Port       int
+	PortChecks []*health.PortCheckDefinition
+	HttpChecks []*health.HttpCheckDefinition
 }
 
 func (s *ServiceConfig) String() string {
