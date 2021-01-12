@@ -85,6 +85,17 @@ func (event *JsonUsageEvent) WriteTo(output io.WriteCloser) error {
 	return err
 }
 
+type JsonTerminatorEvent TerminatorEvent
+
+func (event *JsonTerminatorEvent) WriteTo(output io.WriteCloser) error {
+	buf, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(buf)
+	return err
+}
+
 func NewJsonFormatter(queueDepth int, output io.WriteCloser) *JsonFormatter {
 	return &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -108,6 +119,10 @@ func (formatter *JsonFormatter) AcceptMetricsEvent(event *MetricsEvent) {
 
 func (formatter *JsonFormatter) AcceptUsageEvent(event *UsageEvent) {
 	formatter.AcceptLoggingEvent((*JsonUsageEvent)(event))
+}
+
+func (formatter *JsonFormatter) AcceptTerminatorEvent(event *TerminatorEvent) {
+	formatter.AcceptLoggingEvent((*JsonTerminatorEvent)(event))
 }
 
 type PlainTextFabricSessionEvent SessionEvent
@@ -139,6 +154,13 @@ func (event *PlainTextUsageEvent) WriteTo(output io.WriteCloser) error {
 	return err
 }
 
+type PlainTextTerminatorEvent TerminatorEvent
+
+func (event *PlainTextTerminatorEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*TerminatorEvent)(event).String()))
+	return err
+}
+
 func NewPlainTextFormatter(queueDepth int, output io.WriteCloser) *PlainTextFormatter {
 	return &PlainTextFormatter{
 		BaseFormatter: BaseFormatter{
@@ -162,4 +184,8 @@ func (formatter *PlainTextFormatter) AcceptMetricsEvent(event *MetricsEvent) {
 
 func (formatter *PlainTextFormatter) AcceptUsageEvent(event *UsageEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextUsageEvent)(event))
+}
+
+func (formatter *PlainTextFormatter) AcceptTerminatorEvent(event *TerminatorEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextTerminatorEvent)(event))
 }
