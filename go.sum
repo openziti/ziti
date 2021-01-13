@@ -432,8 +432,8 @@ github.com/mitchellh/iochan v1.0.0/go.mod h1:JwYml1nuB7xOzsp52dPpHFffvOCDupsG0Qu
 github.com/mitchellh/mapstructure v0.0.0-20160808181253-ca63d7c062ee/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mitchellh/mapstructure v1.3.2/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/mitchellh/mapstructure v1.4.0 h1:7ks8ZkOP5/ujthUsT07rNv+nkLXCQWKNHuwzOAesEks=
-github.com/mitchellh/mapstructure v1.4.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
+github.com/mitchellh/mapstructure v1.4.1 h1:CpVNEelQCZBooIPDn+AR3NpivK/TIKU8bDxdASFVQag=
+github.com/mitchellh/mapstructure v1.4.1/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
@@ -465,8 +465,8 @@ github.com/openziti/fabric v0.15.6 h1:0fCMp4R4ArDxaFK3wcvCwSPHL+Uu4UcAGPFANISh1Z
 github.com/openziti/fabric v0.15.6/go.mod h1:Ve+jgkgvIqWAR6mK+hs8+5s2kcPRbIL8I4k0BNEYwss=
 github.com/openziti/foundation v0.14.25 h1:8hHudVSERTxr6xcrGLyJifcBn/dUsVfmBMGBBgI1wN8=
 github.com/openziti/foundation v0.14.25/go.mod h1:ERwYDcVXSKiPmoasmEUHcHJbNuu14pJMnv9OQniVteU=
-github.com/openziti/sdk-golang v0.15.3 h1:cIxuec3iZnKJ+hhAdxyZhA8EYbjsyAJ3mDSMh02e1ws=
-github.com/openziti/sdk-golang v0.15.3/go.mod h1:y11gUBfnW/UWnjUeidu7LdVBSzwAjSlCUAZYp2PCJ2Y=
+github.com/openziti/sdk-golang v0.15.4 h1:ofZdElKT89m12xvmjKfzUUxTGeyjdhhzrzv0uBQ5/Rg=
+github.com/openziti/sdk-golang v0.15.4/go.mod h1:Ef+Uyuwd654InTRJfHHqmOE56Zv218/K8aBYbM7tq0w=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
