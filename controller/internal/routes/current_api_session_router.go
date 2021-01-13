@@ -18,6 +18,7 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
@@ -64,6 +65,11 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler = current_api_session.DeleteCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.DeleteCertificate, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	// Session Updates
+	ae.Api.CurrentAPISessionListServiceUpdatesHandler = current_api_session.ListServiceUpdatesHandlerFunc(func(params current_api_session.ListServiceUpdatesParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(router.ListServiceUpdates, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
 
@@ -155,6 +161,14 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 	}
 
 	rc.RespondWithEmptyOk()
+}
+
+func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *response.RequestContext) {
+	now := strfmt.DateTime(time.Now()) //todo generate this from something meaningful
+	data := &rest_model.CurrentAPISessionServiceUpdateList{
+		LastChangeAt: &now,
+	}
+	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 
 type ApiSessionCertificateCreateResponder struct {
