@@ -69,6 +69,8 @@ type ClientService interface {
 
 	ListCurrentIdentityAuthenticators(params *ListCurrentIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter) (*ListCurrentIdentityAuthenticatorsOK, error)
 
+	ListServiceUpdates(params *ListServiceUpdatesParams, authInfo runtime.ClientAuthInfoWriter) (*ListServiceUpdatesOK, error)
+
 	PatchCurrentIdentityAuthenticator(params *PatchCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*PatchCurrentIdentityAuthenticatorOK, error)
 
 	UpdateCurrentIdentityAuthenticator(params *UpdateCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*UpdateCurrentIdentityAuthenticatorOK, error)
@@ -407,6 +409,45 @@ func (a *Client) ListCurrentIdentityAuthenticators(params *ListCurrentIdentityAu
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listCurrentIdentityAuthenticators: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ListServiceUpdates returns data indicating whether a client should updates it service list
+
+  Retrieves data indicating the last time data relevant to this API Session was altered that would necessitate
+service refreshes.
+
+*/
+func (a *Client) ListServiceUpdates(params *ListServiceUpdatesParams, authInfo runtime.ClientAuthInfoWriter) (*ListServiceUpdatesOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListServiceUpdatesParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "listServiceUpdates",
+		Method:             "GET",
+		PathPattern:        "/current-api-session/service-updates",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ListServiceUpdatesReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListServiceUpdatesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for listServiceUpdates: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

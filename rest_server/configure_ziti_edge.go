@@ -714,6 +714,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation service.ListServiceTerminators has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionListServiceUpdatesHandler == nil {
+		api.CurrentAPISessionListServiceUpdatesHandler = current_api_session.ListServiceUpdatesHandlerFunc(func(params current_api_session.ListServiceUpdatesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ListServiceUpdates has not yet been implemented")
+		})
+	}
 	if api.ServiceListServicesHandler == nil {
 		api.ServiceListServicesHandler = service.ListServicesHandlerFunc(func(params service.ListServicesParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.ListServices has not yet been implemented")
