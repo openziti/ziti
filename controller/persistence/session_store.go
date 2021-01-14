@@ -167,7 +167,7 @@ func (store *sessionStoreImpl) initializeLocal() {
 
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
 	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
-	store.AddSymbol(FieldSessionType, ast.NodeTypeBool)
+	store.AddSymbol(FieldSessionType, ast.NodeTypeString)
 
 	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeDelete)
 	store.AddFkConstraint(store.symbolService, false, boltz.CascadeDelete)

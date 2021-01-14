@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/cowslice"
 )
@@ -41,7 +42,7 @@ var ServiceEvents = &ServiceEventsRegistry{
 
 func init() {
 	ServiceEvents.AddServiceEventHandler(func(event *ServiceEvent) {
-		pfxlog.Logger().Warnf("identity %v -> service %v %v", event.IdentityId, event.ServiceId, event.Type.String())
+		pfxlog.Logger().Tracef("identity %v -> service %v %v", event.IdentityId, event.ServiceId, event.Type.String())
 	})
 }
 
@@ -49,6 +50,10 @@ type ServiceEvent struct {
 	Type       ServiceEventType
 	IdentityId string
 	ServiceId  string
+}
+
+func (self *ServiceEvent) String() string {
+	return fmt.Sprintf("service event [identity %v -> service %v %v]", self.IdentityId, self.ServiceId, self.Type.String())
 }
 
 type ServiceEventHandler func(event *ServiceEvent)

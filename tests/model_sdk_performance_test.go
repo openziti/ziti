@@ -46,7 +46,7 @@ func Test_SpecManyService(t *testing.T) {
 func Test_SpecLarge(t *testing.T) {
 	spec := &perfScenarioSpec{
 		name:                         "large",
-		serviceCount:                 200,
+		serviceCount:                 2000,
 		identityCount:                100_000,
 		edgeRouterCount:              500,
 		servicePolicyCount:           250,
