@@ -285,6 +285,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 
 	rc.ResponseWriter.Header().Set("content-type", "application/jwt")
 	response.AddVersionHeader(rc.ResponseWriter)
+	response.AddSessionExpirationHeader(rc)
 	rc.ResponseWriter.WriteHeader(http.StatusOK)
 	_, _ = rc.ResponseWriter.Write([]byte(jwt))
 }

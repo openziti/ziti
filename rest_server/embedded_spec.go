@@ -6583,9 +6583,13 @@ func init() {
         {
           "type": "object",
           "required": [
-            "expiresAt"
+            "expiresAt",
+            "expirationSeconds"
           ],
           "properties": {
+            "expirationSeconds": {
+              "type": "integer"
+            },
             "expiresAt": {
               "type": "string",
               "format": "date-time"
@@ -24882,9 +24886,13 @@ func init() {
         {
           "type": "object",
           "required": [
-            "expiresAt"
+            "expiresAt",
+            "expirationSeconds"
           ],
           "properties": {
+            "expirationSeconds": {
+              "type": "integer"
+            },
             "expiresAt": {
               "type": "string",
               "format": "date-time"

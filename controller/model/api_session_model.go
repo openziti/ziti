@@ -25,15 +25,18 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"time"
 )
 
 type ApiSession struct {
 	models.BaseEntity
-	Token       string
-	IdentityId  string
-	Identity    *Identity
-	IPAddress   string
-	ConfigTypes map[string]struct{}
+	Token              string
+	IdentityId         string
+	Identity           *Identity
+	IPAddress          string
+	ConfigTypes        map[string]struct{}
+	ExpiresAt          time.Time
+	ExpirationDuration time.Duration
 }
 
 func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
@@ -74,6 +77,9 @@ func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.IdentityId = boltApiSession.IdentityId
 	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)
 	entity.IPAddress = boltApiSession.IPAddress
+	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds)
+	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds
+
 	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err

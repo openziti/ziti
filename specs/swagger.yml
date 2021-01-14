@@ -4136,10 +4136,13 @@ definitions:
       - type: object
         required:
           - expiresAt
+          - expirationSeconds
         properties:
           expiresAt:
             type: string
             format: date-time
+          expirationSeconds:
+            type: integer
   ###################################################################
   # Identities
   ##################################################################

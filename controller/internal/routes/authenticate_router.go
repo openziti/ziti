@@ -126,28 +126,30 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		ConfigTypes: configTypes,
 		IPAddress:   remoteIpStr,
 	}
-	sessionId, err := ae.Handlers.ApiSession.Create(s)
+	apiSessionId, err := ae.Handlers.ApiSession.Create(s)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	session, err := ae.Handlers.ApiSession.Read(sessionId)
+	updatedApiSesion, err := ae.Handlers.ApiSession.Read(apiSessionId)
 
 	if err != nil {
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
 		rc.RespondWithApiError(apierror.NewUnauthorized())
 	}
 
-	apiSession := MapToCurrentApiSessionRestModel(session, ae.Config.SessionTimeoutDuration())
+	rc.ApiSession = updatedApiSesion
+
+	apiSession := MapToCurrentApiSessionRestModel(updatedApiSesion, ae.Config.SessionTimeoutDuration())
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
 	expiration := time.Time(*apiSession.ExpiresAt)
 	cookie := http.Cookie{Name: ae.AuthCookieName, Value: token, Expires: expiration}
 
-	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, session.Token)
+	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, updatedApiSesion.Token)
 	http.SetCookie(rc.ResponseWriter, &cookie)
 	ro.createTimer.UpdateSince(start)
 
