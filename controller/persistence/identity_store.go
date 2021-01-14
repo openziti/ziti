@@ -154,7 +154,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
@@ -250,9 +250,9 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
 }
 
-func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
 		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
@@ -262,7 +262,7 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	ctx = &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.servicePolicy.identityCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
@@ -365,13 +365,28 @@ func (store *identityStoreImpl) AssignServiceConfigs(tx *bbolt.Tx, identityId st
 			return err
 		}
 	}
+
+	var serviceEvents []*ServiceEvent
+
+	for _, serviceConfig := range serviceConfigs {
+		serviceEvents = append(serviceEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: identityId,
+			ServiceId:  serviceConfig.ServiceId,
+		})
+	}
+
+	tx.OnCommit(func() {
+		ServiceEvents.dispatchEventsAsync(serviceEvents)
+	})
+
 	return nil
 }
 
 func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error {
 	// could make this more efficient with maps, but only necessary if we have large number of overrides, which seems unlikely
 	// optimize later, if necessary
-	return store.removeServiceConfigs(tx, identityId, func(serviceId, _, configId string) bool {
+	result := store.removeServiceConfigs(tx, identityId, func(serviceId, _, configId string) bool {
 		if len(serviceConfigs) == 0 {
 			return true
 		}
@@ -382,6 +397,22 @@ func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId st
 		}
 		return false
 	})
+
+	var serviceEvents []*ServiceEvent
+
+	for _, serviceConfig := range serviceConfigs {
+		serviceEvents = append(serviceEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: identityId,
+			ServiceId:  serviceConfig.ServiceId,
+		})
+	}
+
+	tx.OnCommit(func() {
+		ServiceEvents.dispatchEventsAsync(serviceEvents)
+	})
+
+	return result
 }
 
 func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeFilter func(serviceId, configTypeId, configId string) bool) error {

@@ -73,7 +73,7 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
@@ -171,10 +171,10 @@ func (store *edgeServiceStoreImpl) initializeLinked() {
 	})
 }
 
-func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func (store *edgeServiceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate service policy links
 	ctx := &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.servicePolicy.symbolServiceRoles,
 		linkCollection:        store.stores.servicePolicy.serviceCollection,
 		relatedLinkCollection: store.stores.servicePolicy.identityCollection,
@@ -184,7 +184,7 @@ func (store *edgeServiceStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []
 
 	// Recalculate service edge router policy links
 	ctx = &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolServiceRoles,
 		linkCollection:        store.stores.serviceEdgeRouterPolicy.serviceCollection,
 		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
@@ -222,6 +222,46 @@ func (store *edgeServiceStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*
 	return entity, nil
 }
 
+func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	if result := store.baseStore.Update(ctx, entity, checker); result != nil {
+		return result
+	}
+
+	id := entity.GetId()
+	var servicePolicyEvents []*ServiceEvent
+
+	// If a service is updated we need to notify everyone who has access to the identity, not just those who
+	// have gained/lost access, since everyone will need to refresh the service. We will generate two events
+	// for identities
+	cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	for cursor.IsValid() {
+		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  id,
+		})
+		cursor.Next()
+	}
+
+	cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	for cursor.IsValid() {
+		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  id,
+		})
+		cursor.Next()
+	}
+
+	if len(servicePolicyEvents) > 0 {
+		ctx.Tx().OnCommit(func() {
+			ServiceEvents.dispatchEventsAsync(servicePolicyEvents)
+		})
+	}
+
+	return nil
+}
+
 func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from ServiceRoles in service policies
@@ -233,6 +273,34 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolServiceRoles); err != nil {
 			return err
 		}
+	}
+
+	var servicePolicyEvents []*ServiceEvent
+
+	cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	for cursor.IsValid() {
+		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+			Type:       ServiceDialAccessLost,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  id,
+		})
+		cursor.Next()
+	}
+
+	cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	for cursor.IsValid() {
+		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+			Type:       ServiceBindAccessLost,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  id,
+		})
+		cursor.Next()
+	}
+
+	if len(servicePolicyEvents) > 0 {
+		ctx.Tx().OnCommit(func() {
+			ServiceEvents.dispatchEventsAsync(servicePolicyEvents)
+		})
 	}
 
 	return store.BaseStore.DeleteById(ctx, id)

@@ -177,14 +177,14 @@ func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
 
 	identityTypeId := ctx.getIdentityTypeId()
 
-	var identities []*Identity
+	identities := make([]*Identity, 0, 5)
 	for i := 0; i < 5; i++ {
 		identity := newIdentity(eid.New(), identityTypeId)
 		ctx.RequireCreate(identity)
 		identities = append(identities, identity)
 	}
 
-	var services []*EdgeService
+	services := make([]*EdgeService, 0, 5)
 	for i := 0; i < 5; i++ {
 		service := newEdgeService(eid.New())
 		ctx.RequireCreate(service)

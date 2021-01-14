@@ -1,4 +1,4 @@
-// +build apitests,perftests,ignore
+// +build apitests,perftests
 
 package tests
 
@@ -26,6 +26,21 @@ import (
 
 type modelPerf struct {
 	*TestContext
+}
+
+func Test_SpecManyService(t *testing.T) {
+	spec := &perfScenarioSpec{
+		name:                         "many-services",
+		serviceCount:                 2000,
+		identityCount:                3000,
+		edgeRouterCount:              50,
+		servicePolicyCount:           250,
+		edgeRouterPolicyCount:        250,
+		serviceEdgeRouterPolicyCount: 100,
+	}
+
+	p := &modelPerf{TestContext: NewTestContext(t)}
+	p.runScenario(spec)
 }
 
 func Test_SpecLarge(t *testing.T) {
@@ -438,7 +453,7 @@ type perfStats struct {
 	*TestContext
 	description       string
 	serviceId         string
-	client            api.Client
+	client            api.RestClient
 	sessionType       edge.SessionType
 	sessionId         string
 	createApiSession  metrics.Histogram
