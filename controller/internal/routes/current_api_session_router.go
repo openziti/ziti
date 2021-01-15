@@ -167,6 +167,8 @@ func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *respo
 	lastUpdate := rc.ApiSession.CreatedAt
 	if val, found := ae.IdentityRefreshMap.Get(rc.Identity.Id); found {
 		lastUpdate = val.(time.Time)
+	} else if lastUpdate.Before(ae.StartupTime) {
+		lastUpdate = ae.StartupTime
 	}
 	now := strfmt.DateTime(lastUpdate)
 	data := &rest_model.CurrentAPISessionServiceUpdateList{

@@ -75,6 +75,7 @@ type AppEnv struct {
 	HostController         HostController
 	Api                    *operations.ZitiEdgeAPI
 	IdentityRefreshMap     cmap.ConcurrentMap
+	StartupTime            time.Time
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -293,6 +294,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
 		Api:                api,
 		IdentityRefreshMap: cmap.New(),
+		StartupTime:        time.Now(),
 	}
 
 	api.APIAuthorizer = authorizer{}
