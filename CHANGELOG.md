@@ -1,3 +1,9 @@
+# Release 0.18.3
+
+## What's New
+
+* JSON logging now emits timestamps that include fractional seconds. Timestamps remain in RFC3339 format.
+
 # Release 0.18.2
 
 ## What's New
