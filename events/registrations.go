@@ -12,6 +12,7 @@ func init() {
 	RegisterEventType("metrics", registerMetricsEventHandler)
 	RegisterEventType("fabric.usage", registerUsageEventHandler)
 	RegisterEventType("fabric.sessions", registerSessionEventHandler)
+	RegisterEventType("fabric.terminators", registerTerminatorEventHandler)
 	RegisterEventType("fabric.traces", func(val interface{}, _ map[interface{}]interface{}) error {
 		handler, ok := val.(trace.EventHandler)
 		if !ok {
@@ -36,4 +37,12 @@ func AddTraceEventHandler(handler trace.EventHandler) {
 
 func RemoveTraceEventHandler(handler trace.EventHandler) {
 	cowslice.Delete(trace.EventHandlerRegistry, handler)
+}
+
+func AddTerminatorEventHandler(handler TerminatorEventHandler) {
+	cowslice.Append(terminatorEventHandlerRegistry, handler)
+}
+
+func RemoveTerminatorEventHandler(handler TerminatorEventHandler) {
+	cowslice.Delete(terminatorEventHandlerRegistry, handler)
 }

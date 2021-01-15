@@ -69,10 +69,6 @@ func newServiceController(controllers *Controllers) *ServiceController {
 	}
 	result.impl = result
 
-	controllers.stores.Terminator.On(boltz.EventCreate, result.terminatorChanged)
-	controllers.stores.Terminator.On(boltz.EventUpdate, result.terminatorChanged)
-	controllers.stores.Terminator.On(boltz.EventDelete, result.terminatorChanged)
-
 	return result
 }
 
@@ -86,23 +82,26 @@ func (ctrl *ServiceController) newModelEntity() boltEntitySink {
 	return &Service{}
 }
 
-func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
-	for _, entity := range params {
-		if terminator, ok := entity.(*db.Terminator); ok {
-			// patched entities may not have all fields, if service is blank, load terminator
-			serviceId := terminator.Service
-			if serviceId == "" {
-				t, err := ctrl.Terminators.Read(terminator.Id)
-				if err != nil {
-					ctrl.clearCache()
-					return
-				}
-				serviceId = t.Service
+func (ctrl *ServiceController) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
+	// patched entities may not have all fields, if service is blank, load terminator
+	serviceId := terminator.Service
+	if serviceId == "" {
+		err := ctrl.db.View(func(tx *bbolt.Tx) error {
+			t, err := ctrl.stores.Terminator.LoadOneById(tx, terminator.Id)
+			if t != nil {
+				terminator = t
 			}
-			pfxlog.Logger().Debugf("clearing service from cache: %v", serviceId)
-			ctrl.RemoveFromCache(serviceId)
+			return err
+		})
+		if err != nil {
+			ctrl.clearCache()
+			return terminator
 		}
+		serviceId = terminator.Service
 	}
+	pfxlog.Logger().Debugf("clearing service from cache: %v", serviceId)
+	ctrl.RemoveFromCache(serviceId)
+	return terminator
 }
 
 func (ctrl *ServiceController) Create(s *Service) error {

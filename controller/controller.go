@@ -75,6 +75,8 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 		return nil, err
 	}
 
+	events.InitTerminatorEventRouter(c.network)
+
 	if err := c.showOptions(); err != nil {
 		return nil, err
 	}

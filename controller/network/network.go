@@ -388,7 +388,8 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 		if !found {
 			dstR := network.Routers.getConnected(terminator.GetRouterId())
 			if dstR == nil {
-				err := errors.Errorf("invalid terminating router %v on terminator %v", terminator.GetRouterId(), terminator.GetId())
+				err := errors.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
+					terminator.GetRouterId(), terminator.GetId(), svc.Name)
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
 				continue

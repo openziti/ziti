@@ -6,6 +6,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"reflect"
+	"time"
 )
 
 const SessionEventTypeCreated = "created"
@@ -105,12 +106,13 @@ func (adapter *fabricSessionCircuitUpdatedEventAdapter) CircuitUpdated(sessionId
 
 // Will work for all fabric session event types
 type SessionEvent struct {
-	Namespace string `json:"namespace"`
-	EventType string `json:"event_type"`
-	SessionId string `json:"session_id"`
-	ClientId  string `json:"client_id"`
-	ServiceId string `json:"service_id"`
-	Circuit   string `json:"circuit"`
+	Namespace string    `json:"namespace"`
+	EventType string    `json:"event_type"`
+	SessionId string    `json:"session_id"`
+	Timestamp time.Time `json:"timestamp"`
+	ClientId  string    `json:"client_id"`
+	ServiceId string    `json:"service_id"`
+	Circuit   string    `json:"circuit"`
 }
 
 func (event *SessionEvent) String() string {
@@ -131,6 +133,7 @@ func (adapter *SessionEventAdapter) SessionCreated(sessionId *identity.TokenId, 
 		Namespace: "fabric.sessions",
 		EventType: "created",
 		SessionId: sessionId.Token,
+		Timestamp: time.Now(),
 		ClientId:  clientId.Token,
 		ServiceId: serviceId,
 		Circuit:   circuit.String(),
@@ -144,6 +147,7 @@ func (adapter *SessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, 
 		Namespace: "fabric.sessions",
 		EventType: "deleted",
 		SessionId: sessionId.Token,
+		Timestamp: time.Now(),
 		ClientId:  clientId.Token,
 	}
 
@@ -155,6 +159,7 @@ func (adapter *SessionEventAdapter) CircuitUpdated(sessionId *identity.TokenId, 
 		Namespace: "fabric.sessions",
 		EventType: "circuitUpdated",
 		SessionId: sessionId.Token,
+		Timestamp: time.Now(),
 		Circuit:   circuit.String(),
 	}
 
