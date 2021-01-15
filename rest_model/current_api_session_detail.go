@@ -42,6 +42,10 @@ import (
 type CurrentAPISessionDetail struct {
 	APISessionDetail
 
+	// expiration seconds
+	// Required: true
+	ExpirationSeconds *int64 `json:"expirationSeconds"`
+
 	// expires at
 	// Required: true
 	// Format: date-time
@@ -59,11 +63,15 @@ func (m *CurrentAPISessionDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		ExpirationSeconds *int64 `json:"expirationSeconds"`
+
 		ExpiresAt *strfmt.DateTime `json:"expiresAt"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.ExpirationSeconds = dataAO1.ExpirationSeconds
 
 	m.ExpiresAt = dataAO1.ExpiresAt
 
@@ -80,8 +88,12 @@ func (m CurrentAPISessionDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		ExpirationSeconds *int64 `json:"expirationSeconds"`
+
 		ExpiresAt *strfmt.DateTime `json:"expiresAt"`
 	}
+
+	dataAO1.ExpirationSeconds = m.ExpirationSeconds
 
 	dataAO1.ExpiresAt = m.ExpiresAt
 
@@ -102,6 +114,10 @@ func (m *CurrentAPISessionDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateExpirationSeconds(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateExpiresAt(formats); err != nil {
 		res = append(res, err)
 	}
@@ -109,6 +125,15 @@ func (m *CurrentAPISessionDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CurrentAPISessionDetail) validateExpirationSeconds(formats strfmt.Registry) error {
+
+	if err := validate.Required("expirationSeconds", "body", m.ExpirationSeconds); err != nil {
+		return err
+	}
+
 	return nil
 }
 

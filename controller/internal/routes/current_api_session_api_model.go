@@ -59,6 +59,7 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 
 func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 	expiresAt := strfmt.DateTime(s.UpdatedAt.Add(sessionTimeout))
+	expirationSeconds := int64(s.ExpirationDuration.Seconds())
 	apiSession := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail: rest_model.APISessionDetail{
 			BaseEntity:  BaseEntityToRestModel(s, CurrentApiSessionLinkFactory),
@@ -67,7 +68,8 @@ func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Du
 			ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
 			IPAddress:   &s.IPAddress,
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt:         &expiresAt,
+		ExpirationSeconds: &expirationSeconds,
 	}
 
 	return apiSession
