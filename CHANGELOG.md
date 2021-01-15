@@ -1,3 +1,10 @@
+# Release 0.18.3
+
+## What's New
+
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds. Timestamps remain in 
+  the RFC3339 format.
+
 # Release 0.18.2
 
 ## What's New
