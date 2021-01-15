@@ -31,7 +31,7 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds: 15,
+		CycleSeconds: 120,
 	}
 	options.Smart.RerouteFraction = 0.02
 	options.Smart.RerouteCap = 4
