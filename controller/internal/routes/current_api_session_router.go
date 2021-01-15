@@ -164,7 +164,13 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 }
 
 func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *response.RequestContext) {
-	now := strfmt.DateTime(time.Now()) //todo generate this from something meaningful
+	lastUpdate := rc.ApiSession.CreatedAt
+	if val, found := ae.IdentityRefreshMap.Get(rc.Identity.Id); found {
+		lastUpdate = val.(time.Time)
+	} else if lastUpdate.Before(ae.StartupTime) {
+		lastUpdate = ae.StartupTime
+	}
+	now := strfmt.DateTime(lastUpdate)
 	data := &rest_model.CurrentAPISessionServiceUpdateList{
 		LastChangeAt: &now,
 	}

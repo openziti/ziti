@@ -108,7 +108,7 @@ func (ctx *TestContext) Init() {
 	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))
 }
 
-func (ctx *TestContext) requireNewServicePolicy(policyType int32, identityRoles []string, serviceRoles []string) *ServicePolicy {
+func (ctx *TestContext) requireNewServicePolicy(policyType PolicyType, identityRoles []string, serviceRoles []string) *ServicePolicy {
 	entity := &ServicePolicy{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          eid.New(),

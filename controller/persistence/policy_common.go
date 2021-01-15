@@ -3,6 +3,7 @@ package persistence
 import (
 	"bytes"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -13,13 +14,78 @@ import (
 	"strings"
 )
 
+type serviceEventHandler struct {
+	events []*ServiceEvent
+}
+
+func (self *serviceEventHandler) addServiceUpdatedEvent(store *baseStore, tx *bbolt.Tx, serviceId []byte) {
+	if len(self.events) == 0 {
+		tx.OnCommit(func() {
+			ServiceEvents.dispatchEventsAsync(self.events)
+		})
+	}
+
+	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId)
+	for cursor.IsValid() {
+		self.events = append(self.events, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  string(serviceId),
+		})
+		cursor.Next()
+	}
+
+	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId)
+	for cursor.IsValid() {
+		self.events = append(self.events, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: string(cursor.Current()),
+			ServiceId:  string(serviceId),
+		})
+		cursor.Next()
+	}
+}
+
 type roleAttributeChangeContext struct {
+	serviceEventHandler
 	tx                    *bbolt.Tx
 	rolesSymbol           boltz.EntitySetSymbol
 	linkCollection        boltz.LinkCollection
 	relatedLinkCollection boltz.LinkCollection
 	denormLinkCollection  boltz.RefCountedLinkCollection
+	changeHandler         func(fromId, toId []byte, add bool)
 	errorz.ErrorHolder
+}
+
+func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, serviceId []byte, policyType PolicyType, add bool) {
+	if len(self.events) == 0 {
+		self.tx.OnCommit(func() {
+			ServiceEvents.dispatchEventsAsync(self.events)
+		})
+	}
+
+	var eventType ServiceEventType
+	if add {
+		if policyType == PolicyTypeDial {
+			eventType = ServiceDialAccessGained
+		}
+		if policyType == PolicyTypeBind {
+			eventType = ServiceBindAccessGained
+		}
+	} else {
+		if policyType == PolicyTypeDial {
+			eventType = ServiceDialAccessLost
+		}
+		if policyType == PolicyTypeBind {
+			eventType = ServiceBindAccessLost
+		}
+	}
+
+	self.events = append(self.events, &ServiceEvent{
+		Type:       eventType,
+		IdentityId: string(identityId),
+		ServiceId:  string(serviceId),
+	})
 }
 
 func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
@@ -48,22 +114,42 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 		}
 		policyType := PolicyTypeDial
 		if fieldType, policyTypeValue := policyTypeSymbol.Eval(ctx.tx, policyId); fieldType == boltz.TypeInt32 {
-			policyType = *boltz.BytesToInt32(policyTypeValue)
+			policyType = PolicyType(*boltz.BytesToInt32(policyTypeValue))
 		}
 		if policyType == PolicyTypeDial {
 			if isServices {
 				ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
+				ctx.changeHandler = func(fromId, toId []byte, add bool) {
+					ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
+				}
 			} else if isIdentity {
 				ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+				ctx.changeHandler = func(fromId, toId []byte, add bool) {
+					ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
+				}
 			} else {
 				ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
+				ctx.changeHandler = func(fromId, toId []byte, add bool) {
+					pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
+					ctx.addServiceUpdatedEvent(store, ctx.tx, toId)
+				}
 			}
 		} else if isServices {
 			ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
+			ctx.changeHandler = func(fromId, toId []byte, add bool) {
+				ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
+			}
 		} else if isIdentity {
 			ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+			ctx.changeHandler = func(fromId, toId []byte, add bool) {
+				ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
+			}
 		} else {
 			ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
+			ctx.changeHandler = func(fromId, toId []byte, add bool) {
+				pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
+				ctx.addServiceUpdatedEvent(store, ctx.tx, toId)
+			}
 		}
 		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles)
 	}
@@ -144,9 +230,12 @@ func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, polic
 	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx, policyId)
 	for ; cursor.IsValid(); cursor.Next() {
 		relatedEntityId := cursor.Current()
-		_, err := ctx.denormLinkCollection.IncrementLinkCount(ctx.tx, entityId, relatedEntityId)
+		newCount, err := ctx.denormLinkCollection.IncrementLinkCount(ctx.tx, entityId, relatedEntityId)
 		if ctx.SetError(err) {
 			return
+		}
+		if ctx.changeHandler != nil && newCount == 1 {
+			ctx.changeHandler(entityId, relatedEntityId, true)
 		}
 	}
 }
@@ -159,9 +248,12 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx, policyId)
 	for ; cursor.IsValid(); cursor.Next() {
 		relatedEntityId := cursor.Current()
-		_, err := ctx.denormLinkCollection.DecrementLinkCount(ctx.tx, entityId, relatedEntityId)
+		newCount, err := ctx.denormLinkCollection.DecrementLinkCount(ctx.tx, entityId, relatedEntityId)
 		if ctx.SetError(err) {
 			return
+		}
+		if ctx.changeHandler != nil && newCount == 0 {
+			ctx.changeHandler(entityId, relatedEntityId, false)
 		}
 	}
 }

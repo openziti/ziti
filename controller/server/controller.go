@@ -224,7 +224,6 @@ func (c *Controller) Run() {
 		log.Panic("edge not initialized")
 	}
 
-
 	log.Info("starting edge")
 
 	//after InitPersistence

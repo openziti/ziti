@@ -89,7 +89,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
@@ -166,10 +166,10 @@ func (store *edgeRouterStoreImpl) initializeLinked() {
 	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
 }
 
-func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate edge router policy links
 	ctx := &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.edgeRouterPolicy.symbolEdgeRouterRoles,
 		linkCollection:        store.stores.edgeRouterPolicy.edgeRouterCollection,
 		relatedLinkCollection: store.stores.edgeRouterPolicy.identityCollection,
@@ -180,7 +180,7 @@ func (store *edgeRouterStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []b
 
 	// Recalculate service edge router policy links
 	ctx = &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles,
 		linkCollection:        store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
 		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.serviceCollection,

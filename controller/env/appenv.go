@@ -49,10 +49,12 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
+	cmap "github.com/orcaman/concurrent-map"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type AppEnv struct {
@@ -72,6 +74,8 @@ type AppEnv struct {
 	Broker                 *Broker
 	HostController         HostController
 	Api                    *operations.ZitiEdgeAPI
+	IdentityRefreshMap     cmap.ConcurrentMap
+	StartupTime            time.Time
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -284,11 +288,13 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
-		AuthCookieName: constants.ZitiSession,
-		AuthHeaderName: constants.ZitiSession,
-		AuthRegistry:   &model.AuthProcessorRegistryImpl{},
-		EnrollRegistry: &model.EnrollmentRegistryImpl{},
-		Api:            api,
+		AuthCookieName:     constants.ZitiSession,
+		AuthHeaderName:     constants.ZitiSession,
+		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
+		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
+		Api:                api,
+		IdentityRefreshMap: cmap.New(),
+		StartupTime:        time.Now(),
 	}
 
 	api.APIAuthorizer = authorizer{}
@@ -349,6 +355,15 @@ func (ae *AppEnv) InitPersistence() error {
 
 	ae.Handlers = model.InitHandlers(ae)
 	events.Init(ae.BoltStores.Session)
+
+	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
+	ae.BoltStores.Identity.AddListener(boltz.EventDelete, func(i ...interface{}) {
+		for _, val := range i {
+			if identity, ok := val.(*persistence.Identity); ok {
+				ae.IdentityRefreshMap.Remove(identity.Id)
+			}
+		}
+	})
 
 	return err
 }
@@ -468,4 +483,8 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		responderFunc(ae, rc)
 	})
+}
+
+func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
+	ae.IdentityRefreshMap.Set(event.IdentityId, time.Now())
 }

@@ -26,8 +26,8 @@ import (
 
 const (
 	//Fields
-	FieldPostureCheckTypeId        = "typeId"
-	FieldPostureCheckVersion       = "version"
+	FieldPostureCheckTypeId       = "typeId"
+	FieldPostureCheckVersion      = "version"
 	FieldPostureCheckBindServices = "bindServices"
 	FieldPostureCheckDialServices = "dialServices"
 )
@@ -97,7 +97,7 @@ func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	store := ctx.Store.(*postureCheckStoreImpl)
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
@@ -195,7 +195,6 @@ func (store *postureCheckStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (
 }
 
 func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from PostureCheckRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolPostureCheckRoles); err != nil {
@@ -203,16 +202,34 @@ func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id strin
 		}
 	}
 
+	store.createServiceChangeEvents(ctx.Tx(), id)
 	return store.baseStore.DeleteById(ctx, id)
 }
 
 func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	store.createServiceChangeEvents(ctx.Tx(), entity.GetId())
 	return store.baseStore.Update(ctx, entity, checker)
 }
 
-func (store *postureCheckStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id string) {
+	eh := &serviceEventHandler{}
+
+	cursor := store.bindServicesCollection.IterateLinks(tx, []byte(id))
+	for cursor.IsValid() {
+		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
+		cursor.Next()
+	}
+
+	cursor = store.dialServicesCollection.IterateLinks(tx, []byte(id))
+	for cursor.IsValid() {
+		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
+		cursor.Next()
+	}
+}
+
+func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.servicePolicy.symbolPostureCheckRoles,
 		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
