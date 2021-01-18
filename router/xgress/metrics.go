@@ -18,9 +18,6 @@ var localRecvBufferSizeBytesHistogram metrics.Histogram
 var localRecvBufferSizeMsgsHistogram metrics.Histogram
 var remoteRecvBufferSizeHistogram metrics.Histogram
 var payloadWriteTimer metrics.Timer
-var ackWriteTimer metrics.Timer
-var payloadBufferTimer metrics.Timer
-var payloadRelayTimer metrics.Timer
 var duplicateAcksMeter metrics.Meter
 var txWindowSize metrics.Histogram
 
@@ -42,9 +39,6 @@ func InitMetrics(registry metrics.UsageRegistry) {
 	localRecvBufferSizeMsgsHistogram = registry.Histogram("xgress.local.rx_buffer_msgs_size")
 	remoteRecvBufferSizeHistogram = registry.Histogram("xgress.remote.rx_buffer_size")
 	payloadWriteTimer = registry.Timer("xgress.tx_write_time")
-	ackWriteTimer = registry.Timer("xgress.ack_write_time")
-	payloadBufferTimer = registry.Timer("xgress.payload_buffer_time")
-	payloadRelayTimer = registry.Timer("xgress.payload_relay_time")
 	duplicateAcksMeter = registry.Meter("xgress.ack_duplicates")
 	txWindowSize = registry.Histogram("xgress.tx_window_size")
 

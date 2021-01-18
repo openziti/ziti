@@ -22,15 +22,12 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/metrics"
-	"time"
 )
 
 type payloadHandler struct {
 	link      xlink.Xlink
 	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
-	timer     metrics.Timer
 }
 
 func newPayloadHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *payloadHandler {
@@ -38,7 +35,6 @@ func newPayloadHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *for
 		link:      link,
 		ctrl:      ctrl,
 		forwarder: forwarder,
-		timer:     forwarder.MetricsRegistry().Timer("xgress.payload.handle_time"),
 	}
 }
 
@@ -47,7 +43,6 @@ func (self *payloadHandler) ContentType() int32 {
 }
 
 func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	start := time.Now()
 	log := pfxlog.ContextLogger(ch.Label())
 
 	payload, err := xgress.UnmarshallPayload(msg)
@@ -61,5 +56,4 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	} else {
 		log.Errorf("unexpected error (%v)", err)
 	}
-	self.timer.UpdateSince(start)
 }

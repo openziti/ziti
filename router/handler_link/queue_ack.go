@@ -23,31 +23,29 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/metrics"
 	"sync/atomic"
-	"time"
 )
 
 type queuingAckHandler struct {
 	link          xlink.Xlink
 	ctrl          xgress.CtrlChannel
 	forwarder     *forwarder.Forwarder
-	timer         metrics.Timer
 	acks          *deque.Deque
 	ackIngest     chan *xgress.Acknowledgement
 	ackForward    chan *xgress.Acknowledgement
 	acksQueueSize int64
+	closeNotify   <-chan struct{}
 }
 
-func newQueuingAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *queuingAckHandler {
+func newQueuingAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *queuingAckHandler {
 	result := &queuingAckHandler{
-		link:       link,
-		ctrl:       ctrl,
-		forwarder:  forwarder,
-		timer:      forwarder.MetricsRegistry().Timer("xgress.ack.handle_time"),
-		acks:       deque.New(),
-		ackIngest:  make(chan *xgress.Acknowledgement, 16),
-		ackForward: make(chan *xgress.Acknowledgement, 1),
+		link:        link,
+		ctrl:        ctrl,
+		forwarder:   forwarder,
+		acks:        deque.New(),
+		ackIngest:   make(chan *xgress.Acknowledgement, 16),
+		ackForward:  make(chan *xgress.Acknowledgement, 1),
+		closeNotify: closeNotify,
 	}
 
 	go result.ackIngester()
@@ -65,7 +63,6 @@ func (self *queuingAckHandler) ContentType() int32 {
 }
 
 func (self *queuingAckHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	start := time.Now()
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
@@ -73,7 +70,6 @@ func (self *queuingAckHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	} else {
 		log.Errorf("unexpected error (%v)", err)
 	}
-	self.timer.UpdateSince(start)
 }
 
 func (self *queuingAckHandler) ackIngester() {
@@ -89,6 +85,8 @@ func (self *queuingAckHandler) ackIngester() {
 			select {
 			case ack := <-self.ackIngest:
 				self.acks.PushBack(ack)
+			case <-self.closeNotify:
+				return
 			}
 		} else {
 			select {
@@ -96,6 +94,8 @@ func (self *queuingAckHandler) ackIngester() {
 				self.acks.PushBack(ack)
 			case self.ackForward <- next:
 				next = nil
+			case <-self.closeNotify:
+				return
 			}
 		}
 		atomic.StoreInt64(&self.acksQueueSize, int64(self.acks.Len()))
@@ -104,12 +104,14 @@ func (self *queuingAckHandler) ackIngester() {
 
 func (self *queuingAckHandler) ackForwarder() {
 	logger := pfxlog.Logger()
-	for ack := range self.ackForward {
-		now := time.Now()
-		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
-			logger.WithError(err).Debugf("unable to forward acknowledgement (%v)", err)
-		} else {
-			self.timer.UpdateSince(now)
+	for {
+		select {
+		case ack := <-self.ackForward:
+			if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
+				logger.WithError(err).Debugf("unable to forward acknowledgement (%v)", err)
+			}
+		case <-self.closeNotify:
+			return
 		}
 	}
 }
