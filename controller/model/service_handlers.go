@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -275,32 +276,34 @@ func (handler *EdgeServiceHandler) Stream(query string, collect func(*ServiceDet
 }
 
 func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string) map[string][]*PostureCheck {
-
-	servicePolicyQuery := fmt.Sprintf(`anyOf(services) = "%v" and anyOf(identities) = "%v"`, serviceId, identityId)
-
 	policyIdToChecks := map[string][]*PostureCheck{}
-
 	postureCheckCache := map[string]*PostureCheck{}
 
+	servicePolicyStore := handler.env.GetStores().ServicePolicy
+	postureCheckLinks := servicePolicyStore.GetLinkCollection(persistence.EntityTypePostureChecks)
+	serviceLinks := servicePolicyStore.GetLinkCollection(db.EntityTypeServices)
+
 	_ = handler.GetDb().View(func(tx *bbolt.Tx) error {
-		policyIds, _, err := handler.env.GetStores().ServicePolicy.QueryIds(tx, servicePolicyQuery)
+		policyCursor := handler.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, persistence.EntityTypeServicePolicies, true)
+		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
+			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
+		})
 
-		if err != nil {
-			pfxlog.Logger().Errorf("could not query posture checks: %v", err)
-		}
+		for policyCursor.IsValid() {
+			policyId := policyCursor.Current()
+			policyCursor.Next()
 
-		for _, policyId := range policyIds {
-			checkIds, _, _ := handler.env.GetStores().PostureCheck.QueryIds(tx, fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, policyId))
-			for _, checkId := range checkIds {
-				var postureCheck *PostureCheck
-				var found bool
-				if postureCheck, found = postureCheckCache[checkId]; !found {
+			cursor := postureCheckLinks.IterateLinks(tx, policyId)
+			for cursor.IsValid() {
+				checkId := string(cursor.Current())
+				if postureCheck, found := postureCheckCache[checkId]; !found {
 					postureCheck, _ := handler.env.GetHandlers().PostureCheck.Read(checkId)
 					postureCheckCache[checkId] = postureCheck
-					policyIdToChecks[policyId] = append(policyIdToChecks[policyId], postureCheck)
+					policyIdToChecks[string(policyId)] = append(policyIdToChecks[string(policyId)], postureCheck)
 				} else {
-					policyIdToChecks[policyId] = append(policyIdToChecks[policyId], postureCheck)
+					policyIdToChecks[string(policyId)] = append(policyIdToChecks[string(policyId)], postureCheck)
 				}
+				cursor.Next()
 			}
 		}
 		return nil
