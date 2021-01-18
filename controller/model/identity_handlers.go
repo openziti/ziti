@@ -436,14 +436,16 @@ func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]strin
 func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 	start := time.Now()
 	checker := boltz.MapFieldChecker{
-		persistence.FieldIdentityEnvInfoArch:      struct{}{},
-		persistence.FieldIdentityEnvInfoOs:        struct{}{},
-		persistence.FieldIdentityEnvInfoOsRelease: struct{}{},
-		persistence.FieldIdentityEnvInfoOsVersion: struct{}{},
-		persistence.FieldIdentitySdkInfoBranch:    struct{}{},
-		persistence.FieldIdentitySdkInfoRevision:  struct{}{},
-		persistence.FieldIdentitySdkInfoType:      struct{}{},
-		persistence.FieldIdentitySdkInfoVersion:   struct{}{},
+		persistence.FieldIdentityEnvInfoArch:       struct{}{},
+		persistence.FieldIdentityEnvInfoOs:         struct{}{},
+		persistence.FieldIdentityEnvInfoOsRelease:  struct{}{},
+		persistence.FieldIdentityEnvInfoOsVersion:  struct{}{},
+		persistence.FieldIdentitySdkInfoBranch:     struct{}{},
+		persistence.FieldIdentitySdkInfoRevision:   struct{}{},
+		persistence.FieldIdentitySdkInfoType:       struct{}{},
+		persistence.FieldIdentitySdkInfoVersion:    struct{}{},
+		persistence.FieldIdentitySdkInfoAppId:      struct{}{},
+		persistence.FieldIdentitySdkInfoAppVersion: struct{}{},
 	}
 
 	err := handler.patchEntityBatch(identity, checker)

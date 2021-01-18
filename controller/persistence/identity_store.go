@@ -36,14 +36,16 @@ const (
 	FieldIdentityAuthenticators = "authenticators"
 	FieldIdentityServiceConfigs = "serviceConfigs"
 
-	FieldIdentityEnvInfoArch      = "envInfoArch"
-	FieldIdentityEnvInfoOs        = "envInfoOs"
-	FieldIdentityEnvInfoOsRelease = "envInfoRelease"
-	FieldIdentityEnvInfoOsVersion = "envInfoVersion"
-	FieldIdentitySdkInfoBranch    = "sdkInfoBranch"
-	FieldIdentitySdkInfoRevision  = "sdkInfoRevision"
-	FieldIdentitySdkInfoType      = "sdkInfoType"
-	FieldIdentitySdkInfoVersion   = "sdkInfoVersion"
+	FieldIdentityEnvInfoArch       = "envInfoArch"
+	FieldIdentityEnvInfoOs         = "envInfoOs"
+	FieldIdentityEnvInfoOsRelease  = "envInfoRelease"
+	FieldIdentityEnvInfoOsVersion  = "envInfoVersion"
+	FieldIdentitySdkInfoBranch     = "sdkInfoBranch"
+	FieldIdentitySdkInfoRevision   = "sdkInfoRevision"
+	FieldIdentitySdkInfoType       = "sdkInfoType"
+	FieldIdentitySdkInfoVersion    = "sdkInfoVersion"
+	FieldIdentitySdkInfoAppId      = "sdkInfoAppId"
+	FieldIdentitySdkInfoAppVersion = "sdkInfoAppVersion"
 
 	FieldIdentityBindServices             = "bindServices"
 	FieldIdentityDialServices             = "dialServices"
@@ -68,10 +70,12 @@ type EnvInfo struct {
 }
 
 type SdkInfo struct {
-	Branch   string
-	Revision string
-	Type     string
-	Version  string
+	Branch     string
+	Revision   string
+	Type       string
+	Version    string
+	AppId      string
+	AppVersion string
 }
 
 type Identity struct {
@@ -113,6 +117,8 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 		Revision: bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
 		Type:     bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
 		Version:  bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
+		AppId:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
+		AppVersion:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
 	}
 
 	entity.EnvInfo = &EnvInfo{
@@ -149,7 +155,8 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 		ctx.SetString(FieldIdentitySdkInfoRevision, entity.SdkInfo.Revision)
 		ctx.SetString(FieldIdentitySdkInfoType, entity.SdkInfo.Type)
 		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
-
+		ctx.SetString(FieldIdentitySdkInfoAppId, entity.SdkInfo.AppId)
+		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
 	}
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles

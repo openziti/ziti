@@ -5964,6 +5964,10 @@ definitions:
         type: string
       revision:
         type: string
+      appId:
+        type: string
+      appVersion:
+        type: string
     type: object
   configTypes:
     description: Specific configuration types that should be returned
