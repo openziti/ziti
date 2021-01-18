@@ -274,10 +274,12 @@ func fillInfo(identity *rest_model.IdentityDetail, envInfo *model.EnvInfo, sdkIn
 
 	if sdkInfo != nil {
 		identity.SdkInfo = &rest_model.SdkInfo{
-			Branch:   sdkInfo.Branch,
-			Revision: sdkInfo.Revision,
-			Type:     sdkInfo.Type,
-			Version:  sdkInfo.Version,
+			AppID:      sdkInfo.AppId,
+			AppVersion: sdkInfo.AppVersion,
+			Branch:     sdkInfo.Branch,
+			Revision:   sdkInfo.Revision,
+			Type:       sdkInfo.Type,
+			Version:    sdkInfo.Version,
 		}
 	} else {
 		identity.SdkInfo = &rest_model.SdkInfo{}

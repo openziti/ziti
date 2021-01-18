@@ -8497,6 +8497,12 @@ func init() {
       "description": "SDK information an authenticating client may provide",
       "type": "object",
       "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "appVersion": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -26800,6 +26806,12 @@ func init() {
       "description": "SDK information an authenticating client may provide",
       "type": "object",
       "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "appVersion": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },

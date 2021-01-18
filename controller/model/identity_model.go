@@ -35,10 +35,12 @@ type EnvInfo struct {
 }
 
 type SdkInfo struct {
-	Branch   string
-	Revision string
-	Type     string
-	Version  string
+	AppId      string
+	AppVersion string
+	Branch     string
+	Revision   string
+	Type       string
+	Version    string
 }
 
 type Identity struct {
@@ -79,10 +81,12 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 
 	if entity.SdkInfo != nil {
 		boltEntity.SdkInfo = &persistence.SdkInfo{
-			Branch:   entity.SdkInfo.Branch,
-			Revision: entity.SdkInfo.Revision,
-			Type:     entity.SdkInfo.Type,
-			Version:  entity.SdkInfo.Version,
+			Branch:     entity.SdkInfo.Branch,
+			Revision:   entity.SdkInfo.Revision,
+			Type:       entity.SdkInfo.Type,
+			Version:    entity.SdkInfo.Version,
+			AppId:      entity.SdkInfo.AppId,
+			AppVersion: entity.SdkInfo.AppVersion,
 		}
 	}
 	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
@@ -102,10 +106,12 @@ func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *pe
 
 	if sdkInfo != nil {
 		identity.SdkInfo = &SdkInfo{
-			Branch:   sdkInfo.Branch,
-			Revision: sdkInfo.Revision,
-			Type:     sdkInfo.Type,
-			Version:  sdkInfo.Version,
+			AppId:      sdkInfo.AppId,
+			AppVersion: sdkInfo.AppVersion,
+			Branch:     sdkInfo.Branch,
+			Revision:   sdkInfo.Revision,
+			Type:       sdkInfo.Type,
+			Version:    sdkInfo.Version,
 		}
 	}
 }
@@ -122,10 +128,12 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 
 	if sdkInfo != nil {
 		identity.SdkInfo = &persistence.SdkInfo{
-			Branch:   sdkInfo.Branch,
-			Revision: sdkInfo.Revision,
-			Type:     sdkInfo.Type,
-			Version:  sdkInfo.Version,
+			Branch:     sdkInfo.Branch,
+			Revision:   sdkInfo.Revision,
+			Type:       sdkInfo.Type,
+			Version:    sdkInfo.Version,
+			AppId:      sdkInfo.AppId,
+			AppVersion: sdkInfo.AppVersion,
 		}
 	}
 }
