@@ -24,19 +24,33 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/util/concurrenz"
 )
 
 type closeHandler struct {
-	link      xlink.Xlink
-	ctrl      xgress.CtrlChannel
-	forwarder *forwarder.Forwarder
+	link        xlink.Xlink
+	ctrl        xgress.CtrlChannel
+	forwarder   *forwarder.Forwarder
+	closeNotify chan struct{}
+	closed      concurrenz.AtomicBoolean
 }
 
-func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *closeHandler {
-	return &closeHandler{link: link, ctrl: ctrl, forwarder: forwarder}
+func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *closeHandler {
+	return &closeHandler{
+		link:        link,
+		ctrl:        ctrl,
+		forwarder:   forwarder,
+		closeNotify: closeNotify,
+	}
 }
 
 func (self *closeHandler) HandleClose(ch channel2.Channel) {
+	defer func() {
+		if self.closed.CompareAndSwap(false, true) {
+			close(self.closeNotify)
+		}
+	}()
+
 	log := pfxlog.ContextLogger(ch.Label())
 	log.Info("link closed")
 

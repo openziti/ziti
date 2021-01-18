@@ -256,16 +256,12 @@ func (self *Xgress) payloadIngester(payload *Payload) {
 		go self.rx()
 	}
 
-	start := time.Now()
 	if !self.Options.RandomDrops || rand.Int31n(self.Options.Drop1InN) != 1 {
 		self.PayloadReceived(payload)
 	} else {
 		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Error("drop!")
 	}
-	next := time.Now()
-	payloadBufferTimer.Update(next.Sub(start))
 	self.queueSends()
-	payloadRelayTimer.UpdateSince(next)
 }
 
 func (self *Xgress) queueSends() {

@@ -21,12 +21,14 @@ func NewChannelAccepter(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwar
 }
 
 func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channel, trackLatency bool) error {
+	closeNotify := make(chan struct{})
+
 	ch.SetLogicalName("l/" + xlink.Id().Token)
 	ch.SetUserData(xlink.Id().Token)
-	ch.AddCloseHandler(newCloseHandler(xlink, self.ctrl, self.forwarder))
+	ch.AddCloseHandler(newCloseHandler(xlink, self.ctrl, self.forwarder, closeNotify))
 	ch.AddErrorHandler(newErrorHandler(xlink, self.ctrl))
 	ch.AddReceiveHandler(newPayloadHandler(xlink, self.ctrl, self.forwarder))
-	ch.AddReceiveHandler(newQueuingAckHandler(xlink, self.ctrl, self.forwarder))
+	ch.AddReceiveHandler(newQueuingAckHandler(xlink, self.ctrl, self.forwarder, closeNotify))
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
 	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id(), ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
