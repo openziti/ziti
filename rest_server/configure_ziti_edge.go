@@ -224,6 +224,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation transit_router.CreateTransitRouter has not yet been implemented")
 		})
 	}
+	if api.DatabaseDataIntegrityResultsHandler == nil {
+		api.DatabaseDataIntegrityResultsHandler = database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
+		})
+	}
 	if api.APISessionDeleteAPISessionsHandler == nil {
 		api.APISessionDeleteAPISessionsHandler = api_session.DeleteAPISessionsHandlerFunc(func(params api_session.DeleteAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.DeleteAPISessions has not yet been implemented")

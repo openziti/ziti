@@ -47,8 +47,8 @@ type CheckDataIntegrityReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CheckDataIntegrityReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCheckDataIntegrityOK()
+	case 202:
+		result := NewCheckDataIntegrityAccepted()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -59,36 +59,42 @@ func (o *CheckDataIntegrityReader) ReadResponse(response runtime.ClientResponse,
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewCheckDataIntegrityTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
 }
 
-// NewCheckDataIntegrityOK creates a CheckDataIntegrityOK with default headers values
-func NewCheckDataIntegrityOK() *CheckDataIntegrityOK {
-	return &CheckDataIntegrityOK{}
+// NewCheckDataIntegrityAccepted creates a CheckDataIntegrityAccepted with default headers values
+func NewCheckDataIntegrityAccepted() *CheckDataIntegrityAccepted {
+	return &CheckDataIntegrityAccepted{}
 }
 
-/*CheckDataIntegrityOK handles this case with default header values.
+/*CheckDataIntegrityAccepted handles this case with default header values.
 
-A list of data integrity issues found
+Base empty response
 */
-type CheckDataIntegrityOK struct {
-	Payload *rest_model.DataIntegrityCheckResultEnvelope
+type CheckDataIntegrityAccepted struct {
+	Payload *rest_model.Empty
 }
 
-func (o *CheckDataIntegrityOK) Error() string {
-	return fmt.Sprintf("[GET /database/check-data-integrity][%d] checkDataIntegrityOK  %+v", 200, o.Payload)
+func (o *CheckDataIntegrityAccepted) Error() string {
+	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityAccepted  %+v", 202, o.Payload)
 }
 
-func (o *CheckDataIntegrityOK) GetPayload() *rest_model.DataIntegrityCheckResultEnvelope {
+func (o *CheckDataIntegrityAccepted) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
 
-func (o *CheckDataIntegrityOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CheckDataIntegrityAccepted) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.DataIntegrityCheckResultEnvelope)
+	o.Payload = new(rest_model.Empty)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -112,7 +118,7 @@ type CheckDataIntegrityUnauthorized struct {
 }
 
 func (o *CheckDataIntegrityUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
+	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *CheckDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
@@ -120,6 +126,39 @@ func (o *CheckDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelo
 }
 
 func (o *CheckDataIntegrityUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewCheckDataIntegrityTooManyRequests creates a CheckDataIntegrityTooManyRequests with default headers values
+func NewCheckDataIntegrityTooManyRequests() *CheckDataIntegrityTooManyRequests {
+	return &CheckDataIntegrityTooManyRequests{}
+}
+
+/*CheckDataIntegrityTooManyRequests handles this case with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type CheckDataIntegrityTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *CheckDataIntegrityTooManyRequests) Error() string {
+	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityTooManyRequests  %+v", 429, o.Payload)
+}
+
+func (o *CheckDataIntegrityTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *CheckDataIntegrityTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

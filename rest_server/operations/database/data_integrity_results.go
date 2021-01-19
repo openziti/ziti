@@ -35,42 +35,42 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// FixDataIntegrityHandlerFunc turns a function with the right signature into a fix data integrity handler
-type FixDataIntegrityHandlerFunc func(FixDataIntegrityParams, interface{}) middleware.Responder
+// DataIntegrityResultsHandlerFunc turns a function with the right signature into a data integrity results handler
+type DataIntegrityResultsHandlerFunc func(DataIntegrityResultsParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn FixDataIntegrityHandlerFunc) Handle(params FixDataIntegrityParams, principal interface{}) middleware.Responder {
+func (fn DataIntegrityResultsHandlerFunc) Handle(params DataIntegrityResultsParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// FixDataIntegrityHandler interface for that can handle valid fix data integrity params
-type FixDataIntegrityHandler interface {
-	Handle(FixDataIntegrityParams, interface{}) middleware.Responder
+// DataIntegrityResultsHandler interface for that can handle valid data integrity results params
+type DataIntegrityResultsHandler interface {
+	Handle(DataIntegrityResultsParams, interface{}) middleware.Responder
 }
 
-// NewFixDataIntegrity creates a new http.Handler for the fix data integrity operation
-func NewFixDataIntegrity(ctx *middleware.Context, handler FixDataIntegrityHandler) *FixDataIntegrity {
-	return &FixDataIntegrity{Context: ctx, Handler: handler}
+// NewDataIntegrityResults creates a new http.Handler for the data integrity results operation
+func NewDataIntegrityResults(ctx *middleware.Context, handler DataIntegrityResultsHandler) *DataIntegrityResults {
+	return &DataIntegrityResults{Context: ctx, Handler: handler}
 }
 
-/*FixDataIntegrity swagger:route POST /database/fix-data-integrity Database fixDataIntegrity
+/*DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
 
-Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+Returns any results found from in-progress integrity checks
 
-Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+Returns any results found from in-progress integrity checks. Requires admin access.
 
 */
-type FixDataIntegrity struct {
+type DataIntegrityResults struct {
 	Context *middleware.Context
-	Handler FixDataIntegrityHandler
+	Handler DataIntegrityResultsHandler
 }
 
-func (o *FixDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *DataIntegrityResults) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		r = rCtx
 	}
-	var Params = NewFixDataIntegrityParams()
+	var Params = NewDataIntegrityResultsParams()
 
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
