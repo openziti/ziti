@@ -282,6 +282,11 @@ type PostureResponseMfa struct {
 }
 
 func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
+
+	if postureData.ApiSessions == nil {
+		postureData.ApiSessions = map[string]*ApiSessionPostureData{}
+	}
+
 	apiSessionPostureData := postureData.ApiSessions[pr.ApiSessionId]
 
 	if apiSessionPostureData == nil {

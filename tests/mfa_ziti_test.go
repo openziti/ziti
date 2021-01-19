@@ -441,8 +441,7 @@ func Test_MFA(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			ctx.Req.NotEmpty(mfaValidatedSecret)
-			now := int64(time.Now().Unix() / 30)
-			code := strconv.Itoa(dgoogauth.ComputeCode(mfaValidatedSecret, now))
+			code := computeMFACode(mfaValidatedSecret)
 
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
@@ -454,8 +453,7 @@ func Test_MFA(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			ctx.Req.NotEmpty(mfaValidatedSecret)
-			now := int64(time.Now().Unix() / 30)
-			code := strconv.Itoa(dgoogauth.ComputeCode(mfaValidatedSecret, now))
+			code := computeMFACode(mfaValidatedSecret)
 
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
@@ -610,8 +608,7 @@ func Test_MFA(t *testing.T) {
 				t.Run("validating MFA with an valid token should succeed", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					now := int64(time.Now().Unix() / 30)
-					code := strconv.Itoa(dgoogauth.ComputeCode(mfaValidatedSecret, now))
+					code := computeMFACode(mfaValidatedSecret)
 
 					resp, err := newValidatedSession.newAuthenticatedRequest().
 						SetBody(newMfaCodeBody(code)).
@@ -731,8 +728,7 @@ func Test_MFA(t *testing.T) {
 				t.Run("verifying MFA", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					now := int64(time.Now().Unix() / 30)
-					code := strconv.Itoa(dgoogauth.ComputeCode(mfa01DeleteSecret, now))
+					code := computeMFACode(mfa01DeleteSecret)
 
 					resp, err := mfa01DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
@@ -859,8 +855,7 @@ func Test_MFA(t *testing.T) {
 					ctx.testContextChanged(t)
 					time.Sleep(1 * time.Second)
 
-					now := int64(time.Now().Unix() / 30)
-					code := strconv.Itoa(dgoogauth.ComputeCode(mfa02DeleteSecret, now))
+					code := computeMFACode(mfa02DeleteSecret)
 
 					resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
@@ -889,8 +884,7 @@ func Test_MFA(t *testing.T) {
 		t.Run("with a valid code it should succeed", func(s *testing.T) {
 			ctx.testContextChanged(t)
 
-			now := int64(time.Now().Unix() / 30)
-			code := strconv.Itoa(dgoogauth.ComputeCode(mfa02DeleteSecret, now))
+			code := computeMFACode(mfa02DeleteSecret)
 
 			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Delete("/current-identity/mfa")
 
@@ -898,6 +892,12 @@ func Test_MFA(t *testing.T) {
 			standardJsonResponseTests(resp, http.StatusOK, t)
 		})
 	})
+}
+
+func computeMFACode(secret string) string {
+	now := int64(time.Now().Unix() / 30)
+	code := strconv.Itoa(dgoogauth.ComputeCode(secret, now))
+	return code
 }
 
 type mfaCode struct {

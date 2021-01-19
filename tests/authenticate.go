@@ -375,6 +375,12 @@ func (request *authenticatedRequests) requireNewPostureCheckDomain(domains []str
 	return postureCheck
 }
 
+func (request *authenticatedRequests) requireNewPostureCheckMFA(roleAttributes []string) *postureCheckDomain {
+	postureCheck := request.testContext.newPostureCheckMFA(roleAttributes)
+	request.requireCreateEntity(postureCheck)
+	return postureCheck
+}
+
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
 	request.requireCreateEntity(service)

@@ -80,6 +80,7 @@ func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
 }
 
 func (handler *ApiSessionHandler) MfaCompleted(apiSession *ApiSession) error {
+	apiSession.MfaComplete = true
 	return handler.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldAPiSessionMfaComplete), handler})
 }
 

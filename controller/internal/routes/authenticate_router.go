@@ -192,8 +192,6 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	rc.ApiSession.MfaComplete = true
-
 	if err := ae.Handlers.ApiSession.MfaCompleted(rc.ApiSession); err != nil {
 		rc.RespondWithError(err)
 		return
