@@ -3999,7 +3999,7 @@ definitions:
       - os
       - version
       - arch
-      - builDate
+      - buildDate
       - revision
     properties:
       os:
@@ -4008,7 +4008,7 @@ definitions:
         type: string
       arch:
         type: string
-      builDate:
+      buildDate:
         type: string
       revision:
         type: string
@@ -4843,7 +4843,7 @@ definitions:
           - os
           - version
           - arch
-          - builDate
+          - buildDate
           - revision
         properties:
           name:

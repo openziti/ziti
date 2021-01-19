@@ -45,9 +45,9 @@ type VersionInfo struct {
 	// Required: true
 	Arch *string `json:"arch"`
 
-	// buil date
+	// build date
 	// Required: true
-	BuilDate *string `json:"builDate"`
+	BuildDate *string `json:"buildDate"`
 
 	// os
 	// Required: true
@@ -70,7 +70,7 @@ func (m *VersionInfo) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateBuilDate(formats); err != nil {
+	if err := m.validateBuildDate(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -101,9 +101,9 @@ func (m *VersionInfo) validateArch(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *VersionInfo) validateBuilDate(formats strfmt.Registry) error {
+func (m *VersionInfo) validateBuildDate(formats strfmt.Registry) error {
 
-	if err := validate.Required("builDate", "body", m.BuilDate); err != nil {
+	if err := validate.Required("buildDate", "body", m.BuildDate); err != nil {
 		return err
 	}
 

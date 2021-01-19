@@ -7028,7 +7028,7 @@ func init() {
             "os",
             "version",
             "arch",
-            "builDate",
+            "buildDate",
             "revision"
           ],
           "properties": {
@@ -9483,14 +9483,14 @@ func init() {
         "os",
         "version",
         "arch",
-        "builDate",
+        "buildDate",
         "revision"
       ],
       "properties": {
         "arch": {
           "type": "string"
         },
-        "builDate": {
+        "buildDate": {
           "type": "string"
         },
         "os": {
@@ -25337,7 +25337,7 @@ func init() {
             "os",
             "version",
             "arch",
-            "builDate",
+            "buildDate",
             "revision"
           ],
           "properties": {
@@ -27793,14 +27793,14 @@ func init() {
         "os",
         "version",
         "arch",
-        "builDate",
+        "buildDate",
         "revision"
       ],
       "properties": {
         "arch": {
           "type": "string"
         },
-        "builDate": {
+        "buildDate": {
           "type": "string"
         },
         "os": {
