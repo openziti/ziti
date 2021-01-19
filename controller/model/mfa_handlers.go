@@ -146,6 +146,7 @@ func (handler *MfaHandler) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
 	otp := dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,
 		WindowSize: 3,
+		UTC:        true,
 	}
 
 	return otp.Authenticate(code)
@@ -192,6 +193,7 @@ func (handler *MfaHandler) GetProvisioningUrl(mfa *Mfa) string {
 	otcConfig := &dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,
 		WindowSize: 3,
+		UTC:        true,
 	}
 	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, "ziti.dev")
 }

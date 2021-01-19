@@ -895,7 +895,7 @@ func Test_MFA(t *testing.T) {
 }
 
 func computeMFACode(secret string) string {
-	now := int64(time.Now().Unix() / 30)
+	now := int64(time.Now().UTC().Unix() / 30)
 	code := strconv.Itoa(dgoogauth.ComputeCode(secret, now))
 	return code
 }
