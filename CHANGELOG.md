@@ -4,6 +4,7 @@
 
 * Ziti executables that use JSON logging now emit timestamps that include fractional seconds. Timestamps remain in 
   the RFC3339 format.
+* Authentication mechanisms now allow `appId` and `appVersion` in `sdkInfo`
 
 # Release 0.18.2
 
