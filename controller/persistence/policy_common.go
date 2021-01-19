@@ -19,31 +19,31 @@ type serviceEventHandler struct {
 }
 
 func (self *serviceEventHandler) addServiceUpdatedEvent(store *baseStore, tx *bbolt.Tx, serviceId []byte) {
+	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId)
+	for cursor.IsValid() {
+		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
+		cursor.Next()
+	}
+
+	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId)
+	for cursor.IsValid() {
+		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
+		cursor.Next()
+	}
+}
+
+func (self *serviceEventHandler) addServiceEvent(tx *bbolt.Tx, identityId, serviceId []byte, eventType ServiceEventType) {
 	if len(self.events) == 0 {
 		tx.OnCommit(func() {
 			ServiceEvents.dispatchEventsAsync(self.events)
 		})
 	}
 
-	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId)
-	for cursor.IsValid() {
-		self.events = append(self.events, &ServiceEvent{
-			Type:       ServiceUpdated,
-			IdentityId: string(cursor.Current()),
-			ServiceId:  string(serviceId),
-		})
-		cursor.Next()
-	}
-
-	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId)
-	for cursor.IsValid() {
-		self.events = append(self.events, &ServiceEvent{
-			Type:       ServiceUpdated,
-			IdentityId: string(cursor.Current()),
-			ServiceId:  string(serviceId),
-		})
-		cursor.Next()
-	}
+	self.events = append(self.events, &ServiceEvent{
+		Type:       eventType,
+		IdentityId: string(identityId),
+		ServiceId:  string(serviceId),
+	})
 }
 
 type roleAttributeChangeContext struct {
@@ -58,12 +58,6 @@ type roleAttributeChangeContext struct {
 }
 
 func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, serviceId []byte, policyType PolicyType, add bool) {
-	if len(self.events) == 0 {
-		self.tx.OnCommit(func() {
-			ServiceEvents.dispatchEventsAsync(self.events)
-		})
-	}
-
 	var eventType ServiceEventType
 	if add {
 		if policyType == PolicyTypeDial {
@@ -81,11 +75,7 @@ func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, servic
 		}
 	}
 
-	self.events = append(self.events, &ServiceEvent{
-		Type:       eventType,
-		IdentityId: string(identityId),
-		ServiceId:  string(serviceId),
-	})
+	self.addServiceEvent(self.tx, identityId, serviceId, eventType)
 }
 
 func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {

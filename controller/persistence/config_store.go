@@ -131,7 +131,18 @@ func (store *configStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Config,
 	return nil, nil
 }
 
+func (store *configStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	if err := store.createServiceChangeEvents(ctx.Tx(), entity.GetId()); err != nil {
+		return err
+	}
+	return store.baseStore.Update(ctx, entity, checker)
+}
+
 func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	if err := store.createServiceChangeEvents(ctx.Tx(), id); err != nil {
+		return err
+	}
+
 	err := store.symbolIdentityServices.Map(ctx.Tx(), []byte(id), func(mapCtx *boltz.MapContext) {
 		keys, err := boltz.DecodeStringSlice(mapCtx.Value())
 		if err != nil {
@@ -152,4 +163,28 @@ func (store *configStoreImpl) DeleteById(ctx boltz.MutateContext, id string) err
 		return err
 	}
 	return store.baseStore.DeleteById(ctx, id)
+}
+
+func (store *configStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, configId string) error {
+	eh := &serviceEventHandler{}
+
+	id := []byte(configId)
+	err := store.symbolServices.Map(tx, id, func(ctx *boltz.MapContext) {
+		eh.addServiceUpdatedEvent(store.baseStore, tx, ctx.Value())
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return store.symbolIdentityServices.Map(tx, id, func(mapCtx *boltz.MapContext) {
+		keys, err := boltz.DecodeStringSlice(mapCtx.Value())
+		if err != nil {
+			mapCtx.SetError(err)
+			return
+		}
+		identityId := keys[0]
+		serviceId := keys[1]
+		eh.addServiceEvent(tx, []byte(identityId), []byte(serviceId), ServiceUpdated)
+	})
 }
