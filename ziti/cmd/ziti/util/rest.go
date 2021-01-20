@@ -792,7 +792,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 	}
 
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
@@ -804,7 +804,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
 			entityType, session.Host, resp.Status(), resp.String())
 	}

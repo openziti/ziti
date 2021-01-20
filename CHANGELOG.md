@@ -2,9 +2,39 @@
 
 ## What's New
 
-* Ziti executables that use JSON logging now emit timestamps that include fractional seconds. Timestamps remain in 
-  the RFC3339 format.
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
 * Authentication mechanisms now allow `appId` and `appVersion` in `sdkInfo`
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
+* Improved query performance by caching antlr lexers and parsers. Testing showed 2x-10x performance
+  improvement
+* Improve service list time by using indexes get related posture data
+* Improved service polling
+* Improved service policy enforcement - instead of polling this is now event based, which should
+  result in slower cpu utlization on the controller
+* Fixed a bug in service policy PATCH which would trigger when the policy type wasn't sent
+* Support agent utilitiles (`ziti ps`) in ziti-tunnel
+* Cleanup ack handler goroutines when links shut down
+* Remove the following fabric metrics timers, as they degraded performance while being of low value
+    * xgress.ack.handle_time
+    * xgress.payload.handle_time
+    * xgress.ack_write_time
+    * xgress.payload_buffer_time
+    * xgress.payload_relay_time
+* The check-data-integrity operation may now only run a single instance at a time
+    * To start the check, `ziti edge db start-check-integrity`
+    * To check the status of a run `ziti edge db check-integrity-status`
+* The build date in version info spelling has been fixed from builDate to buildDate
+* A new metric has been added for timing service list requests `services.list`
+* A bug was fixed in the tunneler which may have lead to leaked connections
+
+## Improved Service Polling
+
+There's a new REST endpoint /current-api-session/service-updates, which will return the last time
+services were changed. If there have been no service updates since the api session was established,
+the api session create date/time will be returned. This endpoint can be polled to see if services
+need to be refreshed. This will save network and cpu utilization on the client and controller.
 
 # Release 0.18.2
 
