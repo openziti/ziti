@@ -18,9 +18,7 @@ package loop3
 
 import (
 	"bytes"
-	"crypto/sha512"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
@@ -34,16 +32,16 @@ import (
 )
 
 type protocol struct {
-	test        *loop3_pb.Test
-	txGenerator *generator
-	rxSequence  uint32
-	peer        io.ReadWriteCloser
-	rxBlocks    chan *Block
-	txCount     int32
-	rxCount     int32
-	lastRx      int64
-	latencies   chan *time.Time
-	errors      chan error
+	test       *loop3_pb.Test
+	blocks     chan Block
+	rxSequence uint64
+	peer       io.ReadWriteCloser
+	rxBlocks   chan Block
+	txCount    int32
+	rxCount    int32
+	lastRx     int64
+	latencies  chan *time.Time
+	errors     chan error
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
@@ -52,7 +50,7 @@ func newProtocol(peer io.ReadWriteCloser) (*protocol, error) {
 	p := &protocol{
 		rxSequence: 0,
 		peer:       peer,
-		rxBlocks:   make(chan *Block),
+		rxBlocks:   make(chan Block),
 		txCount:    0,
 		rxCount:    0,
 		latencies:  make(chan *time.Time, 1024),
@@ -63,11 +61,31 @@ func newProtocol(peer io.ReadWriteCloser) (*protocol, error) {
 
 func (p *protocol) run(test *loop3_pb.Test) error {
 	p.test = test
-	p.txGenerator = newGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency))
-	go p.txGenerator.run()
+
+	var rxBlock func() (Block, error)
+
+	if test.IsTxRandomHashed() {
+		txGenerator := newRandomHashedBlockGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency))
+		p.blocks = txGenerator.blocks
+		go txGenerator.run()
+	} else if test.IsTxSequential() {
+		txGenerator := newSeqGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes))
+		p.blocks = txGenerator.blocks
+		go txGenerator.run()
+	} else {
+		panic(errors.Errorf("unknown tx block type %v", test.TxBlockType))
+	}
+
+	if test.IsRxRandomHashed() {
+		rxBlock = p.rxRandomHashedBlock
+	} else if test.IsRxSequential() {
+		rxBlock = p.rxSeqBlock
+	} else {
+		panic(errors.Errorf("unknown rx block type %v", test.RxBlockType))
+	}
 
 	rxerDone := make(chan bool)
-	go p.rxer(rxerDone)
+	go p.rxer(rxerDone, rxBlock)
 	if p.test.RxRequests > 0 {
 		go p.verifier()
 	}
@@ -92,26 +110,11 @@ func (p *protocol) txer(done chan bool) {
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
-	var latency *time.Time
 	var lastSend time.Time
 	for p.txCount < p.test.TxRequests {
 		select {
-		case block := <-p.txGenerator.blocks:
+		case block := <-p.blocks:
 			if block != nil {
-
-				if block.Type == BlockTypePlain {
-					select {
-					case latency = <-p.latencies:
-					default:
-						latency = nil
-					}
-
-					if latency != nil {
-						block.Type = BlockTypeLatencyResponse
-						block.Timestamp = *latency
-					}
-				}
-
 				if p.test.TxPacing > 0 {
 					jitter := 0
 					if p.test.TxMaxJitter > 0 {
@@ -128,6 +131,7 @@ func (p *protocol) txer(done chan bool) {
 					}
 				}
 
+				block.PrepForSend(p)
 				if err := block.Tx(p); err == nil {
 					atomic.AddInt32(&p.txCount, 1)
 				} else {
@@ -145,26 +149,18 @@ func (p *protocol) txer(done chan bool) {
 	log.Info("tx count reached")
 }
 
-func (p *protocol) rxer(done chan bool) {
+func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 	log := pfxlog.ContextLogger(p.test.Name)
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
 	for p.rxCount < p.test.RxRequests {
-		block, err := p.rxBlock()
+		block, err := rxBlock()
 		if err != nil {
 			p.errors <- err
 			log.Error(err)
 			return
-		}
-
-		if block.Type == BlockTypeLatencyRequest {
-			select {
-			case p.latencies <- &block.Timestamp:
-			default:
-				log.Warn("latency channel out of room")
-			}
 		}
 
 		atomic.AddInt32(&p.rxCount, 1)
@@ -185,21 +181,7 @@ func (p *protocol) verifier() {
 		select {
 		case block := <-p.rxBlocks:
 			if block != nil {
-				if block.Sequence == p.rxSequence {
-					hash := sha512.Sum512(block.Data)
-					if hex.EncodeToString(hash[:]) != hex.EncodeToString(block.Hash) {
-						err := errors.New("mismatched hashes")
-						p.errors <- err
-						if closeErr := p.peer.Close(); closeErr != nil {
-							log.Error(closeErr)
-						}
-						log.Error(err)
-						return
-					}
-					p.rxSequence++
-
-				} else {
-					err := fmt.Errorf("expected sequence [%d] got sequence [%d]", p.rxSequence, block.Sequence)
+				if err := block.Verify(p); err != nil {
 					p.errors <- err
 					if closeErr := p.peer.Close(); closeErr != nil {
 						log.Error(closeErr)
@@ -207,7 +189,6 @@ func (p *protocol) verifier() {
 					log.Error(err)
 					return
 				}
-
 			} else {
 				return
 			}
@@ -244,12 +225,33 @@ func (p *protocol) rxTest() (*loop3_pb.Test, error) {
 	return test, nil
 }
 
-func (p *protocol) rxBlock() (*Block, error) {
-	block := &Block{}
+func (p *protocol) rxRandomHashedBlock() (Block, error) {
+	block := &RandHashedBlock{}
 	if err := block.Rx(p); err != nil {
 		return nil, err
 	}
+
+	if block.Type == BlockTypeLatencyRequest {
+		select {
+		case p.latencies <- &block.Timestamp:
+		default:
+			pfxlog.Logger().Warn("latency channel out of room")
+		}
+	}
+
 	return block, nil
+}
+
+func (p *protocol) rxSeqBlock() (Block, error) {
+	block := make([]byte, p.test.RxSeqBlockSize)
+	_, err := io.ReadFull(p.peer, block)
+	if err != nil {
+		return nil, err
+	}
+
+	pfxlog.ContextLogger(p.test.Name).Infof("<- #%d (%s)", p.rxSequence, info.ByteCount(int64(len(block))))
+
+	return SeqBlock(block), nil
 }
 
 func (p *protocol) rxResult() (*Result, error) {

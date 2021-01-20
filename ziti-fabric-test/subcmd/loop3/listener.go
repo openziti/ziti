@@ -17,6 +17,7 @@
 package loop3
 
 import (
+	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
@@ -24,6 +25,7 @@ import (
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -39,6 +41,7 @@ type listenerCmd struct {
 	identity       string
 	bindAddress    string
 	edgeConfigFile string
+	test           *loop3_pb.Test
 }
 
 func newListenerCmd() *listenerCmd {
@@ -46,7 +49,7 @@ func newListenerCmd() *listenerCmd {
 		cmd: &cobra.Command{
 			Use:   "listener",
 			Short: "Start loop2 listener",
-			Args:  cobra.ExactArgs(0),
+			Args:  cobra.MaximumNArgs(1),
 		},
 	}
 
@@ -60,9 +63,35 @@ func newListenerCmd() *listenerCmd {
 	return result
 }
 
-func (cmd *listenerCmd) run(_ *cobra.Command, _ []string) {
-	if err := agent.Listen(agent.Options{}); err != nil {
+func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
+	log := pfxlog.Logger()
+
+	var err error
+	if err = agent.Listen(agent.Options{}); err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+	}
+
+	var scenario *Scenario
+	if len(args) == 1 {
+		if scenario, err = LoadScenario(args[0]); err != nil {
+			panic(err)
+		}
+
+		log.Debug(scenario)
+
+		if len(scenario.Workloads) > 1 {
+			panic(errors.New("only one workflow may be specified in a listener configuration"))
+		} else if len(scenario.Workloads) == 1 {
+			_, cmd.test = scenario.Workloads[0].GetTests()
+		}
+	}
+
+	if scenario != nil && scenario.Metrics != nil {
+		closer := make(chan struct{})
+		if err := StartMetricsReporter(cmd.edgeConfigFile, scenario.Metrics, closer); err != nil {
+			panic(err)
+		}
+		defer close(closer)
 	}
 
 	if strings.HasPrefix(cmd.bindAddress, "edge") {
@@ -139,17 +168,25 @@ func (cmd *listenerCmd) listen(bind transport.Address, i *identity.TokenId) {
 func (cmd *listenerCmd) handle(conn net.Conn, context string) {
 	log := pfxlog.ContextLogger(context)
 	if proto, err := newProtocol(conn); err == nil {
-		if test, err := proto.rxTest(); err == nil {
-			var result *Result
-			if err := proto.run(test); err == nil {
-				result = &Result{Success: true}
-			} else {
-				result = &Result{Success: false, Message: err.Error()}
-			}
-			if err := result.Tx(proto); err != nil {
-				log.Errorf("unable to tx result (%s)", err)
+		var test *loop3_pb.Test
+		if cmd.test != nil && cmd.test.IsRxSequential() {
+			test = cmd.test
+		} else {
+			if test, err = proto.rxTest(); err != nil {
+				panic(err)
 			}
 		}
+
+		var result *Result
+		if err := proto.run(test); err == nil {
+			result = &Result{Success: true}
+		} else {
+			result = &Result{Success: false, Message: err.Error()}
+		}
+		if err := result.Tx(proto); err != nil {
+			log.Errorf("unable to tx result (%s)", err)
+		}
+
 	} else {
 		log.Errorf("error creating new protocol (%s)", err)
 	}
