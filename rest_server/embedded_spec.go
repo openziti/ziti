@@ -1483,7 +1483,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Starts a data integrity scan on the datastore. Requires admin access.",
+        "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
         "tags": [
           "Database"
         ],
@@ -1532,7 +1532,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
         ],
@@ -14065,7 +14065,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Starts a data integrity scan on the datastore. Requires admin access.",
+        "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
         "tags": [
           "Database"
         ],
@@ -14182,7 +14182,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
         ],

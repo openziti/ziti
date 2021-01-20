@@ -57,7 +57,7 @@ func NewCheckDataIntegrity(ctx *middleware.Context, handler CheckDataIntegrityHa
 
 Starts a data integrity scan on the datastore
 
-Starts a data integrity scan on the datastore. Requires admin access.
+Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 
 */
 type CheckDataIntegrity struct {

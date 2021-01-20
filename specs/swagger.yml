@@ -3062,7 +3062,7 @@ paths:
   /database/check-data-integrity:
     post:
       summary: Starts a data integrity scan on the datastore
-      description: Starts a data integrity scan on the datastore. Requires admin access.
+      description: Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
       security:
         - ztSession: [ ]
       tags:
@@ -3078,7 +3078,7 @@ paths:
   /database/fix-data-integrity:
     post:
       summary: Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
-      description: Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+      description: Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
       security:
         - ztSession: [ ]
       tags:

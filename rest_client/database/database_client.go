@@ -65,7 +65,7 @@ type ClientService interface {
 /*
   CheckDataIntegrity starts a data integrity scan on the datastore
 
-  Starts a data integrity scan on the datastore. Requires admin access.
+  Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 */
 func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*CheckDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
@@ -176,7 +176,7 @@ func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authIn
 /*
   FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
 
-  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
 */
 func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*FixDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
