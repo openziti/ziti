@@ -495,8 +495,11 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/edge v0.17.41 h1:FxAIwLM4V5T4B0CMcdA3CseDR1DnKi64AaKhcrPV8Ys=
 github.com/openziti/edge v0.17.41/go.mod h1:18nXh1lE8Ng59pHAfJ+h4INj6LuoChfD+A2eiedEPMc=
+github.com/openziti/fabric v0.14.21 h1:oETnfRya/Ne5Ah+SZikI9n51y3IBDtR1hnJpxhhAjUQ=
+github.com/openziti/fabric v0.14.21/go.mod h1:qAXBYH7oeMm6kgBmhfjQJWcfH+95rnw6IMhnmEYoXwQ=
 github.com/openziti/fabric v0.15.8 h1:SWpaYTWS0cQHtCVPMXfI89oY2+d1kTQRdZJQk4zZ/nc=
 github.com/openziti/fabric v0.15.8/go.mod h1:y13cnWTA5zqXdeLsbUQpC5bUEDHtU/tBooQ/Q/iv9e8=
+github.com/openziti/foundation v0.15.2/go.mod h1:P2WZd04e6yBKDiGaeeHeE8r+Kt+BfDctp/y67zMkg9g=
 github.com/openziti/foundation v0.15.3 h1:C9CuSSAXjAEVhrfl2y8YwsFn6WmLX120wTWawWKVqJo=
 github.com/openziti/foundation v0.15.3/go.mod h1:P2WZd04e6yBKDiGaeeHeE8r+Kt+BfDctp/y67zMkg9g=
 github.com/openziti/foundation v0.15.4 h1:Otji26Cw7F0x03cq9GBcDVXegfIyv2/1y5UDG2qs1QA=
