@@ -22,6 +22,12 @@
     * xgress.ack_write_time
     * xgress.payload_buffer_time
     * xgress.payload_relay_time
+* The check-data-integrity operation may now only run a single instance at a time
+    * To start the check, `ziti edge db start-check-integrity`
+    * To check the status of a run `ziti edge db check-integrity-status`
+* The build date in version info spelling has been fixed from builDate to buildDate
+* A new metric has been added for timing service list requests `services.list`
+* A bug was fixed in the tunneler which may have lead to leaked connections
 
 ## Improved Service Polling
 
