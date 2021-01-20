@@ -92,7 +92,7 @@ func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.Re
 	if r.integrityCheck.running.CompareAndSwap(false, true) {
 		r.integrityCheck.fixingErrors = fixErrors
 		go r.runDataIntegrityCheck(ae, fixErrors)
-		rc.Respond(&rest_model.Empty{Data: map[string]interface{}{}, Meta: &rest_model.Meta{}}, http.StatusOK)
+		rc.Respond(&rest_model.Empty{Data: map[string]interface{}{}, Meta: &rest_model.Meta{}}, http.StatusAccepted)
 	} else {
 		rc.RespondWithApiError(apierror.NewRateLimited())
 	}
