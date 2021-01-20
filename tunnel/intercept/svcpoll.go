@@ -243,15 +243,35 @@ func host(context ziti.Context, svc *entities.Service, healthCheckMgr health.Man
 				WithField("dialAddr", config.String()).
 				Error("dial failed")
 			conn.CompleteAcceptFailed(err)
-			_ = conn.Close()
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", config.String()).
+					Error("close of ziti connection failed")
+			}
 			continue
 		}
+
 		if err := conn.CompleteAcceptSuccess(); err != nil {
 			log.WithError(err).
 				WithField("service", svc.Name).
 				WithField("dialAddr", config.String()).
 				Error("complete accept success failed")
-			_ = conn.Close()
+
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", config.String()).
+					Error("close of ziti connection failed")
+			}
+
+			if closeErr := externalConn.Close(); closeErr != nil {
+				log.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", config.String()).
+					Error("close of external connection failed")
+			}
+			continue
 		}
 		go tunnel.Run(conn, externalConn)
 	}

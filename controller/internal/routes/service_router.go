@@ -22,8 +22,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/rest_server/operations/service"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"strings"
+	"time"
 
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
@@ -36,8 +38,9 @@ func init() {
 }
 
 type ServiceRouter struct {
-	BasePath string
-	IdType   response.IdType
+	BasePath  string
+	IdType    response.IdType
+	listTimer metrics.Timer
 }
 
 func NewServiceRouter() *ServiceRouter {
@@ -47,6 +50,8 @@ func NewServiceRouter() *ServiceRouter {
 }
 
 func (r *ServiceRouter) Register(ae *env.AppEnv) {
+	r.listTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("services.list")
+
 	ae.Api.ServiceDeleteServiceHandler = service.DeleteServiceHandlerFunc(func(params service.DeleteServiceParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
@@ -97,6 +102,7 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
+	start := time.Now()
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
 		identity := rc.Identity
@@ -160,6 +166,7 @@ func (r *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		}
 		return NewQueryResult(apiEntities, qmd), nil
 	})
+	r.listTimer.UpdateSince(start)
 }
 
 func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
