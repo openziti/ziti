@@ -55,9 +55,9 @@ func NewFixDataIntegrity(ctx *middleware.Context, handler FixDataIntegrityHandle
 
 /*FixDataIntegrity swagger:route POST /database/fix-data-integrity Database fixDataIntegrity
 
-Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
 
-Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
 
 */
 type FixDataIntegrity struct {

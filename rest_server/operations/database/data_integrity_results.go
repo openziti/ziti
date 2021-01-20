@@ -35,42 +35,42 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// CheckDataIntegrityHandlerFunc turns a function with the right signature into a check data integrity handler
-type CheckDataIntegrityHandlerFunc func(CheckDataIntegrityParams, interface{}) middleware.Responder
+// DataIntegrityResultsHandlerFunc turns a function with the right signature into a data integrity results handler
+type DataIntegrityResultsHandlerFunc func(DataIntegrityResultsParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn CheckDataIntegrityHandlerFunc) Handle(params CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+func (fn DataIntegrityResultsHandlerFunc) Handle(params DataIntegrityResultsParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// CheckDataIntegrityHandler interface for that can handle valid check data integrity params
-type CheckDataIntegrityHandler interface {
-	Handle(CheckDataIntegrityParams, interface{}) middleware.Responder
+// DataIntegrityResultsHandler interface for that can handle valid data integrity results params
+type DataIntegrityResultsHandler interface {
+	Handle(DataIntegrityResultsParams, interface{}) middleware.Responder
 }
 
-// NewCheckDataIntegrity creates a new http.Handler for the check data integrity operation
-func NewCheckDataIntegrity(ctx *middleware.Context, handler CheckDataIntegrityHandler) *CheckDataIntegrity {
-	return &CheckDataIntegrity{Context: ctx, Handler: handler}
+// NewDataIntegrityResults creates a new http.Handler for the data integrity results operation
+func NewDataIntegrityResults(ctx *middleware.Context, handler DataIntegrityResultsHandler) *DataIntegrityResults {
+	return &DataIntegrityResults{Context: ctx, Handler: handler}
 }
 
-/*CheckDataIntegrity swagger:route POST /database/check-data-integrity Database checkDataIntegrity
+/*DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
 
-Starts a data integrity scan on the datastore
+Returns any results found from in-progress integrity checks
 
-Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
+Returns any results found from in-progress integrity checks. Requires admin access.
 
 */
-type CheckDataIntegrity struct {
+type DataIntegrityResults struct {
 	Context *middleware.Context
-	Handler CheckDataIntegrityHandler
+	Handler DataIntegrityResultsHandler
 }
 
-func (o *CheckDataIntegrity) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *DataIntegrityResults) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		r = rCtx
 	}
-	var Params = NewCheckDataIntegrityParams()
+	var Params = NewDataIntegrityResultsParams()
 
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {

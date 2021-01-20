@@ -37,42 +37,42 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// FixDataIntegrityOKCode is the HTTP code returned for type FixDataIntegrityOK
-const FixDataIntegrityOKCode int = 200
+// FixDataIntegrityAcceptedCode is the HTTP code returned for type FixDataIntegrityAccepted
+const FixDataIntegrityAcceptedCode int = 202
 
-/*FixDataIntegrityOK A list of data integrity issues found
+/*FixDataIntegrityAccepted Base empty response
 
-swagger:response fixDataIntegrityOK
+swagger:response fixDataIntegrityAccepted
 */
-type FixDataIntegrityOK struct {
+type FixDataIntegrityAccepted struct {
 
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.DataIntegrityCheckResultEnvelope `json:"body,omitempty"`
+	Payload *rest_model.Empty `json:"body,omitempty"`
 }
 
-// NewFixDataIntegrityOK creates FixDataIntegrityOK with default headers values
-func NewFixDataIntegrityOK() *FixDataIntegrityOK {
+// NewFixDataIntegrityAccepted creates FixDataIntegrityAccepted with default headers values
+func NewFixDataIntegrityAccepted() *FixDataIntegrityAccepted {
 
-	return &FixDataIntegrityOK{}
+	return &FixDataIntegrityAccepted{}
 }
 
-// WithPayload adds the payload to the fix data integrity o k response
-func (o *FixDataIntegrityOK) WithPayload(payload *rest_model.DataIntegrityCheckResultEnvelope) *FixDataIntegrityOK {
+// WithPayload adds the payload to the fix data integrity accepted response
+func (o *FixDataIntegrityAccepted) WithPayload(payload *rest_model.Empty) *FixDataIntegrityAccepted {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the fix data integrity o k response
-func (o *FixDataIntegrityOK) SetPayload(payload *rest_model.DataIntegrityCheckResultEnvelope) {
+// SetPayload sets the payload to the fix data integrity accepted response
+func (o *FixDataIntegrityAccepted) SetPayload(payload *rest_model.Empty) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *FixDataIntegrityOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *FixDataIntegrityAccepted) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(202)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {
@@ -117,6 +117,50 @@ func (o *FixDataIntegrityUnauthorized) SetPayload(payload *rest_model.APIErrorEn
 func (o *FixDataIntegrityUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
+// FixDataIntegrityTooManyRequestsCode is the HTTP code returned for type FixDataIntegrityTooManyRequests
+const FixDataIntegrityTooManyRequestsCode int = 429
+
+/*FixDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response fixDataIntegrityTooManyRequests
+*/
+type FixDataIntegrityTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewFixDataIntegrityTooManyRequests creates FixDataIntegrityTooManyRequests with default headers values
+func NewFixDataIntegrityTooManyRequests() *FixDataIntegrityTooManyRequests {
+
+	return &FixDataIntegrityTooManyRequests{}
+}
+
+// WithPayload adds the payload to the fix data integrity too many requests response
+func (o *FixDataIntegrityTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *FixDataIntegrityTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the fix data integrity too many requests response
+func (o *FixDataIntegrityTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *FixDataIntegrityTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {
