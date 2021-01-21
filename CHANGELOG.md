@@ -29,6 +29,17 @@
 * A new metric has been added for timing service list requests `services.list`
 * A bug was fixed in the tunneler which may have lead to leaked connections
 * Ziti Edge API configurable HTTP Timeouts
+* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+  human readable
+* [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
+  controller to configure how long route and dial should wait before timeout
+    * terminationTimeoutSeconds - how long the router has to dial the service
+    * routeTimeoutSeconds - how long a router has to respond to a route create/update message
+* [fabric#158](https://github.com/openziti/fabric/issues/158) Add a session creation timeout to the
+  router. This controls how long the router will wait for fabric sessions to be created. This
+  includes creating the router and dialing the end service, so the timeout should be at least as
+  long as the controller `terminationTimeoutSeconds`and `routeTimeoutSeconds` added together
+    * `getSessionTimeout` is specified in the router config under `listeners: options:`
 
 ## Improved Service Polling
 
@@ -40,12 +51,12 @@ need to be refreshed. This will save network and cpu utilization on the client a
 ## Ziti Edge API configurable HTTP Timeouts
 
 The controller configuration file now supports a `httpTimeouts` section under
-`edge.api`. The section and all of its fields are optional and default to the
-values of previous versions.
+`edge.api`. The section and all of its fields are optional and default to the values of previous
+versions.
 
-For production environments these values should be tuned for the networks
-intended userbase. The quality and latency of the underlay between the
-networks endpoints/routers and controller should be taken into account.
+For production environments these values should be tuned for the networks intended userbase. The
+quality and latency of the underlay between the networks endpoints/routers and controller should be
+taken into account.
 
 ```
 edge:
@@ -64,7 +75,6 @@ edge:
       # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
       idleTimeoutMs: 5000
 ```
-
 
 # Release 0.18.2
 
