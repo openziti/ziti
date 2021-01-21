@@ -1,38 +1,3 @@
-# Release 0.18.4
-
-## What's New
-
-* Ziti Edge API configurable HTTP Timeouts
-
-
-## Ziti Edge API configurable HTTP Timeouts
-
-The controller configuration file now supports a `httpTimeouts` section under
-`edge.api`. The section and all of its fields are optional and default to the
-values of previous versions.
-
-For production environments these values should be tuned for the networks
-intended userbase. The quality and latency of the underlay between the
-networks endpoints/routers and controller should be taken into account.
-
-```
-edge:
-  ...
-  api:
-    ...
-    httpTimeouts:
-      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
-      readTimeoutMs: 5000
-      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
-      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
-      # readTimeoutMs is used. If both are zero, there is no timeout.
-      readHeaderTimeoutMs: 0
-      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
-      writeTimeoutMs: 100000
-      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
-      idleTimeoutMs: 5000
-```
-
 # Release 0.18.3
 
 ## What's New
@@ -63,6 +28,7 @@ edge:
 * The build date in version info spelling has been fixed from builDate to buildDate
 * A new metric has been added for timing service list requests `services.list`
 * A bug was fixed in the tunneler which may have lead to leaked connections
+* Ziti Edge API configurable HTTP Timeouts
 
 ## Improved Service Polling
 
@@ -70,6 +36,35 @@ There's a new REST endpoint /current-api-session/service-updates, which will ret
 services were changed. If there have been no service updates since the api session was established,
 the api session create date/time will be returned. This endpoint can be polled to see if services
 need to be refreshed. This will save network and cpu utilization on the client and controller.
+
+## Ziti Edge API configurable HTTP Timeouts
+
+The controller configuration file now supports a `httpTimeouts` section under
+`edge.api`. The section and all of its fields are optional and default to the
+values of previous versions.
+
+For production environments these values should be tuned for the networks
+intended userbase. The quality and latency of the underlay between the
+networks endpoints/routers and controller should be taken into account.
+
+```
+edge:
+  ...
+  api:
+    ...
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
+```
+
 
 # Release 0.18.2
 
