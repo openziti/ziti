@@ -2,7 +2,7 @@ module github.com/openziti/ziti
 
 go 1.15
 
-replace github.com/openziti/fabric v0.15.8 => github.com/openziti/fabric v0.14.21
+replace github.com/openziti/fabric v0.15.11 => github.com/openziti/fabric v0.14.24
 
 //replace github.com/openziti/foundation => ../foundation
 
