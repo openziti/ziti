@@ -1,3 +1,81 @@
+# Release 0.18.3
+
+## What's New
+
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
+* Authentication mechanisms now allow `appId` and `appVersion` in `sdkInfo`
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
+* Improved query performance by caching antlr lexers and parsers. Testing showed 2x-10x performance
+  improvement
+* Improve service list time by using indexes get related posture data
+* Improved service polling
+* Improved service policy enforcement - instead of polling this is now event based, which should
+  result in slower cpu utlization on the controller
+* Fixed a bug in service policy PATCH which would trigger when the policy type wasn't sent
+* Support agent utilitiles (`ziti ps`) in ziti-tunnel
+* Cleanup ack handler goroutines when links shut down
+* Remove the following fabric metrics timers, as they degraded performance while being of low value
+    * xgress.ack.handle_time
+    * xgress.payload.handle_time
+    * xgress.ack_write_time
+    * xgress.payload_buffer_time
+    * xgress.payload_relay_time
+* The check-data-integrity operation may now only run a single instance at a time
+    * To start the check, `ziti edge db start-check-integrity`
+    * To check the status of a run `ziti edge db check-integrity-status`
+* The build date in version info spelling has been fixed from builDate to buildDate
+* A new metric has been added for timing service list requests `services.list`
+* A bug was fixed in the tunneler which may have lead to leaked connections
+* Ziti Edge API configurable HTTP Timeouts
+* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+  human readable
+* [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
+  controller to configure how long route and dial should wait before timeout
+    * terminationTimeoutSeconds - how long the router has to dial the service
+    * routeTimeoutSeconds - how long a router has to respond to a route create/update message
+* [fabric#158](https://github.com/openziti/fabric/issues/158) Add a session creation timeout to the
+  router. This controls how long the router will wait for fabric sessions to be created. This
+  includes creating the router and dialing the end service, so the timeout should be at least as
+  long as the controller `terminationTimeoutSeconds`and `routeTimeoutSeconds` added together
+    * `getSessionTimeout` is specified in the router config under `listeners: options:`
+
+## Improved Service Polling
+
+There's a new REST endpoint /current-api-session/service-updates, which will return the last time
+services were changed. If there have been no service updates since the api session was established,
+the api session create date/time will be returned. This endpoint can be polled to see if services
+need to be refreshed. This will save network and cpu utilization on the client and controller.
+
+## Ziti Edge API configurable HTTP Timeouts
+
+The controller configuration file now supports a `httpTimeouts` section under
+`edge.api`. The section and all of its fields are optional and default to the values of previous
+versions.
+
+For production environments these values should be tuned for the networks intended userbase. The
+quality and latency of the underlay between the networks endpoints/routers and controller should be
+taken into account.
+
+```
+edge:
+  ...
+  api:
+    ...
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
+```
+
 # Release 0.18.2
 
 ## What's New

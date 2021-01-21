@@ -2,7 +2,7 @@ FROM debian:stable-slim as fetch-ziti-artifacts
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
-ARG ZITI_VERSION="0.15.3"
+ARG ZITI_VERSION="0.18.2"
 
 ARG ARTIFACTORY_TOKEN
 ARG ARTIFACTORY_BASE_URL="https://netfoundry.jfrog.io/netfoundry"
