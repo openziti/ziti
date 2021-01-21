@@ -1,8 +1,39 @@
-# Release 0.17.7
+# Release 0.18.4
 
-This release has no fucntional changes only build process changes.
+## What's New
 
-# Release 0.17.6
+* Ziti Edge API configurable HTTP Timeouts
+
+
+## Ziti Edge API configurable HTTP Timeouts
+
+The controller configuration file now supports a `httpTimeouts` section under
+`edge.api`. The section and all of its fields are optional and default to the
+values of previous versions.
+
+For production environments these values should be tuned for the networks
+intended userbase. The quality and latency of the underlay between the
+networks endpoints/routers and controller should be taken into account.
+
+```
+edge:
+  ...
+  api:
+    ...
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
+```
+
+# Release 0.18.3
 
 ## What's New
 
@@ -20,20 +51,18 @@ This release has no fucntional changes only build process changes.
 * Fixed a bug in service policy PATCH which would trigger when the policy type wasn't sent
 * Support agent utilitiles (`ziti ps`) in ziti-tunnel
 * Cleanup ack handler goroutines when links shut down
+* Remove the following fabric metrics timers, as they degraded performance while being of low value
+    * xgress.ack.handle_time
+    * xgress.payload.handle_time
+    * xgress.ack_write_time
+    * xgress.payload_buffer_time
+    * xgress.payload_relay_time
 * The check-data-integrity operation may now only run a single instance at a time
     * To start the check, `ziti edge db start-check-integrity`
     * To check the status of a run `ziti edge db check-integrity-status`
 * The build date in version info spelling has been fixed from builDate to buildDate
 * A new metric has been added for timing service list requests `services.list`
 * A bug was fixed in the tunneler which may have lead to leaked connections
-* Default hosting precedence and cost can now be configured for identities
-* Health checks can now be configured for the go based tunneler (ziti-tunnel) using server configs
-* [ziti#177](https://github.com/openziti/ziti/issues/177) ziti-tunnel has a new `host` mode, if you
-  are only hosting services
-* edge session events now contain a timestamp
-* Improve log output for invalid API Session Tokens used to connect to Edge Routers
-* Logs default to no color output
-* API Session Certificate Support Added
 
 ## Improved Service Polling
 
@@ -41,6 +70,18 @@ There's a new REST endpoint /current-api-session/service-updates, which will ret
 services were changed. If there have been no service updates since the api session was established,
 the api session create date/time will be returned. This endpoint can be polled to see if services
 need to be refreshed. This will save network and cpu utilization on the client and controller.
+
+# Release 0.18.2
+
+## What's New
+
+* Default hosting precedence and cost can now be configured for identities
+* Health checks can now be configured for the go based tunneler (ziti-tunnel) using server configs
+* [ziti#177](https://github.com/openziti/ziti/issues/177) ziti-tunnel has a new `host` mode, if you
+  are only hosting services
+* Changes to terminators (add/updated/delete/router online/router offline) will now generate events
+  that can be emitted
+* fabric and edge session events now contain a timestamp
 
 ## Setting precedence and cost for tunneler hosted services
 
@@ -359,6 +400,71 @@ For reference, here is the full, updated `ziti-tunneler-server.v1` schema:
 }
 ```
 
+## Terminator Events
+
+Terminator events are now generated and can be found the fabric events/ package along with other
+fabric events. They can also be emitted in json or plain text to a file or stdout, same as other
+events. Events are generated when:
+
+* A terminator is created
+* A terminator is updated (generally precedence or static cost change)
+* A terminator is deleted
+* A router goes offline. Every terminator on that router will have an event generated
+* A router goes online. Every terminator on that router will have an event generated
+
+A terminator event will have the following properties:
+
+* namespace - will always be `fabric.terminators`
+* event_type - one of: created, updated, deleted, router-online, router-offline
+* timestamp - when the event was generated
+* service_id - id of the service that the terminator belongs to
+* terminator_id - id of the terminator
+* router_id - id of the router the terminator is on
+* router_onlne - boolean flag indicating if the router is online
+* precedence - the router precedence
+* static_cost - the static cost of the terminator (managed externally, by admin or sdk)
+* dynamic_cost - the dynamic cost of the terminator (managed by the terminator strategy for the
+  service)
+* total_terminators - the number of terminators currently existing on the service
+* usable_default_terminators - the number of terminators on the service that have precedence default
+* usable_required_terminators - the number of terminators on the service that have precedence
+  required and are on an online router
+
+Example: To register for json events
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+       - type: fabric.terminators
+```
+
+Example JSON output:
+
+```
+{
+  "namespace": "fabric.terminators",
+  "event_type": "updated",
+  "timestamp": "2021-01-08T16:26:08.0005535-05:00",
+  "service_id": "49Gc41SuL",
+  "terminator_id": "y8qR",
+  "router_id": "T-8CFqqtB",
+  "router_online": true,
+  "precedence": "required",
+  "static_cost": 1100,
+  "dynamic_cost": 0,
+  "total_terminators": 1,
+  "usable_default_terminators": 1,
+  "usable_required_terminators": 0
+}
+```
+
+# Release 0.18.1
+
+* Improve log output for invalid API Session Tokens used to connect to Edge Routers
+* Logs default to no color output
+* API Session Certificate Support Added
+
 ### Logs default to no color output
 
 Logs generated by Ziti components written in Go (Controller, Router, SDK) will no longer output ANSI
@@ -392,11 +498,177 @@ expire and be used for reconnection.
 
 * [ziti#253](https://github.com/openziti/ziti/issues/253) `ziti-tunnel enroll` should set non-zero
   exit status if an error occur
+* Rewrite of Xgress with the following goals
+    * Fix deadlocks at high throughput
+    * Fix stalls when some endpoints are slower than others
+    * Improve windowing/retransmission by pulling forward some concepts from Michael Quigley's
+      transwarp work
+    * Split xgress links into two separate connections, one for data and one for acks
 * Allow hosting applications to mark incoming connections as failed. Update go tunneler so when a
   dial fails for hosted services, the failure gets propagated back to controller
+* Streamline edge hosting protocol by allowing router to assign connection ids
 * Edge REST query failures should now result in 4xx errors instead of 500 internal server errors
 * Fixed bug where listing terminators via `ziti edge` would fail when terminators referenced pure
   fabric services
+
+## Xgress Rewrite
+
+### Overview
+
+This rewrite fixed several deadlocks observed at high throughput. It also tries to ensure that slow
+clients attached to a router can't block traffic/processing for faster clients. It does this by
+dropping data for a client if the client isn't handling incoming traffic quickly enough. Dropped
+payloads will be retransmitted. The new xgress implementation uses similar windowing and
+retransmission strategies to the upcoming transwarp work.
+
+### Backwards Compatability
+
+0.18+ routers will probably work with older router versions, but probably not well. 0.18+ xgress
+instances expect to get round trip times and receive buffer sizes on ack messages. If they don't get
+them then retransmission will likely be either too agressive or not aggressive enough.
+
+Mixing 0.18+ routers with older router versions is not recommended without doing more testing first.
+
+### Xgress Options Changes
+
+**Added**
+
+* txQueueSize - Number of payloads that can be queued for processing per client. Default value: 1
+* txPortalStartSize - Initial size of send window. Default value: 16Kb
+* txPortalMinSize - Smallest allowed send window size. Default value: 16Kb
+* txPortalMaxSize - Largest allowed send window size. Default value: 4MB
+* txPortalIncreaseThresh - Number of successful aks after which to increase send portal size:
+  Default value: 224
+* txPortalIncreaseScale - Send portal will be increased by amount of data sent since last
+  retransmission. This controls how much to scale that amount by. Default value: 1.0
+* txPortalRetxThresh - Number of retransmits after which to scale the send window. Default value: 64
+* txPortalRetxScale - Amount by which to scale the send window after the retransmission threshold is
+  hit. Default value: 0.75
+* txPortalDupAckThresh - Number of duplicates acks after which to scale the send window. Default
+  value: 64
+* txPortalDupAckScale - Amount by which to scale the send window after the duplicate ack threshold
+  is hit. Default value: 0.9
+* rxBufferSize - Receive buffer size. Default value: 4MB
+* retxStartMs - Time after which, if no ack has been received, a payload should be queued for
+  retransmission. Default value: 200ms
+* retxScale - Amount by which to scale the retranmission timeout, which is calculated from the round
+  trip time. Default value: 2.0
+* retxAddMs - Amount to add to the retransmission timeout after it has been scaled. Default value: 0
+* maxCloseWaitMs - Maximum amount of time to wait for queued payloads to be
+  acknowledged/retransmitted after an xgress session has been closed. If queued payloads are all
+  acknowledged before this timeout is hit, the xgress session will be closed sooner. Default value:
+  30s
+
+**REMOVED:** The retransmission option is no longer available. Retransmission can't be toggled off
+anymore as that would lead to lossy connections.
+
+### Xgress Metrics Changes
+
+New metrics were introduced as part of the rewrite.
+
+**NOTE:** Some of these metrics were introduced to try and find places where tuning was required.
+They may not be interesting or useful in the long term and may be removed in a future release.
+
+The new metrics include:
+
+**New Meters**
+
+* xgress.dropped_payloads
+    * The count and rates payloads being dropped
+* xgress.retransmissions
+    * The count and rates payloads being retransmitted
+* xgress.retransmission_failures
+    * The count and rates payloads being retransmitted where the send fails
+* xgress.rx.acks
+    * The count and rates of acks being received
+* xgress.tx.acks
+    * The count and rates of acks being sent
+* xgress.ack_failures
+    * The count and rates of acks being sent where the send fails
+* xgress.ack_duplicates
+    * The count and rates of duplicate acks received
+
+**New Histograms**
+
+* xgress.rtt
+    * Round trip time statistics aggregated across all xgress instances
+* xgress.tx_window_size
+    * Local window size statistics aggregated across all xgress instances
+* xgress.tx_buffer_size
+    * Local send buffer size statistics aggregated across all xgress instances
+* xgress.local.rx_buffer_bytes_size
+    * Receive buffer size statistics in bytes aggregated across all xgress instances
+* xgress.local.rx_buffer_msgs_size
+    * Receive buffer size statistics in number of messages aggregated across all xgress instances
+* xgress.remote.rx_buffer_size
+    * Receive buffer size from remote systems statistics aggregated across all xgress instances
+* xgress.tx_buffer_size
+    * Receive buffer size from remote systems statistics aggregated across all xgress instances
+
+**New Timers**
+
+* xgress.tx_write_time
+    * Times how long it takes to write xgress payloads from xgress to the endpoint
+* xgress.tx_write_time
+    * Times how long it takes to write acks to the link
+* xgress.payload_buffer_time
+    * Times how long it takes to process xgress payloads coming off the link (mostly getting them
+      into the receive buffer)
+* xgress.payload_relay_time
+    * Times how long it takes to get xgress payloads out of the recieve buffer and queued to be sent
+
+**New Gauges**
+
+* xgress.blocked_by_local_window
+    * Count of how many xgress instances are blocked because the local tranmit buffer size equals or
+      exceeds the window size
+* xgress.blocked_by_local_window
+    * Count of how many xgress instances are blocked because the remote receive buffer size equals
+      or exceeds the window size
+* xgress.tx_unacked_payloads
+    * Count of payloads in the transmit buffer
+* xgress.tx_unacked_payload_bytes
+    * Size in bytes of the transmit buffer
+
+### Split Links
+
+The fabric will now create two channels for each link, one for data and the other for acks. When
+establishing links the dialing side will attach headers indicating the channel type and a shared
+link ID. If the receiving side doesn't support split links then it will treat both channels as
+regular links and send both data and acks over both.
+
+If an older router dials a router expecting split links it won't have the link type and will be
+treated as a regular, non-split link.
+
+## Allow SDK Hosting Applications to propagate Dial Failures
+
+The service terminator strategies use dial failures to adjust terminator weights and/or mark
+terminators as failed. Previously SDK applications didn't have a way to mark a dial as failed. If
+the SDK was hosting an application, this was generally not a problem. If the application could be
+reached, it wouldn't want to mark an incoming connection as failed. However, the tunneler is just
+proxying connections. It wants to be able to reach out to another application when the service is
+dialed and proxy data. If the dial fails, it wants to be able to notify the controller that the
+application wasn't reachable. The golang SDK now has the capability.
+
+There is a new API on `edge.Listener`.
+
+```
+	AcceptEdge() (Conn, error)
+```
+
+The `Conn` returned here is an `edge.Conn` (which extends `net.Conn`). `edge.Conn` has two new APIs.
+
+```
+	CompleteAcceptSuccess() error
+	CompleteAcceptFailed(err error)
+```
+
+If `ListenWithOptions` is called with the `ManualStart: true` in the provided options, the
+connection won't be established until `CompleteAcceptSuccess` is called. Writing or reading the
+connection before call that method will have undefined results.
+
+The ziti-tunnel has been updated to use this API, and so should now work correctly with the various
+terminator strategies.
 
 ### Edge Hosting Dial Protocol Enhancement
 
