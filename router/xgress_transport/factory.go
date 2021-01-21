@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 )
 
 type factory struct {
@@ -35,11 +36,17 @@ func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Co
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
-	options := xgress.LoadOptions(optionsData)
+	options, err := xgress.LoadOptions(optionsData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading options")
+	}
 	return newListener(factory.id, factory.ctrl, options, factory.tcfg), nil
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
-	options := xgress.LoadOptions(optionsData)
+	options, err := xgress.LoadOptions(optionsData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading options")
+	}
 	return newDialer(factory.id, factory.ctrl, options, factory.tcfg)
 }
