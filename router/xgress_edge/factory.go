@@ -148,7 +148,11 @@ type Options struct {
 }
 
 func (options *Options) load(data xgress.OptionsData) error {
-	options.Options = *xgress.LoadOptions(data)
+	o, err := xgress.LoadOptions(data)
+	if err != nil {
+		return errors.Wrap(err, "error loading options")
+	}
+	options.Options = *o
 
 	if value, found := data["options"]; found {
 		data = value.(map[interface{}]interface{})

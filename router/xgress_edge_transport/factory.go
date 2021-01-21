@@ -17,9 +17,9 @@
 package xgress_edge_transport
 
 import (
-	"errors"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/pkg/errors"
 )
 
 const BindingName = "edge_transport"
@@ -40,6 +40,9 @@ func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 }
 
 func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer, error) {
-	options := xgress.LoadOptions(optionsData)
+	options, err := xgress.LoadOptions(optionsData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading options")
+	}
 	return newDialer(factory.id, factory.ctrl, options)
 }

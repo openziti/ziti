@@ -177,7 +177,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	if terminatorIdentity, found := req.GetStringHeader(edge.TerminatorIdentityHeader); found {
 		service = terminatorIdentity + "@" + service
 	}
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, service, peerData)
+	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, service, proxy.listener.options.Options.GetSessionTimeout, peerData)
 	if err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
 		proxy.sendStateClosedReply(err.Error(), req)
