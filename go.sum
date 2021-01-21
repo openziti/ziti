@@ -40,8 +40,6 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/antlr/antlr4 v0.0.0-20191115170859-54daca92f7b0 h1:0KQd13aBgdE/X0UW8Mrs/Icfkix5h5g91kDIKpfUjFo=
-github.com/antlr/antlr4 v0.0.0-20191115170859-54daca92f7b0/go.mod h1:T7PbCXFs94rrTttyxjbyT5+/1V8T2TYDejxUfHJjw1Y=
 github.com/antlr/antlr4 v0.0.0-20210114010855-d34d2e1c271a h1:gXj02obcEEw9NVyvbn4PGQn1pPX3s7rCetf3Pzue/6U=
 github.com/antlr/antlr4 v0.0.0-20210114010855-d34d2e1c271a/go.mod h1:T7PbCXFs94rrTttyxjbyT5+/1V8T2TYDejxUfHJjw1Y=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
@@ -292,6 +290,8 @@ github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.4 h1:0ecGp3skIrHWPNGPJDaBIghfA6Sp7Ruo2Io8eLKzWm0=
 github.com/google/uuid v1.1.4/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.1.5 h1:kxhtnfFVi+rYdOALN0B3k9UT86zVJKfBimRaciULW4I=
+github.com/google/uuid v1.1.5/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go v2.0.0+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE08qbEPm1M08qg=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
@@ -463,11 +463,12 @@ github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoT
 github.com/onsi/gomega v1.10.1 h1:o0+MgICZLuZ7xjH7Vx6zS/zcu93/BEp1VwkIW1mEXCE=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.15.6 h1:0fCMp4R4ArDxaFK3wcvCwSPHL+Uu4UcAGPFANISh1ZI=
-github.com/openziti/fabric v0.15.6/go.mod h1:Ve+jgkgvIqWAR6mK+hs8+5s2kcPRbIL8I4k0BNEYwss=
-github.com/openziti/foundation v0.14.25/go.mod h1:ERwYDcVXSKiPmoasmEUHcHJbNuu14pJMnv9OQniVteU=
+github.com/openziti/fabric v0.15.10 h1:gnd83Li1syHvFYgXvU29MWmddfgy9hImsDInpO062pQ=
+github.com/openziti/fabric v0.15.10/go.mod h1:hhjcEavqeQWgYvGSBeg7lwPu0Vgw/aRS8oinyj8aTos=
 github.com/openziti/foundation v0.15.0 h1:Er9OIFK0CwYwwHnbTN/hyZ2HDLjn23u0swbmr2EgTdg=
 github.com/openziti/foundation v0.15.0/go.mod h1:ikDs8cKL+msa5QwDn8o+E1c2jbLKJQ0Nr+3y2uAhkp0=
+github.com/openziti/foundation v0.15.5 h1:Ji3xLl0BnNZ209pAvHASLWQpMVmGxFJWb6ttCEiH7Ow=
+github.com/openziti/foundation v0.15.5/go.mod h1:P2WZd04e6yBKDiGaeeHeE8r+Kt+BfDctp/y67zMkg9g=
 github.com/openziti/sdk-golang v0.15.5 h1:gRGX2UviTDIYoVJyWn12V9MF+8ASTXf0adtoJEDuHp0=
 github.com/openziti/sdk-golang v0.15.5/go.mod h1:8lORoTjX2Wo4cY3JG00+UkXKbxWteeljB+S7SURvC8k=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6 h1:lNCW6THrCKBiJBpz8kbVGjC7MgdCGKwuvBgc7LoD6sw=
