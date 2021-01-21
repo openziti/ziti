@@ -28,6 +28,7 @@ type Handlers struct {
 
 	// edge
 	ApiSession              *ApiSessionHandler
+	ApiSessionCertificate   *ApiSessionCertificateHandler
 	Ca                      *CaHandler
 	Config                  *ConfigHandler
 	ConfigType              *ConfigTypeHandler
@@ -58,6 +59,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.Terminator = env.GetDbProvider().GetControllers().Terminators
 
 	handlers.ApiSession = NewApiSessionHandler(env)
+	handlers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
 	handlers.Authenticator = NewAuthenticatorHandler(env)
 	handlers.Ca = NewCaHandler(env)
 	handlers.Config = NewConfigHandler(env)

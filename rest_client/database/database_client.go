@@ -51,21 +51,23 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*CheckDataIntegrityOK, error)
+	CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*CheckDataIntegrityAccepted, error)
 
 	CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter) (*CreateDatabaseSnapshotOK, error)
 
-	FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*FixDataIntegrityOK, error)
+	DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter) (*DataIntegrityResultsOK, error)
+
+	FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*FixDataIntegrityAccepted, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-  CheckDataIntegrity runs an data integrity scan on the datastore and returns any found issues
+  CheckDataIntegrity starts a data integrity scan on the datastore
 
-  Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
+  Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 */
-func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*CheckDataIntegrityOK, error) {
+func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*CheckDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCheckDataIntegrityParams()
@@ -73,7 +75,7 @@ func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo r
 
 	result, err := a.transport.Submit(&runtime.ClientOperation{
 		ID:                 "checkDataIntegrity",
-		Method:             "GET",
+		Method:             "POST",
 		PathPattern:        "/database/check-data-integrity",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
@@ -87,7 +89,7 @@ func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo r
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CheckDataIntegrityOK)
+	success, ok := result.(*CheckDataIntegrityAccepted)
 	if ok {
 		return success, nil
 	}
@@ -135,11 +137,48 @@ func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, au
 }
 
 /*
-  FixDataIntegrity runs an data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
+  DataIntegrityResults returns any results found from in progress integrity checks
 
-  Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+  Returns any results found from in-progress integrity checks. Requires admin access.
 */
-func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*FixDataIntegrityOK, error) {
+func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter) (*DataIntegrityResultsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewDataIntegrityResultsParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "dataIntegrityResults",
+		Method:             "GET",
+		PathPattern:        "/database/data-integrity-results",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &DataIntegrityResultsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DataIntegrityResultsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for dataIntegrityResults: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
+
+  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
+*/
+func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter) (*FixDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewFixDataIntegrityParams()
@@ -161,7 +200,7 @@ func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runti
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*FixDataIntegrityOK)
+	success, ok := result.(*FixDataIntegrityAccepted)
 	if ok {
 		return success, nil
 	}

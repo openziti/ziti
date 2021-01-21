@@ -150,11 +150,11 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		Hostname:            &hostname,
 		SupportedProtocols:  protocols,
 		VersionInfo: &rest_model.VersionInfo{
-			Os:       &os,
-			Arch:     &arch,
-			Revision: &revision,
-			BuilDate: &buildDate,
-			Version:  &version,
+			Os:        &os,
+			Arch:      &arch,
+			Revision:  &revision,
+			BuildDate: &buildDate,
+			Version:   &version,
 		},
 	}
 

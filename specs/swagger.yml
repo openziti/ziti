@@ -3,7 +3,7 @@ swagger: '2.0'
 info:
   version: 0.16.3
   title: Ziti Edge
-  contact: { }
+  contact: {}
 host: demo.ziti.dev
 basePath: /edge/v1
 schemes:
@@ -884,11 +884,105 @@ paths:
       security:
         - ztSession: [ ]
       tags:
-        - CurrentAPI Session
+        - Current API Session
       responses:
         200:
           $ref: '#/responses/emptyResponse'
         401:
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-api-session/certificates':
+    get:
+      summary: List the ephemeral certificates available for the current API Session
+      description: Retrieves a list of certificate resources for the current API session; supports filtering, sorting, and pagination
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: listCurrentApiSessionCertificates
+      parameters:
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listCurrentApiSessionCertificates'
+    post:
+      summary: Creates an ephemeral certificate for the current API Session
+      description: Creates an ephemeral certificate for the current API Session. This endpoint
+        expects a PEM encoded CSRs to be provided for fulfillment as a property of a JSON payload.
+        It is up to the client to manage the private key backing the CSR request.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: createCurrentApiSessionCertificate
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: The payload describing the CSR used to create a session certificate
+          schema:
+            $ref: '#/definitions/currentApiSessionCertificateCreate'
+      responses:
+        '200':
+          $ref: '#/responses/createCurrentApiSessionCertificateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/current-api-session/certificates/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves an ephemeral certificate
+      description: Retrieves a single ephemeral certificate by id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: detailCurrentApiSessionCertificate
+      responses:
+        '200':
+          $ref: '#/responses/detailCurrentApiSessionCertificate'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an ephemeral certificate
+      description: |
+        Delete an ephemeral certificateby id
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: deleteCurrentApiSessionCertificate
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  ###################################################################
+  # Current API Session - Service Updates
+  #################################################################
+  '/current-api-session/service-updates':
+    get:
+      summary: Returns data indicating whether a client should updates it service list
+      description: |
+        Retrieves data indicating the last time data relevant to this API Session was altered that would necessitate
+        service refreshes.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+        - Services
+      operationId: listServiceUpdates
+      responses:
+        '200':
+          $ref: '#/responses/listCurrentApiSessionServiceUpdates'
+        '401':
           $ref: '#/responses/unauthorizedResponse'
   '/current-identity':
     get:
@@ -2966,28 +3060,46 @@ paths:
         '429':
           $ref: '#/responses/rateLimitedResponse'
   /database/check-data-integrity:
-    get:
-      summary: Runs an data integrity scan on the datastore and returns any found issues
-      description: Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
+    post:
+      summary: Starts a data integrity scan on the datastore
+      description: Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
       security:
         - ztSession: [ ]
       tags:
         - Database
       operationId: checkDataIntegrity
       responses:
-        '200':
-          $ref: '#/responses/dataIntegrityCheckResult'
+        '202':
+          $ref: '#/responses/emptyResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
   /database/fix-data-integrity:
     post:
-      summary: Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
-      description: Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+      summary: Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+      description: Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
       security:
         - ztSession: [ ]
       tags:
         - Database
       operationId: fixDataIntegrity
+      responses:
+        '202':
+          $ref: '#/responses/emptyResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  /database/data-integrity-results:
+    get:
+      summary: Returns any results found from in-progress integrity checks
+      description: Returns any results found from in-progress integrity checks. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Database
+      operationId: dataIntegrityResults
       responses:
         '200':
           $ref: '#/responses/dataIntegrityCheckResult'
@@ -3266,7 +3378,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause:
             field: '(root)'
             type: required
@@ -3293,7 +3405,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause: ''
           causeMessage: ''
           code: UNAUTHORIZED
@@ -3311,7 +3423,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause: ''
           causeMessage: ''
           code: INVALID_AUTH
@@ -3363,7 +3475,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           causeMessage: 'you have hit a rate limit in the requested operation'
           code: RATE_LIMITED
           message: The resource is rate limited and the rate limit has been exceeded. Please try again later
@@ -3407,7 +3519,7 @@ responses:
       $ref: '#/definitions/currentAPISessionDetailEnvelope'
     examples:
       default:
-        meta: { }
+        meta: {}
         data:
           id: 27343114-b44f-406e-9981-f3c4f2f28d54
           createdAt: '2020-03-09T19:03:49.1883693Z'
@@ -3435,7 +3547,7 @@ responses:
       $ref: '#/definitions/currentIdentityDetailEnvelope'
     examples:
       default:
-        meta: { }
+        meta: {}
         data:
           id: 66352d7b-a6b2-4ce9-85bb-9f18e318704d
           createdAt: '2020-01-13T16:38:13.6854788Z'
@@ -3447,7 +3559,7 @@ responses:
               href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d'
             service-policies:
               href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d/identities'
-          tags: { }
+          tags: {}
           name: Default Admin
           type:
             urlName: identity-types
@@ -3461,10 +3573,21 @@ responses:
           authenticators:
             updb:
               username: admin
-          enrollment: { }
+          enrollment: {}
           roleAttributes:
             $ref: '#/definitions/attributes'
-
+  listCurrentApiSessionCertificates:
+    description: A list of the current API Session's certificate
+    schema:
+      $ref: '#/definitions/listCurrentAPISessionCertificatesEnvelope'
+  createCurrentApiSessionCertificateResponse:
+    description: A response of a create API Session certificate
+    schema:
+      $ref: '#/definitions/createCurrentApiSessionCertificateEnvelope'
+  detailCurrentApiSessionCertificate:
+    description: A response containing a single API Session certificate
+    schema:
+      $ref: '#/definitions/detailCurrentApiSessionCertificateEnvelope'
   ###################################################################
   # API Session
   ##################################################################
@@ -3774,6 +3897,13 @@ responses:
     description: Retrieves a singular posture check by id
     schema:
       $ref: '#/definitions/detailPostureCheckEnvelope'
+  ###################################################################
+  # List Service Updates
+  ##################################################################
+  listCurrentApiSessionServiceUpdates:
+    description: Data indicating necessary service updates
+    schema:
+      $ref: '#/definitions/listCurrentApiSessionServiceUpdatesEnvelope'
 
 #######################################################################################################################
 #
@@ -3887,7 +4017,7 @@ definitions:
       - os
       - version
       - arch
-      - builDate
+      - buildDate
       - revision
     properties:
       os:
@@ -3896,7 +4026,7 @@ definitions:
         type: string
       arch:
         type: string
-      builDate:
+      buildDate:
         type: string
       revision:
         type: string
@@ -4024,10 +4154,13 @@ definitions:
       - type: object
         required:
           - expiresAt
+          - expirationSeconds
         properties:
           expiresAt:
             type: string
             format: date-time
+          expirationSeconds:
+            type: integer
   ###################################################################
   # Identities
   ##################################################################
@@ -4064,6 +4197,10 @@ definitions:
         $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
+      defaultHostingPrecedence:
+        $ref: '#/definitions/terminatorPrecedence'
+      defaultHostingCost:
+        $ref: '#/definitions/terminatorCost'
   identityUpdate:
     type: object
     required:
@@ -4081,6 +4218,10 @@ definitions:
         $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
+      defaultHostingPrecedence:
+        $ref: '#/definitions/terminatorPrecedence'
+      defaultHostingCost:
+        $ref: '#/definitions/terminatorCost'
   identityPatch:
     type: object
     properties:
@@ -4094,6 +4235,10 @@ definitions:
         $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
+      defaultHostingPrecedence:
+        $ref: '#/definitions/terminatorPrecedence'
+      defaultHostingCost:
+        $ref: '#/definitions/terminatorCost'
   identityList:
     description: A list of identities
     type: array
@@ -4143,6 +4288,10 @@ definitions:
             type: boolean
           hasApiSession:
             type: boolean
+          defaultHostingPrecedence:
+            $ref: '#/definitions/terminatorPrecedence'
+          defaultHostingCost:
+            $ref: '#/definitions/terminatorCost'
   identityAuthenticators:
     type: object
     properties:
@@ -4712,7 +4861,7 @@ definitions:
           - os
           - version
           - arch
-          - builDate
+          - buildDate
           - revision
         properties:
           name:
@@ -4756,7 +4905,7 @@ definitions:
           href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d/edge-routers"
         self:
           href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
-      tags: { }
+      tags: {}
       name: TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e
       fingerprint:
       roleAttributes:
@@ -4775,7 +4924,7 @@ definitions:
       enrollmentCreatedAt: '2020-03-16T17:13:31.5777637Z'
       enrollmentExpiresAt: '2020-03-16T17:18:31.5777637Z'
       hostname: ''
-      supportedProtocols: { }
+      supportedProtocols: {}
   ###################################################################
   # Edge Router Policies
   ##################################################################
@@ -5313,7 +5462,7 @@ definitions:
     type: object
     properties:
       urlVars:
-        properties: { }
+        properties: {}
         additionalProperties:
           type: string
         type: object
@@ -5327,7 +5476,7 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         type: object
-        example: { }
+        example: {}
   meta:
     type: object
     properties:
@@ -5456,6 +5605,33 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/apiSessionList'
+  listCurrentAPISessionCertificatesEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateList'
+  createCurrentApiSessionCertificateEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateCreateResponse'
+  detailCurrentApiSessionCertificateEnvelope:
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentApiSessionCertificateDetail'
   detailAPISessionEnvelope:
     required:
       - meta
@@ -5805,6 +5981,10 @@ definitions:
       version:
         type: string
       revision:
+        type: string
+      appId:
+        type: string
+      appVersion:
         type: string
     type: object
   configTypes:
@@ -6189,7 +6369,6 @@ definitions:
       - default
       - required
       - failed
-
   dataIntegrityCheckResultEnvelope:
     type: object
     required:
@@ -6199,6 +6378,33 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
+        $ref: '#/definitions/dataIntegrityCheckDetails'
+  dataIntegrityCheckDetails:
+    type: object
+    required:
+      - inProgress
+      - fixingErrors
+      - tooManyErrors
+      - startTime
+      - endTime
+      - error
+      - results
+    properties:
+      inProgress:
+        type: boolean
+      startTime:
+        type: string
+        format: date-time
+      endTime:
+        type: string
+        format: date-time
+      fixingErrors:
+        type: boolean
+      error:
+        type: string
+      tooManyErrors:
+        type: boolean
+      results:
         $ref: '#/definitions/dataIntegrityCheckDetailList'
   dataIntegrityCheckDetailList:
     type: array
@@ -6693,3 +6899,71 @@ definitions:
             items:
               type: string
     x-class: "PROCESS"
+
+  currentApiSessionCertificateList:
+    type: array
+    items:
+      $ref: '#/definitions/currentApiSessionCertificateDetail'
+  currentApiSessionCertificateDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - subject
+          - fingerprint
+          - validFrom
+          - validTo
+          - certificate
+        properties:
+          subject:
+            type: string
+          fingerprint:
+            type: string
+          validFrom:
+            type: string
+            format: date-time
+          validTo:
+            type: string
+            format: date-time
+          certificate:
+            type: string
+  currentApiSessionCertificateCreate:
+    type: object
+    required:
+      - csr
+    properties:
+      csr:
+        type: string
+  currentApiSessionCertificateCreateResponse:
+    allOf:
+      - $ref: '#/definitions/createLocation'
+      - type: object
+        required:
+          - certificate
+        properties:
+          certificate:
+            type: string
+          cas:
+            type: string
+  ###################################################################
+  # Current API Session: Service Updates
+  ##################################################################
+  listCurrentApiSessionServiceUpdatesEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/CurrentApiSessionServiceUpdateList'
+  CurrentApiSessionServiceUpdateList:
+    type: object
+    required:
+      - lastChangeAt
+    properties:
+      lastChangeAt:
+        type: string
+        format: 'date-time'

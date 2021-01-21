@@ -13,6 +13,20 @@ import (
 	"sort"
 )
 
+type PolicyType int32
+
+func (self PolicyType) String() string {
+	if self == PolicyTypeDial {
+		return PolicyTypeDialName
+	}
+
+	if self == PolicyTypeBind {
+		return PolicyTypeBindName
+	}
+
+	return PolicyTypeInvalidName
+}
+
 const (
 	FieldServicePolicyType = "type"
 
@@ -20,9 +34,9 @@ const (
 	PolicyTypeDialName    = "Dial"
 	PolicyTypeBindName    = "Bind"
 
-	PolicyTypeInvalid int32 = 0
-	PolicyTypeDial    int32 = 1
-	PolicyTypeBind    int32 = 2
+	PolicyTypeInvalid PolicyType = 0
+	PolicyTypeDial    PolicyType = 1
+	PolicyTypeBind    PolicyType = 2
 )
 
 func newServicePolicy(name string) *ServicePolicy {
@@ -39,7 +53,7 @@ func newServicePolicy(name string) *ServicePolicy {
 
 type ServicePolicy struct {
 	boltz.BaseExtEntity
-	PolicyType        int32
+	PolicyType        PolicyType
 	Name              string
 	Semantic          string
 	IdentityRoles     []string
@@ -58,7 +72,7 @@ func (entity *ServicePolicy) GetSemantic() string {
 func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.PolicyType = bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial)
+	entity.PolicyType = PolicyType(bucket.GetInt32WithDefault(FieldServicePolicyType, int32(PolicyTypeDial)))
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 	entity.ServiceRoles = bucket.GetStringList(FieldServiceRoles)
@@ -70,9 +84,15 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 		entity.Semantic = SemanticAllOf
 	}
 
-	if ctx.ProceedWithSet(FieldServicePolicyType) && entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
-		ctx.Bucket.SetError(validation.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
-		return
+	if ctx.ProceedWithSet(FieldServicePolicyType) {
+		if entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
+			ctx.Bucket.SetError(validation.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
+			return
+		}
+	} else {
+		// PolicyType needs to be correct in the entity as we use it later
+		// TODO: Add test for this
+		entity.PolicyType = PolicyType(ctx.Bucket.GetInt32WithDefault(FieldServicePolicyType, int32(PolicyTypeDial)))
 	}
 
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
@@ -94,7 +114,7 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetInt32(FieldServicePolicyType, entity.PolicyType)
+	ctx.SetInt32(FieldServicePolicyType, int32(entity.PolicyType))
 	ctx.SetString(FieldSemantic, entity.Semantic)
 	servicePolicyStore := ctx.Store.(*servicePolicyStoreImpl)
 
@@ -122,18 +142,8 @@ func (entity *ServicePolicy) GetEntityType() string {
 	return EntityTypeServicePolicies
 }
 
-func getPolicyTypeName(policyType int32) string {
-	if policyType == PolicyTypeBind {
-		return PolicyTypeBindName
-	}
-	if policyType == PolicyTypeDial {
-		return PolicyTypeDialName
-	}
-	return PolicyTypeInvalidName
-}
-
 func (entity *ServicePolicy) GetPolicyTypeName() string {
-	return getPolicyTypeName(entity.PolicyType)
+	return entity.PolicyType.String()
 }
 
 type ServicePolicyStore interface {
@@ -153,17 +163,17 @@ func newServicePolicyStore(stores *stores) *servicePolicyStoreImpl {
 type servicePolicyStoreImpl struct {
 	*baseStore
 
-	indexName               boltz.ReadIndex
-	symbolPolicyType        boltz.EntitySymbol
-	symbolSemantic          boltz.EntitySymbol
+	indexName        boltz.ReadIndex
+	symbolPolicyType boltz.EntitySymbol
+	symbolSemantic   boltz.EntitySymbol
 
 	symbolIdentityRoles     boltz.EntitySetSymbol
 	symbolServiceRoles      boltz.EntitySetSymbol
 	symbolPostureCheckRoles boltz.EntitySetSymbol
 
-	symbolIdentities        boltz.EntitySetSymbol
-	symbolServices          boltz.EntitySetSymbol
-	symbolPostureChecks     boltz.EntitySetSymbol
+	symbolIdentities    boltz.EntitySetSymbol
+	symbolServices      boltz.EntitySetSymbol
+	symbolPostureChecks boltz.EntitySetSymbol
 
 	identityCollection     boltz.LinkCollection
 	serviceCollection      boltz.LinkCollection
@@ -233,8 +243,14 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 	}
 	if policy.PolicyType == PolicyTypeDial {
 		ctx.denormLinkCollection = store.stores.edgeService.dialIdentitiesCollection
+		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
+		}
 	} else {
 		ctx.denormLinkCollection = store.stores.edgeService.bindIdentitiesCollection
+		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+			ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
+		}
 	}
 	EvaluatePolicy(ctx, policy, store.stores.edgeService.symbolRoleAttributes)
 }
@@ -250,8 +266,14 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 
 	if policy.PolicyType == PolicyTypeDial {
 		ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
+		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
+		}
 	} else {
 		ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
+		ctx.changeHandler = func(fromId, toId []byte, add bool) {
+			ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
+		}
 	}
 
 	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
@@ -264,6 +286,10 @@ func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.
 		linkCollection:        store.postureCheckCollection,
 		relatedLinkCollection: store.serviceCollection,
 		ErrorHolder:           persistCtx.Bucket,
+	}
+
+	ctx.changeHandler = func(fromId, toId []byte, add bool) {
+		ctx.addServiceUpdatedEvent(store.baseStore, ctx.tx, toId)
 	}
 
 	if policy.PolicyType == PolicyTypeDial {
@@ -306,7 +332,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, erro
 		policyFilter: func(policyId []byte) bool {
 			policyType := PolicyTypeInvalid
 			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(tx, policyId)); result != nil {
-				policyType = *result
+				policyType = PolicyType(*result)
 			}
 			return policyType == PolicyTypeBind
 		},
@@ -329,7 +355,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, erro
 		policyFilter: func(policyId []byte) bool {
 			policyType := PolicyTypeInvalid
 			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(tx, policyId)); result != nil {
-				policyType = *result
+				policyType = PolicyType(*result)
 			}
 			return policyType == PolicyTypeDial
 		},

@@ -18,6 +18,7 @@ package policy
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"time"
 
 	"github.com/openziti/edge/controller/env"
@@ -29,15 +30,81 @@ import (
 type ServicePolicyEnforcer struct {
 	appEnv *env.AppEnv
 	*runner.BaseOperation
+	notify chan struct{}
 }
 
 func NewServicePolicyEnforcer(appEnv *env.AppEnv, f time.Duration) *ServicePolicyEnforcer {
-	return &ServicePolicyEnforcer{
+	result := &ServicePolicyEnforcer{
 		appEnv:        appEnv,
-		BaseOperation: runner.NewBaseOperation("ServicePolicyEnforcer", f)}
+		BaseOperation: runner.NewBaseOperation("ServicePolicyEnforcer", f),
+		notify:        make(chan struct{}, 1),
+	}
+	result.notify <- struct{}{} // ensure we do a full scan on startup
+	persistence.ServiceEvents.AddServiceEventHandler(result.handleServiceEvent)
+	return result
+}
+
+func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.ServiceEvent) {
+	policyType := ""
+
+	if event.Type == persistence.ServiceDialAccessLost {
+		policyType = persistence.PolicyTypeDialName
+	}
+
+	if event.Type == persistence.ServiceBindAccessLost {
+		policyType = persistence.PolicyTypeBindName
+	}
+
+	if policyType == "" {
+		return
+	}
+
+	log := pfxlog.Logger().WithField("event", event.String())
+	log.Debug("event received")
+
+	var sessionsToDelete []string
+
+	err := enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		identity := &persistence.Identity{}
+
+		if _, err := enforcer.appEnv.GetStores().Identity.BaseLoadOneById(tx, event.IdentityId, identity); err != nil {
+			return err
+		}
+
+		if identity.IsAdmin {
+			return nil
+		}
+
+		query := fmt.Sprintf(`apiSession.identity="%v" and service="%v" and type="%v"`, event.IdentityId, event.ServiceId, policyType)
+		sessionsToDelete, _, err = enforcer.appEnv.GetStores().Session.QueryIds(tx, query)
+		return err
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("error while processing event: %v", event)
+
+		// notify enforcer that it should run on the next cycle
+		select {
+		case enforcer.notify <- struct{}{}:
+		default:
+		}
+	}
+
+	for _, sessionId := range sessionsToDelete {
+		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
+		log.Debugf("session %v deleted", sessionId)
+	}
 }
 
 func (enforcer *ServicePolicyEnforcer) Run() error {
+	// if we haven't been notified to run b/c of startup or handler error, skip run
+	select {
+	case <-enforcer.notify:
+	default:
+		return nil
+	}
+
 	result, err := enforcer.appEnv.GetHandlers().Session.Query("")
 
 	if err != nil {
@@ -69,7 +136,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 			if session.Type == persistence.SessionTypeBind {
 				policyType = persistence.PolicyTypeBind
 			}
-			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType, session.ServiceId)
+			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, int32(policyType), session.ServiceId)
 			_, count, err := enforcer.appEnv.GetStores().Identity.QueryIds(tx, query)
 			if err != nil {
 				return err

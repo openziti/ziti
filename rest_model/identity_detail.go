@@ -46,6 +46,12 @@ type IdentityDetail struct {
 	// Required: true
 	Authenticators *IdentityAuthenticators `json:"authenticators"`
 
+	// default hosting cost
+	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+
+	// default hosting precedence
+	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
 	// enrollment
 	// Required: true
 	Enrollment *IdentityEnrollments `json:"enrollment"`
@@ -104,6 +110,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
+		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+
+		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
 		Enrollment *IdentityEnrollments `json:"enrollment"`
 
 		EnvInfo *EnvInfo `json:"envInfo"`
@@ -131,6 +141,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.Authenticators = dataAO1.Authenticators
+
+	m.DefaultHostingCost = dataAO1.DefaultHostingCost
+
+	m.DefaultHostingPrecedence = dataAO1.DefaultHostingPrecedence
 
 	m.Enrollment = dataAO1.Enrollment
 
@@ -169,6 +183,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
+		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+
+		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
 		Enrollment *IdentityEnrollments `json:"enrollment"`
 
 		EnvInfo *EnvInfo `json:"envInfo"`
@@ -193,6 +211,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.Authenticators = m.Authenticators
+
+	dataAO1.DefaultHostingCost = m.DefaultHostingCost
+
+	dataAO1.DefaultHostingPrecedence = m.DefaultHostingPrecedence
 
 	dataAO1.Enrollment = m.Enrollment
 
@@ -234,6 +256,14 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateAuthenticators(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDefaultHostingCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDefaultHostingPrecedence(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -300,6 +330,40 @@ func (m *IdentityDetail) validateAuthenticators(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateDefaultHostingCost(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingCost) { // not required
+		return nil
+	}
+
+	if m.DefaultHostingCost != nil {
+		if err := m.DefaultHostingCost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("defaultHostingCost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateDefaultHostingPrecedence(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingPrecedence) { // not required
+		return nil
+	}
+
+	if err := m.DefaultHostingPrecedence.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingPrecedence")
+		}
+		return err
 	}
 
 	return nil

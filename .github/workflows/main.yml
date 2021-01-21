@@ -24,12 +24,12 @@ jobs:
         uses: netfoundry/ziti-ci@v1
 
       - name: Build and Test
-        run: go test ./... --tags apitests
+        run: go test ./... --tags apitests,slowtests
 
       - name: Release
         env:
           gh_ci_key: ${{ secrets.GH_CI_KEY }}
-        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/head/release-')
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-')
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version

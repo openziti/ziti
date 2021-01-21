@@ -88,7 +88,9 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(listenConn.Id(), token, callerId)
-	dialRequest.Headers[edge.PublicKeyHeader] = sessionId.Data[edge.PublicKeyHeader]
+	if pk, ok := sessionId.Data[edge.PublicKeyHeader]; ok {
+		dialRequest.Headers[edge.PublicKeyHeader] = pk
+	}
 	appData, hasAppData := sessionId.Data[edge.AppDataHeader]
 	if hasAppData {
 		dialRequest.Headers[edge.AppDataHeader] = appData

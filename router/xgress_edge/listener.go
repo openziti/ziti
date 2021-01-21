@@ -112,7 +112,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
+	ns := sm.GetSessionWithTimeout(token, time.Second*5)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Dial {
 		log.WithField("token", token).Error("session not found")
@@ -124,14 +124,14 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
 			WithField("clientFingerprints", proxy.fingerprints.Prints()).
-			Error("matching fingerprint not found")
+			Error("matching fingerprint not found for connect")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
 	log.Debug("validating connection id")
 
-	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
+	removeListener := sm.AddSessionRemovedListener(ns.Token, func(token string) {
 		proxy.sendStateClosed(connId, "session closed")
 		proxy.closeConn(connId)
 	})
@@ -211,7 +211,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetNetworkSessionWithTimeout(token, time.Second*5)
+	ns := sm.GetSessionWithTimeout(token, time.Second*5)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Bind {
 		log.WithField("token", token).Error("session not found")
@@ -223,7 +223,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
 			WithField("clientFingerprints", proxy.fingerprints.Prints()).
-			Error("matching fingerprint not found")
+			Error("matching fingerprint not found for bind")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return
 	}
@@ -253,7 +253,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 
 	terminatorIdRef := &concurrenz.AtomicString{}
 
-	removeListener := sm.AddNetworkSessionRemovedListener(ns.Token, func(token string) {
+	removeListener := sm.AddSessionRemovedListener(ns.Token, func(token string) {
 		terminatorId := terminatorIdRef.Get()
 		defer func() {
 			log.Debugf("removing listener for terminator %v, token: %v", terminatorId, token)
@@ -320,7 +320,7 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
 	sm := fabric.GetStateManager()
-	ns := sm.GetNetworkSession(token)
+	ns := sm.GetSession(token)
 
 	if ns == nil {
 		log.WithField("token", token).Error("session not found")
@@ -332,7 +332,7 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
 			WithField("clientFingerprints", proxy.fingerprints.Prints()).
-			Error("matching fingerprint not found")
+			Error("matching fingerprint not found for unbind")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return
 	}
@@ -364,7 +364,7 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 	}
 
 	sm := fabric.GetStateManager()
-	ns := sm.GetNetworkSession(token)
+	ns := sm.GetSession(token)
 
 	if ns == nil {
 		log.WithField("token", token).Error("session not found")
@@ -376,7 +376,7 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
 			WithField("clientFingerprints", proxy.fingerprints.Prints()).
-			Error("matching fingerprint not found")
+			Error("matching fingerprint not found for update bind")
 		proxy.sendStateClosedReply("Invalid Session", req)
 		return
 	}

@@ -37,42 +37,42 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CheckDataIntegrityOKCode is the HTTP code returned for type CheckDataIntegrityOK
-const CheckDataIntegrityOKCode int = 200
+// CheckDataIntegrityAcceptedCode is the HTTP code returned for type CheckDataIntegrityAccepted
+const CheckDataIntegrityAcceptedCode int = 202
 
-/*CheckDataIntegrityOK A list of data integrity issues found
+/*CheckDataIntegrityAccepted Base empty response
 
-swagger:response checkDataIntegrityOK
+swagger:response checkDataIntegrityAccepted
 */
-type CheckDataIntegrityOK struct {
+type CheckDataIntegrityAccepted struct {
 
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.DataIntegrityCheckResultEnvelope `json:"body,omitempty"`
+	Payload *rest_model.Empty `json:"body,omitempty"`
 }
 
-// NewCheckDataIntegrityOK creates CheckDataIntegrityOK with default headers values
-func NewCheckDataIntegrityOK() *CheckDataIntegrityOK {
+// NewCheckDataIntegrityAccepted creates CheckDataIntegrityAccepted with default headers values
+func NewCheckDataIntegrityAccepted() *CheckDataIntegrityAccepted {
 
-	return &CheckDataIntegrityOK{}
+	return &CheckDataIntegrityAccepted{}
 }
 
-// WithPayload adds the payload to the check data integrity o k response
-func (o *CheckDataIntegrityOK) WithPayload(payload *rest_model.DataIntegrityCheckResultEnvelope) *CheckDataIntegrityOK {
+// WithPayload adds the payload to the check data integrity accepted response
+func (o *CheckDataIntegrityAccepted) WithPayload(payload *rest_model.Empty) *CheckDataIntegrityAccepted {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the check data integrity o k response
-func (o *CheckDataIntegrityOK) SetPayload(payload *rest_model.DataIntegrityCheckResultEnvelope) {
+// SetPayload sets the payload to the check data integrity accepted response
+func (o *CheckDataIntegrityAccepted) SetPayload(payload *rest_model.Empty) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CheckDataIntegrityOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CheckDataIntegrityAccepted) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(202)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {
@@ -117,6 +117,50 @@ func (o *CheckDataIntegrityUnauthorized) SetPayload(payload *rest_model.APIError
 func (o *CheckDataIntegrityUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
+// CheckDataIntegrityTooManyRequestsCode is the HTTP code returned for type CheckDataIntegrityTooManyRequests
+const CheckDataIntegrityTooManyRequestsCode int = 429
+
+/*CheckDataIntegrityTooManyRequests The resource requested is rate limited and the rate limit has been exceeded
+
+swagger:response checkDataIntegrityTooManyRequests
+*/
+type CheckDataIntegrityTooManyRequests struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCheckDataIntegrityTooManyRequests creates CheckDataIntegrityTooManyRequests with default headers values
+func NewCheckDataIntegrityTooManyRequests() *CheckDataIntegrityTooManyRequests {
+
+	return &CheckDataIntegrityTooManyRequests{}
+}
+
+// WithPayload adds the payload to the check data integrity too many requests response
+func (o *CheckDataIntegrityTooManyRequests) WithPayload(payload *rest_model.APIErrorEnvelope) *CheckDataIntegrityTooManyRequests {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the check data integrity too many requests response
+func (o *CheckDataIntegrityTooManyRequests) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CheckDataIntegrityTooManyRequests) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(429)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -35,17 +36,21 @@ const (
 	FieldIdentityAuthenticators = "authenticators"
 	FieldIdentityServiceConfigs = "serviceConfigs"
 
-	FieldIdentityEnvInfoArch      = "envInfoArch"
-	FieldIdentityEnvInfoOs        = "envInfoOs"
-	FieldIdentityEnvInfoOsRelease = "envInfoRelease"
-	FieldIdentityEnvInfoOsVersion = "envInfoVersion"
-	FieldIdentitySdkInfoBranch    = "sdkInfoBranch"
-	FieldIdentitySdkInfoRevision  = "sdkInfoRevision"
-	FieldIdentitySdkInfoType      = "sdkInfoType"
-	FieldIdentitySdkInfoVersion   = "sdkInfoVersion"
+	FieldIdentityEnvInfoArch       = "envInfoArch"
+	FieldIdentityEnvInfoOs         = "envInfoOs"
+	FieldIdentityEnvInfoOsRelease  = "envInfoRelease"
+	FieldIdentityEnvInfoOsVersion  = "envInfoVersion"
+	FieldIdentitySdkInfoBranch     = "sdkInfoBranch"
+	FieldIdentitySdkInfoRevision   = "sdkInfoRevision"
+	FieldIdentitySdkInfoType       = "sdkInfoType"
+	FieldIdentitySdkInfoVersion    = "sdkInfoVersion"
+	FieldIdentitySdkInfoAppId      = "sdkInfoAppId"
+	FieldIdentitySdkInfoAppVersion = "sdkInfoAppVersion"
 
-	FieldIdentityBindServices = "bindServices"
-	FieldIdentityDialServices = "dialServices"
+	FieldIdentityBindServices             = "bindServices"
+	FieldIdentityDialServices             = "dialServices"
+	FieldIdentityDefaultHostingPrecedence = "hostingPrecedence"
+	FieldIdentityDefaultHostingCost       = "hostingCost"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -65,23 +70,27 @@ type EnvInfo struct {
 }
 
 type SdkInfo struct {
-	Branch   string
-	Revision string
-	Type     string
-	Version  string
+	Branch     string
+	Revision   string
+	Type       string
+	Version    string
+	AppId      string
+	AppVersion string
 }
 
 type Identity struct {
 	boltz.BaseExtEntity
-	Name           string
-	IdentityTypeId string
-	IsDefaultAdmin bool
-	IsAdmin        bool
-	Enrollments    []string
-	Authenticators []string
-	RoleAttributes []string
-	SdkInfo        *SdkInfo
-	EnvInfo        *EnvInfo
+	Name                     string
+	IdentityTypeId           string
+	IsDefaultAdmin           bool
+	IsAdmin                  bool
+	Enrollments              []string
+	Authenticators           []string
+	RoleAttributes           []string
+	SdkInfo                  *SdkInfo
+	EnvInfo                  *EnvInfo
+	DefaultHostingPrecedence ziti.Precedence
+	DefaultHostingCost       uint16
 }
 
 type ServiceConfig struct {
@@ -91,7 +100,7 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-func (entity *Identity) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
@@ -100,12 +109,16 @@ func (entity *Identity) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBuc
 	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
 	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
+	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
 
 	entity.SdkInfo = &SdkInfo{
 		Branch:   bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
 		Revision: bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
 		Type:     bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
 		Version:  bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
+		AppId:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
+		AppVersion:  bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
 	}
 
 	entity.EnvInfo = &EnvInfo{
@@ -127,6 +140,8 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	ctx.SetString(FieldIdentityType, entity.IdentityTypeId)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
+	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
 
 	if entity.EnvInfo != nil {
 		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)
@@ -140,12 +155,13 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 		ctx.SetString(FieldIdentitySdkInfoRevision, entity.SdkInfo.Revision)
 		ctx.SetString(FieldIdentitySdkInfoType, entity.SdkInfo.Type)
 		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
-
+		ctx.SetString(FieldIdentitySdkInfoAppId, entity.SdkInfo.AppId)
+		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
 	}
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.Bucket.Tx(), []byte(entity.Id), nil, nil, ctx.Bucket)
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
 }
 
@@ -241,9 +257,9 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
 }
 
-func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
+func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
 		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
@@ -253,7 +269,7 @@ func (store *identityStoreImpl) rolesChanged(tx *bbolt.Tx, rowId []byte, _ []bol
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	ctx = &roleAttributeChangeContext{
-		tx:                    tx,
+		tx:                    mutateCtx.Tx(),
 		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
 		linkCollection:        store.stores.servicePolicy.identityCollection,
 		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
@@ -356,13 +372,28 @@ func (store *identityStoreImpl) AssignServiceConfigs(tx *bbolt.Tx, identityId st
 			return err
 		}
 	}
+
+	var serviceEvents []*ServiceEvent
+
+	for _, serviceConfig := range serviceConfigs {
+		serviceEvents = append(serviceEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: identityId,
+			ServiceId:  serviceConfig.ServiceId,
+		})
+	}
+
+	tx.OnCommit(func() {
+		ServiceEvents.dispatchEventsAsync(serviceEvents)
+	})
+
 	return nil
 }
 
 func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error {
 	// could make this more efficient with maps, but only necessary if we have large number of overrides, which seems unlikely
 	// optimize later, if necessary
-	return store.removeServiceConfigs(tx, identityId, func(serviceId, _, configId string) bool {
+	result := store.removeServiceConfigs(tx, identityId, func(serviceId, _, configId string) bool {
 		if len(serviceConfigs) == 0 {
 			return true
 		}
@@ -373,6 +404,22 @@ func (store *identityStoreImpl) RemoveServiceConfigs(tx *bbolt.Tx, identityId st
 		}
 		return false
 	})
+
+	var serviceEvents []*ServiceEvent
+
+	for _, serviceConfig := range serviceConfigs {
+		serviceEvents = append(serviceEvents, &ServiceEvent{
+			Type:       ServiceUpdated,
+			IdentityId: identityId,
+			ServiceId:  serviceConfig.ServiceId,
+		})
+	}
+
+	tx.OnCommit(func() {
+		ServiceEvents.dispatchEventsAsync(serviceEvents)
+	})
+
+	return result
 }
 
 func (store *identityStoreImpl) removeServiceConfigs(tx *bbolt.Tx, identityId string, removeFilter func(serviceId, configTypeId, configId string) bool) error {

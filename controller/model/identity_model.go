@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -34,33 +35,39 @@ type EnvInfo struct {
 }
 
 type SdkInfo struct {
-	Branch   string
-	Revision string
-	Type     string
-	Version  string
+	AppId      string
+	AppVersion string
+	Branch     string
+	Revision   string
+	Type       string
+	Version    string
 }
 
 type Identity struct {
 	models.BaseEntity
-	Name            string
-	IdentityTypeId  string
-	IsDefaultAdmin  bool
-	IsAdmin         bool
-	RoleAttributes  []string
-	EnvInfo         *EnvInfo
-	SdkInfo         *SdkInfo
-	HasHeartbeat    bool
-	ApiSessionCount int64
+	Name                     string
+	IdentityTypeId           string
+	IsDefaultAdmin           bool
+	IsAdmin                  bool
+	RoleAttributes           []string
+	EnvInfo                  *EnvInfo
+	SdkInfo                  *SdkInfo
+	HasHeartbeat             bool
+	ApiSessionCount          int64
+	DefaultHostingPrecedence ziti.Precedence
+	DefaultHostingCost       uint16
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
-		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:           entity.Name,
-		IdentityTypeId: entity.IdentityTypeId,
-		IsDefaultAdmin: entity.IsDefaultAdmin,
-		IsAdmin:        entity.IsAdmin,
-		RoleAttributes: entity.RoleAttributes,
+		BaseExtEntity:            *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:                     entity.Name,
+		IdentityTypeId:           entity.IdentityTypeId,
+		IsDefaultAdmin:           entity.IsDefaultAdmin,
+		IsAdmin:                  entity.IsAdmin,
+		RoleAttributes:           entity.RoleAttributes,
+		DefaultHostingPrecedence: entity.DefaultHostingPrecedence,
+		DefaultHostingCost:       entity.DefaultHostingCost,
 	}
 
 	if entity.EnvInfo != nil {
@@ -74,10 +81,12 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 
 	if entity.SdkInfo != nil {
 		boltEntity.SdkInfo = &persistence.SdkInfo{
-			Branch:   entity.SdkInfo.Branch,
-			Revision: entity.SdkInfo.Revision,
-			Type:     entity.SdkInfo.Type,
-			Version:  entity.SdkInfo.Version,
+			Branch:     entity.SdkInfo.Branch,
+			Revision:   entity.SdkInfo.Revision,
+			Type:       entity.SdkInfo.Type,
+			Version:    entity.SdkInfo.Version,
+			AppId:      entity.SdkInfo.AppId,
+			AppVersion: entity.SdkInfo.AppVersion,
 		}
 	}
 	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
@@ -97,10 +106,12 @@ func fillModelInfo(identity *Identity, envInfo *persistence.EnvInfo, sdkInfo *pe
 
 	if sdkInfo != nil {
 		identity.SdkInfo = &SdkInfo{
-			Branch:   sdkInfo.Branch,
-			Revision: sdkInfo.Revision,
-			Type:     sdkInfo.Type,
-			Version:  sdkInfo.Version,
+			AppId:      sdkInfo.AppId,
+			AppVersion: sdkInfo.AppVersion,
+			Branch:     sdkInfo.Branch,
+			Revision:   sdkInfo.Revision,
+			Type:       sdkInfo.Type,
+			Version:    sdkInfo.Version,
 		}
 	}
 }
@@ -117,20 +128,24 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 
 	if sdkInfo != nil {
 		identity.SdkInfo = &persistence.SdkInfo{
-			Branch:   sdkInfo.Branch,
-			Revision: sdkInfo.Revision,
-			Type:     sdkInfo.Type,
-			Version:  sdkInfo.Version,
+			Branch:     sdkInfo.Branch,
+			Revision:   sdkInfo.Revision,
+			Type:       sdkInfo.Type,
+			Version:    sdkInfo.Version,
+			AppId:      sdkInfo.AppId,
+			AppVersion: sdkInfo.AppVersion,
 		}
 	}
 }
 
 func (entity *Identity) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
-		Name:           entity.Name,
-		IdentityTypeId: entity.IdentityTypeId,
-		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
-		RoleAttributes: entity.RoleAttributes,
+		Name:                     entity.Name,
+		IdentityTypeId:           entity.IdentityTypeId,
+		BaseExtEntity:            *boltz.NewExtEntity(entity.Id, entity.Tags),
+		RoleAttributes:           entity.RoleAttributes,
+		DefaultHostingPrecedence: entity.DefaultHostingPrecedence,
+		DefaultHostingCost:       entity.DefaultHostingCost,
 	}
 
 	fillPersistenceInfo(boltEntity, entity.EnvInfo, entity.SdkInfo)
@@ -154,6 +169,8 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
 	entity.HasHeartbeat = handler.GetEnv().GetHandlers().Identity.IsActive(entity.Id)
+	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
+	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 

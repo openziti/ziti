@@ -42,34 +42,40 @@ type RemoveListener func()
 type DisconnectCB func(token string)
 
 type StateManager interface {
+	//"Network" Sessions
+	GetSession(token string) *edge_ctrl_pb.Session
+	GetSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.Session
 	AddSession(ns *edge_ctrl_pb.Session)
 	UpdateSession(ns *edge_ctrl_pb.Session)
 	RemoveSession(token string)
 	RemoveMissingSessions(knownSessions []*edge_ctrl_pb.Session)
+	AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+
+	//ApiSessions
+	GetApiSession(token string) *edge_ctrl_pb.ApiSession
+	GetApiSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession
 	AddApiSession(ns *edge_ctrl_pb.ApiSession)
 	UpdateApiSession(ns *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
 	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession)
-	GetNetworkSession(token string) *edge_ctrl_pb.Session
-	GetNetworkSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.Session
-	GetSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession
-	GetSession(token string) *edge_ctrl_pb.ApiSession
-	AddNetworkSessionRemovedListener(token string, callBack func(token string)) RemoveListener
-	AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+	AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel)
+	RemoveConnectedApiSession(token string, underlay channel2.Channel)
+	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+
 	StartHeartbeat(channel channel2.Channel, seconds int)
-	AddConnectedSession(token string, removeCB func(), ch channel2.Channel)
-	RemoveConnectedSession(token string, underlay channel2.Channel)
 }
 
 type StateManagerImpl struct {
-	networkSessionsByToken *sync.Map
-	sessionsByToken        *sync.Map
-	supportedFabrics       *sync.Map
-	activeSessions         *sync.Map
-	Hostname               string
-	ControllerAddr         string
-	ClusterId              string
-	NodeId                 string
+	sessionsByToken    *sync.Map //"network" sessions
+	apiSessionsByToken *sync.Map
+
+	supportedFabrics  *sync.Map
+	activeApiSessions *sync.Map
+
+	Hostname       string
+	ControllerAddr string
+	ClusterId      string
+	NodeId         string
 	events.EventEmmiter
 	heartbeatRunner    runner.Runner
 	heartbeatOperation *heartbeatOperation
@@ -83,11 +89,11 @@ func GetStateManager() StateManager {
 	}
 
 	singleStateManager = &StateManagerImpl{
-		EventEmmiter:           events.New(),
-		networkSessionsByToken: &sync.Map{},
-		sessionsByToken:        &sync.Map{},
-		supportedFabrics:       &sync.Map{},
-		activeSessions:         &sync.Map{},
+		EventEmmiter:       events.New(),
+		sessionsByToken:    &sync.Map{},
+		apiSessionsByToken: &sync.Map{},
+		supportedFabrics:   &sync.Map{},
+		activeApiSessions:  &sync.Map{},
 	}
 
 	return singleStateManager
@@ -95,20 +101,32 @@ func GetStateManager() StateManager {
 
 func (sm *StateManagerImpl) AddApiSession(session *edge_ctrl_pb.ApiSession) {
 	pfxlog.Logger().Debugf("adding session [%s] fingerprints [%s]", session.Token, session.CertFingerprints)
-	sm.sessionsByToken.Store(session.Token, session)
+	sm.apiSessionsByToken.Store(session.Token, session)
 	sm.Emit(EventAddedSession, session)
 }
 
 func (sm *StateManagerImpl) UpdateApiSession(session *edge_ctrl_pb.ApiSession) {
 	pfxlog.Logger().Debugf("updating session [%s] fingerprints [%s]", session.Token, session.CertFingerprints)
-	sm.sessionsByToken.Store(session.Token, session)
+	sm.apiSessionsByToken.Store(session.Token, session)
+
+	sm.sessionsByToken.Range(func(key, value interface{}) bool {
+		if ns, ok := value.(*edge_ctrl_pb.Session); ok {
+			if ns.ApiSessionId == session.Id { //only update the specific api session's sessions
+				ns.CertFingerprints = session.CertFingerprints //session.CertFingerprints is all currently valid
+			}
+		} else {
+			pfxlog.Logger().Warn("could not convert value from concurrent map sessionsByToken to Session, this should not happen")
+		}
+		return true
+	})
+
 	sm.Emit(EventUpdatedSession, session)
 }
 
 func (sm *StateManagerImpl) RemoveApiSession(token string) {
-	if ns, ok := sm.sessionsByToken.Load(token); ok {
+	if ns, ok := sm.apiSessionsByToken.Load(token); ok {
 		pfxlog.Logger().Debugf("removing session [%s]", token)
-		sm.sessionsByToken.Delete(token)
+		sm.apiSessionsByToken.Delete(token)
 		eventName := sm.getSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
@@ -124,7 +142,7 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_
 	}
 
 	var tokensToRemove []string
-	sm.sessionsByToken.Range(func(key, _ interface{}) bool {
+	sm.apiSessionsByToken.Range(func(key, _ interface{}) bool {
 		token, _ := key.(string)
 		if _, ok := validTokens[token]; !ok {
 			tokensToRemove = append(tokensToRemove, token)
@@ -145,7 +163,7 @@ func (sm *StateManagerImpl) AddSession(ns *edge_ctrl_pb.Session) {
 	}
 
 	pfxlog.Logger().Debugf("adding network session [%s] fingerprints [%s] TypeId [%v]", ns.Token, ns.CertFingerprints, ns.Type.String())
-	sm.networkSessionsByToken.Store(ns.Token, ns)
+	sm.sessionsByToken.Store(ns.Token, ns)
 	sm.Emit(EventAddedNetworkSession, ns)
 }
 
@@ -157,7 +175,7 @@ func (sm *StateManagerImpl) UpdateSession(ns *edge_ctrl_pb.Session) {
 	}
 
 	pfxlog.Logger().Debugf("updating network session [%s] fingerprints [%s]", ns.Token, ns.CertFingerprints)
-	sm.networkSessionsByToken.Store(ns.Token, ns)
+	sm.sessionsByToken.Store(ns.Token, ns)
 	sm.Emit(EventUpdatedNetworkSession, ns)
 }
 
@@ -168,7 +186,7 @@ func (sm *StateManagerImpl) RemoveMissingSessions(knownSessions []*edge_ctrl_pb.
 	}
 
 	var tokensToRemove []string
-	sm.networkSessionsByToken.Range(func(key, _ interface{}) bool {
+	sm.sessionsByToken.Range(func(key, _ interface{}) bool {
 		token, _ := key.(string)
 		if _, ok := validTokens[token]; !ok {
 			tokensToRemove = append(tokensToRemove, token)
@@ -182,9 +200,9 @@ func (sm *StateManagerImpl) RemoveMissingSessions(knownSessions []*edge_ctrl_pb.
 }
 
 func (sm *StateManagerImpl) RemoveSession(token string) {
-	if ns, ok := sm.networkSessionsByToken.Load(token); ok {
+	if ns, ok := sm.sessionsByToken.Load(token); ok {
 		pfxlog.Logger().Debugf("removing network session [%s]", token)
-		sm.networkSessionsByToken.Delete(token)
+		sm.sessionsByToken.Delete(token)
 		sm.Emit(EventRemovedNetworkSession, ns)
 		eventName := sm.getNetworkSessionRemovedEventName(token)
 		sm.Emit(eventName)
@@ -194,8 +212,8 @@ func (sm *StateManagerImpl) RemoveSession(token string) {
 	}
 }
 
-func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.ApiSession {
-	if val, ok := sm.sessionsByToken.Load(token); ok {
+func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession {
+	if val, ok := sm.apiSessionsByToken.Load(token); ok {
 		if session, ok := val.(*edge_ctrl_pb.ApiSession); ok {
 			return session
 		}
@@ -203,11 +221,11 @@ func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.ApiSession {
 	return nil
 }
 
-func (sm *StateManagerImpl) GetSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession {
+func (sm *StateManagerImpl) GetApiSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession {
 	ch := make(chan *edge_ctrl_pb.ApiSession)
 	go func() {
 		found := false
-		sm.sessionsByToken.Range(func(_, value interface{}) bool {
+		sm.apiSessionsByToken.Range(func(_, value interface{}) bool {
 			if session, ok := value.(*edge_ctrl_pb.ApiSession); ok {
 				for _, curPrint := range session.CertFingerprints {
 					if fingerprint == curPrint {
@@ -228,8 +246,8 @@ func (sm *StateManagerImpl) GetSessionByFingerprint(fingerprint string) chan *ed
 	return ch
 }
 
-func (sm *StateManagerImpl) GetNetworkSession(token string) *edge_ctrl_pb.Session {
-	if obj, ok := sm.networkSessionsByToken.Load(token); ok {
+func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.Session {
+	if obj, ok := sm.sessionsByToken.Load(token); ok {
 		if ns, ok := obj.(*edge_ctrl_pb.Session); ok {
 			return ns
 		}
@@ -239,15 +257,15 @@ func (sm *StateManagerImpl) GetNetworkSession(token string) *edge_ctrl_pb.Sessio
 	return nil
 }
 
-func (sm *StateManagerImpl) GetNetworkSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.Session {
+func (sm *StateManagerImpl) GetSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.Session {
 	deadline := time.Now().Add(timeout)
-	session := sm.GetNetworkSession(token)
+	session := sm.GetSession(token)
 
 	if session == nil {
 		//convert this to return a channel instead of sleeping
 		waitTime := time.Millisecond
 		for time.Now().Before(deadline) {
-			session = sm.GetNetworkSession(token)
+			session = sm.GetSession(token)
 			if session != nil {
 				return session
 			}
@@ -260,7 +278,7 @@ func (sm *StateManagerImpl) GetNetworkSessionWithTimeout(token string, timeout t
 	return session
 }
 
-func (sm *StateManagerImpl) AddNetworkSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	eventName := sm.getNetworkSessionRemovedEventName(token)
 	listener := func(args ...interface{}) {
 		callBack(token)
@@ -272,7 +290,7 @@ func (sm *StateManagerImpl) AddNetworkSessionRemovedListener(token string, callB
 	}
 }
 
-func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+func (sm *StateManagerImpl) AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	eventName := sm.getSessionRemovedEventName(token)
 	listener := func(args ...interface{}) {
 		callBack(token)
@@ -317,10 +335,10 @@ func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSecond
 	pfxlog.Logger().Info("heartbeat starting")
 }
 
-func (sm *StateManagerImpl) AddConnectedSession(token string, removeCB func(), ch channel2.Channel) {
+func (sm *StateManagerImpl) AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel) {
 	var sessions map[channel2.Channel]func()
 
-	if val, ok := sm.activeSessions.Load(token); ok {
+	if val, ok := sm.activeApiSessions.Load(token); ok {
 		if sessions, ok = val.(map[channel2.Channel]func()); !ok {
 			pfxlog.Logger().Panic("could not convert to active sessions")
 		}
@@ -329,11 +347,11 @@ func (sm *StateManagerImpl) AddConnectedSession(token string, removeCB func(), c
 	}
 	sessions[ch] = removeCB
 
-	sm.activeSessions.Store(token, sessions)
+	sm.activeApiSessions.Store(token, sessions)
 }
 
-func (sm *StateManagerImpl) RemoveConnectedSession(token string, ch channel2.Channel) {
-	if val, ok := sm.activeSessions.Load(token); ok {
+func (sm *StateManagerImpl) RemoveConnectedApiSession(token string, ch channel2.Channel) {
+	if val, ok := sm.activeApiSessions.Load(token); ok {
 		sessions, ok := val.(map[channel2.Channel]func())
 
 		if !ok {
@@ -346,7 +364,7 @@ func (sm *StateManagerImpl) RemoveConnectedSession(token string, ch channel2.Cha
 		}
 
 		if len(sessions) == 0 {
-			sm.activeSessions.Delete(token)
+			sm.activeApiSessions.Delete(token)
 		}
 	}
 }
@@ -354,7 +372,7 @@ func (sm *StateManagerImpl) RemoveConnectedSession(token string, ch channel2.Cha
 func (sm *StateManagerImpl) ActiveSessionTokens() []string {
 	var tokens []string
 
-	sm.activeSessions.Range(func(key, _ interface{}) bool {
+	sm.activeApiSessions.Range(func(key, _ interface{}) bool {
 		if token, ok := key.(string); ok {
 			tokens = append(tokens, token)
 		} else {

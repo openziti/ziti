@@ -36,6 +36,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"time"
 )
 
 type authenticator interface {
@@ -146,12 +147,14 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 }
 
 type session struct {
-	authenticator authenticator
-	id            string
-	token         string
-	identityId    string
-	configTypes   []string
-	testContext   *TestContext
+	authenticator     authenticator
+	id                string
+	token             string
+	identityId        string
+	createdAt         time.Time
+	lastServiceUpdate time.Time
+	configTypes       []string
+	testContext       *TestContext
 	authenticatedRequests
 }
 
@@ -194,6 +197,13 @@ func (sess *session) parseSessionInfoFromResponse(ctx *TestContext, response *re
 		sess.identityId = identityId
 	} else {
 		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find identity id", sess.authenticator)
+	}
+
+	if createdAt, ok := bodyContainer.Path("data.createdAt").Data().(string); ok {
+		t, err := time.Parse(time.RFC3339, createdAt)
+		ctx.Req.NoError(err)
+		sess.createdAt = t
+		sess.lastServiceUpdate = t
 	}
 
 	sess.configTypes = ctx.toStringSlice(bodyContainer.Path("data.configTypes"))
@@ -305,29 +315,25 @@ func (request *authenticatedRequests) createNewSession(serviceId string) (*resty
 		Post("/sessions")
 }
 
-func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) (string, *updbAuthenticator) {
+func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) (*identity, *updbAuthenticator) {
 	userAuth := &updbAuthenticator{
 		Username: name,
 		Password: password,
 	}
 
-	entityData := gabs.New()
-	request.testContext.setJsonValue(entityData, name, "name")
-	request.testContext.setJsonValue(entityData, "User", "type")
-	request.testContext.setJsonValue(entityData, isAdmin, "isAdmin")
-	request.testContext.setJsonValue(entityData, rolesAttributes, "roleAttributes")
-
-	enrollments := map[string]interface{}{
-		"updb": name,
+	identity := &identity{
+		name:         name,
+		identityType: "User",
+		isAdmin:      isAdmin,
+		enrollment: map[string]interface{}{
+			"updb": name,
+		},
+		roleAttributes: rolesAttributes,
 	}
-	request.testContext.setJsonValue(entityData, enrollments, "enrollment")
 
-	entityJson := entityData.String()
-	resp := request.createEntityOfType("identities", entityJson)
-	request.testContext.Req.Equal(http.StatusCreated, resp.StatusCode())
-	id := request.testContext.getEntityId(resp.Body())
-	request.testContext.completeUpdbEnrollment(id, password)
-	return id, userAuth
+	request.requireCreateEntity(identity)
+	request.testContext.completeUpdbEnrollment(identity.Id, password)
+	return identity, userAuth
 }
 
 func (request *authenticatedRequests) requireCreateIdentityOttEnrollment(name string, isAdmin bool, rolesAttributes ...string) (string, *certAuthenticator) {
@@ -738,6 +744,34 @@ func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttri
 	session, _ := userAuth.Authenticate(request.testContext)
 
 	return session
+}
+
+func (request *authenticatedRequests) refreshServiceUpdateTime() {
+	lastUpdated := request.getServiceUpdateTime()
+	request.session.lastServiceUpdate = lastUpdated
+}
+
+func (request *authenticatedRequests) requireServiceUpdateTimeUnchanged() {
+	time.Sleep(5 * time.Millisecond)
+	lastUpdated := request.getServiceUpdateTime()
+	request.testContext.Req.True(request.session.lastServiceUpdate.Equal(lastUpdated),
+		"should be the same %v %v", request.session.lastServiceUpdate, lastUpdated)
+}
+
+func (request *authenticatedRequests) requireServiceUpdateTimeAdvanced() {
+	time.Sleep(5 * time.Millisecond)
+	lastUpdated := request.getServiceUpdateTime()
+	request.testContext.Req.True(request.session.lastServiceUpdate.Before(lastUpdated))
+	request.session.lastServiceUpdate = lastUpdated
+	time.Sleep(5 * time.Millisecond)
+}
+
+func (request *authenticatedRequests) getServiceUpdateTime() time.Time {
+	json := request.requireQuery("current-api-session/service-updates")
+	lastChanged := request.testContext.requireString(json, "data", "lastChangeAt")
+	t, err := time.Parse(time.RFC3339, lastChanged)
+	request.testContext.Req.NoError(err)
+	return t
 }
 
 func (request *authenticatedRequests) validateEntityWithQuery(entity entity) *gabs.Container {

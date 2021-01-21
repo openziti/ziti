@@ -523,12 +523,14 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 }
 
 func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {
-	now := time.Now()
+	// we lose a little time resolution, so if it's in the same millisecond, it's ok
+	start = start.Add(-time.Millisecond)
+	now := time.Now().Add(time.Millisecond)
 	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
 	ctx.Req.Equal(createdAt, updatedAt)
 
-	ctx.Req.True(start.Before(createdAt) || start.Equal(createdAt))
-	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt))
+	ctx.Req.True(start.Before(createdAt) || start.Equal(createdAt), "%v should be before or equal to %v", start, createdAt)
+	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt), "%v should be after or equal to %v", now, createdAt)
 
 	return createdAt
 }

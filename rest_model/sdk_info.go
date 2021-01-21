@@ -39,6 +39,12 @@ import (
 // swagger:model sdkInfo
 type SdkInfo struct {
 
+	// app Id
+	AppID string `json:"appId,omitempty"`
+
+	// app version
+	AppVersion string `json:"appVersion,omitempty"`
+
 	// branch
 	Branch string `json:"branch,omitempty"`
 

@@ -43,7 +43,7 @@ type DataIntegrityCheckResultEnvelope struct {
 
 	// data
 	// Required: true
-	Data DataIntegrityCheckDetailList `json:"data"`
+	Data *DataIntegrityCheckDetails `json:"data"`
 
 	// meta
 	// Required: true
@@ -74,11 +74,13 @@ func (m *DataIntegrityCheckResultEnvelope) validateData(formats strfmt.Registry)
 		return err
 	}
 
-	if err := m.Data.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("data")
+	if m.Data != nil {
+		if err := m.Data.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("data")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

@@ -41,6 +41,12 @@ import (
 // swagger:model identityUpdate
 type IdentityUpdate struct {
 
+	// default hosting cost
+	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+
+	// default hosting precedence
+	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
 	// is admin
 	// Required: true
 	IsAdmin *bool `json:"isAdmin"`
@@ -63,6 +69,14 @@ type IdentityUpdate struct {
 // Validate validates this identity update
 func (m *IdentityUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	if err := m.validateDefaultHostingCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDefaultHostingPrecedence(formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.validateIsAdmin(formats); err != nil {
 		res = append(res, err)
@@ -87,6 +101,40 @@ func (m *IdentityUpdate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *IdentityUpdate) validateDefaultHostingCost(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingCost) { // not required
+		return nil
+	}
+
+	if m.DefaultHostingCost != nil {
+		if err := m.DefaultHostingCost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("defaultHostingCost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityUpdate) validateDefaultHostingPrecedence(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DefaultHostingPrecedence) { // not required
+		return nil
+	}
+
+	if err := m.DefaultHostingPrecedence.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingPrecedence")
+		}
+		return err
+	}
+
 	return nil
 }
 

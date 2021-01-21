@@ -23,6 +23,7 @@ import (
 
 const (
 	EntityTypeApiSessions               = "apiSessions"
+	EntityTypeApiSessionCertificates    = "apiSessionCertificates"
 	EntityTypeCas                       = "cas"
 	EntityTypeConfigs                   = "configs"
 	EntityTypeConfigTypes               = "configTypes"

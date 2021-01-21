@@ -12,8 +12,8 @@ Two options, run the command manually or use `go generate`
 
 ## Go Generate
 
-1. Navigate to the root project
-2. run `go generate edge/pb/edge_ctrl_pb/...`
+1. Navigate to the root project directory `edge`
+2. run `go generate ./pb/edge_ctrl_pb/...` or  `go generate .\pb\edge_ctrl_pb\...`
 
 Note: Running a naked `go generate` will trigger all `go:generate` tags in the project, which you most likely do not want
 
