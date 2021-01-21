@@ -29,6 +29,8 @@
 * A new metric has been added for timing service list requests `services.list`
 * A bug was fixed in the tunneler which may have lead to leaked connections
 * Ziti Edge API configurable HTTP Timeouts
+* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+  human readable
 
 ## Improved Service Polling
 
@@ -40,12 +42,12 @@ need to be refreshed. This will save network and cpu utilization on the client a
 ## Ziti Edge API configurable HTTP Timeouts
 
 The controller configuration file now supports a `httpTimeouts` section under
-`edge.api`. The section and all of its fields are optional and default to the
-values of previous versions.
+`edge.api`. The section and all of its fields are optional and default to the values of previous
+versions.
 
-For production environments these values should be tuned for the networks
-intended userbase. The quality and latency of the underlay between the
-networks endpoints/routers and controller should be taken into account.
+For production environments these values should be tuned for the networks intended userbase. The
+quality and latency of the underlay between the networks endpoints/routers and controller should be
+taken into account.
 
 ```
 edge:
@@ -64,7 +66,6 @@ edge:
       # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
       idleTimeoutMs: 5000
 ```
-
 
 # Release 0.18.2
 
