@@ -31,6 +31,15 @@
 * Ziti Edge API configurable HTTP Timeouts
 * Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
   human readable
+* [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
+  controller to configure how long route and dial should wait before timeout
+    * terminationTimeoutSeconds - how long the router has to dial the service
+    * routeTimeoutSeconds - how long a router has to respond to a route create/update message
+* [fabric#158](https://github.com/openziti/fabric/issues/158) Add a session creation timeout to the
+  router. This controls how long the router will wait for fabric sessions to be created. This
+  includes creating the router and dialing the end service, so the timeout should be at least as
+  long as the controller `terminationTimeoutSeconds`and `routeTimeoutSeconds` added together
+    * `getSessionTimeout` is specified in the router config under `listeners: options:`
 
 ## Improved Service Polling
 
