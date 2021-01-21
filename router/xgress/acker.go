@@ -5,7 +5,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/metrics"
 	"sync/atomic"
-	"time"
 )
 
 var acker *Acker
@@ -89,12 +88,10 @@ func (acker *Acker) ackSender() {
 	for {
 		select {
 		case nextAck := <-acker.ackSend:
-			now := time.Now()
 			if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
 				logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
 				ackFailures.Mark(1)
 			} else {
-				ackWriteTimer.UpdateSince(now)
 				ackTxMeter.Mark(1)
 			}
 		case <-acker.closeNotify:
