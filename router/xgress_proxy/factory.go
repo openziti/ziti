@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 )
 
 func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Configuration) xgress.Factory {
@@ -28,7 +29,10 @@ func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Co
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
-	options := xgress.LoadOptions(optionsData)
+	options, err := xgress.LoadOptions(optionsData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading options")
+	}
 	service := ""
 	if value, found := optionsData["service"]; found {
 		service = value.(string)

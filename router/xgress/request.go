@@ -136,7 +136,7 @@ type SessionInfo struct {
 
 var authError = errors.New("unexpected failure while authenticating")
 
-func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData map[uint32][]byte) (*SessionInfo, error) {
+func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout time.Duration, peerData map[uint32][]byte) (*SessionInfo, error) {
 	log := pfxlog.Logger()
 	sessionRequest := &ctrl_pb.SessionRequest{
 		IngressId: ingressId,
@@ -150,7 +150,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData m
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_SessionRequestType), bytes)
-	reply, err := ctrl.Channel().SendAndWaitWithTimeout(msg, time.Second*5)
+	reply, err := ctrl.Channel().SendAndWaitWithTimeout(msg, timeout)
 	if err != nil {
 		log.Errorf("failed to send SessionRequest message: (%v)", err)
 		return nil, authError
@@ -187,7 +187,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData m
 }
 
 func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
-	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId, nil)
+	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId, options.GetSessionTimeout, nil)
 	if err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}
