@@ -1,6 +1,49 @@
+# Release 0.17.8
+
+* Ziti Edge API configurable HTTP Timeouts
+* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+  human readable
+* [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
+  controller to configure how long route and dial should wait before timeout
+    * terminationTimeoutSeconds - how long the router has to dial the service
+    * routeTimeoutSeconds - how long a router has to respond to a route create/update message
+* [fabric#158](https://github.com/openziti/fabric/issues/158) Add a session creation timeout to the
+  router. This controls how long the router will wait for fabric sessions to be created. This
+  includes creating the router and dialing the end service, so the timeout should be at least as
+  long as the controller `terminationTimeoutSeconds`and `routeTimeoutSeconds` added together
+    * `getSessionTimeout` is specified in the router config under `listeners: options:`
+
+## Ziti Edge API configurable HTTP Timeouts
+
+The controller configuration file now supports a `httpTimeouts` section under
+`edge.api`. The section and all of its fields are optional and default to the values of previous
+versions.
+
+For production environments these values should be tuned for the networks intended userbase. The
+quality and latency of the underlay between the networks endpoints/routers and controller should be
+taken into account.
+
+```
+edge:
+  ...
+  api:
+    ...
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
+```
+
 # Release 0.17.7
 
-This release has no fucntional changes only build process changes.
+This release has no functional changes only build process changes.
 
 # Release 0.17.6
 
