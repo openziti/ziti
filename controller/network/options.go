@@ -19,6 +19,7 @@ package network
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"time"
 )
 
 type Options struct {
@@ -27,11 +28,15 @@ type Options struct {
 		RerouteFraction float32
 		RerouteCap      uint32
 	}
+	TerminationTimeout time.Duration
+	RouteTimeout       time.Duration
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds: 15,
+		CycleSeconds:       15,
+		TerminationTimeout: 10 * time.Second,
+		RouteTimeout:       10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
 	options.Smart.RerouteCap = 4
@@ -46,6 +51,22 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.CycleSeconds = uint32(cycleSeconds)
 		} else {
 			return nil, errors.New("invalid value for 'cycleSeconds'")
+		}
+	}
+
+	if value, found := src["terminationTimeoutSeconds"]; found {
+		if terminationTimeoutSeconds, ok := value.(int); ok {
+			options.TerminationTimeout = time.Duration(terminationTimeoutSeconds) * time.Second
+		} else {
+			return nil, errors.New("invalid value for 'terminationTimeoutSeconds'")
+		}
+	}
+
+	if value, found := src["routeTimeoutSeconds"]; found {
+		if routeTimeoutSeconds, ok := value.(int); ok {
+			options.RouteTimeout = time.Duration(routeTimeoutSeconds) * time.Second
+		} else {
+			return nil, errors.New("invalid value for 'routeTimeoutSeconds'")
 		}
 	}
 

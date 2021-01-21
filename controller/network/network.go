@@ -324,7 +324,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 		// 5: Route Egress
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
-		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
+		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)
 		if err != nil {
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 			retryCount++
@@ -339,7 +339,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 		// 6: Create Intermediate Routes
 		for i := 0; i < len(circuit.Path)-1; i++ {
-			_, err = sendRoute(circuit.Path[i], rms[i])
+			_, err = sendRoute(circuit.Path[i], rms[i], network.options.RouteTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -655,7 +655,7 @@ func (network *Network) rerouteSession(s *session) error {
 		}
 
 		for i := 0; i < len(cq.Path); i++ {
-			if _, err := sendRoute(cq.Path[i], rms[i]); err != nil {
+			if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
 				log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 			}
 		}
@@ -682,7 +682,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 	}
 
 	for i := 0; i < len(cq.Path); i++ {
-		if _, err := sendRoute(cq.Path[i], rms[i]); err != nil {
+		if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
 			log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 		}
 	}
@@ -721,7 +721,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 	}
 }
 
-func sendRoute(r *Router, createMsg *ctrl_pb.Route) (xt.PeerData, error) {
+func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.PeerData, error) {
 	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
 
 	body, err := proto.Marshal(createMsg)
@@ -754,8 +754,8 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route) (xt.PeerData, error) {
 		}
 		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
-	case <-time.After(10 * time.Second):
-		pfxlog.Logger().Errorf("timed out waiting for response to route message from [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
+	case <-time.After(timeout):
+		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.SessionId)
 		return nil, errors.New("timeout")
 	}
 }
