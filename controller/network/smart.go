@@ -24,13 +24,17 @@ import (
 
 func (network *Network) smart() {
 	log := pfxlog.Logger()
-	log.Debugf("smart network processing")
+	log.Trace("smart network processing")
 
 	/*
 	 * Order sessions in decreasing overall latency order
 	 */
 	sessions := network.GetAllSessions()
-	log.Debugf("observing [%d] sessions", len(sessions))
+	if len(sessions) > 0 {
+		log.Debugf("observing [%d] sessions", len(sessions))
+	} else {
+		log.Tracef("observing [%d] sessions", len(sessions))
+	}
 
 	sessionLatencies := make(map[*identity.TokenId]int64)
 	var orderedSessions []*identity.TokenId
@@ -59,7 +63,7 @@ func (network *Network) smart() {
 	if ceiling > int(network.options.Smart.RerouteCap) {
 		ceiling = int(network.options.Smart.RerouteCap)
 	}
-	log.Debugf("smart reroute ceiling [%d]", ceiling)
+	log.Tracef("smart reroute ceiling [%d]", ceiling)
 	for _, sId := range orderedSessions {
 		if session, found := network.GetSession(sId); found {
 			if updatedCircuit, err := network.UpdateCircuit(session.Circuit); err == nil {

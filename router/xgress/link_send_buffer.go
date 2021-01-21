@@ -208,7 +208,7 @@ func (buffer *LinkSendBuffer) run() {
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
-			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 {
+			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.closed.Get() {
 				go buffer.x.Close()
 			}
 

@@ -93,22 +93,25 @@ type Connection interface {
 }
 
 type Xgress struct {
-	sessionId      string
-	address        Address
-	peer           Connection
-	originator     Originator
-	Options        *Options
-	txQueue        chan *Payload
-	closeNotify    chan struct{}
-	rxSequence     int32
-	rxSequenceLock sync.Mutex
-	receiveHandler ReceiveHandler
-	payloadBuffer  *LinkSendBuffer
-	linkRxBuffer   *LinkReceiveBuffer
-	closed         concurrenz.AtomicBoolean
-	closeHandler   CloseHandler
-	peekHandlers   []PeekHandler
-	rxerStarted    concurrenz.AtomicBoolean
+	sessionId         string
+	address           Address
+	peer              Connection
+	originator        Originator
+	Options           *Options
+	txQueue           chan *Payload
+	closeNotify       chan struct{}
+	rxSequence        int32
+	rxSequenceLock    sync.Mutex
+	receiveHandler    ReceiveHandler
+	payloadBuffer     *LinkSendBuffer
+	linkRxBuffer      *LinkReceiveBuffer
+	closeHandler      CloseHandler
+	peekHandlers      []PeekHandler
+	closed            concurrenz.AtomicBoolean
+	rxerStarted       bool
+	endOfSessionRecvd bool
+	endOfSessionSent  bool
+	flagsMutex        sync.Mutex
 }
 
 func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
@@ -155,6 +158,28 @@ func (self *Xgress) AddPeekHandler(peekHandler PeekHandler) {
 	self.peekHandlers = append(self.peekHandlers, peekHandler)
 }
 
+func (self *Xgress) IsEndOfSessionReceived() bool {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	return self.endOfSessionRecvd
+}
+
+func (self *Xgress) markSessionEndReceived() {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	self.endOfSessionRecvd = true
+}
+
+func (self *Xgress) firstSessionStartReceived() bool {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	if self.rxerStarted {
+		return false
+	}
+	self.rxerStarted = true
+	return true
+}
+
 func (self *Xgress) Start() {
 	log := pfxlog.ContextLogger(self.Label())
 	if !self.IsTerminator() {
@@ -195,18 +220,30 @@ func (self *Xgress) GetEndSession() *Payload {
 	return endSession
 }
 
+func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload)) {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	// if we've received end of session the other side initiated close. If we've already sent it, don't send it again
+	if !self.endOfSessionRecvd && !self.endOfSessionSent {
+		endSession := self.GetEndSession()
+		sendF(endSession)
+		self.endOfSessionSent = true
+	}
+}
+
 func (self *Xgress) CloseTimeout(duration time.Duration) {
 	go self.closeTimeoutHandler(duration)
 }
 
 func (self *Xgress) Close() {
 	log := pfxlog.ContextLogger(self.Label())
-	log.Debug("closing xgress peer")
-	if err := self.peer.Close(); err != nil {
-		log.WithError(err).Warn("error while closing xgress peer")
-	}
 
 	if self.closed.CompareAndSwap(false, true) {
+		log.Debug("closing xgress peer")
+		if err := self.peer.Close(); err != nil {
+			log.WithError(err).Warn("error while closing xgress peer")
+		}
+
 		log.Debug("closing tx queue")
 		close(self.closeNotify)
 
@@ -221,8 +258,6 @@ func (self *Xgress) Close() {
 		} else {
 			pfxlog.ContextLogger(self.Label()).Warn("no close handler")
 		}
-	} else {
-		log.Debug("xgress already closed, skipping close")
 	}
 }
 
@@ -251,7 +286,7 @@ func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error 
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
-	if payload.IsSessionStartFlagSet() && self.rxerStarted.CompareAndSwap(false, true) {
+	if payload.IsSessionStartFlagSet() && self.firstSessionStartReceived() {
 		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received session start, starting xgress receiver")
 		go self.rx()
 	}
@@ -320,7 +355,8 @@ func (self *Xgress) tx() {
 		}
 
 		if payload.IsSessionEndFlagSet() {
-			log.Debug("session end payload recieved, exiting")
+			self.markSessionEndReceived()
+			log.Debug("session end payload received, exiting")
 			return
 		}
 
@@ -331,7 +367,7 @@ func (self *Xgress) tx() {
 			peekHandler.Tx(self, payload)
 		}
 
-		if !payload.IsSessionStartFlagSet() && !payload.IsSessionEndFlagSet() {
+		if !payload.IsSessionStartFlagSet() {
 			start := time.Now()
 			n, err := self.peer.WritePayload(payload.Data, payload.Headers)
 			if err != nil {
@@ -368,7 +404,12 @@ func (self *Xgress) rx() {
 		}
 	}()
 	defer self.CloseTimeout(self.Options.MaxCloseWait)
-	defer func() { self.forwardPayload(self.GetEndSession()) }()
+	defer func() {
+		self.ForwardEndOfSession(func(payload *Payload) {
+			log.Debug("sending end of session payload")
+			self.forwardPayload(payload)
+		})
+	}()
 
 	for {
 		buffer, headers, err := self.peer.ReadPayload()
@@ -449,7 +490,9 @@ func (self *Xgress) nextReceiveSequence() int32 {
 func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
 	self.payloadBuffer.CloseWhenEmpty() // If we clear the send buffer, close sooner
 	time.Sleep(duration)
-	self.Close()
+	if !self.closed.Get() {
+		self.Close()
+	}
 }
 
 func (self *Xgress) PayloadReceived(payload *Payload) {
