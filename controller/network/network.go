@@ -755,7 +755,7 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
 	case <-time.After(timeout):
-		pfxlog.Logger().Errorf("timed out waiting for response to route message from [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
+		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.SessionId)
 		return nil, errors.New("timeout")
 	}
 }
