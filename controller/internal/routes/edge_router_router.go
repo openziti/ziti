@@ -137,11 +137,11 @@ func (r *EdgeRouterRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.R
 }
 
 func (r *EdgeRouterRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(edgeRouters) = "%v")`
+	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(routers) = "%v")`
 	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.Identity, MapIdentityToRestEntity)
 }
 
 func (r *EdgeRouterRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
-	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(edgeRouters) = "%v")`
+	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(routers) = "%v")`
 	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeService, MapServiceToRestEntity)
 }
