@@ -52,6 +52,9 @@ type APIError struct {
 	// code
 	Code string `json:"code,omitempty"`
 
+	// data
+	Data interface{} `json:"data,omitempty"`
+
 	// message
 	Message string `json:"message,omitempty"`
 

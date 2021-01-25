@@ -42,6 +42,7 @@ func (p *PostureCheckOperatingSystem) Evaluate(_ string, pd *PostureData) bool {
 	if validOsVersions, isValidOs := validOses[osType]; isValidOs {
 		if len(validOsVersions) == 0 {
 			return true
+
 		}
 
 		dataVersion, err := semver.Make(pd.Os.Version)

@@ -6127,6 +6127,10 @@ func init() {
         "code": {
           "type": "string"
         },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "message": {
           "type": "string"
         },
@@ -25654,6 +25658,10 @@ func init() {
         },
         "code": {
           "type": "string"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
         },
         "message": {
           "type": "string"
