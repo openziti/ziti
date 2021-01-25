@@ -28,10 +28,11 @@ import (
 
 type sessionConnectionHandler struct {
 	stateManager fabric.StateManager
+	options      *Options
 }
 
-func newSessionConnectHandler(stateManager fabric.StateManager) *sessionConnectionHandler {
-	return &sessionConnectionHandler{stateManager: stateManager}
+func newSessionConnectHandler(stateManager fabric.StateManager, options *Options) *sessionConnectionHandler {
+	return &sessionConnectionHandler{stateManager: stateManager, options: options}
 }
 
 func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error {
@@ -49,12 +50,12 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 		fpg := cert.NewFingerprintGenerator()
 		fingerprints := fpg.FromCerts(certificates)
 
-		apiSession := handler.stateManager.GetApiSession(token)
+		apiSession := handler.stateManager.GetApiSessionWithTimeout(token, handler.options.lookupApiSessionTimeout)
 
 		if apiSession == nil {
 			_ = ch.Close()
 
-			subjects := []string{}
+			var subjects []string
 
 			for _, cert := range certificates {
 				subjects = append(subjects, cert.Subject.String())

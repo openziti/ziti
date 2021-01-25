@@ -112,7 +112,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, time.Second*5)
+	ns := sm.GetSessionWithTimeout(token, proxy.listener.options.lookupSessionTimeout)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Dial {
 		log.WithField("token", token).Error("session not found")
@@ -211,7 +211,7 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, time.Second*5)
+	ns := sm.GetSessionWithTimeout(token, proxy.listener.options.lookupSessionTimeout)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Bind {
 		log.WithField("token", token).Error("session not found")
