@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 	"strings"
 	"time"
 )
@@ -46,7 +46,7 @@ func (dialer dialer) IsTerminatorValid(id string, destination string) bool {
 
 	token := destParts[1]
 
-	log.Debug("looking up hosted service conn")
+	pfxlog.Logger().Debug("looking up hosted service conn")
 	_, found := dialer.factory.hostedServices.Get(token)
 	return found
 }
@@ -91,6 +91,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	if pk, ok := sessionId.Data[edge.PublicKeyHeader]; ok {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
+
 	appData, hasAppData := sessionId.Data[edge.AppDataHeader]
 	if hasAppData {
 		dialRequest.Headers[edge.AppDataHeader] = appData
@@ -102,7 +103,10 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		log.Debug("router assigned connId for dial")
 		dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
 
-		conn := listenConn.newSink(connId)
+		conn, err := listenConn.newConnection(connId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
+		}
 
 		// On the terminator, which this is, this only starts the txer, which pulls data from the link
 		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
@@ -139,8 +143,8 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		if err != nil {
 			return nil, err
 		}
-		result, err := edge.UnmarshalDialResult(reply)
 
+		result, err := edge.UnmarshalDialResult(reply)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +153,17 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 			return nil, fmt.Errorf("failed to establish connection with token %v. error: (%v)", token, result.Message)
 		}
 
-		conn := listenConn.newSink(result.NewConnId)
+		conn, err := listenConn.newConnection(result.NewConnId)
+		if err != nil {
+			startFail := edge.NewStateConnectedMsg(result.ConnId)
+			startFail.ReplyTo(reply)
+
+			if sendErr := listenConn.SendState(startFail); sendErr != nil {
+				log.Debug("failed to send state disconnected")
+			}
+
+			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
+		}
 
 		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
 		bindHandler.HandleXgressBind(x)

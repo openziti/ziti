@@ -24,16 +24,16 @@ type hostedServiceRegistry struct {
 	services sync.Map
 }
 
-func (registry *hostedServiceRegistry) Put(hostId string, conn *localListener) {
+func (registry *hostedServiceRegistry) Put(hostId string, conn *edgeTerminator) {
 	registry.services.Store(hostId, conn)
 }
 
-func (registry *hostedServiceRegistry) Get(hostId string) (*localListener, bool) {
+func (registry *hostedServiceRegistry) Get(hostId string) (*edgeTerminator, bool) {
 	val, ok := registry.services.Load(hostId)
 	if !ok {
 		return nil, false
 	}
-	ch, ok := val.(*localListener)
+	ch, ok := val.(*edgeTerminator)
 	return ch, ok
 }
 
@@ -41,11 +41,11 @@ func (registry *hostedServiceRegistry) Delete(hostId string) {
 	registry.services.Delete(hostId)
 }
 
-func (registry *hostedServiceRegistry) cleanupServices(proxy *ingressProxy) (listeners []*localListener) {
+func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) (listeners []*edgeTerminator) {
 	registry.services.Range(func(key, value interface{}) bool {
-		listener := value.(*localListener)
-		if listener.parent == proxy {
-			listener.close(true, "underlying channel closing")
+		listener := value.(*edgeTerminator)
+		if listener.edgeClientConn == proxy {
+			listener.close(false, "") // don't notify, channel is already closed, we can't send messages
 			registry.services.Delete(key)
 			listeners = append(listeners, listener)
 		}

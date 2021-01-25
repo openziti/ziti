@@ -41,7 +41,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 	log.WithField("token", ch.Id()).Debug("accepting edge connection")
 
 	fpg := cert.NewFingerprintGenerator()
-	proxy := &ingressProxy{
+	proxy := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
 		listener:     handler.listener,
 		fingerprints: fpg.FromCerts(ch.Certificates()),
