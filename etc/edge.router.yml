@@ -91,6 +91,10 @@ listeners:
       #maxOutstandingConnects: 100
       # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
       #connectTimeoutMs:       3000
+      # how long to wait before timing out when looking up api-sessions after client connect. Default 5 seconds.
+      #lookupApiSessionTimeout: 5s
+      # how long to wait before timing out when looking up sessions after client dial/bind. Default 5 seconds.
+      #lookupSessionTimeout: 5s
   - binding: transport
     address: tls:0.0.0.0:7099
 
