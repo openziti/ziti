@@ -55,6 +55,8 @@ type ClientService interface {
 
 	CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseOK, error)
 
+	CreatePostureResponseBulk(params *CreatePostureResponseBulkParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseBulkOK, error)
+
 	DeletePostureCheck(params *DeletePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*DeletePostureCheckOK, error)
 
 	DetailPostureCheck(params *DetailPostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*DetailPostureCheckOK, error)
@@ -143,6 +145,43 @@ func (a *Client) CreatePostureResponse(params *CreatePostureResponseParams, auth
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createPostureResponse: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  CreatePostureResponseBulk submits multiple posture responses
+
+  Submits posture responses
+*/
+func (a *Client) CreatePostureResponseBulk(params *CreatePostureResponseBulkParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseBulkOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreatePostureResponseBulkParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "createPostureResponseBulk",
+		Method:             "POST",
+		PathPattern:        "/posture-response-bulk",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &CreatePostureResponseBulkReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreatePostureResponseBulkOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createPostureResponseBulk: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

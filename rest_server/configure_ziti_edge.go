@@ -194,6 +194,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation posture_checks.CreatePostureResponse has not yet been implemented")
 		})
 	}
+	if api.PostureChecksCreatePostureResponseBulkHandler == nil {
+		api.PostureChecksCreatePostureResponseBulkHandler = posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureResponseBulk has not yet been implemented")
+		})
+	}
 	if api.ServiceCreateServiceHandler == nil {
 		api.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
