@@ -87,7 +87,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 func NewAccepter(listener *listener, uListener channel2.UnderlayListener, options *channel2.Options) *Accepter {
 	edgeBindHandler := &edgeBindHandler{listener: listener}
-	sessionHandler := newSessionConnectHandler(fabric.GetStateManager())
+	sessionHandler := newSessionConnectHandler(fabric.GetStateManager(), listener.options)
 
 	optionsWithBind := options
 	if optionsWithBind == nil {
@@ -109,7 +109,7 @@ func (accepter *Accepter) Run() {
 	defer log.Warn("exiting")
 
 	for {
-		if _, err := channel2.NewChannel("edge", accepter.uListener, accepter.options); err != nil {
+		if err := channel2.AcceptNextChannel("edge", accepter.uListener, accepter.options, nil); err != nil {
 			log.Errorf("error accepting (%v)", err)
 			if errors.Is(err, channel2.ListenerClosedError) {
 				return
