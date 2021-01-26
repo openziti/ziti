@@ -77,18 +77,22 @@ func NewCmdInstallZitiProxC(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	return cmd
 }
 
-// Run implements the command
-func (o *InstallZitiProxCOptions) Run() error {
+func (o *InstallOptions) installZitiProxC(targetVersion string) error {
 	newVersion, err := o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
 	if err != nil {
 		return err
 	}
 
-	if o.Version != "" {
-		newVersion, err = semver.Make(o.Version)
+	if targetVersion != "" {
+		newVersion, err = semver.Make(targetVersion)
 	}
 
 	log.Infoln("Attempting to install '" + c.ZITI_PROX_C + "' version: " + newVersion.String())
 
 	return o.installGitHubRelease(version.GetBranch(), c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, false, newVersion.String())
+}
+
+// Run implements the command
+func (o *InstallZitiProxCOptions) Run() error {
+	return o.installZitiProxC(o.Version)
 }
