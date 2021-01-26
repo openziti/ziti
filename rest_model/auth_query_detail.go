@@ -58,6 +58,9 @@ type AuthQueryDetail struct {
 	// provider
 	// Required: true
 	Provider MfaProviders `json:"provider"`
+
+	// type Id
+	TypeID string `json:"typeId,omitempty"`
 }
 
 // Validate validates this auth query detail

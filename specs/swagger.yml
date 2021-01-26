@@ -7220,6 +7220,8 @@ definitions:
     required:
       - provider
     properties:
+      typeId:
+        type: string
       provider:
         $ref: '#/definitions/mfaProviders'
       httpMethod:

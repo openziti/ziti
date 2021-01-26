@@ -76,6 +76,7 @@ func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISess
 
 func newAuthCheckZitiMfa() *rest_model.AuthQueryDetail {
 	return &rest_model.AuthQueryDetail{
+		TypeID:     "MFA",
 		Format:     rest_model.MfaFormatsAlphaNumeric,
 		HTTPMethod: http.MethodPost,
 		HTTPURL:    "./authenticate/mfa",

@@ -6261,6 +6261,9 @@ func init() {
         },
         "provider": {
           "$ref": "#/definitions/mfaProviders"
+        },
+        "typeId": {
+          "type": "string"
         }
       }
     },
@@ -25660,6 +25663,9 @@ func init() {
         },
         "provider": {
           "$ref": "#/definitions/mfaProviders"
+        },
+        "typeId": {
+          "type": "string"
         }
       }
     },
