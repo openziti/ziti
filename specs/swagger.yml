@@ -3265,28 +3265,46 @@ paths:
         '429':
           $ref: '#/responses/rateLimitedResponse'
   /database/check-data-integrity:
-    get:
-      summary: Runs an data integrity scan on the datastore and returns any found issues
-      description: Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.
+    post:
+      summary: Starts a data integrity scan on the datastore
+      description: Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
       security:
         - ztSession: [ ]
       tags:
         - Database
       operationId: checkDataIntegrity
       responses:
-        '200':
-          $ref: '#/responses/dataIntegrityCheckResult'
+        '202':
+          $ref: '#/responses/emptyResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
   /database/fix-data-integrity:
     post:
-      summary: Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
-      description: Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.
+      summary: Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues
+      description: Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
       security:
         - ztSession: [ ]
       tags:
         - Database
       operationId: fixDataIntegrity
+      responses:
+        '202':
+          $ref: '#/responses/emptyResponse'
+        '429':
+          $ref: '#/responses/rateLimitedResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  /database/data-integrity-results:
+    get:
+      summary: Returns any results found from in-progress integrity checks
+      description: Returns any results found from in-progress integrity checks. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Database
+      operationId: dataIntegrityResults
       responses:
         '200':
           $ref: '#/responses/dataIntegrityCheckResult'
@@ -3355,6 +3373,32 @@ paths:
       responses:
         '201':
           $ref: '#/responses/createResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/posture-response-bulk':
+    post:
+      summary: Submit multiple posture responses
+      description: Submits posture responses
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: createPostureResponseBulk
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: A Posture Response
+          schema:
+            # using a named array definition causes issues w/ code gen
+            type: array
+            items:
+              $ref: "#/definitions/PostureResponseCreate"
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
         '401':
@@ -4246,7 +4290,7 @@ definitions:
       - os
       - version
       - arch
-      - builDate
+      - buildDate
       - revision
     properties:
       os:
@@ -4255,7 +4299,7 @@ definitions:
         type: string
       arch:
         type: string
-      builDate:
+      buildDate:
         type: string
       revision:
         type: string
@@ -5096,7 +5140,7 @@ definitions:
           - os
           - version
           - arch
-          - builDate
+          - buildDate
           - revision
         properties:
           name:
@@ -6619,6 +6663,33 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
+        $ref: '#/definitions/dataIntegrityCheckDetails'
+  dataIntegrityCheckDetails:
+    type: object
+    required:
+      - inProgress
+      - fixingErrors
+      - tooManyErrors
+      - startTime
+      - endTime
+      - error
+      - results
+    properties:
+      inProgress:
+        type: boolean
+      startTime:
+        type: string
+        format: date-time
+      endTime:
+        type: string
+        format: date-time
+      fixingErrors:
+        type: boolean
+      error:
+        type: string
+      tooManyErrors:
+        type: boolean
+      results:
         $ref: '#/definitions/dataIntegrityCheckDetailList'
   dataIntegrityCheckDetailList:
     type: array

@@ -18,6 +18,7 @@ package xgress_edge
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/edge/router/internal/apiproxy"
 	"github.com/openziti/edge/router/internal/fabric"
@@ -28,6 +29,8 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
+	"strings"
+	"time"
 )
 
 type Factory struct {
@@ -114,6 +117,8 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 		return nil, err
 	}
 
+	pfxlog.Logger().Debugf("xgress edge listener options: %v", options.ToLoggableString())
+
 	versionInfo := factory.versionProvider.AsVersionInfo()
 	versionHeader, err := factory.versionProvider.EncoderDecoder().Encode(versionInfo)
 
@@ -144,11 +149,52 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type Options struct {
 	xgress.Options
-	channelOptions *channel2.Options
+	channelOptions          *channel2.Options
+	lookupApiSessionTimeout time.Duration
+	lookupSessionTimeout    time.Duration
+}
+
+func (options *Options) ToLoggableString() string {
+	buf := strings.Builder{}
+	buf.WriteString(fmt.Sprintf("mtu=%v\n", options.Mtu))
+	buf.WriteString(fmt.Sprintf("randomDrops=%v\n", options.RandomDrops))
+	buf.WriteString(fmt.Sprintf("drop1InN=%v\n", options.Drop1InN))
+	buf.WriteString(fmt.Sprintf("txQueueSize=%v\n", options.TxQueueSize))
+	buf.WriteString(fmt.Sprintf("txPortalStartSize=%v\n", options.TxPortalStartSize))
+	buf.WriteString(fmt.Sprintf("txPortalMaxSize=%v\n", options.TxPortalMaxSize))
+	buf.WriteString(fmt.Sprintf("txPortalMinSize=%v\n", options.TxPortalMinSize))
+	buf.WriteString(fmt.Sprintf("txPortalIncreaseThresh=%v\n", options.TxPortalIncreaseThresh))
+	buf.WriteString(fmt.Sprintf("txPortalIncreaseScale=%v\n", options.TxPortalIncreaseScale))
+	buf.WriteString(fmt.Sprintf("txPortalRetxThresh=%v\n", options.TxPortalRetxThresh))
+	buf.WriteString(fmt.Sprintf("txPortalRetxScale=%v\n", options.TxPortalRetxScale))
+	buf.WriteString(fmt.Sprintf("txPortalDupAckThresh=%v\n", options.TxPortalDupAckThresh))
+	buf.WriteString(fmt.Sprintf("txPortalDupAckScale=%v\n", options.TxPortalDupAckScale))
+	buf.WriteString(fmt.Sprintf("rxBufferSize=%v\n", options.RxBufferSize))
+	buf.WriteString(fmt.Sprintf("retxStartMs=%v\n", options.RetxStartMs))
+	buf.WriteString(fmt.Sprintf("retxScale=%v\n", options.RetxScale))
+	buf.WriteString(fmt.Sprintf("retxAddMs=%v\n", options.RetxAddMs))
+	buf.WriteString(fmt.Sprintf("maxCloseWait=%v\n", options.MaxCloseWait))
+	buf.WriteString(fmt.Sprintf("getSessionTimeout=%v\n", options.GetSessionTimeout))
+
+	buf.WriteString(fmt.Sprintf("lookupApiSessionTimeout=%v\n", options.lookupApiSessionTimeout))
+	buf.WriteString(fmt.Sprintf("lookupSessionTimeout=%v\n", options.lookupSessionTimeout))
+
+	buf.WriteString(fmt.Sprintf("channel.outQueueSize=%v\n", options.channelOptions.OutQueueSize))
+	buf.WriteString(fmt.Sprintf("channel.connectTimeoutMs=%v\n", options.channelOptions.ConnectTimeoutMs))
+	buf.WriteString(fmt.Sprintf("channel.maxOutstandingConnects=%v\n", options.channelOptions.MaxOutstandingConnects))
+	buf.WriteString(fmt.Sprintf("channel.maxQueuedConnects=%v\n", options.channelOptions.MaxQueuedConnects))
+
+	return buf.String()
 }
 
 func (options *Options) load(data xgress.OptionsData) error {
-	options.Options = *xgress.LoadOptions(data)
+	o, err := xgress.LoadOptions(data)
+	if err != nil {
+		return errors.Wrap(err, "error loading options")
+	}
+	options.Options = *o
+	options.lookupSessionTimeout = 5 * time.Second
+	options.lookupApiSessionTimeout = 5 * time.Second
 
 	if value, found := data["options"]; found {
 		data = value.(map[interface{}]interface{})
@@ -156,6 +202,22 @@ func (options *Options) load(data xgress.OptionsData) error {
 		options.channelOptions = channel2.LoadOptions(data)
 		if err := options.channelOptions.Validate(); err != nil {
 			return fmt.Errorf("error loading options for [edge/options]: %v", err)
+		}
+
+		if value, found := data["lookupSessionTimeout"]; found {
+			timeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return errors.Wrap(err, "invalid 'lookupSessionTimeout' value")
+			}
+			options.lookupSessionTimeout = timeout
+		}
+
+		if value, found := data["lookupApiSessionTimeout"]; found {
+			timeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return errors.Wrap(err, "invalid 'lookupApiSessionTimeout' value")
+			}
+			options.lookupApiSessionTimeout = timeout
 		}
 	} else {
 		options.channelOptions = channel2.DefaultOptions()

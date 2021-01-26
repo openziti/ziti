@@ -26,7 +26,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 )
 
 type apiServer struct {
@@ -39,18 +38,20 @@ func newApiServer(c *config.Config, r http.Handler) *apiServer {
 	logWriter := pfxlog.Logger().Writer()
 
 	tlsConfig := c.Api.Identity.ServerTLSConfig()
+
 	tlsConfig.ClientAuth = tls.RequestClientCert
 
 	return &apiServer{
 		logWriter: logWriter,
 		httpServer: &http.Server{
-			Addr:         c.Api.Listener,
-			WriteTimeout: time.Second * 10,
-			ReadTimeout:  time.Second * 5,
-			IdleTimeout:  time.Second * 5,
-			Handler:      r,
-			TLSConfig:    tlsConfig,
-			ErrorLog:     log.New(logWriter, "", 0),
+			Addr:              c.Api.Listener,
+			WriteTimeout:      c.Api.HttpTimeouts.WriteTimeoutDuration,
+			ReadTimeout:       c.Api.HttpTimeouts.ReadTimeoutDuration,
+			ReadHeaderTimeout: c.Api.HttpTimeouts.ReadHeaderTimeoutDuration,
+			IdleTimeout:       c.Api.HttpTimeouts.IdleTimeoutsDuration,
+			Handler:           r,
+			TLSConfig:         tlsConfig,
+			ErrorLog:          log.New(logWriter, "", 0),
 		},
 	}
 }

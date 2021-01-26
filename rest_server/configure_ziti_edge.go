@@ -206,6 +206,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation posture_checks.CreatePostureResponse has not yet been implemented")
 		})
 	}
+	if api.PostureChecksCreatePostureResponseBulkHandler == nil {
+		api.PostureChecksCreatePostureResponseBulkHandler = posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureResponseBulk has not yet been implemented")
+		})
+	}
 	if api.ServiceCreateServiceHandler == nil {
 		api.ServiceCreateServiceHandler = service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
@@ -234,6 +239,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.TransitRouterCreateTransitRouterHandler == nil {
 		api.TransitRouterCreateTransitRouterHandler = transit_router.CreateTransitRouterHandlerFunc(func(params transit_router.CreateTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation transit_router.CreateTransitRouter has not yet been implemented")
+		})
+	}
+	if api.DatabaseDataIntegrityResultsHandler == nil {
+		api.DatabaseDataIntegrityResultsHandler = database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
 		})
 	}
 	if api.APISessionDeleteAPISessionsHandler == nil {

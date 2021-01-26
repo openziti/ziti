@@ -1680,7 +1680,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaCode",
             "in": "body",
             "required": true,
             "schema": {
@@ -1740,18 +1740,44 @@ func init() {
       }
     },
     "/database/check-data-integrity": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Starts a data integrity scan on the datastore",
+        "operationId": "checkDataIntegrity",
+        "responses": {
+          "202": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
+          }
+        }
+      }
+    },
+    "/database/data-integrity-results": {
       "get": {
         "security": [
           {
             "ztSession": []
           }
         ],
-        "description": "Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.",
+        "description": "Returns any results found from in-progress integrity checks. Requires admin access.",
         "tags": [
           "Database"
         ],
-        "summary": "Runs an data integrity scan on the datastore and returns any found issues",
-        "operationId": "checkDataIntegrity",
+        "summary": "Returns any results found from in-progress integrity checks",
+        "operationId": "dataIntegrityResults",
         "responses": {
           "200": {
             "$ref": "#/responses/dataIntegrityCheckResult"
@@ -1769,18 +1795,21 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
         ],
-        "summary": "Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
+        "summary": "Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
         "operationId": "fixDataIntegrity",
         "responses": {
-          "200": {
-            "$ref": "#/responses/dataIntegrityCheckResult"
+          "202": {
+            "$ref": "#/responses/emptyResponse"
           },
           "401": {
             "$ref": "#/responses/unauthorizedResponse"
+          },
+          "429": {
+            "$ref": "#/responses/rateLimitedResponse"
           }
         }
       }
@@ -3673,6 +3702,46 @@ func init() {
         "responses": {
           "201": {
             "$ref": "#/responses/createResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
+    "/posture-response-bulk": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Submits posture responses",
+        "tags": [
+          "Posture Checks"
+        ],
+        "summary": "Submit multiple posture responses",
+        "operationId": "createPostureResponseBulk",
+        "parameters": [
+          {
+            "description": "A Posture Response",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PostureResponseCreate"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
           },
           "400": {
             "$ref": "#/responses/badRequestResponse"
@@ -6997,6 +7066,43 @@ func init() {
         "$ref": "#/definitions/dataIntegrityCheckDetail"
       }
     },
+    "dataIntegrityCheckDetails": {
+      "type": "object",
+      "required": [
+        "inProgress",
+        "fixingErrors",
+        "tooManyErrors",
+        "startTime",
+        "endTime",
+        "error",
+        "results"
+      ],
+      "properties": {
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "fixingErrors": {
+          "type": "boolean"
+        },
+        "inProgress": {
+          "type": "boolean"
+        },
+        "results": {
+          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tooManyErrors": {
+          "type": "boolean"
+        }
+      }
+    },
     "dataIntegrityCheckResultEnvelope": {
       "type": "object",
       "required": [
@@ -7005,7 +7111,7 @@ func init() {
       ],
       "properties": {
         "data": {
-          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+          "$ref": "#/definitions/dataIntegrityCheckDetails"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -7471,7 +7577,7 @@ func init() {
             "os",
             "version",
             "arch",
-            "builDate",
+            "buildDate",
             "revision"
           ],
           "properties": {
@@ -9970,14 +10076,14 @@ func init() {
         "os",
         "version",
         "arch",
-        "builDate",
+        "buildDate",
         "revision"
       ],
       "properties": {
         "arch": {
           "type": "string"
         },
-        "builDate": {
+        "buildDate": {
           "type": "string"
         },
         "os": {
@@ -14913,7 +15019,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaCode",
             "in": "body",
             "required": true,
             "schema": {
@@ -15067,18 +15173,88 @@ func init() {
       }
     },
     "/database/check-data-integrity": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.",
+        "tags": [
+          "Database"
+        ],
+        "summary": "Starts a data integrity scan on the datastore",
+        "operationId": "checkDataIntegrity",
+        "responses": {
+          "202": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/database/data-integrity-results": {
       "get": {
         "security": [
           {
             "ztSession": []
           }
         ],
-        "description": "Runs an data integrity scan on the datastore and returns any found issues. Requires admin access.",
+        "description": "Returns any results found from in-progress integrity checks. Requires admin access.",
         "tags": [
           "Database"
         ],
-        "summary": "Runs an data integrity scan on the datastore and returns any found issues",
-        "operationId": "checkDataIntegrity",
+        "summary": "Returns any results found from in-progress integrity checks",
+        "operationId": "dataIntegrityResults",
         "responses": {
           "200": {
             "description": "A list of data integrity issues found",
@@ -15120,17 +15296,17 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Runs an data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access.",
+        "description": "Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.",
         "tags": [
           "Database"
         ],
-        "summary": "Runs an data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
+        "summary": "Runs a data integrity scan on the datastore, attempts to fix any issues it can and returns any found issues",
         "operationId": "fixDataIntegrity",
         "responses": {
-          "200": {
-            "description": "A list of data integrity issues found",
+          "202": {
+            "description": "Base empty response",
             "schema": {
-              "$ref": "#/definitions/dataIntegrityCheckResultEnvelope"
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -15149,6 +15325,29 @@ func init() {
                   "code": "UNAUTHORIZED",
                   "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The resource requested is rate limited and the rate limit has been exceeded",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "causeMessage": "you have hit a rate limit in the requested operation",
+                  "code": "RATE_LIMITED",
+                  "message": "The resource is rate limited and the rate limit has been exceeded. Please try again later",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
                   "apiEnrolmentVersion": "0.0.1",
@@ -20021,6 +20220,104 @@ func init() {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posture-response-bulk": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Submits posture responses",
+        "tags": [
+          "Posture Checks"
+        ],
+        "summary": "Submit multiple posture responses",
+        "operationId": "createPostureResponseBulk",
+        "parameters": [
+          {
+            "description": "A Posture Response",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PostureResponseCreate"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "400": {
@@ -26168,6 +26465,43 @@ func init() {
         "$ref": "#/definitions/dataIntegrityCheckDetail"
       }
     },
+    "dataIntegrityCheckDetails": {
+      "type": "object",
+      "required": [
+        "inProgress",
+        "fixingErrors",
+        "tooManyErrors",
+        "startTime",
+        "endTime",
+        "error",
+        "results"
+      ],
+      "properties": {
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "fixingErrors": {
+          "type": "boolean"
+        },
+        "inProgress": {
+          "type": "boolean"
+        },
+        "results": {
+          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tooManyErrors": {
+          "type": "boolean"
+        }
+      }
+    },
     "dataIntegrityCheckResultEnvelope": {
       "type": "object",
       "required": [
@@ -26176,7 +26510,7 @@ func init() {
       ],
       "properties": {
         "data": {
-          "$ref": "#/definitions/dataIntegrityCheckDetailList"
+          "$ref": "#/definitions/dataIntegrityCheckDetails"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -26642,7 +26976,7 @@ func init() {
             "os",
             "version",
             "arch",
-            "builDate",
+            "buildDate",
             "revision"
           ],
           "properties": {
@@ -29142,14 +29476,14 @@ func init() {
         "os",
         "version",
         "arch",
-        "builDate",
+        "buildDate",
         "revision"
       ],
       "properties": {
         "arch": {
           "type": "string"
         },
-        "builDate": {
+        "buildDate": {
           "type": "string"
         },
         "os": {

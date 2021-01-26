@@ -86,14 +86,14 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	listener := &listener{}
 
-	proxy := &ingressProxy{
+	proxy := &edgeClientConn{
 		msgMux:       mux,
 		listener:     listener,
 		fingerprints: nil,
 		ch:           testChannel,
 	}
 
-	conn := &localMessageSink{
+	conn := &edgeXgressConn{
 		MsgChannel: *edge.NewEdgeMsgChannel(proxy.ch, 1),
 		seq:        NewMsgQueue(4),
 	}

@@ -47,8 +47,8 @@ type FixDataIntegrityReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *FixDataIntegrityReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewFixDataIntegrityOK()
+	case 202:
+		result := NewFixDataIntegrityAccepted()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -59,36 +59,42 @@ func (o *FixDataIntegrityReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return nil, result
+	case 429:
+		result := NewFixDataIntegrityTooManyRequests()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
 }
 
-// NewFixDataIntegrityOK creates a FixDataIntegrityOK with default headers values
-func NewFixDataIntegrityOK() *FixDataIntegrityOK {
-	return &FixDataIntegrityOK{}
+// NewFixDataIntegrityAccepted creates a FixDataIntegrityAccepted with default headers values
+func NewFixDataIntegrityAccepted() *FixDataIntegrityAccepted {
+	return &FixDataIntegrityAccepted{}
 }
 
-/*FixDataIntegrityOK handles this case with default header values.
+/*FixDataIntegrityAccepted handles this case with default header values.
 
-A list of data integrity issues found
+Base empty response
 */
-type FixDataIntegrityOK struct {
-	Payload *rest_model.DataIntegrityCheckResultEnvelope
+type FixDataIntegrityAccepted struct {
+	Payload *rest_model.Empty
 }
 
-func (o *FixDataIntegrityOK) Error() string {
-	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityOK  %+v", 200, o.Payload)
+func (o *FixDataIntegrityAccepted) Error() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityAccepted  %+v", 202, o.Payload)
 }
 
-func (o *FixDataIntegrityOK) GetPayload() *rest_model.DataIntegrityCheckResultEnvelope {
+func (o *FixDataIntegrityAccepted) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
 
-func (o *FixDataIntegrityOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *FixDataIntegrityAccepted) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.DataIntegrityCheckResultEnvelope)
+	o.Payload = new(rest_model.Empty)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -120,6 +126,39 @@ func (o *FixDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope
 }
 
 func (o *FixDataIntegrityUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewFixDataIntegrityTooManyRequests creates a FixDataIntegrityTooManyRequests with default headers values
+func NewFixDataIntegrityTooManyRequests() *FixDataIntegrityTooManyRequests {
+	return &FixDataIntegrityTooManyRequests{}
+}
+
+/*FixDataIntegrityTooManyRequests handles this case with default header values.
+
+The resource requested is rate limited and the rate limit has been exceeded
+*/
+type FixDataIntegrityTooManyRequests struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *FixDataIntegrityTooManyRequests) Error() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityTooManyRequests  %+v", 429, o.Payload)
+}
+
+func (o *FixDataIntegrityTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *FixDataIntegrityTooManyRequests) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

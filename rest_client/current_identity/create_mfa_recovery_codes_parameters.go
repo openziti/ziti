@@ -86,11 +86,11 @@ for the create mfa recovery codes operation typically these are written to a htt
 */
 type CreateMfaRecoveryCodesParams struct {
 
-	/*Body
+	/*MfaCode
 	  An MFA validation request
 
 	*/
-	Body *rest_model.MfaCode
+	MfaCode *rest_model.MfaCode
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateMfaRecoveryCodesParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create mfa recovery codes params
-func (o *CreateMfaRecoveryCodesParams) WithBody(body *rest_model.MfaCode) *CreateMfaRecoveryCodesParams {
-	o.SetBody(body)
+// WithMfaCode adds the mfaCode to the create mfa recovery codes params
+func (o *CreateMfaRecoveryCodesParams) WithMfaCode(mfaCode *rest_model.MfaCode) *CreateMfaRecoveryCodesParams {
+	o.SetMfaCode(mfaCode)
 	return o
 }
 
-// SetBody adds the body to the create mfa recovery codes params
-func (o *CreateMfaRecoveryCodesParams) SetBody(body *rest_model.MfaCode) {
-	o.Body = body
+// SetMfaCode adds the mfaCode to the create mfa recovery codes params
+func (o *CreateMfaRecoveryCodesParams) SetMfaCode(mfaCode *rest_model.MfaCode) {
+	o.MfaCode = mfaCode
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateMfaRecoveryCodesParams) WriteToRequest(r runtime.ClientRequest, r
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.MfaCode != nil {
+		if err := r.SetBodyParam(o.MfaCode); err != nil {
 			return err
 		}
 	}

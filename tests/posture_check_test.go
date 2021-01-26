@@ -160,5 +160,35 @@ func Test_PostureChecks(t *testing.T) {
 				enrolledIdentitySession.requireNotFoundEntityLookup("sessions", existingSessionId)
 			})
 		})
+
+		t.Run("providing valid posture data via bulk endpoint", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			newSession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+			ctx.Req.NoError(err)
+
+			newSession.requireNewPostureResponseBulkDomain(postureCheck.id, domain)
+
+			t.Run("allows posture checks to pass", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				code, body := enrolledIdentitySession.query("/services/" + service.Id)
+				ctx.Req.Equal(http.StatusOK, code)
+				entityService, err := gabs.ParseJSON(body)
+				ctx.Req.NoError(err)
+
+				querySet, err := entityService.Path("data.postureQueries").Children()
+				ctx.Req.NoError(err)
+				ctx.Req.Len(querySet, 1)
+
+				postureQueries, err := querySet[0].Path("postureQueries").Children()
+				ctx.Req.NoError(err)
+				ctx.Req.Len(postureQueries, 1)
+
+				ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+				ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+				ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+				ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+			})
+		})
 	})
 }

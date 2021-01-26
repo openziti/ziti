@@ -73,7 +73,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.CurrentIdentityCreateMfaRecoveryCodesHandler = current_identity.CreateMfaRecoveryCodesHandlerFunc(func(params current_identity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.createMfaRecoveryCodes(ae, rc, params.Body)
+			r.createMfaRecoveryCodes(ae, rc, params.MfaCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 

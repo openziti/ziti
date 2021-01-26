@@ -166,6 +166,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		PostureChecksCreatePostureResponseHandler: posture_checks.CreatePostureResponseHandlerFunc(func(params posture_checks.CreatePostureResponseParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.CreatePostureResponse has not yet been implemented")
 		}),
+		PostureChecksCreatePostureResponseBulkHandler: posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureResponseBulk has not yet been implemented")
+		}),
 		ServiceCreateServiceHandler: service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
 		}),
@@ -183,6 +186,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		TransitRouterCreateTransitRouterHandler: transit_router.CreateTransitRouterHandlerFunc(func(params transit_router.CreateTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation transit_router.CreateTransitRouter has not yet been implemented")
+		}),
+		DatabaseDataIntegrityResultsHandler: database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
 		}),
 		APISessionDeleteAPISessionsHandler: api_session.DeleteAPISessionsHandlerFunc(func(params api_session.DeleteAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.DeleteAPISessions has not yet been implemented")
@@ -722,6 +728,8 @@ type ZitiEdgeAPI struct {
 	PostureChecksCreatePostureCheckHandler posture_checks.CreatePostureCheckHandler
 	// PostureChecksCreatePostureResponseHandler sets the operation handler for the create posture response operation
 	PostureChecksCreatePostureResponseHandler posture_checks.CreatePostureResponseHandler
+	// PostureChecksCreatePostureResponseBulkHandler sets the operation handler for the create posture response bulk operation
+	PostureChecksCreatePostureResponseBulkHandler posture_checks.CreatePostureResponseBulkHandler
 	// ServiceCreateServiceHandler sets the operation handler for the create service operation
 	ServiceCreateServiceHandler service.CreateServiceHandler
 	// ServiceEdgeRouterPolicyCreateServiceEdgeRouterPolicyHandler sets the operation handler for the create service edge router policy operation
@@ -734,6 +742,8 @@ type ZitiEdgeAPI struct {
 	TerminatorCreateTerminatorHandler terminator.CreateTerminatorHandler
 	// TransitRouterCreateTransitRouterHandler sets the operation handler for the create transit router operation
 	TransitRouterCreateTransitRouterHandler transit_router.CreateTransitRouterHandler
+	// DatabaseDataIntegrityResultsHandler sets the operation handler for the data integrity results operation
+	DatabaseDataIntegrityResultsHandler database.DataIntegrityResultsHandler
 	// APISessionDeleteAPISessionsHandler sets the operation handler for the delete API sessions operation
 	APISessionDeleteAPISessionsHandler api_session.DeleteAPISessionsHandler
 	// AuthenticatorDeleteAuthenticatorHandler sets the operation handler for the delete authenticator operation
@@ -1178,6 +1188,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.PostureChecksCreatePostureResponseHandler == nil {
 		unregistered = append(unregistered, "posture_checks.CreatePostureResponseHandler")
 	}
+	if o.PostureChecksCreatePostureResponseBulkHandler == nil {
+		unregistered = append(unregistered, "posture_checks.CreatePostureResponseBulkHandler")
+	}
 	if o.ServiceCreateServiceHandler == nil {
 		unregistered = append(unregistered, "service.CreateServiceHandler")
 	}
@@ -1195,6 +1208,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.TransitRouterCreateTransitRouterHandler == nil {
 		unregistered = append(unregistered, "transit_router.CreateTransitRouterHandler")
+	}
+	if o.DatabaseDataIntegrityResultsHandler == nil {
+		unregistered = append(unregistered, "database.DataIntegrityResultsHandler")
 	}
 	if o.APISessionDeleteAPISessionsHandler == nil {
 		unregistered = append(unregistered, "api_session.DeleteAPISessionsHandler")
@@ -1756,10 +1772,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/authenticate/mfa"] = authentication.NewAuthenticateMfa(o.context, o.AuthenticationAuthenticateMfaHandler)
-	if o.handlers["GET"] == nil {
-		o.handlers["GET"] = make(map[string]http.Handler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
+	o.handlers["POST"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -1811,6 +1827,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/posture-response-bulk"] = posture_checks.NewCreatePostureResponseBulk(o.context, o.PostureChecksCreatePostureResponseBulkHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/services"] = service.NewCreateService(o.context, o.ServiceCreateServiceHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1832,6 +1852,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/transit-routers"] = transit_router.NewCreateTransitRouter(o.context, o.TransitRouterCreateTransitRouterHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/database/data-integrity-results"] = database.NewDataIntegrityResults(o.context, o.DatabaseDataIntegrityResultsHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}

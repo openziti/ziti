@@ -46,92 +46,108 @@ func (r *PostureResponseRouter) Register(ae *env.AppEnv) {
 	ae.Api.PostureChecksCreatePostureResponseHandler = posture_checks.CreatePostureResponseHandlerFunc(func(params posture_checks.CreatePostureResponseParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
+
+	ae.Api.PostureChecksCreatePostureResponseBulkHandler = posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateBulk(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
 }
 
 func (r *PostureResponseRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseParams) {
 	Create(rc, rc, PostureResponseLinkFactory, func() (string, error) {
 		apiPostureResponse := params.Body
-
-		switch apiPostureResponse.(type) {
-		case *rest_model.PostureResponseDomainCreate:
-			apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseDomainCreate)
-
-			postureResponse := &model.PostureResponse{
-				PostureCheckId: *apiPostureResponse.ID(),
-				TypeId:         string(apiPostureResponse.TypeID()),
-				LastUpdatedAt:  time.Now(),
-				TimedOut:       false,
-			}
-
-			subType := &model.PostureResponseDomain{
-				Name: *apiPostureResponse.Domain,
-			}
-
-			subType.PostureResponse = postureResponse
-			postureResponse.SubType = subType
-
-			ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
-
-		case *rest_model.PostureResponseMacAddressCreate:
-			apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseMacAddressCreate)
-			postureResponse := &model.PostureResponse{
-				PostureCheckId: *apiPostureResponse.ID(),
-				TypeId:         string(apiPostureResponse.TypeID()),
-				LastUpdatedAt:  time.Now(),
-				TimedOut:       false,
-			}
-
-			subType := &model.PostureResponseMac{
-				Addresses: apiPostureResponse.MacAddresses,
-			}
-
-			subType.PostureResponse = postureResponse
-			postureResponse.SubType = subType
-
-			ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
-
-		case *rest_model.PostureResponseProcessCreate:
-			apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseProcessCreate)
-
-			postureResponse := &model.PostureResponse{
-				PostureCheckId: *apiPostureResponse.ID(),
-				TypeId:         string(apiPostureResponse.TypeID()),
-				LastUpdatedAt:  time.Now(),
-				TimedOut:       false,
-			}
-
-			subType := &model.PostureResponseProcess{
-				IsRunning:         apiPostureResponse.IsRunning,
-				BinaryHash:        apiPostureResponse.Hash,
-				SignerFingerprints: apiPostureResponse.SignerFingerprints,
-			}
-
-			subType.PostureResponse = postureResponse
-			postureResponse.SubType = subType
-
-			ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
-		case *rest_model.PostureResponseOperatingSystemCreate:
-			apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseOperatingSystemCreate)
-
-			postureResponse := &model.PostureResponse{
-				PostureCheckId: *apiPostureResponse.ID(),
-				TypeId:         string(apiPostureResponse.TypeID()),
-				LastUpdatedAt:  time.Now(),
-				TimedOut:       false,
-			}
-
-			subType := &model.PostureResponseOs{
-				Type:    *apiPostureResponse.Type,
-				Version: *apiPostureResponse.Version,
-				Build:   apiPostureResponse.Build,
-			}
-
-			subType.PostureResponse = postureResponse
-			postureResponse.SubType = subType
-
-			ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
-		}
-
+		r.handlePostureResponse(ae, rc, apiPostureResponse)
 		return "", nil
 	})
+}
+
+func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseBulkParams) {
+	for _, apiPostureResponse := range params.Body {
+		r.handlePostureResponse(ae, rc, apiPostureResponse)
+	}
+
+	Create(rc, rc, PostureResponseLinkFactory, func() (string, error) {
+		return "", nil
+	})
+}
+
+func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *response.RequestContext, apiPostureResponse rest_model.PostureResponseCreate) {
+	switch apiPostureResponse.(type) {
+	case *rest_model.PostureResponseDomainCreate:
+		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseDomainCreate)
+
+		postureResponse := &model.PostureResponse{
+			PostureCheckId: *apiPostureResponse.ID(),
+			TypeId:         string(apiPostureResponse.TypeID()),
+			LastUpdatedAt:  time.Now(),
+			TimedOut:       false,
+		}
+
+		subType := &model.PostureResponseDomain{
+			Name: *apiPostureResponse.Domain,
+		}
+
+		subType.PostureResponse = postureResponse
+		postureResponse.SubType = subType
+
+		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+
+	case *rest_model.PostureResponseMacAddressCreate:
+		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseMacAddressCreate)
+		postureResponse := &model.PostureResponse{
+			PostureCheckId: *apiPostureResponse.ID(),
+			TypeId:         string(apiPostureResponse.TypeID()),
+			LastUpdatedAt:  time.Now(),
+			TimedOut:       false,
+		}
+
+		subType := &model.PostureResponseMac{
+			Addresses: apiPostureResponse.MacAddresses,
+		}
+
+		subType.PostureResponse = postureResponse
+		postureResponse.SubType = subType
+
+		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+
+	case *rest_model.PostureResponseProcessCreate:
+		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseProcessCreate)
+
+		postureResponse := &model.PostureResponse{
+			PostureCheckId: *apiPostureResponse.ID(),
+			TypeId:         string(apiPostureResponse.TypeID()),
+			LastUpdatedAt:  time.Now(),
+			TimedOut:       false,
+		}
+
+		subType := &model.PostureResponseProcess{
+			IsRunning:          apiPostureResponse.IsRunning,
+			BinaryHash:         apiPostureResponse.Hash,
+			SignerFingerprints: apiPostureResponse.SignerFingerprints,
+		}
+
+		subType.PostureResponse = postureResponse
+		postureResponse.SubType = subType
+
+		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+	case *rest_model.PostureResponseOperatingSystemCreate:
+		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseOperatingSystemCreate)
+
+		postureResponse := &model.PostureResponse{
+			PostureCheckId: *apiPostureResponse.ID(),
+			TypeId:         string(apiPostureResponse.TypeID()),
+			LastUpdatedAt:  time.Now(),
+			TimedOut:       false,
+		}
+
+		subType := &model.PostureResponseOs{
+			Type:    *apiPostureResponse.Type,
+			Version: *apiPostureResponse.Version,
+			Build:   apiPostureResponse.Build,
+		}
+
+		subType.PostureResponse = postureResponse
+		postureResponse.SubType = subType
+
+		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+	}
 }

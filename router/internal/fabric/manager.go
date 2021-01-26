@@ -53,7 +53,7 @@ type StateManager interface {
 
 	//ApiSessions
 	GetApiSession(token string) *edge_ctrl_pb.ApiSession
-	GetApiSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession
+	GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession
 	AddApiSession(ns *edge_ctrl_pb.ApiSession)
 	UpdateApiSession(ns *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
@@ -212,6 +212,27 @@ func (sm *StateManagerImpl) RemoveSession(token string) {
 	}
 }
 
+func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession {
+	deadline := time.Now().Add(timeout)
+	session := sm.GetApiSession(token)
+
+	if session == nil {
+		//convert this to return a channel instead of sleeping
+		waitTime := time.Millisecond
+		for time.Now().Before(deadline) {
+			session = sm.GetApiSession(token)
+			if session != nil {
+				return session
+			}
+			time.Sleep(waitTime)
+			if waitTime < time.Second {
+				waitTime = waitTime * 2
+			}
+		}
+	}
+	return session
+}
+
 func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession {
 	if val, ok := sm.apiSessionsByToken.Load(token); ok {
 		if session, ok := val.(*edge_ctrl_pb.ApiSession); ok {
@@ -219,31 +240,6 @@ func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession
 		}
 	}
 	return nil
-}
-
-func (sm *StateManagerImpl) GetApiSessionByFingerprint(fingerprint string) chan *edge_ctrl_pb.ApiSession {
-	ch := make(chan *edge_ctrl_pb.ApiSession)
-	go func() {
-		found := false
-		sm.apiSessionsByToken.Range(func(_, value interface{}) bool {
-			if session, ok := value.(*edge_ctrl_pb.ApiSession); ok {
-				for _, curPrint := range session.CertFingerprints {
-					if fingerprint == curPrint {
-						ch <- session
-						found = true
-						return false
-					}
-				}
-			}
-			return true
-		})
-
-		if !found {
-			ch <- nil
-		}
-	}()
-
-	return ch
 }
 
 func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.Session {
