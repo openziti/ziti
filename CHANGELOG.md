@@ -1,3 +1,44 @@
+# Release 0.18.4
+
+## What's New
+
+* New ziti CLI command `ziti ps set-log-level`, allows you to set the application wide log level at
+  runtime
+* Allow invalid event types in controller config event subscriptions. Instead of failing to start,
+  the controller will emit a warning. This allows us to use uniform configs across controllers which
+  may not all support the same event types.
+* Edge routers now have configurable timeouts when looking up API sessions and sessions
+
+## Edge Router: Configurable Session Lookup Times
+
+An Edge SDK client will create and api session and session with the controller first, then attempt
+to use those sessions at an edge router. The controller will push session information to routers as
+quickly as it can, but clients may still connect to the edge router before the client can. We
+previously would wait up to 5 seconds for session to arrive before declaring a session invalid, but
+would not wait for api-sessions.
+
+We can now wait for both api-sessions and sessions. Both timeouts are configurable. They are
+configured in the router config file under listeners options.
+
+* `lookupApiSessionTimeout`
+    * How long to wait before timing out when looking up api-sessions after client connect. Default
+      5 seconds.
+* `lookupSessionTimeout`
+    * How long to wait before timing out when looking up sessions after client dial/bind. Default 5
+      seconds.
+
+Example router config file stanza:
+
+```
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:6342
+    options: 
+      advertise: 127.0.0.1:6432
+      lookupApiSessionTimeout: 5s
+      lookupSessionTimeout: 5s
+```
+
 # Release 0.18.3
 
 ## What's New
