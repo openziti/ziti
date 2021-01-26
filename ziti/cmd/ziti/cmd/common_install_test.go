@@ -35,7 +35,7 @@ func TestInstallZitiApp(t *testing.T) {
 	defer os.Unsetenv("HOME")
 	err = os.Setenv("HOME", "/tmp/"+uuid.New())
 	assert.Nil(t, err)
-	err = (&CommonOptions{}).installZitiApp("master", c.ZITI_CONTROLLER, true, "0.0.0-0")
+	err = (&CommonOptions{}).installZitiApp("main", c.ZITI_CONTROLLER, true, "0.0.0-0")
 
 	assert.FileExists(t, os.Getenv("HOME")+"/bin/"+c.ZITI_CONTROLLER)
 }

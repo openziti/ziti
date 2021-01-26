@@ -78,18 +78,23 @@ func NewCmdInstallZitiEdgeTunnel(f cmdutil.Factory, out io.Writer, errOut io.Wri
 }
 
 // Run implements the command
-func (o *InstallZitiEdgeTunnelOptions) Run() error {
+func (o *InstallOptions) installZitiEdgeTunnel(targetVersion string) error {
 	newVersion, err := o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL_GITHUB)
 	if err != nil {
 		return err
 	}
 
-	if o.Version != "" {
-		newVersion, err = semver.Make(o.Version)
+	if targetVersion != "" {
+		newVersion, err = semver.Make(targetVersion)
 	}
 
 	log.Infoln("Attempting to install '" + c.ZITI_EDGE_TUNNEL + "' version: " + newVersion.String())
 
 	return o.installGitHubRelease(version.GetBranch(), c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, false, newVersion.String())
 
+}
+
+// Run implements the command
+func (o *InstallZitiEdgeTunnelOptions) Run() error {
+	return o.installZitiEdgeTunnel(o.Version)
 }

@@ -143,7 +143,7 @@ func GetLatestVersionFromArtifactory(verbose bool, staging bool, branch string, 
 		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s' on branch '%s'; %s", appName, branch, resp.Status())
 	}
 
-	result := (*resp.Result().(*ArtifactoryVersionsData))
+	result := *resp.Result().(*ArtifactoryVersionsData)
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
 }
@@ -174,7 +174,7 @@ func GetLatestGitHubReleaseVersion(verbose bool, appName string) (semver.Version
 		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
 	}
 
-	result := (*resp.Result().(*GitHubReleasesData))
+	result := *resp.Result().(*GitHubReleasesData)
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
 }
@@ -377,13 +377,13 @@ func GetArtifactoryPath(staging bool, appName string, branch string) string {
 	var path string
 	if staging {
 		path = "ziti-staging/"
-	} else if branch == "master" {
+	} else if branch == "main" {
 		path = "ziti-release/"
 	} else {
 		path = "ziti-snapshot/" + branch + "/"
 	}
 	// Special-case the source-repo when dealing with ziti-prox-c
-	if branch == "master" && appName == c.ZITI_PROX_C {
+	if branch == "main" && appName == c.ZITI_PROX_C {
 		path = "ziti-staging/"
 	}
 
@@ -394,10 +394,10 @@ func GetArtifactoryPath(staging bool, appName string, branch string) string {
 
 func GetTerraformProviderArtifactoryPath(provider string, branch string) string {
 	if branch == "" {
-		branch = "master"
+		branch = "main"
 	}
 	var path string
-	if branch == "master" {
+	if branch == "main" {
 		path = c.TERRAFORM_PROVIDER_PREFIX + provider + "-release/"
 	} else {
 		path = c.TERRAFORM_PROVIDER_PREFIX + provider + "-snapshot/" + branch + "/"
