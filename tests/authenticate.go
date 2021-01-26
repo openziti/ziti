@@ -289,6 +289,26 @@ func (request *authenticatedRequests) requireNewPostureResponseDomain(postureChe
 	request.testContext.Req.Equal(http.StatusCreated, resp.StatusCode())
 }
 
+func (request *authenticatedRequests) requireNewPostureResponseBulkDomain(postureCheckId, domain string) {
+	entity := &postureResponseDomain{
+		Id:     postureCheckId,
+		TypeId: "DOMAIN",
+		Domain: domain,
+	}
+
+	entityJson, err := json.Marshal([]*postureResponseDomain{entity})
+	request.testContext.Req.NoError(err)
+
+	resp, err := request.newAuthenticatedRequest().
+		SetBody(entityJson).
+		Post("/posture-response-bulk")
+
+	request.testContext.Req.NoError(err)
+	request.testContext.logJson(resp.Body())
+
+	request.testContext.Req.Equal(http.StatusCreated, resp.StatusCode())
+}
+
 type SessionRequest struct {
 	ServiceId string `json:"serviceId"`
 }

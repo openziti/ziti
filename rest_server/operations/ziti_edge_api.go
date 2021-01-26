@@ -158,6 +158,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		PostureChecksCreatePostureResponseHandler: posture_checks.CreatePostureResponseHandlerFunc(func(params posture_checks.CreatePostureResponseParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.CreatePostureResponse has not yet been implemented")
 		}),
+		PostureChecksCreatePostureResponseBulkHandler: posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation posture_checks.CreatePostureResponseBulk has not yet been implemented")
+		}),
 		ServiceCreateServiceHandler: service.CreateServiceHandlerFunc(func(params service.CreateServiceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation service.CreateService has not yet been implemented")
 		}),
@@ -689,6 +692,8 @@ type ZitiEdgeAPI struct {
 	PostureChecksCreatePostureCheckHandler posture_checks.CreatePostureCheckHandler
 	// PostureChecksCreatePostureResponseHandler sets the operation handler for the create posture response operation
 	PostureChecksCreatePostureResponseHandler posture_checks.CreatePostureResponseHandler
+	// PostureChecksCreatePostureResponseBulkHandler sets the operation handler for the create posture response bulk operation
+	PostureChecksCreatePostureResponseBulkHandler posture_checks.CreatePostureResponseBulkHandler
 	// ServiceCreateServiceHandler sets the operation handler for the create service operation
 	ServiceCreateServiceHandler service.CreateServiceHandler
 	// ServiceEdgeRouterPolicyCreateServiceEdgeRouterPolicyHandler sets the operation handler for the create service edge router policy operation
@@ -1123,6 +1128,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.PostureChecksCreatePostureResponseHandler == nil {
 		unregistered = append(unregistered, "posture_checks.CreatePostureResponseHandler")
+	}
+	if o.PostureChecksCreatePostureResponseBulkHandler == nil {
+		unregistered = append(unregistered, "posture_checks.CreatePostureResponseBulkHandler")
 	}
 	if o.ServiceCreateServiceHandler == nil {
 		unregistered = append(unregistered, "service.CreateServiceHandler")
@@ -1726,6 +1734,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/posture-response"] = posture_checks.NewCreatePostureResponse(o.context, o.PostureChecksCreatePostureResponseHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/posture-response-bulk"] = posture_checks.NewCreatePostureResponseBulk(o.context, o.PostureChecksCreatePostureResponseBulkHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
