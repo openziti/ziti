@@ -26,7 +26,7 @@ func Test_MessageSerDeser(t *testing.T) {
 
 	hash := sha512.Sum512(data)
 
-	block := &Block{
+	block := &RandHashedBlock{
 		Type:     BlockTypePlain,
 		Sequence: 10,
 		Hash:     hash[:],
@@ -44,7 +44,7 @@ func Test_MessageSerDeser(t *testing.T) {
 
 	req.NoError(block.Tx(p))
 
-	readBlock := &Block{}
+	readBlock := &RandHashedBlock{}
 	req.NoError(readBlock.Rx(p))
 
 	req.True(reflect.DeepEqual(block, readBlock), cmp.Diff(block, readBlock))
@@ -53,7 +53,7 @@ func Test_MessageSerDeser(t *testing.T) {
 	rand.Read(data)
 	hash = sha512.Sum512(data)
 
-	block = &Block{
+	block = &RandHashedBlock{
 		Type:     BlockTypeLatencyRequest,
 		Sequence: 10,
 		Hash:     hash[:],
@@ -62,7 +62,7 @@ func Test_MessageSerDeser(t *testing.T) {
 
 	req.NoError(block.Tx(p))
 
-	readBlock = &Block{}
+	readBlock = &RandHashedBlock{}
 	req.NoError(readBlock.Rx(p))
 
 	req.Equal("", cmp.Diff(block, readBlock))

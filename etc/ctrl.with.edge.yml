@@ -100,6 +100,18 @@ edge:
 #      server_cert: edge/tests/pki/ziti-dev-controller01.external.cert.pem
 #      server_key:  edge/tests/pki/ziti-dev-controller01.external.key.pem
 #      ca:          edge/tests/pki/ziti-dev-controller01.external.chain.cert.pem
+    # (optional, see individual fields for defaults) Sets Edge API HTTP timeout values
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
   # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
   enrollment:
     # (required) A Ziti Identity configuration section that specifically makes use of the cert and key fields to define
