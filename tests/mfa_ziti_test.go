@@ -853,7 +853,6 @@ func Test_MFA(t *testing.T) {
 
 				t.Run("verifying MFA", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					time.Sleep(1 * time.Second)
 
 					code := computeMFACode(mfa02DeleteSecret)
 

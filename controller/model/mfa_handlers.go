@@ -29,6 +29,10 @@ import (
 	"strings"
 )
 
+const (
+	WindowSizeTOTP int = 5
+)
+
 func NewMfaHandler(env Env) *MfaHandler {
 	handler := &MfaHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().Mfa),
@@ -145,7 +149,7 @@ func (handler *MfaHandler) Verify(mfa *Mfa, code string) (bool, error) {
 func (handler *MfaHandler) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
 	otp := dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,
-		WindowSize: 3,
+		WindowSize: WindowSizeTOTP,
 		UTC:        true,
 	}
 
@@ -192,7 +196,7 @@ func (handler *MfaHandler) QrCodePng(mfa *Mfa) ([]byte, error) {
 func (handler *MfaHandler) GetProvisioningUrl(mfa *Mfa) string {
 	otcConfig := &dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,
-		WindowSize: 3,
+		WindowSize: WindowSizeTOTP,
 		UTC:        true,
 	}
 	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, "ziti.dev")
