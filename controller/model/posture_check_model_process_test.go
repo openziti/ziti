@@ -28,7 +28,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 	t.Run("returns true for valid id, running, hash, and fingerprint", func(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -38,7 +38,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].IsRunning = false
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 		req := require.New(t)
 
 		req.False(result)
@@ -48,7 +48,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].BinaryHash = strings.ToUpper(postureData.Processes[0].BinaryHash)
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 		req := require.New(t)
 
 		req.True(result)
@@ -58,7 +58,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].SignerFingerprints[0] = strings.ToUpper(postureData.Processes[0].SignerFingerprints[0])
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 		req := require.New(t)
 
 		req.True(result)
@@ -69,7 +69,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck.Hashes = nil
 		processCheck.Fingerprint = ""
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -80,7 +80,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck.Hashes = []string{}
 		processCheck.Fingerprint = ""
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -90,7 +90,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		processCheck.Hashes = nil
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -100,7 +100,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		processCheck.Fingerprint = ""
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -110,7 +110,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		processCheck.PostureCheckId = "does not match"
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -120,7 +120,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].SignerFingerprints = []string{"does not match"}
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -130,7 +130,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].BinaryHash = "does not match"
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -142,7 +142,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		postureData.Processes[0].BinaryHash = "does not match"
 		postureData.Processes[0].SignerFingerprints = []string{"does not match"}
 
-		result := processCheck.Evaluate(postureData)
+		result := processCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
