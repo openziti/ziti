@@ -89,8 +89,7 @@ func (eventHandlerConfig *eventHandlerConfig) processSubscriptions(handler inter
 			for k := range eventTypes {
 				validTypes = append(validTypes, k)
 			}
-
-			return errors.Errorf("invalid event type %v. valid types are %v", eventType, strings.Join(validTypes, ","))
+			logger.Warnf("invalid event type %v. valid types are %v", eventType, strings.Join(validTypes, ","))
 		}
 	}
 	return nil

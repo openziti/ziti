@@ -19,6 +19,7 @@ package xgress_proxy_udp
 import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/pkg/errors"
 )
 
 func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
@@ -26,7 +27,10 @@ func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
 }
 
 func (f *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
-	options := xgress.LoadOptions(optionsData)
+	options, err := xgress.LoadOptions(optionsData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading options")
+	}
 	service := ""
 	if value, found := optionsData["service"]; found {
 		service = value.(string)

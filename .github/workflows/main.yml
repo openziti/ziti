@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches:
-      - master
+      - main
       - release-*
   pull_request:
 
@@ -28,7 +28,7 @@ jobs:
       - name: Release
         env:
           gh_ci_key: ${{ secrets.GH_CI_KEY }}
-        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-')
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci tag -v -f version

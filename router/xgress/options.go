@@ -18,6 +18,7 @@ package xgress
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -43,9 +44,11 @@ type Options struct {
 	RetxScale    float64
 	RetxAddMs    uint32
 	MaxCloseWait time.Duration
+
+	GetSessionTimeout time.Duration
 }
 
-func LoadOptions(data OptionsData) *Options {
+func LoadOptions(data OptionsData) (*Options, error) {
 	options := DefaultOptions()
 
 	if value, found := data["options"]; found {
@@ -108,9 +111,16 @@ func LoadOptions(data OptionsData) *Options {
 			options.MaxCloseWait = time.Duration(value.(int)) * time.Millisecond
 		}
 
+		if value, found := data["getSessionTimeout"]; found {
+			getSessionTimeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid 'getSessionTimeout' value")
+			}
+			options.GetSessionTimeout = getSessionTimeout
+		}
 	}
 
-	return options
+	return options, nil
 }
 
 func DefaultOptions() *Options {
@@ -133,6 +143,7 @@ func DefaultOptions() *Options {
 		RetxScale:              2.0,
 		RetxAddMs:              100,
 		MaxCloseWait:           30 * time.Second,
+		GetSessionTimeout:      30 * time.Second,
 	}
 }
 
