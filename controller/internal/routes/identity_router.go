@@ -119,6 +119,11 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 	ae.Api.IdentityGetIdentityPostureDataHandler = identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.getPostureData, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
+
+	// mfa
+	ae.Api.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(r.removeMfa, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -289,4 +294,26 @@ func (r *IdentityRouter) getPostureData(ae *env.AppEnv, rc *response.RequestCont
 	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
 
 	rc.RespondWithOk(postureData, nil)
+}
+
+func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) {
+	id, _ := rc.GetEntityId()
+	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(id)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if mfa == nil || !mfa.IsVerified {
+		rc.RespondWithNotFound()
+		return
+	}
+
+	if err := ae.Handlers.Mfa.Delete(mfa.Id); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithEmptyOk()
 }

@@ -47,8 +47,8 @@ type CreateIdentityReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateIdentityReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateIdentityOK()
+	case 201:
+		result := NewCreateIdentityCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateIdentityReader) ReadResponse(response runtime.ClientResponse, con
 	}
 }
 
-// NewCreateIdentityOK creates a CreateIdentityOK with default headers values
-func NewCreateIdentityOK() *CreateIdentityOK {
-	return &CreateIdentityOK{}
+// NewCreateIdentityCreated creates a CreateIdentityCreated with default headers values
+func NewCreateIdentityCreated() *CreateIdentityCreated {
+	return &CreateIdentityCreated{}
 }
 
-/*CreateIdentityOK handles this case with default header values.
+/*CreateIdentityCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateIdentityOK struct {
+type CreateIdentityCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateIdentityOK) Error() string {
-	return fmt.Sprintf("[POST /identities][%d] createIdentityOK  %+v", 200, o.Payload)
+func (o *CreateIdentityCreated) Error() string {
+	return fmt.Sprintf("[POST /identities][%d] createIdentityCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateIdentityOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateIdentityCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateIdentityOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateIdentityCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

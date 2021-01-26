@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreatePostureCheckOKCode is the HTTP code returned for type CreatePostureCheckOK
-const CreatePostureCheckOKCode int = 200
+// CreatePostureCheckCreatedCode is the HTTP code returned for type CreatePostureCheckCreated
+const CreatePostureCheckCreatedCode int = 201
 
-/*CreatePostureCheckOK The create request was successful and the resource has been added at the following location
+/*CreatePostureCheckCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createPostureCheckOK
+swagger:response createPostureCheckCreated
 */
-type CreatePostureCheckOK struct {
+type CreatePostureCheckCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreatePostureCheckOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreatePostureCheckOK creates CreatePostureCheckOK with default headers values
-func NewCreatePostureCheckOK() *CreatePostureCheckOK {
+// NewCreatePostureCheckCreated creates CreatePostureCheckCreated with default headers values
+func NewCreatePostureCheckCreated() *CreatePostureCheckCreated {
 
-	return &CreatePostureCheckOK{}
+	return &CreatePostureCheckCreated{}
 }
 
-// WithPayload adds the payload to the create posture check o k response
-func (o *CreatePostureCheckOK) WithPayload(payload *rest_model.CreateEnvelope) *CreatePostureCheckOK {
+// WithPayload adds the payload to the create posture check created response
+func (o *CreatePostureCheckCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreatePostureCheckCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create posture check o k response
-func (o *CreatePostureCheckOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create posture check created response
+func (o *CreatePostureCheckCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreatePostureCheckOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreatePostureCheckCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

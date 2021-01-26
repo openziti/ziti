@@ -35,6 +35,8 @@ type ApiSession struct {
 	Identity           *Identity
 	IPAddress          string
 	ConfigTypes        map[string]struct{}
+	MfaComplete        bool
+	MfaRequired        bool
 	ExpiresAt          time.Time
 	ExpirationDuration time.Duration
 }
@@ -50,6 +52,8 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Ent
 		IdentityId:    entity.IdentityId,
 		ConfigTypes:   stringz.SetToSlice(entity.ConfigTypes),
 		IPAddress:     entity.IPAddress,
+		MfaComplete:   entity.MfaComplete,
+		MfaRequired:   entity.MfaRequired,
 	}
 
 	return boltEntity, nil
@@ -77,6 +81,8 @@ func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.IdentityId = boltApiSession.IdentityId
 	entity.ConfigTypes = stringz.SliceToSet(boltApiSession.ConfigTypes)
 	entity.IPAddress = boltApiSession.IPAddress
+	entity.MfaRequired = boltApiSession.MfaRequired
+	entity.MfaComplete = boltApiSession.MfaComplete
 	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds)
 	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds
 

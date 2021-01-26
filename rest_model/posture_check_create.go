@@ -177,6 +177,12 @@ func unmarshalPostureCheckCreate(data []byte, consumer runtime.Consumer) (Postur
 			return nil, err
 		}
 		return &result, nil
+	case "MFA":
+		var result PostureCheckMfaCreate
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "OS":
 		var result PostureCheckOperatingSystemCreate
 		if err := consumer.Consume(buf2, &result); err != nil {

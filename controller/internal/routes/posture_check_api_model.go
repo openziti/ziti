@@ -88,6 +88,8 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 			Hashes:          apiSubType.Process.Hashes,
 			Fingerprint:     apiSubType.Process.SignerFingerprint,
 		}
+	case *rest_model.PostureCheckMfaCreate:
+		ret.SubType = &model.PostureCheckMfa{}
 	}
 
 	return ret
@@ -134,6 +136,8 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			}
 			osCheck.OperatingSystems = append(osCheck.OperatingSystems, modelOs)
 		}
+	case *rest_model.PostureCheckMfaUpdate:
+		ret.SubType = &model.PostureCheckMfa{}
 	}
 
 	return ret
@@ -192,6 +196,9 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 		}
 
 		ret.TypeId = model.PostureCheckTypeOs
+	case *rest_model.PostureCheckMfaPatch:
+		ret.SubType = &model.PostureCheckMfa{}
+		ret.TypeId = model.PostureCheckTypeMFA
 	}
 
 	return ret
@@ -277,6 +284,9 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 		ret = &rest_model.PostureCheckMacAddressDetail{
 			MacAddresses: subType.MacAddresses,
 		}
+		setBaseEntityDetailsOnPostureCheck(ret, i)
+	case *model.PostureCheckMfa:
+		ret = &rest_model.PostureCheckMfaDetail{}
 		setBaseEntityDetailsOnPostureCheck(ret, i)
 	}
 

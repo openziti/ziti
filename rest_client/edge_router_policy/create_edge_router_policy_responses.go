@@ -47,8 +47,8 @@ type CreateEdgeRouterPolicyReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateEdgeRouterPolicyReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateEdgeRouterPolicyOK()
+	case 201:
+		result := NewCreateEdgeRouterPolicyCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateEdgeRouterPolicyReader) ReadResponse(response runtime.ClientRespo
 	}
 }
 
-// NewCreateEdgeRouterPolicyOK creates a CreateEdgeRouterPolicyOK with default headers values
-func NewCreateEdgeRouterPolicyOK() *CreateEdgeRouterPolicyOK {
-	return &CreateEdgeRouterPolicyOK{}
+// NewCreateEdgeRouterPolicyCreated creates a CreateEdgeRouterPolicyCreated with default headers values
+func NewCreateEdgeRouterPolicyCreated() *CreateEdgeRouterPolicyCreated {
+	return &CreateEdgeRouterPolicyCreated{}
 }
 
-/*CreateEdgeRouterPolicyOK handles this case with default header values.
+/*CreateEdgeRouterPolicyCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateEdgeRouterPolicyOK struct {
+type CreateEdgeRouterPolicyCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateEdgeRouterPolicyOK) Error() string {
-	return fmt.Sprintf("[POST /edge-router-policies][%d] createEdgeRouterPolicyOK  %+v", 200, o.Payload)
+func (o *CreateEdgeRouterPolicyCreated) Error() string {
+	return fmt.Sprintf("[POST /edge-router-policies][%d] createEdgeRouterPolicyCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateEdgeRouterPolicyOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateEdgeRouterPolicyCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateEdgeRouterPolicyOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateEdgeRouterPolicyCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

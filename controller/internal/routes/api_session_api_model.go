@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
+	"net/http"
 )
 
 const (
@@ -55,6 +56,12 @@ func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, api
 }
 
 func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
+	authQueries := rest_model.AuthQueryList{}
+
+	if apiSession.MfaRequired && !apiSession.MfaComplete {
+		authQueries = append(authQueries, newAuthCheckZitiMfa())
+	}
+
 	ret := &rest_model.APISessionDetail{
 		BaseEntity:  BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
 		IdentityID:  &apiSession.IdentityId,
@@ -62,6 +69,19 @@ func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISess
 		Token:       &apiSession.Token,
 		IPAddress:   &apiSession.IPAddress,
 		ConfigTypes: stringz.SetToSlice(apiSession.ConfigTypes),
+		AuthQueries: authQueries,
 	}
 	return ret, nil
+}
+
+func newAuthCheckZitiMfa() *rest_model.AuthQueryDetail {
+	return &rest_model.AuthQueryDetail{
+		TypeID:     "MFA",
+		Format:     rest_model.MfaFormatsAlphaNumeric,
+		HTTPMethod: http.MethodPost,
+		HTTPURL:    "./authenticate/mfa",
+		MaxLength:  model.TotpMaxLength,
+		MinLength:  model.TotpMinLength,
+		Provider:   rest_model.MfaProvidersZiti,
+	}
 }

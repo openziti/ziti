@@ -76,6 +76,10 @@ type IdentityDetail struct {
 	// Required: true
 	IsDefaultAdmin *bool `json:"isDefaultAdmin"`
 
+	// is mfa enabled
+	// Required: true
+	IsMfaEnabled *bool `json:"isMfaEnabled"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
@@ -126,6 +130,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		IsDefaultAdmin *bool `json:"isDefaultAdmin"`
 
+		IsMfaEnabled *bool `json:"isMfaEnabled"`
+
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -157,6 +163,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	m.IsAdmin = dataAO1.IsAdmin
 
 	m.IsDefaultAdmin = dataAO1.IsDefaultAdmin
+
+	m.IsMfaEnabled = dataAO1.IsMfaEnabled
 
 	m.Name = dataAO1.Name
 
@@ -199,6 +207,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		IsDefaultAdmin *bool `json:"isDefaultAdmin"`
 
+		IsMfaEnabled *bool `json:"isMfaEnabled"`
+
 		Name *string `json:"name"`
 
 		RoleAttributes Attributes `json:"roleAttributes"`
@@ -227,6 +237,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IsAdmin = m.IsAdmin
 
 	dataAO1.IsDefaultAdmin = m.IsDefaultAdmin
+
+	dataAO1.IsMfaEnabled = m.IsMfaEnabled
 
 	dataAO1.Name = m.Name
 
@@ -288,6 +300,10 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateIsDefaultAdmin(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsMfaEnabled(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -435,6 +451,15 @@ func (m *IdentityDetail) validateIsAdmin(formats strfmt.Registry) error {
 func (m *IdentityDetail) validateIsDefaultAdmin(formats strfmt.Registry) error {
 
 	if err := validate.Required("isDefaultAdmin", "body", m.IsDefaultAdmin); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateIsMfaEnabled(formats strfmt.Registry) error {
+
+	if err := validate.Required("isMfaEnabled", "body", m.IsMfaEnabled); err != nil {
 		return err
 	}
 

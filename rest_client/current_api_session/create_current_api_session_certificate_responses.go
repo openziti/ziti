@@ -47,8 +47,8 @@ type CreateCurrentAPISessionCertificateReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateCurrentAPISessionCertificateReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateCurrentAPISessionCertificateOK()
+	case 201:
+		result := NewCreateCurrentAPISessionCertificateCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateCurrentAPISessionCertificateReader) ReadResponse(response runtime
 	}
 }
 
-// NewCreateCurrentAPISessionCertificateOK creates a CreateCurrentAPISessionCertificateOK with default headers values
-func NewCreateCurrentAPISessionCertificateOK() *CreateCurrentAPISessionCertificateOK {
-	return &CreateCurrentAPISessionCertificateOK{}
+// NewCreateCurrentAPISessionCertificateCreated creates a CreateCurrentAPISessionCertificateCreated with default headers values
+func NewCreateCurrentAPISessionCertificateCreated() *CreateCurrentAPISessionCertificateCreated {
+	return &CreateCurrentAPISessionCertificateCreated{}
 }
 
-/*CreateCurrentAPISessionCertificateOK handles this case with default header values.
+/*CreateCurrentAPISessionCertificateCreated handles this case with default header values.
 
 A response of a create API Session certificate
 */
-type CreateCurrentAPISessionCertificateOK struct {
+type CreateCurrentAPISessionCertificateCreated struct {
 	Payload *rest_model.CreateCurrentAPISessionCertificateEnvelope
 }
 
-func (o *CreateCurrentAPISessionCertificateOK) Error() string {
-	return fmt.Sprintf("[POST /current-api-session/certificates][%d] createCurrentApiSessionCertificateOK  %+v", 200, o.Payload)
+func (o *CreateCurrentAPISessionCertificateCreated) Error() string {
+	return fmt.Sprintf("[POST /current-api-session/certificates][%d] createCurrentApiSessionCertificateCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateCurrentAPISessionCertificateOK) GetPayload() *rest_model.CreateCurrentAPISessionCertificateEnvelope {
+func (o *CreateCurrentAPISessionCertificateCreated) GetPayload() *rest_model.CreateCurrentAPISessionCertificateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateCurrentAPISessionCertificateOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateCurrentAPISessionCertificateCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateCurrentAPISessionCertificateEnvelope)
 

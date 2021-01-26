@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/certificate_authority"
 	"github.com/openziti/edge/rest_server/operations/config"
 	"github.com/openziti/edge/rest_server/operations/current_api_session"
+	"github.com/openziti/edge/rest_server/operations/current_identity"
 	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/edge/rest_server/operations/edge_router"
 	"github.com/openziti/edge/rest_server/operations/edge_router_policy"
@@ -102,6 +103,7 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	api.ApplicationXX509UserCertProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
 		return errors.NotImplemented("applicationXX509UserCert producer has not yet been implemented")
 	})
+	api.BinProducer = runtime.ByteStreamProducer()
 	api.JSONProducer = runtime.JSONProducer()
 	api.TextYamlProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
 		return errors.NotImplemented("textYaml producer has not yet been implemented")
@@ -132,6 +134,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.AuthenticationAuthenticateHandler == nil {
 		api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 			return middleware.NotImplemented("operation authentication.Authenticate has not yet been implemented")
+		})
+	}
+	if api.AuthenticationAuthenticateMfaHandler == nil {
+		api.AuthenticationAuthenticateMfaHandler = authentication.AuthenticateMfaHandlerFunc(func(params authentication.AuthenticateMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation authentication.AuthenticateMfa has not yet been implemented")
 		})
 	}
 	if api.DatabaseCheckDataIntegrityHandler == nil {
@@ -182,6 +189,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityCreateIdentityHandler == nil {
 		api.IdentityCreateIdentityHandler = identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.CreateIdentity has not yet been implemented")
+		})
+	}
+	if api.CurrentIdentityCreateMfaRecoveryCodesHandler == nil {
+		api.CurrentIdentityCreateMfaRecoveryCodesHandler = current_identity.CreateMfaRecoveryCodesHandlerFunc(func(params current_identity.CreateMfaRecoveryCodesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.CreateMfaRecoveryCodes has not yet been implemented")
 		})
 	}
 	if api.PostureChecksCreatePostureCheckHandler == nil {
@@ -284,6 +296,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.DeleteIdentity has not yet been implemented")
 		})
 	}
+	if api.CurrentIdentityDeleteMfaHandler == nil {
+		api.CurrentIdentityDeleteMfaHandler = current_identity.DeleteMfaHandlerFunc(func(params current_identity.DeleteMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DeleteMfa has not yet been implemented")
+		})
+	}
 	if api.PostureChecksDeletePostureCheckHandler == nil {
 		api.PostureChecksDeletePostureCheckHandler = posture_checks.DeletePostureCheckHandlerFunc(func(params posture_checks.DeletePostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.DeletePostureCheck has not yet been implemented")
@@ -384,6 +401,21 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.DetailIdentityType has not yet been implemented")
 		})
 	}
+	if api.CurrentIdentityDetailMfaHandler == nil {
+		api.CurrentIdentityDetailMfaHandler = current_identity.DetailMfaHandlerFunc(func(params current_identity.DetailMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfa has not yet been implemented")
+		})
+	}
+	if api.CurrentIdentityDetailMfaQrCodeHandler == nil {
+		api.CurrentIdentityDetailMfaQrCodeHandler = current_identity.DetailMfaQrCodeHandlerFunc(func(params current_identity.DetailMfaQrCodeParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfaQrCode has not yet been implemented")
+		})
+	}
+	if api.CurrentIdentityDetailMfaRecoveryCodesHandler == nil {
+		api.CurrentIdentityDetailMfaRecoveryCodesHandler = current_identity.DetailMfaRecoveryCodesHandlerFunc(func(params current_identity.DetailMfaRecoveryCodesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfaRecoveryCodes has not yet been implemented")
+		})
+	}
 	if api.PostureChecksDetailPostureCheckHandler == nil {
 		api.PostureChecksDetailPostureCheckHandler = posture_checks.DetailPostureCheckHandlerFunc(func(params posture_checks.DetailPostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.DetailPostureCheck has not yet been implemented")
@@ -454,6 +486,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation enroll.EnrollErOtt has not yet been implemented")
 		})
 	}
+	if api.CurrentIdentityEnrollMfaHandler == nil {
+		api.CurrentIdentityEnrollMfaHandler = current_identity.EnrollMfaHandlerFunc(func(params current_identity.EnrollMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.EnrollMfa has not yet been implemented")
+		})
+	}
 	if api.EnrollEnrollOttHandler == nil {
 		api.EnrollEnrollOttHandler = enroll.EnrollOttHandlerFunc(func(params enroll.EnrollOttParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.EnrollOtt has not yet been implemented")
@@ -484,9 +521,9 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation current_api_session.GetCurrentAPISession has not yet been implemented")
 		})
 	}
-	if api.CurrentAPISessionGetCurrentIdentityHandler == nil {
-		api.CurrentAPISessionGetCurrentIdentityHandler = current_api_session.GetCurrentIdentityHandlerFunc(func(params current_api_session.GetCurrentIdentityParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation current_api_session.GetCurrentIdentity has not yet been implemented")
+	if api.CurrentIdentityGetCurrentIdentityHandler == nil {
+		api.CurrentIdentityGetCurrentIdentityHandler = current_identity.GetCurrentIdentityHandlerFunc(func(params current_identity.GetCurrentIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.GetCurrentIdentity has not yet been implemented")
 		})
 	}
 	if api.IdentityGetIdentityPolicyAdviceHandler == nil {
@@ -839,6 +876,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation transit_router.PatchTransitRouter has not yet been implemented")
 		})
 	}
+	if api.IdentityRemoveIdentityMfaHandler == nil {
+		api.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorUpdateAuthenticatorHandler == nil {
 		api.AuthenticatorUpdateAuthenticatorHandler = authenticator.UpdateAuthenticatorHandlerFunc(func(params authenticator.UpdateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.UpdateAuthenticator has not yet been implemented")
@@ -912,6 +954,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.CertificateAuthorityVerifyCaHandler == nil {
 		api.CertificateAuthorityVerifyCaHandler = certificate_authority.VerifyCaHandlerFunc(func(params certificate_authority.VerifyCaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation certificate_authority.VerifyCa has not yet been implemented")
+		})
+	}
+	if api.CurrentIdentityVerifyMfaHandler == nil {
+		api.CurrentIdentityVerifyMfaHandler = current_identity.VerifyMfaHandlerFunc(func(params current_identity.VerifyMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.VerifyMfa has not yet been implemented")
 		})
 	}
 

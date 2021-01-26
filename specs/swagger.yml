@@ -281,6 +281,29 @@ paths:
           $ref: '#/responses/badRequestResponse'
         '403':
           $ref: '#/responses/invalidAuthResponse'
+
+  '/authenticate/mfa':
+    post:
+      summary: Complete MFA authentication
+      description: Completes MFA authentication by submitting a MFA time based one time token or backup code.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authentication
+        - MFA
+      operationId: authenticateMfa
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An MFA validation request'
+          schema:
+            $ref: '#/definitions/mfaCode'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '401':
+          $ref: '#/responses/emptyResponse'
   ###################################################################
   # Authenticators
   ##################################################################
@@ -316,7 +339,7 @@ paths:
           schema:
             $ref: '#/definitions/authenticatorCreate'
       responses:
-        '200':
+        '201':
           description: The create was successful
           schema:
             $ref: '#/definitions/authenticatorCreate'
@@ -444,7 +467,7 @@ paths:
           schema:
             $ref: '#/definitions/caCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -630,7 +653,7 @@ paths:
           schema:
             $ref: '#/definitions/configTypeCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -771,7 +794,7 @@ paths:
           schema:
             $ref: '#/definitions/configCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -924,7 +947,7 @@ paths:
           schema:
             $ref: '#/definitions/currentApiSessionCertificateCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createCurrentApiSessionCertificateResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -991,13 +1014,175 @@ paths:
       security:
         - ztSession: [ ]
       tags:
-        - Current API Session
+        - Current Identity
       operationId: getCurrentIdentity
       responses:
         '200':
           $ref: '#/responses/detailCurrentIdentity'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+  '/current-identity/mfa':
+    post:
+      summary: Initiate MFA enrollment
+      description: >
+        Allows authenticator based MFA enrollment. If enrollment has already been completed, it must be
+        disabled before attempting to re-enroll. Subsequent enrollment request is completed via
+        `POST /current-identity/mfa/verify`
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: enrollMfa
+      responses:
+        '201':
+          $ref: '#/responses/createResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/alreadyMfaEnrolledResponse'
+    get:
+      summary: Returns the current status of MFA enrollment
+      description: >
+        Returns details about the current MFA enrollment. If enrollment has not been completed it will
+        return the current MFA configuration details necessary to complete a `POST /current-identity/mfa/verify`.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: detailMfa
+      responses:
+        '200':
+          $ref: '#/responses/detailMfa'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+    delete:
+      summary: Disable MFA for the current identity
+      description: >
+        Disable MFA for the current identity. Requires a current valid time based one time password if MFA enrollment
+        has been completed. If not, code should be an empty string. If one time passwords are not available and admin
+        account can be used to remove MFA from the identity via `DELETE /identities/<id>/mfa`.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: deleteMfa
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An MFA validation request'
+          schema:
+            $ref: '#/definitions/mfaCode'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+  '/current-identity/mfa/qr-code':
+    get:
+      summary: Show a QR code for unverified MFA enrollments
+      description: >
+        Shows an QR code image for unverified MFA enrollments. 404s if the MFA enrollment has been completed or
+        not started.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: detailMfaQrCode
+      produces:
+        - image/png
+        - application/json
+      responses:
+        200:
+          description: OK
+        404:
+          description: No MFA enrollment or MFA enrollment is completed
+  '/current-identity/mfa/verify':
+    post:
+      summary: Complete MFA enrollment by verifying a time based one time token
+      description: >
+        Completes MFA enrollment by accepting a time based one time password as verification. Called
+        after MFA enrollment has been initiated via `POST /current-identity/mfa`.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: verifyMfa
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An MFA validation request'
+          schema:
+            $ref: '#/definitions/mfaCode'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+  '/current-identity/mfa/recovery-codes':
+    get:
+      summary: For a completed MFA enrollment view the current recovery codes
+      description: >
+        Allows the viewing of recovery codes of an MFA enrollment. Requires a current valid
+        time based one time password to interact with. Available after a completed MFA enrollment.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: detailMfaRecoveryCodes
+      parameters:
+        - name: Body
+          in: body
+          required: true
+          description: 'An MFA validation request'
+          schema:
+            $ref: '#/definitions/mfaCode'
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+    post:
+      summary: For a completed MFA enrollment regenerate the recovery codes
+      description: >
+        Allows regeneration of recovery codes of an MFA enrollment. Requires a current valid
+        time based one time password to interact with. Available after a completed MFA enrollment. This replaces
+        all existing recovery codes.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - MFA
+      operationId: createMfaRecoveryCodes
+      parameters:
+        - name: mfaCode
+          in: body
+          required: true
+          description: 'An MFA validation request'
+          schema:
+            $ref: '#/definitions/mfaCode'
+      responses:
+        '200':
+          $ref: '#/responses/detailMfaRecoveryCodes'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
   '/current-identity/authenticators':
     get:
       summary: List authenticators for the current identity
@@ -1125,7 +1310,7 @@ paths:
           schema:
             $ref: '#/definitions/edgeRouterPolicyCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -1292,7 +1477,7 @@ paths:
           schema:
             $ref: '#/definitions/edgeRouterCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -1707,7 +1892,7 @@ paths:
           schema:
             $ref: '#/definitions/identityCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -1982,6 +2167,26 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}/mfa':
+    parameters:
+      - $ref: '#/parameters/id'
+    delete:
+      summary: Remove MFA from an identitity
+      description: |
+        Allows an admin to remove MFA enrollment from a specific identity. Requires admin.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+        - MFA
+      operationId: removeIdentityMfa
+      responses:
+        '200':
+          $ref: '#/responses/emptyResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
   ###################################################################
   # Identity-Types
   ##################################################################
@@ -2060,7 +2265,7 @@ paths:
           schema:
             $ref: '#/definitions/serviceEdgeRouterPolicyCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -2224,7 +2429,7 @@ paths:
           schema:
             $ref: '#/definitions/servicePolicyCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -2422,7 +2627,7 @@ paths:
           schema:
             $ref: '#/definitions/serviceCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -2681,7 +2886,7 @@ paths:
           schema:
             $ref: '#/definitions/sessionCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/sessionCreateResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -2760,7 +2965,7 @@ paths:
           schema:
             $ref: '#/definitions/terminatorCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -2950,7 +3155,7 @@ paths:
           schema:
             $ref: '#/definitions/transitRouterCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -3166,8 +3371,8 @@ paths:
           schema:
             $ref: '#/definitions/PostureResponseCreate'
       responses:
-        '200':
-          $ref: '#/responses/emptyResponse'
+        '201':
+          $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
         '401':
@@ -3238,7 +3443,7 @@ paths:
           schema:
             $ref: '#/definitions/PostureCheckCreate'
       responses:
-        '200':
+        '201':
           $ref: '#/responses/createResponse'
         '400':
           $ref: '#/responses/badRequestResponse'
@@ -3476,6 +3681,22 @@ responses:
         meta:
           apiEnrolmentVersion: 0.0.1
           apiVersion: 0.0.1
+  alreadyMfaEnrolledResponse:
+    description: The identity is already enrolled in MFA
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
+    examples:
+      'application/json':
+        error:
+          args:
+          cause:
+          causeMessage: ''
+          code: ALREADY_MFA_ENROLLED
+          message: The identity is already enrolled in MFA
+          requestId: 270908d6-f2ef-4577-b973-67bec18ae376
+        meta:
+          apiEnrolmentVersion: 0.0.1
+          apiVersion: 0.0.1
   cannotDeleteReferencedResourceResponse:
     description: The resource requested to be removed/altered cannot be as it is referenced by another object.
     schema:
@@ -3533,9 +3754,10 @@ responses:
     schema:
       $ref: '#/definitions/createEnvelope'
   sessionCreateResponse:
-    description: The create request was successful and the resource has been added at the following location.
+    description: The create request was successful and the resource has been added at the following location
     schema:
       $ref: '#/definitions/sessionCreateEnvelope'
+
   ###################################################################
   # Current Session
   ##################################################################
@@ -3567,6 +3789,25 @@ responses:
           expiresAt: '2020-03-09T19:34:21.5600897Z'
           configTypes: [ ]
 
+  ####################################################################
+  # Current API Session: Certificates
+  ##################################################################
+  listCurrentApiSessionCertificates:
+    description: A list of the current API Session's certificate
+    schema:
+      $ref: '#/definitions/listCurrentAPISessionCertificatesEnvelope'
+  createCurrentApiSessionCertificateResponse:
+    description: A response of a create API Session certificate
+    schema:
+      $ref: '#/definitions/createCurrentApiSessionCertificateEnvelope'
+  detailCurrentApiSessionCertificate:
+    description: A response containing a single API Session certificate
+    schema:
+      $ref: '#/definitions/detailCurrentApiSessionCertificateEnvelope'
+
+  ###################################################################
+  # Current Identity
+  ##################################################################
   detailCurrentIdentity:
     description: The identity associated with the API Session used to issue the request
     schema:
@@ -3602,18 +3843,24 @@ responses:
           enrollment: { }
           roleAttributes:
             $ref: '#/definitions/attributes'
-  listCurrentApiSessionCertificates:
-    description: A list of the current API Session's certificate
+
+  ###################################################################
+  # Current Identity: MFA
+  ##################################################################
+  mfaCreatedResponse:
+    description: The create request was succesful and the response contains the location and details to complete MFA enrollment
     schema:
-      $ref: '#/definitions/listCurrentAPISessionCertificatesEnvelope'
-  createCurrentApiSessionCertificateResponse:
-    description: A response of a create API Session certificate
+      $ref: '#/definitions/mfaCreatedEnvelope'
+
+  detailMfa:
+    description: The details of an MFA enrollment
     schema:
-      $ref: '#/definitions/createCurrentApiSessionCertificateEnvelope'
-  detailCurrentApiSessionCertificate:
-    description: A response containing a single API Session certificate
+      $ref: '#/definitions/detailMfaEnvelope'
+
+  detailMfaRecoveryCodes:
+    description: The recovery codes of an MFA enrollment
     schema:
-      $ref: '#/definitions/detailCurrentApiSessionCertificateEnvelope'
+      $ref: '#/definitions/detailMfaRecoveryCodesEnvelope'
   ###################################################################
   # API Session
   ##################################################################
@@ -4159,6 +4406,7 @@ definitions:
           - identityId
           - configTypes
           - ipAddress
+          - authQueries
         properties:
           token:
             type: string
@@ -4172,6 +4420,8 @@ definitions:
             type: array
             items:
               type: string
+          authQueries:
+            $ref: '#/definitions/authQueryList'
   currentApiSessionDetail:
     description: An API Session object for the current API session
     type: object
@@ -4289,6 +4539,7 @@ definitions:
           - roleAttributes
           - hasEdgeRouterConnection
           - hasApiSession
+          - isMfaEnabled
         properties:
           name:
             type: string
@@ -4313,6 +4564,8 @@ definitions:
           hasEdgeRouterConnection:
             type: boolean
           hasApiSession:
+            type: boolean
+          isMfaEnabled:
             type: boolean
           defaultHostingPrecedence:
             $ref: '#/definitions/terminatorPrecedence'
@@ -5446,6 +5699,9 @@ definitions:
         type: object
         additionalProperties:
           type: string
+  ###################################################################
+  # Errors
+  ##################################################################
   apiErrorEnvelope:
     type: object
     required:
@@ -5492,6 +5748,9 @@ definitions:
         additionalProperties:
           type: string
         type: object
+  ###################################################################
+  # Standard
+  ##################################################################
   empty:
     type: object
     required:
@@ -6855,6 +7114,29 @@ definitions:
     x-class: "PROCESS"
 
   ###################################################################
+  # Posture Check MFA
+  ###################################################################
+  PostureCheckMfaDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+    x-class: "MFA"
+
+  PostureCheckMfaCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+    x-class: "MFA"
+
+  PostureCheckMfaUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+    x-class: "MFA"
+
+  PostureCheckMfaPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+    x-class: "MFA"
+
+  ###################################################################
   # Posture Response
   ###################################################################
   PostureResponseCreate:
@@ -6926,6 +7208,46 @@ definitions:
               type: string
     x-class: "PROCESS"
 
+  ###################################################################
+  # Authentication Checks
+  ###################################################################
+  authQueryList:
+    type: array
+    items:
+      $ref: '#/definitions/authQueryDetail'
+  authQueryDetail:
+    type: object
+    required:
+      - provider
+    properties:
+      typeId:
+        type: string
+      provider:
+        $ref: '#/definitions/mfaProviders'
+      httpMethod:
+        type: string
+      httpUrl:
+        type: string
+      minLength:
+        type: integer
+      maxLength:
+        type: integer
+      format:
+        $ref: '#/definitions/mfaFormats'
+
+  mfaFormats:
+    type: string
+    enum:
+      - numeric
+      - alpha
+      - alphaNumeric
+  mfaProviders:
+    type: string
+    enum:
+      - ziti
+  ###################################################################
+  # Current API Session: Certificates
+  ###################################################################
   currentApiSessionCertificateList:
     type: array
     items:
@@ -6972,6 +7294,75 @@ definitions:
             type: string
           cas:
             type: string
+
+  ###################################################################
+  # Current Identity: MFA
+  ###################################################################
+  mfaCreatedEnvelope:
+    type: object
+    required:
+      - meta
+      - error
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      error:
+        $ref: '#/definitions/apiError'
+  detailMfaEnvelope:
+    type: object
+    required:
+      - meta
+      - error
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      error:
+        $ref: '#/definitions/detailMfa'
+  detailMfa:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - required:
+          - isVerified
+        properties:
+          isVerified:
+            type: boolean
+          recoveryCodes:
+            type: array
+            items:
+              type: string
+            description: Not provided if MFA verification has been completed
+          provisioningUrl:
+            type: string
+            description: Not provided if MFA verification has been completed
+  detailMfaRecoveryCodesEnvelope:
+    type: object
+    required:
+      - meta
+      - error
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      error:
+        $ref: '#/definitions/detailMfaRecoveryCodes'
+  detailMfaRecoveryCodes:
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - required:
+          - recoveryCodes
+        properties:
+          recoveryCodes:
+            type: array
+            items:
+              type: string
+  mfaCode:
+    type: object
+    required:
+      - code
+    properties:
+      code:
+        type: string
   ###################################################################
   # Current API Session: Service Updates
   ##################################################################

@@ -91,13 +91,22 @@ func (ctx *TestContext) pathEqualsStringSlice(container *gabs.Container, val int
 	}
 }
 
-func (ctx *TestContext) RequirePath(container *gabs.Container, searchPath ...string) *gabs.Container {
+func (ctx *TestContext) RequireGetNonNilPathValue(container *gabs.Container, searchPath ...string) *gabs.Container {
 	if len(searchPath) == 1 {
 		searchPath = path(searchPath[0])
 	}
 	elem := container.S(searchPath...)
 	ctx.Req.NotNil(elem)
 	return elem
+}
+
+
+
+func (ctx *TestContext) RequirePathExists(container *gabs.Container, searchPath ...string) {
+	if len(searchPath) == 1 {
+		searchPath = path(searchPath[0])
+	}
+	ctx.Req.True(container.Exists(searchPath...), fmt.Sprintf("path does not exist in JSON container: %s", strings.Join(searchPath, ".")))
 }
 
 func (ctx *TestContext) RequireChildWith(container *gabs.Container, attribute string, value interface{}) *gabs.Container {

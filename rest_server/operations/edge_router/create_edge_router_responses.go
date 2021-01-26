@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateEdgeRouterOKCode is the HTTP code returned for type CreateEdgeRouterOK
-const CreateEdgeRouterOKCode int = 200
+// CreateEdgeRouterCreatedCode is the HTTP code returned for type CreateEdgeRouterCreated
+const CreateEdgeRouterCreatedCode int = 201
 
-/*CreateEdgeRouterOK The create request was successful and the resource has been added at the following location
+/*CreateEdgeRouterCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createEdgeRouterOK
+swagger:response createEdgeRouterCreated
 */
-type CreateEdgeRouterOK struct {
+type CreateEdgeRouterCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateEdgeRouterOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateEdgeRouterOK creates CreateEdgeRouterOK with default headers values
-func NewCreateEdgeRouterOK() *CreateEdgeRouterOK {
+// NewCreateEdgeRouterCreated creates CreateEdgeRouterCreated with default headers values
+func NewCreateEdgeRouterCreated() *CreateEdgeRouterCreated {
 
-	return &CreateEdgeRouterOK{}
+	return &CreateEdgeRouterCreated{}
 }
 
-// WithPayload adds the payload to the create edge router o k response
-func (o *CreateEdgeRouterOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateEdgeRouterOK {
+// WithPayload adds the payload to the create edge router created response
+func (o *CreateEdgeRouterCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateEdgeRouterCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create edge router o k response
-func (o *CreateEdgeRouterOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create edge router created response
+func (o *CreateEdgeRouterCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateEdgeRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateEdgeRouterCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

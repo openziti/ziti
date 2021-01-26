@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	EventIdentityPostureDataAltered = "EventIdentityPostureDataAltered"
+	EventIdentityPostureDataAltered   = "EventIdentityPostureDataAltered"
+	EventApiSessionPostureDataAltered = "EventApiSessionPostureDataAltered"
 )
 
 type PostureCache struct {
@@ -95,10 +96,10 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 	pc.Emit(EventIdentityPostureDataAltered, identityId)
 }
 
-func (pc *PostureCache) Evaluate(identityId string, postureChecks []*PostureCheck) bool {
+func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks []*PostureCheck) bool {
 	if val, found := pc.identityToPostureData.Get(identityId); found {
 		postureData := val.(*PostureData)
-		return postureData.Evaluate(postureChecks)
+		return postureData.Evaluate(apiSessionId, postureChecks)
 	}
 
 	return false
@@ -112,11 +113,16 @@ func (pc *PostureCache) PostureData(identityId string) *PostureData {
 	return newPostureData()
 }
 
+type ApiSessionPostureData struct {
+	Mfa *PostureResponseMfa `json:"mfa"`
+}
+
 type PostureData struct {
-	Mac       *PostureResponseMac       `json:"mac"`
-	Domain    *PostureResponseDomain    `json:"domain"`
-	Os        *PostureResponseOs        `json:"os"`
-	Processes []*PostureResponseProcess `json:"process"`
+	Mac         *PostureResponseMac               `json:"mac"`
+	Domain      *PostureResponseDomain            `json:"domain"`
+	Os          *PostureResponseOs                `json:"os"`
+	Processes   []*PostureResponseProcess         `json:"process"`
+	ApiSessions map[string]*ApiSessionPostureData `json:"sessionPostureData"`
 }
 
 func (pd *PostureData) Timeout(oldest time.Time) bool {
@@ -132,9 +138,9 @@ func (pd *PostureData) Timeout(oldest time.Time) bool {
 	return changed
 }
 
-func (pd *PostureData) Evaluate(checks []*PostureCheck) bool {
+func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) bool {
 	for _, check := range checks {
-		if result := check.Evaluate(pd); !result {
+		if result := check.Evaluate(apiSessionId, pd); !result {
 			return false
 		}
 	}
@@ -158,7 +164,8 @@ func newPostureData() *PostureData {
 			Version:         "",
 			Build:           "",
 		},
-		Processes: []*PostureResponseProcess{},
+		Processes:   []*PostureResponseProcess{},
+		ApiSessions: map[string]*ApiSessionPostureData{},
 	}
 }
 
@@ -236,7 +243,7 @@ func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
 	for i, fingerprint := range pr.SignerFingerprints {
 		pr.SignerFingerprints[i] = CleanHexString(fingerprint)
 	}
-	
+
 	pr.BinaryHash = CleanHexString(pr.BinaryHash)
 
 	for i, process := range postureData.Processes {
@@ -262,4 +269,36 @@ type PostureResponseDomain struct {
 func (pr *PostureResponseDomain) Apply(postureData *PostureData) {
 	postureData.Domain = pr
 	postureData.Domain.LastUpdatedAt = time.Now()
+}
+
+const (
+	MfaProviderZiti string = "ziti"
+)
+
+type PostureResponseMfa struct {
+	*PostureResponse
+	ApiSessionId string `json:"-"'`
+	PassedMfa    bool   `json:"passedMfa"`
+}
+
+func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
+
+	if postureData.ApiSessions == nil {
+		postureData.ApiSessions = map[string]*ApiSessionPostureData{}
+	}
+
+	apiSessionPostureData := postureData.ApiSessions[pr.ApiSessionId]
+
+	if apiSessionPostureData == nil {
+		apiSessionPostureData = &ApiSessionPostureData{}
+		postureData.ApiSessions[pr.ApiSessionId] = apiSessionPostureData
+	}
+
+	apiSessionPostureData.Mfa = pr
+	apiSessionPostureData.Mfa.LastUpdatedAt = time.Now()
+}
+
+func (pr *PostureResponseMfa) Timeout(oldest time.Time) bool {
+	//valid for lifetime of ApiSession
+	return false
 }

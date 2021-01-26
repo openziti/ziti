@@ -47,8 +47,8 @@ type CreateConfigReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateConfigReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateConfigOK()
+	case 201:
+		result := NewCreateConfigCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateConfigReader) ReadResponse(response runtime.ClientResponse, consu
 	}
 }
 
-// NewCreateConfigOK creates a CreateConfigOK with default headers values
-func NewCreateConfigOK() *CreateConfigOK {
-	return &CreateConfigOK{}
+// NewCreateConfigCreated creates a CreateConfigCreated with default headers values
+func NewCreateConfigCreated() *CreateConfigCreated {
+	return &CreateConfigCreated{}
 }
 
-/*CreateConfigOK handles this case with default header values.
+/*CreateConfigCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateConfigOK struct {
+type CreateConfigCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateConfigOK) Error() string {
-	return fmt.Sprintf("[POST /configs][%d] createConfigOK  %+v", 200, o.Payload)
+func (o *CreateConfigCreated) Error() string {
+	return fmt.Sprintf("[POST /configs][%d] createConfigCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateConfigOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateConfigCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateConfigOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateConfigCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

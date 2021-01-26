@@ -37,6 +37,7 @@ var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
 	"DOMAIN":  newPostureCheckWindowsDomain,
 	"PROCESS": newPostureCheckProcess,
 	"MAC":     newPostureCheckMacAddresses,
+	"MFA":     newPostureCheckMfa,
 }
 
 type newPostureCheckSubType func() PostureCheckSubType

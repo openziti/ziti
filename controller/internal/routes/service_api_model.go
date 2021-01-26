@@ -169,7 +169,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			isCheckPassing := false
 			found := false
 			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
-				isCheckPassing = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, postureCheck)
+				isCheckPassing = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
 

@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateCurrentAPISessionCertificateOKCode is the HTTP code returned for type CreateCurrentAPISessionCertificateOK
-const CreateCurrentAPISessionCertificateOKCode int = 200
+// CreateCurrentAPISessionCertificateCreatedCode is the HTTP code returned for type CreateCurrentAPISessionCertificateCreated
+const CreateCurrentAPISessionCertificateCreatedCode int = 201
 
-/*CreateCurrentAPISessionCertificateOK A response of a create API Session certificate
+/*CreateCurrentAPISessionCertificateCreated A response of a create API Session certificate
 
-swagger:response createCurrentApiSessionCertificateOK
+swagger:response createCurrentApiSessionCertificateCreated
 */
-type CreateCurrentAPISessionCertificateOK struct {
+type CreateCurrentAPISessionCertificateCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateCurrentAPISessionCertificateOK struct {
 	Payload *rest_model.CreateCurrentAPISessionCertificateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateCurrentAPISessionCertificateOK creates CreateCurrentAPISessionCertificateOK with default headers values
-func NewCreateCurrentAPISessionCertificateOK() *CreateCurrentAPISessionCertificateOK {
+// NewCreateCurrentAPISessionCertificateCreated creates CreateCurrentAPISessionCertificateCreated with default headers values
+func NewCreateCurrentAPISessionCertificateCreated() *CreateCurrentAPISessionCertificateCreated {
 
-	return &CreateCurrentAPISessionCertificateOK{}
+	return &CreateCurrentAPISessionCertificateCreated{}
 }
 
-// WithPayload adds the payload to the create current Api session certificate o k response
-func (o *CreateCurrentAPISessionCertificateOK) WithPayload(payload *rest_model.CreateCurrentAPISessionCertificateEnvelope) *CreateCurrentAPISessionCertificateOK {
+// WithPayload adds the payload to the create current Api session certificate created response
+func (o *CreateCurrentAPISessionCertificateCreated) WithPayload(payload *rest_model.CreateCurrentAPISessionCertificateEnvelope) *CreateCurrentAPISessionCertificateCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create current Api session certificate o k response
-func (o *CreateCurrentAPISessionCertificateOK) SetPayload(payload *rest_model.CreateCurrentAPISessionCertificateEnvelope) {
+// SetPayload sets the payload to the create current Api session certificate created response
+func (o *CreateCurrentAPISessionCertificateCreated) SetPayload(payload *rest_model.CreateCurrentAPISessionCertificateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateCurrentAPISessionCertificateOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateCurrentAPISessionCertificateCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

@@ -223,6 +223,41 @@ func init() {
         }
       ]
     },
+    "/authenticate/mfa": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Completes MFA authentication by submitting a MFA time based one time token or backup code.",
+        "tags": [
+          "Authentication",
+          "MFA"
+        ],
+        "summary": "Complete MFA authentication",
+        "operationId": "authenticateMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/emptyResponse"
+          }
+        }
+      }
+    },
     "/authenticators": {
       "get": {
         "security": [
@@ -266,7 +301,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create was successful",
             "schema": {
               "$ref": "#/definitions/authenticatorCreate"
@@ -466,7 +501,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -750,7 +785,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -978,7 +1013,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -1221,7 +1256,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createCurrentApiSessionCertificateResponse"
           },
           "400": {
@@ -1321,7 +1356,7 @@ func init() {
         ],
         "description": "Returns the identity associated with the API sessions used to issue the current request",
         "tags": [
-          "Current API Session"
+          "Current Identity"
         ],
         "summary": "Return the current identity",
         "operationId": "getCurrentIdentity",
@@ -1475,6 +1510,234 @@ func init() {
           "$ref": "#/parameters/id"
         }
       ]
+    },
+    "/current-identity/mfa": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Returns details about the current MFA enrollment. If enrollment has not been completed it will return the current MFA configuration details necessary to complete a ` + "`" + `POST /current-identity/mfa/verify` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Returns the current status of MFA enrollment",
+        "operationId": "detailMfa",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailMfa"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows authenticator based MFA enrollment. If enrollment has already been completed, it must be disabled before attempting to re-enroll. Subsequent enrollment request is completed via ` + "`" + `POST /current-identity/mfa/verify` + "`" + `\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Initiate MFA enrollment",
+        "operationId": "enrollMfa",
+        "responses": {
+          "201": {
+            "$ref": "#/responses/createResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "409": {
+            "$ref": "#/responses/alreadyMfaEnrolledResponse"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Disable MFA for the current identity. Requires a current valid time based one time password if MFA enrollment has been completed. If not, code should be an empty string. If one time passwords are not available and admin account can be used to remove MFA from the identity via ` + "`" + `DELETE /identities/\u003cid\u003e/mfa` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Disable MFA for the current identity",
+        "operationId": "deleteMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/qr-code": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Shows an QR code image for unverified MFA enrollments. 404s if the MFA enrollment has been completed or not started.\n",
+        "produces": [
+          "image/png",
+          "application/json"
+        ],
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Show a QR code for unverified MFA enrollments",
+        "operationId": "detailMfaQrCode",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "No MFA enrollment or MFA enrollment is completed"
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/recovery-codes": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows the viewing of recovery codes of an MFA enrollment. Requires a current valid time based one time password to interact with. Available after a completed MFA enrollment.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "For a completed MFA enrollment view the current recovery codes",
+        "operationId": "detailMfaRecoveryCodes",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows regeneration of recovery codes of an MFA enrollment. Requires a current valid time based one time password to interact with. Available after a completed MFA enrollment. This replaces all existing recovery codes.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "For a completed MFA enrollment regenerate the recovery codes",
+        "operationId": "createMfaRecoveryCodes",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "mfaCode",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailMfaRecoveryCodes"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/verify": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Completes MFA enrollment by accepting a time based one time password as verification. Called after MFA enrollment has been initiated via ` + "`" + `POST /current-identity/mfa` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Complete MFA enrollment by verifying a time based one time token",
+        "operationId": "verifyMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      }
     },
     "/database/check-data-integrity": {
       "post": {
@@ -1634,7 +1897,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -1939,7 +2202,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -2569,7 +2832,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -2762,6 +3025,38 @@ func init() {
         "responses": {
           "200": {
             "$ref": "#/responses/listEdgeRouters"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
+    },
+    "/identities/{id}/mfa": {
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to remove MFA enrollment from a specific identity. Requires admin.\n",
+        "tags": [
+          "Identity",
+          "MFA"
+        ],
+        "summary": "Remove MFA from an identitity",
+        "operationId": "removeIdentityMfa",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/emptyResponse"
           },
           "401": {
             "$ref": "#/responses/unauthorizedResponse"
@@ -3237,7 +3532,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -3405,8 +3700,8 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
-            "$ref": "#/responses/emptyResponse"
+          "201": {
+            "$ref": "#/responses/createResponse"
           },
           "400": {
             "$ref": "#/responses/badRequestResponse"
@@ -3529,7 +3824,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -3794,7 +4089,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -4163,7 +4458,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -4600,7 +4895,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/sessionCreateResponse"
           },
           "400": {
@@ -4812,7 +5107,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -5015,7 +5310,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "$ref": "#/responses/createResponse"
           },
           "400": {
@@ -5442,6 +5737,38 @@ func init() {
       ],
       "x-class": "MAC"
     },
+    "PostureCheckMfaCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckCreate"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckDetail"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaPatch": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckPatch"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaUpdate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckUpdate"
+        }
+      ],
+      "x-class": "MFA"
+    },
     "PostureCheckOperatingSystemCreate": {
       "allOf": [
         {
@@ -5854,9 +6181,13 @@ func init() {
             "identity",
             "identityId",
             "configTypes",
-            "ipAddress"
+            "ipAddress",
+            "authQueries"
           ],
           "properties": {
+            "authQueries": {
+              "$ref": "#/definitions/authQueryList"
+            },
             "configTypes": {
               "type": "array",
               "items": {
@@ -5906,6 +6237,41 @@ func init() {
         "type": "string"
       },
       "x-omitempty": false
+    },
+    "authQueryDetail": {
+      "type": "object",
+      "required": [
+        "provider"
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/mfaFormats"
+        },
+        "httpMethod": {
+          "type": "string"
+        },
+        "httpUrl": {
+          "type": "string"
+        },
+        "maxLength": {
+          "type": "integer"
+        },
+        "minLength": {
+          "type": "integer"
+        },
+        "provider": {
+          "$ref": "#/definitions/mfaProviders"
+        },
+        "typeId": {
+          "type": "string"
+        }
+      }
+    },
+    "authQueryList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/authQueryDetail"
+      }
     },
     "authenticate": {
       "description": "A generic authenticate object meant for use with the /authenticate path. Required fields depend on authentication method.",
@@ -6919,6 +7285,86 @@ func init() {
         }
       }
     },
+    "detailMfa": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "required": [
+            "isVerified"
+          ],
+          "properties": {
+            "isVerified": {
+              "type": "boolean"
+            },
+            "provisioningUrl": {
+              "description": "Not provided if MFA verification has been completed",
+              "type": "string"
+            },
+            "recoveryCodes": {
+              "description": "Not provided if MFA verification has been completed",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "detailMfaEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/detailMfa"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailMfaRecoveryCodes": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "required": [
+            "recoveryCodes"
+          ],
+          "properties": {
+            "recoveryCodes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "detailMfaRecoveryCodesEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/detailMfaRecoveryCodes"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailPostureCheckEnvelope": {
       "type": "object",
       "required": [
@@ -7677,7 +8123,8 @@ func init() {
             "sdkInfo",
             "roleAttributes",
             "hasEdgeRouterConnection",
-            "hasApiSession"
+            "hasApiSession",
+            "isMfaEnabled"
           ],
           "properties": {
             "authenticators": {
@@ -7705,6 +8152,9 @@ func init() {
               "type": "boolean"
             },
             "isDefaultAdmin": {
+              "type": "boolean"
+            },
+            "isMfaEnabled": {
               "type": "boolean"
             },
             "name": {
@@ -8334,6 +8784,46 @@ func init() {
           "$ref": "#/definitions/pagination"
         }
       }
+    },
+    "mfaCode": {
+      "type": "object",
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        }
+      }
+    },
+    "mfaCreatedEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/apiError"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "mfaFormats": {
+      "type": "string",
+      "enum": [
+        "numeric",
+        "alpha",
+        "alphaNumeric"
+      ]
+    },
+    "mfaProviders": {
+      "type": "string",
+      "enum": [
+        "ziti"
+      ]
     },
     "namedRole": {
       "type": "object",
@@ -9680,6 +10170,28 @@ func init() {
     }
   },
   "responses": {
+    "alreadyMfaEnrolledResponse": {
+      "description": "The identity is already enrolled in MFA",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
+      },
+      "examples": {
+        "application/json": {
+          "error": {
+            "args": null,
+            "cause": null,
+            "causeMessage": "",
+            "code": "ALREADY_MFA_ENROLLED",
+            "message": "The identity is already enrolled in MFA",
+            "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+          },
+          "meta": {
+            "apiEnrolmentVersion": "0.0.1",
+            "apiVersion": "0.0.1"
+          }
+        }
+      }
+    },
     "badRequestResponse": {
       "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
       "schema": {
@@ -9928,6 +10440,18 @@ func init() {
       "description": "A single identity type",
       "schema": {
         "$ref": "#/definitions/detailIdentityTypeEnvelope"
+      }
+    },
+    "detailMfa": {
+      "description": "The details of an MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/detailMfaEnvelope"
+      }
+    },
+    "detailMfaRecoveryCodes": {
+      "description": "The recovery codes of an MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/detailMfaRecoveryCodesEnvelope"
       }
     },
     "detailPostureCheck": {
@@ -10200,6 +10724,12 @@ func init() {
         "$ref": "#/definitions/listVersionEnvelope"
       }
     },
+    "mfaCreatedResponse": {
+      "description": "The create request was succesful and the response contains the location and details to complete MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/mfaCreatedEnvelope"
+      }
+    },
     "notFoundResponse": {
       "description": "The requested resource does not exist",
       "schema": {
@@ -10256,7 +10786,7 @@ func init() {
       }
     },
     "sessionCreateResponse": {
-      "description": "The create request was successful and the resource has been added at the following location.",
+      "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
         "$ref": "#/definitions/sessionCreateEnvelope"
       }
@@ -10702,6 +11232,47 @@ func init() {
         }
       ]
     },
+    "/authenticate/mfa": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Completes MFA authentication by submitting a MFA time based one time token or backup code.",
+        "tags": [
+          "Authentication",
+          "MFA"
+        ],
+        "summary": "Complete MFA authentication",
+        "operationId": "authenticateMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          }
+        }
+      }
+    },
     "/authenticators": {
       "get": {
         "security": [
@@ -10748,7 +11319,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create was successful",
             "schema": {
               "$ref": "#/definitions/authenticatorCreate"
@@ -11283,7 +11854,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -12038,7 +12609,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -12654,7 +13225,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -13341,7 +13912,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "A response of a create API Session certificate",
             "schema": {
               "$ref": "#/definitions/createCurrentApiSessionCertificateEnvelope"
@@ -13632,7 +14203,7 @@ func init() {
         ],
         "description": "Returns the identity associated with the API sessions used to issue the current request",
         "tags": [
-          "Current API Session"
+          "Current Identity"
         ],
         "summary": "Return the current identity",
         "operationId": "getCurrentIdentity",
@@ -14098,6 +14669,512 @@ func init() {
         }
       ]
     },
+    "/current-identity/mfa": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Returns details about the current MFA enrollment. If enrollment has not been completed it will return the current MFA configuration details necessary to complete a ` + "`" + `POST /current-identity/mfa/verify` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Returns the current status of MFA enrollment",
+        "operationId": "detailMfa",
+        "responses": {
+          "200": {
+            "description": "The details of an MFA enrollment",
+            "schema": {
+              "$ref": "#/definitions/detailMfaEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows authenticator based MFA enrollment. If enrollment has already been completed, it must be disabled before attempting to re-enroll. Subsequent enrollment request is completed via ` + "`" + `POST /current-identity/mfa/verify` + "`" + `\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Initiate MFA enrollment",
+        "operationId": "enrollMfa",
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The identity is already enrolled in MFA",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": null,
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "ALREADY_MFA_ENROLLED",
+                  "message": "The identity is already enrolled in MFA",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Disable MFA for the current identity. Requires a current valid time based one time password if MFA enrollment has been completed. If not, code should be an empty string. If one time passwords are not available and admin account can be used to remove MFA from the identity via ` + "`" + `DELETE /identities/\u003cid\u003e/mfa` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Disable MFA for the current identity",
+        "operationId": "deleteMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/qr-code": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Shows an QR code image for unverified MFA enrollments. 404s if the MFA enrollment has been completed or not started.\n",
+        "produces": [
+          "application/json",
+          "image/png"
+        ],
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Show a QR code for unverified MFA enrollments",
+        "operationId": "detailMfaQrCode",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "No MFA enrollment or MFA enrollment is completed"
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/recovery-codes": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows the viewing of recovery codes of an MFA enrollment. Requires a current valid time based one time password to interact with. Available after a completed MFA enrollment.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "For a completed MFA enrollment view the current recovery codes",
+        "operationId": "detailMfaRecoveryCodes",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows regeneration of recovery codes of an MFA enrollment. Requires a current valid time based one time password to interact with. Available after a completed MFA enrollment. This replaces all existing recovery codes.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "For a completed MFA enrollment regenerate the recovery codes",
+        "operationId": "createMfaRecoveryCodes",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "mfaCode",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The recovery codes of an MFA enrollment",
+            "schema": {
+              "$ref": "#/definitions/detailMfaRecoveryCodesEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/current-identity/mfa/verify": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Completes MFA enrollment by accepting a time based one time password as verification. Called after MFA enrollment has been initiated via ` + "`" + `POST /current-identity/mfa` + "`" + `.\n",
+        "tags": [
+          "Current Identity",
+          "MFA"
+        ],
+        "summary": "Complete MFA enrollment by verifying a time based one time token",
+        "operationId": "verifyMfa",
+        "parameters": [
+          {
+            "description": "An MFA validation request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/mfaCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/database/check-data-integrity": {
       "post": {
         "security": [
@@ -14442,7 +15519,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -15268,7 +16345,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -16843,7 +17920,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -17440,6 +18517,89 @@ func init() {
             "description": "A list of edge routers",
             "schema": {
               "$ref": "#/definitions/listEdgeRoutersEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/identities/{id}/mfa": {
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to remove MFA enrollment from a specific identity. Requires admin.\n",
+        "tags": [
+          "Identity",
+          "MFA"
+        ],
+        "summary": "Remove MFA from an identitity",
+        "operationId": "removeIdentityMfa",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -18573,7 +19733,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -19059,10 +20219,10 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
-            "description": "Base empty response",
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
-              "$ref": "#/definitions/empty"
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "400": {
@@ -19332,7 +20492,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -20080,7 +21240,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -21039,7 +22199,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -22061,8 +23221,8 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
-            "description": "The create request was successful and the resource has been added at the following location.",
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/sessionCreateEnvelope"
             }
@@ -22533,7 +23693,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -23117,7 +24277,7 @@ func init() {
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -23979,6 +25139,38 @@ func init() {
       ],
       "x-class": "MAC"
     },
+    "PostureCheckMfaCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckCreate"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckDetail"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaPatch": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckPatch"
+        }
+      ],
+      "x-class": "MFA"
+    },
+    "PostureCheckMfaUpdate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckUpdate"
+        }
+      ],
+      "x-class": "MFA"
+    },
     "PostureCheckOperatingSystemCreate": {
       "allOf": [
         {
@@ -24391,9 +25583,13 @@ func init() {
             "identity",
             "identityId",
             "configTypes",
-            "ipAddress"
+            "ipAddress",
+            "authQueries"
           ],
           "properties": {
+            "authQueries": {
+              "$ref": "#/definitions/authQueryList"
+            },
             "configTypes": {
               "type": "array",
               "items": {
@@ -24443,6 +25639,41 @@ func init() {
         "type": "string"
       },
       "x-omitempty": false
+    },
+    "authQueryDetail": {
+      "type": "object",
+      "required": [
+        "provider"
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/mfaFormats"
+        },
+        "httpMethod": {
+          "type": "string"
+        },
+        "httpUrl": {
+          "type": "string"
+        },
+        "maxLength": {
+          "type": "integer"
+        },
+        "minLength": {
+          "type": "integer"
+        },
+        "provider": {
+          "$ref": "#/definitions/mfaProviders"
+        },
+        "typeId": {
+          "type": "string"
+        }
+      }
+    },
+    "authQueryList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/authQueryDetail"
+      }
     },
     "authenticate": {
       "description": "A generic authenticate object meant for use with the /authenticate path. Required fields depend on authentication method.",
@@ -25456,6 +26687,86 @@ func init() {
         }
       }
     },
+    "detailMfa": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "required": [
+            "isVerified"
+          ],
+          "properties": {
+            "isVerified": {
+              "type": "boolean"
+            },
+            "provisioningUrl": {
+              "description": "Not provided if MFA verification has been completed",
+              "type": "string"
+            },
+            "recoveryCodes": {
+              "description": "Not provided if MFA verification has been completed",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "detailMfaEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/detailMfa"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailMfaRecoveryCodes": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "required": [
+            "recoveryCodes"
+          ],
+          "properties": {
+            "recoveryCodes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "detailMfaRecoveryCodesEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/detailMfaRecoveryCodes"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailPostureCheckEnvelope": {
       "type": "object",
       "required": [
@@ -26214,7 +27525,8 @@ func init() {
             "sdkInfo",
             "roleAttributes",
             "hasEdgeRouterConnection",
-            "hasApiSession"
+            "hasApiSession",
+            "isMfaEnabled"
           ],
           "properties": {
             "authenticators": {
@@ -26242,6 +27554,9 @@ func init() {
               "type": "boolean"
             },
             "isDefaultAdmin": {
+              "type": "boolean"
+            },
+            "isMfaEnabled": {
               "type": "boolean"
             },
             "name": {
@@ -26871,6 +28186,46 @@ func init() {
           "$ref": "#/definitions/pagination"
         }
       }
+    },
+    "mfaCode": {
+      "type": "object",
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        }
+      }
+    },
+    "mfaCreatedEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/apiError"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "mfaFormats": {
+      "type": "string",
+      "enum": [
+        "numeric",
+        "alpha",
+        "alphaNumeric"
+      ]
+    },
+    "mfaProviders": {
+      "type": "string",
+      "enum": [
+        "ziti"
+      ]
     },
     "namedRole": {
       "type": "object",
@@ -28218,6 +29573,28 @@ func init() {
     }
   },
   "responses": {
+    "alreadyMfaEnrolledResponse": {
+      "description": "The identity is already enrolled in MFA",
+      "schema": {
+        "$ref": "#/definitions/apiErrorEnvelope"
+      },
+      "examples": {
+        "application/json": {
+          "error": {
+            "args": null,
+            "cause": null,
+            "causeMessage": "",
+            "code": "ALREADY_MFA_ENROLLED",
+            "message": "The identity is already enrolled in MFA",
+            "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+          },
+          "meta": {
+            "apiEnrolmentVersion": "0.0.1",
+            "apiVersion": "0.0.1"
+          }
+        }
+      }
+    },
     "badRequestResponse": {
       "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
       "schema": {
@@ -28466,6 +29843,18 @@ func init() {
       "description": "A single identity type",
       "schema": {
         "$ref": "#/definitions/detailIdentityTypeEnvelope"
+      }
+    },
+    "detailMfa": {
+      "description": "The details of an MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/detailMfaEnvelope"
+      }
+    },
+    "detailMfaRecoveryCodes": {
+      "description": "The recovery codes of an MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/detailMfaRecoveryCodesEnvelope"
       }
     },
     "detailPostureCheck": {
@@ -28738,6 +30127,12 @@ func init() {
         "$ref": "#/definitions/listVersionEnvelope"
       }
     },
+    "mfaCreatedResponse": {
+      "description": "The create request was succesful and the response contains the location and details to complete MFA enrollment",
+      "schema": {
+        "$ref": "#/definitions/mfaCreatedEnvelope"
+      }
+    },
     "notFoundResponse": {
       "description": "The requested resource does not exist",
       "schema": {
@@ -28794,7 +30189,7 @@ func init() {
       }
     },
     "sessionCreateResponse": {
-      "description": "The create request was successful and the resource has been added at the following location.",
+      "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
         "$ref": "#/definitions/sessionCreateEnvelope"
       }

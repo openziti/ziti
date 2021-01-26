@@ -53,6 +53,10 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 	ae.Api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params) }, params.HTTPRequest, "", "", permissions.Always())
 	})
+
+	ae.Api.AuthenticationAuthenticateMfaHandler = authentication.AuthenticateMfaHandlerFunc(func(params authentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
+	})
 }
 
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
@@ -120,40 +124,97 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
-	s := &model.ApiSession{
+	newApiSession := &model.ApiSession{
 		IdentityId:  identity.Id,
 		Token:       token,
 		ConfigTypes: configTypes,
 		IPAddress:   remoteIpStr,
 	}
-	apiSessionId, err := ae.Handlers.ApiSession.Create(s)
+
+	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	updatedApiSesion, err := ae.Handlers.ApiSession.Read(apiSessionId)
+	if mfa != nil && mfa.IsVerified {
+		newApiSession.MfaRequired = true
+		newApiSession.MfaComplete = false
+	}
+
+	sessionId, err := ae.Handlers.ApiSession.Create(newApiSession)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	filledApiSession, err := ae.Handlers.ApiSession.Read(sessionId)
 
 	if err != nil {
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
 		rc.RespondWithApiError(apierror.NewUnauthorized())
 	}
 
-	rc.ApiSession = updatedApiSesion
-
-	apiSession := MapToCurrentApiSessionRestModel(updatedApiSesion, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(filledApiSession, ae.Config.SessionTimeoutDuration())
+	rc.ApiSession = filledApiSession
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
 	expiration := time.Time(*apiSession.ExpiresAt)
 	cookie := http.Cookie{Name: ae.AuthCookieName, Value: token, Expires: expiration}
 
-	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, updatedApiSesion.Token)
+	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, filledApiSession.Token)
 	http.SetCookie(rc.ResponseWriter, &cookie)
 	ro.createTimer.UpdateSince(start)
 
 	rc.Respond(envelope, http.StatusOK)
+}
+
+func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateMfaParams) {
+	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if mfa == nil {
+		rc.RespondWithError(apierror.NewMfaNotEnrolledError())
+		return
+	}
+
+	ok, _ := ae.Handlers.Mfa.Verify(mfa, *params.Body.Code)
+
+	if !ok {
+		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
+		return
+	}
+
+	if err := ae.Handlers.ApiSession.MfaCompleted(rc.ApiSession); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	postureResponse := &model.PostureResponse{
+		PostureCheckId: model.MfaProviderZiti,
+		TypeId:         "MFA",
+		TimedOut:       false,
+		LastUpdatedAt:  time.Now(),
+	}
+
+	postureSubType := &model.PostureResponseMfa{
+		ApiSessionId: rc.ApiSession.Id,
+		PassedMfa:    true,
+	}
+
+	postureResponse.SubType = postureSubType
+	postureSubType.PostureResponse = postureResponse
+
+	ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+
+	rc.RespondWithEmptyOk()
 }
 
 func mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) map[string]struct{} {

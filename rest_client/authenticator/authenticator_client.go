@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateAuthenticator(params *CreateAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateAuthenticatorOK, error)
+	CreateAuthenticator(params *CreateAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateAuthenticatorCreated, error)
 
 	DeleteAuthenticator(params *DeleteAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteAuthenticatorOK, error)
 
@@ -72,7 +72,7 @@ type ClientService interface {
   Creates an authenticator for a specific identity. Requires admin access.
 
 */
-func (a *Client) CreateAuthenticator(params *CreateAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateAuthenticatorOK, error) {
+func (a *Client) CreateAuthenticator(params *CreateAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter) (*CreateAuthenticatorCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateAuthenticatorParams()
@@ -94,7 +94,7 @@ func (a *Client) CreateAuthenticator(params *CreateAuthenticatorParams, authInfo
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateAuthenticatorOK)
+	success, ok := result.(*CreateAuthenticatorCreated)
 	if ok {
 		return success, nil
 	}

@@ -27,7 +27,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 	t.Run("returns true for exactly matching valid os type and version", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -37,7 +37,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=1.0.0"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -47,7 +47,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.4.0"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -57,7 +57,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.0"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -67,7 +67,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=11.0.0" //default data has 10.5.19041
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -77,7 +77,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">10.6.0" //default data has 10.5.19041
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -87,7 +87,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.19042" //default data has 10.5.19041
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -97,7 +97,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.19041" //default data has 10.5.19041
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -107,7 +107,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsType = os2Type
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -118,7 +118,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		postureData.Os.Type = os2Type
 		postureData.Os.Version = ""
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -129,7 +129,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		postureData.Os.Type = os3Type
 		postureData.Os.Version = ""
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -140,7 +140,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		postureData.Os.Type = os3Type
 		postureData.Os.Version = "1.2.3"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -151,7 +151,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		postureData.Os.Type = os2Type
 		postureData.Os.Version = os2Version1
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -162,7 +162,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		postureData.Os.Type = os2Type
 		postureData.Os.Version = "7.8.9"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.True(result)
@@ -173,7 +173,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -183,7 +183,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10.5"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -193,7 +193,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10."
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -203,18 +203,17 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10.5."
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
 	})
 
-
 	t.Run("returns false for posture data with valid os and partial os major and dangling periods", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10.5."
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -224,7 +223,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = ""
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -234,7 +233,7 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "10.this is not a real version"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
@@ -244,13 +243,12 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		postureData.Os.Version = "this is not a real version"
 
-		result := osCheck.Evaluate(postureData)
+		result := osCheck.Evaluate("", postureData)
 
 		req := require.New(t)
 		req.False(result)
 	})
 }
-
 
 const (
 	os1Type    = "Windows"

@@ -50,6 +50,7 @@ import (
 	"github.com/openziti/edge/rest_server/operations/certificate_authority"
 	"github.com/openziti/edge/rest_server/operations/config"
 	"github.com/openziti/edge/rest_server/operations/current_api_session"
+	"github.com/openziti/edge/rest_server/operations/current_identity"
 	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/edge/rest_server/operations/edge_router"
 	"github.com/openziti/edge/rest_server/operations/edge_router_policy"
@@ -108,6 +109,7 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		ApplicationXX509UserCertProducer: runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
 			return errors.NotImplemented("applicationXX509UserCert producer has not yet been implemented")
 		}),
+		BinProducer:  runtime.ByteStreamProducer(),
 		JSONProducer: runtime.JSONProducer(),
 		TextYamlProducer: runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
 			return errors.NotImplemented("textYaml producer has not yet been implemented")
@@ -121,6 +123,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		AuthenticationAuthenticateHandler: authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
 			return middleware.NotImplemented("operation authentication.Authenticate has not yet been implemented")
+		}),
+		AuthenticationAuthenticateMfaHandler: authentication.AuthenticateMfaHandlerFunc(func(params authentication.AuthenticateMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation authentication.AuthenticateMfa has not yet been implemented")
 		}),
 		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
@@ -151,6 +156,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		IdentityCreateIdentityHandler: identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.CreateIdentity has not yet been implemented")
+		}),
+		CurrentIdentityCreateMfaRecoveryCodesHandler: current_identity.CreateMfaRecoveryCodesHandlerFunc(func(params current_identity.CreateMfaRecoveryCodesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.CreateMfaRecoveryCodes has not yet been implemented")
 		}),
 		PostureChecksCreatePostureCheckHandler: posture_checks.CreatePostureCheckHandlerFunc(func(params posture_checks.CreatePostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.CreatePostureCheck has not yet been implemented")
@@ -212,6 +220,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityDeleteIdentityHandler: identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DeleteIdentity has not yet been implemented")
 		}),
+		CurrentIdentityDeleteMfaHandler: current_identity.DeleteMfaHandlerFunc(func(params current_identity.DeleteMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DeleteMfa has not yet been implemented")
+		}),
 		PostureChecksDeletePostureCheckHandler: posture_checks.DeletePostureCheckHandlerFunc(func(params posture_checks.DeletePostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.DeletePostureCheck has not yet been implemented")
 		}),
@@ -272,6 +283,15 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityDetailIdentityTypeHandler: identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DetailIdentityType has not yet been implemented")
 		}),
+		CurrentIdentityDetailMfaHandler: current_identity.DetailMfaHandlerFunc(func(params current_identity.DetailMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfa has not yet been implemented")
+		}),
+		CurrentIdentityDetailMfaQrCodeHandler: current_identity.DetailMfaQrCodeHandlerFunc(func(params current_identity.DetailMfaQrCodeParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfaQrCode has not yet been implemented")
+		}),
+		CurrentIdentityDetailMfaRecoveryCodesHandler: current_identity.DetailMfaRecoveryCodesHandlerFunc(func(params current_identity.DetailMfaRecoveryCodesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.DetailMfaRecoveryCodes has not yet been implemented")
+		}),
 		PostureChecksDetailPostureCheckHandler: posture_checks.DetailPostureCheckHandlerFunc(func(params posture_checks.DetailPostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.DetailPostureCheck has not yet been implemented")
 		}),
@@ -314,6 +334,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		EnrollEnrollErOttHandler: enroll.EnrollErOttHandlerFunc(func(params enroll.EnrollErOttParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.EnrollErOtt has not yet been implemented")
 		}),
+		CurrentIdentityEnrollMfaHandler: current_identity.EnrollMfaHandlerFunc(func(params current_identity.EnrollMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.EnrollMfa has not yet been implemented")
+		}),
 		EnrollEnrollOttHandler: enroll.EnrollOttHandlerFunc(func(params enroll.EnrollOttParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.EnrollOtt has not yet been implemented")
 		}),
@@ -332,8 +355,8 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		CurrentAPISessionGetCurrentAPISessionHandler: current_api_session.GetCurrentAPISessionHandlerFunc(func(params current_api_session.GetCurrentAPISessionParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.GetCurrentAPISession has not yet been implemented")
 		}),
-		CurrentAPISessionGetCurrentIdentityHandler: current_api_session.GetCurrentIdentityHandlerFunc(func(params current_api_session.GetCurrentIdentityParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation current_api_session.GetCurrentIdentity has not yet been implemented")
+		CurrentIdentityGetCurrentIdentityHandler: current_identity.GetCurrentIdentityHandlerFunc(func(params current_identity.GetCurrentIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.GetCurrentIdentity has not yet been implemented")
 		}),
 		IdentityGetIdentityPolicyAdviceHandler: identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
@@ -545,6 +568,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		TransitRouterPatchTransitRouterHandler: transit_router.PatchTransitRouterHandlerFunc(func(params transit_router.PatchTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation transit_router.PatchTransitRouter has not yet been implemented")
 		}),
+		IdentityRemoveIdentityMfaHandler: identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")
+		}),
 		AuthenticatorUpdateAuthenticatorHandler: authenticator.UpdateAuthenticatorHandlerFunc(func(params authenticator.UpdateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.UpdateAuthenticator has not yet been implemented")
 		}),
@@ -589,6 +615,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		}),
 		CertificateAuthorityVerifyCaHandler: certificate_authority.VerifyCaHandlerFunc(func(params certificate_authority.VerifyCaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation certificate_authority.VerifyCa has not yet been implemented")
+		}),
+		CurrentIdentityVerifyMfaHandler: current_identity.VerifyMfaHandlerFunc(func(params current_identity.VerifyMfaParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.VerifyMfa has not yet been implemented")
 		}),
 
 		// Applies when the "zt-session" header is set
@@ -648,6 +677,9 @@ type ZitiEdgeAPI struct {
 	// ApplicationXX509UserCertProducer registers a producer for the following mime types:
 	//   - application/x-x509-user-cert
 	ApplicationXX509UserCertProducer runtime.Producer
+	// BinProducer registers a producer for the following mime types:
+	//   - image/png
+	BinProducer runtime.Producer
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
@@ -668,6 +700,8 @@ type ZitiEdgeAPI struct {
 	IdentityAssociateIdentitysServiceConfigsHandler identity.AssociateIdentitysServiceConfigsHandler
 	// AuthenticationAuthenticateHandler sets the operation handler for the authenticate operation
 	AuthenticationAuthenticateHandler authentication.AuthenticateHandler
+	// AuthenticationAuthenticateMfaHandler sets the operation handler for the authenticate mfa operation
+	AuthenticationAuthenticateMfaHandler authentication.AuthenticateMfaHandler
 	// DatabaseCheckDataIntegrityHandler sets the operation handler for the check data integrity operation
 	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
 	// AuthenticatorCreateAuthenticatorHandler sets the operation handler for the create authenticator operation
@@ -688,6 +722,8 @@ type ZitiEdgeAPI struct {
 	EdgeRouterPolicyCreateEdgeRouterPolicyHandler edge_router_policy.CreateEdgeRouterPolicyHandler
 	// IdentityCreateIdentityHandler sets the operation handler for the create identity operation
 	IdentityCreateIdentityHandler identity.CreateIdentityHandler
+	// CurrentIdentityCreateMfaRecoveryCodesHandler sets the operation handler for the create mfa recovery codes operation
+	CurrentIdentityCreateMfaRecoveryCodesHandler current_identity.CreateMfaRecoveryCodesHandler
 	// PostureChecksCreatePostureCheckHandler sets the operation handler for the create posture check operation
 	PostureChecksCreatePostureCheckHandler posture_checks.CreatePostureCheckHandler
 	// PostureChecksCreatePostureResponseHandler sets the operation handler for the create posture response operation
@@ -728,6 +764,8 @@ type ZitiEdgeAPI struct {
 	EnrollmentDeleteEnrollmentHandler enrollment.DeleteEnrollmentHandler
 	// IdentityDeleteIdentityHandler sets the operation handler for the delete identity operation
 	IdentityDeleteIdentityHandler identity.DeleteIdentityHandler
+	// CurrentIdentityDeleteMfaHandler sets the operation handler for the delete mfa operation
+	CurrentIdentityDeleteMfaHandler current_identity.DeleteMfaHandler
 	// PostureChecksDeletePostureCheckHandler sets the operation handler for the delete posture check operation
 	PostureChecksDeletePostureCheckHandler posture_checks.DeletePostureCheckHandler
 	// ServiceDeleteServiceHandler sets the operation handler for the delete service operation
@@ -768,6 +806,12 @@ type ZitiEdgeAPI struct {
 	IdentityDetailIdentityHandler identity.DetailIdentityHandler
 	// IdentityDetailIdentityTypeHandler sets the operation handler for the detail identity type operation
 	IdentityDetailIdentityTypeHandler identity.DetailIdentityTypeHandler
+	// CurrentIdentityDetailMfaHandler sets the operation handler for the detail mfa operation
+	CurrentIdentityDetailMfaHandler current_identity.DetailMfaHandler
+	// CurrentIdentityDetailMfaQrCodeHandler sets the operation handler for the detail mfa qr code operation
+	CurrentIdentityDetailMfaQrCodeHandler current_identity.DetailMfaQrCodeHandler
+	// CurrentIdentityDetailMfaRecoveryCodesHandler sets the operation handler for the detail mfa recovery codes operation
+	CurrentIdentityDetailMfaRecoveryCodesHandler current_identity.DetailMfaRecoveryCodesHandler
 	// PostureChecksDetailPostureCheckHandler sets the operation handler for the detail posture check operation
 	PostureChecksDetailPostureCheckHandler posture_checks.DetailPostureCheckHandler
 	// PostureChecksDetailPostureCheckTypeHandler sets the operation handler for the detail posture check type operation
@@ -796,6 +840,8 @@ type ZitiEdgeAPI struct {
 	EnrollEnrollCaHandler enroll.EnrollCaHandler
 	// EnrollEnrollErOttHandler sets the operation handler for the enroll er ott operation
 	EnrollEnrollErOttHandler enroll.EnrollErOttHandler
+	// CurrentIdentityEnrollMfaHandler sets the operation handler for the enroll mfa operation
+	CurrentIdentityEnrollMfaHandler current_identity.EnrollMfaHandler
 	// EnrollEnrollOttHandler sets the operation handler for the enroll ott operation
 	EnrollEnrollOttHandler enroll.EnrollOttHandler
 	// EnrollEnrollOttCaHandler sets the operation handler for the enroll ott ca operation
@@ -808,8 +854,8 @@ type ZitiEdgeAPI struct {
 	CertificateAuthorityGetCaJwtHandler certificate_authority.GetCaJwtHandler
 	// CurrentAPISessionGetCurrentAPISessionHandler sets the operation handler for the get current API session operation
 	CurrentAPISessionGetCurrentAPISessionHandler current_api_session.GetCurrentAPISessionHandler
-	// CurrentAPISessionGetCurrentIdentityHandler sets the operation handler for the get current identity operation
-	CurrentAPISessionGetCurrentIdentityHandler current_api_session.GetCurrentIdentityHandler
+	// CurrentIdentityGetCurrentIdentityHandler sets the operation handler for the get current identity operation
+	CurrentIdentityGetCurrentIdentityHandler current_identity.GetCurrentIdentityHandler
 	// IdentityGetIdentityPolicyAdviceHandler sets the operation handler for the get identity policy advice operation
 	IdentityGetIdentityPolicyAdviceHandler identity.GetIdentityPolicyAdviceHandler
 	// IdentityGetIdentityPostureDataHandler sets the operation handler for the get identity posture data operation
@@ -950,6 +996,8 @@ type ZitiEdgeAPI struct {
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
 	// TransitRouterPatchTransitRouterHandler sets the operation handler for the patch transit router operation
 	TransitRouterPatchTransitRouterHandler transit_router.PatchTransitRouterHandler
+	// IdentityRemoveIdentityMfaHandler sets the operation handler for the remove identity mfa operation
+	IdentityRemoveIdentityMfaHandler identity.RemoveIdentityMfaHandler
 	// AuthenticatorUpdateAuthenticatorHandler sets the operation handler for the update authenticator operation
 	AuthenticatorUpdateAuthenticatorHandler authenticator.UpdateAuthenticatorHandler
 	// CertificateAuthorityUpdateCaHandler sets the operation handler for the update ca operation
@@ -980,6 +1028,8 @@ type ZitiEdgeAPI struct {
 	TransitRouterUpdateTransitRouterHandler transit_router.UpdateTransitRouterHandler
 	// CertificateAuthorityVerifyCaHandler sets the operation handler for the verify ca operation
 	CertificateAuthorityVerifyCaHandler certificate_authority.VerifyCaHandler
+	// CurrentIdentityVerifyMfaHandler sets the operation handler for the verify mfa operation
+	CurrentIdentityVerifyMfaHandler current_identity.VerifyMfaHandler
 	// ServeError is called when an error is received, there is a default handler
 	// but you can set your own with this
 	ServeError func(http.ResponseWriter, *http.Request, error)
@@ -1073,6 +1123,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.ApplicationXX509UserCertProducer == nil {
 		unregistered = append(unregistered, "ApplicationXX509UserCertProducer")
 	}
+	if o.BinProducer == nil {
+		unregistered = append(unregistered, "BinProducer")
+	}
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
 	}
@@ -1092,6 +1145,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.AuthenticationAuthenticateHandler == nil {
 		unregistered = append(unregistered, "authentication.AuthenticateHandler")
+	}
+	if o.AuthenticationAuthenticateMfaHandler == nil {
+		unregistered = append(unregistered, "authentication.AuthenticateMfaHandler")
 	}
 	if o.DatabaseCheckDataIntegrityHandler == nil {
 		unregistered = append(unregistered, "database.CheckDataIntegrityHandler")
@@ -1122,6 +1178,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityCreateIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.CreateIdentityHandler")
+	}
+	if o.CurrentIdentityCreateMfaRecoveryCodesHandler == nil {
+		unregistered = append(unregistered, "current_identity.CreateMfaRecoveryCodesHandler")
 	}
 	if o.PostureChecksCreatePostureCheckHandler == nil {
 		unregistered = append(unregistered, "posture_checks.CreatePostureCheckHandler")
@@ -1183,6 +1242,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.IdentityDeleteIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.DeleteIdentityHandler")
 	}
+	if o.CurrentIdentityDeleteMfaHandler == nil {
+		unregistered = append(unregistered, "current_identity.DeleteMfaHandler")
+	}
 	if o.PostureChecksDeletePostureCheckHandler == nil {
 		unregistered = append(unregistered, "posture_checks.DeletePostureCheckHandler")
 	}
@@ -1243,6 +1305,15 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.IdentityDetailIdentityTypeHandler == nil {
 		unregistered = append(unregistered, "identity.DetailIdentityTypeHandler")
 	}
+	if o.CurrentIdentityDetailMfaHandler == nil {
+		unregistered = append(unregistered, "current_identity.DetailMfaHandler")
+	}
+	if o.CurrentIdentityDetailMfaQrCodeHandler == nil {
+		unregistered = append(unregistered, "current_identity.DetailMfaQrCodeHandler")
+	}
+	if o.CurrentIdentityDetailMfaRecoveryCodesHandler == nil {
+		unregistered = append(unregistered, "current_identity.DetailMfaRecoveryCodesHandler")
+	}
 	if o.PostureChecksDetailPostureCheckHandler == nil {
 		unregistered = append(unregistered, "posture_checks.DetailPostureCheckHandler")
 	}
@@ -1285,6 +1356,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.EnrollEnrollErOttHandler == nil {
 		unregistered = append(unregistered, "enroll.EnrollErOttHandler")
 	}
+	if o.CurrentIdentityEnrollMfaHandler == nil {
+		unregistered = append(unregistered, "current_identity.EnrollMfaHandler")
+	}
 	if o.EnrollEnrollOttHandler == nil {
 		unregistered = append(unregistered, "enroll.EnrollOttHandler")
 	}
@@ -1303,8 +1377,8 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.CurrentAPISessionGetCurrentAPISessionHandler == nil {
 		unregistered = append(unregistered, "current_api_session.GetCurrentAPISessionHandler")
 	}
-	if o.CurrentAPISessionGetCurrentIdentityHandler == nil {
-		unregistered = append(unregistered, "current_api_session.GetCurrentIdentityHandler")
+	if o.CurrentIdentityGetCurrentIdentityHandler == nil {
+		unregistered = append(unregistered, "current_identity.GetCurrentIdentityHandler")
 	}
 	if o.IdentityGetIdentityPolicyAdviceHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityPolicyAdviceHandler")
@@ -1516,6 +1590,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	if o.TransitRouterPatchTransitRouterHandler == nil {
 		unregistered = append(unregistered, "transit_router.PatchTransitRouterHandler")
 	}
+	if o.IdentityRemoveIdentityMfaHandler == nil {
+		unregistered = append(unregistered, "identity.RemoveIdentityMfaHandler")
+	}
 	if o.AuthenticatorUpdateAuthenticatorHandler == nil {
 		unregistered = append(unregistered, "authenticator.UpdateAuthenticatorHandler")
 	}
@@ -1560,6 +1637,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.CertificateAuthorityVerifyCaHandler == nil {
 		unregistered = append(unregistered, "certificate_authority.VerifyCaHandler")
+	}
+	if o.CurrentIdentityVerifyMfaHandler == nil {
+		unregistered = append(unregistered, "current_identity.VerifyMfaHandler")
 	}
 
 	if len(unregistered) > 0 {
@@ -1630,6 +1710,8 @@ func (o *ZitiEdgeAPI) ProducersFor(mediaTypes []string) map[string]runtime.Produ
 			result["application/x-pem-file"] = o.ApplicationXPemFileProducer
 		case "application/x-x509-user-cert":
 			result["application/x-x509-user-cert"] = o.ApplicationXX509UserCertProducer
+		case "image/png":
+			result["image/png"] = o.BinProducer
 		case "application/json":
 			result["application/json"] = o.JSONProducer
 		case "text/yaml":
@@ -1689,6 +1771,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/authenticate/mfa"] = authentication.NewAuthenticateMfa(o.context, o.AuthenticationAuthenticateMfaHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1726,6 +1812,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/identities"] = identity.NewCreateIdentity(o.context, o.IdentityCreateIdentityHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/current-identity/mfa/recovery-codes"] = current_identity.NewCreateMfaRecoveryCodes(o.context, o.CurrentIdentityCreateMfaRecoveryCodesHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -1809,6 +1899,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
+	o.handlers["DELETE"]["/current-identity/mfa"] = current_identity.NewDeleteMfa(o.context, o.CurrentIdentityDeleteMfaHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
 	o.handlers["DELETE"]["/posture-checks/{id}"] = posture_checks.NewDeletePostureCheck(o.context, o.PostureChecksDeletePostureCheckHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
@@ -1889,6 +1983,18 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/current-identity/mfa"] = current_identity.NewDetailMfa(o.context, o.CurrentIdentityDetailMfaHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/current-identity/mfa/qr-code"] = current_identity.NewDetailMfaQrCode(o.context, o.CurrentIdentityDetailMfaQrCodeHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/current-identity/mfa/recovery-codes"] = current_identity.NewDetailMfaRecoveryCodes(o.context, o.CurrentIdentityDetailMfaRecoveryCodesHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/posture-checks/{id}"] = posture_checks.NewDetailPostureCheck(o.context, o.PostureChecksDetailPostureCheckHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -1945,6 +2051,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/current-identity/mfa"] = current_identity.NewEnrollMfa(o.context, o.CurrentIdentityEnrollMfaHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/enroll/ott"] = enroll.NewEnrollOtt(o.context, o.EnrollEnrollOttHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1969,7 +2079,7 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/current-identity"] = current_api_session.NewGetCurrentIdentity(o.context, o.CurrentAPISessionGetCurrentIdentityHandler)
+	o.handlers["GET"]["/current-identity"] = current_identity.NewGetCurrentIdentity(o.context, o.CurrentIdentityGetCurrentIdentityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -2250,6 +2360,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/transit-routers/{id}"] = transit_router.NewPatchTransitRouter(o.context, o.TransitRouterPatchTransitRouterHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/identities/{id}/mfa"] = identity.NewRemoveIdentityMfa(o.context, o.IdentityRemoveIdentityMfaHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
@@ -2310,6 +2424,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/cas/{id}/verify"] = certificate_authority.NewVerifyCa(o.context, o.CertificateAuthorityVerifyCaHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/current-identity/mfa/verify"] = current_identity.NewVerifyMfa(o.context, o.CurrentIdentityVerifyMfaHandler)
 }
 
 // Serve creates a http handler to serve the API over HTTP

@@ -135,6 +135,10 @@ func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.Req = require.New(t)
 }
 
+func (ctx *TestContext) T() *testing.T {
+	return ctx.testing
+}
+
 func (ctx *TestContext) Transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -177,6 +181,7 @@ func (ctx *TestContext) NewClient() *resty.Client {
 func (ctx *TestContext) DefaultClient() *resty.Client {
 	if ctx.client == nil {
 		ctx.client, _, _ = ctx.NewClientComponents()
+		ctx.client.AllowGetMethodPayload = true
 	}
 	return ctx.client
 }
@@ -533,6 +538,17 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt), "%v should be after or equal to %v", now, createdAt)
 
 	return createdAt
+}
+
+func (ctx *TestContext) newPostureCheckMFA(roleAttributes []string) *postureCheckDomain {
+	return &postureCheckDomain{
+		postureCheck: postureCheck{
+			name:           eid.New(),
+			typeId:         "MFA",
+			roleAttributes: roleAttributes,
+			tags:           nil,
+		},
+	}
 }
 
 func (ctx *TestContext) newPostureCheckDomain(domains []string, roleAttributes []string) *postureCheckDomain {

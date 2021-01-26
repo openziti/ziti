@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateCa(params *CreateCaParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCaOK, error)
+	CreateCa(params *CreateCaParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCaCreated, error)
 
 	DeleteCa(params *DeleteCaParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteCaOK, error)
 
@@ -75,7 +75,7 @@ type ClientService interface {
 
   Creates a CA in an unverified state. Requires admin access.
 */
-func (a *Client) CreateCa(params *CreateCaParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCaOK, error) {
+func (a *Client) CreateCa(params *CreateCaParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCaCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateCaParams()
@@ -97,7 +97,7 @@ func (a *Client) CreateCa(params *CreateCaParams, authInfo runtime.ClientAuthInf
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateCaOK)
+	success, ok := result.(*CreateCaCreated)
 	if ok {
 		return success, nil
 	}

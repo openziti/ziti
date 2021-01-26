@@ -56,8 +56,8 @@ type Stores struct {
 	Authenticator           AuthenticatorStore
 	PostureCheck            PostureCheckStore
 	PostureCheckType        PostureCheckTypeStore
-
-	storeMap map[reflect.Type]boltz.CrudStore
+	Mfa                     MfaStore
+	storeMap                map[reflect.Type]boltz.CrudStore
 }
 
 func (stores *Stores) buildStoreMap() {
@@ -143,6 +143,7 @@ type stores struct {
 	postureCheck            *postureCheckStoreImpl
 	postureCheckType        *postureCheckTypeStoreImpl
 	apiSessionCertificate   *ApiSessionCertificateStoreImpl
+	mfa                     *MfaStoreImpl
 }
 
 func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
@@ -176,6 +177,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.session = newSessionStore(internalStores)
 	internalStores.postureCheck = newPostureCheckStore(internalStores)
 	internalStores.postureCheckType = newPostureCheckTypeStore(internalStores)
+	internalStores.mfa = newMfaStore(internalStores)
 
 	externalStores := &Stores{
 		DbProvider: dbProvider,
@@ -204,6 +206,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		Enrollment:              internalStores.enrollment,
 		PostureCheck:            internalStores.postureCheck,
 		PostureCheckType:        internalStores.postureCheckType,
+		Mfa:                     internalStores.mfa,
 
 		storeMap: make(map[reflect.Type]boltz.CrudStore),
 	}

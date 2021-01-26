@@ -51,9 +51,9 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreatePostureCheck(params *CreatePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureCheckOK, error)
+	CreatePostureCheck(params *CreatePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureCheckCreated, error)
 
-	CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseOK, error)
+	CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseCreated, error)
 
 	CreatePostureResponseBulk(params *CreatePostureResponseBulkParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseBulkOK, error)
 
@@ -79,7 +79,7 @@ type ClientService interface {
 
   Creates a Posture Checks
 */
-func (a *Client) CreatePostureCheck(params *CreatePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureCheckOK, error) {
+func (a *Client) CreatePostureCheck(params *CreatePostureCheckParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureCheckCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreatePostureCheckParams()
@@ -101,7 +101,7 @@ func (a *Client) CreatePostureCheck(params *CreatePostureCheckParams, authInfo r
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreatePostureCheckOK)
+	success, ok := result.(*CreatePostureCheckCreated)
 	if ok {
 		return success, nil
 	}
@@ -116,7 +116,7 @@ func (a *Client) CreatePostureCheck(params *CreatePostureCheckParams, authInfo r
 
   Submits posture responses
 */
-func (a *Client) CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseOK, error) {
+func (a *Client) CreatePostureResponse(params *CreatePostureResponseParams, authInfo runtime.ClientAuthInfoWriter) (*CreatePostureResponseCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreatePostureResponseParams()
@@ -138,7 +138,7 @@ func (a *Client) CreatePostureResponse(params *CreatePostureResponseParams, auth
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreatePostureResponseOK)
+	success, ok := result.(*CreatePostureResponseCreated)
 	if ok {
 		return success, nil
 	}

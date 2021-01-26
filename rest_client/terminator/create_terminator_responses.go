@@ -47,8 +47,8 @@ type CreateTerminatorReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateTerminatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateTerminatorOK()
+	case 201:
+		result := NewCreateTerminatorCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateTerminatorReader) ReadResponse(response runtime.ClientResponse, c
 	}
 }
 
-// NewCreateTerminatorOK creates a CreateTerminatorOK with default headers values
-func NewCreateTerminatorOK() *CreateTerminatorOK {
-	return &CreateTerminatorOK{}
+// NewCreateTerminatorCreated creates a CreateTerminatorCreated with default headers values
+func NewCreateTerminatorCreated() *CreateTerminatorCreated {
+	return &CreateTerminatorCreated{}
 }
 
-/*CreateTerminatorOK handles this case with default header values.
+/*CreateTerminatorCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateTerminatorOK struct {
+type CreateTerminatorCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateTerminatorOK) Error() string {
-	return fmt.Sprintf("[POST /terminators][%d] createTerminatorOK  %+v", 200, o.Payload)
+func (o *CreateTerminatorCreated) Error() string {
+	return fmt.Sprintf("[POST /terminators][%d] createTerminatorCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateTerminatorOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateTerminatorCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateTerminatorOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateTerminatorCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

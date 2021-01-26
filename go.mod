@@ -2,11 +2,11 @@ module github.com/openziti/edge
 
 go 1.15
 
-// replace github.com/openziti/foundation => ../foundation
+//replace github.com/openziti/foundation => ../foundation
 
-// replace github.com/openziti/fabric => ../fabric
+//replace github.com/openziti/fabric => ../fabric
 
-// replace github.com/openziti/sdk-golang => ../sdk-golang
+//replace github.com/openziti/sdk-golang => ../sdk-golang
 
 // replace github.com/kataras/go-events => ../go-events
 
@@ -17,6 +17,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/coreos/go-iptables v0.5.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-openapi/errors v0.19.9
 	github.com/go-openapi/loads v0.20.1
@@ -43,6 +44,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.7.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.7.0
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf

@@ -401,6 +401,12 @@ func (request *authenticatedRequests) requireNewPostureCheckDomain(domains []str
 	return postureCheck
 }
 
+func (request *authenticatedRequests) requireNewPostureCheckMFA(roleAttributes []string) *postureCheckDomain {
+	postureCheck := request.testContext.newPostureCheckMFA(roleAttributes)
+	request.requireCreateEntity(postureCheck)
+	return postureCheck
+}
+
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
 	request.requireCreateEntity(service)
@@ -526,7 +532,7 @@ func (request *authenticatedRequests) requireList(url string) []string {
 	request.testContext.logJson(body)
 	request.testContext.Req.Equal(http.StatusOK, httpStatus)
 	jsonBody := request.testContext.parseJson(body)
-	values := request.testContext.RequirePath(jsonBody, "data")
+	values := request.testContext.RequireGetNonNilPathValue(jsonBody, "data")
 
 	var result []string
 	children, err := values.Children()
@@ -599,7 +605,7 @@ func (request *authenticatedRequests) requireRemoveIdentityServiceConfigs(identi
 
 func (request *authenticatedRequests) listIdentityServiceConfigs(identityId string) []serviceConfig {
 	jsonBody := request.requireQuery("identities/" + identityId + "/service-configs")
-	data := request.testContext.RequirePath(jsonBody, "data")
+	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data")
 	var children []*gabs.Container
 	if data.Data() != nil {
 		var err error
@@ -710,7 +716,7 @@ func (request *authenticatedRequests) validateAssociationContains(entity entity,
 
 func (request *authenticatedRequests) validateAssociationsAt(url string, ids ...string) {
 	result := request.requireQuery(url)
-	data := request.testContext.RequirePath(result, "data")
+	data := request.testContext.RequireGetNonNilPathValue(result, "data")
 	children, err := data.Children()
 
 	var actualIds []string
@@ -726,7 +732,7 @@ func (request *authenticatedRequests) validateAssociationsAt(url string, ids ...
 
 func (request *authenticatedRequests) validateAssociationsAtContains(url string, ids ...string) {
 	result := request.requireQuery(url)
-	data := request.testContext.RequirePath(result, "data")
+	data := request.testContext.RequireGetNonNilPathValue(result, "data")
 	children, err := data.Children()
 
 	var actualIds []string
@@ -753,7 +759,7 @@ func (request *authenticatedRequests) updateAssociation(method, url string, ids 
 func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) bool {
 	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, serviceId))
 	result := request.requireQuery("services?filter=" + query)
-	data := request.testContext.RequirePath(result, "data")
+	data := request.testContext.RequireGetNonNilPathValue(result, "data")
 	return nil != request.testContext.childWith(data, "id", serviceId)
 }
 
@@ -797,14 +803,14 @@ func (request *authenticatedRequests) getServiceUpdateTime() time.Time {
 func (request *authenticatedRequests) validateEntityWithQuery(entity entity) *gabs.Container {
 	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, entity.getId()))
 	result := request.requireQuery(entity.getEntityType() + "?filter=" + query)
-	data := request.testContext.RequirePath(result, "data")
+	data := request.testContext.RequireGetNonNilPathValue(result, "data")
 	jsonEntity := request.testContext.RequireChildWith(data, "id", entity.getId())
 	return request.testContext.validateEntity(entity, jsonEntity)
 }
 
 func (request *authenticatedRequests) validateEntityWithLookup(entity entity) *gabs.Container {
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
-	jsonEntity := request.testContext.RequirePath(result, "data")
+	jsonEntity := request.testContext.RequireGetNonNilPathValue(result, "data")
 	return request.testContext.validateEntity(entity, jsonEntity)
 }
 
@@ -815,7 +821,7 @@ func (request *authenticatedRequests) requireNotFoundEntityLookup(entityType str
 
 func (request *authenticatedRequests) validateUpdate(entity entity) *gabs.Container {
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
-	jsonConfig := request.testContext.RequirePath(result, "data")
+	jsonConfig := request.testContext.RequireGetNonNilPathValue(result, "data")
 	entity.validate(request.testContext, jsonConfig)
 	return jsonConfig
 }
@@ -850,18 +856,18 @@ func (request *authenticatedRequests) patchEntity(entity entity, fields ...strin
 
 func (request *authenticatedRequests) getEdgeRouterJwt(edgeRouterId string) string {
 	jsonBody := request.requireQuery("edge-routers/" + edgeRouterId)
-	data := request.testContext.RequirePath(jsonBody, "data", "enrollmentJwt")
+	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data", "enrollmentJwt")
 	return data.Data().(string)
 }
 
 func (request *authenticatedRequests) getTransitRouterJwt(transitRouterId string) string {
 	jsonBody := request.requireQuery("transit-routers/" + transitRouterId)
-	data := request.testContext.RequirePath(jsonBody, "data", "enrollmentJwt")
+	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data", "enrollmentJwt")
 	return data.Data().(string)
 }
 
 func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
 	jsonBody := request.requireQuery("identities/" + identityId)
-	data := request.testContext.RequirePath(jsonBody, "data", "enrollment", "ott", "jwt")
+	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data", "enrollment", "ott", "jwt")
 	return data.Data().(string)
 }

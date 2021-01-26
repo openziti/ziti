@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateConfigOKCode is the HTTP code returned for type CreateConfigOK
-const CreateConfigOKCode int = 200
+// CreateConfigCreatedCode is the HTTP code returned for type CreateConfigCreated
+const CreateConfigCreatedCode int = 201
 
-/*CreateConfigOK The create request was successful and the resource has been added at the following location
+/*CreateConfigCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createConfigOK
+swagger:response createConfigCreated
 */
-type CreateConfigOK struct {
+type CreateConfigCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateConfigOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateConfigOK creates CreateConfigOK with default headers values
-func NewCreateConfigOK() *CreateConfigOK {
+// NewCreateConfigCreated creates CreateConfigCreated with default headers values
+func NewCreateConfigCreated() *CreateConfigCreated {
 
-	return &CreateConfigOK{}
+	return &CreateConfigCreated{}
 }
 
-// WithPayload adds the payload to the create config o k response
-func (o *CreateConfigOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateConfigOK {
+// WithPayload adds the payload to the create config created response
+func (o *CreateConfigCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateConfigCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create config o k response
-func (o *CreateConfigOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create config created response
+func (o *CreateConfigCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateConfigOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateConfigCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

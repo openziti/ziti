@@ -47,8 +47,8 @@ type CreatePostureResponseReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreatePostureResponseReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreatePostureResponseOK()
+	case 201:
+		result := NewCreatePostureResponseCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,30 +71,30 @@ func (o *CreatePostureResponseReader) ReadResponse(response runtime.ClientRespon
 	}
 }
 
-// NewCreatePostureResponseOK creates a CreatePostureResponseOK with default headers values
-func NewCreatePostureResponseOK() *CreatePostureResponseOK {
-	return &CreatePostureResponseOK{}
+// NewCreatePostureResponseCreated creates a CreatePostureResponseCreated with default headers values
+func NewCreatePostureResponseCreated() *CreatePostureResponseCreated {
+	return &CreatePostureResponseCreated{}
 }
 
-/*CreatePostureResponseOK handles this case with default header values.
+/*CreatePostureResponseCreated handles this case with default header values.
 
-Base empty response
+The create request was successful and the resource has been added at the following location
 */
-type CreatePostureResponseOK struct {
-	Payload *rest_model.Empty
+type CreatePostureResponseCreated struct {
+	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreatePostureResponseOK) Error() string {
-	return fmt.Sprintf("[POST /posture-response][%d] createPostureResponseOK  %+v", 200, o.Payload)
+func (o *CreatePostureResponseCreated) Error() string {
+	return fmt.Sprintf("[POST /posture-response][%d] createPostureResponseCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreatePostureResponseOK) GetPayload() *rest_model.Empty {
+func (o *CreatePostureResponseCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreatePostureResponseOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreatePostureResponseCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.Empty)
+	o.Payload = new(rest_model.CreateEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

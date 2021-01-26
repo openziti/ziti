@@ -47,8 +47,8 @@ type CreateAuthenticatorReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateAuthenticatorReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateAuthenticatorOK()
+	case 201:
+		result := NewCreateAuthenticatorCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateAuthenticatorReader) ReadResponse(response runtime.ClientResponse
 	}
 }
 
-// NewCreateAuthenticatorOK creates a CreateAuthenticatorOK with default headers values
-func NewCreateAuthenticatorOK() *CreateAuthenticatorOK {
-	return &CreateAuthenticatorOK{}
+// NewCreateAuthenticatorCreated creates a CreateAuthenticatorCreated with default headers values
+func NewCreateAuthenticatorCreated() *CreateAuthenticatorCreated {
+	return &CreateAuthenticatorCreated{}
 }
 
-/*CreateAuthenticatorOK handles this case with default header values.
+/*CreateAuthenticatorCreated handles this case with default header values.
 
 The create was successful
 */
-type CreateAuthenticatorOK struct {
+type CreateAuthenticatorCreated struct {
 	Payload *rest_model.AuthenticatorCreate
 }
 
-func (o *CreateAuthenticatorOK) Error() string {
-	return fmt.Sprintf("[POST /authenticators][%d] createAuthenticatorOK  %+v", 200, o.Payload)
+func (o *CreateAuthenticatorCreated) Error() string {
+	return fmt.Sprintf("[POST /authenticators][%d] createAuthenticatorCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateAuthenticatorOK) GetPayload() *rest_model.AuthenticatorCreate {
+func (o *CreateAuthenticatorCreated) GetPayload() *rest_model.AuthenticatorCreate {
 	return o.Payload
 }
 
-func (o *CreateAuthenticatorOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateAuthenticatorCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.AuthenticatorCreate)
 

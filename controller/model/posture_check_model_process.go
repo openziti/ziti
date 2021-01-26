@@ -31,7 +31,7 @@ type PostureCheckProcess struct {
 	Fingerprint     string
 }
 
-func (p *PostureCheckProcess) Evaluate(pd *PostureData) bool {
+func (p *PostureCheckProcess) Evaluate(_ string, pd *PostureData) bool {
 	for _, process := range pd.Processes {
 		if process.PostureCheckId == p.PostureCheckId {
 			if process.TimedOut {

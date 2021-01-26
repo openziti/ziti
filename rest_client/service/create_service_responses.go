@@ -47,8 +47,8 @@ type CreateServiceReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CreateServiceReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 200:
-		result := NewCreateServiceOK()
+	case 201:
+		result := NewCreateServiceCreated()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -71,28 +71,28 @@ func (o *CreateServiceReader) ReadResponse(response runtime.ClientResponse, cons
 	}
 }
 
-// NewCreateServiceOK creates a CreateServiceOK with default headers values
-func NewCreateServiceOK() *CreateServiceOK {
-	return &CreateServiceOK{}
+// NewCreateServiceCreated creates a CreateServiceCreated with default headers values
+func NewCreateServiceCreated() *CreateServiceCreated {
+	return &CreateServiceCreated{}
 }
 
-/*CreateServiceOK handles this case with default header values.
+/*CreateServiceCreated handles this case with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type CreateServiceOK struct {
+type CreateServiceCreated struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *CreateServiceOK) Error() string {
-	return fmt.Sprintf("[POST /services][%d] createServiceOK  %+v", 200, o.Payload)
+func (o *CreateServiceCreated) Error() string {
+	return fmt.Sprintf("[POST /services][%d] createServiceCreated  %+v", 201, o.Payload)
 }
 
-func (o *CreateServiceOK) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreateServiceCreated) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *CreateServiceOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *CreateServiceCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

@@ -53,7 +53,7 @@ type Client struct {
 type ClientService interface {
 	AssociateIdentitysServiceConfigs(params *AssociateIdentitysServiceConfigsParams, authInfo runtime.ClientAuthInfoWriter) (*AssociateIdentitysServiceConfigsOK, error)
 
-	CreateIdentity(params *CreateIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*CreateIdentityOK, error)
+	CreateIdentity(params *CreateIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*CreateIdentityCreated, error)
 
 	DeleteIdentity(params *DeleteIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteIdentityOK, error)
 
@@ -82,6 +82,8 @@ type ClientService interface {
 	ListIdentitysServiceConfigs(params *ListIdentitysServiceConfigsParams, authInfo runtime.ClientAuthInfoWriter) (*ListIdentitysServiceConfigsOK, error)
 
 	PatchIdentity(params *PatchIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*PatchIdentityOK, error)
+
+	RemoveIdentityMfa(params *RemoveIdentityMfaParams, authInfo runtime.ClientAuthInfoWriter) (*RemoveIdentityMfaOK, error)
 
 	UpdateIdentity(params *UpdateIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*UpdateIdentityOK, error)
 
@@ -130,7 +132,7 @@ func (a *Client) AssociateIdentitysServiceConfigs(params *AssociateIdentitysServ
 
   Create an identity resource. Requires admin access.
 */
-func (a *Client) CreateIdentity(params *CreateIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*CreateIdentityOK, error) {
+func (a *Client) CreateIdentity(params *CreateIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*CreateIdentityCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateIdentityParams()
@@ -152,7 +154,7 @@ func (a *Client) CreateIdentity(params *CreateIdentityParams, authInfo runtime.C
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateIdentityOK)
+	success, ok := result.(*CreateIdentityCreated)
 	if ok {
 		return success, nil
 	}
@@ -687,6 +689,44 @@ func (a *Client) PatchIdentity(params *PatchIdentityParams, authInfo runtime.Cli
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for patchIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  RemoveIdentityMfa removes m f a from an identitity
+
+  Allows an admin to remove MFA enrollment from a specific identity. Requires admin.
+
+*/
+func (a *Client) RemoveIdentityMfa(params *RemoveIdentityMfaParams, authInfo runtime.ClientAuthInfoWriter) (*RemoveIdentityMfaOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRemoveIdentityMfaParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "removeIdentityMfa",
+		Method:             "DELETE",
+		PathPattern:        "/identities/{id}/mfa",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &RemoveIdentityMfaReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RemoveIdentityMfaOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for removeIdentityMfa: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

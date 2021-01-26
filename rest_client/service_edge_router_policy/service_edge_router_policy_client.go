@@ -51,7 +51,7 @@ type Client struct {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CreateServiceEdgeRouterPolicy(params *CreateServiceEdgeRouterPolicyParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceEdgeRouterPolicyOK, error)
+	CreateServiceEdgeRouterPolicy(params *CreateServiceEdgeRouterPolicyParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceEdgeRouterPolicyCreated, error)
 
 	DeleteServiceEdgeRouterPolicy(params *DeleteServiceEdgeRouterPolicyParams, authInfo runtime.ClientAuthInfoWriter) (*DeleteServiceEdgeRouterPolicyOK, error)
 
@@ -75,7 +75,7 @@ type ClientService interface {
 
   Create a service edge router policy resource. Requires admin access.
 */
-func (a *Client) CreateServiceEdgeRouterPolicy(params *CreateServiceEdgeRouterPolicyParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceEdgeRouterPolicyOK, error) {
+func (a *Client) CreateServiceEdgeRouterPolicy(params *CreateServiceEdgeRouterPolicyParams, authInfo runtime.ClientAuthInfoWriter) (*CreateServiceEdgeRouterPolicyCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewCreateServiceEdgeRouterPolicyParams()
@@ -97,7 +97,7 @@ func (a *Client) CreateServiceEdgeRouterPolicy(params *CreateServiceEdgeRouterPo
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CreateServiceEdgeRouterPolicyOK)
+	success, ok := result.(*CreateServiceEdgeRouterPolicyCreated)
 	if ok {
 		return success, nil
 	}

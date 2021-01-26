@@ -42,6 +42,10 @@ import (
 type APISessionDetail struct {
 	BaseEntity
 
+	// auth queries
+	// Required: true
+	AuthQueries AuthQueryList `json:"authQueries"`
+
 	// config types
 	// Required: true
 	ConfigTypes []string `json:"configTypes"`
@@ -74,6 +78,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		AuthQueries AuthQueryList `json:"authQueries"`
+
 		ConfigTypes []string `json:"configTypes"`
 
 		Identity *EntityRef `json:"identity"`
@@ -87,6 +93,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.AuthQueries = dataAO1.AuthQueries
 
 	m.ConfigTypes = dataAO1.ConfigTypes
 
@@ -111,6 +119,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		AuthQueries AuthQueryList `json:"authQueries"`
+
 		ConfigTypes []string `json:"configTypes"`
 
 		Identity *EntityRef `json:"identity"`
@@ -121,6 +131,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 
 		Token *string `json:"token"`
 	}
+
+	dataAO1.AuthQueries = m.AuthQueries
 
 	dataAO1.ConfigTypes = m.ConfigTypes
 
@@ -149,6 +161,10 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateAuthQueries(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateConfigTypes(formats); err != nil {
 		res = append(res, err)
 	}
@@ -172,6 +188,22 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *APISessionDetail) validateAuthQueries(formats strfmt.Registry) error {
+
+	if err := validate.Required("authQueries", "body", m.AuthQueries); err != nil {
+		return err
+	}
+
+	if err := m.AuthQueries.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("authQueries")
+		}
+		return err
+	}
+
 	return nil
 }
 

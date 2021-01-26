@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateIdentityOKCode is the HTTP code returned for type CreateIdentityOK
-const CreateIdentityOKCode int = 200
+// CreateIdentityCreatedCode is the HTTP code returned for type CreateIdentityCreated
+const CreateIdentityCreatedCode int = 201
 
-/*CreateIdentityOK The create request was successful and the resource has been added at the following location
+/*CreateIdentityCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createIdentityOK
+swagger:response createIdentityCreated
 */
-type CreateIdentityOK struct {
+type CreateIdentityCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateIdentityOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateIdentityOK creates CreateIdentityOK with default headers values
-func NewCreateIdentityOK() *CreateIdentityOK {
+// NewCreateIdentityCreated creates CreateIdentityCreated with default headers values
+func NewCreateIdentityCreated() *CreateIdentityCreated {
 
-	return &CreateIdentityOK{}
+	return &CreateIdentityCreated{}
 }
 
-// WithPayload adds the payload to the create identity o k response
-func (o *CreateIdentityOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateIdentityOK {
+// WithPayload adds the payload to the create identity created response
+func (o *CreateIdentityCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateIdentityCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create identity o k response
-func (o *CreateIdentityOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create identity created response
+func (o *CreateIdentityCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateIdentityOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateIdentityCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

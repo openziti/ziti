@@ -27,7 +27,7 @@ type PostureCheckWindowsDomains struct {
 	Domains []string
 }
 
-func (p *PostureCheckWindowsDomains) Evaluate(pd *PostureData) bool {
+func (p *PostureCheckWindowsDomains) Evaluate(_ string, pd *PostureData) bool {
 	if pd.Domain.TimedOut {
 		return false
 	}

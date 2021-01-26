@@ -68,7 +68,7 @@ func Test_ServicePolicy(t *testing.T) {
 		t.Run("for service 3 and service role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequirePath(result, "data.serviceRolesDisplay")
+			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.serviceRolesDisplay")
 			displayValuesChildren, err := displayValuesContainer.Children()
 			ctx.Req.NoError(err)
 
@@ -76,8 +76,8 @@ func Test_ServicePolicy(t *testing.T) {
 			hasService3DisplayInfo := false
 
 			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequirePath(child, "role")
-				nameVal := ctx.RequirePath(child, "name")
+				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
+				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
 
 				role := roleVal.Data().(string)
 				name := nameVal.Data().(string)
@@ -98,7 +98,7 @@ func Test_ServicePolicy(t *testing.T) {
 		t.Run("for identity 3 and identity role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequirePath(result, "data.identityRolesDisplay")
+			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.identityRolesDisplay")
 			displayValuesChildren, err := displayValuesContainer.Children()
 			ctx.Req.NoError(err)
 
@@ -106,8 +106,8 @@ func Test_ServicePolicy(t *testing.T) {
 			hasIdentity3DisplayInfo := false
 
 			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequirePath(child, "role")
-				nameVal := ctx.RequirePath(child, "name")
+				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
+				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
 
 				role := roleVal.Data().(string)
 				name := nameVal.Data().(string)

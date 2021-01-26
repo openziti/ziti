@@ -17,8 +17,9 @@
 package permissions
 
 const (
-	AdminPermission         = "ADMIN"
-	AuthenticatedPermission = "AUTHENTICATED"
+	AdminPermission                 = "ADMIN"
+	AuthenticatedPermission         = "AUTHENTICATED"
+	PartiallyAuthenticatePermission = "PARTIAL_AUTH"
 )
 
 type Resolver interface {

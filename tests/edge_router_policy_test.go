@@ -97,7 +97,7 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 		t.Run("for edge router 3 and edge router role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequirePath(result, "data.edgeRouterRolesDisplay")
+			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.edgeRouterRolesDisplay")
 			displayValuesChildren, err := displayValuesContainer.Children()
 			ctx.Req.NoError(err)
 
@@ -105,8 +105,8 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 			hasRouter3DisplayInfo := false
 
 			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequirePath(child, "role")
-				nameVal := ctx.RequirePath(child, "name")
+				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
+				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
 
 				role := roleVal.Data().(string)
 				name := nameVal.Data().(string)
@@ -127,7 +127,7 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 		t.Run("for identity 3 and identity role 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			displayValuesContainer := ctx.RequirePath(result, "data.identityRolesDisplay")
+			displayValuesContainer := ctx.RequireGetNonNilPathValue(result, "data.identityRolesDisplay")
 			displayValuesChildren, err := displayValuesContainer.Children()
 			ctx.Req.NoError(err)
 
@@ -135,8 +135,8 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 			hasIdentity3DisplayInfo := false
 
 			for _, child := range displayValuesChildren {
-				roleVal := ctx.RequirePath(child, "role")
-				nameVal := ctx.RequirePath(child, "name")
+				roleVal := ctx.RequireGetNonNilPathValue(child, "role")
+				nameVal := ctx.RequireGetNonNilPathValue(child, "name")
 
 				role := roleVal.Data().(string)
 				name := nameVal.Data().(string)

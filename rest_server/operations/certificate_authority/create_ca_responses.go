@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// CreateCaOKCode is the HTTP code returned for type CreateCaOK
-const CreateCaOKCode int = 200
+// CreateCaCreatedCode is the HTTP code returned for type CreateCaCreated
+const CreateCaCreatedCode int = 201
 
-/*CreateCaOK The create request was successful and the resource has been added at the following location
+/*CreateCaCreated The create request was successful and the resource has been added at the following location
 
-swagger:response createCaOK
+swagger:response createCaCreated
 */
-type CreateCaOK struct {
+type CreateCaCreated struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type CreateCaOK struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewCreateCaOK creates CreateCaOK with default headers values
-func NewCreateCaOK() *CreateCaOK {
+// NewCreateCaCreated creates CreateCaCreated with default headers values
+func NewCreateCaCreated() *CreateCaCreated {
 
-	return &CreateCaOK{}
+	return &CreateCaCreated{}
 }
 
-// WithPayload adds the payload to the create ca o k response
-func (o *CreateCaOK) WithPayload(payload *rest_model.CreateEnvelope) *CreateCaOK {
+// WithPayload adds the payload to the create ca created response
+func (o *CreateCaCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreateCaCreated {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the create ca o k response
-func (o *CreateCaOK) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the create ca created response
+func (o *CreateCaCreated) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *CreateCaOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *CreateCaCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(200)
+	rw.WriteHeader(201)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {
