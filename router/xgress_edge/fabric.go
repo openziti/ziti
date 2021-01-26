@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"sync/atomic"
@@ -40,57 +41,78 @@ var headersFromFabric = map[uint8]int32{
 	PayloadFlagsHeader: edge.FlagsHeader,
 }
 
-type localMessageSink struct {
+type edgeTerminator struct {
 	edge.MsgChannel
-	seq       MsgQueue
-	closeCB   func(connId uint32)
-	newSinkCB func(sink *localMessageSink)
-	closed    concurrenz.AtomicBoolean
+	edgeClientConn *edgeClientConn
+	token          string
+	terminatorId   string
+	service        string
+	assignIds      bool
 }
 
-type localListener struct {
-	localMessageSink
-	terminatorIdRef *concurrenz.AtomicString
-	service         string
-	parent          *ingressProxy
-	assignIds       bool
-}
-
-func (listener *localListener) nextDialConnId() uint32 {
-	nextId := atomic.AddUint32(&listener.parent.idSeq, 1)
+func (listener *edgeTerminator) nextDialConnId() uint32 {
+	nextId := atomic.AddUint32(&listener.edgeClientConn.idSeq, 1)
 	if nextId < math.MaxUint32/2 {
-		atomic.StoreUint32(&listener.parent.idSeq, math.MaxUint32/2)
-		nextId = atomic.AddUint32(&listener.parent.idSeq, 1)
+		atomic.StoreUint32(&listener.edgeClientConn.idSeq, math.MaxUint32/2)
+		nextId = atomic.AddUint32(&listener.edgeClientConn.idSeq, 1)
 	}
 	return nextId
 }
 
-func (conn *localMessageSink) newSink(connId uint32) *localMessageSink {
-	result := &localMessageSink{
-		MsgChannel: *edge.NewEdgeMsgChannel(conn.Channel, connId),
-		seq:        NewMsgQueue(4),
-		closeCB:    conn.closeCB,
-		newSinkCB:  conn.newSinkCB,
+func (listener *edgeTerminator) close(notify bool, reason string) {
+	logger := pfxlog.Logger()
+
+	if notify && !listener.IsClosed() {
+		// Notify edge client of close
+		log.Debug("sending closed to SDK client")
+		closeMsg := edge.NewStateClosedMsg(listener.Id(), reason)
+		if err := listener.SendState(closeMsg); err != nil {
+			log.WithError(err).Warn("unable to send close msg to edge client for hosted service")
+		}
 	}
 
-	// TODO: Evaluate best way to get new conn in map. Split dial? Any way to use regular map?
-	if conn.newSinkCB != nil {
-		conn.newSinkCB(result)
+	logger.Debugf("removing terminator %v for token: %v", listener.terminatorId, listener.token)
+	if err := xgress.RemoveTerminator(listener.edgeClientConn.listener.factory, listener.terminatorId); err != nil {
+		logger.Errorf("failed to remove terminator %v (%v)", listener.terminatorId, err)
 	}
-	return result
+
+	logger.Debugf("removing listener for terminator %v, token: %v", listener.terminatorId, listener.token)
+	listener.edgeClientConn.listener.factory.hostedServices.Delete(listener.token)
 }
 
-func (conn *localMessageSink) LogContext() string {
+type edgeXgressConn struct {
+	edge.MsgChannel
+	mux       edge.MsgMux
+	seq       MsgQueue
+	newSinkCB func(sink *edgeXgressConn)
+	closed    concurrenz.AtomicBoolean
+}
+
+func (listener *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error) {
+	mux := listener.edgeClientConn.msgMux
+	result := &edgeXgressConn{
+		mux:        mux,
+		MsgChannel: *edge.NewEdgeMsgChannel(listener.edgeClientConn.ch, connId),
+		seq:        NewMsgQueue(4),
+	}
+
+	if err := mux.AddMsgSink(result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (conn *edgeXgressConn) LogContext() string {
 	return conn.Channel.Label()
 }
 
-func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
+func (conn *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
 
 	msg := conn.seq.Pop()
 	if msg == nil {
 		log.Debug("sequencer closed, return EOF")
-		conn.closeCB(conn.Id())
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 	}
 
@@ -114,7 +136,7 @@ func (conn *localMessageSink) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	}
 }
 
-func (conn *localMessageSink) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
+func (conn *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
 	var msgUUID []byte
 	var edgeHdrs map[int32][]byte
 
@@ -148,17 +170,17 @@ func (conn *localMessageSink) WritePayload(p []byte, headers map[uint8][]byte) (
 	return len(p), nil
 }
 
-func (conn *localMessageSink) Close() error {
+func (conn *edgeXgressConn) Close() error {
 	conn.close(true, "close called")
 	return nil
 }
 
-func (conn *localMessageSink) HandleMuxClose() error {
+func (conn *edgeXgressConn) HandleMuxClose() error {
 	conn.close(false, "channel closed")
 	return nil
 }
 
-func (conn *localMessageSink) close(notify bool, reason string) {
+func (conn *edgeXgressConn) close(notify bool, reason string) {
 	if !conn.closed.CompareAndSwap(false, true) {
 		// already closed
 		return
@@ -166,17 +188,16 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 
 	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
 	log.Debugf("closing message sink, reason: %v", reason)
-	if notify {
+	if notify && !conn.IsClosed() {
 		// Notify edge client of close
-		log.Debug("sennding closed to SDK client")
-		closeMsg := edge.NewStateClosedMsg(conn.Id(), "")
+		log.Debug("sending closed to SDK client")
+		closeMsg := edge.NewStateClosedMsg(conn.Id(), reason)
 		if err := conn.SendState(closeMsg); err != nil {
 			log.WithError(err).Warn("unable to send close msg to edge client")
 		}
 	}
 
-	// remove ourselves from mux, etc
-	conn.closeCB(conn.Id())
+	conn.mux.RemoveMsgSink(conn)
 
 	// When nextSeq is closed, GetNext in Read() will return a nil.
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
@@ -185,13 +206,13 @@ func (conn *localMessageSink) close(notify bool, reason string) {
 	conn.seq.Close()
 }
 
-func (conn *localMessageSink) Accept(msg *channel2.Message) {
+func (conn *edgeXgressConn) Accept(msg *channel2.Message) {
 	if err := conn.seq.Push(msg); err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)
 	}
 }
 
-func (conn *localMessageSink) getHeaderMap(message *channel2.Message) map[uint8][]byte {
+func (conn *edgeXgressConn) getHeaderMap(message *channel2.Message) map[uint8][]byte {
 	headers := make(map[uint8][]byte)
 	msgUUID, found := message.Headers[edge.UUIDHeader]
 	if found {

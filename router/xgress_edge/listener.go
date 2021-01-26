@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"time"
 )
@@ -78,7 +77,7 @@ func (listener *listener) Close() error {
 	return listener.underlayListener.Close()
 }
 
-type ingressProxy struct {
+type edgeClientConn struct {
 	msgMux       edge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
@@ -86,23 +85,23 @@ type ingressProxy struct {
 	idSeq        uint32
 }
 
-func (proxy *ingressProxy) HandleClose(_ channel2.Channel) {
-	log := pfxlog.ContextLogger(proxy.ch.Label())
+func (self *edgeClientConn) HandleClose(_ channel2.Channel) {
+	log := pfxlog.ContextLogger(self.ch.Label())
 	log.Debugf("closing")
-	listeners := proxy.listener.factory.hostedServices.cleanupServices(proxy)
+	listeners := self.listener.factory.hostedServices.cleanupServices(self)
 	for _, listener := range listeners {
-		if err := xgress.RemoveTerminator(proxy.listener.factory, listener.terminatorIdRef.Get()); err != nil {
-			log.Warnf("failed to remove terminator on service %v for terminator %v on channel close", listener.service, listener.terminatorIdRef.Get())
+		if err := xgress.RemoveTerminator(self.listener.factory, listener.terminatorId); err != nil {
+			log.Warnf("failed to remove terminator on service %v for terminator %v on channel close", listener.service, listener.terminatorId)
 		}
 	}
-	proxy.msgMux.Close()
+	self.msgMux.Close()
 }
 
-func (proxy *ingressProxy) ContentType() int32 {
+func (self *edgeClientConn) ContentType() int32 {
 	return edge.ContentTypeData
 }
 
-func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("token", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
@@ -112,41 +111,39 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, proxy.listener.options.lookupSessionTimeout)
+	ns := sm.GetSessionWithTimeout(token, self.listener.options.lookupSessionTimeout)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Dial {
 		log.WithField("token", token).Error("session not found")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
-	if _, found := proxy.fingerprints.HasAny(ns.CertFingerprints); !found {
+	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", proxy.fingerprints.Prints()).
+			WithField("clientFingerprints", self.fingerprints.Prints()).
 			Error("matching fingerprint not found for connect")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
 	log.Debug("validating connection id")
 
-	removeListener := sm.AddSessionRemovedListener(ns.Token, func(token string) {
-		proxy.sendStateClosed(connId, "session closed")
-		proxy.closeConn(connId)
-	})
-
-	conn := &localMessageSink{
-		MsgChannel: *edge.NewEdgeMsgChannel(proxy.ch, connId),
+	conn := &edgeXgressConn{
+		mux:        self.msgMux,
+		MsgChannel: *edge.NewEdgeMsgChannel(self.ch, connId),
 		seq:        NewMsgQueue(4),
-		closeCB: func(connId uint32) {
-			removeListener()
-		},
 	}
 
-	if err := proxy.msgMux.AddMsgSink(conn); err != nil {
+	sm.AddSessionRemovedListener(ns.Token, func(token string) {
+		conn.close(true, "session closed")
+	})
+
+	// We can't fix conn id, since it's provided by the client
+	if err := self.msgMux.AddMsgSink(conn); err != nil {
 		log.WithField("token", token).Error(err)
-		proxy.sendStateClosedReply(err.Error(), req)
+		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
 
@@ -168,7 +165,7 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 
 	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
 		msg := "encryption required on service, initiator did not send public header"
-		proxy.sendStateClosedReply(msg, req)
+		self.sendStateClosedReply(msg, req)
 		conn.close(false, msg)
 		return
 	}
@@ -177,30 +174,31 @@ func (proxy *ingressProxy) processConnect(req *channel2.Message, ch channel2.Cha
 	if terminatorIdentity, found := req.GetStringHeader(edge.TerminatorIdentityHeader); found {
 		service = terminatorIdentity + "@" + service
 	}
-	sessionInfo, err := xgress.GetSession(proxy.listener.factory, ns.Id, service, proxy.listener.options.Options.GetSessionTimeout, peerData)
+
+	sessionInfo, err := xgress.GetSession(self.listener.factory, ns.Id, service, self.listener.options.Options.GetSessionTimeout, peerData)
 	if err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
-		proxy.sendStateClosedReply(err.Error(), req)
+		self.sendStateClosedReply(err.Error(), req)
 		conn.close(false, "failed to dial fabric")
 		return
 	}
 
 	if ns.Service.EncryptionRequired && sessionInfo.SessionId.Data[edge.PublicKeyHeader] == nil {
 		msg := "encryption required on service, terminator did not send public header"
-		proxy.sendStateClosedReply(msg, req)
+		self.sendStateClosedReply(msg, req)
 		conn.close(false, msg)
 		return
 	}
 
-	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &proxy.listener.options.Options)
-	proxy.listener.bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &self.listener.options.Options)
+	self.listener.bindHandler.HandleXgressBind(x)
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
-	proxy.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
+	self.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
 	x.Start()
 }
 
-func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
@@ -211,20 +209,20 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 	}
 	log.Debug("validating network session")
 	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, proxy.listener.options.lookupSessionTimeout)
+	ns := sm.GetSessionWithTimeout(token, self.listener.options.lookupSessionTimeout)
 
 	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Bind {
 		log.WithField("token", token).Error("session not found")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
-	if _, found := proxy.fingerprints.HasAny(ns.CertFingerprints); !found {
+	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", proxy.fingerprints.Prints()).
+			WithField("clientFingerprints", self.fingerprints.Prints()).
 			Error("matching fingerprint not found for bind")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
@@ -251,48 +249,23 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		}
 	}
 
-	terminatorIdRef := &concurrenz.AtomicString{}
-
-	removeListener := sm.AddSessionRemovedListener(ns.Token, func(token string) {
-		terminatorId := terminatorIdRef.Get()
-		defer func() {
-			log.Debugf("removing listener for terminator %v, token: %v", terminatorId, token)
-			proxy.listener.factory.hostedServices.Delete(token)
-		}()
-		log.Debugf("removing terminator %v for token: %v", terminatorId, token)
-		if err := xgress.RemoveTerminator(proxy.listener.factory, terminatorId); err != nil {
-			log.Errorf("failed to remove terminator %v (%v)", terminatorId, err)
-		}
-	})
-
 	assignIds, _ := req.GetBoolHeader(edge.RouterProvidedConnId)
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
 	log.Debug("establishing listener")
-	messageSink := &localListener{
-		localMessageSink: localMessageSink{
-			MsgChannel: *edge.NewEdgeMsgChannel(ch, connId),
-			seq:        NewMsgQueue(4),
-			closeCB: func(closeConnId uint32) {
-				if closeConnId == connId {
-					removeListener()
-				}
-				proxy.sendStateClosed(closeConnId, "session closed")
-				proxy.closeConn(closeConnId)
-			},
-			newSinkCB: func(conn *localMessageSink) {
-				if err := proxy.msgMux.AddMsgSink(conn); err != nil {
-					log.WithError(err).Error("Failed to add sink, duplicate id")
-				}
-			},
-		},
-		terminatorIdRef: terminatorIdRef,
-		service:         ns.Service.Id,
-		parent:          proxy,
-		assignIds:       assignIds,
+	messageSink := &edgeTerminator{
+		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
+		edgeClientConn: self,
+		token:          token,
+		service:        ns.Service.Id,
+		assignIds:      assignIds,
 	}
 
-	proxy.listener.factory.hostedServices.Put(token, messageSink)
+	sm.AddSessionRemovedListener(ns.Token, func(token string) {
+		messageSink.close(true, "session ended")
+	})
+
+	self.listener.factory.hostedServices.Put(token, messageSink)
 
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 	var terminatorIdentitySecret []byte
@@ -300,22 +273,22 @@ func (proxy *ingressProxy) processBind(req *channel2.Message, ch channel2.Channe
 		terminatorIdentitySecret, _ = req.Headers[edge.TerminatorIdentitySecretHeader]
 	}
 
-	terminatorId, err := xgress.AddTerminator(proxy.listener.factory, ns.Service.Id, "edge", "hosted:"+token, terminatorIdentity, terminatorIdentitySecret, hostData, cost, precedence)
-	messageSink.terminatorIdRef.Set(terminatorId)
+	terminatorId, err := xgress.AddTerminator(self.listener.factory, ns.Service.Id, "edge", "hosted:"+token, terminatorIdentity, terminatorIdentitySecret, hostData, cost, precedence)
+	messageSink.terminatorId = terminatorId
 
 	log.Debugf("registered listener for terminator %v, token: %v", terminatorId, token)
 
 	if err != nil {
-		messageSink.closeCB(messageSink.Id())
-		proxy.sendStateClosedReply(err.Error(), req)
+		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
+		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
 
 	log.Debug("returning connection state CONNECTED to client")
-	proxy.sendStateConnectedReply(req, nil)
+	self.sendStateConnectedReply(req, nil)
 }
 
-func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processUnbind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
@@ -324,39 +297,39 @@ func (proxy *ingressProxy) processUnbind(req *channel2.Message, ch channel2.Chan
 
 	if ns == nil {
 		log.WithField("token", token).Error("session not found")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
-	if _, found := proxy.fingerprints.HasAny(ns.CertFingerprints); !found {
+	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", proxy.fingerprints.Prints()).
+			WithField("clientFingerprints", self.fingerprints.Prints()).
 			Error("matching fingerprint not found for unbind")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
-	localListener, ok := proxy.listener.factory.hostedServices.Get(token)
+	localListener, ok := self.listener.factory.hostedServices.Get(token)
 	if ok {
-		defer proxy.listener.factory.hostedServices.Delete(token)
+		defer self.listener.factory.hostedServices.Delete(token)
 
-		log.Debugf("removing terminator %v for token: %v", localListener.terminatorIdRef.Get(), token)
-		if err := xgress.RemoveTerminator(proxy.listener.factory, localListener.terminatorIdRef.Get()); err != nil {
-			proxy.sendStateClosedReply(err.Error(), req)
+		log.Debugf("removing terminator %v for token: %v", localListener.terminatorId, token)
+		if err := xgress.RemoveTerminator(self.listener.factory, localListener.terminatorId); err != nil {
+			self.sendStateClosedReply(err.Error(), req)
 		} else {
-			proxy.sendStateClosedReply("unbind successful", req)
+			self.sendStateClosedReply("unbind successful", req)
 		}
 	} else {
-		proxy.sendStateClosedReply("unbind successful", req)
+		self.sendStateClosedReply("unbind successful", req)
 	}
 }
 
-func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
-	localListener, ok := proxy.listener.factory.hostedServices.Get(token)
+	localListener, ok := self.listener.factory.hostedServices.Get(token)
 
 	if !ok {
 		log.Error("failed to update bind, no listener found")
@@ -368,16 +341,16 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 
 	if ns == nil {
 		log.WithField("token", token).Error("session not found")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
-	if _, found := proxy.fingerprints.HasAny(ns.CertFingerprints); !found {
+	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
 		log.WithField("token", token).
 			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", proxy.fingerprints.Prints()).
+			WithField("clientFingerprints", self.fingerprints.Prints()).
 			Error("matching fingerprint not found for update bind")
-		proxy.sendStateClosedReply("Invalid Session", req)
+		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
@@ -398,13 +371,13 @@ func (proxy *ingressProxy) processUpdateBind(req *channel2.Message, ch channel2.
 		precedence = &updatedPrecedence
 	}
 
-	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorIdRef.Get(), precedence, cost)
-	if err := xgress.UpdateTerminator(proxy.listener.factory, localListener.terminatorIdRef.Get(), cost, precedence); err != nil {
+	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorId, precedence, cost)
+	if err := xgress.UpdateTerminator(self.listener.factory, localListener.terminatorId, cost, precedence); err != nil {
 		log.WithError(err).Error("failed to update bind")
 	}
 }
 
-func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
+func (self *edgeClientConn) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
 
@@ -417,19 +390,19 @@ func (proxy *ingressProxy) sendStateConnectedReply(req *channel2.Message, hostDa
 	}
 	msg.ReplyTo(req)
 
-	err := proxy.ch.SendPrioritizedWithTimeout(msg, channel2.High, time.Second*5)
+	err := self.ch.SendPrioritizedWithTimeout(msg, channel2.High, time.Second*5)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
 	}
 }
 
-func (proxy *ingressProxy) sendStateClosedReply(message string, req *channel2.Message) {
+func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.Message) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
 
-	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
+	syncC, err := self.ch.SendAndSyncWithPriority(msg, channel2.High)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
@@ -445,11 +418,11 @@ func (proxy *ingressProxy) sendStateClosedReply(message string, req *channel2.Me
 	}
 }
 
-func (proxy *ingressProxy) sendStateClosed(connId uint32, message string) {
+func (self *edgeClientConn) sendStateClosed(connId uint32, message string) {
 	msg := edge.NewStateClosedMsg(connId, message)
 	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Debug("sending state closed message")
 
-	syncC, err := proxy.ch.SendAndSyncWithPriority(msg, channel2.High)
+	syncC, err := self.ch.SendAndSyncWithPriority(msg, channel2.High)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
@@ -463,15 +436,4 @@ func (proxy *ingressProxy) sendStateClosed(connId uint32, message string) {
 	case <-time.After(time.Second * 5):
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
 	}
-}
-
-func (proxy *ingressProxy) closeConn(connId uint32) {
-	// This was done in the process loop, but all the relevant data structure are concurrent safe
-	// and if the the proxy closed before all the connections could be closed, this would lead to
-	// deadlocks
-	log := pfxlog.ContextLogger(proxy.ch.Label()).WithField("connId", connId)
-	log.Debug("closeConn()")
-
-	// we don't need to close the conn here, it will get closed when the xgress closes its peer
-	proxy.msgMux.RemoveMsgSinkById(connId)
 }
