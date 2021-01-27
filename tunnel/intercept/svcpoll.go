@@ -17,167 +17,238 @@
 package intercept
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
-	"time"
-
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/tunnel/dns"
-	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/sdk-golang/ziti"
 )
 
-func ServicePoller(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, pollRate time.Duration) {
-	healthCheckMgr := health.NewManager()
+func NewServiceListener(context ziti.Context, interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
+	return &ServiceListener{
+		context:        context,
+		interceptor:    interceptor,
+		resolver:       resolver,
+		healthCheckMgr: health.NewManager(),
+		addresses:      map[string]int{},
+		services:       map[string]*entities.Service{},
+	}
+}
 
-	interceptor.Start(context)
-	knownServices := make(map[string]*entities.Service)
-	log := pfxlog.Logger()
+type ServiceListener struct {
+	context        ziti.Context
+	interceptor    Interceptor
+	resolver       dns.Resolver
+	healthCheckMgr health.Manager
+	addresses      map[string]int
+	services       map[string]*entities.Service
+	sync.Mutex
+}
 
-	//signal.Notify expects a buffered chan of at least 1
-	sig := make(chan os.Signal, 1)
+func (self *ServiceListener) WaitForShutdown() {
+	sig := make(chan os.Signal, 1) //signal.Notify expects a buffered chan of at least 1
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
-	if pollRate < time.Second {
-		pollRate = 15 * time.Second
+	for s := range sig {
+		log.Debugf("caught signal %v", s)
+		break
 	}
 
-	for {
-		edgeServices, err := context.GetServices()
-		if err != nil {
-			log.Errorf("failed to get ziti services: %v", err)
-			if err.Error() == "unauthorized" {
-				if err := context.Authenticate(); err != nil {
-					log.WithError(err).Error("could not re-authenticate, session lost")
-					break
-				}
-			}
-		}
-		var tunnelServices []*entities.Service
-		for _, edgeService := range edgeServices {
-			tunnelServices = append(tunnelServices, &entities.Service{Service: edgeService})
-		}
-		added, removed := diffServices(tunnelServices, knownServices)
-		updateServices(context, interceptor, resolver, added, removed, knownServices, healthCheckMgr)
+	self.Lock()
+	defer self.Unlock()
 
-		select {
-		case <-time.After(pollRate):
-			continue
-		case s := <-sig:
-			log.Debugf("caught signal %v", s)
-			switch s {
-			case syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM:
-				log.Debugf("caught signal %v", s)
-				goto done
-			}
-		}
+	for _, svc := range self.services {
+		self.removeService(svc)
 	}
-
-done:
-	// use `updateServices` to stop each intercepted service one-at-a-time.
-	updateServices(context, interceptor, resolver, nil, knownServices, knownServices, healthCheckMgr)
-	interceptor.Stop()
+	self.interceptor.Stop()
 }
 
-// compare a list of services from the edge controller against the services that we are currently
-// familiar with to determine which (if any) services have been added or removed since the last
-// time `knownServices` was updated.
-func diffServices(edgeServices []*entities.Service, knownServices map[string]*entities.Service) (added, removed map[string]*entities.Service) {
-	// find new services
-	added = make(map[string]*entities.Service)
-	edgeServiceIds := make(map[string]struct{})
-	for _, edgeSvc := range edgeServices {
-		// get edge service IDs for efficiently finding removed services
-		edgeServiceIds[edgeSvc.Id] = struct{}{}
-		if _, ok := knownServices[edgeSvc.Id]; !ok {
-			added[edgeSvc.Id] = edgeSvc
-			knownServices[edgeSvc.Id] = edgeSvc
-		}
-	}
+func (self *ServiceListener) HandleServicesChange(eventType config.ServiceEventType, service *edge.Service) {
+	tunnelerService := &entities.Service{Service: *service}
 
-	// look for removed services
-	removed = make(map[string]*entities.Service)
-	for id, knownSvc := range knownServices {
-		if _, ok := edgeServiceIds[id]; !ok {
-			removed[knownSvc.Id] = knownSvc
-			delete(knownServices, id)
-		}
+	switch eventType {
+	case config.ServiceAdded:
+		self.addService(tunnelerService)
+	case config.ServiceRemoved:
+		self.removeService(tunnelerService)
+	case config.ServiceChanged:
+		self.removeService(tunnelerService)
+		self.addService(tunnelerService)
+	default:
+		pfxlog.Logger().Errorf("unhandled service change event type: %v", eventType)
 	}
-
-	return
 }
 
-func updateServices(context ziti.Context, interceptor Interceptor, resolver dns.Resolver, added, removed, all map[string]*entities.Service, healthCheckMgr health.Manager) {
+func (self *ServiceListener) addService(svc *entities.Service) {
 	log := pfxlog.Logger()
-	for _, svc := range added {
-		if stringz.Contains(svc.Permissions, "Dial") {
-			clientConfig := &entities.ServiceConfig{}
-			found, err := svc.GetConfigOfType(entities.ClientConfigV1, clientConfig)
 
-			if found && err == nil {
-				svc.ClientConfig = clientConfig
-			} else if !found {
-				pfxlog.Logger().Debugf("no service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
-			} else if err != nil {
-				pfxlog.Logger().WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
-			}
+	if stringz.Contains(svc.Permissions, "Dial") {
+		clientConfig := &entities.ServiceConfig{}
+		found, err := svc.GetConfigOfType(entities.ClientConfigV1, clientConfig)
 
-			if err == nil {
-				log.Infof("starting tunnel for newly available service %s", svc.Name)
-				err := interceptor.Intercept(svc, resolver)
-				if err != nil {
-					log.Errorf("failed to intercept service: %v", err)
-				}
-			}
-		}
-		if stringz.Contains(svc.Permissions, "Bind") {
-			serverConfig := &entities.ServiceConfig{}
-			found, err := svc.GetConfigOfType(entities.ServerConfigV1, serverConfig)
+		if found && err == nil {
+			svc.ClientConfig = clientConfig
 
-			if found && err == nil {
-				svc.ServerConfig = serverConfig
-				log.Infof("Hosting newly available service %s", svc.Name)
-				go host(context, svc, healthCheckMgr)
-			} else if !found {
-				log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
-			} else if err != nil {
-				log.WithError(err).Errorf("service %v is hostable but unable to decode server config of type %v", svc.Name, entities.ServerConfigV1)
+			log.Infof("starting tunnel for newly available service %s", svc.Name)
+			if err := self.interceptor.Intercept(svc, self.resolver); err != nil {
+				log.Errorf("failed to intercept service: %v", err)
 			}
+		} else if !found {
+			pfxlog.Logger().Debugf("no service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+		} else if err != nil {
+			pfxlog.Logger().WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
 		}
 	}
 
-	// build map of all in-use address strings, so we know when a route needs to be removed
-	allAddrs := make(map[string]int, len(all))
-	for _, svc := range all {
-		if svc.ClientConfig != nil {
-			addr := svc.ClientConfig.Hostname
-			if _, ok := allAddrs[addr]; !ok {
-				allAddrs[addr] += 1
-			}
+	if stringz.Contains(svc.Permissions, "Bind") {
+		serverConfig := &entities.ServiceConfig{}
+		found, err := svc.GetConfigOfType(entities.ServerConfigV1, serverConfig)
+
+		if found && err == nil {
+			svc.ServerConfig = serverConfig
+			log.Infof("Hosting newly available service %s", svc.Name)
+			go self.host(svc)
+		} else if !found {
+			log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
+		} else if err != nil {
+			log.WithError(err).Errorf("service %v is hostable but unable to decode server config of type %v", svc.Name, entities.ServerConfigV1)
 		}
 	}
 
-	for _, svc := range removed {
-		if svc.ClientConfig != nil {
-			log.Infof("stopping tunnel for unavailable service: %s", svc.Name)
-			useCnt := allAddrs[svc.ClientConfig.Hostname]
-			err := interceptor.StopIntercepting(svc.Name, useCnt == 1)
+	if svc.ClientConfig != nil {
+		addr := svc.ClientConfig.Hostname
+		self.addresses[addr] += 1
+	}
+
+	if svc.ClientConfig != nil || svc.ServerConfig != nil {
+		self.services[svc.Id] = svc
+	}
+}
+
+func (self *ServiceListener) removeService(svc *entities.Service) {
+	log := pfxlog.Logger()
+
+	previousService := self.services[svc.Id]
+	if previousService != nil {
+		if previousService.ClientConfig != nil {
+			log.Infof("stopping tunnel for unavailable service: %s", previousService.Name)
+			useCnt := self.addresses[svc.ClientConfig.Hostname]
+			err := self.interceptor.StopIntercepting(previousService.Name, useCnt == 1)
 			if err != nil {
 				log.Errorf("failed to stop intercepting: %v", err)
 			}
-			allAddrs[svc.ClientConfig.Hostname] -= 1
+			if useCnt == 1 {
+				delete(self.addresses, previousService.ClientConfig.Hostname)
+			} else {
+				self.addresses[previousService.ClientConfig.Hostname] -= 1
+			}
 		}
+
+		if previousService.StopHostHook != nil {
+			previousService.StopHostHook()
+		}
+
+		delete(self.services, svc.Id)
 	}
 }
 
-func setupHealthChecks(healthCheckMgr health.Manager, listener edge.Listener, service *entities.Service, identity *edge.CurrentIdentity) error {
+func (self *ServiceListener) host(svc *entities.Service) {
+	logger := pfxlog.Logger()
+
+	currentIdentity, err := self.context.GetCurrentIdentity()
+	if err != nil {
+		logger.WithError(err).WithField("service", svc.Name).Errorf("error getting current identity information")
+		return
+	}
+
+	options := ziti.DefaultListenOptions()
+	options.ManualStart = true
+	options.Precedence = ziti.GetPrecedenceForLabel(currentIdentity.DefaultHostingPrecedence)
+	options.Cost = currentIdentity.DefaultHostingCost
+
+	listener, err := self.context.ListenWithOptions(svc.Name, options)
+	if err != nil {
+		logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
+		return
+	}
+
+	stopHook := func() {
+		_ = listener.Close()
+		self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
+	}
+
+	svc.StopHostHook = stopHook
+	defer stopHook()
+
+	if err := self.setupHealthChecks(listener, svc, currentIdentity); err != nil {
+		logger.WithError(err).WithField("service", svc.Name).Error("error setting up health checks")
+		return
+	}
+
+	serverConfig := svc.ServerConfig
+	for {
+		logger.WithField("service", svc.Name).
+			WithField("dialAddr", serverConfig.String()).
+			Info("hosting service, waiting for connections")
+		conn, err := listener.AcceptEdge()
+		if err != nil {
+			logger.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
+			return
+		}
+		externalConn, err := net.Dial(serverConfig.Protocol, serverConfig.Hostname+":"+strconv.Itoa(serverConfig.Port))
+		if err != nil {
+			logger.WithError(err).
+				WithField("service", svc.Name).
+				WithField("dialAddr", serverConfig.String()).
+				Error("dial failed")
+			conn.CompleteAcceptFailed(err)
+			if closeErr := conn.Close(); closeErr != nil {
+				logger.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", serverConfig.String()).
+					Error("close of ziti connection failed")
+			}
+			continue
+		}
+
+		if err := conn.CompleteAcceptSuccess(); err != nil {
+			logger.WithError(err).
+				WithField("service", svc.Name).
+				WithField("dialAddr", serverConfig.String()).
+				Error("complete accept success failed")
+
+			if closeErr := conn.Close(); closeErr != nil {
+				logger.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", serverConfig.String()).
+					Error("close of ziti connection failed")
+			}
+
+			if closeErr := externalConn.Close(); closeErr != nil {
+				logger.WithError(closeErr).
+					WithField("service", svc.Name).
+					WithField("dialAddr", serverConfig.String()).
+					Error("close of external connection failed")
+			}
+			continue
+		}
+
+		go tunnel.Run(conn, externalConn)
+	}
+}
+
+func (self *ServiceListener) setupHealthChecks(listener edge.Listener, service *entities.Service, identity *edge.CurrentIdentity) error {
 	precedence := ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
 	serviceState := health.NewServiceState(service.Name, precedence, identity.DefaultHostingCost, listener)
 
@@ -192,87 +263,8 @@ func setupHealthChecks(healthCheckMgr health.Manager, listener edge.Listener, se
 	}
 
 	if len(checkDefinitions) > 0 {
-		return healthCheckMgr.RegisterServiceChecks(serviceState, checkDefinitions)
+		return self.healthCheckMgr.RegisterServiceChecks(serviceState, checkDefinitions)
 	}
 
 	return nil
-}
-
-func host(context ziti.Context, svc *entities.Service, healthCheckMgr health.Manager) {
-	log := pfxlog.Logger()
-
-	currentIdentity, err := context.GetCurrentIdentity()
-	if err != nil {
-		log.WithError(err).WithField("service", svc.Name).Errorf("error getting current identity information")
-		return
-	}
-
-	options := ziti.DefaultListenOptions()
-	options.ManualStart = true
-	options.Precedence = ziti.GetPrecedenceForLabel(currentIdentity.DefaultHostingPrecedence)
-	options.Cost = currentIdentity.DefaultHostingCost
-
-	listener, err := context.ListenWithOptions(svc.Name, options)
-	if err != nil {
-		log.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
-		return
-	}
-
-	defer func() { _ = listener.Close() }()
-	defer healthCheckMgr.UnregisterServiceChecks(svc.Id)
-
-	if err := setupHealthChecks(healthCheckMgr, listener, svc, currentIdentity); err != nil {
-		log.WithError(err).WithField("service", svc.Name).Error("error setting up health checks")
-		return
-	}
-
-	config := svc.ServerConfig
-	for {
-		log.WithField("service", svc.Name).
-			WithField("dialAddr", config.String()).
-			Info("hosting service, waiting for connections")
-		conn, err := listener.AcceptEdge()
-		if err != nil {
-			log.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
-			return
-		}
-		externalConn, err := net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
-		if err != nil {
-			log.WithError(err).
-				WithField("service", svc.Name).
-				WithField("dialAddr", config.String()).
-				Error("dial failed")
-			conn.CompleteAcceptFailed(err)
-			if closeErr := conn.Close(); closeErr != nil {
-				log.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", config.String()).
-					Error("close of ziti connection failed")
-			}
-			continue
-		}
-
-		if err := conn.CompleteAcceptSuccess(); err != nil {
-			log.WithError(err).
-				WithField("service", svc.Name).
-				WithField("dialAddr", config.String()).
-				Error("complete accept success failed")
-
-			if closeErr := conn.Close(); closeErr != nil {
-				log.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", config.String()).
-					Error("close of ziti connection failed")
-			}
-
-			if closeErr := externalConn.Close(); closeErr != nil {
-				log.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", config.String()).
-					Error("close of external connection failed")
-			}
-			continue
-		}
-		go tunnel.Run(conn, externalConn)
-	}
 }

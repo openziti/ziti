@@ -27,4 +27,5 @@ type Service struct {
 	edge.Service
 	ClientConfig *ServiceConfig
 	ServerConfig *ServiceConfig
+	StopHostHook func()
 }

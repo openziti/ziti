@@ -341,7 +341,7 @@ func (b *Broker) sendApiSessionUpdates(apiSession *persistence.ApiSession) {
 		pfxlog.Logger().WithError(err).Errorf("could not get api session fingerprints")
 		return
 	}
-
+	
 	if len(fingerprints) == 0 {
 		pfxlog.Logger().WithError(err).Debug("api session has no fingerprints, not sending to edge routers")
 		return
