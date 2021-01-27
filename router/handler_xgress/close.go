@@ -39,12 +39,14 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	log.Debug("running")
 	defer log.Debug("complete")
 
-	x.ForwardEndOfSession(func(payload *xgress.Payload) {
+	x.ForwardEndOfSession(func(payload *xgress.Payload) bool {
 		log.Debug("sending end of session payload")
 		if err := txc.forwarder.ForwardPayload(x.Address(), x.GetEndSession()); err != nil {
 			// ok that we couldn't forward close, as that means it was already closed
 			log.Debugf("error forwarding end session payload (%s)", err)
+			return false
 		}
+		return true
 	})
 
 	// Notify the forwarder that the session is ending
