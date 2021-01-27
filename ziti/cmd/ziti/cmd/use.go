@@ -32,7 +32,7 @@ import (
 
 // UseOptions are the flags for delete commands
 type UseOptions struct {
-	CreateOptions
+	InstallOptions
 
 	Version string
 	Branch  string
@@ -41,7 +41,7 @@ type UseOptions struct {
 // NewCmdUse creates the command
 func NewCmdUse(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UseOptions{
-		CreateOptions: CreateOptions{
+		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -78,13 +78,12 @@ build to a feature-branch build.
 }
 
 func (o *UseOptions) install(branch string, zitiApp string) error {
-
 	newVersion, err := o.getLatestZitiAppVersionForBranch(branch, zitiApp)
 	if err != nil {
 		log.Infoln("Attempt to fetch latest version of '" + zitiApp + "' for branch '" + branch + "' failed: " + err.Error())
 
 		// Special-case branch fallback (to master) when dealing with ziti-prox-c
-		if zitiApp == c.ZITI_PROX_C && branch != "master" {
+		if zitiApp == c.ZITI_PROX_C || zitiApp == c.ZITI_EDGE_TUNNEL {
 			branch = "master"
 			newVersion, err = o.getLatestZitiAppVersionForBranch(branch, zitiApp)
 			if err != nil {
@@ -119,8 +118,8 @@ func (o *UseOptions) Run() error {
 	}
 
 	if o.Staging {
-		if o.Branch != "master" {
-			log.Errorf("Error: --staging can only be used with --branch of 'master'. You specified '%s'", branch)
+		if o.Branch != "main" {
+			log.Errorf("Error: --staging can only be used with --branch of 'main'. You specified '%s'", branch)
 			return nil
 		}
 	}
@@ -145,10 +144,6 @@ func (o *UseOptions) Run() error {
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
-	err = o.install(branch, c.ZITI_PROX_C)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
 	err = o.install(branch, c.ZITI_ROUTER)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
@@ -157,11 +152,17 @@ func (o *UseOptions) Run() error {
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
-	err = o.install(branch, c.ZITI_EDGE_TUNNEL)
+	err = o.install(branch, c.ZITI_ENROLLER)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
-	err = o.install(branch, c.ZITI_ENROLLER)
+
+	err = o.installZitiProxC("")
+	if err != nil {
+		log.Errorf("Error: install failed  %s \n", err.Error())
+	}
+
+	err = o.installZitiEdgeTunnel("")
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}

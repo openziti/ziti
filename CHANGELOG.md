@@ -2,6 +2,9 @@
 
 ## What's New
 
+* Update go-openapi libraries
+* xgress_edge refactor, should fix 'failed to dipsatch to fabric' errors
+* Update `ziti use` command to work with main branch
 * MFA Support
 
 
