@@ -187,15 +187,7 @@ func (conn *edgeXgressConn) close(notify bool, reason string) {
 	}
 
 	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
-	log.Debugf("closing message sink, reason: %v", reason)
-	if notify && !conn.IsClosed() {
-		// Notify edge client of close
-		log.Debug("sending closed to SDK client")
-		closeMsg := edge.NewStateClosedMsg(conn.Id(), reason)
-		if err := conn.SendState(closeMsg); err != nil {
-			log.WithError(err).Warn("unable to send close msg to edge client")
-		}
-	}
+	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
 	conn.mux.RemoveMsgSink(conn)
 
@@ -204,6 +196,17 @@ func (conn *edgeXgressConn) close(notify bool, reason string) {
 	// to terminate
 	log.Debug("closing channel sequencer, which should cause xgress to close")
 	conn.seq.Close()
+
+	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting
+	// the sequencer and then notify send will then be stuck writing to a partially closed channel.
+	if notify && !conn.IsClosed() {
+		// Notify edge client of close
+		log.Debug("sending closed to SDK client")
+		closeMsg := edge.NewStateClosedMsg(conn.Id(), reason)
+		if err := conn.SendState(closeMsg); err != nil {
+			log.WithError(err).Warn("unable to send close msg to edge client")
+		}
+	}
 }
 
 func (conn *edgeXgressConn) Accept(msg *channel2.Message) {
