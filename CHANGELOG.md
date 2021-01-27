@@ -6,20 +6,22 @@
 * xgress_edge refactor, should fix 'failed to dipsatch to fabric' errors
 * Update `ziti use` command to work with main branch
 * MFA Support
-
+* Fix deadlock on session close in router when connection is at capacity
+* Fix issue where end of session didn't get sent in some scenarios
 
 ## MFA Support
 
-Endpoint MFA is available that is based on RFC 4226 (HOTP: An HMAC-Based One-Time Password Algorithm)
-and RFC 6238 (TOTP: Time-Based One-Time Password Algorithm). These standards are compatible with standard "Authenticator"
-apps such as Google Authenticator and Authy. MFA is suggested to be used in situations where human
-operators are involved and additional security is desired.
+Endpoint MFA is available that is based on RFC 4226 (HOTP: An HMAC-Based One-Time Password
+Algorithm) and RFC 6238 (TOTP: Time-Based One-Time Password Algorithm). These standards are
+compatible with standard "Authenticator" apps such as Google Authenticator and Authy. MFA is
+suggested to be used in situations where human operators are involved and additional security is
+desired.
 
 ### Restricting Service Access
 
-Services can now have a Posture Check of type MFA that can be created and associated with
-a Service Policy. Service Policies that are associated with an MFA Posture Check will restrict
-access to services if a client has not enrolled in MFA and passed an MFA check on each login.
+Services can now have a Posture Check of type MFA that can be created and associated with a Service
+Policy. Service Policies that are associated with an MFA Posture Check will restrict access to
+services if a client has not enrolled in MFA and passed an MFA check on each login.
 
 MFA Posture Checks support only the basic Posture Check fields:
 
@@ -29,6 +31,7 @@ MFA Posture Checks support only the basic Posture Check fields:
 - roleAttributes - role attributes used to select this object from Service Policies
 
 Example:
+
 ```
 POST /posture-checks
 {
@@ -40,15 +43,16 @@ POST /posture-checks
 
 ### Admin MFA Management
 
-Admins of the Ziti Edge API can remove MFA from any user. However, they
-cannot enroll on behalf of the client. The client will have to initiate
-MFA enrollment via their client.
+Admins of the Ziti Edge API can remove MFA from any user. However, they cannot enroll on behalf of
+the client. The client will have to initiate MFA enrollment via their client.
 
 Endpoints:
 
 - `DELETE /identities/<id>/mfa` - remove MFA from an identity
-- `GET /identities` - has a new field `isMfaEnabled` that is true/false based on the identity's MFA enrollment
-- `GET /identities/<id>/posture-data` - now includes a `sessionPostureData` field which is a map of sessionId -> session posture data (including MFA status)
+- `GET /identities` - has a new field `isMfaEnabled` that is true/false based on the identity's MFA
+  enrollment
+- `GET /identities/<id>/posture-data` - now includes a `sessionPostureData` field which is a map of
+  sessionId -> session posture data (including MFA status)
 
 Example Posture Data:
 
@@ -75,34 +79,40 @@ Example Posture Data:
 
 ### Client MFA Enrollment
 
-Clients must individually enroll in MFA as the enrollment process includes
-exchanging a symmetric key. During MFA enrollment the related MFA endpoints
-will return different data and HTTP status codes based upon the state of MFA
-enrollment (enrollment not started, enrollment started, enrolled).
+Clients must individually enroll in MFA as the enrollment process includes exchanging a symmetric
+key. During MFA enrollment the related MFA endpoints will return different data and HTTP status
+codes based upon the state of MFA enrollment (enrollment not started, enrollment started, enrolled).
 
 The general MFA enrollment flow is:
 
 1. Authenticate as the identity via `POST /authenticate`
 2. Start MFA enrollment via `POST /current-identity/mfa`
 3. Retrieve the MFA provisioning URL or QR code
-   - `GET /current-identity/mfa`
-   - `GET /current-identity/mfa/qr-code`
-4. Use the provisioning URL or QR code with an authentication app such as Google Authenticator, Authy, etc.
-5. Use a current code from the authenticator to `POST /current-identity/mfa/verify` with the code in the `code` field `{"code": "someCode"}`
+    - `GET /current-identity/mfa`
+    - `GET /current-identity/mfa/qr-code`
+4. Use the provisioning URL or QR code with an authentication app such as Google Authenticator,
+   Authy, etc.
+5. Use a current code from the authenticator to `POST /current-identity/mfa/verify` with the code in
+   the `code` field `{"code": "someCode"}`
 
 #### MFA Endpoints Overview:
-This section is an overview for the endpoints. Each endpoint may return errors depending on
-in input and MFA status.
+
+This section is an overview for the endpoints. Each endpoint may return errors depending on in input
+and MFA status.
 
 - `GET /current-identity/mfa` - returns the current state of MFA enrollment or 404 Not Found
 - `POST /current-identity/mfa` - initiates MFA enrollment or 409 Conflict
 - `DELETE /current-identity/mfa` - remove MFA enrollment, requires a valid TOTP or recovery code
-- `GET /current-identity/mfa/recovery-codes` - returns the current recovery codes, requires a valid TOTP Code
-- `POST /current-identity/mfa/recovery-codes` - regenerates recovery codes, requires a valid TOTP code
-- `POST /current-identity/mfa/verify` - allows MFA enrollment to be completed, requires a valid TOTP code
-- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner, MFA enrollment must be started
-- `POST /authenticate/mfa` - allows MFA authentication checks to be completed, requires a valid TOTP or recovery code
-
+- `GET /current-identity/mfa/recovery-codes` - returns the current recovery codes, requires a valid
+  TOTP Code
+- `POST /current-identity/mfa/recovery-codes` - regenerates recovery codes, requires a valid TOTP
+  code
+- `POST /current-identity/mfa/verify` - allows MFA enrollment to be completed, requires a valid TOTP
+  code
+- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner, MFA
+  enrollment must be started
+- `POST /authenticate/mfa` - allows MFA authentication checks to be completed, requires a valid TOTP
+  or recovery code
 
 MFA Enrollment Not Started:
 
@@ -115,6 +125,7 @@ MFA Enrollment Not Started:
 - `GET /current-identity/mfa/qr-code` - returns 404 Not Found
 
 MFA Enrollment Started:
+
 - `GET /current-identity/mfa` - returns the current MFA enrollment and recovery codes
 - `POST /current-identity/mfa` - returns 409 Conflict
 - `DELETE /current-identity/mfa` - aborts the current enrollment, a blank `code` may be supplied
@@ -124,22 +135,24 @@ MFA Enrollment Started:
 - `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner in PNG format
 
 MFA Completed:
+
 - `GET /current-identity/mfa` - returns the current MFA enrollment, but not recovery codes
 - `POST /current-identity/mfa` - returns 409 Conflict
 - `DELETE /current-identity/mfa` - removes MFA, a valid TOTP or recovery code must be supplied
-- `GET /current-identity/mfa/recovery-codes` - shows the current recovery codes, a valid TOTP code must be supplied
+- `GET /current-identity/mfa/recovery-codes` - shows the current recovery codes, a valid TOTP code
+  must be supplied
 - `POST /current-identity/mfa` - returns HTTP status 409 Conflict
 - `POST /current-identity/mfa/verify` - returns HTTP status 409 Conflict
 - `GET /current-identity/mfa/qr-code` - returns 404 Not Found
 
-
 ### Client MFA Recovery Codes
 
-Client MFA recovery codes are generated during enrollment and can be regenerated at any
-time with a valid TOTP code. Twenty codes are generated and are one time use only.
-Generating new codes replaces all existing recovery codes.
+Client MFA recovery codes are generated during enrollment and can be regenerated at any time with a
+valid TOTP code. Twenty codes are generated and are one time use only. Generating new codes replaces
+all existing recovery codes.
 
 To view:
+
 ```
 GET /current-identity/mfa/recovery-codes
 {
@@ -148,6 +161,7 @@ GET /current-identity/mfa/recovery-codes
 ```
 
 To Generate new codes:
+
 ```
 POST /current-identity/mfa/recovery-codes
 {
@@ -157,10 +171,9 @@ POST /current-identity/mfa/recovery-codes
 
 ### Authentication
 
-During API Session authentication a new `authQuery` field is returned.
-This field will indicate if there are any outstanding authentication
-Posture Queries that need to be fulfilled before authentication is
-considered complete.
+During API Session authentication a new `authQuery` field is returned. This field will indicate if
+there are any outstanding authentication Posture Queries that need to be fulfilled before
+authentication is considered complete.
 
 When MFA authentication is required a field will now appear as an
 `authQuery` with the following format:
@@ -184,7 +197,6 @@ When MFA authentication is required a field will now appear as an
   ]       
 }
 ```
-
 
 # Release 0.18.4
 
