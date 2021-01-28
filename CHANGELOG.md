@@ -1,3 +1,9 @@
+# Release 0.18.6
+
+## What's New
+
+* Fix `ziti install terraform-provider-edgecontroller`
+
 # Release 0.18.5
 
 ## What's New
