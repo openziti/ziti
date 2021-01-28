@@ -394,10 +394,10 @@ func GetArtifactoryPath(staging bool, appName string, branch string) string {
 
 func GetTerraformProviderArtifactoryPath(provider string, branch string) string {
 	if branch == "" {
-		branch = "main"
+		branch = "master"
 	}
 	var path string
-	if branch == "main" {
+	if branch == "master" {
 		path = c.TERRAFORM_PROVIDER_PREFIX + provider + "-release/"
 	} else {
 		path = c.TERRAFORM_PROVIDER_PREFIX + provider + "-snapshot/" + branch + "/"
