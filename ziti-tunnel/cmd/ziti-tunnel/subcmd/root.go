@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -91,6 +92,11 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	}
 }
 
+type serviceChangeEvent struct {
+	eventType config.ServiceEventType
+	service   *edge.Service
+}
+
 func rootPostRun(cmd *cobra.Command, _ []string) {
 	log := pfxlog.Logger()
 
@@ -109,16 +115,40 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		entities.ClientConfigV1,
 		entities.ServerConfigV1,
 	}
-	rootPrivateContext := ziti.NewContextWithConfig(zitiCfg)
+
+	var serviceListener *intercept.ServiceListener
+	var serviceEventsC = make(chan *serviceChangeEvent)
 
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
+	options := &config.Options{
+		RefreshInterval: time.Duration(svcPollRate) * time.Second,
+		OnServiceUpdate: func(eventType config.ServiceEventType, service *edge.Service) {
+			serviceEventsC <- &serviceChangeEvent{
+				eventType: eventType,
+				service:   service,
+			}
+		},
+	}
+
+	rootPrivateContext := ziti.NewContextWithOpts(zitiCfg, options)
+
 	resolverConfig := cmd.Flag("resolver").Value.String()
 	resolver = dns.NewResolver(resolverConfig)
 	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
-	err = intercept.SetDnsInterceptIpRange(dnsIpRange)
-	if err != nil {
+	if err = intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
 		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
 	}
 
-	intercept.ServicePoller(rootPrivateContext, interceptor, resolver, time.Duration(svcPollRate)*time.Second)
+	interceptor.Start(rootPrivateContext)
+	serviceListener = intercept.NewServiceListener(rootPrivateContext, interceptor, resolver)
+
+	go func() {
+		for event := range serviceEventsC {
+			serviceListener.HandleServicesChange(event.eventType, event.service)
+		}
+	}()
+	if err = rootPrivateContext.Authenticate(); err != nil {
+		log.WithError(err).Fatal("failed to authenticate")
+	}
+	serviceListener.WaitForShutdown()
 }
