@@ -28,15 +28,17 @@ type Options struct {
 		RerouteFraction float32
 		RerouteCap      uint32
 	}
-	TerminationTimeout time.Duration
-	RouteTimeout       time.Duration
+	TerminationTimeout      time.Duration
+	RouteTimeout            time.Duration
+	CtrlChanLatencyInterval time.Duration
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds:       15,
-		TerminationTimeout: 10 * time.Second,
-		RouteTimeout:       10 * time.Second,
+		CycleSeconds:            15,
+		TerminationTimeout:      10 * time.Second,
+		RouteTimeout:            10 * time.Second,
+		CtrlChanLatencyInterval: 10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
 	options.Smart.RerouteCap = 4
@@ -67,6 +69,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.RouteTimeout = time.Duration(routeTimeoutSeconds) * time.Second
 		} else {
 			return nil, errors.New("invalid value for 'routeTimeoutSeconds'")
+		}
+	}
+
+	if value, found := src["ctrlChanLatencyIntervalSeconds"]; found {
+		if val, ok := value.(int); ok {
+			options.CtrlChanLatencyInterval = time.Duration(val) * time.Second
+		} else {
+			return nil, errors.New("invalid value for 'ctrlChanLatencyIntervalSeconds'")
 		}
 	}
 

@@ -123,6 +123,10 @@ func (network *Network) GetAppId() *identity.TokenId {
 	return network.nodeId
 }
 
+func (network *Network) GetOptions() *Options {
+	return network.options
+}
+
 func (network *Network) GetDb() boltz.Db {
 	return network.db
 }

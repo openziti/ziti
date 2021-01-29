@@ -82,7 +82,6 @@ type channelPeekHandler struct {
 	appTxMsgSizeHistogram metrics.Histogram
 	appRxMsgSizeHistogram metrics.Histogram
 
-	linkLatencyHistogram   metrics.Histogram
 	linkTxBytesMeter       metrics.Meter
 	linkTxMsgMeter         metrics.Meter
 	linkRxBytesMeter       metrics.Meter
