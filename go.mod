@@ -8,7 +8,7 @@ go 1.15
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
-// replace github.com/kataras/go-events => ../go-events
+//replace github.com/kataras/go-events => ../go-events
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.2.0
