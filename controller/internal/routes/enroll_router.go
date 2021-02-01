@@ -78,7 +78,6 @@ func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) {
 	rc.ResponseWriter.Header().Set("content-type", "application/pkcs7-mime")
 	rc.ResponseWriter.Header().Set("Content-Transfer-Encoding", "base64")
-	response.AddVersionHeader(rc.ResponseWriter)
 	rc.ResponseWriter.WriteHeader(http.StatusOK)
 
 	// Decode each PEM block in the input and append the ASN.1

@@ -32,7 +32,6 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/middleware"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
@@ -413,12 +412,6 @@ func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
 	rid := eid.New()
-
-	sw, ok := rw.(*middleware.StatusWriter)
-
-	if ok {
-		rid = sw.RequestId
-	}
 
 	body, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))

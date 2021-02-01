@@ -115,17 +115,14 @@ func (responder *ResponderImpl) RespondWithOk(data interface{}, meta *rest_model
 }
 
 func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
-	AddSessionExpirationHeader(responder.rc)
 	Respond(responder.rc.ResponseWriter, responder.rc.Request.URL.Path, responder.rc.Id, responder.GetProducer(), data, httpStatus)
 }
 
 func (responder *ResponderImpl) RespondWithError(err error) {
-	AddSessionExpirationHeader(responder.rc)
 	RespondWithError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), err)
 }
 
 func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
-	AddSessionExpirationHeader(responder.rc)
 	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), apiError)
 }
 

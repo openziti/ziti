@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_server"
 	"github.com/openziti/fabric/controller/xtv"
@@ -260,6 +261,9 @@ func (c *Controller) Run() {
 				rc.RespondWithError(err)
 				return
 			}
+
+			//after request context is filled so that api session is present for session expiration headers
+			response.AddHeaders(rc)
 
 			//attempt to patch in cookie support, Swagger/Open API 2.0 doesn't support defining it
 			if r.Header.Get(c.AppEnv.AuthHeaderName) == "" {
