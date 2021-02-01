@@ -220,15 +220,21 @@ func (self *Xgress) GetEndSession() *Payload {
 	return endSession
 }
 
-func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload)) {
+func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload) bool) {
 	self.flagsMutex.Lock()
 	defer self.flagsMutex.Unlock()
 	// if we've received end of session the other side initiated close. If we've already sent it, don't send it again
-	if !self.endOfSessionRecvd && !self.endOfSessionSent {
-		endSession := self.GetEndSession()
-		sendF(endSession)
-		self.endOfSessionSent = true
-	}
+	// if !self.endOfSessionRecvd && !self.endOfSessionSent {
+
+	// for now always send end of session. too many is better than not enough
+
+	endSession := self.GetEndSession()
+	sendF(endSession)
+
+	//if sendF(endSession) {
+	//	self.endOfSessionSent = true
+	//}
+	//}
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
@@ -405,9 +411,9 @@ func (self *Xgress) rx() {
 	}()
 	defer self.CloseTimeout(self.Options.MaxCloseWait)
 	defer func() {
-		self.ForwardEndOfSession(func(payload *Payload) {
+		self.ForwardEndOfSession(func(payload *Payload) bool {
 			log.Debug("sending end of session payload")
-			self.forwardPayload(payload)
+			return self.forwardPayload(payload)
 		})
 	}()
 
@@ -461,12 +467,12 @@ func (self *Xgress) rx() {
 	}
 }
 
-func (self *Xgress) forwardPayload(payload *Payload) {
+func (self *Xgress) forwardPayload(payload *Payload) bool {
 	sendCallback, err := self.payloadBuffer.BufferPayload(payload)
 
 	if err != nil {
 		pfxlog.ContextLogger(self.Label()).WithError(err).Error("failure forwarding payload")
-		return
+		return false
 	}
 
 	for _, peekHandler := range self.peekHandlers {
@@ -475,6 +481,7 @@ func (self *Xgress) forwardPayload(payload *Payload) {
 
 	self.receiveHandler.HandleXgressReceive(payload, self)
 	sendCallback()
+	return true
 }
 
 func (self *Xgress) nextReceiveSequence() int32 {
