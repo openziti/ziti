@@ -17,26 +17,28 @@
 package response
 
 import (
-	"fmt"
 	"github.com/openziti/edge/build"
-	version3 "github.com/openziti/edge/internal/version"
-	"net/http"
 	"strconv"
 )
 
 const (
 	ApiSessionExpirationSecondsHeader = "expiration-seconds"
-	ApiSessionExpiresAtheader         = "expires-at"
+	ApiSessionExpiresAtHeader         = "expires-at"
+	ServerHeader                      = "server"
 )
 
-func AddVersionHeader(rw http.ResponseWriter) {
+func AddHeaders(rc *RequestContext) {
 	buildInfo := build.GetBuildInfo()
-	rw.Header().Set(ZitiControllerVersionHeader, fmt.Sprintf("%s/%s/%s", buildInfo.Version(), buildInfo.Revision(), version3.GetApiVersion()))
+	if buildInfo != nil {
+		rc.ResponseWriter.Header().Set(ServerHeader, "ziti-controller/"+buildInfo.Version())
+	}
+
+	AddSessionHeaders(rc)
 }
 
-func AddSessionExpirationHeader(rc *RequestContext) {
+func AddSessionHeaders(rc *RequestContext) {
 	if rc.ApiSession != nil {
 		rc.ResponseWriter.Header().Set(ApiSessionExpirationSecondsHeader, strconv.FormatInt(int64(rc.ApiSession.ExpirationDuration.Seconds()), 10))
-		rc.ResponseWriter.Header().Set(ApiSessionExpiresAtheader, rc.ApiSession.ExpiresAt.String())
+		rc.ResponseWriter.Header().Set(ApiSessionExpiresAtHeader, rc.ApiSession.ExpiresAt.String())
 	}
 }
