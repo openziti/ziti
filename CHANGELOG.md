@@ -1,3 +1,13 @@
+# Release 0.18.7
+
+## What's New
+
+* Update ziti-tunnel service polling
+    * Now uses new api (when available) to skip refreshing services if no services have been changed
+    * Polling rate is passed through to sdk, so actual poll rate is now controlled
+* Don't panic on router startup, just show error message and exit
+
+
 # Release 0.18.6
 
 ## What's New
