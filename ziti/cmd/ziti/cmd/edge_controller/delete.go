@@ -40,8 +40,8 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
-	newOptions := func() *commonOptions {
-		return &commonOptions{
+	newOptions := func() *edgeOptions {
+		return &edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -68,10 +68,10 @@ func newDeleteCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	return cmd
 }
 
-type deleteCmdRunner func(*commonOptions, string) error
+type deleteCmdRunner func(*edgeOptions, string) error
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type
-func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, options *commonOptions) *cobra.Command {
+func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, options *edgeOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   entityType + " <id>",
 		Short: "deletes entity of type " + entityType + " managed by the Ziti Edge Controller",
@@ -94,7 +94,7 @@ func newDeleteCmdForEntityType(entityType string, command deleteCmdRunner, optio
 }
 
 // runDeleteEntityOfType implements the commands to delete various entity types
-func runDeleteEntityOfType(o *commonOptions, entityType string) error {
+func runDeleteEntityOfType(o *edgeOptions, entityType string) error {
 	var err error
 	ids := []string{o.Args[0]}
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" {
@@ -119,6 +119,6 @@ func getPlural(entityType string) string {
 	return entityType + "s"
 }
 
-func deleteEntityOfType(entityType string, id string, options *commonOptions) (*gabs.Container, error) {
+func deleteEntityOfType(entityType string, id string, options *edgeOptions) (*gabs.Container, error) {
 	return util.EdgeControllerDelete(entityType, id, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

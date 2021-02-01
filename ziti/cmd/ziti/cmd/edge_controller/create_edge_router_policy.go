@@ -28,7 +28,7 @@ import (
 )
 
 type createEdgeRouterPolicyOptions struct {
-	commonOptions
+	edgeOptions
 	edgeRouterRoles []string
 	identityRoles   []string
 	semantic        string
@@ -37,7 +37,7 @@ type createEdgeRouterPolicyOptions struct {
 // newCreateEdgeRouterPolicyCmd creates the 'edge controller create edge-router-policy' command
 func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterPolicyOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -68,12 +68,12 @@ func newCreateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 
 // runCreateEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
 func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.commonOptions)
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func runCreateEdgeRouterPolicy(o *createEdgeRouterPolicyOptions) error {
 		setJSONValue(entityData, o.semantic, "semantic")
 	}
 
-	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("edge-router-policies", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)

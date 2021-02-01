@@ -29,7 +29,7 @@ import (
 )
 
 type updateCaOptions struct {
-	commonOptions
+	edgeOptions
 	verify           bool
 	verifyCertPath   string
 	verifyCertBytes  []byte
@@ -43,7 +43,7 @@ type updateCaOptions struct {
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
 func newUpdateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := updateCaOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions:      common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			OutputJSONResponse: false,
 		},
@@ -108,7 +108,7 @@ func runUpdateCa(options updateCaOptions) error {
 		return runVerifyCa(options)
 	}
 
-	id, err := mapCaNameToID(options.nameOrId, options.commonOptions)
+	id, err := mapCaNameToID(options.nameOrId, options.edgeOptions)
 
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func runUpdateCa(options updateCaOptions) error {
 	setJSONValue(data, options.authEnabled, "isAuthEnabled")
 	setJSONValue(data, tags, "tags")
 
-	_, err = putEntityOfType("cas/"+id, data.String(), &options.commonOptions)
+	_, err = putEntityOfType("cas/"+id, data.String(), &options.edgeOptions)
 
 	if err != nil {
 		return err
@@ -132,13 +132,13 @@ func runUpdateCa(options updateCaOptions) error {
 }
 
 func runVerifyCa(options updateCaOptions) error {
-	id, err := mapCaNameToID(options.nameOrId, options.commonOptions)
+	id, err := mapCaNameToID(options.nameOrId, options.edgeOptions)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = doRequest("cas/"+id+"/verify", &options.commonOptions, func(request *resty.Request, url string) (response *resty.Response, e error) {
+	_, err = doRequest("cas/"+id+"/verify", &options.edgeOptions, func(request *resty.Request, url string) (response *resty.Response, e error) {
 		return request.SetHeader("Content-Type", "text/plain").
 			SetBody(string(options.verifyCertBytes)).
 			Post(url)

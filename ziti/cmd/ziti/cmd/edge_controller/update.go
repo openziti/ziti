@@ -54,27 +54,27 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	return cmd
 }
 
-func putEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func putEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPut)
 }
 
-func patchEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func patchEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPatch)
 }
 
-func postEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func postEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPost)
 }
 
-func deleteEntityOfTypeWithBody(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func deleteEntityOfTypeWithBody(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodDelete)
 }
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
-func updateEntityOfType(entityType string, body string, options *commonOptions, method string) (*gabs.Container, error) {
+func updateEntityOfType(entityType string, body string, options *edgeOptions, method string) (*gabs.Container, error) {
 	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }
 
-func doRequest(entityType string, options *commonOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
+func doRequest(entityType string, options *edgeOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
 	return util.EdgeControllerRequest(entityType, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose, doRequest)
 }

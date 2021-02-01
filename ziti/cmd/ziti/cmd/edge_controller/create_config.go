@@ -32,14 +32,14 @@ import (
 )
 
 type createConfigOptions struct {
-	commonOptions
+	edgeOptions
 	jsonFile string
 }
 
 // newCreateConfigCmd creates the 'edge controller create service-policy' command
 func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createConfigOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -95,7 +95,7 @@ func runCreateConfig(o *createConfigOptions) error {
 		return errors.Errorf("unable to parse data as json: %v", err)
 	}
 
-	configTypeId, err := mapNameToID("config-types", o.Args[1], o.commonOptions)
+	configTypeId, err := mapNameToID("config-types", o.Args[1], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func runCreateConfig(o *createConfigOptions) error {
 	setJSONValue(entityData, o.Args[0], "name")
 	setJSONValue(entityData, configTypeId, "configTypeId")
 	setJSONValue(entityData, dataMap, "data")
-	result, err := createEntityOfType("configs", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("configs", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)

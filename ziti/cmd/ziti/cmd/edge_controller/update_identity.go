@@ -30,14 +30,14 @@ import (
 )
 
 type updateIdentityOptions struct {
-	commonOptions
+	edgeOptions
 	name           string
 	roleAttributes []string
 }
 
 func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -68,7 +68,7 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 
 // runUpdateIdentity update a new identity on the Ziti Edge Controller
 func runUpdateIdentity(o *updateIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("identities", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,6 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

@@ -32,7 +32,7 @@ import (
 
 // loginOptions are the flags for login commands
 type loginOptions struct {
-	commonOptions
+	edgeOptions
 	Username string
 	Password string
 	Cert     string
@@ -41,7 +41,7 @@ type loginOptions struct {
 // newLoginCmd creates the command
 func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &loginOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -95,7 +95,7 @@ func (o *loginOptions) Run() error {
 
 	body := container.String()
 
-	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.commonOptions.Timeout, o.commonOptions.Verbose)
+	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 
 	if err != nil {
 		return err
