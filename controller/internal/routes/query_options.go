@@ -31,46 +31,22 @@ const (
 	OffsetDefault = 0
 )
 
-type QueryOptions struct {
+// Represents external query options, which limits some query options (i.e. return all vs max limit). PublicQueryOptions
+// can be used internally as long as the public option limitations are fitting.
+type PublicQueryOptions struct {
 	Predicate string
 	Sort      string
 	Paging    *Paging
 }
 
-func (qo *QueryOptions) String() string {
+func (qo *PublicQueryOptions) String() string {
 	if qo == nil {
 		return "nil"
 	}
 	return fmt.Sprintf("[QueryOption Predicate: '%v', Sort: '%v', Paging: '%v']", qo.Predicate, qo.Sort, qo.Paging)
 }
 
-func (qo *QueryOptions) ValidateAndCorrect() {
-	// Sort limit is handled in ScanEntityImpl.NewScanner
-	if qo.Paging == nil {
-		qo.Paging = &Paging{
-			Limit:  LimitDefault,
-			Offset: OffsetDefault,
-		}
-	} else {
-		if qo.Paging.Limit > LimitMax {
-			qo.Paging.Limit = LimitMax
-		}
-
-		if qo.Paging.Limit <= 0 {
-			qo.Paging.Limit = LimitDefault
-		}
-
-		if qo.Paging.Offset > OffsetMax {
-			qo.Paging.Offset = OffsetMax
-		}
-
-		if qo.Paging.Offset <= 0 {
-			qo.Paging.Offset = OffsetDefault
-		}
-	}
-}
-
-func (qo *QueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
+func (qo *PublicQueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
 	if qo.Predicate == "" {
 		qo.Predicate = "true"
 	}
@@ -89,7 +65,8 @@ func (qo *QueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
 	if qo.Paging != nil {
 		if query.GetLimit() == nil {
 			if qo.Paging.ReturnAll {
-				query.SetLimit(-1)
+				//public external queries cannot be "return all"
+				query.SetLimit(LimitMax)
 			} else {
 				query.SetLimit(qo.Paging.Limit)
 			}

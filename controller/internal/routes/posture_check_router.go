@@ -68,7 +68,7 @@ func (r *PostureCheckRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Handlers.PostureCheck.GetStore())
 		if err != nil {
 			return nil, err

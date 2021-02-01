@@ -90,7 +90,7 @@ func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.GetStores().ApiSessionCertificate)
 		if err != nil {
 			return nil, err

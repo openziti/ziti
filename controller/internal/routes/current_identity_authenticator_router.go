@@ -60,7 +60,7 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Handlers.Authenticator.GetStore())
 		if err != nil {
 			return nil, err

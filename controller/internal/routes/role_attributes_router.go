@@ -64,7 +64,7 @@ func (r *RoleAttributesRouter) listServiceRoleAttributes(ae *env.AppEnv, rc *res
 }
 
 func (r *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, queryable roleAttributeQueryable) {
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		results, qmd, err := queryable.QueryRoleAttributes(queryOptions.Predicate)
 		if err != nil {
 			return nil, err

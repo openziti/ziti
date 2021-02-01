@@ -60,7 +60,7 @@ type ReadUpdateRouter interface {
 
 type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, models.Entity) (interface{}, error)
 
-func GetModelQueryOptionsFromRequest(r *http.Request) (*QueryOptions, error) {
+func GetModelQueryOptionsFromRequest(r *http.Request) (*PublicQueryOptions, error) {
 	filter := r.URL.Query().Get("filter")
 	sort := r.URL.Query().Get("sort")
 
@@ -70,7 +70,7 @@ func GetModelQueryOptionsFromRequest(r *http.Request) (*QueryOptions, error) {
 		return nil, err
 	}
 
-	return &QueryOptions{
+	return &PublicQueryOptions{
 		Predicate: filter,
 		Sort:      sort,
 		Paging:    pg,

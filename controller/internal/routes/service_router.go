@@ -104,7 +104,7 @@ func (r *ServiceRouter) Register(ae *env.AppEnv) {
 func (r *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	start := time.Now()
 	// ListWithHandler won't do search limiting by logged in user
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		identity := rc.Identity
 		if rc.Identity.IsAdmin {
 			if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
