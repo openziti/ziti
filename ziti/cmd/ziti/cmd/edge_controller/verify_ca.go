@@ -41,7 +41,7 @@ import (
 )
 
 type verifyCaOptions struct {
-	commonOptions
+	edgeOptions
 
 	certPath     string
 	certPemBytes []byte
@@ -62,7 +62,7 @@ type verifyCaOptions struct {
 // newVerifyCaCmd creates the 'edge controller verify ca' command for the given entity type
 func newVerifyCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &verifyCaOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -135,14 +135,14 @@ func newVerifyCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 
 func runValidateCa(options *verifyCaOptions) error {
 	var err error
-	options.caId, err = mapCaNameToID(options.caNameOrId, options.commonOptions)
+	options.caId, err = mapCaNameToID(options.caNameOrId, options.edgeOptions)
 
 	if err != nil {
 		return err
 	}
 
 	if options.isGenerateCert {
-		jsonContainer, err := util.EdgeControllerRequest("cas/"+options.caId, options.Out, options.OutputJSONResponse, options.commonOptions.Timeout, options.commonOptions.Verbose, func(request *resty.Request, url string) (*resty.Response, error) { return request.Get(url) })
+		jsonContainer, err := util.EdgeControllerRequest("cas/"+options.caId, options.Out, options.OutputJSONResponse, options.edgeOptions.Timeout, options.edgeOptions.Verbose, func(request *resty.Request, url string) (*resty.Response, error) { return request.Get(url) })
 
 		if err != nil {
 			return fmt.Errorf("could not request ca [%s] (%v}", options.caId, err)
@@ -161,7 +161,7 @@ func runValidateCa(options *verifyCaOptions) error {
 		}
 	}
 
-	return util.EdgeControllerVerify("cas", options.caId, string(options.certPemBytes), options.Out, options.OutputJSONResponse, options.commonOptions.Timeout, options.commonOptions.Verbose)
+	return util.EdgeControllerVerify("cas", options.caId, string(options.certPemBytes), options.Out, options.OutputJSONResponse, options.edgeOptions.Timeout, options.edgeOptions.Verbose)
 }
 
 func generateCert(options *verifyCaOptions, token string) ([]byte, crypto.Signer, error) {

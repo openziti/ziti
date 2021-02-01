@@ -30,14 +30,14 @@ import (
 )
 
 type updateEdgeRouterOptions struct {
-	commonOptions
+	edgeOptions
 	name           string
 	roleAttributes []string
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -68,7 +68,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // runUpdateEdgeRouter update a new edgeRouter on the Ziti Edge Controller
 func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
-	id, err := mapNameToID("edge-routers", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("edge-routers", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,6 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

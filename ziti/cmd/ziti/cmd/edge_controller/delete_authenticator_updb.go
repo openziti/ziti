@@ -23,12 +23,12 @@ import (
 import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type deleteUpdbOptions struct {
-	commonOptions
+	edgeOptions
 }
 
-func newDeleteAuthenticatorUpdb(idType string, options *commonOptions) *cobra.Command {
+func newDeleteAuthenticatorUpdb(idType string, options *edgeOptions) *cobra.Command {
 	updbOptions := deleteUpdbOptions{
-		commonOptions: *options,
+		edgeOptions: *options,
 	}
 
 	cmd := &cobra.Command{
@@ -53,12 +53,12 @@ func newDeleteAuthenticatorUpdb(idType string, options *commonOptions) *cobra.Co
 
 func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
 
-	id, err := mapIdentityNameToID(idOrName, options.commonOptions)
+	id, err := mapIdentityNameToID(idOrName, options.edgeOptions)
 
 	if err != nil {
 		return err
 	}
-	_, err = deleteEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), "", &options.commonOptions)
+	_, err = deleteEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), "", &options.edgeOptions)
 
 	if err != nil {
 		return err

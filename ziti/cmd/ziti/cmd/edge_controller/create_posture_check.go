@@ -43,7 +43,7 @@ func newCreatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 }
 
 type createPostureCheckOptions struct {
-	commonOptions
+	edgeOptions
 	name           string
 	tags           map[string]string
 	roleAttributes []string
@@ -82,7 +82,7 @@ func (options *createPostureCheckOptions) addPostureFlags(cmd *cobra.Command) {
 func newCreatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckMacOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -122,7 +122,7 @@ func newCreatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 func newCreatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckDomainOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -162,7 +162,7 @@ func newCreatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.
 func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckProcessOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -311,7 +311,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 		setJSONValue(entityData, cleanSigner, "process", "signerFingerprint")
 	}
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -372,7 +372,7 @@ func runCreatePostureCheckMac(o *createPostureCheckMacOptions) (err error) {
 
 	setJSONValue(entityData, addresses, "macAddresses")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -418,7 +418,7 @@ func runCreatePostureCheckDomain(o *createPostureCheckDomainOptions) (err error)
 
 	setJSONValue(entityData, domains, "domains")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -437,7 +437,7 @@ func newCreatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writ
 
 	options := &createPostureCheckOsOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -493,7 +493,7 @@ func runCreatePostureCheckOs(o *createPostureCheckOsOptions) error {
 	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeOS)
 	setJSONValue(entityData, osSpecs, "operatingSystems")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)

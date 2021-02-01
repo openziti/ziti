@@ -28,13 +28,13 @@ import (
 )
 
 type updateIdentityConfigsOptions struct {
-	commonOptions
+	edgeOptions
 	remove bool
 }
 
 func newUpdateIdentityConfigsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityConfigsOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -63,17 +63,17 @@ func newUpdateIdentityConfigsCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 // runupdateIdentityConfigs update a new identity on the Ziti Edge Controller
 func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("identities", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	serviceId, err := mapNameToID("services", o.Args[1], o.commonOptions)
+	serviceId, err := mapNameToID("services", o.Args[1], o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	configId, err := mapNameToID("configs", o.Args[2], o.commonOptions)
+	configId, err := mapNameToID("configs", o.Args[2], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -89,9 +89,9 @@ func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
 	body := entityData.String()
 
 	if o.remove {
-		_, err = deleteEntityOfTypeWithBody(path, body, &o.commonOptions)
+		_, err = deleteEntityOfTypeWithBody(path, body, &o.edgeOptions)
 	} else {
-		_, err = postEntityOfType(path, body, &o.commonOptions)
+		_, err = postEntityOfType(path, body, &o.edgeOptions)
 	}
 	return err
 }

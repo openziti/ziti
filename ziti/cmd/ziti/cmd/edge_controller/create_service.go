@@ -27,7 +27,7 @@ import (
 )
 
 type createServiceOptions struct {
-	commonOptions
+	edgeOptions
 	terminatorStrategy string
 	tags               map[string]string
 	roleAttributes     []string
@@ -39,7 +39,7 @@ type createServiceOptions struct {
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
 func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServiceOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -78,7 +78,7 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	configs, err := mapNamesToIDs("configs", o.commonOptions, o.configs...)
+	configs, err := mapNamesToIDs("configs", o.edgeOptions, o.configs...)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func runCreateService(o *createServiceOptions) (err error) {
 	setJSONValue(entityData, configs, "configs")
 	setJSONValue(entityData, o.tags, "tags")
 
-	result, err := createEntityOfType("services", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("services", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)

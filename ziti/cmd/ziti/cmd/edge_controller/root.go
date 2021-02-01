@@ -35,14 +35,14 @@ func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	return cmd
 }
 
-// commonOptions are common options for edge controller commands
-type commonOptions struct {
+// edgeOptions are common options for edge controller commands
+type edgeOptions struct {
 	common.CommonOptions
 	OutputJSONRequest  bool
 	OutputJSONResponse bool
 }
 
-func (options *commonOptions) AddCommonFlags(cmd *cobra.Command) {
+func (options *edgeOptions) AddCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
 	cmd.Flags().IntVarP(&options.Timeout, "timeout", "", 5, "Timeout for REST operations (specified in seconds)")

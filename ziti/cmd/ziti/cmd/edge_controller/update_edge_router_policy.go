@@ -30,7 +30,7 @@ import (
 )
 
 type updateEdgeRouterPolicyOptions struct {
-	commonOptions
+	edgeOptions
 	name            string
 	edgeRouterRoles []string
 	identityRoles   []string
@@ -38,7 +38,7 @@ type updateEdgeRouterPolicyOptions struct {
 
 func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterPolicyOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -68,17 +68,17 @@ func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 }
 
 func runUpdateEdgeRouterPolicy(o *updateEdgeRouterPolicyOptions) error {
-	id, err := mapNameToID("edge-router-policies", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("edge-router-policies", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.commonOptions)
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -105,6 +105,6 @@ func runUpdateEdgeRouterPolicy(o *updateEdgeRouterPolicyOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("edge-router-policies/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("edge-router-policies/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }
