@@ -64,7 +64,7 @@ func (r *SessionRouter) Register(ae *env.AppEnv) {
 
 func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
-	List(rc, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(ae.Handlers.Session.GetStore())
 		if err != nil {
 			return nil, err

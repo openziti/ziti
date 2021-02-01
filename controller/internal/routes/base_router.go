@@ -139,7 +139,7 @@ type ApiListEnvelopeFactory func(data []interface{}, meta *rest_model.Meta) inte
 type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) interface{}
 
 func ListWithQueryFAndCollector(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, toEnvelope ApiListEnvelopeFactory, qf queryF) {
-	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error) {
+	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
 		query, err := queryOptions.getFullQuery(lister.GetStore())
@@ -161,7 +161,7 @@ func ListWithQueryFAndCollector(ae *env.AppEnv, rc *response.RequestContext, lis
 	})
 }
 
-type modelListF func(rc *response.RequestContext, queryOptions *QueryOptions) (*QueryResult, error)
+type modelListF func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error)
 
 func List(rc *response.RequestContext, f modelListF) {
 	ListWithEnvelopeFactory(rc, defaultToListEnvelope, f)
@@ -446,10 +446,10 @@ func listWithId(rc *response.RequestContext, f func(id string) ([]interface{}, e
 }
 
 // type ListAssocF func(string, func(models.Entity)) error
-type listAssocF func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error)
+type listAssocF func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error)
 
 func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, filterTemplate string, entityController models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		query, err := queryOptions.getFullQuery(entityController.GetStore())
 		if err != nil {
 			return nil, err
@@ -479,7 +479,7 @@ func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, fil
 }
 
 func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *QueryOptions) (*QueryResult, error) {
+	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
 		query, err := queryOptions.getFullQuery(associationLoader.GetStore())
@@ -513,7 +513,7 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 	}
 
 	filter := rc.Request.URL.Query().Get("filter")
-	queryOptions := &QueryOptions{
+	queryOptions := &PublicQueryOptions{
 		Predicate: filter,
 	}
 
