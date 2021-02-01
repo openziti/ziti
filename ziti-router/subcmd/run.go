@@ -62,11 +62,11 @@ func run(cmd *cobra.Command, args []string) {
 		xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
 		if err := r.Run(); err != nil {
-			logrus.Panicf("error starting (%v)", err)
+			logrus.WithError(err).Fatal("error starting")
 		}
 
 	} else {
-		logrus.Panicf("error loading configuration (%v)", err)
+		logrus.WithError(err).Fatal("error loading configuration")
 	}
 }
 
