@@ -20,7 +20,6 @@ import (
 	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/signal"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -64,5 +63,5 @@ func (o *PsTraceOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, signal.Trace, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.Trace, nil, os.Stdout)
 }

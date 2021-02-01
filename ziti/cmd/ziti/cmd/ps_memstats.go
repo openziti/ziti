@@ -20,7 +20,6 @@ import (
 	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/signal"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -66,5 +65,5 @@ func (o *PsMemstatsOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, signal.MemStats, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.MemStats, nil, os.Stdout)
 }

@@ -1,3 +1,250 @@
+# Release 0.18.6
+
+## What's New
+
+* Fix `ziti install terraform-provider-edgecontroller`
+
+# Release 0.18.5
+
+## What's New
+
+* Update go-openapi libraries
+* xgress_edge refactor, should fix 'failed to dipsatch to fabric' errors
+* Update `ziti use` command to work with main branch
+* MFA Support
+* Fix deadlock on session close in router when connection is at capacity
+* Fix issue where end of session didn't get sent in some scenarios
+
+## MFA Support
+
+Endpoint MFA is available that is based on RFC 4226 (HOTP: An HMAC-Based One-Time Password
+Algorithm) and RFC 6238 (TOTP: Time-Based One-Time Password Algorithm). These standards are
+compatible with standard "Authenticator" apps such as Google Authenticator and Authy. MFA is
+suggested to be used in situations where human operators are involved and additional security is
+desired.
+
+### Restricting Service Access
+
+Services can now have a Posture Check of type MFA that can be created and associated with a Service
+Policy. Service Policies that are associated with an MFA Posture Check will restrict access to
+services if a client has not enrolled in MFA and passed an MFA check on each login.
+
+MFA Posture Checks support only the basic Posture Check fields:
+
+- name - a name for the posture check
+- typeId - should be "MFA"
+- tags - any tags desired for this object
+- roleAttributes - role attributes used to select this object from Service Policies
+
+Example:
+
+```
+POST /posture-checks
+{
+    "name": "Any MFA",
+    "typeId": "MFA",
+    "roleAttributes": ["mfa"]
+}
+```
+
+### Admin MFA Management
+
+Admins of the Ziti Edge API can remove MFA from any user. However, they cannot enroll on behalf of
+the client. The client will have to initiate MFA enrollment via their client.
+
+Endpoints:
+
+- `DELETE /identities/<id>/mfa` - remove MFA from an identity
+- `GET /identities` - has a new field `isMfaEnabled` that is true/false based on the identity's MFA
+  enrollment
+- `GET /identities/<id>/posture-data` - now includes a `sessionPostureData` field which is a map of
+  sessionId -> session posture data (including MFA status)
+
+Example Posture Data:
+
+```
+{
+  "mac": ["03092ac3bc69", "2b6df1dc52d9"],
+  "domain": "mycorp.com",
+  "os": {
+    ...
+  },
+  processes: [
+    ...
+  ],
+  sessionPostureData: {
+     "xV1442s": {
+        "mfa": {
+          "passedMfa": true
+        }
+     }
+  }
+}
+
+```
+
+### Client MFA Enrollment
+
+Clients must individually enroll in MFA as the enrollment process includes exchanging a symmetric
+key. During MFA enrollment the related MFA endpoints will return different data and HTTP status
+codes based upon the state of MFA enrollment (enrollment not started, enrollment started, enrolled).
+
+The general MFA enrollment flow is:
+
+1. Authenticate as the identity via `POST /authenticate`
+2. Start MFA enrollment via `POST /current-identity/mfa`
+3. Retrieve the MFA provisioning URL or QR code
+    - `GET /current-identity/mfa`
+    - `GET /current-identity/mfa/qr-code`
+4. Use the provisioning URL or QR code with an authentication app such as Google Authenticator,
+   Authy, etc.
+5. Use a current code from the authenticator to `POST /current-identity/mfa/verify` with the code in
+   the `code` field `{"code": "someCode"}`
+
+#### MFA Endpoints Overview:
+
+This section is an overview for the endpoints. Each endpoint may return errors depending on in input
+and MFA status.
+
+- `GET /current-identity/mfa` - returns the current state of MFA enrollment or 404 Not Found
+- `POST /current-identity/mfa` - initiates MFA enrollment or 409 Conflict
+- `DELETE /current-identity/mfa` - remove MFA enrollment, requires a valid TOTP or recovery code
+- `GET /current-identity/mfa/recovery-codes` - returns the current recovery codes, requires a valid
+  TOTP Code
+- `POST /current-identity/mfa/recovery-codes` - regenerates recovery codes, requires a valid TOTP
+  code
+- `POST /current-identity/mfa/verify` - allows MFA enrollment to be completed, requires a valid TOTP
+  code
+- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner, MFA
+  enrollment must be started
+- `POST /authenticate/mfa` - allows MFA authentication checks to be completed, requires a valid TOTP
+  or recovery code
+
+MFA Enrollment Not Started:
+
+- `GET /current-identity/mfa` - returns HTTP status 404
+- `POST /current-identity/mfa` - start MFA enrollment, 200 Ok
+- `DELETE /current-identity/mfa` - returns 404 Not Found
+- `GET /current-identity/mfa/recovery-codes` - returns 404 Not Found
+- `POST /current-identity/mfa` - returns 404 Not Found
+- `POST /current-identity/mfa/verify` - returns 404 Not Found
+- `GET /current-identity/mfa/qr-code` - returns 404 Not Found
+
+MFA Enrollment Started:
+
+- `GET /current-identity/mfa` - returns the current MFA enrollment and recovery codes
+- `POST /current-identity/mfa` - returns 409 Conflict
+- `DELETE /current-identity/mfa` - aborts the current enrollment, a blank `code` may be supplied
+- `GET /current-identity/mfa/recovery-codes` - returns 404 Not Found
+- `POST /current-identity/mfa` - returns HTTP status 409 Conflict
+- `POST /current-identity/mfa/verify` - validates the supplied `code`
+- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner in PNG format
+
+MFA Completed:
+
+- `GET /current-identity/mfa` - returns the current MFA enrollment, but not recovery codes
+- `POST /current-identity/mfa` - returns 409 Conflict
+- `DELETE /current-identity/mfa` - removes MFA, a valid TOTP or recovery code must be supplied
+- `GET /current-identity/mfa/recovery-codes` - shows the current recovery codes, a valid TOTP code
+  must be supplied
+- `POST /current-identity/mfa` - returns HTTP status 409 Conflict
+- `POST /current-identity/mfa/verify` - returns HTTP status 409 Conflict
+- `GET /current-identity/mfa/qr-code` - returns 404 Not Found
+
+### Client MFA Recovery Codes
+
+Client MFA recovery codes are generated during enrollment and can be regenerated at any time with a
+valid TOTP code. Twenty codes are generated and are one time use only. Generating new codes replaces
+all existing recovery codes.
+
+To view:
+
+```
+GET /current-identity/mfa/recovery-codes
+{
+  "code": "123456"
+}
+```
+
+To Generate new codes:
+
+```
+POST /current-identity/mfa/recovery-codes
+{
+  "code": "123456"
+}
+```
+
+### Authentication
+
+During API Session authentication a new `authQuery` field is returned. This field will indicate if
+there are any outstanding authentication Posture Queries that need to be fulfilled before
+authentication is considered complete.
+
+When MFA authentication is required a field will now appear as an
+`authQuery` with the following format:
+
+```
+{
+  ...
+  "token": "c68a187a-f4af-490c-a9dd-a09076511419",
+  "authQueries": [
+    ...,
+    {
+      "typeId": "MFA",
+      "provider": "ZITI",
+      "httpMethod": "POST",
+      "httpUrl": "./authenticate/mfa",
+      "minLength": 4,
+      "maxLength": 6,
+      "format": "alphaNumeric"
+    },
+    ...
+  ]       
+}
+```
+
+# Release 0.18.4
+
+## What's New
+
+* New ziti CLI command `ziti ps set-log-level`, allows you to set the application wide log level at
+  runtime
+* Allow invalid event types in controller config event subscriptions. Instead of failing to start,
+  the controller will emit a warning. This allows us to use uniform configs across controllers which
+  may not all support the same event types.
+* Edge routers now have configurable timeouts when looking up API sessions and sessions
+
+## Edge Router: Configurable Session Lookup Times
+
+An Edge SDK client will create and api session and session with the controller first, then attempt
+to use those sessions at an edge router. The controller will push session information to routers as
+quickly as it can, but clients may still connect to the edge router before the client can. We
+previously would wait up to 5 seconds for session to arrive before declaring a session invalid, but
+would not wait for api-sessions.
+
+We can now wait for both api-sessions and sessions. Both timeouts are configurable. They are
+configured in the router config file under listeners options.
+
+* `lookupApiSessionTimeout`
+    * How long to wait before timing out when looking up api-sessions after client connect. Default
+      5 seconds.
+* `lookupSessionTimeout`
+    * How long to wait before timing out when looking up sessions after client dial/bind. Default 5
+      seconds.
+
+Example router config file stanza:
+
+```
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:6342
+    options: 
+      advertise: 127.0.0.1:6432
+      lookupApiSessionTimeout: 5s
+      lookupSessionTimeout: 5s
+```
+
 # Release 0.18.3
 
 ## What's New
