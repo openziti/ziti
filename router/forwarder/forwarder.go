@@ -47,6 +47,7 @@ type XgressDestination interface {
 	Start()
 	IsTerminator() bool
 	Label() string
+	GetTimeOfLastRxFromLink() int64
 }
 
 func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
@@ -142,7 +143,6 @@ func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgre
 					return err
 				}
 				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
-				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
 			} else {
 				return errors.Errorf("cannot forward payload, no destination for session=%v src=%v dst=%v", sessionId, srcAddr, dstAddr)
@@ -166,7 +166,6 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 					return err
 				}
 				log.Debugf("=> %s", string(dstAddr))
-				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
 
 			} else {
@@ -198,16 +197,26 @@ func (forwarder *Forwarder) unrouteTimeout(sessionId string, ms int64) {
 	for {
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 
-		if ft, found := forwarder.sessions.getForwardTable(sessionId); found {
-			elapsedDelta := info.NowInMilliseconds() - ft.lastUsed
+		if dest := forwarder.getXgressForSession(sessionId); dest != nil {
+			elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
 			if elapsedDelta >= ms {
 				forwarder.sessions.removeForwardTable(sessionId)
 				forwarder.EndSession(sessionId)
 				return
 			}
-
 		} else {
 			return
 		}
 	}
+}
+
+func (forwarder *Forwarder) getXgressForSession(sessionId string) XgressDestination {
+	if addresses, found := forwarder.destinations.getAddressesForSession(sessionId); found {
+		for _, address := range addresses {
+			if destination, found := forwarder.destinations.getDestination(address); found {
+				return destination.(XgressDestination)
+			}
+		}
+	}
+	return nil
 }
