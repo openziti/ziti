@@ -180,6 +180,7 @@ func (buffer *LinkSendBuffer) run() {
 	var buffered chan *txPayload
 
 	retransmitTicker := time.NewTicker(100 * time.Millisecond)
+	defer retransmitTicker.Stop()
 
 	for {
 		txBufferSizeHistogram.Update(int64(buffer.linkSendBufferSize))
