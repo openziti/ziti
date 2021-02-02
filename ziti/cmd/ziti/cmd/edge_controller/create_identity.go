@@ -31,7 +31,7 @@ import (
 )
 
 type createIdentityOptions struct {
-	commonOptions
+	edgeOptions
 	isAdmin                  bool
 	roleAttributes           []string
 	jwtOutputFile            string
@@ -44,7 +44,7 @@ type createIdentityOptions struct {
 func newCreateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *createIdentityOptions {
 		return &createIdentityOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		}
@@ -111,7 +111,7 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 	setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 
-	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("identities", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 
 	if o.jwtOutputFile != "" {
-		if err := getIdentityJwt(o, id, o.commonOptions.Timeout, o.commonOptions.Verbose); err != nil {
+		if err := getIdentityJwt(o, id, o.edgeOptions.Timeout, o.edgeOptions.Verbose); err != nil {
 			return err
 		}
 	}

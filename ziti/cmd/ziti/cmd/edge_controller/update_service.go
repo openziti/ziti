@@ -30,7 +30,7 @@ import (
 )
 
 type updateServiceOptions struct {
-	commonOptions
+	edgeOptions
 	name               string
 	terminatorStrategy string
 	roleAttributes     []string
@@ -39,7 +39,7 @@ type updateServiceOptions struct {
 
 func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServiceOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -73,7 +73,7 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runUpdateService update a new service on the Ziti Edge Controller
 func runUpdateService(o *updateServiceOptions) error {
-	id, err := mapNameToID("services", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("services", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -104,6 +104,6 @@ func runUpdateService(o *updateServiceOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("services/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("services/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

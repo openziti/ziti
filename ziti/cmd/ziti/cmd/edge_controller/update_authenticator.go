@@ -25,7 +25,7 @@ import (
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
 func newUpdateAuthenticatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := commonOptions{
+	options := edgeOptions{
 		CommonOptions:      common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		OutputJSONResponse: false,
 	}

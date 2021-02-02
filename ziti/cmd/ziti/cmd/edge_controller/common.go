@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-func mapNameToID(entityType string, val string, o commonOptions) (string, error) {
+func mapNameToID(entityType string, val string, o edgeOptions) (string, error) {
 	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf("id=\"%s\"", val), false, nil, o.Timeout, o.Verbose)
 	if err != nil {
 		return "", err
@@ -54,7 +54,7 @@ func mapNameToID(entityType string, val string, o commonOptions) (string, error)
 	return entityId, nil
 }
 
-func mapIdToName(entityType string, val string, o commonOptions) (string, error) {
+func mapIdToName(entityType string, val string, o edgeOptions) (string, error) {
 	list, _, err := filterEntitiesOfType(entityType, fmt.Sprintf(`id="%s"`, val), false, nil, o.Timeout, o.Verbose)
 	if err != nil {
 		return "", err
@@ -69,7 +69,7 @@ func mapIdToName(entityType string, val string, o commonOptions) (string, error)
 	return name, nil
 }
 
-func mapNamesToIDs(entityType string, o commonOptions, list ...string) ([]string, error) {
+func mapNamesToIDs(entityType string, o edgeOptions, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
 		if strings.HasPrefix(val, "id") {
@@ -103,10 +103,10 @@ func mapNamesToIDs(entityType string, o commonOptions, list ...string) ([]string
 	return result, nil
 }
 
-func mapIdentityNameToID(nameOrId string, o commonOptions) (string, error) {
+func mapIdentityNameToID(nameOrId string, o edgeOptions) (string, error) {
 	return mapNameToID("identities", nameOrId, o)
 }
 
-func mapCaNameToID(nameOrId string, o commonOptions) (string, error) {
+func mapCaNameToID(nameOrId string, o edgeOptions) (string, error) {
 	return mapNameToID("cas", nameOrId, o)
 }

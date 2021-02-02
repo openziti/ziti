@@ -31,7 +31,7 @@ import (
 )
 
 type createServicePolicyOptions struct {
-	commonOptions
+	edgeOptions
 	serviceRoles      []string
 	identityRoles     []string
 	postureCheckRoles []string
@@ -41,7 +41,7 @@ type createServicePolicyOptions struct {
 // newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
 func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServicePolicyOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -78,17 +78,17 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.commonOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "postureChecks", o.commonOptions)
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "postureChecks", o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	if o.semantic != "" {
 		setJSONValue(entityData, o.semantic, "semantic")
 	}
-	result, err := createEntityOfType("service-policies", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("service-policies", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -118,7 +118,7 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	return err
 }
 
-func convertNamesToIds(roles []string, entityType string, o commonOptions) ([]string, error) {
+func convertNamesToIds(roles []string, entityType string, o edgeOptions) ([]string, error) {
 	var result []string
 	for _, val := range roles {
 		if strings.HasPrefix(val, "@") {

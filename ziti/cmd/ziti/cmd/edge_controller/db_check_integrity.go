@@ -14,13 +14,13 @@ import (
 )
 
 type dbCheckIntegrityOptions struct {
-	commonOptions
+	edgeOptions
 	fix bool
 }
 
 func newDbCheckIntegrityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -54,7 +54,7 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 		target = "database/check-data-integrity"
 	}
 
-	if _, err := util.EdgeControllerUpdate(target, "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse, o.commonOptions.Timeout, o.commonOptions.Verbose); err != nil {
+	if _, err := util.EdgeControllerUpdate(target, "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose); err != nil {
 		return err
 	}
 
@@ -64,7 +64,7 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 
 func newDbCheckIntegrityStatusCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -90,7 +90,7 @@ func newDbCheckIntegrityStatusCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 }
 
 func runCheckIntegrityStatus(o *dbCheckIntegrityOptions) error {
-	body, err := util.EdgeControllerList("database/data-integrity-results", nil, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
+	body, err := util.EdgeControllerList("database/data-integrity-results", nil, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 	if err != nil {
 		return err
 	}
