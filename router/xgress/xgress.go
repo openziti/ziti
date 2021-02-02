@@ -93,41 +93,47 @@ type Connection interface {
 }
 
 type Xgress struct {
-	sessionId         string
-	address           Address
-	peer              Connection
-	originator        Originator
-	Options           *Options
-	txQueue           chan *Payload
-	closeNotify       chan struct{}
-	rxSequence        int32
-	rxSequenceLock    sync.Mutex
-	receiveHandler    ReceiveHandler
-	payloadBuffer     *LinkSendBuffer
-	linkRxBuffer      *LinkReceiveBuffer
-	closeHandler      CloseHandler
-	peekHandlers      []PeekHandler
-	closed            concurrenz.AtomicBoolean
-	rxerStarted       bool
-	endOfSessionRecvd bool
-	endOfSessionSent  bool
-	flagsMutex        sync.Mutex
+	sessionId            string
+	address              Address
+	peer                 Connection
+	originator           Originator
+	Options              *Options
+	txQueue              chan *Payload
+	closeNotify          chan struct{}
+	rxSequence           int32
+	rxSequenceLock       sync.Mutex
+	receiveHandler       ReceiveHandler
+	payloadBuffer        *LinkSendBuffer
+	linkRxBuffer         *LinkReceiveBuffer
+	closeHandler         CloseHandler
+	peekHandlers         []PeekHandler
+	closed               concurrenz.AtomicBoolean
+	rxerStarted          bool
+	endOfSessionRecvd    bool
+	endOfSessionSent     bool
+	flagsMutex           sync.Mutex
+	timeOfLastRxFromLink int64
 }
 
 func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
 	result := &Xgress{
-		sessionId:    sessionId.Token,
-		address:      address,
-		peer:         peer,
-		originator:   originator,
-		Options:      options,
-		txQueue:      make(chan *Payload, options.TxQueueSize),
-		closeNotify:  make(chan struct{}),
-		rxSequence:   0,
-		linkRxBuffer: NewLinkReceiveBuffer(),
+		sessionId:            sessionId.Token,
+		address:              address,
+		peer:                 peer,
+		originator:           originator,
+		Options:              options,
+		txQueue:              make(chan *Payload, options.TxQueueSize),
+		closeNotify:          make(chan struct{}),
+		rxSequence:           0,
+		linkRxBuffer:         NewLinkReceiveBuffer(),
+		timeOfLastRxFromLink: info.NowInMilliseconds(),
 	}
 	result.payloadBuffer = NewLinkSendBuffer(result)
 	return result
+}
+
+func (self *Xgress) GetTimeOfLastRxFromLink() int64 {
+	return self.timeOfLastRxFromLink
 }
 
 func (self *Xgress) SessionId() string {
@@ -223,24 +229,33 @@ func (self *Xgress) GetEndSession() *Payload {
 func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload) bool) {
 	self.flagsMutex.Lock()
 	defer self.flagsMutex.Unlock()
-	// if we've received end of session the other side initiated close. If we've already sent it, don't send it again
-	// if !self.endOfSessionRecvd && !self.endOfSessionSent {
 
 	// for now always send end of session. too many is better than not enough
+	if !self.endOfSessionRecvd {
+		sendF(self.GetEndSession())
+		self.endOfSessionSent = true
+	}
+}
 
-	endSession := self.GetEndSession()
-	sendF(endSession)
-
-	//if sendF(endSession) {
-	//	self.endOfSessionSent = true
-	//}
-	//}
+func (self *Xgress) IsEndOfSessionSent() bool {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	return self.endOfSessionSent
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
 	go self.closeTimeoutHandler(duration)
 }
 
+/*
+Things which can trigger close
+
+1. Read fails
+2. Write fails
+3. End of Session received
+4. Unroute received
+
+*/
 func (self *Xgress) Close() {
 	log := pfxlog.ContextLogger(self.Label())
 
@@ -279,7 +294,7 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 	if payload.IsSessionEndFlagSet() {
 		pfxlog.ContextLogger(self.Label()).Debug("received end of session Payload")
 	}
-
+	self.timeOfLastRxFromLink = info.NowInMilliseconds()
 	payloadIngester.ingest(payload, self)
 
 	return nil
@@ -348,7 +363,13 @@ func (self *Xgress) tx() {
 
 	log.Debug("started")
 	defer log.Debug("exited")
-	defer self.Close()
+	defer func() {
+		if self.IsEndOfSessionReceived() {
+			self.Close()
+		} else {
+			self.flushSendThenClose()
+		}
+	}()
 
 	var payload *Payload
 
@@ -397,6 +418,14 @@ func (self *Xgress) tx() {
 	}
 }
 
+func (self *Xgress) flushSendThenClose() {
+	self.CloseTimeout(self.Options.MaxCloseWait)
+	self.ForwardEndOfSession(func(payload *Payload) bool {
+		pfxlog.ContextLogger(self.Label()).Debug("sending end of session payload")
+		return self.forwardPayload(payload)
+	})
+}
+
 func (self *Xgress) rx() {
 	log := pfxlog.ContextLogger(self.Label())
 
@@ -409,13 +438,8 @@ func (self *Xgress) rx() {
 			return
 		}
 	}()
-	defer self.CloseTimeout(self.Options.MaxCloseWait)
-	defer func() {
-		self.ForwardEndOfSession(func(payload *Payload) bool {
-			log.Debug("sending end of session payload")
-			return self.forwardPayload(payload)
-		})
-	}()
+
+	defer self.flushSendThenClose()
 
 	for {
 		buffer, headers, err := self.peer.ReadPayload()

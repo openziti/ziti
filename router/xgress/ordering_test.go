@@ -50,6 +50,11 @@ func (n noopForwarder) ForwardAcknowledgement(srcAddr Address, acknowledgement *
 	return nil
 }
 
+type noopReceiveHandler struct{}
+
+func (n noopReceiveHandler) HandleXgressReceive(payload *Payload, x *Xgress) {
+}
+
 func Test_Ordering(t *testing.T) {
 	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{})
 	closeNotify := make(chan struct{})
@@ -63,6 +68,7 @@ func Test_Ordering(t *testing.T) {
 	}
 
 	x := NewXgress(&identity.TokenId{Token: "test"}, "test", conn, Initiator, DefaultOptions())
+	x.receiveHandler = noopReceiveHandler{}
 	go x.tx()
 
 	defer x.Close()

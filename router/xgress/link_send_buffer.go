@@ -186,7 +186,8 @@ func (buffer *LinkSendBuffer) run() {
 		txBufferSizeHistogram.Update(int64(buffer.linkSendBufferSize))
 		txWindowSize.Update(int64(buffer.windowsSize))
 
-		if buffer.isBlocked() {
+		// don't block when we're closing, since the only thing that should still be coming in is end-of-session
+		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() {
 			buffered = nil
 		} else {
 			buffered = buffer.newlyBuffered
@@ -209,7 +210,7 @@ func (buffer *LinkSendBuffer) run() {
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
-			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.closed.Get() {
+			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.closed.Get() && buffer.x.IsEndOfSessionSent() {
 				go buffer.x.Close()
 			}
 

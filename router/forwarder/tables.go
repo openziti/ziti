@@ -19,7 +19,6 @@ package forwarder
 import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
 	"reflect"
 )
@@ -64,13 +63,11 @@ func (st *sessionTable) debug() string {
 // forwardTable implements a directory of destinations, keyed by source address.
 //
 type forwardTable struct {
-	lastUsed     int64
 	destinations cmap.ConcurrentMap // map[string]string
 }
 
 func newForwardTable() *forwardTable {
 	return &forwardTable{
-		lastUsed:     info.NowInMilliseconds(),
 		destinations: cmap.New(),
 	}
 }
@@ -87,8 +84,7 @@ func (ft *forwardTable) getForwardAddress(src xgress.Address) (xgress.Address, b
 }
 
 func (ft *forwardTable) debug() string {
-	now := info.NowInMilliseconds()
-	out := fmt.Sprintf(" (%d ms):\n", now-ft.lastUsed)
+	out := ""
 	for i := range ft.destinations.IterBuffered() {
 		out += fmt.Sprintf("\t\t@/%s -> @/%s\n", i.Key, i.Val)
 	}
