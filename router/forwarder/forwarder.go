@@ -124,7 +124,7 @@ func (forwarder *Forwarder) Unroute(sessionId string, now bool) {
 		forwarder.sessions.removeForwardTable(sessionId)
 		forwarder.EndSession(sessionId)
 	} else {
-		go forwarder.unrouteTimeout(sessionId, 5000)
+		go forwarder.unrouteTimeout(sessionId, forwarder.Options.XgressCloseCheckInterval)
 	}
 }
 
@@ -189,17 +189,17 @@ func (forwarder *Forwarder) Debug() string {
 // for a session, it will be checked repeatedly, looking to see if the session has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
 //
-func (forwarder *Forwarder) unrouteTimeout(sessionId string, ms int64) {
+func (forwarder *Forwarder) unrouteTimeout(sessionId string, interval time.Duration) {
 	log := pfxlog.ContextLogger("s/" + sessionId)
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 
 	for {
-		time.Sleep(time.Duration(ms) * time.Millisecond)
+		time.Sleep(interval)
 
 		if dest := forwarder.getXgressForSession(sessionId); dest != nil {
 			elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
-			if elapsedDelta >= ms {
+			if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
 				forwarder.sessions.removeForwardTable(sessionId)
 				forwarder.EndSession(sessionId)
 				return
