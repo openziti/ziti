@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/secretstream"
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"io"
 	"sync"
@@ -45,6 +46,7 @@ type edgeTransportXgressConn struct {
 	writeDone chan bool
 	finSent   bool
 	finRecv   bool
+	closed    concurrenz.AtomicBoolean
 }
 
 func newEdgeTransportXgressConn(conn transport.Connection) *edgeTransportXgressConn {
@@ -185,21 +187,31 @@ func (c *edgeTransportXgressConn) WritePayload(p []byte, headers map[uint8][]byt
 
 	if err != nil {
 		pfxlog.ContextLogger(c.LogContext()).WithError(err).Error("write failed, closing connection")
-		c.finSent = true
-		close(c.writeDone)
+		c.notifyWriteDone()
 		_ = c.Conn().Close()
 	} else {
 		if flags, found := headers[xgress_edge.PayloadFlagsHeader]; found {
 			if flags[0]&edge.FIN != 0 {
-				c.finSent = true
 				conn, ok := c.Conn().(edge.CloseWriter)
 				// if connection does not support half-close just let xgress tear it down
 				if ok {
 					_ = conn.CloseWrite()
 				}
-				close(c.writeDone)
+				c.notifyWriteDone()
 			}
 		}
 	}
 	return n, err
+}
+
+func (c *edgeTransportXgressConn) notifyWriteDone() {
+	if c.closed.CompareAndSwap(false, true) {
+		c.finSent = true
+		close(c.writeDone)
+	}
+}
+
+func (c *edgeTransportXgressConn) Close() error {
+	c.notifyWriteDone()
+	return c.Connection.Close()
 }
