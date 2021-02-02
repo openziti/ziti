@@ -490,8 +490,8 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.15.15 h1:TvUnRoVmGQ/Uj0MAbLkJgEGaaEC5aDxU9UiXpT2N7/Q=
-github.com/openziti/fabric v0.15.15/go.mod h1:H2bwevoCxvJxr3xIsG9AQq9Wy+rxOMNrJTQaPzj/Pas=
+github.com/openziti/fabric v0.15.16 h1:iqoTzlWbY0mygCDTIl02/vII6spNBQwxSTWm/UFJZig=
+github.com/openziti/fabric v0.15.16/go.mod h1:H2bwevoCxvJxr3xIsG9AQq9Wy+rxOMNrJTQaPzj/Pas=
 github.com/openziti/foundation v0.15.9 h1:Do/wohULRt+3H6mlB8SZmIUl/mbxUuN7/Lf7nbz6ZRo=
 github.com/openziti/foundation v0.15.9/go.mod h1:34ifQ24R2EUNjakzZBKY1M4EvnOWeIYJOrJxRGdRNh4=
 github.com/openziti/sdk-golang v0.15.13 h1:Pd5WqFcPxrM8o/VeqCoKeGCgL+pC9Y5dVb1tqMhRprI=
