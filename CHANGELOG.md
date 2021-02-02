@@ -15,6 +15,8 @@
   both local and remote, since local writes may never stop, due to retransmission attempts
 * Add new config option to router `xgressCloseCheckInterval`, which dictates for how long data flow
   from the remote should have stopped before closing xgress after receiving fault
+* `limit none` for Edge API Rest requests is now properly limited to 500 elements on list endpoints
+* The HTTP header `server` is now populated on all responses with `ziti-controller/vX.Y.Z`
 
 ## Control Channel Metrics
 
