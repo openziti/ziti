@@ -29,7 +29,6 @@ import (
 	"image/png"
 	"net/http"
 	"net/url"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -895,8 +894,10 @@ func Test_MFA(t *testing.T) {
 
 func computeMFACode(secret string) string {
 	now := int64(time.Now().UTC().Unix() / 30)
-	code := strconv.Itoa(dgoogauth.ComputeCode(secret, now))
-	return code
+	code := dgoogauth.ComputeCode(secret, now)
+
+	//pad leading 0s to 6 characters
+	return fmt.Sprintf("%06d", code)
 }
 
 type mfaCode struct {
