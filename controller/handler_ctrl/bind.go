@@ -19,8 +19,11 @@ package handler_ctrl
 import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
+	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
+	"time"
 )
 
 type bindHandler struct {
@@ -33,33 +36,53 @@ func newBindHandler(router *network.Router, network *network.Network, xctrls []x
 	return &bindHandler{router: router, network: network, xctrls: xctrls}
 }
 
-func (bindHandler *bindHandler) BindChannel(ch channel2.Channel) error {
-	traceDispatchWrapper := trace.NewDispatchWrapper(bindHandler.network.GetEventDispatcher().Dispatch)
-	ch.SetLogicalName(bindHandler.router.Id)
-	ch.AddReceiveHandler(newSessionRequestHandler(bindHandler.router, bindHandler.network))
-	ch.AddReceiveHandler(newCreateTerminatorHandler(bindHandler.network, bindHandler.router))
-	ch.AddReceiveHandler(newRemoveTerminatorHandler(bindHandler.network))
-	ch.AddReceiveHandler(newUpdateTerminatorHandler(bindHandler.network))
-	ch.AddReceiveHandler(newLinkHandler(bindHandler.router, bindHandler.network))
-	ch.AddReceiveHandler(newFaultHandler(bindHandler.router, bindHandler.network))
-	ch.AddReceiveHandler(newMetricsHandler(bindHandler.network))
+func (self *bindHandler) BindChannel(ch channel2.Channel) error {
+	traceDispatchWrapper := trace.NewDispatchWrapper(self.network.GetEventDispatcher().Dispatch)
+	ch.SetLogicalName(self.router.Id)
+	ch.AddReceiveHandler(newSessionRequestHandler(self.router, self.network))
+	ch.AddReceiveHandler(newCreateTerminatorHandler(self.network, self.router))
+	ch.AddReceiveHandler(newRemoveTerminatorHandler(self.network))
+	ch.AddReceiveHandler(newUpdateTerminatorHandler(self.network))
+	ch.AddReceiveHandler(newLinkHandler(self.router, self.network))
+	ch.AddReceiveHandler(newFaultHandler(self.router, self.network))
+	ch.AddReceiveHandler(newMetricsHandler(self.network))
 	ch.AddReceiveHandler(newTraceHandler(traceDispatchWrapper))
-	ch.AddReceiveHandler(newInspectHandler(bindHandler.network))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), ch, bindHandler.network.GetTraceController(), traceDispatchWrapper))
+	ch.AddReceiveHandler(newInspectHandler(self.network))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), ch, self.network.GetTraceController(), traceDispatchWrapper))
+	ch.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
+
+	if self.router.VersionInfo.HasMinimumVersion("0.18.7") {
+		latencyHandler := &ctrlChannelLatencyHandler{
+			histogram: self.network.GetMetricsRegistry().Histogram("ctrl." + self.router.Id + ".latency"),
+		}
+		metrics.AddLatencyProbe(ch, self.network.GetOptions().CtrlChanLatencyInterval, latencyHandler)
+	}
 
 	xctrlDone := make(chan struct{})
-	for _, x := range bindHandler.xctrls {
+	for _, x := range self.xctrls {
 		if err := ch.Bind(x); err != nil {
 			return err
 		}
-		if err := x.Run(ch, bindHandler.network.GetDb(), xctrlDone); err != nil {
+		if err := x.Run(ch, self.network.GetDb(), xctrlDone); err != nil {
 			return err
 		}
 	}
-	if len(bindHandler.xctrls) > 0 {
+	if len(self.xctrls) > 0 {
 		ch.AddCloseHandler(newXctrlCloseHandler(xctrlDone))
 	}
 
-	ch.AddCloseHandler(newCloseHandler(bindHandler.router, bindHandler.network))
+	ch.AddCloseHandler(newCloseHandler(self.router, self.network))
 	return nil
+}
+
+type ctrlChannelLatencyHandler struct {
+	histogram metrics.Histogram
+}
+
+func (self *ctrlChannelLatencyHandler) LatencyReported(latency time.Duration) {
+	self.histogram.Update(latency.Nanoseconds())
+}
+
+func (self *ctrlChannelLatencyHandler) ChannelClosed() {
+	self.histogram.Dispose()
 }
