@@ -257,6 +257,7 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 }
 
+
 func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
 	// If an edge router has already been created, delete it and create a new one
 	if ctx.edgeRouterEntity != nil {

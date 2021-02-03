@@ -65,6 +65,8 @@ type ClientService interface {
 
 	GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityOK, error)
 
+	GetCurrentIdentityEdgeRouters(params *GetCurrentIdentityEdgeRoutersParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityEdgeRoutersOK, error)
+
 	VerifyMfa(params *VerifyMfaParams, authInfo runtime.ClientAuthInfoWriter) (*VerifyMfaOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
@@ -332,6 +334,45 @@ func (a *Client) GetCurrentIdentity(params *GetCurrentIdentityParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getCurrentIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  GetCurrentIdentityEdgeRouters returns this list of edge routers the identity has access to
+
+  Lists the Edge Routers that the current identity has access to via policies. The data returned
+includes their address and online status
+
+*/
+func (a *Client) GetCurrentIdentityEdgeRouters(params *GetCurrentIdentityEdgeRoutersParams, authInfo runtime.ClientAuthInfoWriter) (*GetCurrentIdentityEdgeRoutersOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetCurrentIdentityEdgeRoutersParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "getCurrentIdentityEdgeRouters",
+		Method:             "GET",
+		PathPattern:        "/current-identity/edge-routers",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &GetCurrentIdentityEdgeRoutersReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetCurrentIdentityEdgeRoutersOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getCurrentIdentityEdgeRouters: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

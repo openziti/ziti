@@ -82,6 +82,12 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 			r.detailMfaRecoveryCodes(ae, rc, params.Body)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
+
+	ae.Api.CurrentIdentityGetCurrentIdentityEdgeRoutersHandler = current_identity.GetCurrentIdentityEdgeRoutersHandlerFunc(func(params current_identity.GetCurrentIdentityEdgeRoutersParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.listEdgeRouters(ae, rc)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
 }
 
 func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
@@ -272,6 +278,12 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 	}
 
 	rc.RespondWithOk(data, &rest_model.Meta{})
+}
+
+func (r *CurrentIdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
+	rc.SetEntityId(rc.Identity.Id)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {

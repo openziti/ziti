@@ -526,6 +526,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation current_identity.GetCurrentIdentity has not yet been implemented")
 		})
 	}
+	if api.CurrentIdentityGetCurrentIdentityEdgeRoutersHandler == nil {
+		api.CurrentIdentityGetCurrentIdentityEdgeRoutersHandler = current_identity.GetCurrentIdentityEdgeRoutersHandlerFunc(func(params current_identity.GetCurrentIdentityEdgeRoutersParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_identity.GetCurrentIdentityEdgeRouters has not yet been implemented")
+		})
+	}
 	if api.IdentityGetIdentityPolicyAdviceHandler == nil {
 		api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
