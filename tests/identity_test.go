@@ -197,4 +197,58 @@ func Test_Identity(t *testing.T) {
 		})
 
 	})
+
+	t.Run("hasApiSessions", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityId, identityAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment("identityHasApiSessionTest", false)
+
+		t.Run("should be false if there are no API Sessions", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+
+			ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
+			ctx.Req.False(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be false")
+		})
+
+		t.Run("should be true if there is 1 API Session", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			session1, err := identityAuth.Authenticate(ctx)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(session1)
+
+			identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+			ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
+			ctx.Req.True(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be true")
+
+			t.Run("should be true if there is 1+ API Session", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				session2, err := identityAuth.Authenticate(ctx)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(session2)
+
+				identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+				ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
+				ctx.Req.True(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be true")
+
+				t.Run("should return to false after logouts", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					session1.logout()
+					session2.logout()
+
+					identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+
+					ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
+					ctx.Req.False(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be false")
+
+				})
+			})
+
+		})
+
+	})
+
 }
