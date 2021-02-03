@@ -1,3 +1,9 @@
+# Release 0.18.8
+
+## What's New
+
+* New Websocket binding to support Edge Router connections from Browser-based webapps using the ziti-sdk-js
+
 # Release 0.18.7
 
 ## What's New
@@ -36,6 +42,7 @@ There is a new controller config file setting:
 
 * `ctrlChanLatencyIntervalSeconds` which controls how often the latency probe is sent. Default
   value: 10
+
 
 # Release 0.18.6
 
