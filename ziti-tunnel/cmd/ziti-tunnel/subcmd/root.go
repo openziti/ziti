@@ -101,7 +101,10 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	log := pfxlog.Logger()
 
 	if cliAgentEnabled {
-		if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
+		// don't use the agent's shutdown handler. it calls os.Exit on SIGINT
+		// which interferes with the servicePoller shutdown
+		cleanup := false
+		if err := agent.Listen(agent.Options{Addr: cliAgentAddr, ShutdownCleanup: &cleanup}); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
 	}
@@ -151,4 +154,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		log.WithError(err).Fatal("failed to authenticate")
 	}
 	serviceListener.WaitForShutdown()
+	if cliAgentEnabled {
+		agent.Close()
+	}
 }
