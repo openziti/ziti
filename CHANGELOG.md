@@ -3,6 +3,9 @@
 ## What's New
 
 * Websocket binding in Edge Router to support connections from BrowZer-based apps that use the `ziti-sdk-js`.  Edge Routers support various configurations  including a single `tls` binding, a single `ws` binding, or having both `tls` and `ws` bindings simultaneously. If both binding types are used, they must be specified with different ports.
+* Edge Router list for current identity
+
+## Websocket Binding
 
 ```
 #   Example Edge Router config snippet (note new `ws` address type):
@@ -18,6 +21,58 @@ listeners:
       advertise: curt-edge-ws-router:3022
 ```
 
+
+## Edge Router List For Current Identity
+
+A new endpoint has been added which will display the list of Edge Routers an authenticated session has access to via any policy.
+The records will indicate whether the router is online, its hostname, and its supported protocols. This endpoint will not return Edge
+Routers that have not completed enrollment. Edge Routers that are offline will not have hostname and supported protocol information.
+
+Endpoint: `GET /current-identity/edge-routers`
+
+Example Output:
+```
+{
+    "data": [
+        {
+            "createdAt": "2021-01-27T20:13:18.599Z",
+            "id": "LolSlAQMq",
+            "tags": {},
+            "updatedAt": "2021-01-27T20:13:19.762Z",
+            "hostname": "",
+            "isOnline": false,
+            "name": "er1",
+            "supportedProtocols": {}
+        },
+        {
+            "createdAt": "2021-01-27T20:13:19.308Z",
+            "id": "oVzRl6kCq",
+            "tags": {},
+            "updatedAt": "2021-01-27T20:13:19.901Z",
+            "hostname": "127.0.0.1:5002",
+            "isOnline": true,
+            "name": "er2",
+            "supportedProtocols": {
+                "tls": "tls://127.0.0.1:5002",
+                "wss": "wss://127.0.0.1:5002"
+            }
+        }
+    ],
+    "meta": {
+        "filterableFields": [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "name",
+        ],
+        "pagination": {
+            "limit": 10,
+            "offset": 0,
+            "totalCount": 2
+        }
+    }
+}
+```
 
 # Release 0.18.7
 
