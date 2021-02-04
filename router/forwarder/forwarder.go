@@ -205,6 +205,8 @@ func (forwarder *Forwarder) unrouteTimeout(sessionId string, interval time.Durat
 				return
 			}
 		} else {
+			forwarder.sessions.removeForwardTable(sessionId)
+			forwarder.EndSession(sessionId)
 			return
 		}
 	}
