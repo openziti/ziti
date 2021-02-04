@@ -138,3 +138,47 @@ func MapMfaToRestModel(ae *env.AppEnv, mfa *model.Mfa) (*rest_model.DetailMfa, e
 
 	return result, nil
 }
+
+func MapCurrentIdentityEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+	router, ok := e.(*model.EdgeRouter)
+
+	if !ok {
+		err := fmt.Errorf("entity is not a EdgeRouter \"%s\"", e.GetId())
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+
+	restModel, err := MapCurrentIdentityEdgeRouterToRestModel(ae, router)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
+}
+
+func MapCurrentIdentityEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_model.CurrentIdentityEdgeRouterDetail, error) {
+	hostname := ""
+	protocols := map[string]string{}
+	onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(router.Id)
+
+	isOnline := onlineEdgeRouter != nil
+
+	if isOnline {
+		hostname = *onlineEdgeRouter.Hostname
+		protocols = onlineEdgeRouter.EdgeRouterProtocols
+	}
+
+	ret := &rest_model.CurrentIdentityEdgeRouterDetail{
+		BaseEntity:         BaseEntityToRestModel(router, EdgeRouterLinkFactory),
+		Name:               &router.Name,
+		IsOnline:           &isOnline,
+		Hostname:           &hostname,
+		SupportedProtocols: protocols,
+	}
+
+	return ret, nil
+}

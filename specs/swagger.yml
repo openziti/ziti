@@ -1021,6 +1021,23 @@ paths:
           $ref: '#/responses/detailCurrentIdentity'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+  '/current-identity/edge-routers':
+    get:
+      summary: Return this list of Edge Routers the identity has access to
+      description: |
+        Lists the Edge Routers that the current identity has access to via policies. The data returned
+        includes their address and online status
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current Identity
+        - Edge Router
+      operationId: getCurrentIdentityEdgeRouters
+      responses:
+        '200':
+          $ref: '#/responses/listCurrentIdentityEdgeRouters'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
   '/current-identity/mfa':
     post:
       summary: Initiate MFA enrollment
@@ -3981,6 +3998,11 @@ responses:
     description: A singular edge router resource
     schema:
       $ref: '#/definitions/detailedEdgeRouterEnvelope'
+
+  listCurrentIdentityEdgeRouters:
+    description: A list of edge routers
+    schema:
+      $ref: '#/definitions/listCurrentIdentityEdgeRoutersEnvelope'
   ###################################################################
   # Edge Router Policies
   ##################################################################
@@ -5119,6 +5141,33 @@ definitions:
         $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
+  currentIdentityEdgeRouterList:
+    description: A list of edge router resources
+    type: array
+    items:
+      $ref: '#/definitions/currentIdentityEdgeRouterDetail'
+  currentIdentityEdgeRouterDetail:
+    description: A detail edge router resource
+    type: object
+    allOf:
+      - $ref: '#/definitions/baseEntity'
+      - type: object
+        required:
+          - name
+          - isOnline
+          - hostname
+          - supportedProtocols
+        properties:
+          name:
+            type: string
+          isOnline:
+            type: boolean
+          hostname:
+            type: string
+          supportedProtocols:
+            additionalProperties:
+              type: string
+            type: object
   edgeRouterList:
     description: A list of edge router resources
     type: array
@@ -6054,6 +6103,16 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/enrollmentDetail'
+  listCurrentIdentityEdgeRoutersEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/currentIdentityEdgeRouterList'
   listEdgeRoutersEnvelope:
     type: object
     required:
@@ -6819,7 +6878,10 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
-        $ref: '#/definitions/PostureCheckList'
+        #can't use PostureCheckList as it will cause issues w/ the code generation as of 3/2021
+        type: array
+        items:
+          $ref: '#/definitions/PostureCheckDetail'
   detailPostureCheckEnvelope:
     type: object
     required:
@@ -6830,10 +6892,6 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/PostureCheckDetail'
-  PostureCheckList:
-    type: array
-    items:
-      $ref: '#/definitions/PostureCheckDetail'
   PostureCheckDetail:
     type: object
     discriminator: typeId
