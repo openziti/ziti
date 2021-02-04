@@ -17,7 +17,6 @@
 package model
 
 import (
-	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
@@ -53,7 +52,6 @@ type Identity struct {
 	EnvInfo                  *EnvInfo
 	SdkInfo                  *SdkInfo
 	HasHeartbeat             bool
-	ApiSessionCount          int64
 	DefaultHostingPrecedence ziti.Precedence
 	DefaultHostingCost       uint16
 }
@@ -173,14 +171,6 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
-
-	_, sessionCount, err := handler.GetEnv().GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%s"`, entity.Id))
-
-	if err != nil {
-		return err
-	}
-
-	entity.ApiSessionCount = sessionCount
 
 	return nil
 }
