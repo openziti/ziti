@@ -181,10 +181,10 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	hasApiSession := false
 
-	if apiSessionlist, err := ae.GetHandlers().ApiSession.Query(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id)); err == nil {
-		hasApiSession = apiSessionlist.Count > 0
+	if apiSessionList, err := ae.GetHandlers().ApiSession.Query(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id)); err == nil {
+		hasApiSession = apiSessionList.Count > 0
 	} else {
-		pfxlog.Logger().Error("error attempting to determine identity id's [%s] API session existence: %v", identity.Id, err)
+		pfxlog.Logger().Errorf("error attempting to determine identity id's [%s] API session existence: %v", identity.Id, err)
 	}
 
 	defaultCost := rest_model.TerminatorCost(identity.DefaultHostingCost)
