@@ -227,7 +227,7 @@ Certificate Authority that has been added and verified (See POST /cas and POST /
 must present a client certificate signed by CA associated with the enrollment. This enrollment is similar to
 CA auto enrollment except that is required the identity to be pre-created.
 
-As the client certificat has been pre-exchanged there is no CSR input to this enrollment method.
+As the client certificate has been pre-exchanged there is no CSR input to this enrollment method.
 
 */
 func (a *Client) EnrollOttCa(params *EnrollOttCaParams) (*EnrollOttCaOK, error) {
@@ -262,7 +262,7 @@ func (a *Client) EnrollOttCa(params *EnrollOttCaParams) (*EnrollOttCaOK, error) 
 }
 
 /*
-  ErnollUpdb enrolls an identity vvia one time token
+  ErnollUpdb enrolls an identity via one time token
 
   Enrolls an identity via a one-time-token to establish an initial username and password combination
 

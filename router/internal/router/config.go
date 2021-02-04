@@ -39,6 +39,7 @@ type Config struct {
 	Enabled                  bool
 	ApiProxy                 ApiProxy
 	Advertise                string
+	WSAdvertise              string
 	Csr                      Csr
 	IdentityConfig           identity.IdentityConfig
 	HeartbeatIntervalSeconds int
@@ -186,7 +187,9 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 	}
 
 	var edgeBinding map[interface{}]interface{}
-	var edgeWssBinding map[interface{}]interface{}
+	var edgeListenPort string
+	var edgeWsBinding map[interface{}]interface{}
+	var edgeWsListenPort string
 
 	for i, value := range listeners {
 		submap := value.(map[interface{}]interface{})
@@ -210,17 +213,19 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 						return errors.New("required value [listeners.edge.address] was not a valid address")
 					}
 					tokens := strings.Split(address, ":")
-					if tokens[0] == "wss" {
-						if edgeWssBinding != nil {
-							return errors.New("multiple edge listeners found in [listeners], only one 'wss' address is allowed")
+					if tokens[0] == "ws" {
+						if edgeWsBinding != nil {
+							return errors.New("multiple edge listeners found in [listeners], only one 'ws' address is allowed")
 						}
-						edgeWssBinding = submap
+						edgeWsBinding = submap
+						edgeWsListenPort = tokens[2]
 
 					} else {
 						if edgeBinding != nil {
-							return errors.New("multiple edge listeners found in [listeners], only one non-'wss' is allowed")
+							return errors.New("multiple edge listeners found in [listeners], only one non-'ws' is allowed")
 						}
 						edgeBinding = submap
+						edgeListenPort = tokens[2]
 					}
 				} else {
 					return errors.New("required value [listeners.edge.address] was not found")
@@ -229,8 +234,8 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		}
 	}
 
-	if (edgeBinding == nil) && (edgeWssBinding == nil) {
-		return errors.New("required binding [edge] not found in [listeners]")
+	if (edgeBinding == nil) && (edgeWsBinding == nil) {
+		return errors.New("required binding [edge] not found in [listeners], at least one edge binding is required")
 	}
 
 	if edgeBinding != nil {
@@ -248,6 +253,11 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 					return errors.New("required value [listeners.edge.options.advertise] was not a string or was not found")
 				}
 
+				parts := strings.Split(advertise, ":")
+				if parts[1] != edgeListenPort {
+					pfxlog.Logger().Warnf("port in [listeners.edge.options.advertise] must equal port in [listeners.edge.address] but did not. Got [%s] [%s]", parts[1], edgeListenPort)
+				}
+
 				config.Advertise = advertise
 			} else {
 				return errors.New("required value [listeners.edge.options.advertise] was not found")
@@ -258,8 +268,8 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		}
 	}
 
-	if edgeWssBinding != nil {
-		if value, found := edgeWssBinding["options"]; found {
+	if edgeWsBinding != nil {
+		if value, found := edgeWsBinding["options"]; found {
 			submap := value.(map[interface{}]interface{})
 
 			if submap == nil {
@@ -273,7 +283,18 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 					return errors.New("required value [listeners.edge.options.advertise] was not a string or was not found")
 				}
 
-				config.Advertise = advertise
+				parts := strings.Split(advertise, ":")
+				if parts[1] != edgeWsListenPort {
+					msg := fmt.Sprintf("port in [listeners.edge.options.advertise] must equal port in [listeners.edge.address] but did not. Got [%s] [%s]", parts[1], edgeWsListenPort)
+					return errors.New(msg)
+				}
+
+				if edgeListenPort == edgeWsListenPort {
+					msg := fmt.Sprintf("ports for multiple [listeners.edge.options.advertise] must not be equal. Got [%s] [%s]", edgeListenPort, edgeWsListenPort)
+					return errors.New(msg)
+				}
+
+				config.WSAdvertise = advertise
 			} else {
 				return errors.New("required value [listeners.edge.options.advertise] was not found")
 			}

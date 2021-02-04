@@ -2574,7 +2574,7 @@ func init() {
     },
     "/enroll/ottca": {
       "post": {
-        "description": "Enroll an identity via a one-time-token that also requires a pre-exchanged client certificate to match a\nCertificate Authority that has been added and verified (See POST /cas and POST /cas{id}/verify). The client\nmust present a client certificate signed by CA associated with the enrollment. This enrollment is similar to\nCA auto enrollment except that is required the identity to be pre-created.\n\nAs the client certificat has been pre-exchanged there is no CSR input to this enrollment method.\n",
+        "description": "Enroll an identity via a one-time-token that also requires a pre-exchanged client certificate to match a\nCertificate Authority that has been added and verified (See POST /cas and POST /cas{id}/verify). The client\nmust present a client certificate signed by CA associated with the enrollment. This enrollment is similar to\nCA auto enrollment except that is required the identity to be pre-created.\n\nAs the client certificate has been pre-exchanged there is no CSR input to this enrollment method.\n",
         "tags": [
           "Enroll"
         ],
@@ -2598,7 +2598,7 @@ func init() {
         "tags": [
           "Enroll"
         ],
-        "summary": "Enroll an identity vvia one-time-token",
+        "summary": "Enroll an identity via one-time-token",
         "operationId": "ernollUpdb",
         "responses": {
           "200": {
@@ -17367,7 +17367,7 @@ func init() {
     },
     "/enroll/ottca": {
       "post": {
-        "description": "Enroll an identity via a one-time-token that also requires a pre-exchanged client certificate to match a\nCertificate Authority that has been added and verified (See POST /cas and POST /cas{id}/verify). The client\nmust present a client certificate signed by CA associated with the enrollment. This enrollment is similar to\nCA auto enrollment except that is required the identity to be pre-created.\n\nAs the client certificat has been pre-exchanged there is no CSR input to this enrollment method.\n",
+        "description": "Enroll an identity via a one-time-token that also requires a pre-exchanged client certificate to match a\nCertificate Authority that has been added and verified (See POST /cas and POST /cas{id}/verify). The client\nmust present a client certificate signed by CA associated with the enrollment. This enrollment is similar to\nCA auto enrollment except that is required the identity to be pre-created.\n\nAs the client certificate has been pre-exchanged there is no CSR input to this enrollment method.\n",
         "tags": [
           "Enroll"
         ],
@@ -17398,7 +17398,7 @@ func init() {
         "tags": [
           "Enroll"
         ],
-        "summary": "Enroll an identity vvia one-time-token",
+        "summary": "Enroll an identity via one-time-token",
         "operationId": "ernollUpdb",
         "responses": {
           "200": {

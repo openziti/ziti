@@ -55,7 +55,7 @@ func NewErnollUpdb(ctx *middleware.Context, handler ErnollUpdbHandler) *ErnollUp
 
 /*ErnollUpdb swagger:route POST /enroll/updb Enroll ernollUpdb
 
-Enroll an identity vvia one-time-token
+Enroll an identity via one-time-token
 
 Enrolls an identity via a one-time-token to establish an initial username and password combination
 

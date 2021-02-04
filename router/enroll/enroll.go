@@ -17,6 +17,7 @@
 package enroll
 
 import (
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -24,9 +25,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/router/internal/router"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge/router/internal/router"
 	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
 	"io/ioutil"
@@ -41,7 +43,7 @@ type apiPost struct {
 }
 
 type Enroller interface {
-	Enroll(jwt []byte, silent bool, engine string) error
+	Enroll(jwt []byte, silent bool, engine string, keyAlg config.KeyAlgVar) error
 	LoadConfig(cfgmap map[interface{}]interface{}) error
 }
 
@@ -73,7 +75,7 @@ func (re *RestEnroller) LoadConfig(cfgmap map[interface{}]interface{}) error {
 	return nil
 }
 
-func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error {
+func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg config.KeyAlgVar) error {
 	log := pfxlog.Logger()
 
 	if re.config == nil {
@@ -111,7 +113,14 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string) error 
 	}
 
 	//writes key if it is file based
-	key, err := certtools.GetKey(engUrl, re.config.IdentityConfig.Key, "ec:P-256")
+	var key crypto.PrivateKey
+	if keyAlg.EC() {
+		key, err = certtools.GetKey(engUrl, re.config.IdentityConfig.Key, "ec:P-256")
+	} else if keyAlg.RSA() {
+		key, err = certtools.GetKey(engUrl, re.config.IdentityConfig.Key, "rsa:4096")
+	} else {
+		panic(fmt.Sprintf("invalid KeyAlg specified: %s", keyAlg.Get()))
+	}
 
 	if err != nil {
 		return fmt.Errorf("could not obtain private key: %s", err)

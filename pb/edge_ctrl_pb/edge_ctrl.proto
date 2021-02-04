@@ -33,6 +33,7 @@ message ClientHello {
     string hostname = 2;
     repeated string protocols = 3;
     map<string, string> data = 4;
+    repeated string protocolPorts = 5;
 }
 
 message Error {

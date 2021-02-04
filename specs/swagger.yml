@@ -1716,7 +1716,7 @@ paths:
         must present a client certificate signed by CA associated with the enrollment. This enrollment is similar to
         CA auto enrollment except that is required the identity to be pre-created.
 
-        As the client certificat has been pre-exchanged there is no CSR input to this enrollment method.
+        As the client certificate has been pre-exchanged there is no CSR input to this enrollment method.
       operationId: enrollOttCa
       tags:
         - Enroll
@@ -1727,7 +1727,7 @@ paths:
     parameters:
       - $ref: '#/parameters/token'
     post:
-      summary: Enroll an identity vvia one-time-token
+      summary: Enroll an identity via one-time-token
       description: |
         Enrolls an identity via a one-time-token to establish an initial username and password combination
       operationId: ernollUpdb

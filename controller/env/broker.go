@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"go.etcd.io/bbolt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -341,7 +342,7 @@ func (b *Broker) sendApiSessionUpdates(apiSession *persistence.ApiSession) {
 		pfxlog.Logger().WithError(err).Errorf("could not get api session fingerprints")
 		return
 	}
-	
+
 	if len(fingerprints) == 0 {
 		pfxlog.Logger().WithError(err).Debug("api session has no fingerprints, not sending to edge routers")
 		return
@@ -761,6 +762,7 @@ func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, r
 	entry := pfxlog.Logger().
 		WithField("hostname", respHello.Hostname).
 		WithField("protocols", respHello.Protocols).
+		WithField("protocolPorts", respHello.ProtocolPorts).
 		WithField("data", respHello.Data)
 
 	if r.VersionInfo != nil {
@@ -774,9 +776,10 @@ func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, r
 	entry.Info("edge router responded with client hello")
 
 	protocols := map[string]string{}
-	for _, p := range respHello.Protocols {
-		ingressUrl := fmt.Sprintf("%s://%s", p, respHello.Hostname)
-		protocols[p] = ingressUrl
+	for _, p := range respHello.ProtocolPorts {
+		parts := strings.Split(p, ":")
+		ingressUrl := fmt.Sprintf("%s://%s:%s", parts[0], respHello.Hostname, parts[1])
+		protocols[parts[0]] = ingressUrl
 	}
 
 	edgeRouter.Hostname = &respHello.Hostname

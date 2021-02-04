@@ -143,7 +143,7 @@ func (c *edgeTransportXgressConn) Write(p []byte) (n int, err error) {
 		//if crypto enabled and we have not setup e2e
 		if c.cryptoCtx.rxKey != nil {
 			if len(p) != secretstream.StreamHeaderBytes {
-				return 0, fmt.Errorf("error establishing crypto: expected key length %d got %d", len(p), secretstream.StreamHeaderBytes)
+				return 0, fmt.Errorf("error establishing crypto: expected key length %d got %d", secretstream.StreamHeaderBytes, len(p))
 			}
 
 			c.cryptoCtx.fromClientDecryptor, err = secretstream.NewDecryptor(c.cryptoCtx.rxKey, p)
