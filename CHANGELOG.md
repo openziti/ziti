@@ -1,3 +1,24 @@
+# Release 0.18.8
+
+## What's New
+
+* Websocket binding in Edge Router to support connections from BrowZer-based apps that use the `ziti-sdk-js`.  Edge Routers support various configurations  including a single `tls` binding, a single `ws` binding, or having both `tls` and `ws` bindings simultaneously. If both binding types are used, they must be specified with different ports.
+
+```
+#   Example Edge Router config snippet (note new `ws` address type):
+
+listeners:
+  - binding: edge
+    address: ws:0.0.0.0:3021
+    options:
+      advertise: curt-edge-ws-router:3021
+  - binding: edge
+    address: tls:0.0.0.0:3022
+    options:
+      advertise: curt-edge-ws-router:3022
+```
+
+
 # Release 0.18.7
 
 ## What's New
@@ -36,6 +57,7 @@ There is a new controller config file setting:
 
 * `ctrlChanLatencyIntervalSeconds` which controls how often the latency probe is sent. Default
   value: 10
+
 
 # Release 0.18.6
 
