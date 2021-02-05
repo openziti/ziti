@@ -20,6 +20,7 @@ package tests
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
@@ -55,6 +56,72 @@ func Test_Identity(t *testing.T) {
 		identity.roleAttributes = []string{role2, role3}
 		ctx.AdminSession.requireUpdateEntity(identity)
 		ctx.AdminSession.validateEntityWithLookup(identity)
+	})
+
+	t.Run("role attributes should not be changed on PATCH if not sent", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		role1 := eid.New()
+		role2 := eid.New()
+		identity := newTestIdentity(false, role1, role2)
+		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+
+		patchContainer := gabs.New()
+		newName := uuid.New().String()
+		_, _ = patchContainer.Set(newName, "name")
+		identity.name = newName
+
+		resp := ctx.AdminSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
+
+		ctx.Req.NotNil(resp)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identity.Id)
+
+		ctx.Req.Equal(newName, updatedIdentity.Path("data.name").Data().(string), "name should be updated")
+
+		updateAttributes, err := updatedIdentity.Path("data.roleAttributes").Children()
+		ctx.Req.NoError(err)
+
+		var list []string
+
+		for _, attr := range updateAttributes {
+			if attrString, ok := attr.Data().(string); ok {
+				list = append(list, attrString)
+			}
+		}
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2), "retained original attributes")
+	})
+
+	t.Run("role attributes should be changed on PATCH if sent", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		role1 := eid.New()
+		role2 := eid.New()
+		identity := newTestIdentity(false, role1, role2)
+		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+
+		patchContainer := gabs.New()
+
+		role3 := eid.New()
+		_, _ = patchContainer.Set([]string{role1, role2, role3}, "roleAttributes")
+
+		resp := ctx.AdminSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
+
+		ctx.Req.NotNil(resp)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identity.Id)
+
+		updateAttributes, err := updatedIdentity.Path("data.roleAttributes").Children()
+		ctx.Req.NoError(err)
+
+		var list []string
+
+		for _, attr := range updateAttributes {
+			if attrString, ok := attr.Data().(string); ok {
+				list = append(list, attrString)
+			}
+		}
+		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3), "role attributes updated")
 	})
 
 	t.Run("role attributes should be queryable", func(t *testing.T) {
