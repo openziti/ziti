@@ -21,6 +21,7 @@ listeners:
       advertise: curt-edge-ws-router:3022
 ```
 
+* Fix router memory leak: purge session from forwardTable during unroutTimeout
 
 ## Edge Router List For Current Identity
 
