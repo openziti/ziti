@@ -43,6 +43,6 @@ func newVerifyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 }
 
 // createEntityOfType create an entity of the given type on the Ziti Edge Controller
-func verifyEntityOfType(entityType, body, id string, options *commonOptions) error {
+func verifyEntityOfType(entityType, body, id string, options *edgeOptions) error {
 	return util.EdgeControllerVerify(entityType, id, body, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

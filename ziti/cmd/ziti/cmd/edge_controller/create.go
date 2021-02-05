@@ -55,6 +55,6 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 }
 
 // createEntityOfType create an entity of the given type on the Ziti Edge Controller
-func createEntityOfType(entityType string, body string, options *commonOptions) (*gabs.Container, error) {
+func createEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
 	return util.EdgeControllerCreate(entityType, body, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

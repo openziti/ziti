@@ -27,7 +27,7 @@ import (
 import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type updateUpdbOptions struct {
-	commonOptions
+	edgeOptions
 	identity         string
 	newPassword      string
 	currentPassword  string
@@ -35,9 +35,9 @@ type updateUpdbOptions struct {
 	self             bool
 }
 
-func newUpdateAuthenticatorUpdb(idType string, options commonOptions) *cobra.Command {
+func newUpdateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Command {
 	updbOptions := updateUpdbOptions{
-		commonOptions: options,
+		edgeOptions: options,
 	}
 	cmd := &cobra.Command{
 		Use:   idType + " (-i <identityIdOrName> -p <newPassword>) | (-c <currentPassword> -n <newPassword>)",
@@ -72,17 +72,17 @@ func runUpdateUpdbPassword(idType string, options *updateUpdbOptions) error {
 	}
 
 	if options.identity != "" {
-		return setIdentityPassword(options.identity, options.identityPassword, options.commonOptions)
+		return setIdentityPassword(options.identity, options.identityPassword, options.edgeOptions)
 	}
 
 	if options.self {
-		return updateSelfPassword(options.currentPassword, options.newPassword, options.commonOptions)
+		return updateSelfPassword(options.currentPassword, options.newPassword, options.edgeOptions)
 	}
 
 	return errors.New("invalid arguments, requires --self or --identity, see help for details")
 }
 
-func updateSelfPassword(current string, new string, options commonOptions) error {
+func updateSelfPassword(current string, new string, options edgeOptions) error {
 	var err error
 	if current == "" {
 		if current, err = term.PromptPassword("Enter your current password: ", false); err != nil {
@@ -127,7 +127,7 @@ func updateSelfPassword(current string, new string, options commonOptions) error
 	return nil
 }
 
-func setIdentityPassword(identity, password string, options commonOptions) error {
+func setIdentityPassword(identity, password string, options edgeOptions) error {
 	id, err := mapIdentityNameToID(identity, options)
 
 	if err != nil {

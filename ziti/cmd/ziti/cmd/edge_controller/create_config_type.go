@@ -32,14 +32,14 @@ import (
 )
 
 type createConfigTypeOptions struct {
-	commonOptions
+	edgeOptions
 	schemaFile string
 }
 
 // newCreateConfigTypeCmd creates the 'edge controller create service-policy' command
 func newCreateConfigTypeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createConfigTypeOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -101,7 +101,7 @@ func runCreateConfigType(o *createConfigTypeOptions) error {
 		setJSONValue(entityData, schemaMap, "schema")
 	}
 
-	result, err := createEntityOfType("config-types", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("config-types", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)

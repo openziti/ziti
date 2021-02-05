@@ -29,14 +29,14 @@ import (
 )
 
 type createEdgeRouterOptions struct {
-	commonOptions
+	edgeOptions
 	roleAttributes []string
 	jwtOutputFile  string
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -71,7 +71,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	setJSONValue(routerData, o.Args[0], "name")
 	setJSONValue(routerData, o.roleAttributes, "roleAttributes")
 
-	result, err := createEntityOfType("edge-routers", routerData.String(), &o.commonOptions)
+	result, err := createEntityOfType("edge-routers", routerData.String(), &o.edgeOptions)
 
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 	if err != nil {
 		return err
 	}

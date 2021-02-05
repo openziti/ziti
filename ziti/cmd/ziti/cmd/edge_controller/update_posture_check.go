@@ -44,7 +44,7 @@ func newUpdatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 }
 
 type updatePostureCheckOptions struct {
-	commonOptions
+	edgeOptions
 	name           string
 	tags           map[string]string
 	roleAttributes []string
@@ -76,7 +76,7 @@ type updatePostureCheckOsOptions struct {
 func newUpdatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckMacOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		},
@@ -109,7 +109,7 @@ func newUpdatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 // runUpdatePostureCheckMac update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -137,14 +137,14 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 
 	setJSONValue(entityData, PostureCheckTypeMAC, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }
 
 func newUpdatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckDomainOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		},
@@ -177,7 +177,7 @@ func newUpdatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.
 
 // runUpdatePostureCheckDomain update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 
 	setJSONValue(entityData, PostureCheckTypeDomain, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }
 
@@ -218,7 +218,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 func newUpdatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckProcessOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		},
@@ -256,7 +256,7 @@ func newUpdatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 
 // runUpdatePostureCheckProcess update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -317,7 +317,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 
 	setJSONValue(entityData, PostureCheckTypeProcess, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }
 
@@ -325,7 +325,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 func newUpdatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckOsOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		},
@@ -358,7 +358,7 @@ func newUpdatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writ
 
 // runUpdatePostureCheckOs update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -394,6 +394,6 @@ func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
 
 	setJSONValue(entityData, PostureCheckTypeOS, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

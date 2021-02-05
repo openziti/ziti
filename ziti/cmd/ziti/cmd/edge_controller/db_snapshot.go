@@ -27,12 +27,12 @@ import (
 )
 
 type dbSnapshotOptions struct {
-	commonOptions
+	edgeOptions
 }
 
 func newDbSnapshotCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbSnapshotOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -58,6 +58,6 @@ func newDbSnapshotCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra
 }
 
 func runSnapshotDb(o *dbSnapshotOptions) error {
-	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false, o.commonOptions.Timeout, o.commonOptions.Verbose)
+	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 	return err
 }

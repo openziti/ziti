@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeleteAuthenticatorCmd(idType string, options *commonOptions) *cobra.Command {
+func newDeleteAuthenticatorCmd(idType string, options *edgeOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        idType,

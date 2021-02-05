@@ -6,7 +6,36 @@
     * Now uses new api (when available) to skip refreshing services if no services have been changed
     * Polling rate is passed through to sdk, so actual poll rate is now controlled
 * Don't panic on router startup, just show error message and exit
+* Fix resource leak: go-routine on terminators using the edge_transport binding
+* Fix resource leak: retransmission timers for xgress instances not being shutdown when xgress
+  closed
+* Control channel metrics now available
+* Fix potential deadlock on xgress close
+* When closing due to fault notification, wait for data coming from remote to stop, not data from
+  both local and remote, since local writes may never stop, due to retransmission attempts
+* Add new config option to router `xgressCloseCheckInterval`, which dictates for how long data flow
+  from the remote should have stopped before closing xgress after receiving fault
+* `limit none` for Edge API Rest requests is now properly limited to 500 elements on list endpoints
+* The HTTP header `server` is now populated on all responses with `ziti-controller/vX.Y.Z`
 
+## Control Channel Metrics
+
+**Note:** This feature is only available if both controller and router are on 0.18.7 or higher.
+
+The control channels between the controller and routers now generate metrics, including:
+
+* `ctrl.<router id>.latency`
+* `ctrl.<router id>.tx.bytesrate`
+* `ctrl.<router id>.tx.msgrate`
+* `ctrl.<router id>.tx.msgsize`
+* `ctrl.<router id>.rx.bytesrate`
+* `ctrl.<router id>.rx.msgrate`
+* `ctrl.<router id>.rx.msgsize`
+
+There is a new controller config file setting:
+
+* `ctrlChanLatencyIntervalSeconds` which controls how often the latency probe is sent. Default
+  value: 10
 
 # Release 0.18.6
 

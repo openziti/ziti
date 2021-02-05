@@ -30,7 +30,7 @@ import (
 )
 
 type updateServicePolicyOptions struct {
-	commonOptions
+	edgeOptions
 	name              string
 	serviceRoles      []string
 	identityRoles     []string
@@ -39,7 +39,7 @@ type updateServicePolicyOptions struct {
 
 func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServicePolicyOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -70,22 +70,22 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 }
 
 func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
-	id, err := mapNameToID("service-policies", o.Args[0], o.commonOptions)
+	id, err := mapNameToID("service-policies", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.commonOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.commonOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.commonOptions)
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -117,6 +117,6 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("service-policies/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("service-policies/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

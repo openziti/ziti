@@ -30,7 +30,7 @@ import (
 )
 
 type createTerminatorOptions struct {
-	commonOptions
+	edgeOptions
 	binding    string
 	cost       int32
 	precedence string
@@ -40,7 +40,7 @@ type createTerminatorOptions struct {
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
 func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createTerminatorOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -77,12 +77,12 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 // runCreateTerminator implements the command to create a Terminator
 func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := mapNameToID("services", o.Args[0], o.commonOptions)
+	service, err := mapNameToID("services", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
 
-	router, err := mapNameToID("edge-routers", o.Args[1], o.commonOptions)
+	router, err := mapNameToID("edge-routers", o.Args[1], o.edgeOptions)
 	if err != nil {
 		router = o.Args[1] // might be a pure fabric router, id might not be UUID
 	}
@@ -112,7 +112,7 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 		setJSONValue(entityData, o.precedence, "precedence")
 	}
 
-	result, err := createEntityOfType("terminators", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("terminators", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
