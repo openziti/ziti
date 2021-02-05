@@ -53,6 +53,7 @@ type Network struct {
 	linkController         *linkController
 	linkChanged            chan *Link
 	sessionController      *sessionController
+	routeSenderController  *routeSenderController
 	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
@@ -77,21 +78,22 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 	eventDispatcher := event.NewDispatcher()
 
 	network := &Network{
-		Controllers:       controllers,
-		nodeId:            nodeId,
-		options:           options,
-		routerChanged:     make(chan *Router),
-		linkController:    newLinkController(),
-		linkChanged:       make(chan *Link),
-		sessionController: newSessionController(),
-		sequence:          sequence.NewSequence(),
-		eventDispatcher:   eventDispatcher,
-		traceController:   trace.NewController(),
-		shutdownChan:      make(chan struct{}),
-		strategyRegistry:  xt.GlobalRegistry(),
-		lastSnapshot:      time.Now().Add(-time.Hour),
-		metricsRegistry:   metrics.NewRegistry(nodeId.Token, nil),
-		VersionProvider:   versionProvider,
+		Controllers:           controllers,
+		nodeId:                nodeId,
+		options:               options,
+		routerChanged:         make(chan *Router),
+		linkController:        newLinkController(),
+		linkChanged:           make(chan *Link),
+		sessionController:     newSessionController(),
+		routeSenderController: newRouteSenderController(),
+		sequence:              sequence.NewSequence(),
+		eventDispatcher:       eventDispatcher,
+		traceController:       trace.NewController(),
+		shutdownChan:          make(chan struct{}),
+		strategyRegistry:      xt.GlobalRegistry(),
+		lastSnapshot:          time.Now().Add(-time.Hour),
+		metricsRegistry:       metrics.NewRegistry(nodeId.Token, nil),
+		VersionProvider:       versionProvider,
 	}
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
@@ -174,6 +176,10 @@ func (network *Network) GetSession(sessionId *identity.TokenId) (*session, bool)
 
 func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
+}
+
+func (network *Network) RouteResult(r *Router, sessionId string, success bool) bool {
+	return network.routeSenderController.forwardRouteResult(r, sessionId, success)
 }
 
 func (network *Network) GetEventDispatcher() event.Dispatcher {

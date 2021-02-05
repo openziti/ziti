@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/foundation/channel2"
+	"github.com/sirupsen/logrus"
 )
 
 type routeResultHandler struct {
@@ -39,4 +40,14 @@ func (self *routeResultHandler) ContentType() int32 {
 }
 
 func (self *routeResultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+	sessionId := string(msg.Body)
+	routing := self.network.RouteResult(self.r, sessionId, success)
+	if !routing {
+		self.notRoutingSession(sessionId)
+	}
+}
+
+func (self *routeResultHandler) notRoutingSession(sessionId string) {
+	logrus.Warnf("not routing session [s/%s] for router [r/%s], sending unroute", sessionId, self.r.Id)
 }

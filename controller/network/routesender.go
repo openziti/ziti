@@ -18,8 +18,21 @@ package network
 
 import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	cmap "github.com/orcaman/concurrent-map"
 	"time"
 )
+
+type routeSenderController struct {
+	senders cmap.ConcurrentMap // map[string]*routeSender
+}
+
+func newRouteSenderController() *routeSenderController {
+	return &routeSenderController{}
+}
+
+func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool) bool {
+	return false
+}
 
 type routeSender struct {
 	sessionId string
