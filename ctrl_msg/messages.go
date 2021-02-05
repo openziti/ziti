@@ -23,8 +23,11 @@ import (
 const (
 	ContentTypeSessionSuccessType = 1001
 	ContentTypeSessionFailedType  = 1016
+	RouteResultType               = 1022
 
 	SessionSuccessAddressHeader = 1100
+	RouteResultSuccessHeader    = 1101
+	RouteResultErrorHeader      = 1102
 )
 
 func NewSessionSuccessMsg(sessionId, address string) *channel2.Message {
@@ -35,4 +38,16 @@ func NewSessionSuccessMsg(sessionId, address string) *channel2.Message {
 
 func NewSessionFailedMsg(message string) *channel2.Message {
 	return channel2.NewMessage(ContentTypeSessionFailedType, []byte(message))
+}
+
+func NewRouteResultSuccessMsg(sessionId string) *channel2.Message {
+	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+	msg.Headers[RouteResultSuccessHeader] = []byte{1}
+	return msg
+}
+
+func NewRouteResultFailedMessage(sessionId, err string) *channel2.Message {
+	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+	msg.Headers[RouteResultErrorHeader] = []byte(err)
+	return msg
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
@@ -81,13 +82,12 @@ func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, rout
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
-	response := channel2.NewResult(true, "")
+	response := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId)
+	response.ReplyTo(msg)
 
 	for k, v := range peerData {
 		response.Headers[int32(k)] = v
 	}
-
-	response.ReplyTo(msg)
 
 	if err := rh.ctrl.Channel().Send(response); err == nil {
 		log.Debugf("handled route for [s/%s]", route.SessionId)
@@ -98,7 +98,7 @@ func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, rout
 
 func (rh *routeHandler) fail(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, err error) {
 	log := pfxlog.ContextLogger(ch.Label())
-	response := channel2.NewResult(false, err.Error())
+	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, err.Error())
 	response.ReplyTo(msg)
 
 	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)

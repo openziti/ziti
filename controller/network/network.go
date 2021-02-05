@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
@@ -740,11 +741,14 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 	}
 	select {
 	case msg := <-waitCh:
-		if msg.ContentType == channel2.ContentTypeResultType {
-			result := channel2.UnmarshalResult(msg)
-
-			if !result.Success {
-				return nil, errors.New(result.Message)
+		if msg.ContentType == ctrl_msg.RouteResultType {
+			_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+			if !success {
+				message := ""
+				if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
+					message = string(errMsg)
+				}
+				return nil, errors.New(message)
 			}
 
 			peerData := xt.PeerData{}
