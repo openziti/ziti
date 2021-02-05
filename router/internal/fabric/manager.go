@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/foundation/channel2"
+	cmap "github.com/orcaman/concurrent-map"
 	"strings"
 	"sync"
 	"time"
@@ -68,9 +69,7 @@ type StateManager interface {
 type StateManagerImpl struct {
 	sessionsByToken    *sync.Map //"network" sessions
 	apiSessionsByToken *sync.Map
-
-	supportedFabrics  *sync.Map
-	activeApiSessions *sync.Map
+	activeApiSessions  cmap.ConcurrentMap
 
 	Hostname       string
 	ControllerAddr string
@@ -92,8 +91,7 @@ func GetStateManager() StateManager {
 		EventEmmiter:       events.New(),
 		sessionsByToken:    &sync.Map{},
 		apiSessionsByToken: &sync.Map{},
-		supportedFabrics:   &sync.Map{},
-		activeApiSessions:  &sync.Map{},
+		activeApiSessions:  cmap.New(),
 	}
 
 	return singleStateManager
@@ -332,50 +330,63 @@ func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSecond
 }
 
 func (sm *StateManagerImpl) AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel) {
-	var sessions map[channel2.Channel]func()
+	var sessions *MapWithMutex
 
-	if val, ok := sm.activeApiSessions.Load(token); ok {
-		if sessions, ok = val.(map[channel2.Channel]func()); !ok {
-			pfxlog.Logger().Panic("could not convert to active sessions")
+	for sessions == nil {
+		if val, ok := sm.activeApiSessions.Get(token); ok {
+			if sessions, ok = val.(*MapWithMutex); !ok {
+				pfxlog.Logger().Panic("could not convert to active sessions")
+			}
+			sessions.Put(ch, removeCB)
+		} else {
+			sessions = newMapWithMutex()
+			sessions.Put(ch, removeCB)
+			if !sm.activeApiSessions.SetIfAbsent(token, sessions) {
+				sessions = nil
+			}
 		}
-	} else {
-		sessions = map[channel2.Channel]func(){}
 	}
-	sessions[ch] = removeCB
-
-	sm.activeApiSessions.Store(token, sessions)
 }
 
 func (sm *StateManagerImpl) RemoveConnectedApiSession(token string, ch channel2.Channel) {
-	if val, ok := sm.activeApiSessions.Load(token); ok {
-		sessions, ok := val.(map[channel2.Channel]func())
+	if val, ok := sm.activeApiSessions.Get(token); ok {
+		sessions, ok := val.(*MapWithMutex)
 
 		if !ok {
 			pfxlog.Logger().Panic("could not convert active sessions to map")
 		}
 
-		if removeCB, found := sessions[ch]; found {
+		sessions.Lock()
+		defer sessions.Unlock()
+
+		if removeCB, found := sessions.m[ch]; found {
 			removeCB()
-			delete(sessions, ch)
+			delete(sessions.m, ch)
 		}
 
-		if len(sessions) == 0 {
-			sm.activeApiSessions.Delete(token)
+		if len(sessions.m) == 0 {
+			sm.activeApiSessions.Remove(token)
 		}
 	}
 }
 
 func (sm *StateManagerImpl) ActiveSessionTokens() []string {
-	var tokens []string
+	return sm.activeApiSessions.Keys()
+}
 
-	sm.activeApiSessions.Range(func(key, _ interface{}) bool {
-		if token, ok := key.(string); ok {
-			tokens = append(tokens, token)
-		} else {
-			pfxlog.Logger().WithField("value", key).Panic("could not convert key to token")
-		}
-		return true
-	})
+func newMapWithMutex() *MapWithMutex {
+	return &MapWithMutex{
+		m: map[channel2.Channel]func(){},
+	}
+}
 
-	return tokens
+type MapWithMutex struct {
+	sync.Mutex
+	m map[channel2.Channel]func()
+}
+
+func (self *MapWithMutex) Put(ch channel2.Channel, f func()) {
+	self.Lock()
+	defer self.Unlock()
+	self.m[ch] = f
 }

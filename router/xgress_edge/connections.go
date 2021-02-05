@@ -68,9 +68,7 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 			if fingerprints.Contains(fingerprint) {
 				removeListener := handler.stateManager.AddApiSessionRemovedListener(token, func(token string) {
 					if !ch.IsClosed() {
-						err := ch.Close()
-
-						if err != nil {
+						if err := ch.Close(); err != nil {
 							pfxlog.Logger().WithError(err).Error("could not close channel during api session removal")
 						}
 					}
