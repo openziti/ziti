@@ -133,13 +133,15 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 
-	_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
-	if entity.PeerData != nil {
-		hostDataBucket := ctx.Bucket.GetOrCreateBucket(FieldServerPeerData)
-		for k, v := range entity.PeerData {
-			key := make([]byte, 4)
-			binary.LittleEndian.PutUint32(key, k)
-			hostDataBucket.PutValue(key, v)
+	if ctx.ProceedWithSet(FieldServerPeerData) {
+		_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
+		if entity.PeerData != nil {
+			hostDataBucket := ctx.Bucket.GetOrCreateBucket(FieldServerPeerData)
+			for k, v := range entity.PeerData {
+				key := make([]byte, 4)
+				binary.LittleEndian.PutUint32(key, k)
+				hostDataBucket.PutValue(key, v)
+			}
 		}
 	}
 

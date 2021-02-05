@@ -3,126 +3,128 @@ syntax = "proto3";
 package ctrl.pb;
 
 enum ContentType {
-    Zero = 0;
+  Zero = 0;
 
-    SessionRequestType = 1000;
-    SessionSuccessType = 1001;
-    DialType = 1002;
-    LinkType = 1003;
-    FaultType = 1004;
-    RouteType = 1005;
-    UnrouteType = 1006;
-    MetricsType = 1007;
-    TogglePipeTracesRequestType = 1008;
-    TraceEventType = 1010;
-    CreateTerminatorRequestType = 1011;
-    RemoveTerminatorRequestType = 1012;
-    InspectRequestType = 1013;
-    InspectResponseType = 1014;
-    SessionFailedType = 1016;
-    ValidateTerminatorsRequestType = 1017;
-    UpdateTerminatorRequestType = 10018;
+  SessionRequestType = 1000;
+  SessionSuccessType = 1001;
+  DialType = 1002;
+  LinkType = 1003;
+  FaultType = 1004;
+  RouteType = 1005;
+  UnrouteType = 1006;
+  MetricsType = 1007;
+  TogglePipeTracesRequestType = 1008;
+  TraceEventType = 1010;
+  CreateTerminatorRequestType = 1011;
+  RemoveTerminatorRequestType = 1012;
+  InspectRequestType = 1013;
+  InspectResponseType = 1014;
+  SessionFailedType = 1016;
+  ValidateTerminatorsRequestType = 1017;
+  UpdateTerminatorRequestType = 10018;
 }
 
 message SessionRequest {
-    string ingressId = 1;
-    string serviceId = 2;
-    map<uint32, bytes> peerData = 3;
+  string ingressId = 1;
+  string serviceId = 2;
+  map<uint32, bytes> peerData = 3;
+  map<string, bytes> extensionData = 4;
 }
 
 enum TerminatorPrecedence {
-    Default = 0;
-    Required = 1;
-    Failed = 2;
+  Default = 0;
+  Required = 1;
+  Failed = 2;
 }
 
 message CreateTerminatorRequest {
-    string serviceId = 2;
-    string binding = 3;
-    string address = 4;
-    map<uint32, bytes> peerData = 5;
-    uint32 cost = 6;
-    TerminatorPrecedence precedence = 7;
-    string identity = 8;
-    bytes identitySecret = 9;
+  string serviceId = 2;
+  string binding = 3;
+  string address = 4;
+  map<uint32, bytes> peerData = 5;
+  uint32 cost = 6;
+  TerminatorPrecedence precedence = 7;
+  string identity = 8;
+  bytes identitySecret = 9;
+  map<string, bytes> extensionData = 10;
 }
 
 message RemoveTerminatorRequest {
-    string terminatorId = 1;
+  string terminatorId = 1;
 }
 
 message Terminator {
-    string id = 1;
-    string binding = 2;
-    string address = 3;
+  string id = 1;
+  string binding = 2;
+  string address = 3;
 }
 
 message ValidateTerminatorsRequest {
-    repeated Terminator terminators = 1;
+  repeated Terminator terminators = 1;
 }
 
 message UpdateTerminatorRequest {
-    string terminatorId = 1;
-    bool updatePrecedence = 2;
-    bool updateCost = 3;
-    TerminatorPrecedence precedence = 4;
-    uint32 cost = 5;
+  string terminatorId = 1;
+  bool updatePrecedence = 2;
+  bool updateCost = 3;
+  TerminatorPrecedence precedence = 4;
+  uint32 cost = 5;
 }
 
 message Dial {
-    string id = 1;
-    string address = 2;
+  string id = 1;
+  string address = 2;
 }
 
 message Link {
-    string id = 1;
+  string id = 1;
 }
 
 enum FaultSubject {
-    IngressFault = 0;
-    EgressFault = 1;
-    LinkFault = 2;
+  IngressFault = 0;
+  EgressFault = 1;
+  LinkFault = 2;
 }
 
 message Fault {
-    FaultSubject subject = 1;
-    string id = 2;
+  FaultSubject subject = 1;
+  string id = 2;
 }
 
 message Route {
-    string sessionId = 1;
+  string sessionId = 1;
 
-    message Egress {
-        string binding = 1;
-        string address = 2;
-        string destination = 3;
-        map<uint32, bytes> peerData = 4;
-    }
-    Egress egress = 2;
+  message Egress {
+    string binding = 1;
+    string address = 2;
+    string destination = 3;
+    map<uint32, bytes> peerData = 4;
+  }
+  Egress egress = 2;
 
-    message Forward {
-        string srcAddress = 1;
-        string dstAddress = 2;
-    }
-    repeated Forward forwards = 3;
+  message Forward {
+    string srcAddress = 1;
+    string dstAddress = 2;
+  }
+  repeated Forward forwards = 3;
 }
 
 message Unroute {
-    string sessionId = 1;
-    bool now = 2;
+  string sessionId = 1;
+  bool now = 2;
 }
 
 message InspectRequest {
-    repeated string requestedValues = 1;
+  repeated string requestedValues = 1;
 }
 
 message InspectResponse {
-    bool success = 1;
-    repeated string errors = 2;
-    repeated InspectValue values = 3;
+  bool success = 1;
+  repeated string errors = 2;
+  repeated InspectValue values = 3;
 
-    message InspectValue {
-        string name = 1;
-        string value = 2;
-    }
+  message InspectValue {
+    string name = 1;
+    string value = 2;
+  }
 }

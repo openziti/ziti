@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 	"math"
@@ -38,6 +39,7 @@ func Test_TerminatorStore(t *testing.T) {
 	t.Run("test create/delete terminators", ctx.testLoadQueryTerminators)
 	t.Run("test update terminators", ctx.testUpdateTerminators)
 	t.Run("test delete terminators", ctx.testDeleteTerminators)
+	t.Run("test patch terminators", ctx.testPatchTerminator)
 }
 
 func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
@@ -229,6 +231,7 @@ func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 
 	terminator.Service = e.service.Id // service should not be updated
 	ctx.ValidateUpdated(terminator)
+
 }
 
 func (ctx *TestContext) testDeleteTerminators(t *testing.T) {
@@ -245,6 +248,41 @@ func (ctx *TestContext) testDeleteTerminators(t *testing.T) {
 
 	ctx.RequireDelete(e.service)
 	ctx.ValidateDeleted(e.terminator.Id)
+}
+
+func (ctx *TestContext) testPatchTerminator(t *testing.T) {
+	service := ctx.requireNewService()
+	router := ctx.requireNewRouter()
+
+	terminator := &Terminator{}
+	terminator.Service = service.Id
+	terminator.Router = router.Id
+	terminator.Binding = uuid.New().String()
+	terminator.Address = uuid.New().String()
+	terminator.Cost = 0
+	terminator.PeerData = map[uint32][]byte{
+		1: {1, 2, 3},
+		2: {3, 4, 5},
+	}
+	ctx.RequireCreate(terminator)
+	ctx.ValidateBaseline(terminator)
+
+	terminator.Cost = 100
+	checker := boltz.MapFieldChecker{
+		FieldTerminatorCost: struct{}{},
+	}
+	ctx.RequirePatch(terminator, checker)
+	ctx.ValidateUpdated(terminator)
+
+	terminator.PeerData = map[uint32][]byte{
+		1: {7, 8, 9},
+	}
+
+	checker = boltz.MapFieldChecker{
+		FieldServerPeerData: struct{}{},
+	}
+	ctx.RequirePatch(terminator, checker)
+	ctx.ValidateUpdated(terminator)
 }
 
 type testStrategyFactory struct{}

@@ -64,6 +64,7 @@ type Network struct {
 	lastSnapshot           time.Time
 	metricsRegistry        metrics.Registry
 	VersionProvider        common.VersionProvider
+	xvalidators
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider) (*Network, error) {
@@ -91,6 +92,10 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		lastSnapshot:      time.Now().Add(-time.Hour),
 		metricsRegistry:   metrics.NewRegistry(nodeId.Token, nil),
 		VersionProvider:   versionProvider,
+		xvalidators: xvalidators{
+			newSessionValidators:    &copyOnWriteNewSessionValidatorMap{},
+			newTerminatorValidators: &copyOnWriteNewTerminatorValidatorMap{},
+		},
 	}
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
@@ -280,7 +285,7 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*session, error) {
+func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string, extensionData map[string][]byte) (*session, error) {
 	log := pfxlog.Logger()
 
 	// 1: Allocate Session Identifier
@@ -300,13 +305,24 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			return nil, err
 		}
 
-		// 3: select terminator
+		// 3: Allow validastion extensions to get plugged in
+		for id, data := range extensionData {
+			validator := network.xvalidators.newSessionValidators.get(id)
+			if validator == nil {
+				return nil, errors.Errorf("no session validator of type '%v'", id)
+			}
+			if err := validator.ValidateSession(srcR, clientId, svc, data); err != nil {
+				return nil, err
+			}
+		}
+
+		// 4: select terminator
 		strategy, terminator, path, err := network.selectPath(srcR, svc, targetIdentity)
 		if err != nil {
 			return nil, err
 		}
 
-		// 4: Create Circuit
+		// 5: Create Circuit
 		circuit, err := network.CreateCircuitWithPath(path)
 		if err != nil {
 			return nil, err
@@ -320,13 +336,13 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			circuit.Binding = "udp"
 		}
 
-		// 4a: Create Route Messages
+		// 5a: Create Route Messages
 		rms, err := circuit.CreateRouteMessages(sessionId, terminator.GetAddress())
 		if err != nil {
 			return nil, err
 		}
 
-		// 5: Route Egress
+		// 6: Route Egress
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)
 		if err != nil {
@@ -341,7 +357,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 		}
 
-		// 6: Create Intermediate Routes
+		// 7: Create Intermediate Routes
 		for i := 0; i < len(circuit.Path)-1; i++ {
 			_, err = sendRoute(circuit.Path[i], rms[i], network.options.RouteTimeout)
 			if err != nil {
@@ -349,7 +365,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			}
 		}
 
-		// 7: Create Session Object
+		// 8: Create Session Object
 		ss := &session{
 			Id:         sessionId,
 			ClientId:   clientId,
@@ -815,6 +831,27 @@ func (network *Network) SnapshotDatabase() error {
 		network.lastSnapshot = time.Now()
 	}
 	return err
+}
+
+func (network *Network) RegisterNewSessionValidator(id string, v NewSessionValidator) {
+	network.xvalidators.newSessionValidators.put(id, v)
+}
+
+func (network *Network) RegisterNewTerminatorValidator(id string, v NewTerminatorValidator) {
+	network.xvalidators.newTerminatorValidators.put(id, v)
+}
+
+func (network *Network) CreateTerminator(t *Terminator, extensionData map[string][]byte) (string, error) {
+	for id, data := range extensionData {
+		validator := network.xvalidators.newTerminatorValidators.get(id)
+		if validator == nil {
+			return "", errors.Errorf("no terminator validator of type '%v'", id)
+		}
+		if err := validator.ValidateTerminator(t, data); err != nil {
+			return "", err
+		}
+	}
+	return network.Terminators.Create(t)
 }
 
 type Cache interface {
