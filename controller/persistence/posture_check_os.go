@@ -60,28 +60,31 @@ func (entity *PostureCheckOperatingSystem) LoadValues(_ boltz.CrudStore, bucket 
 }
 
 func (entity *PostureCheckOperatingSystem) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
-	osMap := map[string]OperatingSystem{}
+	if bucket.ProceedWithSet(FieldPostureCheckOsType, ctx.FieldChecker) && bucket.ProceedWithSet(FieldPostureCheckOsVersions, ctx.FieldChecker) {
 
-	for _, os := range entity.OperatingSystems {
-		osMap[os.OsType] = os
-	}
+		osMap := map[string]OperatingSystem{}
 
-	cursor := bucket.Cursor()
-	for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
-		osType := string(key)
-		if _, found := osMap[osType]; !found {
-			err := bucket.DeleteBucket(key)
-			if err != nil {
-				pfxlog.Logger().Errorf(err.Error())
+		for _, os := range entity.OperatingSystems {
+			osMap[os.OsType] = os
+		}
+
+		cursor := bucket.Cursor()
+		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
+			osType := string(key)
+			if _, found := osMap[osType]; !found {
+				err := bucket.DeleteBucket(key)
+				if err != nil {
+					pfxlog.Logger().Errorf(err.Error())
+				}
 			}
 		}
-	}
 
-	seenOs := map[string]struct{}{}
-	for _, os := range entity.OperatingSystems {
-		seenOs[os.OsType] = struct{}{}
-		existing := bucket.GetOrCreateBucket(os.OsType)
-		existing.SetString(FieldPostureCheckOsType, os.OsType, ctx.FieldChecker)
-		existing.SetStringList(FieldPostureCheckOsVersions, os.OsVersions, ctx.FieldChecker)
+		seenOs := map[string]struct{}{}
+		for _, os := range entity.OperatingSystems {
+			seenOs[os.OsType] = struct{}{}
+			existing := bucket.GetOrCreateBucket(os.OsType)
+			existing.SetString(FieldPostureCheckOsType, os.OsType, ctx.FieldChecker)
+			existing.SetStringList(FieldPostureCheckOsVersions, os.OsVersions, ctx.FieldChecker)
+		}
 	}
 }
