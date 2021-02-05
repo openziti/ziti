@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 )
 
 type bindHandler struct {
@@ -59,6 +60,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
 	ch.AddReceiveHandler(newInspectHandler(self.id))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
+	metrics.AddLatencyProbeResponder(ch)
 
 	for _, x := range self.xctrls {
 		if err := ch.Bind(x); err != nil {

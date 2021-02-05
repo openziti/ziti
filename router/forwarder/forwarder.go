@@ -47,6 +47,7 @@ type XgressDestination interface {
 	Start()
 	IsTerminator() bool
 	Label() string
+	GetTimeOfLastRxFromLink() int64
 }
 
 func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
@@ -123,7 +124,7 @@ func (forwarder *Forwarder) Unroute(sessionId string, now bool) {
 		forwarder.sessions.removeForwardTable(sessionId)
 		forwarder.EndSession(sessionId)
 	} else {
-		go forwarder.unrouteTimeout(sessionId, 5000)
+		go forwarder.unrouteTimeout(sessionId, forwarder.Options.XgressCloseCheckInterval)
 	}
 }
 
@@ -142,7 +143,6 @@ func (forwarder *Forwarder) ForwardPayload(srcAddr xgress.Address, payload *xgre
 					return err
 				}
 				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
-				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
 			} else {
 				return errors.Errorf("cannot forward payload, no destination for session=%v src=%v dst=%v", sessionId, srcAddr, dstAddr)
@@ -166,7 +166,6 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 					return err
 				}
 				log.Debugf("=> %s", string(dstAddr))
-				forwardTable.lastUsed = info.NowInMilliseconds()
 				return nil
 
 			} else {
@@ -190,24 +189,36 @@ func (forwarder *Forwarder) Debug() string {
 // for a session, it will be checked repeatedly, looking to see if the session has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
 //
-func (forwarder *Forwarder) unrouteTimeout(sessionId string, ms int64) {
+func (forwarder *Forwarder) unrouteTimeout(sessionId string, interval time.Duration) {
 	log := pfxlog.ContextLogger("s/" + sessionId)
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 
 	for {
-		time.Sleep(time.Duration(ms) * time.Millisecond)
+		time.Sleep(interval)
 
-		if ft, found := forwarder.sessions.getForwardTable(sessionId); found {
-			elapsedDelta := info.NowInMilliseconds() - ft.lastUsed
-			if elapsedDelta >= ms {
+		if dest := forwarder.getXgressForSession(sessionId); dest != nil {
+			elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
+			if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
 				forwarder.sessions.removeForwardTable(sessionId)
 				forwarder.EndSession(sessionId)
 				return
 			}
-
 		} else {
+			forwarder.sessions.removeForwardTable(sessionId)
+			forwarder.EndSession(sessionId)
 			return
 		}
 	}
+}
+
+func (forwarder *Forwarder) getXgressForSession(sessionId string) XgressDestination {
+	if addresses, found := forwarder.destinations.getAddressesForSession(sessionId); found {
+		for _, address := range addresses {
+			if destination, found := forwarder.destinations.getDestination(address); found {
+				return destination.(XgressDestination)
+			}
+		}
+	}
+	return nil
 }
