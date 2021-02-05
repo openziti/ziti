@@ -17,8 +17,10 @@
 package handler_ctrl
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
 )
@@ -44,10 +46,22 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, ch channel2
 	sessionId := string(msg.Body)
 	routing := self.network.RouteResult(self.r, sessionId, success)
 	if !routing {
-		self.notRoutingSession(sessionId)
+		go self.notRoutingSession(sessionId)
 	}
 }
 
 func (self *routeResultHandler) notRoutingSession(sessionId string) {
 	logrus.Warnf("not routing session [s/%s] for router [r/%s], sending unroute", sessionId, self.r.Id)
+	unroute := &ctrl_pb.Unroute{
+		SessionId: sessionId,
+		Now:       true,
+	}
+	if body, err := proto.Marshal(unroute); err == nil {
+		unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+		if err := self.r.Control.Send(unrouteMsg); err != nil {
+			logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", sessionId, self.r.Id, err)
+		}
+	} else {
+		logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", sessionId, self.r.Id, err)
+	}
 }

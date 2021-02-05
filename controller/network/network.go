@@ -775,16 +775,16 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 }
 
 func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
-	remove := &ctrl_pb.Unroute{
+	unroute := &ctrl_pb.Unroute{
 		SessionId: sessionId.Token,
 		Now:       now,
 	}
-	body, err := proto.Marshal(remove)
+	body, err := proto.Marshal(unroute)
 	if err != nil {
 		return err
 	}
-	removeMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-	if err := r.Control.Send(removeMsg); err != nil {
+	unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+	if err := r.Control.Send(unrouteMsg); err != nil {
 		return err
 	}
 	return nil
