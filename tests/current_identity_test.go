@@ -47,7 +47,7 @@ func Test_CurrentIdentity(t *testing.T) {
 			erArray[0].ExistsP("id")
 		})
 
-		t.Run("returns empty list with if edge routter is deleted", func(t *testing.T) {
+		t.Run("returns empty list with if edge router is deleted", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
 			ctx.AdminSession.requireDeleteEntity(er1)

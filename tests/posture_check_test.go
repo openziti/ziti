@@ -20,6 +20,7 @@ package tests
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
 	"net/http"
 	"testing"
@@ -31,6 +32,241 @@ func Test_PostureChecks(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
+
+	t.Run("can CRUD OS posture checks", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		originalName := uuid.New().String()
+		originalTags := map[string]interface{}{
+			"t1": "v1",
+		}
+
+		originalOses := []map[string]interface{}{
+			{
+				"type":     "Windows",
+				"versions": []interface{}{">10.0.0"},
+			},
+		}
+
+		originalTypeId := "OS"
+
+		t.Run("can create", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			osPost := gabs.New()
+			_, _ = osPost.Set(originalName, "name")
+			_, _ = osPost.Set(originalTags, "tags")
+			_, _ = osPost.Set(originalTypeId, "typeId")
+			_, _ = osPost.Set(originalOses, "operatingSystems")
+
+			resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Post("/posture-checks")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+			createdPostureCheck, err := gabs.ParseJSON(resp.Body())
+			ctx.Req.NoError(err)
+			ctx.Req.True(createdPostureCheck.ExistsP("data.id"))
+			postureCheckId := createdPostureCheck.Path("data.id").Data().(string)
+			ctx.Req.NotEmpty(postureCheckId)
+
+			t.Run("can get", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				checkContainer, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(checkContainer)
+
+				ctx.Req.True(checkContainer.ExistsP("data.name"), "should have a name")
+				ctx.Req.Equal(originalName, checkContainer.Path("data.name").Data().(string))
+
+				ctx.Req.True(checkContainer.ExistsP("data.tags"), "should have tags")
+				ctx.Req.Equal(originalTags, checkContainer.Path("data.tags").Data().(map[string]interface{}))
+
+				ctx.Req.True(checkContainer.ExistsP("data.typeId"), "should have a typeId")
+				ctx.Req.Equal(originalTypeId, checkContainer.Path("data.typeId").Data().(string))
+
+				ctx.Req.True(checkContainer.ExistsP("data.operatingSystems"), "should have an OS array")
+				oses, err := checkContainer.Path("data.operatingSystems").Children()
+				ctx.Req.NoError(err)
+				ctx.Req.Len(oses, 1, "should have 1 os")
+
+				ctx.Req.True(oses[0].ExistsP("versions"), "should have os versions")
+				ctx.Req.True(oses[0].ExistsP("type"), "should have an os type")
+				ctx.Req.Equal(originalOses[0], oses[0].Data())
+			})
+
+			newOses := []map[string]interface{}{
+				{
+					"type":     "Linux",
+					"versions": []interface{}{">9.0.0"},
+				},
+			}
+
+			t.Run("can patch oses", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+
+
+				osPatch := gabs.New()
+				_, _ = osPatch.Set(newOses, "operatingSystems")
+				_, _ = osPatch.Set(originalTypeId, "typeId")
+
+				patchResp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, patchResp.StatusCode())
+
+
+				t.Run("get after os patch has proper values", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+					ctx.Req.NoError(err)
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+					checkContainer, err := gabs.ParseJSON(resp.Body())
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(checkContainer)
+
+					ctx.Req.True(checkContainer.ExistsP("data.name"), "should have a name")
+					ctx.Req.Equal(originalName, checkContainer.Path("data.name").Data().(string))
+
+					ctx.Req.True(checkContainer.ExistsP("data.tags"), "should have tags")
+					ctx.Req.Equal(originalTags, checkContainer.Path("data.tags").Data().(map[string]interface{}))
+
+					ctx.Req.True(checkContainer.ExistsP("data.typeId"), "should have a typeId")
+					ctx.Req.Equal(originalTypeId, checkContainer.Path("data.typeId").Data().(string))
+
+					ctx.Req.True(checkContainer.ExistsP("data.operatingSystems"), "should have an OS array")
+					oses, err := checkContainer.Path("data.operatingSystems").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(oses, 1, "should have 1 os")
+
+					ctx.Req.True(oses[0].ExistsP("versions"), "should have os versions")
+					ctx.Req.True(oses[0].ExistsP("type"), "should have an os type")
+					ctx.Req.Equal(newOses[0], oses[0].Data())
+				})
+			})
+
+			t.Run("can patch tags", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newTags := map[string]interface{}{
+					"t2": "v2",
+				}
+
+				osPatch := gabs.New()
+				_, _ = osPatch.Set(newTags, "tags")
+				_, _ = osPatch.Set(originalTypeId, "typeId")
+
+				patchResp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, patchResp.StatusCode())
+
+
+				t.Run("get after tags patch has proper values", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+					ctx.Req.NoError(err)
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+					checkContainer, err := gabs.ParseJSON(resp.Body())
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(checkContainer)
+
+					ctx.Req.True(checkContainer.ExistsP("data.name"), "should have a name")
+					ctx.Req.Equal(originalName, checkContainer.Path("data.name").Data().(string))
+
+					ctx.Req.True(checkContainer.ExistsP("data.tags"), "should have tags")
+					ctx.Req.Equal(newTags, checkContainer.Path("data.tags").Data().(map[string]interface{}))
+
+					ctx.Req.True(checkContainer.ExistsP("data.typeId"), "should have a typeId")
+					ctx.Req.Equal(originalTypeId, checkContainer.Path("data.typeId").Data().(string))
+
+					ctx.Req.True(checkContainer.ExistsP("data.operatingSystems"), "should have an OS array")
+					oses, err := checkContainer.Path("data.operatingSystems").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(oses, 1, "should have 1 os")
+
+					ctx.Req.True(oses[0].ExistsP("versions"), "should have os versions")
+					ctx.Req.True(oses[0].ExistsP("type"), "should have an os type")
+					ctx.Req.Equal(newOses[0], oses[0].Data()) //newOses from patch
+				})
+			})
+
+			t.Run("can delete", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.AdminSession.deleteEntityOfType("posture-checks", postureCheckId)
+			})
+		})
+
+	})
+
+	t.Run("can CRUD domain posture checks", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		domain := "domain1"
+		postureCheckRole := uuid.New().String()
+
+		t.Run("can create a posture check", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			postureCheck := ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+
+			t.Run("created posture check can have name patched", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				putContainer := gabs.New()
+				newName := "newName-" + uuid.New().String()
+				_, _ = putContainer.Set(newName, "name")
+				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
+
+				resp := ctx.AdminSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+				ctx.Req.NotNil(resp)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				updatedContainer := ctx.AdminSession.requireQuery("/posture-checks/" + postureCheck.id)
+
+				ctx.Req.Equal(newName, updatedContainer.Path("data.name").Data().(string), "name is patched")
+				domains, err := updatedContainer.Path("data.domains").Children()
+				ctx.Req.NoError(err)
+				ctx.Req.Len(domains, 1)
+				ctx.Req.Equal(domain, domains[0].Data().(string), "domain is previous value")
+
+			})
+
+			t.Run("created posture check can have tags patched", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				putContainer := gabs.New()
+
+				tags := map[string]string{
+					"tag1": "value1",
+				}
+				_, _ = putContainer.Set(tags, "tags")
+				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
+
+				resp := ctx.AdminSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+				ctx.Req.NotNil(resp)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				updatedContainer := ctx.AdminSession.requireQuery("/posture-checks/" + postureCheck.id)
+
+				updatedDomains, err := updatedContainer.Path("data.domains").Children()
+				ctx.Req.NoError(err)
+				ctx.Req.Len(updatedDomains, 1)
+				ctx.Req.Equal(domain, updatedDomains[0].Data().(string), "domain is previous value")
+
+				updatedTags, ok := updatedContainer.Path("data.tags").Data().(map[string]interface{})
+				ctx.Req.True(ok, "has a data.tags attribute")
+				ctx.Req.Equal("value1", updatedTags["tag1"], "has the updated tag values")
+			})
+
+			t.Run("created posture check can be deleted", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.AdminSession.requireDeleteEntity(postureCheck)
+			})
+		})
+	})
 
 	t.Run("can create a domain posture check associated to a service", func(t *testing.T) {
 		ctx.testContextChanged(t)
