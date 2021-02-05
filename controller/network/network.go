@@ -332,9 +332,9 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		if err != nil {
 			return nil, err
 		}
+		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Route Egress
-		rms[len(rms)-1].Egress.PeerData = clientId.Data
 		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)
 		if err != nil {
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
