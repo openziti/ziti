@@ -154,6 +154,9 @@ type IdentityEnrollmentsOtt struct {
 	// Format: date-time
 	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
 
+	// id
+	ID string `json:"id,omitempty"`
+
 	// jwt
 	Jwt string `json:"jwt,omitempty"`
 
@@ -220,6 +223,9 @@ type IdentityEnrollmentsOttca struct {
 	// expires at
 	// Format: date-time
 	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
+
+	// id
+	ID string `json:"id,omitempty"`
 
 	// jwt
 	Jwt string `json:"jwt,omitempty"`
@@ -303,6 +309,9 @@ type IdentityEnrollmentsUpdb struct {
 	// expires at
 	// Format: date-time
 	ExpiresAt strfmt.DateTime `json:"expiresAt,omitempty"`
+
+	// id
+	ID string `json:"id,omitempty"`
 
 	// jwt
 	Jwt string `json:"jwt,omitempty"`

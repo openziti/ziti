@@ -4,6 +4,7 @@ package tests
 
 import (
 	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"net/http"
@@ -279,6 +280,71 @@ func Test_CA(t *testing.T) {
 
 			ctx.Req.Error(err)
 			ctx.Req.Empty(enrolledSession)
+		})
+	})
+
+	t.Run("deleting a CA should", func(t *testing.T) {
+
+		t.Run("clean up outstanding enrollments", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			//shared across tests
+			enrollmentId := ""
+			var unenrolledOttCaIdentity *identity
+			var unenrolledOttCaIdentityContainer *gabs.Container
+
+			ca := newTestCa()
+
+			ca.id = ctx.AdminSession.requireCreateEntity(ca)
+
+			caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+			verificationToken := caValues.Path("data.verificationToken").Data().(string)
+			ctx.Req.NotEmpty(verificationToken)
+
+			validationAuth := ca.CreateSignedCert(verificationToken)
+
+			resp, err := ctx.AdminSession.newAuthenticatedRequest().
+				SetHeader("content-type", "text/plain").
+				SetBody(validationAuth.certPem).
+				Post("cas/" + ca.id + "/verify")
+
+			ctx.Req.NoError(err)
+			ctx.logJson(resp.Body())
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			unenrolledOttCaIdentity = ctx.AdminSession.RequireNewIdentityWithCaOtt(false, ca.id)
+
+			unenrolledOttCaIdentityContainer = ctx.AdminSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
+
+			ctx.Req.True(unenrolledOttCaIdentityContainer.ExistsP("data.enrollment.ottca.id"), "expected ottca to have an enrollment id")
+
+			enrollmentId = unenrolledOttCaIdentityContainer.Path("data.enrollment.ottca.id").Data().(string)
+			ctx.Req.NotEmpty(enrollmentId, "enrollment id should not be empty string")
+
+			ctx.AdminSession.requireDeleteEntity(ca)
+
+			t.Run("enrollment should have been removed", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				status, _ := ctx.AdminSession.query("/enrollments/" + enrollmentId)
+
+				ctx.Req.Equal(http.StatusNotFound, status, "expected enrollment to not be found")
+
+			})
+
+			t.Run("identities with previous enrollments tied to deleted CAs should not error on list", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
+				_ = ctx.AdminSession.requireQuery(fmt.Sprintf(`/identities?filter=id="%s"`, unenrolledOttCaIdentity.Id))
+			})
+
+			t.Run("identities with previous enrollments tied to deleted CAs should not error on detail", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
+				_ = ctx.AdminSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
+			})
 		})
 	})
 }

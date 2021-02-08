@@ -32,6 +32,7 @@ const (
 	FieldCaIsOttCaEnrollmentEnabled  = "isOttCaEnrollmentEnabled"
 	FieldCaIsAuthEnabled             = "isAuthEnabled"
 	FieldCaIdentityNameFormat        = "identityNameFormat"
+	FieldCaEnrollments               = "enrollments"
 )
 
 type Ca struct {
@@ -102,7 +103,8 @@ func newCaStore(stores *stores) *caStoreImpl {
 
 type caStoreImpl struct {
 	*baseStore
-	indexName boltz.ReadIndex
+	indexName         boltz.ReadIndex
+	symbolEnrollments boltz.EntitySetSymbol
 }
 
 func (store *caStoreImpl) NewStoreEntity() boltz.Entity {
@@ -119,6 +121,8 @@ func (store *caStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldCaIsOttCaEnrollmentEnabled, ast.NodeTypeBool)
 	store.AddSymbol(FieldCaIsAuthEnabled, ast.NodeTypeBool)
 	store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
+	store.symbolEnrollments = store.AddFkSetSymbol(FieldCaEnrollments, store.stores.enrollment)
+
 }
 
 func (store *caStoreImpl) initializeLinked() {
@@ -149,7 +153,12 @@ func (store *caStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Ca, error
 }
 
 func (store *caStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	// TODO: Delete enrollment certs
+	for _, enrollmentId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldCaEnrollments) {
+		if err := store.stores.enrollment.DeleteById(ctx, enrollmentId); err != nil {
+			return err
+		}
+	}
+
 	return store.baseStore.DeleteById(ctx, id)
 }
 

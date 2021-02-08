@@ -8246,6 +8246,9 @@ func init() {
               "type": "string",
               "format": "date-time"
             },
+            "id": {
+              "type": "string"
+            },
             "jwt": {
               "type": "string"
             },
@@ -8267,6 +8270,9 @@ func init() {
               "type": "string",
               "format": "date-time"
             },
+            "id": {
+              "type": "string"
+            },
             "jwt": {
               "type": "string"
             },
@@ -8281,6 +8287,9 @@ func init() {
             "expiresAt": {
               "type": "string",
               "format": "date-time"
+            },
+            "id": {
+              "type": "string"
             },
             "jwt": {
               "type": "string"
@@ -24975,6 +24984,9 @@ func init() {
           "type": "string",
           "format": "date-time"
         },
+        "id": {
+          "type": "string"
+        },
         "jwt": {
           "type": "string"
         },
@@ -24996,6 +25008,9 @@ func init() {
           "type": "string",
           "format": "date-time"
         },
+        "id": {
+          "type": "string"
+        },
         "jwt": {
           "type": "string"
         },
@@ -25010,6 +25025,9 @@ func init() {
         "expiresAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "id": {
+          "type": "string"
         },
         "jwt": {
           "type": "string"
@@ -27756,6 +27774,9 @@ func init() {
               "type": "string",
               "format": "date-time"
             },
+            "id": {
+              "type": "string"
+            },
             "jwt": {
               "type": "string"
             },
@@ -27777,6 +27798,9 @@ func init() {
               "type": "string",
               "format": "date-time"
             },
+            "id": {
+              "type": "string"
+            },
             "jwt": {
               "type": "string"
             },
@@ -27791,6 +27815,9 @@ func init() {
             "expiresAt": {
               "type": "string",
               "format": "date-time"
+            },
+            "id": {
+              "type": "string"
             },
             "jwt": {
               "type": "string"
