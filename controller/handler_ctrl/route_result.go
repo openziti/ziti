@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
@@ -41,10 +42,16 @@ func (self *routeResultHandler) ContentType() int32 {
 	return ctrl_msg.RouteResultType
 }
 
-func (self *routeResultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
 	sessionId := string(msg.Body)
-	routing := self.network.RouteResult(self.r, sessionId, success)
+	peerData := xt.PeerData{}
+	for k, v := range msg.Headers {
+		if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader {
+			peerData[uint32(k)] = v
+		}
+	}
+	routing := self.network.RouteResult(self.r, sessionId, success, peerData)
 	if !routing {
 		go self.notRoutingSession(sessionId)
 	}

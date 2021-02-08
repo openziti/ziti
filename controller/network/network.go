@@ -178,8 +178,8 @@ func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
 }
 
-func (network *Network) RouteResult(r *Router, sessionId string, success bool) bool {
-	return network.routeSenderController.forwardRouteResult(r, sessionId, success)
+func (network *Network) RouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
+	return network.routeSenderController.forwardRouteResult(r, sessionId, success, peerData)
 }
 
 func (network *Network) GetEventDispatcher() event.Dispatcher {
@@ -333,6 +333,9 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			return nil, err
 		}
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
+
+		// 5: Routing
+
 
 		// 5: Route Egress
 		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)

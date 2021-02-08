@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
@@ -34,11 +35,11 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool) bool {
+func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
 	v, found := self.senders.Get(sessionId)
 	if found {
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, success: success}
+		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, success: success, peerData: peerData}
 		return true
 	}
 	return false
@@ -64,23 +65,25 @@ func newRouteSender(sessionId string, timeout time.Duration, maxTries int) *rout
 	}
 }
 
-func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route) error {
+func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (xt.PeerData, error) {
 	defer func() {
 		// remove sender
 	}()
 
 	// send route messages
+	tr := circuit.Path[len(circuit.Path)-1]
 	for i := 0; i < len(circuit.Path); i++ {
 		r := circuit.Path[i]
 		go self.sendRoute(r, routeMsgs[i])
 		self.attendance[r.Id] = false
 
 		// count termination attempts
-		if r == circuit.Path[len(circuit.Path)-1] {
+		if r == tr {
 			self.tries++
 		}
 	}
 
+	var peerData xt.PeerData
 	deadline := time.Now().Add(self.timeout)
 	timeout := time.Until(deadline)
 attendance:
@@ -89,29 +92,33 @@ attendance:
 		case status := <-self.in:
 			if status.success {
 				self.attendance[status.r.Id] = true
+				if status.r == tr {
+					peerData = status.peerData
+				}
 				timeout = time.Until(deadline)
 
 			} else {
-				if status.r == circuit.Path[len(circuit.Path)-1] {
+				if status.r == tr {
 					if self.tries < self.maxTries {
+						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 						self.tries++
 						logrus.Warnf("retrying terminator, attempt [%d] of [%d]", self.tries, self.maxTries)
 						go self.sendRoute(status.r, routeMsgs[len(circuit.Path)-1])
 
 					} else {
 						self.tearDownTheSuccesful()
-						return errors.Errorf("error creating route [s/%s] on [r/%s], maximum retry attempts exceeded", self.sessionId, status.r.Id)
+						return nil, errors.Errorf("error creating route [s/%s] on [r/%s], maximum retry attempts exceeded", self.sessionId, status.r.Id)
 					}
 
 				} else {
 					self.tearDownTheSuccesful()
-					return errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
+					return nil, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
 				}
 			}
 
 		case <-time.After(timeout):
 			self.tearDownTheSuccesful()
-			return errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
+			return nil, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
 		allPresent := true
 		for _, v := range self.attendance {
@@ -123,7 +130,8 @@ attendance:
 			break attendance
 		}
 	}
-	return nil
+	strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+	return peerData, nil
 }
 
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
@@ -144,4 +152,5 @@ type routeStatus struct {
 	r         *Router
 	sessionId string
 	success   bool
+	peerData  xt.PeerData
 }
