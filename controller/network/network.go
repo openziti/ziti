@@ -309,7 +309,6 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
-	retryCount := 0
 	for {
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
@@ -345,31 +344,14 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Routing
-
-
-		// 5: Route Egress
-		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)
+		rs := network.newRouteSender(sessionId.Token)
+		peerData, err := rs.route(circuit, rms, strategy, terminator)
+		network.removeRouteSender(rs)
 		if err != nil {
-			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-			retryCount++
-			if retryCount > 3 {
-				return nil, err
-			} else {
-				continue
-			}
-		} else {
-			strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+			return nil, errors.Wrap(err, "error routing")
 		}
 
-		// 6: Create Intermediate Routes
-		for i := 0; i < len(circuit.Path)-1; i++ {
-			_, err = sendRoute(circuit.Path[i], rms[i], network.options.RouteTimeout)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// 7: Create Session Object
+		// 6: Create Session Object
 		ss := &session{
 			Id:         sessionId,
 			ClientId:   clientId,

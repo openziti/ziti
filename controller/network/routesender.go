@@ -32,16 +32,18 @@ type routeSenderController struct {
 }
 
 func newRouteSenderController() *routeSenderController {
-	return &routeSenderController{}
+	return &routeSenderController{senders: cmap.New()}
 }
 
 func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
 	v, found := self.senders.Get(sessionId)
 	if found {
+		logrus.Infof("found route sender for [s/%s]", sessionId)
 		routeSender := v.(*routeSender)
 		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, success: success, peerData: peerData}
 		return true
 	}
+	logrus.Warnf("did not find route sender for [s/%s]", sessionId)
 	return false
 }
 
@@ -69,6 +71,7 @@ func newRouteSender(sessionId string, timeout time.Duration, maxTries int) *rout
 		sessionId:  sessionId,
 		timeout:    timeout,
 		maxTries:   maxTries,
+		in:         make(chan *routeStatus, 16),
 		attendance: make(map[string]bool),
 	}
 }
@@ -98,12 +101,13 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
+			logrus.Infof("received status from [r/%s] for [s/%s]: %v", status.r.Id, status.sessionId, status)
+
 			if status.success {
 				self.attendance[status.r.Id] = true
 				if status.r == tr {
 					peerData = status.peerData
 				}
-				timeout = time.Until(deadline)
 
 			} else {
 				if status.r == tr {
@@ -128,15 +132,18 @@ attendance:
 			self.tearDownTheSuccesful()
 			return nil, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
+
 		allPresent := true
 		for _, v := range self.attendance {
-			if v == false {
+			if !v {
 				allPresent = false
 			}
 		}
 		if allPresent {
 			break attendance
 		}
+
+		timeout = time.Until(deadline)
 	}
 	strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 	return peerData, nil

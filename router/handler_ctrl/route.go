@@ -64,26 +64,25 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				pfxlog.Logger().Warnf("destination exists for [%s]", route.Egress.Address)
-				rh.success(msg, ch, route, nil)
+				rh.success(ch, route, nil)
 				return
 			} else {
 				rh.connectEgress(msg, ch, route)
 				return
 			}
 		} else {
-			rh.success(msg, ch, route, nil)
+			rh.success(ch, route, nil)
 		}
 	} else {
 		log.Errorf("error unmarshaling (%s)", err)
 	}
 }
 
-func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
+func (rh *routeHandler) success(ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
 	response := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId)
-	response.ReplyTo(msg)
 
 	for k, v := range peerData {
 		response.Headers[int32(k)] = v
@@ -96,10 +95,9 @@ func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, rout
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, err error) {
+func (rh *routeHandler) fail(ch channel2.Channel, route *ctrl_pb.Route, err error) {
 	log := pfxlog.ContextLogger(ch.Label())
 	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, err.Error())
-	response.ReplyTo(msg)
 
 	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
@@ -125,15 +123,15 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel
 					sessionId,
 					xgress.Address(route.Egress.Address),
 					bindHandler); err == nil {
-					rh.success(msg, ch, route, peerData)
+					rh.success(ch, route, peerData)
 				} else {
-					rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+					rh.fail(ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
 				}
 			} else {
-				rh.fail(msg, ch, route, errors.Errorf("unable to create dialer (%s)", err))
+				rh.fail(ch, route, errors.Errorf("unable to create dialer (%s)", err))
 			}
 		} else {
-			rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+			rh.fail(ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
 		}
 	})
 }
