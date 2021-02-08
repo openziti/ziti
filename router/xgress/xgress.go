@@ -421,6 +421,11 @@ func (self *Xgress) tx() {
 func (self *Xgress) flushSendThenClose() {
 	self.CloseTimeout(self.Options.MaxCloseWait)
 	self.ForwardEndOfSession(func(payload *Payload) bool {
+		if self.payloadBuffer.closed.Get() {
+			// Avoid spurious 'failed to forward payload' error if the buffer is already closed
+			return false
+		}
+
 		pfxlog.ContextLogger(self.Label()).Debug("sending end of session payload")
 		return self.forwardPayload(payload)
 	})
@@ -495,7 +500,7 @@ func (self *Xgress) forwardPayload(payload *Payload) bool {
 	sendCallback, err := self.payloadBuffer.BufferPayload(payload)
 
 	if err != nil {
-		pfxlog.ContextLogger(self.Label()).WithError(err).Error("failure forwarding payload")
+		pfxlog.ContextLogger(self.Label()).WithError(err).Error("failure to buffer payload")
 		return false
 	}
 
