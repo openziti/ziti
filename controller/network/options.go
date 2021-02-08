@@ -18,7 +18,7 @@ package network
 
 import (
 	"errors"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -28,15 +28,13 @@ type Options struct {
 		RerouteFraction float32
 		RerouteCap      uint32
 	}
-	TerminationTimeout      time.Duration
 	RouteTimeout            time.Duration
 	CtrlChanLatencyInterval time.Duration
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds:            15,
-		TerminationTimeout:      10 * time.Second,
+		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
 		CtrlChanLatencyInterval: 10 * time.Second,
 	}
@@ -53,14 +51,6 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.CycleSeconds = uint32(cycleSeconds)
 		} else {
 			return nil, errors.New("invalid value for 'cycleSeconds'")
-		}
-	}
-
-	if value, found := src["terminationTimeoutSeconds"]; found {
-		if terminationTimeoutSeconds, ok := value.(int); ok {
-			options.TerminationTimeout = time.Duration(terminationTimeoutSeconds) * time.Second
-		} else {
-			return nil, errors.New("invalid value for 'terminationTimeoutSeconds'")
 		}
 	}
 
@@ -86,7 +76,7 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteFraction, ok := value.(float64); ok {
 					options.Smart.RerouteFraction = float32(rerouteFraction)
 				} else {
-					pfxlog.Logger().Errorf("%p", value)
+					logrus.Errorf("%p", value)
 				}
 			}
 
@@ -94,11 +84,11 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteCap, ok := value.(int); ok {
 					options.Smart.RerouteCap = uint32(rerouteCap)
 				} else {
-					pfxlog.Logger().Errorf("%p", value)
+					logrus.Errorf("%p", value)
 				}
 			}
 		} else {
-			pfxlog.Logger().Errorf("invalid or empty 'smart' stanza")
+			logrus.Errorf("invalid or empty 'smart' stanza")
 		}
 	}
 

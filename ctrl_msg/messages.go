@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	ContentTypeSessionSuccessType = 1001
-	ContentTypeSessionFailedType  = 1016
-	RouteResultType               = 1022
+	SessionSuccessType      = 1001
+	SessionFailedType       = 1016
+	RouteResultType         = 1022
+	SessionConfirmationType = 1034
 
 	SessionSuccessAddressHeader = 1100
 	RouteResultSuccessHeader    = 1101
@@ -31,13 +32,13 @@ const (
 )
 
 func NewSessionSuccessMsg(sessionId, address string) *channel2.Message {
-	msg := channel2.NewMessage(ContentTypeSessionSuccessType, []byte(sessionId))
+	msg := channel2.NewMessage(SessionSuccessType, []byte(sessionId))
 	msg.Headers[SessionSuccessAddressHeader] = []byte(address)
 	return msg
 }
 
 func NewSessionFailedMsg(message string) *channel2.Message {
-	return channel2.NewMessage(ContentTypeSessionFailedType, []byte(message))
+	return channel2.NewMessage(SessionFailedType, []byte(message))
 }
 
 func NewRouteResultSuccessMsg(sessionId string) *channel2.Message {

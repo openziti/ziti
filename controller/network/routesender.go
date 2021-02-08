@@ -60,17 +60,14 @@ type routeSender struct {
 	circuit    *Circuit
 	routeMsgs  []*ctrl_pb.Route
 	timeout    time.Duration
-	maxTries   int
 	in         chan *routeStatus
 	attendance map[string]bool
-	tries      int
 }
 
-func newRouteSender(sessionId string, timeout time.Duration, maxTries int) *routeSender {
+func newRouteSender(sessionId string, timeout time.Duration) *routeSender {
 	return &routeSender{
 		sessionId:  sessionId,
 		timeout:    timeout,
-		maxTries:   maxTries,
 		in:         make(chan *routeStatus, 16),
 		attendance: make(map[string]bool),
 	}
@@ -83,11 +80,6 @@ func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, str
 		r := circuit.Path[i]
 		go self.sendRoute(r, routeMsgs[i])
 		self.attendance[r.Id] = false
-
-		// count termination attempts
-		if r == tr {
-			self.tries++
-		}
 	}
 
 	var peerData xt.PeerData
@@ -103,29 +95,19 @@ attendance:
 				self.attendance[status.r.Id] = true
 				if status.r == tr {
 					peerData = status.peerData
+					strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 				}
 
 			} else {
 				if status.r == tr {
-					if self.tries < self.maxTries {
-						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-						self.tries++
-						logrus.Warnf("retrying terminator, attempt [%d] of [%d]", self.tries, self.maxTries)
-						go self.sendRoute(status.r, routeMsgs[len(circuit.Path)-1])
-
-					} else {
-						self.tearDownTheSuccessful(self.sessionId, circuit)
-						return nil, errors.Errorf("error creating route [s/%s] on [r/%s], maximum retry attempts exceeded", self.sessionId, status.r.Id)
-					}
-
-				} else {
-					self.tearDownTheSuccessful(self.sessionId, circuit)
-					return nil, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
+					strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 				}
+				self.revert(self.sessionId, circuit)
+				return nil, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
 			}
 
 		case <-time.After(timeout):
-			self.tearDownTheSuccessful(self.sessionId, circuit)
+			self.revert(self.sessionId, circuit)
 			return nil, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
 
@@ -141,7 +123,7 @@ attendance:
 
 		timeout = time.Until(deadline)
 	}
-	strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+
 	return peerData, nil
 }
 
@@ -156,7 +138,7 @@ func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	logrus.Infof("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
 }
 
-func (self *routeSender) tearDownTheSuccessful(sessionId string, circuit *Circuit) {
+func (self *routeSender) revert(sessionId string, circuit *Circuit) {
 	for _, r := range circuit.Path {
 		success, found := self.attendance[r.Id]
 		if found && success {

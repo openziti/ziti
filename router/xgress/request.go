@@ -156,7 +156,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 		return nil, authError
 	}
 
-	if reply.ContentType == ctrl_msg.ContentTypeSessionSuccessType {
+	if reply.ContentType == ctrl_msg.SessionSuccessType {
 		var address string
 
 		sessionId := &identity.TokenId{Token: string(reply.Body)}
@@ -175,7 +175,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 			Address:     Address(address),
 			ResponseMsg: reply,
 			ctrl:        ctrl}, nil
-	} else if reply.ContentType == ctrl_msg.ContentTypeSessionFailedType {
+	} else if reply.ContentType == ctrl_msg.SessionFailedType {
 		errMsg := string(reply.Body)
 		log.Errorf("authentication failure: (%v)", errMsg)
 		return nil, errors.New(errMsg)

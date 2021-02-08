@@ -41,6 +41,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.SetLogicalName(self.router.Id)
 	ch.AddReceiveHandler(newSessionRequestHandler(self.router, self.network))
 	ch.AddReceiveHandler(newRouteResultHandler(self.network, self.router))
+	ch.AddReceiveHandler(newSessionConfirmationHandler())
 	ch.AddReceiveHandler(newCreateTerminatorHandler(self.network, self.router))
 	ch.AddReceiveHandler(newRemoveTerminatorHandler(self.network))
 	ch.AddReceiveHandler(newUpdateTerminatorHandler(self.network))

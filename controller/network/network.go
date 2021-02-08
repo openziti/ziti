@@ -183,7 +183,7 @@ func (network *Network) RouteResult(r *Router, sessionId string, success bool, p
 }
 
 func (network *Network) newRouteSender(sessionId string) *routeSender {
-	rs := newRouteSender(sessionId, network.options.RouteTimeout, 3)
+	rs := newRouteSender(sessionId, network.options.RouteTimeout)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
@@ -309,6 +309,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
+	retries := 0
 	for {
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
@@ -348,7 +349,12 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		peerData, err := rs.route(circuit, rms, strategy, terminator)
 		network.removeRouteSender(rs)
 		if err != nil {
-			return nil, errors.Wrap(err, "error routing")
+			retries++
+			if retries > 3 {
+				continue
+			} else {
+				return nil, errors.Wrap(err, "error routing")
+			}
 		}
 
 		// 6: Create Session Object
