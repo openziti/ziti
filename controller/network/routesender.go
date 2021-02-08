@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -51,6 +52,7 @@ type routeSender struct {
 	maxTries   int
 	in         chan *routeStatus
 	attendance map[string]bool
+	tries      int
 }
 
 func newRouteSender(sessionId string, timeout time.Duration, maxTries int) *routeSender {
@@ -70,14 +72,18 @@ func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route) err
 	// send route messages
 	for i := 0; i < len(circuit.Path); i++ {
 		r := circuit.Path[i]
-		if err := self.sendRoute(r, routeMsgs[i]); err != nil {
-			return errors.Wrapf(err, "unable to send route to [r/%s]", r.Id)
-		}
+		go self.sendRoute(r, routeMsgs[i])
 		self.attendance[r.Id] = false
+
+		// count termination attempts
+		if r == circuit.Path[len(circuit.Path)-1] {
+			self.tries++
+		}
 	}
 
 	deadline := time.Now().Add(self.timeout)
 	timeout := time.Until(deadline)
+attendance:
 	for {
 		select {
 		case status := <-self.in:
@@ -87,7 +93,15 @@ func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route) err
 
 			} else {
 				if status.r == circuit.Path[len(circuit.Path)-1] {
-					// if this was a terminator, do retry logic
+					if self.tries < self.maxTries {
+						self.tries++
+						logrus.Warnf("retrying terminator, attempt [%d] of [%d]", self.tries, self.maxTries)
+						go self.sendRoute(status.r, routeMsgs[len(circuit.Path)-1])
+
+					} else {
+						self.tearDownTheSuccesful()
+						return errors.Errorf("error creating route [s/%s] on [r/%s], maximum retry attempts exceeded", self.sessionId, status.r.Id)
+					}
 
 				} else {
 					self.tearDownTheSuccesful()
@@ -99,16 +113,28 @@ func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route) err
 			self.tearDownTheSuccesful()
 			return errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
+		allPresent := true
+		for _, v := range self.attendance {
+			if v == false {
+				allPresent = false
+			}
+		}
+		if allPresent {
+			break attendance
+		}
 	}
+	return nil
 }
 
-func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) error {
+func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	body, err := proto.Marshal(routeMsg)
 	if err != nil {
-		return errors.Wrap(err, "marshal protobuf")
+		logrus.Errorf("error marshalling route message for [s/%s] to [r/%s] (%v)", routeMsg.SessionId, r.Id, err)
+		return
 	}
 	r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body))
-	return nil
+
+	logrus.Infof("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
 }
 
 func (self *routeSender) tearDownTheSuccesful() {
