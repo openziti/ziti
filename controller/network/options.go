@@ -29,6 +29,7 @@ type Options struct {
 		RerouteCap      uint32
 	}
 	RouteTimeout            time.Duration
+	CreateSessionRetries    int
 	CtrlChanLatencyInterval time.Duration
 }
 
@@ -36,6 +37,7 @@ func DefaultOptions() *Options {
 	options := &Options{
 		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
+		CreateSessionRetries:    3,
 		CtrlChanLatencyInterval: 10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
@@ -59,6 +61,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.RouteTimeout = time.Duration(routeTimeoutSeconds) * time.Second
 		} else {
 			return nil, errors.New("invalid value for 'routeTimeoutSeconds'")
+		}
+	}
+
+	if value, found := src["createSessionRetries"]; found {
+		if createSessionRetries, ok := value.(int); ok {
+			options.CreateSessionRetries = createSessionRetries
+		} else {
+			return nil, errors.New("invalid value for 'createSessionRetries'")
 		}
 	}
 

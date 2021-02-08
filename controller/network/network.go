@@ -298,8 +298,6 @@ func (network *Network) LinkChanged(l *Link) {
 }
 
 func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*session, error) {
-	log := pfxlog.Logger()
-
 	// 1: Allocate Session Identifier
 	sessionIdHash, err := network.sequence.NextHash()
 	if err != nil {
@@ -350,10 +348,10 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		network.removeRouteSender(rs)
 		if err != nil {
 			retries++
-			if retries > 3 {
+			if retries > network.options.CreateSessionRetries {
 				continue
 			} else {
-				return nil, errors.Wrap(err, "error routing")
+				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating session [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
 			}
 		}
 
@@ -369,7 +367,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		network.sessionController.add(ss)
 		network.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
 
-		log.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+		logrus.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
 	}
 }
