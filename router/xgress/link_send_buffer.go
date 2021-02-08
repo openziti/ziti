@@ -315,7 +315,7 @@ func (buffer *LinkSendBuffer) retransmit() {
 		}
 
 		if retransmitted > 0 {
-			log.Infof("retransmitted [%d] payloads, [%d] buffered, linkSendBufferSize: %d", retransmitted, len(buffer.buffer), buffer.linkSendBufferSize)
+			log.Debugf("retransmitted [%d] payloads, [%d] buffered, linkSendBufferSize: %d", retransmitted, len(buffer.buffer), buffer.linkSendBufferSize)
 		}
 		buffer.lastRetransmitTime = now
 	}
