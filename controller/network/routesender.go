@@ -77,10 +77,6 @@ func newRouteSender(sessionId string, timeout time.Duration, maxTries int) *rout
 }
 
 func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (xt.PeerData, error) {
-	defer func() {
-		// remove sender
-	}()
-
 	// send route messages
 	tr := circuit.Path[len(circuit.Path)-1]
 	for i := 0; i < len(circuit.Path); i++ {
@@ -118,18 +114,18 @@ attendance:
 						go self.sendRoute(status.r, routeMsgs[len(circuit.Path)-1])
 
 					} else {
-						self.tearDownTheSuccesful()
+						self.tearDownTheSuccessful(self.sessionId, circuit)
 						return nil, errors.Errorf("error creating route [s/%s] on [r/%s], maximum retry attempts exceeded", self.sessionId, status.r.Id)
 					}
 
 				} else {
-					self.tearDownTheSuccesful()
+					self.tearDownTheSuccessful(self.sessionId, circuit)
 					return nil, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
 				}
 			}
 
 		case <-time.After(timeout):
-			self.tearDownTheSuccesful()
+			self.tearDownTheSuccessful(self.sessionId, circuit)
 			return nil, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
 
@@ -160,7 +156,19 @@ func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	logrus.Infof("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
 }
 
-func (self *routeSender) tearDownTheSuccesful() {
+func (self *routeSender) tearDownTheSuccessful(sessionId string, circuit *Circuit) {
+	for _, r := range circuit.Path {
+		success, found := self.attendance[r.Id]
+		if found && success {
+			unrouteMsg := &ctrl_pb.Unroute{SessionId: sessionId, Now: true}
+			if body, err := proto.Marshal(unrouteMsg); err == nil {
+				r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body))
+				logrus.Warnf("sent cleanup unroute to [r/%s] for [s/%s]", r.Id, sessionId)
+			} else {
+				logrus.Errorf("error marshaling cleanup unroute to [r/%s] for [s/%s] (%v)", r.Id, sessionId, err)
+			}
+		}
+	}
 }
 
 type routeStatus struct {
