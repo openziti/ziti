@@ -143,7 +143,7 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 	if previousService != nil {
 		if previousService.ClientConfig != nil {
 			log.Infof("stopping tunnel for unavailable service: %s", previousService.Name)
-			useCnt := self.addresses[svc.ClientConfig.Hostname]
+			useCnt := self.addresses[previousService.ClientConfig.Hostname]
 			err := self.interceptor.StopIntercepting(previousService.Name, useCnt == 1)
 			if err != nil {
 				log.Errorf("failed to stop intercepting: %v", err)
