@@ -1,3 +1,7 @@
+# Release 0.18.9
+
+* Fix PATCH OS Posture Checks clearing data
+
 # Release 0.18.8
 
 ## What's New
