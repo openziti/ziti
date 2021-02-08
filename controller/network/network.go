@@ -182,6 +182,16 @@ func (network *Network) RouteResult(r *Router, sessionId string, success bool, p
 	return network.routeSenderController.forwardRouteResult(r, sessionId, success, peerData)
 }
 
+func (network *Network) newRouteSender(sessionId string) *routeSender {
+	rs := newRouteSender(sessionId, network.options.RouteTimeout, 3)
+	network.routeSenderController.addRouteSender(rs)
+	return rs
+}
+
+func (network *Network) removeRouteSender(rs *routeSender) {
+	network.routeSenderController.removeRouteSender(rs)
+}
+
 func (network *Network) GetEventDispatcher() event.Dispatcher {
 	return network.eventDispatcher
 }

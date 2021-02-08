@@ -45,6 +45,14 @@ func (self *routeSenderController) forwardRouteResult(r *Router, sessionId strin
 	return false
 }
 
+func (self *routeSenderController) addRouteSender(rs *routeSender) {
+	self.senders.Set(rs.sessionId, rs)
+}
+
+func (self *routeSenderController) removeRouteSender(rs *routeSender) {
+	self.senders.Remove(rs.sessionId)
+}
+
 type routeSender struct {
 	sessionId  string
 	circuit    *Circuit
