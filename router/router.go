@@ -71,6 +71,10 @@ func (self *Router) Channel() channel2.Channel {
 	return self.ctrl
 }
 
+func (self *Router) DefaultRequestTimeout() time.Duration {
+	return self.config.Ctrl.DefaultRequestTimeout
+}
+
 func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	eventDispatcher := event.NewDispatcher()
 	metricsConfig := &metrics.Config{
