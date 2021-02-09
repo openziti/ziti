@@ -307,7 +307,8 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
-	retries := 0
+	attempt := 0
+	allCleanups := make(map[string]struct{})
 	for {
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
@@ -343,14 +344,34 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Routing
+		logrus.Infof("route attempt [#%d] for [s/%s]", attempt + 1, sessionId.Token)
 		rs := network.newRouteSender(sessionId.Token)
-		peerData, err := rs.route(circuit, rms, strategy, terminator)
+		peerData, cleanups, err := rs.route(circuit, rms, strategy, terminator)
 		network.removeRouteSender(rs)
+		for k, v := range cleanups {
+			allCleanups[k] = v
+		}
 		if err != nil {
-			retries++
-			if retries < network.options.CreateSessionRetries {
+			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt + 1, sessionId.Token, err)
+			attempt++
+			if attempt < network.options.CreateSessionRetries {
 				continue
+
 			} else {
+				// revert successful routes
+				logrus.Warnf("session creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
+				for cleanupRId, _ := range allCleanups {
+					if r, err := network.GetRouter(cleanupRId); err == nil {
+						if err := sendUnroute(r, sessionId, true); err == nil {
+							logrus.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						} else {
+							logrus.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						}
+					} else {
+						logrus.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, sessionId.Token)
+					}
+				}
+
 				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating session [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
 			}
 		}

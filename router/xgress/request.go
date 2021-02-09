@@ -134,7 +134,7 @@ type SessionInfo struct {
 	ctrl        CtrlChannel
 }
 
-var authError = errors.New("unexpected failure while authenticating")
+var sessionError = errors.New("error connecting session")
 
 func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout time.Duration, peerData map[uint32][]byte) (*SessionInfo, error) {
 	log := pfxlog.Logger()
@@ -145,15 +145,15 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 	}
 	bytes, err := proto.Marshal(sessionRequest)
 	if err != nil {
-		log.Errorf("failed to marshal SessionRequest message: (%v)", err)
-		return nil, authError
+		log.Errorf("failed to marshal SessionRequest message (%v)", err)
+		return nil, sessionError
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_SessionRequestType), bytes)
 	reply, err := ctrl.Channel().SendAndWaitWithTimeout(msg, timeout)
 	if err != nil {
-		log.Errorf("failed to send SessionRequest message: (%v)", err)
-		return nil, authError
+		log.Errorf("failed to send SessionRequest message (%v)", err)
+		return nil, sessionError
 	}
 
 	if reply.ContentType == ctrl_msg.SessionSuccessType {
@@ -182,8 +182,8 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 		return nil, errors.New(errMsg)
 
 	} else {
-		log.Errorf("unexpected controller response, ContentType: (%v)", msg.ContentType)
-		return nil, authError
+		log.Errorf("unexpected controller response, ContentType [%v]", msg.ContentType)
+		return nil, sessionError
 	}
 
 }
@@ -216,28 +216,28 @@ func AddTerminator(ctrl CtrlChannel, serviceId, binding, address, identity strin
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		log.Errorf("failed to marshal CreateTerminatorRequest message: (%v)", err)
-		return "", authError
+		return "", sessionError
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateTerminatorRequestType), bytes)
 	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send CreateTerminatorRequest message: (%v)", err)
-		return "", authError
+		log.Errorf("failed to send CreateTerminatorRequest message (%v)", err)
+		return "", sessionError
 	}
 
 	if responseMesg != nil && responseMesg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMesg)
 		if result.Success {
 			terminatorId := result.Message
-			log.Debugf("successfully added service terminator [t/%s] for service [%v]", terminatorId, serviceId)
+			log.Debugf("successfully added service terminator [t/%s] for service [S/%v]", terminatorId, serviceId)
 			return terminatorId, nil
 		}
 		log.Errorf("authentication failure: (%v)", result.Message)
 		return "", errors.New(result.Message)
 	} else {
-		log.Errorf("unexpected controller response, ContentType: (%v)", responseMesg.ContentType)
-		return "", authError
+		log.Errorf("unexpected controller response, ContentType [%v]", responseMesg.ContentType)
+		return "", sessionError
 	}
 }
 
@@ -248,15 +248,15 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal RemoveTerminatorRequest message: (%v)", err)
-		return authError
+		log.Errorf("failed to marshal RemoveTerminatorRequest message (%v)", err)
+		return sessionError
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveTerminatorRequestType), bytes)
 	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send RemoveTerminatorRequest message: (%v)", err)
-		return authError
+		log.Errorf("failed to send RemoveTerminatorRequest message (%v)", err)
+		return sessionError
 	}
 
 	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
@@ -265,11 +265,11 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 			log.Debugf("successfully removed service terminator [s/%s]", terminatorId)
 			return nil
 		}
-		log.Errorf("failure removing service terminator: (%v)", result.Message)
+		log.Errorf("failure removing service terminator (%v)", result.Message)
 		return errors.New(result.Message)
 	} else {
-		log.Errorf("unexpected controller response, ContentType: (%v)", responseMsg.ContentType)
-		return authError
+		log.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
+		return sessionError
 	}
 }
 
@@ -288,27 +288,27 @@ func UpdateTerminator(ctrl CtrlChannel, terminatorId string, staticCost *uint16,
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal UpdateTerminatorRequest message: (%v)", err)
-		return authError
+		log.Errorf("failed to marshal UpdateTerminatorRequest message (%v)", err)
+		return sessionError
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UpdateTerminatorRequestType), bytes)
 	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send UpdateTerminatorRequest message: (%v)", err)
-		return authError
+		log.Errorf("failed to send UpdateTerminatorRequest message (%v)", err)
+		return sessionError
 	}
 
 	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMsg)
 		if result.Success {
-			log.Debugf("successfully updated service terminator [s/%s]", terminatorId)
+			log.Debugf("successfully updated service terminator [t/%s]", terminatorId)
 			return nil
 		}
-		log.Errorf("failure updating service terminator: (%v)", result.Message)
+		log.Errorf("failure updating service terminator (%v)", result.Message)
 		return errors.New(result.Message)
 	} else {
-		log.Errorf("unexpected controller response, ContentType: (%v)", responseMsg.ContentType)
-		return authError
+		log.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
+		return sessionError
 	}
 }

@@ -38,7 +38,7 @@ func newRouteSenderController() *routeSenderController {
 func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
 	v, found := self.senders.Get(sessionId)
 	if found {
-		logrus.Infof("found route sender for [s/%s]", sessionId)
+		logrus.Debugf("found route sender for [s/%s]", sessionId)
 		routeSender := v.(*routeSender)
 		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, success: success, peerData: peerData}
 		return true
@@ -73,7 +73,7 @@ func newRouteSender(sessionId string, timeout time.Duration) *routeSender {
 	}
 }
 
-func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (xt.PeerData, error) {
+func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
 	// send route messages
 	tr := circuit.Path[len(circuit.Path)-1]
 	for i := 0; i < len(circuit.Path); i++ {
@@ -82,16 +82,15 @@ func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, str
 		self.attendance[r.Id] = false
 	}
 
-	var peerData xt.PeerData
 	deadline := time.Now().Add(self.timeout)
 	timeout := time.Until(deadline)
 attendance:
 	for {
 		select {
 		case status := <-self.in:
-			logrus.Infof("received status from [r/%s] for [s/%s]: %v", status.r.Id, status.sessionId, status)
-
 			if status.success {
+				logrus.Debugf("received successful route status from [r/%s] for [s/%s]", status.r.Id, status.sessionId)
+
 				self.attendance[status.r.Id] = true
 				if status.r == tr {
 					peerData = status.peerData
@@ -99,16 +98,19 @@ attendance:
 				}
 
 			} else {
+				logrus.Warnf("received failed route status from [r/%s] for [s/%s]", status.r.Id, status.sessionId)
+
 				if status.r == tr {
 					strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 				}
-				self.revert(self.sessionId, circuit)
-				return nil, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
+				cleanups = self.cleanups(circuit)
+
+				return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
 			}
 
 		case <-time.After(timeout):
-			self.revert(self.sessionId, circuit)
-			return nil, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
+			cleanups = self.cleanups(circuit)
+			return nil, cleanups, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
 		}
 
 		allPresent := true
@@ -124,7 +126,7 @@ attendance:
 		timeout = time.Until(deadline)
 	}
 
-	return peerData, nil
+	return peerData, nil, nil
 }
 
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
@@ -135,22 +137,18 @@ func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	}
 	r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body))
 
-	logrus.Infof("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
+	logrus.Debugf("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
 }
 
-func (self *routeSender) revert(sessionId string, circuit *Circuit) {
+func (self *routeSender) cleanups(circuit *Circuit) map[string]struct{} {
+	cleanups := make(map[string]struct{})
 	for _, r := range circuit.Path {
 		success, found := self.attendance[r.Id]
 		if found && success {
-			unrouteMsg := &ctrl_pb.Unroute{SessionId: sessionId, Now: true}
-			if body, err := proto.Marshal(unrouteMsg); err == nil {
-				r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body))
-				logrus.Warnf("sent cleanup unroute to [r/%s] for [s/%s]", r.Id, sessionId)
-			} else {
-				logrus.Errorf("error marshaling cleanup unroute to [r/%s] for [s/%s] (%v)", r.Id, sessionId, err)
-			}
+			cleanups[r.Id] = struct{}{}
 		}
 	}
+	return cleanups
 }
 
 type routeStatus struct {
