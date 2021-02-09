@@ -260,7 +260,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 					ExpiresAt: expiresAt,
 				}
 			} else {
-				pfxlog.Logger().Errorf("could not read CA [%s] to render ottca enrollment for identity [%s]", entity.CaId, identity.Id)
+				pfxlog.Logger().Errorf("could not read CA [%s] to render ottca enrollment for identity [%s]", stringz.OrEmpty(entity.CaId), identity.Id)
 			}
 		}
 
