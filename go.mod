@@ -34,7 +34,7 @@ require (
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
 	github.com/mdlayher/netlink v1.2.1
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/miekg/dns v1.1.35
+	github.com/miekg/dns v1.1.38
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.15.21
