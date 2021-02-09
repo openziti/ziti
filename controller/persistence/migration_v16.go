@@ -8,17 +8,9 @@ import (
 )
 
 func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {
-
 	var enrollmentsToDelete []string
 
-	filter, err := ast.Parse(m.stores.Enrollment, "true")
-
-	if err != nil {
-		step.SetError(fmt.Errorf("could not parse query for removing orphaned ottca enrollments: %v", err))
-		return
-	}
-
-	for cursor := m.stores.Enrollment.IterateIds(step.Ctx.Tx(), filter); cursor.IsValid(); cursor.Next() {
+	for cursor := m.stores.Enrollment.IterateIds(step.Ctx.Tx(), ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 		current := cursor.Current()
 		currentEnrollmentId := string(current)
 
