@@ -53,7 +53,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 			sessionId := string(msg.Body)
 			peerData := xt.PeerData{}
 			for k, v := range msg.Headers {
-				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader {
+				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader && k != ctrl_msg.RouteResultAttemptHeader {
 					peerData[uint32(k)] = v
 				}
 			}
