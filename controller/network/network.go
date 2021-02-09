@@ -45,6 +45,8 @@ import (
 	"time"
 )
 
+const smartRerouteAttempt = 99996
+
 type Network struct {
 	*Controllers
 	nodeId                 *identity.TokenId
@@ -178,8 +180,8 @@ func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
 }
 
-func (network *Network) RouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
-	return network.routeSenderController.forwardRouteResult(r, sessionId, success, peerData)
+func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32, success bool, peerData xt.PeerData) bool {
+	return network.routeSenderController.forwardRouteResult(r, sessionId, attempt, success, peerData)
 }
 
 func (network *Network) newRouteSender(sessionId string) *routeSender {
@@ -307,8 +309,10 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
-	attempt := 0
+	attempt := uint32(0)
 	allCleanups := make(map[string]struct{})
+	rs := network.newRouteSender(sessionId.Token)
+	defer func() { network.removeRouteSender(rs) }()
 	for {
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
@@ -337,24 +341,22 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 4a: Create Route Messages
-		rms, err := circuit.CreateRouteMessages(sessionId, terminator.GetAddress())
+		rms, err := circuit.CreateRouteMessages(attempt, sessionId, terminator.GetAddress())
 		if err != nil {
 			return nil, err
 		}
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Routing
-		logrus.Infof("route attempt [#%d] for [s/%s]", attempt + 1, sessionId.Token)
-		rs := network.newRouteSender(sessionId.Token)
-		peerData, cleanups, err := rs.route(circuit, rms, strategy, terminator)
-		network.removeRouteSender(rs)
+		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt + 1, sessionId.Token)
+		peerData, cleanups, err := rs.route(attempt, circuit, rms, strategy, terminator)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
 			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt + 1, sessionId.Token, err)
 			attempt++
-			if attempt < network.options.CreateSessionRetries {
+			if attempt < uint32(network.options.CreateSessionRetries) {
 				continue
 
 			} else {
@@ -679,7 +681,7 @@ func (network *Network) rerouteSession(s *session) error {
 	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 		s.Circuit = cq
 
-		rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
+		rms, err := cq.CreateRouteMessages(smartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 		if err != nil {
 			log.Errorf("error creating route messages (%s)", err)
 			return err
@@ -706,7 +708,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	s.Circuit = cq
 
-	rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
+	rms, err := cq.CreateRouteMessages(smartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 	if err != nil {
 		log.Errorf("error creating route messages (%s)", err)
 		return err

@@ -17,6 +17,8 @@
 package handler_ctrl
 
 import (
+	"bytes"
+	"encoding/binary"
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -44,16 +46,28 @@ func (self *routeResultHandler) ContentType() int32 {
 
 func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
-	sessionId := string(msg.Body)
-	peerData := xt.PeerData{}
-	for k, v := range msg.Headers {
-		if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader {
-			peerData[uint32(k)] = v
+	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
+		var attempt uint32
+		buf := bytes.NewBuffer(v)
+		if err := binary.Read(buf, binary.LittleEndian, &attempt); err == nil {
+			sessionId := string(msg.Body)
+			peerData := xt.PeerData{}
+			for k, v := range msg.Headers {
+				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader {
+					peerData[uint32(k)] = v
+				}
+			}
+			routing := self.network.RouteResult(self.r, sessionId, attempt, success, peerData)
+			if !routing {
+				go self.notRoutingSession(sessionId)
+			}
+
+		} else {
+			logrus.Errorf("error reading attempt number from route result (%v)", err)
+			return
 		}
-	}
-	routing := self.network.RouteResult(self.r, sessionId, success, peerData)
-	if !routing {
-		go self.notRoutingSession(sessionId)
+	} else {
+		logrus.Errorf("missing attempt header in route result from [r/%s]", self.r.Id)
 	}
 }
 

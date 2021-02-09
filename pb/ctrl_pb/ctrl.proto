@@ -21,7 +21,7 @@ enum ContentType {
     InspectResponseType = 1014;
     SessionFailedType = 1016;
     ValidateTerminatorsRequestType = 1017;
-    UpdateTerminatorRequestType = 10018;
+    UpdateTerminatorRequestType = 1018;
 }
 
 message SessionRequest {
@@ -91,6 +91,7 @@ message Fault {
 
 message Route {
     string sessionId = 1;
+    uint32 attempt = 2;
 
     message Egress {
         string binding = 1;
@@ -98,13 +99,13 @@ message Route {
         string destination = 3;
         map<uint32, bytes> peerData = 4;
     }
-    Egress egress = 2;
+    Egress egress = 3;
 
     message Forward {
         string srcAddress = 1;
         string dstAddress = 2;
     }
-    repeated Forward forwards = 3;
+    repeated Forward forwards = 4;
 }
 
 message Unroute {

@@ -29,7 +29,7 @@ type Options struct {
 		RerouteCap      uint32
 	}
 	RouteTimeout            time.Duration
-	CreateSessionRetries    int
+	CreateSessionRetries    uint32
 	CtrlChanLatencyInterval time.Duration
 }
 
@@ -66,7 +66,10 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 
 	if value, found := src["createSessionRetries"]; found {
 		if createSessionRetries, ok := value.(int); ok {
-			options.CreateSessionRetries = createSessionRetries
+			if createSessionRetries < 0 {
+				return nil, errors.New("invalid uint32 value for 'createSessionRetries'")
+			}
+			options.CreateSessionRetries = uint32(createSessionRetries)
 		} else {
 			return nil, errors.New("invalid value for 'createSessionRetries'")
 		}

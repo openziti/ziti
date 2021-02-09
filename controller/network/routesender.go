@@ -35,12 +35,11 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{senders: cmap.New()}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, success bool, peerData xt.PeerData) bool {
+func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, attempt uint32, success bool, peerData xt.PeerData) bool {
 	v, found := self.senders.Get(sessionId)
 	if found {
-		logrus.Debugf("found route sender for [s/%s]", sessionId)
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, success: success, peerData: peerData}
+		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, attempt: attempt, success: success, peerData: peerData}
 		return true
 	}
 	logrus.Warnf("did not find route sender for [s/%s]", sessionId)
@@ -73,7 +72,7 @@ func newRouteSender(sessionId string, timeout time.Duration) *routeSender {
 	}
 }
 
-func (self *routeSender) route(circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+func (self *routeSender) route(attempt uint32, circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
 	// send route messages
 	tr := circuit.Path[len(circuit.Path)-1]
 	for i := 0; i < len(circuit.Path); i++ {
@@ -89,23 +88,31 @@ attendance:
 		select {
 		case status := <-self.in:
 			if status.success {
-				logrus.Debugf("received successful route status from [r/%s] for [s/%s]", status.r.Id, status.sessionId)
+				if status.attempt == attempt {
+					logrus.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.sessionId)
 
-				self.attendance[status.r.Id] = true
-				if status.r == tr {
-					peerData = status.peerData
-					strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+					self.attendance[status.r.Id] = true
+					if status.r == tr {
+						peerData = status.peerData
+						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+					}
+				} else {
+					logrus.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
 				}
 
 			} else {
-				logrus.Warnf("received failed route status from [r/%s] for [s/%s]", status.r.Id, status.sessionId)
+				if status.attempt == attempt {
+					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.sessionId)
 
-				if status.r == tr {
-					strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+					if status.r == tr {
+						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+					}
+					cleanups = self.cleanups(circuit)
+
+					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
+				} else {
+					logrus.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
 				}
-				cleanups = self.cleanups(circuit)
-
-				return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
 			}
 
 		case <-time.After(timeout):
@@ -154,6 +161,7 @@ func (self *routeSender) cleanups(circuit *Circuit) map[string]struct{} {
 type routeStatus struct {
 	r         *Router
 	sessionId string
+	attempt   uint32
 	success   bool
 	peerData  xt.PeerData
 }

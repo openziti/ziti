@@ -72,11 +72,11 @@ func (circuit *Circuit) EgressRouter() *Router {
 	return nil
 }
 
-func (circuit *Circuit) CreateRouteMessages(sessionId *identity.TokenId, egressAddress string) ([]*ctrl_pb.Route, error) {
+func (circuit *Circuit) CreateRouteMessages(attempt uint32, sessionId *identity.TokenId, egressAddress string) ([]*ctrl_pb.Route, error) {
 	var routeMessages []*ctrl_pb.Route
 	if len(circuit.Links) == 0 {
 		// single router path
-		routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token}
+		routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 			SrcAddress: circuit.IngressId,
 			DstAddress: circuit.EgressId,
@@ -96,7 +96,7 @@ func (circuit *Circuit) CreateRouteMessages(sessionId *identity.TokenId, egressA
 	for i, link := range circuit.Links {
 		if i == 0 {
 			// ingress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token}
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: circuit.IngressId,
 				DstAddress: link.Id.Token,
@@ -110,7 +110,7 @@ func (circuit *Circuit) CreateRouteMessages(sessionId *identity.TokenId, egressA
 		if i >= 0 && i < len(circuit.Links)-1 {
 			// transit
 			nextLink := circuit.Links[i+1]
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token}
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id.Token,
 				DstAddress: nextLink.Id.Token,
@@ -123,7 +123,7 @@ func (circuit *Circuit) CreateRouteMessages(sessionId *identity.TokenId, egressA
 		}
 		if i == len(circuit.Links)-1 {
 			// egress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token}
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
 			routeMessage.Egress = &ctrl_pb.Route_Egress{
 				Binding:     circuit.Binding,
 				Address:     circuit.EgressId,
