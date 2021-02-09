@@ -348,7 +348,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		network.removeRouteSender(rs)
 		if err != nil {
 			retries++
-			if retries > network.options.CreateSessionRetries {
+			if retries < network.options.CreateSessionRetries {
 				continue
 			} else {
 				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating session [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
