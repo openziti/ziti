@@ -45,7 +45,7 @@ import (
 	"time"
 )
 
-const smartRerouteAttempt = 99996
+const SmartRerouteAttempt = 99969996
 
 type Network struct {
 	*Controllers
@@ -681,7 +681,7 @@ func (network *Network) rerouteSession(s *session) error {
 	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 		s.Circuit = cq
 
-		rms, err := cq.CreateRouteMessages(smartRerouteAttempt, s.Id, s.Terminator.GetAddress())
+		rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 		if err != nil {
 			log.Errorf("error creating route messages (%s)", err)
 			return err
@@ -708,7 +708,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	s.Circuit = cq
 
-	rms, err := cq.CreateRouteMessages(smartRerouteAttempt, s.Id, s.Terminator.GetAddress())
+	rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 	if err != nil {
 		log.Errorf("error creating route messages (%s)", err)
 		return err

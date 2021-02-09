@@ -58,7 +58,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 				}
 			}
 			routing := self.network.RouteResult(self.r, sessionId, attempt, success, peerData)
-			if !routing {
+			if !routing && attempt != network.SmartRerouteAttempt {
 				go self.notRoutingSession(sessionId)
 			}
 
@@ -72,7 +72,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 }
 
 func (self *routeResultHandler) notRoutingSession(sessionId string) {
-	logrus.Warnf("not routing session [s/%s] for router [r/%s], sending unroute", sessionId, self.r.Id)
+	logrus.Warnf("not routing session [s/%s] for router [r/%s] (and not smart re-route), sending unroute", sessionId, self.r.Id)
 	unroute := &ctrl_pb.Unroute{
 		SessionId: sessionId,
 		Now:       true,
