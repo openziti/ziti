@@ -233,6 +233,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		if entity.Method == persistence.MethodEnrollUpdb {
 
 			ret.Enrollment.Updb = &rest_model.IdentityEnrollmentsUpdb{
+				ID:        entity.Id,
 				Jwt:       entity.Jwt,
 				Token:     entity.Token,
 				ExpiresAt: expiresAt,
@@ -241,6 +242,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 		if entity.Method == persistence.MethodEnrollOtt {
 			ret.Enrollment.Ott = &rest_model.IdentityEnrollmentsOtt{
+				ID:        entity.Id,
 				Jwt:       entity.Jwt,
 				Token:     entity.Token,
 				ExpiresAt: expiresAt,
@@ -248,18 +250,17 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		}
 
 		if entity.Method == persistence.MethodEnrollOttCa {
-			ca, err := ae.Handlers.Ca.Read(*entity.CaId)
-
-			if err != nil {
-				return err
-			}
-
-			ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
-				Ca:        ToEntityRef(ca.Name, ca, CaLinkFactory),
-				CaID:      ca.Id,
-				Jwt:       entity.Jwt,
-				Token:     entity.Token,
-				ExpiresAt: expiresAt,
+			if ca, err := ae.Handlers.Ca.Read(*entity.CaId); err == nil {
+				ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
+					ID:        entity.Id,
+					Ca:        ToEntityRef(ca.Name, ca, CaLinkFactory),
+					CaID:      ca.Id,
+					Jwt:       entity.Jwt,
+					Token:     entity.Token,
+					ExpiresAt: expiresAt,
+				}
+			} else {
+				pfxlog.Logger().Errorf("could not read CA [%s] to render ottca enrollment for identity [%s]", stringz.OrEmpty(entity.CaId), identity.Id)
 			}
 		}
 

@@ -499,6 +499,13 @@ func (request *authenticatedRequests) RequireNewIdentityWithOtt(isAdmin bool, ro
 	return identity
 }
 
+func (request *authenticatedRequests) RequireNewIdentityWithCaOtt(isAdmin bool, caId string, roleAttributes ...string) *identity {
+	identity := newTestIdentity(isAdmin, roleAttributes...)
+	identity.enrollment = map[string]interface{}{"ottca": caId}
+	request.requireCreateEntity(identity)
+	return identity
+}
+
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	resp := request.createEntity(entity)
 	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)

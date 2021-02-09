@@ -4612,6 +4612,8 @@ definitions:
       updb:
         type: object
         properties:
+          id:
+            type: string
           token:
             type: string
           jwt:
@@ -4622,6 +4624,8 @@ definitions:
       ott:
         type: object
         properties:
+          id:
+            type: string
           token:
             type: string
           jwt:
@@ -4632,6 +4636,8 @@ definitions:
       ottca:
         type: object
         properties:
+          id:
+            type: string
           token:
             type: string
           jwt:

@@ -115,6 +115,7 @@ type enrollmentStoreImpl struct {
 	symbolIdentity      boltz.EntitySymbol
 	symbolEdgeRouter    boltz.EntitySymbol
 	symbolTransitRouter boltz.EntitySymbol
+	symbolCa            boltz.EntitySymbol
 }
 
 func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
@@ -129,12 +130,14 @@ func (store *enrollmentStoreImpl) initializeLocal() {
 	store.symbolIdentity = store.AddFkSymbol(FieldEnrollIdentity, store.stores.identity)
 	store.symbolEdgeRouter = store.AddFkSymbol(FieldEnrollEdgeRouter, store.stores.edgeRouter)
 	store.symbolTransitRouter = store.AddFkSymbol(FieldEnrollTransitRouter, store.stores.transitRouter)
+	store.symbolCa = store.AddFkSymbol(FieldEnrollmentCaId, store.stores.ca)
 }
 
 func (store *enrollmentStoreImpl) initializeLinked() {
 	store.AddNullableFkIndex(store.symbolIdentity, store.stores.identity.symbolEnrollments)
 	store.AddNullableFkIndex(store.symbolEdgeRouter, store.stores.edgeRouter.symbolEnrollments)
 	store.AddNullableFkIndex(store.symbolTransitRouter, store.stores.transitRouter.symbolEnrollments)
+	store.AddNullableFkIndex(store.symbolCa, store.stores.ca.symbolEnrollments)
 }
 
 func (store *enrollmentStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error) {

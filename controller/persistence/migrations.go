@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 15
+	CurrentDbVersion = 16
 	FieldVersion     = "version"
 )
 
@@ -118,6 +118,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 15 {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, serverConfigTypeV1, nil))
+	}
+
+	if step.CurrentVersion < 16 {
+		m.removeOrphanedOttCaEnrollments(step)
 	}
 
 	// current version
