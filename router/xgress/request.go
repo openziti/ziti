@@ -175,10 +175,12 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 			Address:     Address(address),
 			ResponseMsg: reply,
 			ctrl:        ctrl}, nil
+
 	} else if reply.ContentType == ctrl_msg.SessionFailedType {
 		errMsg := string(reply.Body)
-		log.Errorf("authentication failure: (%v)", errMsg)
+		log.Errorf("failure creating session (%v)", errMsg)
 		return nil, errors.New(errMsg)
+
 	} else {
 		log.Errorf("unexpected controller response, ContentType: (%v)", msg.ContentType)
 		return nil, authError
