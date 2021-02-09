@@ -70,11 +70,17 @@ type tProxyInterceptor struct {
 	ipt          *iptables.IPTables
 	tcpLn        net.Listener
 	udpLn        *net.UDPConn
+	lanIf        string
+}
+
+type interceptData struct {
+	tproxySpec []string
+	acceptSpec []string
 }
 
 const (
 	mangleTable = "mangle"
-	srcChain    = "PREROUTING"
+	filterTable = "filter"
 	dstChain    = "NF-INTERCEPT"
 )
 
@@ -87,7 +93,32 @@ func contains(arr []string, str string) bool {
 	return false
 }
 
+func addIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
+	chains, err := ipt.ListChains(table)
+	if err != nil {
+		return fmt.Errorf("failed to list iptables %s chains: %v", table, err)
+	}
+
+	if !contains(chains, dstChain) {
+		err = ipt.NewChain(table, dstChain)
+		if err != nil {
+			return fmt.Errorf("failed to create iptables chain: %v", err)
+		}
+	}
+
+	err = ipt.AppendUnique(table, srcChain, []string{"-j", dstChain}...)
+	if err != nil {
+		return fmt.Errorf("failed to create '%s' --> '%s' link: %v", srcChain, dstChain, err)
+	}
+
+	return nil
+}
+
 func New() (intercept.Interceptor, error) {
+	return NewWithLanIf("")
+}
+
+func NewWithLanIf(lanIf string) (intercept.Interceptor, error) {
 	log := pfxlog.Logger()
 	tcpLn, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:")
 	if err != nil {
@@ -110,21 +141,22 @@ func New() (intercept.Interceptor, error) {
 		return nil, fmt.Errorf("failed to initialize iptables handle: %v", err)
 	}
 
-	chains, err := ipt.ListChains(mangleTable)
+	err = addIptablesChain(ipt, mangleTable, "PREROUTING", dstChain)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list iptables chains: %v", err)
+		return nil, err
 	}
 
-	if !contains(chains, dstChain) {
-		err = ipt.NewChain(mangleTable, dstChain)
+	if lanIf != "" {
+		_, err := net.InterfaceByName(lanIf)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create iptables chain: %v", err)
+			return nil, fmt.Errorf("invalid lanIf '%s'", lanIf)
 		}
-	}
-
-	err = ipt.AppendUnique(mangleTable, srcChain, []string{"-j", dstChain}...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create '%s' --> '%s' link: %v", srcChain, dstChain, err)
+		err = addIptablesChain(ipt, filterTable, "INPUT", dstChain)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		log.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
 	}
 
 	t := tProxyInterceptor{
@@ -132,6 +164,7 @@ func New() (intercept.Interceptor, error) {
 		ipt:          ipt,
 		tcpLn:        tcpLn,
 		udpLn:        udpLn,
+		lanIf:        lanIf,
 	}
 	return &t, nil
 }
@@ -251,6 +284,26 @@ func getOriginalDest(oob []byte) (*net.UDPAddr, error) {
 	return nil, fmt.Errorf("original destination not found in out of band data")
 }
 
+func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
+	log := pfxlog.Logger()
+	err := ipt.Delete(table, srcChain, []string{"-j", dstChain}...)
+	if err != nil {
+		log.Errorf("failed to unlink chain %s: %v", dstChain, err)
+	}
+
+	err = ipt.ClearChain(table, dstChain)
+	if err != nil {
+		log.Errorf("failed to clear chain %s, %v", dstChain, err)
+	}
+
+	err = ipt.DeleteChain(table, dstChain)
+	if err != nil {
+		log.Errorf("failed to delete chain %s: %v", dstChain, err)
+	}
+
+	return nil
+}
+
 func (t *tProxyInterceptor) Stop() {
 	log := pfxlog.Logger()
 	err := t.tcpLn.Close()
@@ -274,20 +327,9 @@ func (t *tProxyInterceptor) Stop() {
 		}
 	}
 
-	err = t.ipt.Delete(mangleTable, srcChain, []string{"-j", dstChain}...)
-	if err != nil {
-		log.Errorf("failed to unlink chain %s: %v", dstChain, err)
-	}
-
-	// this shouldn't be needed after deleting rules one-by-one above, but just in case...
-	err = t.ipt.ClearChain(mangleTable, dstChain)
-	if err != nil {
-		log.Errorf("failed to clear chain %s, %v", dstChain, err)
-	}
-
-	err = t.ipt.DeleteChain(mangleTable, dstChain)
-	if err != nil {
-		log.Errorf("failed to delete chain %s: %v", dstChain, err)
+	deleteIptablesChain(t.ipt, mangleTable, "PREROUTING", dstChain)
+	if t.lanIf != "" {
+		deleteIptablesChain(t.ipt, filterTable, "INPUT", dstChain)
 	}
 }
 
@@ -311,26 +353,47 @@ func (t *tProxyInterceptor) intercept(service *entities.Service, resolver dns.Re
 		return fmt.Errorf("failed to add local route: %v", err)
 	}
 
-	spec := []string{
-		"-m", "comment", "--comment", service.Name,
-		"-d", ipNet.String(),
-		"-p", interceptAddr.Proto(),
-		"--dport", strconv.Itoa(interceptAddr.Port()),
-		"-j", "TPROXY",
-		"--tproxy-mark", "0x1/0x1",
-		fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
-		fmt.Sprintf("--on-port=%d", port.GetPort()),
+	spec := interceptData{
+		tproxySpec: []string{
+			"-m", "comment", "--comment", service.Name,
+			"-d", ipNet.String(),
+			"-p", interceptAddr.Proto(),
+			"--dport", strconv.Itoa(interceptAddr.Port()),
+			"-j", "TPROXY",
+			"--tproxy-mark", "0x1/0x1",
+			fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
+			fmt.Sprintf("--on-port=%d", port.GetPort()),
+		},
 	}
 
-	pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, spec)
-	err = t.ipt.AppendUnique(mangleTable, dstChain, spec...)
+	pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, spec.tproxySpec)
+	err = t.ipt.Insert(mangleTable, dstChain, 1, spec.tproxySpec...)
 	if err != nil {
-		return fmt.Errorf("failed to append rule: %v", err)
+		return fmt.Errorf("failed to insert rule: %v", err)
+	}
+
+	if t.lanIf != "" {
+		spec.acceptSpec = []string{
+			"-i", t.lanIf,
+			"-m", "comment", "--comment", service.Name,
+			"-d", ipNet.String(),
+			"-p", interceptAddr.Proto(),
+			"--dport", strconv.Itoa(interceptAddr.Port()),
+			"-j", "ACCEPT",
+		}
+		pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, spec.acceptSpec)
+		err = t.ipt.Insert(filterTable, dstChain, 1, spec.acceptSpec...)
+		if err != nil {
+			return fmt.Errorf("failed to insert rule: %v", err)
+		}
 	}
 
 	err = t.interceptLUT.Put(*interceptAddr, service.Name, spec)
 	if err != nil {
-		_ = t.ipt.Delete(mangleTable, dstChain, spec...)
+		_ = t.ipt.Delete(mangleTable, dstChain, spec.tproxySpec...)
+		if t.lanIf != "" {
+			_ = t.ipt.Delete(filterTable, dstChain, spec.acceptSpec...)
+		}
 		return fmt.Errorf("failed to add intercept record: %v", err)
 	}
 
@@ -346,9 +409,16 @@ func (t *tProxyInterceptor) StopIntercepting(serviceName string, removeRoute boo
 	routes := map[string]net.IPNet{}
 	for _, service := range services {
 		defer t.interceptLUT.Remove(service.Addr)
-		err := t.ipt.Delete(mangleTable, dstChain, service.Data.([]string)...)
+		spec := service.Data.(interceptData)
+		err := t.ipt.Delete(mangleTable, dstChain, spec.tproxySpec...)
 		if err != nil {
 			return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
+		}
+		if t.lanIf != "" {
+			err = t.ipt.Delete(filterTable, dstChain, spec.acceptSpec...)
+			if err != nil {
+				return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
+			}
 		}
 		ipn := service.Addr.IpNet()
 		routes[ipn.String()] = ipn
