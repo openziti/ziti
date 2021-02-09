@@ -6,6 +6,7 @@
 * Fix ziti-tunnel panic when removing services. [edge#517](https://github.com/openziti/edge/issues/517)
 * ziti-tunnel tproxy now supports `--lanIf` option to automatically add rules to accept incoming
   connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519)
+* Fix orphaned ottca enrollments after `DELETE /cas/<id>'
 * Add build info output when starting router/controller
 * Remove histograms from xgress dataflow path as they were causing bottlenecks
 
