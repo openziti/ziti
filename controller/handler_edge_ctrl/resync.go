@@ -25,26 +25,26 @@ import (
 	"github.com/openziti/foundation/channel2"
 )
 
-type helloHandler struct {
+type resyncHandler struct {
 	appEnv   *env.AppEnv
-	callback func(r *network.Router, respHello *edge_ctrl_pb.ClientHello)
+	callback func(r *network.Router, respHello *edge_ctrl_pb.RequestClientReSync)
 }
 
-func NewHelloHandler(appEnv *env.AppEnv, callback func(r *network.Router, respHello *edge_ctrl_pb.ClientHello)) *helloHandler {
-	return &helloHandler{
+func NewResyncHandler(appEnv *env.AppEnv, callback func(r *network.Router, respHello *edge_ctrl_pb.RequestClientReSync)) *resyncHandler {
+	return &resyncHandler{
 		appEnv:   appEnv,
 		callback: callback,
 	}
 }
 
-func (h *helloHandler) ContentType() int32 {
-	return env.ClientHelloType
+func (h *resyncHandler) ContentType() int32 {
+	return env.RequestClientReSyncType
 }
 
-func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	respHello := &edge_ctrl_pb.ClientHello{}
-	if err := proto.Unmarshal(msg.Body, respHello); err != nil {
-		pfxlog.Logger().WithError(err).Error("could not unmarshal clientHello after serverHello")
+func (h *resyncHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	resyncReq := &edge_ctrl_pb.RequestClientReSync{}
+	if err := proto.Unmarshal(msg.Body, resyncReq); err != nil {
+		pfxlog.Logger().WithError(err).Error("could not unmarshal RequestClientReSync")
 		return
 	}
 
@@ -55,5 +55,5 @@ func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 		return
 	}
 
-	h.callback(r, respHello)
+	h.callback(r, resyncReq)
 }

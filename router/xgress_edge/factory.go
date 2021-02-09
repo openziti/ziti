@@ -85,7 +85,7 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionUpdatedHandler(factory.stateManager))
 
-	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager))
+	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, ch))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
 	return nil

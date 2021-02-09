@@ -32,6 +32,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
+	github.com/lucsky/cuid v1.0.2
 	github.com/mdlayher/netlink v1.2.1
 	github.com/michaelquigley/pfxlog v0.3.6
 	github.com/miekg/dns v1.1.38
@@ -54,7 +55,7 @@ require (
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20210110051926-789bb1bd4061
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776

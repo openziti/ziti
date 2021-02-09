@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/lucsky/cuid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -41,6 +42,7 @@ func (handler *SessionHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *SessionHandler) Create(entity *Session) (string, error) {
+	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
 	return handler.createEntity(entity)
 }
 

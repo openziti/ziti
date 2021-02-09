@@ -83,6 +83,10 @@ type EdgeRouterDetail struct {
 	// Required: true
 	SupportedProtocols map[string]string `json:"supportedProtocols"`
 
+	// sync status
+	// Required: true
+	SyncStatus *string `json:"syncStatus"`
+
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 }
@@ -120,6 +124,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 		SupportedProtocols map[string]string `json:"supportedProtocols"`
 
+		SyncStatus *string `json:"syncStatus"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
@@ -147,6 +153,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 	m.RoleAttributes = dataAO1.RoleAttributes
 
 	m.SupportedProtocols = dataAO1.SupportedProtocols
+
+	m.SyncStatus = dataAO1.SyncStatus
 
 	m.VersionInfo = dataAO1.VersionInfo
 
@@ -185,6 +193,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 		SupportedProtocols map[string]string `json:"supportedProtocols"`
 
+		SyncStatus *string `json:"syncStatus"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 
@@ -209,6 +219,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.RoleAttributes = m.RoleAttributes
 
 	dataAO1.SupportedProtocols = m.SupportedProtocols
+
+	dataAO1.SyncStatus = m.SyncStatus
 
 	dataAO1.VersionInfo = m.VersionInfo
 
@@ -258,6 +270,10 @@ func (m *EdgeRouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateSupportedProtocols(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateSyncStatus(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -350,6 +366,15 @@ func (m *EdgeRouterDetail) validateRoleAttributes(formats strfmt.Registry) error
 }
 
 func (m *EdgeRouterDetail) validateSupportedProtocols(formats strfmt.Registry) error {
+
+	return nil
+}
+
+func (m *EdgeRouterDetail) validateSyncStatus(formats strfmt.Registry) error {
+
+	if err := validate.Required("syncStatus", "body", m.SyncStatus); err != nil {
+		return err
+	}
 
 	return nil
 }

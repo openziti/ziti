@@ -119,7 +119,8 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	revision := ""
 	version := ""
 
-	onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(router.Id)
+	onlineEdgeRouter, syncStatus := ae.Broker.GetOnlineEdgeRouter(router.Id)
+	syncStatusStr := string(syncStatus)
 
 	isOnline := onlineEdgeRouter != nil
 
@@ -134,6 +135,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			revision = onlineEdgeRouter.VersionInfo.Revision
 			version = onlineEdgeRouter.VersionInfo.Version
 		}
+
 	}
 
 	ret := &rest_model.EdgeRouterDetail{
@@ -149,6 +151,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
 		Hostname:            &hostname,
 		SupportedProtocols:  protocols,
+		SyncStatus:          &syncStatusStr,
 		VersionInfo: &rest_model.VersionInfo{
 			Os:        &os,
 			Arch:      &arch,
