@@ -525,9 +525,7 @@ func (self *Xgress) nextReceiveSequence() int32 {
 func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
 	self.payloadBuffer.CloseWhenEmpty() // If we clear the send buffer, close sooner
 	time.Sleep(duration)
-	if !self.closed.Get() {
-		self.Close()
-	}
+	self.Close()
 }
 
 func (self *Xgress) PayloadReceived(payload *Payload) {
