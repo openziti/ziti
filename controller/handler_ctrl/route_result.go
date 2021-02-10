@@ -45,8 +45,11 @@ func (self *routeResultHandler) ContentType() int32 {
 }
 
 func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
-	_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
+		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+		rerrv, _ := msg.Headers[ctrl_msg.RouteResultErrorHeader]
+		rerr := string(rerrv)
+
 		var attempt uint32
 		buf := bytes.NewBuffer(v)
 		if err := binary.Read(buf, binary.LittleEndian, &attempt); err == nil {
@@ -57,7 +60,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 					peerData[uint32(k)] = v
 				}
 			}
-			routing := self.network.RouteResult(self.r, sessionId, attempt, success, peerData)
+			routing := self.network.RouteResult(self.r, sessionId, attempt, success, rerr, peerData)
 			if !routing && attempt != network.SmartRerouteAttempt {
 				go self.notRoutingSession(sessionId)
 			}

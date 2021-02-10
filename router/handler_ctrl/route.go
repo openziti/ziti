@@ -133,13 +133,13 @@ func (rh *routeHandler) connectEgress(attempt int, ch channel2.Channel, route *c
 					bindHandler); err == nil {
 					rh.success(attempt, ch, route, peerData)
 				} else {
-					rh.fail(attempt, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+					rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 				}
 			} else {
-				rh.fail(attempt, ch, route, errors.Errorf("unable to create dialer (%s)", err))
+				rh.fail(attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
 			}
 		} else {
-			rh.fail(attempt, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+			rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s] (%s)", route.SessionId))
 		}
 	})
 }

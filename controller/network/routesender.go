@@ -35,11 +35,11 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{senders: cmap.New()}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, attempt uint32, success bool, peerData xt.PeerData) bool {
+func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
 	v, found := self.senders.Get(sessionId)
 	if found {
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, attempt: attempt, success: success, peerData: peerData}
+		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, attempt: attempt, success: success, rerr: rerr, peerData: peerData}
 		return true
 	}
 	logrus.Warnf("did not find route sender for [s/%s]", sessionId)
@@ -102,14 +102,14 @@ attendance:
 
 			} else {
 				if status.attempt == attempt {
-					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.sessionId)
+					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.sessionId, status.rerr)
 
 					if status.r == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 					}
 					cleanups = self.cleanups(circuit)
 
-					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s]", self.sessionId, status.r.Id)
+					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.sessionId, status.r.Id, status.rerr)
 				} else {
 					logrus.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
 				}
@@ -163,5 +163,6 @@ type routeStatus struct {
 	sessionId string
 	attempt   uint32
 	success   bool
+	rerr      string
 	peerData  xt.PeerData
 }

@@ -56,13 +56,13 @@ func NewRouteResultSuccessMsg(sessionId string, attempt int) (*channel2.Message,
 	return msg, nil
 }
 
-func NewRouteResultFailedMessage(sessionId string, attempt int, err string) (*channel2.Message, error) {
+func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) (*channel2.Message, error) {
 	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.LittleEndian, uint32(attempt)); err != nil {
 		return nil, errors.Wrap(err, "error encoding route result attempt")
 	}
 	msg.Headers[RouteResultAttemptHeader] = buf.Bytes()
-	msg.Headers[RouteResultErrorHeader] = []byte(err)
+	msg.Headers[RouteResultErrorHeader] = []byte(rerr)
 	return msg, nil
 }

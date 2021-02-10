@@ -180,8 +180,8 @@ func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
 }
 
-func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32, success bool, peerData xt.PeerData) bool {
-	return network.routeSenderController.forwardRouteResult(r, sessionId, attempt, success, peerData)
+func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
+	return network.routeSenderController.forwardRouteResult(r, sessionId, attempt, success, rerr, peerData)
 }
 
 func (network *Network) newRouteSender(sessionId string) *routeSender {
