@@ -33,12 +33,14 @@ var runTProxyCmd = &cobra.Command{
 }
 
 func init() {
+	runTProxyCmd.PersistentFlags().String("lanIf", "", "if specified, INPUT rules for intercepted service addresses are assigned to this interface ")
 	root.AddCommand(runTProxyCmd)
 }
 
 func runTProxy(cmd *cobra.Command, args []string) error {
 	var err error
-	interceptor, err = tproxy.New()
+	lanIf, err := cmd.Flags().GetString("lanIf")
+	interceptor, err = tproxy.NewWithLanIf(lanIf)
 	if err != nil {
 		return fmt.Errorf("failed to initialize tproxy interceptor: %v", err)
 	}
