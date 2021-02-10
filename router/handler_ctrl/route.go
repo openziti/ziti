@@ -139,7 +139,7 @@ func (rh *routeHandler) connectEgress(attempt int, ch channel2.Channel, route *c
 				rh.fail(attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
 			}
 		} else {
-			rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s] (%s)", route.SessionId))
+			rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 		}
 	})
 }
