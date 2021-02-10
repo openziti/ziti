@@ -356,7 +356,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		if err != nil {
 			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt + 1, sessionId.Token, err)
 			attempt++
-			if attempt < uint32(network.options.CreateSessionRetries) {
+			if attempt < network.options.CreateSessionRetries {
 				continue
 
 			} else {
