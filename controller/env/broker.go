@@ -794,7 +794,8 @@ func (b *Broker) ReceiveHello(r *network.Router, edgeRouter *model.EdgeRouter, r
 
 func (b *Broker) RouterDisconnected(r *network.Router) {
 	go func() {
-		if r.Fingerprint != nil {
+		//ensure this wasn't the same router being started multiple times and the 2nd connection being refused w/ a close
+		if r.Fingerprint != nil && !b.ae.HostController.GetNetwork().ConnectedRouter(r.Id) {
 			if edgeRouter, _ := b.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*r.Fingerprint); edgeRouter != nil {
 				b.edgeRouterMap.RemoveEntry(edgeRouter.Id)
 			}
