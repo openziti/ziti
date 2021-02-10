@@ -52,6 +52,10 @@ type PostureQuery struct {
 	// query type
 	// Required: true
 	QueryType PostureCheckType `json:"queryType"`
+
+	// timeout
+	// Required: true
+	Timeout *int64 `json:"timeout"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -70,6 +74,8 @@ func (m *PostureQuery) UnmarshalJSON(raw []byte) error {
 		Process *PostureQueryProcess `json:"process,omitempty"`
 
 		QueryType PostureCheckType `json:"queryType"`
+
+		Timeout *int64 `json:"timeout"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -80,6 +86,8 @@ func (m *PostureQuery) UnmarshalJSON(raw []byte) error {
 	m.Process = dataAO1.Process
 
 	m.QueryType = dataAO1.QueryType
+
+	m.Timeout = dataAO1.Timeout
 
 	return nil
 }
@@ -99,6 +107,8 @@ func (m PostureQuery) MarshalJSON() ([]byte, error) {
 		Process *PostureQueryProcess `json:"process,omitempty"`
 
 		QueryType PostureCheckType `json:"queryType"`
+
+		Timeout *int64 `json:"timeout"`
 	}
 
 	dataAO1.IsPassing = m.IsPassing
@@ -106,6 +116,8 @@ func (m PostureQuery) MarshalJSON() ([]byte, error) {
 	dataAO1.Process = m.Process
 
 	dataAO1.QueryType = m.QueryType
+
+	dataAO1.Timeout = m.Timeout
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -133,6 +145,10 @@ func (m *PostureQuery) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateQueryType(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTimeout(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -175,6 +191,15 @@ func (m *PostureQuery) validateQueryType(formats strfmt.Registry) error {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("queryType")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureQuery) validateTimeout(formats strfmt.Registry) error {
+
+	if err := validate.Required("timeout", "body", m.Timeout); err != nil {
 		return err
 	}
 

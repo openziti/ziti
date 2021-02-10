@@ -6818,9 +6818,12 @@ definitions:
         required:
           - queryType
           - isPassing
+          - timeout
         properties:
           isPassing:
             type: boolean
+          timeout:
+            type: integer
           queryType:
             $ref: '#/definitions/postureCheckType'
           process:

@@ -152,8 +152,10 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 	for _, permission := range service.Permissions {
 		ret.Permissions = append(ret.Permissions, rest_model.DialBind(permission))
 	}
-	
+
 	validChecks := map[string]bool{} //cache individual check status
+
+	noTimeout := int64(-1)
 
 	for policyId, postureChecks := range ae.GetHandlers().EdgeService.GetPostureChecks(rc.Identity.Id, *ret.ID) {
 
@@ -174,6 +176,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			}
 
 			query.IsPassing = &isCheckPassing
+			query.Timeout = &noTimeout
 			querySet.PostureQueries = append(querySet.PostureQueries, query)
 
 			if !isCheckPassing {

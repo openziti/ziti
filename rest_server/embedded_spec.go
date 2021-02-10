@@ -9085,7 +9085,8 @@ func init() {
           "type": "object",
           "required": [
             "queryType",
-            "isPassing"
+            "isPassing",
+            "timeout"
           ],
           "properties": {
             "isPassing": {
@@ -9096,6 +9097,9 @@ func init() {
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
+            },
+            "timeout": {
+              "type": "integer"
             }
           }
         }
@@ -28617,7 +28621,8 @@ func init() {
           "type": "object",
           "required": [
             "queryType",
-            "isPassing"
+            "isPassing",
+            "timeout"
           ],
           "properties": {
             "isPassing": {
@@ -28628,6 +28633,9 @@ func init() {
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
+            },
+            "timeout": {
+              "type": "integer"
             }
           }
         }
