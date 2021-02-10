@@ -183,9 +183,6 @@ func (buffer *LinkSendBuffer) run() {
 	defer retransmitTicker.Stop()
 
 	for {
-		txBufferSizeHistogram.Update(int64(buffer.linkSendBufferSize))
-		txWindowSize.Update(int64(buffer.windowsSize))
-
 		// don't block when we're closing, since the only thing that should still be coming in is end-of-session
 		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() {
 			buffered = nil
@@ -286,11 +283,9 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 	}
 
 	buffer.linkRecvBufferSize = ack.RecvBufferSize
-	remoteRecvBufferSizeHistogram.Update(int64(buffer.linkRecvBufferSize))
 	if ack.RTT > 0 {
 		rtt := uint16(info.NowInMilliseconds()) - ack.RTT
 		buffer.retxThreshold = uint32(float64(rtt)*buffer.retxScale) + buffer.x.Options.RetxAddMs
-		rttHistogram.Update(int64(rtt))
 	}
 }
 

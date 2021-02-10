@@ -58,12 +58,10 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 		payloadSize := len(payload.Data)
 		size := atomic.AddUint32(&buffer.size, uint32(payloadSize))
 		pfxlog.Logger().Tracef("Payload %v of size %v added to transmit buffer. New size: %v", payload.Sequence, payloadSize, size)
-		localRecvBufferSizeBytesHistogram.Update(int64(size))
 		if payload.Sequence > buffer.maxSequence {
 			buffer.maxSequence = payload.Sequence
 		}
 	}
-	localRecvBufferSizeMsgsHistogram.Update(int64(buffer.tree.Size()))
 	return true
 }
 
@@ -80,7 +78,6 @@ func (buffer *LinkReceiveBuffer) PeekHead() *Payload {
 func (buffer *LinkReceiveBuffer) Remove(payload *Payload) {
 	buffer.tree.Remove(payload.Sequence)
 	buffer.sequence = payload.Sequence
-	localRecvBufferSizeMsgsHistogram.Update(int64(buffer.tree.Size()))
 }
 
 func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
