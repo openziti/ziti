@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/ziti/common/version"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +39,14 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+	logrus.WithField("version", version.GetVersion()).
+		WithField("go-version", version.GetGoVersion()).
+		WithField("os", version.GetOS()).
+		WithField("arch", version.GetArchitecture()).
+		WithField("build-date", version.GetBuildDate()).
+		WithField("revision", version.GetRevision()).
+		Info("starting ziti-controller")
+
 	if config, err := controller.LoadConfig(args[0]); err == nil {
 		if cliAgentEnabled {
 			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {

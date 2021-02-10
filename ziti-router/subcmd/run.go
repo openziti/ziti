@@ -41,6 +41,14 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+	logrus.WithField("version", version.GetVersion()).
+		WithField("go-version", version.GetGoVersion()).
+		WithField("os", version.GetOS()).
+		WithField("arch", version.GetArchitecture()).
+		WithField("build-date", version.GetBuildDate()).
+		WithField("revision", version.GetRevision()).
+		Info("starting ziti-router")
+
 	if config, err := router.LoadConfig(args[0]); err == nil {
 		if cliAgentEnabled {
 			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {

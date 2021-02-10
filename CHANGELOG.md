@@ -3,9 +3,11 @@
 # What's New
 
 * Fix PATCH OS Posture Checks clearing data
-* Fix ziti-tunnel panic when removing services. [edge#517](https://github.com/openziti/edge/issues/517
+* Fix ziti-tunnel panic when removing services. [edge#517](https://github.com/openziti/edge/issues/517)
 * ziti-tunnel tproxy now supports `--lanIf` option to automatically add rules to accept incoming
-  connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519
+  connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519)
+* Add build info output when starting router/controller
+* Remove histograms from xgress dataflow path as they were causing bottlenecks
 
 # Release 0.18.8
 
@@ -20,7 +22,7 @@
 * Fix concurrency related crash in router
 * Fix resource leak in fabric: forwarder tables weren't always updated after unroute
 * Fix issue that prevented ziti-tunnel from cleaning up on shutdown in some cases.
-  [edge#506](https://github.com/openziti/edge/issues/506
+  [edge#506](https://github.com/openziti/edge/issues/506)
 
 ## Websocket Binding
 
