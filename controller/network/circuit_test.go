@@ -65,7 +65,7 @@ func TestSimpleCircuit2(t *testing.T) {
 	assert.Equal(t, r1, circuit.EgressRouter())
 
 	s0 := &identity.TokenId{Token: "s0"}
-	routeMessages, err := circuit.CreateRouteMessages(s0, addr)
+	routeMessages, err := circuit.CreateRouteMessages(0, s0, addr)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(routeMessages))
@@ -138,7 +138,7 @@ func TestTransitCircuit2(t *testing.T) {
 	assert.Equal(t, r2, circuit.EgressRouter())
 
 	s0 := &identity.TokenId{Token: "s0"}
-	routeMessages, err := circuit.CreateRouteMessages(s0, addr)
+	routeMessages, err := circuit.CreateRouteMessages(0, s0, addr)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(routeMessages))

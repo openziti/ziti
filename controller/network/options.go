@@ -18,7 +18,7 @@ package network
 
 import (
 	"errors"
-	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -28,16 +28,16 @@ type Options struct {
 		RerouteFraction float32
 		RerouteCap      uint32
 	}
-	TerminationTimeout      time.Duration
 	RouteTimeout            time.Duration
+	CreateSessionRetries    uint32
 	CtrlChanLatencyInterval time.Duration
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds:            15,
-		TerminationTimeout:      10 * time.Second,
+		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
+		CreateSessionRetries:    3,
 		CtrlChanLatencyInterval: 10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
@@ -56,19 +56,22 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
-	if value, found := src["terminationTimeoutSeconds"]; found {
-		if terminationTimeoutSeconds, ok := value.(int); ok {
-			options.TerminationTimeout = time.Duration(terminationTimeoutSeconds) * time.Second
-		} else {
-			return nil, errors.New("invalid value for 'terminationTimeoutSeconds'")
-		}
-	}
-
 	if value, found := src["routeTimeoutSeconds"]; found {
 		if routeTimeoutSeconds, ok := value.(int); ok {
 			options.RouteTimeout = time.Duration(routeTimeoutSeconds) * time.Second
 		} else {
 			return nil, errors.New("invalid value for 'routeTimeoutSeconds'")
+		}
+	}
+
+	if value, found := src["createSessionRetries"]; found {
+		if createSessionRetries, ok := value.(int); ok {
+			if createSessionRetries < 0 {
+				return nil, errors.New("invalid uint32 value for 'createSessionRetries'")
+			}
+			options.CreateSessionRetries = uint32(createSessionRetries)
+		} else {
+			return nil, errors.New("invalid value for 'createSessionRetries'")
 		}
 	}
 
@@ -86,7 +89,7 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteFraction, ok := value.(float64); ok {
 					options.Smart.RerouteFraction = float32(rerouteFraction)
 				} else {
-					pfxlog.Logger().Errorf("%p", value)
+					logrus.Errorf("%p", value)
 				}
 			}
 
@@ -94,11 +97,11 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteCap, ok := value.(int); ok {
 					options.Smart.RerouteCap = uint32(rerouteCap)
 				} else {
-					pfxlog.Logger().Errorf("%p", value)
+					logrus.Errorf("%p", value)
 				}
 			}
 		} else {
-			pfxlog.Logger().Errorf("invalid or empty 'smart' stanza")
+			logrus.Errorf("invalid or empty 'smart' stanza")
 		}
 	}
 
