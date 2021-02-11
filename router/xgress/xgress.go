@@ -244,7 +244,9 @@ func (self *Xgress) IsEndOfSessionSent() bool {
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
-	go self.closeTimeoutHandler(duration)
+	if self.payloadBuffer.CloseWhenEmpty() { // If we clear the send buffer, close sooner
+		time.AfterFunc(duration, self.Close)
+	}
 }
 
 /*
@@ -520,12 +522,6 @@ func (self *Xgress) nextReceiveSequence() int32 {
 	self.rxSequence++
 
 	return next
-}
-
-func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
-	self.payloadBuffer.CloseWhenEmpty() // If we clear the send buffer, close sooner
-	time.Sleep(duration)
-	self.Close()
 }
 
 func (self *Xgress) PayloadReceived(payload *Payload) {
