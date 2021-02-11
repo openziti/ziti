@@ -333,8 +333,9 @@ func NewTimeoutError() *ApiError {
 	}
 }
 
-func NewInvalidPosture() *ApiError {
+func NewInvalidPosture(cause error) *ApiError {
 	return &ApiError{
+		Cause:   cause,
 		Code:    InvalidPostureCode,
 		Message: InvalidPostureMessage,
 		Status:  InvalidPostureStatus,

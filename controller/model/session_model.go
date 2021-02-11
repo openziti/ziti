@@ -17,6 +17,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
@@ -112,7 +113,31 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	}
 
 	if hasMatchingPolicies && !validPosture {
-		return nil, apierror.NewInvalidPosture()
+		var policyIds []string
+
+		dataMap := map[string]interface{}{}
+
+		for policyId, checks := range postureCheckMap {
+			policyIds = append(policyIds, policyId)
+
+			var queries []interface{}
+
+			for _, check := range checks {
+				queries = append(queries, map[string]interface{}{
+					"id":        check.Id,
+					"typeId":    check.TypeId,
+					"isPassing": checkCache[check.Id],
+				})
+			}
+
+			dataMap[policyId] = queries
+		}
+
+		cause := apierror.GenericCauseError{
+			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", policyIds),
+			DataMap: dataMap,
+		}
+		return nil, apierror.NewInvalidPosture(cause)
 	}
 
 	maxRows := 1

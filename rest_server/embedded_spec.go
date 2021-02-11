@@ -6127,6 +6127,10 @@ func init() {
         "code": {
           "type": "string"
         },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "message": {
           "type": "string"
         },
@@ -9081,7 +9085,8 @@ func init() {
           "type": "object",
           "required": [
             "queryType",
-            "isPassing"
+            "isPassing",
+            "timeout"
           ],
           "properties": {
             "isPassing": {
@@ -9092,6 +9097,9 @@ func init() {
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
+            },
+            "timeout": {
+              "type": "integer"
             }
           }
         }
@@ -25655,6 +25663,10 @@ func init() {
         "code": {
           "type": "string"
         },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "message": {
           "type": "string"
         },
@@ -28609,7 +28621,8 @@ func init() {
           "type": "object",
           "required": [
             "queryType",
-            "isPassing"
+            "isPassing",
+            "timeout"
           ],
           "properties": {
             "isPassing": {
@@ -28620,6 +28633,9 @@ func init() {
             },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
+            },
+            "timeout": {
+              "type": "integer"
             }
           }
         }

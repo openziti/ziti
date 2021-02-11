@@ -5772,6 +5772,9 @@ definitions:
     properties:
       args:
         $ref: '#/definitions/apiErrorArgs'
+      data:
+        type: object
+        additionalProperties: true
       causeMessage:
         type: string
       code:
@@ -6815,9 +6818,12 @@ definitions:
         required:
           - queryType
           - isPassing
+          - timeout
         properties:
           isPassing:
             type: boolean
+          timeout:
+            type: integer
           queryType:
             $ref: '#/definitions/postureCheckType'
           process:

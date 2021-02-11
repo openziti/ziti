@@ -17,8 +17,8 @@
 package apierror
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/go-openapi/errors"
 	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/rest_model"
@@ -89,6 +89,13 @@ func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
 					Value:  fmt.Sprintf("%v", causeFieldErr.Value),
 				},
 			}
+		} else if genericErr, ok := e.Cause.(GenericCauseError); ok {
+			ret.Cause = &rest_model.APIErrorCause{
+				APIError: rest_model.APIError{
+					Data:    genericErr.DataMap,
+					Message: genericErr.Error(),
+				},
+			}
 		} else {
 			ret.Cause = &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{
@@ -113,5 +120,11 @@ func (e GenericCauseError) Error() string {
 }
 
 func (e *GenericCauseError) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.DataMap)
+	data, err := gabs.Consume(e.DataMap) //gabs to avoid zero values being omitted
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data.Bytes(), nil
 }
