@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
@@ -64,13 +65,7 @@ func (self *Faulter) run() {
 					self.sessionIds.Remove(sessionId)
 				}
 
-				sessionIds := workload[0]
-				for i, sessionId := range workload {
-					if i > 0 {
-						sessionIds += " " + sessionId
-					}
-				}
-
+				sessionIds := strings.Join(workload, " ")
 				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: sessionIds}
 				body, err := proto.Marshal(fault)
 				if err == nil {
