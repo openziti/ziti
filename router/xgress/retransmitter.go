@@ -8,12 +8,17 @@ import (
 
 var retransmitter *Retransmitter
 
-func InitRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
-	retransmitter = NewRetransmitter(forwarder, metrics, closeNotify)
+func InitRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) {
+	retransmitter = NewRetransmitter(forwarder, faultReporter, metrics, closeNotify)
+}
+
+type RetransmitterFaultReporter interface {
+	ForwardingFault(sessionId string)
 }
 
 type Retransmitter struct {
 	forwarder            PayloadBufferForwarder
+	faultReporter        RetransmitterFaultReporter
 	retxTail             *txPayload
 	retxHead             *txPayload
 	retransmitIngest     chan *txPayload
@@ -22,7 +27,7 @@ type Retransmitter struct {
 	closeNotify          <-chan struct{}
 }
 
-func NewRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
+func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
 	ctrl := &Retransmitter{
 		forwarder:        forwarder,
 		retransmitIngest: make(chan *txPayload, 16),
@@ -144,6 +149,7 @@ func (retransmitter *Retransmitter) retransmitSender() {
 					if !retransmit.x.closed.Get() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
+						retransmitter.faultReporter.ForwardingFault(retransmit.payload.SessionId)
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}

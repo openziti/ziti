@@ -33,6 +33,10 @@ func newFaulter(interval time.Duration) *faulter {
 	return f
 }
 
+func (self *faulter) report(sessionId string) {
+	self.sessionIds.Set(sessionId, struct{}{})
+}
+
 func (self *faulter) run() {
 	logrus.Infof("started")
 	defer logrus.Errorf("exited")

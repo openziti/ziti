@@ -183,6 +183,10 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 	}
 }
 
+func (forwarder *Forwarder) ForwardingFault(sessionId string) {
+	forwarder.faulter.report(sessionId)
+}
+
 func (forwarder *Forwarder) Debug() string {
 	return forwarder.sessions.debug() + forwarder.destinations.debug()
 }
