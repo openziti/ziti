@@ -504,8 +504,8 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.16.1 h1:fm1UfqZRIVF5LdqFG9Y0PGy886WNuz2ybkCSpyPChVg=
-github.com/openziti/fabric v0.16.1/go.mod h1:QraOt7zNKcPsWQKcWaZNA/DIInFBqWjfX2hWzQeY15g=
+github.com/openziti/fabric v0.16.2 h1:9/zQyjs2N72iiR6DrlwgMfo5EOhe9I9HLTP5p34Dq+4=
+github.com/openziti/fabric v0.16.2/go.mod h1:QraOt7zNKcPsWQKcWaZNA/DIInFBqWjfX2hWzQeY15g=
 github.com/openziti/foundation v0.15.9 h1:Do/wohULRt+3H6mlB8SZmIUl/mbxUuN7/Lf7nbz6ZRo=
 github.com/openziti/foundation v0.15.9/go.mod h1:34ifQ24R2EUNjakzZBKY1M4EvnOWeIYJOrJxRGdRNh4=
 github.com/openziti/foundation v0.15.12 h1:fdhhEsJPfvVIdarY4fd4gPGHkOGIAuxIig2hHweZ9K0=
