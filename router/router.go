@@ -17,11 +17,15 @@
 package router
 
 import (
+	"bufio"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
 	"github.com/openziti/fabric/router/handler_link"
@@ -42,6 +46,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/sirupsen/logrus"
+	"io"
 	"math/rand"
 	"time"
 )
@@ -316,6 +321,50 @@ func (self *Router) startControlPlane() error {
 
 	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
 	events.AddMetricsEventHandler(self.metricsReporter)
+
+	return nil
+}
+
+const (
+	DumpForwarderTables byte = 1
+	UpdateRoute         byte = 2
+)
+
+func (router *Router) HandleDebug(conn io.ReadWriter) error {
+	reader := bufio.NewReader(conn)
+	op, err := reader.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	switch op {
+	case DumpForwarderTables:
+		tables := router.forwarder.Debug()
+		_, err := conn.Write([]byte(tables))
+		return err
+	case UpdateRoute:
+		logrus.Error("received debug operation to update routes")
+		sizeBuf := make([]byte, 4)
+		if _, err := reader.Read(sizeBuf); err != nil {
+			return err
+		}
+		size := binary.LittleEndian.Uint32(sizeBuf)
+		messageBuf := make([]byte, size)
+
+		if _, err := reader.Read(messageBuf); err != nil {
+			return err
+		}
+
+		route := &ctrl_pb.Route{}
+		if err := proto.Unmarshal(messageBuf, route); err != nil {
+			return err
+		}
+
+		logrus.Errorf("updating with route: %+v", route)
+		logrus.Errorf("updating with route: %v", route)
+
+		router.forwarder.Route(route)
+	}
 
 	return nil
 }
