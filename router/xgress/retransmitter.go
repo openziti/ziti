@@ -33,6 +33,7 @@ func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter Retransmit
 		retransmitIngest: make(chan *txPayload, 16),
 		retransmitSend:   make(chan *txPayload, 1),
 		closeNotify:      closeNotify,
+		faultReporter:    faultReporter,
 	}
 
 	go ctrl.retransmitIngester()

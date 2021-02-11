@@ -80,7 +80,7 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			}
 
 		case ctrl_pb.FaultSubject_ForwardFault:
-			sessionIds := strings.Split(fault.Subject.String(), " ")
+			sessionIds := strings.Split(fault.Id, " ")
 			h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, SessionIds: sessionIds})
 
 		default:
