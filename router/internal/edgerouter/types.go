@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package router
+package edgerouter
 
 import (
 	"net"

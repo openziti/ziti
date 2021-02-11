@@ -21,8 +21,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/edge/router/internal/apiproxy"
+	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/edge/router/internal/fabric"
-	"github.com/openziti/edge/router/internal/router"
+	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
@@ -34,17 +35,22 @@ import (
 )
 
 type Factory struct {
-	id              *identity.TokenId
-	ctrl            channel2.Channel
-	enabled         bool
-	config          *router.Config
-	hostedServices  *hostedServiceRegistry
-	stateManager    fabric.StateManager
-	versionProvider common.VersionProvider
+	id               *identity.TokenId
+	ctrl             channel2.Channel
+	enabled          bool
+	routerConfig     *router.Config
+	edgeRouterConfig *edgerouter.Config
+	hostedServices   *hostedServiceRegistry
+	stateManager     fabric.StateManager
+	versionProvider  common.VersionProvider
 }
 
 func (factory *Factory) Channel() channel2.Channel {
 	return factory.ctrl
+}
+
+func (factory *Factory) DefaultRequestTimeout() time.Duration {
+	return factory.routerConfig.Ctrl.DefaultRequestTimeout
 }
 
 func (factory *Factory) Enabled() bool {
@@ -59,15 +65,15 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	var supportedProtocols []string
 	var protocolPorts []string
 
-	if factory.config.Advertise != "" {
-		parts = strings.Split(factory.config.Advertise, ":")
+	if factory.edgeRouterConfig.Advertise != "" {
+		parts = strings.Split(factory.edgeRouterConfig.Advertise, ":")
 		hostname = parts[0]
 		supportedProtocols = append(supportedProtocols, "tls")
 		protocolPorts = append(protocolPorts, "tls:"+parts[1])
 		pfxlog.Logger().Debugf("HelloHandler will contain hostname=[%s] supportedProtocols=%v protocolPorts=%v", hostname, supportedProtocols, protocolPorts)
 	}
-	if factory.config.WSAdvertise != "" {
-		parts := strings.Split(factory.config.WSAdvertise, ":")
+	if factory.edgeRouterConfig.WSAdvertise != "" {
+		parts := strings.Split(factory.edgeRouterConfig.WSAdvertise, ":")
 		if hostname != "" {
 			if hostname != parts[0] {
 				pfxlog.Logger().Fatalf("cannot have different hostnames within multiple edge binding.advertise; got [%s] [%s]", hostname, parts[0])
@@ -81,19 +87,26 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	}
 	ch.AddReceiveHandler(handler_edge_ctrl.NewHelloHandler(hostname, supportedProtocols, protocolPorts))
 
-	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionAddedHandler(factory.stateManager, ch))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
-	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionUpdatedHandler(factory.stateManager))
 
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, ch))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
+
 	return nil
 }
 
-func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, _ chan struct{}) error {
+func (factory *Factory) NotifyOfReconnect() {
+	go factory.stateManager.ValidateSessions(factory.Channel(), factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
+}
+
+func (factory *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
+	return nil
+}
+
+func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, closeNotify chan struct{}) error {
 	factory.ctrl = ctrl
-	factory.stateManager.StartHeartbeat(ctrl, factory.config.HeartbeatIntervalSeconds)
+	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
 	return nil
 }
 
@@ -105,7 +118,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := router.NewConfig()
+	config := edgerouter.NewConfig()
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
@@ -116,18 +129,19 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 		return err
 	}
 
-	factory.config = config
+	factory.edgeRouterConfig = config
 	go apiproxy.Start(config)
 
 	return nil
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(versionProvider common.VersionProvider) *Factory {
+func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider) *Factory {
 	factory := &Factory{
 		hostedServices:  &hostedServiceRegistry{},
-		stateManager:    fabric.GetStateManager(),
+		stateManager:    fabric.NewStateManager(),
 		versionProvider: versionProvider,
+		routerConfig:    routerConfig,
 	}
 	return factory
 }

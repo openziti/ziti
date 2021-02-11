@@ -20,7 +20,6 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"math"
@@ -87,7 +86,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 func NewAccepter(listener *listener, uListener channel2.UnderlayListener, options *channel2.Options) *Accepter {
 	edgeBindHandler := &edgeBindHandler{listener: listener}
-	sessionHandler := newSessionConnectHandler(fabric.GetStateManager(), listener.options)
+	sessionHandler := newSessionConnectHandler(listener.factory.stateManager, listener.options)
 
 	optionsWithBind := options
 	if optionsWithBind == nil {

@@ -44,7 +44,7 @@ func (fingerprints Fingerprints) HasAny(fps []string) (string, bool) {
 }
 
 func (fingerprints Fingerprints) Prints() []string {
-	ret := []string{}
+	var ret []string
 
 	for k := range fingerprints {
 		ret = append(ret, k)

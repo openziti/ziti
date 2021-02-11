@@ -3,6 +3,7 @@ package env
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/fabric/controller/xtv"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"github.com/openziti/sdk-golang/ziti/signing"
@@ -70,7 +71,7 @@ func (v *EdgeTerminatorValidator) Validate(tx *bbolt.Tx, terminator xtv.Terminat
 }
 
 func (v *EdgeTerminatorValidator) getTerminatorSession(tx *bbolt.Tx, terminator xtv.Terminator, context string) (*persistence.Session, error) {
-	if terminator.GetBinding() != "edge" {
+	if terminator.GetBinding() != edge_common.Binding {
 		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
 	}
 

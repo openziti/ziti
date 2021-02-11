@@ -23,7 +23,9 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 func NewApiSessionHandler(env Env) *ApiSessionHandler {
@@ -171,6 +173,39 @@ func (handler *ApiSessionHandler) Query(query string) (*ApiSessionListResult, er
 		return nil, err
 	}
 	return result, nil
+}
+
+func (handler *ApiSessionHandler) VisitFingerprintsForApiSessionId(apiSessionId string, visitor func(fingerprint string) bool) error {
+	apiSession, err := handler.Read(apiSessionId)
+
+	if err != nil {
+		return errors.Wrapf(err, "could not query fingerprints by api session id [%s]", apiSessionId)
+	}
+
+	return handler.VisitFingerprintsForApiSession(apiSession.IdentityId, apiSessionId, visitor)
+}
+
+func (handler *ApiSessionHandler) VisitFingerprintsForApiSession(identityId, apiSessionId string, visitor func(fingerprint string) bool) error {
+	if stopVisiting, err := handler.env.GetHandlers().Identity.VisitIdentityAuthenticatorFingerprints(identityId, visitor); stopVisiting || err != nil {
+		return err
+	}
+
+	apiSessionCerts, err := handler.env.GetHandlers().ApiSessionCertificate.ReadByApiSessionId(apiSessionId)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	for _, apiSessionCert := range apiSessionCerts {
+		if apiSessionCert.ValidAfter != nil && now.After(*apiSessionCert.ValidAfter) &&
+			apiSessionCert.ValidBefore != nil && now.Before(*apiSessionCert.ValidBefore) {
+			if visitor(apiSessionCert.Fingerprint) {
+				return nil
+			}
+		}
+	}
+
+	return nil
 }
 
 type ApiSessionListResult struct {

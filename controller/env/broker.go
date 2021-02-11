@@ -29,8 +29,6 @@ import (
 
 const (
 	SessionRemovedType = int32(edge_ctrl_pb.ContentType_SessionRemovedType)
-	SessionAddedType   = int32(edge_ctrl_pb.ContentType_SessionAddedType)
-	SessionUpdatedType = int32(edge_ctrl_pb.ContentType_SessionUpdatedType)
 
 	ApiSessionHeartbeatType = int32(edge_ctrl_pb.ContentType_ApiSessionHeartbeatType)
 	ApiSessionRemovedType   = int32(edge_ctrl_pb.ContentType_ApiSessionRemovedType)
@@ -63,7 +61,6 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	}
 
 	broker.ae.GetStores().Session.AddListener(boltz.EventDelete, broker.sessionDeleted)
-	broker.ae.GetStores().Session.AddListener(boltz.EventCreate, broker.sessionCreated)
 	broker.ae.GetStores().ApiSession.AddListener(boltz.EventCreate, broker.apiSessionCreated)
 	broker.ae.GetStores().ApiSession.AddListener(boltz.EventDelete, broker.apiSessionDeleted)
 	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventCreate, broker.apiSessionCertificateHandler)
@@ -130,21 +127,6 @@ func (broker *Broker) apiSessionDeleted(args ...interface{}) {
 	}
 
 	broker.routerSyncStrategy.ApiSessionDeleted(apiSession)
-}
-
-func (broker *Broker) sessionCreated(args ...interface{}) {
-	var session *persistence.Session
-	if len(args) == 1 {
-		session, _ = args[0].(*persistence.Session)
-	}
-
-	if session == nil {
-		log := pfxlog.Logger()
-		log.Error("could not cast event args to event details")
-		return
-	}
-
-	broker.routerSyncStrategy.SessionAdded(session)
 }
 
 func (broker *Broker) sessionDeleted(args ...interface{}) {

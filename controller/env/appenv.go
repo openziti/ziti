@@ -137,6 +137,7 @@ type HostController interface {
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
 	GetNetwork() *network.Network
+	GetCloseNotifyChannel() <-chan struct{}
 }
 
 type Schemes struct {

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -41,7 +42,7 @@ func Test_AddressableTerminators(t *testing.T) {
 	type host struct {
 		id       *identity
 		context  ziti.Context
-		listener net.Listener
+		listener edge.Listener
 	}
 
 	var hosts []*host
@@ -58,6 +59,7 @@ func Test_AddressableTerminators(t *testing.T) {
 			BindUsingEdgeIdentity: true,
 		})
 		ctx.Req.NoError(err)
+		ctx.requireNListener(1, host.listener, 5*time.Second)
 	}
 
 	type client struct {
@@ -203,5 +205,8 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 		err = nil
 	}
 	ctx.Req.Error(err)
+	if !strings.Contains(err.Error(), "shared identity foobar belongs to different identity") {
+		time.Sleep(1 * time.Hour)
+	}
 	ctx.Req.Contains(err.Error(), "shared identity foobar belongs to different identity")
 }

@@ -46,6 +46,15 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 	return handler.createEntity(entity)
 }
 
+func (handler *SessionHandler) ReadByToken(token string) (*Session, error) {
+	modelSession := &Session{}
+	tokenIndex := handler.env.GetStores().Session.GetTokenIndex()
+	if err := handler.readEntityWithIndex("token", []byte(token), tokenIndex, modelSession); err != nil {
+		return nil, err
+	}
+	return modelSession, nil
+}
+
 func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*Session, error) {
 	identity, err := handler.GetEnv().GetHandlers().Identity.Read(identityId)
 

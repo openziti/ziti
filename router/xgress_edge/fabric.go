@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"sync/atomic"
@@ -46,53 +45,49 @@ type edgeTerminator struct {
 	edgeClientConn *edgeClientConn
 	token          string
 	terminatorId   string
-	service        string
 	assignIds      bool
+	onClose        func()
 }
 
-func (listener *edgeTerminator) nextDialConnId() uint32 {
-	nextId := atomic.AddUint32(&listener.edgeClientConn.idSeq, 1)
+func (self *edgeTerminator) nextDialConnId() uint32 {
+	nextId := atomic.AddUint32(&self.edgeClientConn.idSeq, 1)
 	if nextId < math.MaxUint32/2 {
-		atomic.StoreUint32(&listener.edgeClientConn.idSeq, math.MaxUint32/2)
-		nextId = atomic.AddUint32(&listener.edgeClientConn.idSeq, 1)
+		atomic.StoreUint32(&self.edgeClientConn.idSeq, math.MaxUint32/2)
+		nextId = atomic.AddUint32(&self.edgeClientConn.idSeq, 1)
 	}
 	return nextId
 }
 
-func (listener *edgeTerminator) close(notify bool, reason string) {
+func (self *edgeTerminator) close(notify bool, reason string) {
 	logger := pfxlog.Logger()
 
-	if notify && !listener.IsClosed() {
+	if notify && !self.IsClosed() {
 		// Notify edge client of close
-		log.Debug("sending closed to SDK client")
-		closeMsg := edge.NewStateClosedMsg(listener.Id(), reason)
-		if err := listener.SendState(closeMsg); err != nil {
-			log.WithError(err).Warn("unable to send close msg to edge client for hosted service")
+		logger.Debug("sending closed to SDK client")
+		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
+		if err := self.SendState(closeMsg); err != nil {
+			logger.WithError(err).Warn("unable to send close msg to edge client for hosted service")
 		}
 	}
 
-	logger.Debugf("removing terminator %v for token: %v", listener.terminatorId, listener.token)
-	if err := xgress.RemoveTerminator(listener.edgeClientConn.listener.factory, listener.terminatorId); err != nil {
-		logger.Errorf("failed to remove terminator %v (%v)", listener.terminatorId, err)
+	logger.Debugf("removing terminator %v for token %v on controller", self.terminatorId, self.token)
+	if err := self.edgeClientConn.removeTerminator(self); err != nil {
+		logger.Errorf("failed to remove terminator %v (%v)", self.terminatorId, err)
 	}
 
-	logger.Debugf("removing listener for terminator %v, token: %v", listener.terminatorId, listener.token)
-	listener.edgeClientConn.listener.factory.hostedServices.Delete(listener.token)
+	logger.Debugf("removing terminator %v for token %v on router", self.terminatorId, self.token)
+	self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
+
+	if self.onClose != nil {
+		self.onClose()
+	}
 }
 
-type edgeXgressConn struct {
-	edge.MsgChannel
-	mux       edge.MsgMux
-	seq       MsgQueue
-	newSinkCB func(sink *edgeXgressConn)
-	closed    concurrenz.AtomicBoolean
-}
-
-func (listener *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error) {
-	mux := listener.edgeClientConn.msgMux
+func (self *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, error) {
+	mux := self.edgeClientConn.msgMux
 	result := &edgeXgressConn{
 		mux:        mux,
-		MsgChannel: *edge.NewEdgeMsgChannel(listener.edgeClientConn.ch, connId),
+		MsgChannel: *edge.NewEdgeMsgChannel(self.edgeClientConn.ch, connId),
 		seq:        NewMsgQueue(4),
 	}
 
@@ -103,14 +98,22 @@ func (listener *edgeTerminator) newConnection(connId uint32) (*edgeXgressConn, e
 	return result, nil
 }
 
-func (conn *edgeXgressConn) LogContext() string {
-	return conn.Channel.Label()
+type edgeXgressConn struct {
+	edge.MsgChannel
+	mux     edge.MsgMux
+	seq     MsgQueue
+	onClose func()
+	closed  concurrenz.AtomicBoolean
 }
 
-func (conn *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
+func (self *edgeXgressConn) LogContext() string {
+	return self.Channel.Label()
+}
 
-	msg := conn.seq.Pop()
+func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
+	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
+
+	msg := self.seq.Pop()
 	if msg == nil {
 		log.Debug("sequencer closed, return EOF")
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
@@ -122,21 +125,21 @@ func (conn *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	switch msg.ContentType {
 	case edge.ContentTypeData:
 		log.Debugf("received data message with payload size %v", len(msg.Body))
-		return msg.Body, conn.getHeaderMap(msg), nil
+		return msg.Body, self.getHeaderMap(msg), nil
 
 	case edge.ContentTypeStateClosed:
 		log.Debug("received close message, closing connection and returning EOF")
-		conn.close(false, "close message received")
+		self.close(false, "close message received")
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 
 	default:
 		log.Error("unexpected message type, closing connection")
-		conn.close(false, "close message received")
+		self.close(false, "close message received")
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 	}
 }
 
-func (conn *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
+func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
 	var msgUUID []byte
 	var edgeHdrs map[int32][]byte
 
@@ -151,7 +154,7 @@ func (conn *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 		}
 	}
 
-	msg := edge.NewDataMsg(conn.Id(), conn.NextMsgId(), p)
+	msg := edge.NewDataMsg(self.Id(), self.NextMsgId(), p)
 	if msgUUID != nil {
 		msg.Headers[edge.UUIDHeader] = msgUUID
 	}
@@ -160,62 +163,66 @@ func (conn *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n 
 		msg.Headers[k] = v
 	}
 
-	conn.TraceMsg("write", msg)
+	self.TraceMsg("write", msg)
 	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Tracef("writing %v bytes", len(p))
 
-	if err = conn.Channel.Send(msg); err != nil {
+	if err = self.Channel.Send(msg); err != nil {
 		return 0, err
 	}
 
 	return len(p), nil
 }
 
-func (conn *edgeXgressConn) Close() error {
-	conn.close(true, "close called")
+func (self *edgeXgressConn) Close() error {
+	self.close(true, "close called")
 	return nil
 }
 
-func (conn *edgeXgressConn) HandleMuxClose() error {
-	conn.close(false, "channel closed")
+func (self *edgeXgressConn) HandleMuxClose() error {
+	self.close(false, "channel closed")
 	return nil
 }
 
-func (conn *edgeXgressConn) close(notify bool, reason string) {
-	if !conn.closed.CompareAndSwap(false, true) {
+func (self *edgeXgressConn) close(notify bool, reason string) {
+	if !self.closed.CompareAndSwap(false, true) {
 		// already closed
 		return
 	}
 
-	log := pfxlog.ContextLogger(conn.Channel.Label()).WithField("connId", conn.Id())
+	log := pfxlog.ContextLogger(self.Channel.Label()).WithField("connId", self.Id())
 	log.Debugf("closing edge xgress conn, reason: %v", reason)
 
-	conn.mux.RemoveMsgSink(conn)
+	self.mux.RemoveMsgSink(self)
 
 	// When nextSeq is closed, GetNext in Read() will return a nil.
 	// This will cause an io.EOF to be returned to the xgress read loop, which will cause that
 	// to terminate
 	log.Debug("closing channel sequencer, which should cause xgress to close")
-	conn.seq.Close()
+	self.seq.Close()
 
 	// we must close the sequencer first, otherwise we can deadlock. The channel rxer can be blocked submitting
 	// the sequencer and then notify send will then be stuck writing to a partially closed channel.
-	if notify && !conn.IsClosed() {
+	if notify && !self.IsClosed() {
 		// Notify edge client of close
 		log.Debug("sending closed to SDK client")
-		closeMsg := edge.NewStateClosedMsg(conn.Id(), reason)
-		if err := conn.SendState(closeMsg); err != nil {
+		closeMsg := edge.NewStateClosedMsg(self.Id(), reason)
+		if err := self.SendState(closeMsg); err != nil {
 			log.WithError(err).Warn("unable to send close msg to edge client")
 		}
 	}
+
+	if self.onClose != nil {
+		self.onClose()
+	}
 }
 
-func (conn *edgeXgressConn) Accept(msg *channel2.Message) {
-	if err := conn.seq.Push(msg); err != nil {
+func (self *edgeXgressConn) Accept(msg *channel2.Message) {
+	if err := self.seq.Push(msg); err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)
 	}
 }
 
-func (conn *edgeXgressConn) getHeaderMap(message *channel2.Message) map[uint8][]byte {
+func (self *edgeXgressConn) getHeaderMap(message *channel2.Message) map[uint8][]byte {
 	headers := make(map[uint8][]byte)
 	msgUUID, found := message.Headers[edge.UUIDHeader]
 	if found {

@@ -252,28 +252,6 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *persistence.ApiSe
 	})
 }
 
-func (strategy *InstantStrategy) SessionAdded(session *persistence.Session) {
-	logger := pfxlog.Logger().WithField("strategy", strategy.Type())
-
-	sessionProto, err := sessionToProto(strategy.ae, session)
-
-	if err != nil {
-		logger.WithField("sessionId", session.Id).
-			Errorf("error for individual session added, could not convert to proto: %v", err)
-		return
-	}
-
-	state := &InstantSyncState{
-		Id:       cuid.New(),
-		IsLast:   true,
-		Sequence: 0,
-	}
-	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
-		strategy.sendSessionAdded(rtx, false, state, []*edge_ctrl_pb.Session{sessionProto})
-		return true
-	})
-}
-
 func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 	sessionRemoved := &edge_ctrl_pb.SessionRemoved{
 		Tokens: []string{session.Token},
@@ -349,7 +327,7 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	}
 }
 
-func (strategy *InstantStrategy) ReceiveResync(r *network.Router, hello *edge_ctrl_pb.RequestClientReSync) {
+func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_pb.RequestClientReSync) {
 	rtx := strategy.rtxMap.Get(r.Id)
 
 	if rtx == nil {
@@ -429,7 +407,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	logger.Info("started synchronizing edge router")
 
 	chunkSize := 100
-	strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		var apiSessions []*edge_ctrl_pb.ApiSession
 
 		state := &InstantSyncState{
@@ -473,49 +451,9 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 		return nil
 	})
 
-	strategy.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		var sessions []*edge_ctrl_pb.Session
-
-		state := &InstantSyncState{
-			Id:       cuid.New(),
-			IsLast:   true,
-			Sequence: 0,
-		}
-
-		for cursor := strategy.ae.GetStores().Session.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
-			current := cursor.Current()
-
-			session, err := strategy.ae.GetStores().Session.LoadOneById(tx, string(current))
-
-			if err != nil {
-				logger.WithError(err).WithField("sessionId", string(current)).Errorf("error querying session [%s]: %v", string(current), err)
-				continue
-			}
-
-			sessionProto, err := sessionToProto(strategy.ae, session)
-
-			if err != nil {
-				logger.WithError(err).WithField("sessionId", string(current)).Errorf("error turning session [%s] into proto: %v", string(current), err)
-				continue
-			}
-
-			sessions = append(sessions, sessionProto)
-
-			if len(sessions) >= chunkSize {
-				state.IsLast = !cursor.IsValid()
-				strategy.sendSessionAdded(rtx, true, state, sessions)
-
-				state.Sequence = state.Sequence + 1
-				sessions = []*edge_ctrl_pb.Session{}
-			}
-		}
-
-		if len(sessions) > 0 {
-			state.IsLast = true
-			strategy.sendSessionAdded(rtx, true, state, sessions)
-		}
-		return nil
-	})
+	if err != nil {
+		logger.WithError(err).Error("failure synchronizing api sessions")
+	}
 
 	rtx.Status = env.RouterSyncDone
 }
@@ -535,23 +473,6 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
 	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 
-	rtx.Send(msg)
-}
-
-func (strategy *InstantStrategy) sendSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, sessions []*edge_ctrl_pb.Session) {
-
-	stateBytes, _ := json.Marshal(state)
-
-	msgContent := &edge_ctrl_pb.SessionAdded{
-		IsFullState: isFullState,
-		Sessions:    sessions,
-	}
-
-	msgContentBytes, _ := proto.Marshal(msgContent)
-
-	msg := channel2.NewMessage(env.SessionAddedType, msgContentBytes)
-	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
-	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 	rtx.Send(msg)
 }
 
