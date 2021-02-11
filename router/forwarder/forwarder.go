@@ -25,13 +25,14 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
-	faulter         *faulter
+	faulter         *Faulter
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -51,11 +52,11 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
-		faulter:         newFaulter(options.FaultTxInterval),
+		faulter:         faulter,
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(),
 		Options:         options,
@@ -183,8 +184,12 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 	}
 }
 
-func (forwarder *Forwarder) ForwardingFault(sessionId string) {
-	forwarder.faulter.report(sessionId)
+func (forwarder *Forwarder) ReportForwardingFault(sessionId string) {
+	if forwarder.faulter != nil {
+		forwarder.faulter.report(sessionId)
+ 	} else {
+ 		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
+	}
 }
 
 func (forwarder *Forwarder) Debug() string {

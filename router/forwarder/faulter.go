@@ -17,35 +17,74 @@
 package forwarder
 
 import (
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
-type faulter struct {
-	interval time.Duration
-	sessionIds cmap.ConcurrentMap // map[sessionId]struct{}
+type Faulter struct {
+	ctrl        channel2.Channel
+	interval    time.Duration
+	sessionIds  cmap.ConcurrentMap // map[sessionId]struct{}
+	closeNotify chan struct{}
 }
 
-func newFaulter(interval time.Duration) *faulter {
-	f := &faulter{interval: interval, sessionIds: cmap.New()}
-	go f.run()
+func NewFaulter(interval time.Duration, closeNotify chan struct{}) *Faulter {
+	f := &Faulter{interval: interval, sessionIds: cmap.New(), closeNotify: closeNotify}
+	if interval > 0 {
+		go f.run()
+	}
 	return f
 }
 
-func (self *faulter) report(sessionId string) {
-	self.sessionIds.Set(sessionId, struct{}{})
+func (self *Faulter) SetCtrl(ch channel2.Channel) {
+	self.ctrl = ch
 }
 
-func (self *faulter) run() {
+func (self *Faulter) report(sessionId string) {
+	if self.interval > 0 {
+		self.sessionIds.Set(sessionId, struct{}{})
+	}
+}
+
+func (self *Faulter) run() {
 	logrus.Infof("started")
 	defer logrus.Errorf("exited")
 
 	for {
-		time.Sleep(self.interval)
-		logrus.Infof("transmitting faults")
+		select {
+		case <-time.After(self.interval):
+			workload := self.sessionIds.Keys()
+			if len(workload) > 0 {
+				// Proactively remove from reported sessionIds. If we fail below, forwarder will continue to report.
+				for _, sessionId := range workload {
+					self.sessionIds.Remove(sessionId)
+				}
+
+				sessionIds := workload[0]
+				for i, sessionId := range workload {
+					if i > 0 {
+						sessionIds += " " + sessionId
+					}
+				}
+
+				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: sessionIds}
+				body, err := proto.Marshal(fault)
+				if err == nil {
+					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
+					if err := self.ctrl.Send(msg); err == nil {
+						logrus.Warnf("reported [%d] forwarding faults", len(workload))
+					} else {
+						logrus.Errorf("error sending fault report (%v)", err)
+					}
+				}
+			}
+
+		case <-self.closeNotify:
+			return
+		}
 	}
 }
-
-
-

@@ -52,6 +52,7 @@ type Router struct {
 	ctrlOptions     *channel2.Options
 	linkOptions     *channel2.Options
 	linkListener    channel2.UnderlayListener
+	faulter         *forwarder.Faulter
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
@@ -82,7 +83,8 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	xgress.InitMetrics(metricsRegistry)
 
 	closeNotify := make(chan struct{})
-	fwd := forwarder.NewForwarder(metricsRegistry, config.Forwarder)
+	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
+	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
@@ -90,6 +92,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 
 	return &Router{
 		config:          config,
+		faulter:         faulter,
 		forwarder:       fwd,
 		metricsRegistry: metricsRegistry,
 		shutdownC:       closeNotify,
@@ -306,6 +309,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.ctrl = ch
+	self.faulter.SetCtrl(ch)
 
 	self.xctrlDone = make(chan struct{})
 	for _, x := range self.xctrls {

@@ -13,7 +13,7 @@ func InitRetransmitter(forwarder PayloadBufferForwarder, faultReporter Retransmi
 }
 
 type RetransmitterFaultReporter interface {
-	ForwardingFault(sessionId string)
+	ReportForwardingFault(sessionId string)
 }
 
 type Retransmitter struct {
@@ -149,7 +149,8 @@ func (retransmitter *Retransmitter) retransmitSender() {
 					if !retransmit.x.closed.Get() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
-						retransmitter.faultReporter.ForwardingFault(retransmit.payload.SessionId)
+						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.SessionId)
+
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}
