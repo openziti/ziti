@@ -43,9 +43,10 @@ type Options struct {
 	RetxStartMs  uint32
 	RetxScale    float64
 	RetxAddMs    uint32
-	MaxCloseWait time.Duration
 
-	GetSessionTimeout time.Duration
+	MaxCloseWait        time.Duration
+	GetSessionTimeout   time.Duration
+	SessionStartTimeout time.Duration
 }
 
 func LoadOptions(data OptionsData) (*Options, error) {
@@ -107,6 +108,7 @@ func LoadOptions(data OptionsData) (*Options, error) {
 		if value, found := data["retxAddMs"]; found {
 			options.RetxAddMs = uint32(value.(int))
 		}
+
 		if value, found := data["maxCloseWaitMs"]; found {
 			options.MaxCloseWait = time.Duration(value.(int)) * time.Millisecond
 		}
@@ -117,6 +119,14 @@ func LoadOptions(data OptionsData) (*Options, error) {
 				return nil, errors.Wrap(err, "invalid 'getSessionTimeout' value")
 			}
 			options.GetSessionTimeout = getSessionTimeout
+		}
+
+		if value, found := data["sessionStartTimeout"]; found {
+			sessionStartTimeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid 'sessionStartTimeout' value")
+			}
+			options.SessionStartTimeout = sessionStartTimeout
 		}
 	}
 
@@ -144,6 +154,7 @@ func DefaultOptions() *Options {
 		RetxAddMs:              100,
 		MaxCloseWait:           30 * time.Second,
 		GetSessionTimeout:      30 * time.Second,
+		SessionStartTimeout:    3 * time.Minute,
 	}
 }
 
