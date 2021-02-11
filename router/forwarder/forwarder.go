@@ -83,12 +83,12 @@ func (forwarder *Forwarder) UnregisterDestinations(sessionId string) {
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Close() // create close queue?
 			} else {
-				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
+				pfxlog.Logger().Warnf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
 			}
 		}
 		forwarder.destinations.unlinkSession(sessionId)
 	} else {
-		pfxlog.Logger().Debugf("found no addresses to unregister for [s/%v]", sessionId)
+		pfxlog.Logger().Warnf("found no addresses to unregister for [s/%v]", sessionId)
 	}
 }
 

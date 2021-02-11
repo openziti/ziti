@@ -409,7 +409,6 @@ func (self *Xgress) tx() {
 		payloadSize := len(payload.Data)
 		size := atomic.AddUint32(&self.linkRxBuffer.size, ^uint32(payloadSize-1)) // subtraction for uint32
 		payloadLogger.Debugf("Payload %v of size %v removed from rx buffer. New size: %v", payload.Sequence, payloadSize, size)
-		localRecvBufferSizeBytesHistogram.Update(int64(size))
 
 		lastBufferSizeSent := self.linkRxBuffer.getLastBufferSizeSent()
 		if lastBufferSizeSent > 10000 && (lastBufferSizeSent>>1) > size {
@@ -526,9 +525,7 @@ func (self *Xgress) nextReceiveSequence() int32 {
 func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
 	self.payloadBuffer.CloseWhenEmpty() // If we clear the send buffer, close sooner
 	time.Sleep(duration)
-	if !self.closed.Get() {
-		self.Close()
-	}
+	self.Close()
 }
 
 func (self *Xgress) PayloadReceived(payload *Payload) {
