@@ -107,8 +107,8 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 	return buffer
 }
 
-func (buffer *LinkSendBuffer) CloseWhenEmpty() {
-	buffer.closeWhenEmpty.Set(true)
+func (buffer *LinkSendBuffer) CloseWhenEmpty() bool {
+	return buffer.closeWhenEmpty.CompareAndSwap(false, true)
 }
 
 func (buffer *LinkSendBuffer) BufferPayload(payload *Payload) (func(), error) {
