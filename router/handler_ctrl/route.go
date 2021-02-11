@@ -67,21 +67,21 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				pfxlog.Logger().Warnf("destination exists for [%s]", route.Egress.Address)
-				rh.success(int(route.Attempt), ch, route, nil)
+				rh.success(msg, int(route.Attempt), ch, route, nil)
 				return
 			} else {
-				rh.connectEgress(int(route.Attempt), ch, route)
+				rh.connectEgress(msg, int(route.Attempt), ch, route)
 				return
 			}
 		} else {
-			rh.success(int(route.Attempt), ch, route, nil)
+			rh.success(msg, int(route.Attempt), ch, route, nil)
 		}
 	} else {
 		log.Errorf("error unmarshaling (%s)", err)
 	}
 }
 
-func (rh *routeHandler) success(attempt int, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
+func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
@@ -89,6 +89,8 @@ func (rh *routeHandler) success(attempt int, ch channel2.Channel, route *ctrl_pb
 		for k, v := range peerData {
 			response.Headers[int32(k)] = v
 		}
+
+		response.ReplyTo(msg)
 
 		if err := rh.ctrl.Channel().Send(response); err == nil {
 			log.Debugf("handled route for [s/%s]", route.SessionId)
@@ -100,11 +102,12 @@ func (rh *routeHandler) success(attempt int, ch channel2.Channel, route *ctrl_pb
 	}
 }
 
-func (rh *routeHandler) fail(attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error) {
+func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error) {
 	log := pfxlog.ContextLogger(ch.Label())
 	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
 
 	if response, err := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error()); err == nil {
+		response.ReplyTo(msg)
 		if err := rh.ctrl.Channel().Send(response); err != nil {
 			log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
 		}
@@ -113,7 +116,7 @@ func (rh *routeHandler) fail(attempt int, ch channel2.Channel, route *ctrl_pb.Ro
 	}
 }
 
-func (rh *routeHandler) connectEgress(attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
+func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
 		log := pfxlog.Logger().WithField("sessionId", route.SessionId)
 		log.Debugf("route request received. binding: %v, destination: %v, address: %v",
@@ -131,15 +134,15 @@ func (rh *routeHandler) connectEgress(attempt int, ch channel2.Channel, route *c
 					sessionId,
 					xgress.Address(route.Egress.Address),
 					bindHandler); err == nil {
-					rh.success(attempt, ch, route, peerData)
+					rh.success(msg, attempt, ch, route, peerData)
 				} else {
-					rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
+					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 				}
 			} else {
-				rh.fail(attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
+				rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
 			}
 		} else {
-			rh.fail(attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
+			rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 		}
 	})
 }
