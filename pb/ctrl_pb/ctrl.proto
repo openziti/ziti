@@ -82,6 +82,7 @@ enum FaultSubject {
     IngressFault = 0;
     EgressFault = 1;
     LinkFault = 2;
+    ForwardFault = 3;
 }
 
 message Fault {

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
+	"strings"
 )
 
 type faultHandler struct {
@@ -77,6 +78,10 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			} else {
 				log.Debugf("handled egress fault for (%s)", fault.Id)
 			}
+
+		case ctrl_pb.FaultSubject_ForwardFault:
+			sessionIds := strings.Split(fault.Id, " ")
+			h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, SessionIds: sessionIds})
 
 		default:
 			log.Errorf("unexpected subject (%s)", fault.Subject.String())

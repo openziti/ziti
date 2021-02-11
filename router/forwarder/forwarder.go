@@ -25,12 +25,14 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
+	faulter         *Faulter
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -50,10 +52,11 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
+		faulter:         faulter,
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(),
 		Options:         options,
@@ -83,12 +86,12 @@ func (forwarder *Forwarder) UnregisterDestinations(sessionId string) {
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Close() // create close queue?
 			} else {
-				pfxlog.Logger().Warnf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
+				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
 			}
 		}
 		forwarder.destinations.unlinkSession(sessionId)
 	} else {
-		pfxlog.Logger().Warnf("found no addresses to unregister for [s/%v]", sessionId)
+		pfxlog.Logger().Debugf("found no addresses to unregister for [s/%v]", sessionId)
 	}
 }
 
@@ -178,6 +181,14 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 
 	} else {
 		return errors.Errorf("cannot acknowledge, no forward table for session=%v src=%v", sessionId, srcAddr)
+	}
+}
+
+func (forwarder *Forwarder) ReportForwardingFault(sessionId string) {
+	if forwarder.faulter != nil {
+		forwarder.faulter.report(sessionId)
+ 	} else {
+ 		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
 	}
 }
 

@@ -54,6 +54,7 @@ type Network struct {
 	routerChanged          chan *Router
 	linkController         *linkController
 	linkChanged            chan *Link
+	forwardingFaults       chan *ForwardingFaultReport
 	sessionController      *sessionController
 	routeSenderController  *routeSenderController
 	sequence               *sequence.Sequence
@@ -83,9 +84,10 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		Controllers:           controllers,
 		nodeId:                nodeId,
 		options:               options,
-		routerChanged:         make(chan *Router),
+		routerChanged:         make(chan *Router, 16),
 		linkController:        newLinkController(),
-		linkChanged:           make(chan *Link),
+		linkChanged:           make(chan *Link, 16),
+		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
 		sessionController:     newSessionController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
@@ -348,13 +350,13 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Routing
-		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt + 1, sessionId.Token)
+		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt+1, sessionId.Token)
 		peerData, cleanups, err := rs.route(attempt, circuit, rms, strategy, terminator)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
-			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt + 1, sessionId.Token, err)
+			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, sessionId.Token, err)
 			attempt++
 			if attempt < network.options.CreateSessionRetries {
 				continue
@@ -393,6 +395,10 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		logrus.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
 	}
+}
+
+func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
+	network.forwardingFaults <- ffr
 }
 
 func parseIdentityAndService(service string) (string, string) {
@@ -623,10 +629,15 @@ func (network *Network) Run() {
 				log.Errorf("unexpected error rerouting link (%s)", err)
 			}
 
+		case ffr := <-network.forwardingFaults:
+			network.fault(ffr)
+			network.clean()
+
 		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
 			network.assemble()
 			network.clean()
 			network.smart()
+
 		case _, ok := <-network.shutdownChan:
 			if !ok {
 				return
