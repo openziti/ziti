@@ -31,6 +31,7 @@ import (
 type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
+	faulter         *faulter
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -54,6 +55,7 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forw
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
+		faulter:         newFaulter(options.FaultTxInterval),
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(),
 		Options:         options,
