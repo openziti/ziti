@@ -40,7 +40,11 @@ const (
 	//Error states
 	RouterSyncUnknown      RouterSyncStatus = "SYNC_UNKNOWN"       //the router is currently unknown
 	RouterSyncDisconnected RouterSyncStatus = "SYNC_DISCONNECTED"  //strategy was disconnected before finishing
-	RouterSyncHelloTimeout RouterSyncStatus = "SYNC_HELLO_TIMEOUT" //sync failed due to a hello timeout
+	RouterSyncHelloTimeout RouterSyncStatus = "SYNC_HELLO_TIMEOUT" //sync failed due to a hello timeout.
+
+	//msg headers
+	SyncStrategyTypeHeader         = 1013
+	SyncStrategyStateHeader        = 1014
 )
 
 // RouterSyncStrategy handles the life cycle of an Edge Router connecting to the controller, synchronizing

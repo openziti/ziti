@@ -68,8 +68,6 @@ message ApiSession {
 message ApiSessionAdded {
     bool isFullState = 1;
     repeated ApiSession apiSessions = 2;
-    string syncStrategy = 3;
-    string syncState = 4;
 }
 
 message ApiSessionUpdated {
@@ -88,8 +86,6 @@ message ApiSessionHeartbeat {
 message SessionAdded {
     bool isFullState = 1;
     repeated Session sessions = 2;
-    string syncStrategy = 3;
-    string syncState = 4;
 }
 
 message SessionRemoved {

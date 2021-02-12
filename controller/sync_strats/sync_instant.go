@@ -186,13 +186,13 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 	apiSessionAdded := &edge_ctrl_pb.ApiSessionAdded{
 		IsFullState:  false,
 		ApiSessions:  []*edge_ctrl_pb.ApiSession{apiSessionProto},
-		SyncStrategy: string(strategy.Type()),
-		SyncState:    "",
 	}
 
 	strategy.rtxMap.Range(func(rtx *routerTx) bool {
 		content, _ := proto.Marshal(apiSessionAdded)
 		msg := channel2.NewMessage(env.ApiSessionUpdatedType, content)
+		msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
+		msg.Headers[env.SyncStrategyStateHeader] = nil
 		rtx.Send(msg)
 		return true
 	})
@@ -483,15 +483,16 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *routerTx, isFullState 
 	stateBytes, _ := json.Marshal(state)
 
 	msgContent := &edge_ctrl_pb.ApiSessionAdded{
-		IsFullState:  isFullState,
-		ApiSessions:  apiSessions,
-		SyncStrategy: string(strategy.Type()),
-		SyncState:    string(stateBytes),
+		IsFullState: isFullState,
+		ApiSessions: apiSessions,
 	}
 
 	msgContentBytes, _ := proto.Marshal(msgContent)
 
 	msg := channel2.NewMessage(env.ApiSessionAddedType, msgContentBytes)
+
+	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
+	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 
 	rtx.Send(msg)
 }
@@ -503,14 +504,13 @@ func (strategy *InstantStrategy) sendSessionAdded(rtx *routerTx, isFullState boo
 	msgContent := &edge_ctrl_pb.SessionAdded{
 		IsFullState:  isFullState,
 		Sessions:     sessions,
-		SyncStrategy: string(strategy.Type()),
-		SyncState:    string(stateBytes),
 	}
 
 	msgContentBytes, _ := proto.Marshal(msgContent)
 
 	msg := channel2.NewMessage(env.SessionAddedType, msgContentBytes)
-
+	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
+	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 	rtx.Send(msg)
 }
 

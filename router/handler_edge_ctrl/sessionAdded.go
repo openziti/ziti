@@ -17,7 +17,6 @@
 package handler_edge_ctrl
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
@@ -33,7 +32,7 @@ import (
 type sessionAddedHandler struct {
 	sm          fabric.StateManager
 	syncTracker *sessionSyncTracker
-	reqChan     chan *edge_ctrl_pb.SessionAdded
+	reqChan     chan *sessionAddedWithState
 	syncReady   chan []*edge_ctrl_pb.Session
 	syncFail    chan error
 }
@@ -41,7 +40,7 @@ type sessionAddedHandler struct {
 func NewSessionAddedHandler(sm fabric.StateManager) *sessionAddedHandler {
 	handler := &sessionAddedHandler{
 		sm:        sm,
-		reqChan:   make(chan *edge_ctrl_pb.SessionAdded, 100),
+		reqChan:   make(chan *sessionAddedWithState, 100),
 		syncReady: make(chan []*edge_ctrl_pb.Session, 0),
 		syncFail:  make(chan error, 0),
 	}
@@ -62,7 +61,19 @@ func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 		req := &edge_ctrl_pb.SessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 			if req.IsFullState {
-				h.reqChan <- req
+
+				reqWithState := &sessionAddedWithState{
+					SessionAdded: req,
+				}
+
+				if syncStrategyType, syncState, err := parseInstantSyncHeaders(msg); err == nil {
+					reqWithState.SyncStrategyType = syncStrategyType
+					reqWithState.InstantSyncState = syncState
+				} else {
+					pfxlog.Logger().WithField("strategy", syncStrategyType).WithField("msgContentType", msg.ContentType).WithError(err).Errorf("sync headers not present (old controller) or only partial present(error), treading as legacy: %v", err)
+				}
+
+				h.reqChan <- reqWithState
 			} else {
 				for _, session := range req.Sessions {
 					h.sm.AddSession(session)
@@ -86,46 +97,49 @@ func (h *sessionAddedHandler) startSyncApplier() {
 }
 
 func (h *sessionAddedHandler) startSyncFail() {
-	h.syncTracker.Stop()
-	h.syncTracker = nil
 
+	for err := range h.syncFail {
+		pfxlog.Logger().Errorf("failed to synchronize sessions, aborting: %v", err)
+		h.syncTracker.Stop()
+		h.syncTracker = nil
+	}
 }
 
-func (h *sessionAddedHandler) legacySync(req *edge_ctrl_pb.SessionAdded) {
+func (h *sessionAddedHandler) legacySync(reqWithState *sessionAddedWithState) {
 	pfxlog.Logger().Warn("using legacy sync logic some connections may be dropped")
-	for _, session := range req.Sessions {
+	for _, session := range reqWithState.Sessions {
 		h.sm.AddSession(session)
 	}
 
-	h.sm.RemoveMissingSessions(req.Sessions)
+	h.sm.RemoveMissingSessions(reqWithState.Sessions)
 }
 
 func (h *sessionAddedHandler) startRecieveSync() {
-	for req := range h.reqChan {
-		switch req.SyncStrategy {
+	for reqWithState := range h.reqChan {
+		switch reqWithState.SyncStrategyType {
 		case string(sync_strats.RouterSyncStrategyInstant):
-			h.instantSync(req)
+			h.instantSync(reqWithState)
 		case "":
 			pfxlog.Logger().Warn("syncStrategy is not specifieid, old controller?")
-			h.legacySync(req)
+			h.legacySync(reqWithState)
 		default:
-			pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", req.SyncStrategy)
-			h.legacySync(req)
+			pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", reqWithState.SyncStrategyType)
+			h.legacySync(reqWithState)
 		}
 	}
 }
 
-func (h *sessionAddedHandler) instantSync(req *edge_ctrl_pb.SessionAdded) {
-	logger := pfxlog.Logger().WithField("strategy", req.SyncStrategy)
+func (h *sessionAddedHandler) instantSync(reqWithState *sessionAddedWithState) {
+	logger := pfxlog.Logger().WithField("strategy", reqWithState.SyncStrategyType)
 
 	state := &sync_strats.InstantSyncState{}
 
-	if req.SyncState == "" {
+	if reqWithState.InstantSyncState == nil {
 		logger.Panic("syncState is empty, cannot continue")
 	}
 
-	if err := json.Unmarshal([]byte(req.SyncState), state); err != nil {
-		logger.Panicf("could not parse sync state [%s], error: %v", req.SyncState, err)
+	if reqWithState.InstantSyncState.Id == "" {
+		logger.Panic("syncState id is empty, cannot continue")
 	}
 
 	//if no id or the sync id is newer, reset
@@ -147,10 +161,7 @@ func (h *sessionAddedHandler) instantSync(req *edge_ctrl_pb.SessionAdded) {
 		return
 	}
 
-	h.syncTracker.Add(&sessionAddedWithState{
-		InstantSyncState: state,
-		SessionAdded:     req,
-	})
+	h.syncTracker.Add(reqWithState)
 
 }
 
@@ -204,7 +215,7 @@ func (tracker *sessionSyncTracker) StartDeadline(syncReady chan []*edge_ctrl_pb.
 				}
 			case <-time.After(timeout):
 				tracker.reqsWithState = nil
-				syncFail <- errors.New("timeout")
+				syncFail <- errors.New("timeout, did not receive all updates in time")
 				return
 			}
 		}()
@@ -244,6 +255,7 @@ func (tracker *sessionSyncTracker) all() []*edge_ctrl_pb.Session {
 }
 
 type sessionAddedWithState struct {
+	SyncStrategyType string
 	*sync_strats.InstantSyncState
 	*edge_ctrl_pb.SessionAdded
 }
