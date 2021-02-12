@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -73,8 +74,9 @@ type Config struct {
 		}
 	}
 	Ctrl struct {
-		Endpoint transport.Address
-		Options  *channel2.Options
+		Endpoint              transport.Address
+		DefaultRequestTimeout time.Duration
+		Options               *channel2.Options
 	}
 	Link struct {
 		Listeners []map[interface{}]interface{}
@@ -188,6 +190,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel2.DefaultOptions()
 	if value, found := cfgmap["ctrl"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -204,6 +207,11 @@ func LoadConfig(path string) (*Config, error) {
 					if err := cfg.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
+				}
+			}
+			if value, found := submap["defaultRequestTimeout"]; found {
+				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
 				}
 			}
 			if cfg.Trace.Handler != nil {

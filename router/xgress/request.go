@@ -220,7 +220,7 @@ func AddTerminator(ctrl CtrlChannel, serviceId, binding, address, identity strin
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateTerminatorRequestType), bytes)
-	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
+	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, ctrl.DefaultRequestTimeout())
 	if err != nil {
 		log.Errorf("failed to send CreateTerminatorRequest message (%v)", err)
 		return "", sessionError
@@ -253,7 +253,7 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveTerminatorRequestType), bytes)
-	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
+	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, ctrl.DefaultRequestTimeout())
 	if err != nil {
 		log.Errorf("failed to send RemoveTerminatorRequest message (%v)", err)
 		return sessionError
@@ -293,7 +293,7 @@ func UpdateTerminator(ctrl CtrlChannel, terminatorId string, staticCost *uint16,
 	}
 
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UpdateTerminatorRequestType), bytes)
-	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
+	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, ctrl.DefaultRequestTimeout())
 	if err != nil {
 		log.Errorf("failed to send UpdateTerminatorRequest message (%v)", err)
 		return sessionError
