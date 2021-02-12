@@ -83,6 +83,19 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 		return nil, err
 	}
 
+	path := []string{} //must be non null
+
+	for _, fabricSession := range ae.HostController.GetNetwork().GetAllSessions() {
+		if fabricSession.ClientId != nil && fabricSession.ClientId.Token == sessionModel.Id {
+			if fabricSession.Circuit != nil {
+				for _, pathSeg := range fabricSession.Circuit.Path {
+					path = append(path, pathSeg.Id)
+				}
+				break
+			}
+		}
+	}
+
 	ret := &rest_model.SessionDetail{
 		BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
 		APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
@@ -92,6 +105,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 		EdgeRouters:  edgeRouters,
 		Type:         rest_model.DialBind(sessionModel.Type),
 		Token:        &sessionModel.Token,
+		RoutePath:    path,
 	}
 
 	return ret, nil

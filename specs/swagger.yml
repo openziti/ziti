@@ -3886,6 +3886,7 @@ responses:
     description: The recovery codes of an MFA enrollment
     schema:
       $ref: '#/definitions/detailMfaRecoveryCodesEnvelope'
+
   ###################################################################
   # API Session
   ##################################################################
@@ -5705,6 +5706,7 @@ definitions:
           - service
           - token
           - edgeRouters
+          - routePath
         properties:
           type:
             $ref: '#/definitions/dialBind'
@@ -5722,6 +5724,10 @@ definitions:
             type: array
             items:
               $ref: '#/definitions/sessionEdgeRouter'
+          routePath:
+            type: array
+            items:
+              type: string
   sessionEdgeRouter:
     allOf:
       - $ref: "#/definitions/commonEdgeRouterProperties"

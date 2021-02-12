@@ -56,6 +56,10 @@ type SessionDetail struct {
 	// Required: true
 	EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
 
+	// route path
+	// Required: true
+	RoutePath []string `json:"routePath"`
+
 	// service
 	// Required: true
 	Service *EntityRef `json:"service"`
@@ -90,6 +94,8 @@ func (m *SessionDetail) UnmarshalJSON(raw []byte) error {
 
 		EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
 
+		RoutePath []string `json:"routePath"`
+
 		Service *EntityRef `json:"service"`
 
 		ServiceID *string `json:"serviceId"`
@@ -107,6 +113,8 @@ func (m *SessionDetail) UnmarshalJSON(raw []byte) error {
 	m.APISessionID = dataAO1.APISessionID
 
 	m.EdgeRouters = dataAO1.EdgeRouters
+
+	m.RoutePath = dataAO1.RoutePath
 
 	m.Service = dataAO1.Service
 
@@ -135,6 +143,8 @@ func (m SessionDetail) MarshalJSON() ([]byte, error) {
 
 		EdgeRouters []*SessionEdgeRouter `json:"edgeRouters"`
 
+		RoutePath []string `json:"routePath"`
+
 		Service *EntityRef `json:"service"`
 
 		ServiceID *string `json:"serviceId"`
@@ -149,6 +159,8 @@ func (m SessionDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.APISessionID = m.APISessionID
 
 	dataAO1.EdgeRouters = m.EdgeRouters
+
+	dataAO1.RoutePath = m.RoutePath
 
 	dataAO1.Service = m.Service
 
@@ -184,6 +196,10 @@ func (m *SessionDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEdgeRouters(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRoutePath(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -256,6 +272,15 @@ func (m *SessionDetail) validateEdgeRouters(formats strfmt.Registry) error {
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (m *SessionDetail) validateRoutePath(formats strfmt.Registry) error {
+
+	if err := validate.Required("routePath", "body", m.RoutePath); err != nil {
+		return err
 	}
 
 	return nil
