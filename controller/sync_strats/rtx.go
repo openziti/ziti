@@ -28,9 +28,9 @@ import (
 	"sync"
 )
 
-// routerTx represents a connection from an Edge Router to the controller. Used
+// RouterSender represents a connection from an Edge Router to the controller. Used
 // to asynchronously buffer and send messages to an Edge Router via Start() then Send()
-type routerTx struct {
+type RouterSender struct {
 	Id         string
 	EdgeRouter *model.EdgeRouter
 	Router     *network.Router
@@ -41,8 +41,8 @@ type routerTx struct {
 	stopping   concurrenz.AtomicBoolean
 }
 
-func newRouterTx(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *routerTx {
-	return &routerTx{
+func newRouterTx(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
+	return &RouterSender{
 		Id:         eid.New(),
 		EdgeRouter: edgeRouter,
 		Router:     router,
@@ -54,13 +54,13 @@ func newRouterTx(edgeRouter *model.EdgeRouter, router *network.Router, sendBuffe
 	}
 }
 
-func (rtx *routerTx) Start() {
+func (rtx *RouterSender) Start() {
 	if rtx.running.CompareAndSwap(false, true) {
 		go rtx.run()
 	}
 }
 
-func (rtx *routerTx) Stop() {
+func (rtx *RouterSender) Stop() {
 	if rtx.stopping.CompareAndSwap(false, true) {
 		go func() {
 			rtx.stop <- struct{}{}
@@ -68,7 +68,7 @@ func (rtx *routerTx) Stop() {
 	}
 }
 
-func (rtx *routerTx) run() {
+func (rtx *RouterSender) run() {
 	for {
 		select {
 		case <-rtx.stop:
@@ -83,7 +83,7 @@ func (rtx *routerTx) run() {
 	}
 }
 
-func (rtx *routerTx) logger() *logrus.Entry {
+func (rtx *RouterSender) logger() *logrus.Entry {
 	return pfxlog.Logger().
 		WithField("routerTxId", rtx.Id).
 		WithField("routerId", rtx.Router.Id).
@@ -92,26 +92,26 @@ func (rtx *routerTx) logger() *logrus.Entry {
 		WithField("routerChannelIsOpen", !rtx.Router.Control.IsClosed())
 }
 
-func (rtx *routerTx) Send(msg *channel2.Message) {
+func (rtx *RouterSender) Send(msg *channel2.Message) {
 	rtx.send <- msg
 }
 
-// Map used make working with internal routerTx easier as sync.Map accepts and returns interface{}
+// Map used make working with internal RouterSender easier as sync.Map accepts and returns interface{}
 type routerTxMap struct {
-	internalMap *sync.Map //id -> routerTx
+	internalMap *sync.Map //id -> RouterSender
 }
 
-func (m *routerTxMap) Add(id string, routerMessageTxer *routerTx) {
+func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
 	m.internalMap.Store(id, routerMessageTxer)
 	routerMessageTxer.Start()
 }
 
-func (m *routerTxMap) Get(id string) *routerTx {
+func (m *routerTxMap) Get(id string) *RouterSender {
 	val, found := m.internalMap.Load(id)
 	if !found {
 		return nil
 	}
-	return val.(*routerTx)
+	return val.(*RouterSender)
 }
 
 func (m *routerTxMap) Remove(id string) {
@@ -122,9 +122,9 @@ func (m *routerTxMap) Remove(id string) {
 	}
 }
 
-func (m *routerTxMap) Range(f func(entries *routerTx) bool) {
+func (m *routerTxMap) Range(f func(entries *RouterSender) bool) {
 	m.internalMap.Range(func(edgeRouterId, value interface{}) bool {
-		if rtx, ok := value.(*routerTx); ok {
+		if rtx, ok := value.(*RouterSender); ok {
 			return f(rtx)
 		}
 		pfxlog.Logger().Panic("could not convert edge router entry")

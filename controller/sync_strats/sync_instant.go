@@ -54,8 +54,8 @@ type InstantStrategy struct {
 	resyncHandler channel2.ReceiveHandler
 	ae            *env.AppEnv
 
-	helloOutQueue chan *routerTx
-	helloInQueue  chan *routerTx
+	helloOutQueue chan *RouterSender
+	helloInQueue  chan *RouterSender
 
 	stopHelloOut chan struct{}
 	stopHelloIn  chan struct{}
@@ -99,8 +99,8 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 			internalMap: &sync.Map{},
 		},
 		ae:            ae,
-		helloOutQueue: make(chan *routerTx, 100),
-		helloInQueue:  make(chan *routerTx, 100),
+		helloOutQueue: make(chan *RouterSender, 100),
+		helloInQueue:  make(chan *RouterSender, 100),
 		stopHelloOut:  make(chan struct{}, 0),
 		stopHelloIn:   make(chan struct{}, 0),
 	}
@@ -166,7 +166,7 @@ func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSess
 		Sequence: 0,
 	}
 
-	strategy.rtxMap.Range(func(rtx *routerTx) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
 		strategy.sendApiSessionAdded(rtx, false, state, []*edge_ctrl_pb.ApiSession{apiSessionProto})
 		return true
 	})
@@ -188,7 +188,7 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 		ApiSessions:  []*edge_ctrl_pb.ApiSession{apiSessionProto},
 	}
 
-	strategy.rtxMap.Range(func(rtx *routerTx) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
 		content, _ := proto.Marshal(apiSessionAdded)
 		msg := channel2.NewMessage(env.ApiSessionUpdatedType, content)
 		msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
@@ -203,7 +203,7 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *persistence.ApiSe
 		Tokens: []string{apiSession.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *routerTx) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel2.NewMessage(env.ApiSessionRemovedType, content)
 		rtx.Send(msg)
@@ -227,7 +227,7 @@ func (strategy *InstantStrategy) SessionAdded(session *persistence.Session) {
 		IsLast:   true,
 		Sequence: 0,
 	}
-	strategy.rtxMap.Range(func(rtx *routerTx) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
 		strategy.sendSessionAdded(rtx, false, state, []*edge_ctrl_pb.Session{sessionProto})
 		return true
 	})
@@ -238,7 +238,7 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 		Tokens: []string{session.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *routerTx) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel2.NewMessage(env.SessionRemovedType, content)
 		rtx.Send(msg)
@@ -264,7 +264,7 @@ func (strategy *InstantStrategy) startSynchronizeWorker() {
 	}
 }
 
-func (strategy *InstantStrategy) hello(rtx *routerTx) {
+func (strategy *InstantStrategy) hello(rtx *RouterSender) {
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 
 	logger.Info("edge router sync starting")
@@ -281,7 +281,7 @@ func (strategy *InstantStrategy) hello(rtx *routerTx) {
 	strategy.sendHello(rtx)
 }
 
-func (strategy *InstantStrategy) sendHello(rtx *routerTx) {
+func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 	serverVersion := build.GetBuildInfo().Version()
 	serverHello := &edge_ctrl_pb.ServerHello{
@@ -373,7 +373,7 @@ func (strategy *InstantStrategy) ReceiveHello(r *network.Router, respHello *edge
 	strategy.helloInQueue <- rtx
 }
 
-func (strategy *InstantStrategy) synchronize(rtx *routerTx) {
+func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	defer func() {
 		rtx.logger().WithField("strategy", strategy.Type()).Infof("exiting synchronization, final status: %s", rtx.Status)
 	}()
@@ -479,7 +479,7 @@ func (strategy *InstantStrategy) synchronize(rtx *routerTx) {
 	rtx.Status = env.RouterSyncDone
 }
 
-func (strategy *InstantStrategy) sendApiSessionAdded(rtx *routerTx, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) {
+func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) {
 	stateBytes, _ := json.Marshal(state)
 
 	msgContent := &edge_ctrl_pb.ApiSessionAdded{
@@ -497,7 +497,7 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *routerTx, isFullState 
 	rtx.Send(msg)
 }
 
-func (strategy *InstantStrategy) sendSessionAdded(rtx *routerTx, isFullState bool, state *InstantSyncState, sessions []*edge_ctrl_pb.Session) {
+func (strategy *InstantStrategy) sendSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, sessions []*edge_ctrl_pb.Session) {
 
 	stateBytes, _ := json.Marshal(state)
 

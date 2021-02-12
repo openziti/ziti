@@ -274,10 +274,6 @@ type apiSessionAddedWithState struct {
 	*edge_ctrl_pb.ApiSessionAdded
 }
 
-type apiSessionSyncResult struct {
-	apiSessions []*apiSessionAddedWithState
-}
-
 func parseInstantSyncHeaders(msg *channel2.Message) (string, *sync_strats.InstantSyncState, error) {
 	if syncStrategyType, ok := msg.Headers[env.SyncStrategyTypeHeader]; ok {
 		if syncStrategyState, ok := msg.Headers[env.SyncStrategyStateHeader]; ok {
