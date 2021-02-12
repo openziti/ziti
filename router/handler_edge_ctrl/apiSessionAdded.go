@@ -74,7 +74,7 @@ func (h *apiSessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel
 					reqWithState.SyncStrategyType = syncStrategyType
 					reqWithState.InstantSyncState = syncState
 				} else {
-					pfxlog.Logger().WithField("strategy", syncStrategyType).WithField("msgContentType", msg.ContentType).WithError(err).Errorf("sync headers not present (old controller) or only partial present(error), treading as legacy: %v", err)
+					pfxlog.Logger().WithField("msgContentType", msg.ContentType).WithError(err).Errorf("sync headers not present (old controller) or only partial present(error), treating as legacy: %v", err)
 				}
 
 				h.reqChan <- reqWithState
@@ -103,13 +103,13 @@ func (h *apiSessionAddedHandler) startSyncApplier() {
 func (h *apiSessionAddedHandler) startSyncFail() {
 
 	for err := range h.syncFail {
-		pfxlog.Logger().Errorf("failed to synchronize sessions, retrying: %v", err)
+		pfxlog.Logger().Errorf("failed to synchronize api sessions: %v", err)
 
 		h.syncTracker.Stop()
 		h.syncTracker = nil
 
 		resync := &edge_ctrl_pb.RequestClientReSync{
-			Reason: fmt.Sprintf("error during sync: %v", err),
+			Reason: fmt.Sprintf("error during api session sync: %v", err),
 		}
 
 		resyncProto, _ := proto.Marshal(resync)
