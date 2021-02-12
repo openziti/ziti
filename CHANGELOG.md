@@ -9,6 +9,8 @@
 * Allow list/updating router forwarding tables if --debug-ops is passed
     * new command `ziti ps route <optional target> <session> <src-address> <dest-address>`
     * new command `ziti ps dump-routes <optional target>`
+* If an xgress session fails in retransmit, sends fault notification to controller so 
+  controller can fix path or remove session, depending on session state
 
 # Release 0.18.9
 
