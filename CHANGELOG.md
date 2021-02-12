@@ -1,9 +1,24 @@
+# Release 0.18.10
+
+# What's New
+
+* Close terminating xgress instances if no start is received with a configurable timeout
+    * Timeout is set in the router config under listener/dialer options: `sessionStartTimeout`
+      Default value: `3m`
+* Don't add a second shutdown timer if one is already set
+* Allow list/updating router forwarding tables if --debug-ops is passed
+    * new command `ziti ps route <optional target> <session> <src-address> <dest-address>`
+    * new command `ziti ps dump-routes <optional target>`
+* If an xgress session fails in retransmit, sends fault notification to controller so 
+  controller can fix path or remove session, depending on session state
+
 # Release 0.18.9
 
 # What's New
 
 * Fix PATCH OS Posture Checks clearing data
-* Fix ziti-tunnel panic when removing services. [edge#517](https://github.com/openziti/edge/issues/517)
+* Fix ziti-tunnel panic when removing
+  services. [edge#517](https://github.com/openziti/edge/issues/517)
 * ziti-tunnel tproxy now supports `--lanIf` option to automatically add rules to accept incoming
   connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519)
 * Fix orphaned ottca enrollments after `DELETE /cas/<id>'
