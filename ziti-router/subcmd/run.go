@@ -27,6 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"io"
 )
 
 func init() {
@@ -50,15 +51,21 @@ func run(cmd *cobra.Command, args []string) {
 		Info("starting ziti-router")
 
 	if config, err := router.LoadConfig(args[0]); err == nil {
-		if cliAgentEnabled {
-			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
-				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-			}
-		}
-
 		config.SetFlags(getFlags(cmd))
 
 		r := router.Create(config, version.GetCmdBuildInfo())
+
+		if cliAgentEnabled {
+			options := agent.Options{Addr: cliAgentAddr}
+			if debugOpsEnabled {
+				options.CustomOps = map[byte]func(conn io.ReadWriter) error{
+					agent.CustomOp: r.HandleDebug,
+				}
+			}
+			if err := agent.Listen(options); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+			}
+		}
 
 		xgressEdgeFactory := xgress_edge.NewFactory(version.GetCmdBuildInfo())
 		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
