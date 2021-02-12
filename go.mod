@@ -25,7 +25,7 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.3.6
 	github.com/openziti/edge v0.17.67
-	github.com/openziti/fabric v0.15.24-0.20210212012738-f0e9c67a7947
+	github.com/openziti/fabric v0.15.24
 	github.com/openziti/foundation v0.15.13
 	github.com/openziti/sdk-golang v0.15.13
 	github.com/pborman/uuid v1.2.0
