@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"time"
@@ -137,6 +138,11 @@ func (manager *manager) close(conn *udpConn) {
 		conn.closed = true
 		delete(manager.connMap, conn.srcAddr.String())
 		close(conn.readC)
+		if err := conn.writeConn.Close(); err != nil {
+			logrus.WithField("service", conn.service).
+				WithField("src_addr", conn.srcAddr).
+				WithError(err).Error("error while closing udp connection")
+		}
 	}
 }
 

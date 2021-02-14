@@ -19,11 +19,13 @@ package udp_vconn
 import (
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/sdk-golang/ziti"
+	"io"
 	"net"
 	"time"
 )
 
 type UDPWriterTo interface {
+	io.Closer
 	WriteTo(b []byte, addr net.Addr) (int, error)
 	LocalAddr() net.Addr
 }
