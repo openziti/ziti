@@ -27,4 +27,5 @@ type Xctrl interface {
 	channel2.BindHandler
 	Enabled() bool
 	Run(ctrl channel2.Channel, db boltz.Db, done chan struct{}) error
+	NotifyOfReconnect()
 }

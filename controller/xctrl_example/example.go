@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -31,6 +32,10 @@ type example struct {
 	count   int32
 	delay   int
 	enabled bool
+}
+
+func (example *example) NotifyOfReconnect() {
+	logrus.Info("control channel reconnected")
 }
 
 func NewExample() xctrl.Xctrl {

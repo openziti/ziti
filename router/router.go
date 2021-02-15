@@ -295,11 +295,16 @@ func (self *Router) startControlPlane() error {
 	attributes[channel2.HelloVersionHeader] = version
 
 	if len(self.xlinkListeners) == 1 {
-
 		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
-	dialer := channel2.NewReconnectingDialer(self.config.Id, self.config.Ctrl.Endpoint, attributes)
+	reconnectHandler := func() {
+		for _, x := range self.xctrls {
+			x.NotifyOfReconnect()
+		}
+	}
+
+	dialer := channel2.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
 
 	bindHandler := handler_ctrl.NewBindHandler(
 		self.config.Id,
@@ -336,11 +341,13 @@ func (self *Router) startControlPlane() error {
 const (
 	DumpForwarderTables byte = 1
 	UpdateRoute         byte = 2
+	CloseControlChannel byte = 3
+	OpenControlChannel  byte = 4
 )
 
 func (router *Router) HandleDebug(conn io.ReadWriter) error {
-	reader := bufio.NewReader(conn)
-	op, err := reader.ReadByte()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	op, err := bconn.ReadByte()
 	if err != nil {
 		return err
 	}
@@ -353,13 +360,13 @@ func (router *Router) HandleDebug(conn io.ReadWriter) error {
 	case UpdateRoute:
 		logrus.Error("received debug operation to update routes")
 		sizeBuf := make([]byte, 4)
-		if _, err := reader.Read(sizeBuf); err != nil {
+		if _, err := bconn.Read(sizeBuf); err != nil {
 			return err
 		}
 		size := binary.LittleEndian.Uint32(sizeBuf)
 		messageBuf := make([]byte, size)
 
-		if _, err := reader.Read(messageBuf); err != nil {
+		if _, err := bconn.Read(messageBuf); err != nil {
 			return err
 		}
 
@@ -372,7 +379,41 @@ func (router *Router) HandleDebug(conn io.ReadWriter) error {
 		logrus.Errorf("updating with route: %v", route)
 
 		router.forwarder.Route(route)
+	case CloseControlChannel:
+		logrus.Warn("control channel: closing")
+		_, _ = bconn.WriteString("control channel: closing\n")
+		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+			if err := togglable.Disconnect(); err != nil {
+				logrus.WithError(err).Error("control channel: failed to close")
+				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+			} else {
+				logrus.Warn("control channel: closed")
+				_, _ = bconn.WriteString("control channel: closed")
+			}
+		} else {
+			logrus.Warn("control channel: error not toggleable")
+			_, _ = bconn.WriteString("control channel: error not toggleable")
+		}
+	case OpenControlChannel:
+		logrus.Warn("control channel: reconnecting")
+		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+			if err := togglable.Reconnect(); err != nil {
+				logrus.WithError(err).Error("control channel: failed to reconnect")
+				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+			} else {
+				logrus.Warn("control channel: reconnected")
+				_, _ = bconn.WriteString("control channel: reconnected")
+			}
+		} else {
+			logrus.Warn("control channel: error not toggleable")
+			_, _ = bconn.WriteString("control channel: error not toggleable")
+		}
 	}
 
 	return nil
+}
+
+type connectionToggle interface {
+	Disconnect() error
+	Reconnect() error
 }
