@@ -48,7 +48,7 @@ func NewSessionAddedHandler(sm fabric.StateManager, control channel2.Channel) *s
 		stop:      make(chan struct{}),
 	}
 
-	go handler.startRecieveSync()
+	go handler.startReceiveSync()
 	go handler.startSyncApplier()
 	go handler.startSyncFail()
 
@@ -61,14 +61,14 @@ func (h *sessionAddedHandler) ContentType() int32 {
 	return env.SessionAddedType
 }
 
-func (h *sessionAddedHandler) HandleClose(ch channel2.Channel) {
+func (h *sessionAddedHandler) HandleClose(_ channel2.Channel) {
 	if h.stop != nil {
 		close(h.stop)
 		h.stop = nil
 	}
 }
 
-func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.SessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
@@ -134,7 +134,7 @@ func (h *sessionAddedHandler) legacySync(reqWithState *sessionAddedWithState) {
 	h.sm.RemoveMissingSessions(reqWithState.Sessions)
 }
 
-func (h *sessionAddedHandler) startRecieveSync() {
+func (h *sessionAddedHandler) startReceiveSync() {
 	for {
 		select {
 		case <-h.stop:
@@ -144,7 +144,7 @@ func (h *sessionAddedHandler) startRecieveSync() {
 			case string(sync_strats.RouterSyncStrategyInstant):
 				h.instantSync(reqWithState)
 			case "":
-				pfxlog.Logger().Warn("syncStrategy is not specifieid, old controller?")
+				pfxlog.Logger().Warn("syncStrategy is not specified, old controller?")
 				h.legacySync(reqWithState)
 			default:
 				pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", reqWithState.SyncStrategyType)
@@ -197,7 +197,6 @@ func (h *sessionAddedHandler) instantSync(reqWithState *sessionAddedWithState) {
 
 type sessionSyncTracker struct {
 	syncId           string
-	syncLastRecieved bool
 	reqsWithState    map[int]*sessionAddedWithState
 	hasLast          bool
 	lastSeq          int
@@ -293,8 +292,4 @@ type sessionAddedWithState struct {
 	SyncStrategyType string
 	*sync_strats.InstantSyncState
 	*edge_ctrl_pb.SessionAdded
-}
-
-type sessionSyncResult struct {
-	sessions []*sessionAddedWithState
 }

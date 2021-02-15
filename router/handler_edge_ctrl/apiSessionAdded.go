@@ -55,7 +55,7 @@ func NewApiSessionAddedHandler(sm fabric.StateManager, control channel2.Channel)
 		stop: make(chan struct{}, 0),
 	}
 
-	go handler.startRecieveSync()
+	go handler.startReceiveSync()
 	go handler.startSyncApplier()
 	go handler.startSyncFail()
 
@@ -64,7 +64,7 @@ func NewApiSessionAddedHandler(sm fabric.StateManager, control channel2.Channel)
 	return handler
 }
 
-func (h *apiSessionAddedHandler) HandleClose(ch channel2.Channel) {
+func (h *apiSessionAddedHandler) HandleClose(_ channel2.Channel) {
 	if h.stop != nil {
 		close(h.stop)
 		h.stop = nil
@@ -75,7 +75,7 @@ func (h *apiSessionAddedHandler) ContentType() int32 {
 	return env.ApiSessionAddedType
 }
 
-func (h *apiSessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *apiSessionAddedHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
@@ -152,7 +152,7 @@ func (h *apiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithSta
 	h.sm.RemoveMissingApiSessions(reqWithState.ApiSessions)
 }
 
-func (h *apiSessionAddedHandler) startRecieveSync() {
+func (h *apiSessionAddedHandler) startReceiveSync() {
 	for {
 		select {
 		case <-h.stop:
@@ -162,7 +162,7 @@ func (h *apiSessionAddedHandler) startRecieveSync() {
 			case string(sync_strats.RouterSyncStrategyInstant):
 				h.instantSync(reqWithState)
 			case "":
-				pfxlog.Logger().Warn("syncStrategy is not specifieid, old controller?")
+				pfxlog.Logger().Warn("syncStrategy is not specified, old controller?")
 				h.legacySync(reqWithState)
 			default:
 				pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", reqWithState.SyncStrategyType)
@@ -215,7 +215,6 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 
 type apiSessionSyncTracker struct {
 	syncId           string
-	syncLastRecieved bool
 	reqsWithState    map[int]*apiSessionAddedWithState
 	hasLast          bool
 	lastSeq          int
@@ -324,8 +323,8 @@ func parseInstantSyncHeaders(msg *channel2.Message) (string, *sync_strats.Instan
 			}
 
 		} else {
-			return "", nil, errors.New("recieved sync message with a strategy type header, but no state")
+			return "", nil, errors.New("received sync message with a strategy type header, but no state")
 		}
 	}
-	return "", nil, errors.New("recieved sync message with no strategy type header")
+	return "", nil, errors.New("received sync message with no strategy type header")
 }
