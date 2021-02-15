@@ -35,25 +35,37 @@ type sessionAddedHandler struct {
 	reqChan     chan *sessionAddedWithState
 	syncReady   chan []*edge_ctrl_pb.Session
 	syncFail    chan error
+
+	stop chan struct{}
 }
 
-func NewSessionAddedHandler(sm fabric.StateManager) *sessionAddedHandler {
+func NewSessionAddedHandler(sm fabric.StateManager, control channel2.Channel) *sessionAddedHandler {
 	handler := &sessionAddedHandler{
 		sm:        sm,
 		reqChan:   make(chan *sessionAddedWithState, 100),
 		syncReady: make(chan []*edge_ctrl_pb.Session, 0),
 		syncFail:  make(chan error, 0),
+		stop:      make(chan struct{}),
 	}
 
 	go handler.startRecieveSync()
 	go handler.startSyncApplier()
 	go handler.startSyncFail()
 
+	control.AddCloseHandler(handler)
+
 	return handler
 }
 
 func (h *sessionAddedHandler) ContentType() int32 {
 	return env.SessionAddedType
+}
+
+func (h *sessionAddedHandler) HandleClose(ch channel2.Channel) {
+	if h.stop != nil {
+		close(h.stop)
+		h.stop = nil
+	}
 }
 
 func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
@@ -86,22 +98,30 @@ func (h *sessionAddedHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 }
 
 func (h *sessionAddedHandler) startSyncApplier() {
-	for sessions := range h.syncReady {
-		for _, session := range sessions {
-			h.sm.AddSession(session)
-		}
-		h.sm.RemoveMissingSessions(sessions)
+	for {
+		select {
+		case <-h.stop:
+			return
+		case sessions := <-h.syncReady:
+			for _, session := range sessions {
+				h.sm.AddSession(session)
+			}
+			h.sm.RemoveMissingSessions(sessions)
 
-		pfxlog.Logger().Infof("finished sychronizing sessions [count: %d]", len(sessions))
+			pfxlog.Logger().Infof("finished sychronizing sessions [count: %d]", len(sessions))
+		}
 	}
 }
 
 func (h *sessionAddedHandler) startSyncFail() {
-
-	for err := range h.syncFail {
-		pfxlog.Logger().Errorf("failed to synchronize sessions, aborting: %v", err)
-		h.syncTracker.Stop()
-		h.syncTracker = nil
+	for {
+		select {
+		case <-h.stop:
+			return
+		case err := <-h.syncFail:
+			pfxlog.Logger().Errorf("failed to synchronize sessions, aborting: %v", err)
+			h.syncTracker.Stop()
+		}
 	}
 }
 
@@ -115,24 +135,27 @@ func (h *sessionAddedHandler) legacySync(reqWithState *sessionAddedWithState) {
 }
 
 func (h *sessionAddedHandler) startRecieveSync() {
-	for reqWithState := range h.reqChan {
-		switch reqWithState.SyncStrategyType {
-		case string(sync_strats.RouterSyncStrategyInstant):
-			h.instantSync(reqWithState)
-		case "":
-			pfxlog.Logger().Warn("syncStrategy is not specifieid, old controller?")
-			h.legacySync(reqWithState)
-		default:
-			pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", reqWithState.SyncStrategyType)
-			h.legacySync(reqWithState)
+	for {
+		select {
+		case <-h.stop:
+			return
+		case reqWithState := <-h.reqChan:
+			switch reqWithState.SyncStrategyType {
+			case string(sync_strats.RouterSyncStrategyInstant):
+				h.instantSync(reqWithState)
+			case "":
+				pfxlog.Logger().Warn("syncStrategy is not specifieid, old controller?")
+				h.legacySync(reqWithState)
+			default:
+				pfxlog.Logger().Warnf("syncStrategy [%s] is not supported", reqWithState.SyncStrategyType)
+				h.legacySync(reqWithState)
+			}
 		}
 	}
 }
 
 func (h *sessionAddedHandler) instantSync(reqWithState *sessionAddedWithState) {
 	logger := pfxlog.Logger().WithField("strategy", reqWithState.SyncStrategyType)
-
-	state := &sync_strats.InstantSyncState{}
 
 	if reqWithState.InstantSyncState == nil {
 		logger.Panic("syncState is empty, cannot continue")
@@ -143,21 +166,28 @@ func (h *sessionAddedHandler) instantSync(reqWithState *sessionAddedWithState) {
 	}
 
 	//if no id or the sync id is newer, reset
-	if h.syncTracker == nil || h.syncTracker.syncId == "" || h.syncTracker.syncId < state.Id {
-		logger.Warnf("new syncId [%s], resetting", state.Id)
+	if h.syncTracker == nil || h.syncTracker.syncId == "" || h.syncTracker.IsDone() || h.syncTracker.syncId < reqWithState.Id {
+
+		if h.syncTracker == nil || h.syncTracker.syncId == "" {
+			logger.Infof("first session syncId [%s], starting", reqWithState.Id)
+		} else if h.syncTracker.isDone{
+			logger.Infof("session syncId [%s], starting", reqWithState.Id)
+		} else {
+			logger.Infof("session with newer syncId [old: %s, new: %s], aborting old, starting new", h.syncTracker.syncId, reqWithState.Id)
+		}
 
 		if h.syncTracker != nil {
 			h.syncTracker.Stop()
 		}
 
-		h.syncTracker = newSessionSyncTracker(state.Id)
+		h.syncTracker = newSessionSyncTracker(reqWithState.Id)
 
 		h.syncTracker.StartDeadline(h.syncReady, h.syncFail, 20*time.Second)
 	}
 
 	//ignore older syncs
-	if h.syncTracker.syncId > state.Id {
-		logger.Warnf("older syncId [%s], ignoring", state.Id)
+	if h.syncTracker.syncId > reqWithState.Id {
+		logger.Warnf("older syncId [%s], ignoring", reqWithState.Id)
 		return
 	}
 
@@ -194,9 +224,14 @@ func (tracker *sessionSyncTracker) Add(reqWithState *sessionAddedWithState) {
 }
 
 func (tracker *sessionSyncTracker) Stop() {
-	if tracker != nil {
-		tracker.stop <- struct{}{}
+	if tracker != nil && tracker.stop != nil {
+		close(tracker.stop)
+		tracker.stop = nil
 	}
+}
+
+func (tracker *sessionSyncTracker) IsDone() bool {
+	return tracker.isDone
 }
 
 func (tracker *sessionSyncTracker) StartDeadline(syncReady chan []*edge_ctrl_pb.Session, syncFail chan error, timeout time.Duration) {
@@ -206,11 +241,11 @@ func (tracker *sessionSyncTracker) StartDeadline(syncReady chan []*edge_ctrl_pb.
 			select {
 			case <-tracker.stop:
 				tracker.reqsWithState = nil
-				syncFail <- nil
 				return
 			case <-ticker.C:
 				if tracker.HasAll() {
 					syncReady <- tracker.all()
+					tracker.isDone = true
 					return
 				}
 			case <-time.After(timeout):
