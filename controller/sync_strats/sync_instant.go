@@ -57,8 +57,7 @@ type InstantStrategy struct {
 	helloOutQueue chan *RouterSender
 	helloInQueue  chan *RouterSender
 
-	stopHelloOut chan struct{}
-	stopHelloIn  chan struct{}
+	stop        chan struct{}
 }
 
 func (strategy *InstantStrategy) GetOnlineEdgeRouter(id string) (*model.EdgeRouter, env.RouterSyncStatus) {
@@ -101,8 +100,8 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		ae:            ae,
 		helloOutQueue: make(chan *RouterSender, 100),
 		helloInQueue:  make(chan *RouterSender, 100),
-		stopHelloOut:  make(chan struct{}, 0),
-		stopHelloIn:   make(chan struct{}, 0),
+
+		stop: make(chan struct{}, 0),
 	}
 
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveHello)
@@ -124,8 +123,10 @@ func (strategy *InstantStrategy) Type() env.RouterSyncStrategyType {
 }
 
 func (strategy *InstantStrategy) Stop() {
-	strategy.stopHelloOut <- struct{}{}
-	strategy.stopHelloIn <- struct{}{}
+	if strategy.stop != nil {
+		close(strategy.stop)
+		strategy.stop = nil
+	}
 }
 
 func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
@@ -248,7 +249,7 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 
 func (strategy *InstantStrategy) startHelloWorker() {
 	select {
-	case <-strategy.stopHelloOut:
+	case <-strategy.stop:
 		return
 	case rtx := <-strategy.helloOutQueue:
 		strategy.hello(rtx)
@@ -257,7 +258,7 @@ func (strategy *InstantStrategy) startHelloWorker() {
 
 func (strategy *InstantStrategy) startSynchronizeWorker() {
 	select {
-	case <-strategy.stopHelloIn:
+	case <-strategy.stop:
 		return
 	case rtx := <-strategy.helloInQueue:
 		strategy.synchronize(rtx)

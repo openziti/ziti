@@ -194,3 +194,7 @@ func (broker *Broker) IsEdgeRouterOnline(id string) bool {
 func (broker *Broker) GetOnlineEdgeRouter(id string) (*model.EdgeRouter, RouterSyncStatus) {
 	return broker.routerSyncStrategy.GetOnlineEdgeRouter(id)
 }
+
+func (broker *Broker) Stop() {
+	broker.routerSyncStrategy.Stop()
+}

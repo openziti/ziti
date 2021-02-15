@@ -43,8 +43,8 @@ const (
 	RouterSyncHelloTimeout RouterSyncStatus = "SYNC_HELLO_TIMEOUT" //sync failed due to a hello timeout.
 
 	//msg headers
-	SyncStrategyTypeHeader         = 1013
-	SyncStrategyStateHeader        = 1014
+	SyncStrategyTypeHeader  = 1013
+	SyncStrategyStateHeader = 1014
 )
 
 // RouterSyncStrategy handles the life cycle of an Edge Router connecting to the controller, synchronizing
@@ -53,6 +53,7 @@ type RouterSyncStrategy interface {
 	Type() RouterSyncStrategyType
 	Status(id string) RouterSyncStatus
 	GetOnlineEdgeRouter(id string) (*model.EdgeRouter, RouterSyncStatus)
+	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
 }

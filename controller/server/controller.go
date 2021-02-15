@@ -362,6 +362,8 @@ func (c *Controller) Shutdown() {
 	c.apiServer.Shutdown(ctx)
 	_ = c.policyEngine.Stop()
 
+	c.AppEnv.Broker.Stop()
+
 	pfxlog.Logger().Info("edge controller shutting down")
 }
 
