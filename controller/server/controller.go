@@ -189,10 +189,13 @@ func (c *Controller) Initialize() {
 
 	//after InitPersistence
 	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
-		MaxOutstandingHellos: 100,
-		MaxConcurrentSyncs:   10,
-		RouterTxBufferSize:   100,
-		HelloSendTimeout:     10 * time.Second,
+		MaxQueuedRouterConnects:  100,
+		MaxQueuedClientHellos:    100,
+		RouterConnectWorkerCount: 10,
+		SyncWorkerCount:          10,
+		RouterTxBufferSize:       100,
+		HelloSendTimeout:         10 * time.Second,
+		SessionChunkSize:         100,
 	}))
 
 	servicePolicyEnforcer := policy.NewServicePolicyEnforcer(c.AppEnv, policyAppWanFreq)

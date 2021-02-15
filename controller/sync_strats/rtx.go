@@ -41,7 +41,7 @@ type RouterSender struct {
 	stopping   concurrenz.AtomicBoolean
 }
 
-func newRouterTx(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
+func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
 	return &RouterSender{
 		Id:         eid.New(),
 		EdgeRouter: edgeRouter,

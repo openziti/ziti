@@ -43,8 +43,37 @@ const (
 
 var _ env.RouterSyncStrategy = &InstantStrategy{}
 
+// Options for the instant strategy.
+// - MaxQueuedRouterConnects    - max number of router connected events to buffer
+// - MaxQueuedClientHellos      - max number of client hello messages to buffer
+// - RouterConnectWorkerCount   - max number of workers used to process router connections
+// - SyncWorkerCount            - max number of workers used to send api sessions/session data
+// - RouterTxBufferSize         - max number of messages buffered to be send to a router
+// - HelloSendTimeout           - the max amount of time per worker to wait to send hellos
+// - SessionChunkSize           - the number of sessions to send in each message
+type InstantStrategyOptions struct {
+	MaxQueuedRouterConnects  int32
+	MaxQueuedClientHellos    int32
+	RouterConnectWorkerCount int32
+	SyncWorkerCount          int32
+	RouterTxBufferSize       int
+	HelloSendTimeout         time.Duration
+	SessionChunkSize         int
+}
+
 // Original API Session synchronization implementation. Assumes that on connect, the router requires and instant
-// and full set of API Sessions
+// and full set of API Sessions. Send individual create, update, delete events for sessions after synchronization.
+//
+// This strategy uses a series of queus and workers to managed sychronization state. The order of events is as follows:
+// 1. An edge router connects to the controller, triggering RouterConnected()
+// 2. A RouterSender is created encapsulating the Edge Router, Router, and Sync State
+// 3. The RouterSender is queued on the routerConnectedQueue channel which buffers up to options.MaxQueuedRouterConnects
+// 4. The routerConnectedQueue is read and the edge server hello is sent
+// 5. The controller waits for a client hello to be recieved via ReceiveClientHello message
+// 6. The client hello is used to identity the RouterSender associated with the client and is queued on
+//    the receivedClientHelloQueue channel which buffers up to options.MaxQueuedClientHellos
+// 7. A startSynchronizeWorker will pick up the RouterSender from the receivedClientHelloQueue and being to
+//    send data to the edge router via the RouterSender
 type InstantStrategy struct {
 	InstantStrategyOptions
 
@@ -54,12 +83,62 @@ type InstantStrategy struct {
 	resyncHandler channel2.ReceiveHandler
 	ae            *env.AppEnv
 
-	helloOutQueue chan *RouterSender
-	helloInQueue  chan *RouterSender
+	routerConnectedQueue     chan *RouterSender
+	receivedClientHelloQueue chan *RouterSender
 
-	stop        chan struct{}
+	stop chan struct{}
 }
 
+func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *InstantStrategy {
+	if options.MaxQueuedRouterConnects <= 0 {
+		pfxlog.Logger().Panicf("MaxQueuedRouterConnects for InstantStrategy cannot be less than 1, got %d", options.MaxQueuedRouterConnects)
+	}
+
+	if options.MaxQueuedClientHellos <= 0 {
+		pfxlog.Logger().Panicf("MaxQueuedClientHellos for InstantStrategy cannot be less than 1, got %d", options.MaxQueuedClientHellos)
+	}
+
+	if options.RouterConnectWorkerCount <= 0 {
+		pfxlog.Logger().Panicf("RouterConnectWorkerCount for InstantStrategy cannot be less than 1, got %d", options.RouterConnectWorkerCount)
+	}
+
+	if options.SyncWorkerCount <= 0 {
+		pfxlog.Logger().Panicf("SyncWorkerCount for InstantStrategy cannot be less than 1, got %d", options.SyncWorkerCount)
+	}
+
+	if options.RouterTxBufferSize < 0 {
+		pfxlog.Logger().Panicf("RouterTxBufferSize for InstantStrategy cannot be less than 0, got %d", options.MaxQueuedRouterConnects)
+	}
+
+	if options.SessionChunkSize <= 0 {
+		pfxlog.Logger().Panicf("SessionChunkSize for InstantStrategy cannot be less than 1, got %d", options.SessionChunkSize)
+	}
+
+	strategy := &InstantStrategy{
+		InstantStrategyOptions: options,
+		rtxMap: &routerTxMap{
+			internalMap: &sync.Map{},
+		},
+		ae:                       ae,
+		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
+		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
+
+		stop: make(chan struct{}, 0),
+	}
+
+	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)
+	strategy.resyncHandler = handler_edge_ctrl.NewResyncHandler(ae, strategy.ReceiveResync)
+
+	for i := int32(0); i < options.RouterConnectWorkerCount; i++ {
+		go strategy.startHandleRouterConnectWorker()
+	}
+
+	for i := int32(0); i < options.SyncWorkerCount; i++ {
+		go strategy.startSynchronizeWorker()
+	}
+
+	return strategy
+}
 func (strategy *InstantStrategy) GetOnlineEdgeRouter(id string) (*model.EdgeRouter, env.RouterSyncStatus) {
 	rtx := strategy.rtxMap.Get(id)
 
@@ -79,45 +158,6 @@ func (strategy *InstantStrategy) Status(id string) env.RouterSyncStatus {
 	return rtx.Status
 }
 
-func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *InstantStrategy {
-	if options.MaxOutstandingHellos <= 0 {
-		pfxlog.Logger().Panicf("MaxOutstandingHellos for InstantStrategy cannot be less than 1, got %d", options.MaxOutstandingHellos)
-	}
-
-	if options.MaxConcurrentSyncs <= 0 {
-		pfxlog.Logger().Panicf("MaxConcurrentSyncs for InstantStrategy cannot be less than 1, got %d", options.MaxConcurrentSyncs)
-	}
-
-	if options.RouterTxBufferSize < 0 {
-		pfxlog.Logger().Panicf("RouterTxBufferSize for InstantStrategy cannot be less than 0, got %d", options.MaxOutstandingHellos)
-	}
-
-	strategy := &InstantStrategy{
-		InstantStrategyOptions: options,
-		rtxMap: &routerTxMap{
-			internalMap: &sync.Map{},
-		},
-		ae:            ae,
-		helloOutQueue: make(chan *RouterSender, options.MaxOutstandingHellos),
-		helloInQueue:  make(chan *RouterSender, options.MaxOutstandingHellos),
-
-		stop: make(chan struct{}, 0),
-	}
-
-	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveHello)
-	strategy.resyncHandler = handler_edge_ctrl.NewResyncHandler(ae, strategy.ReceiveResync)
-
-	for i := int32(0); i < options.MaxConcurrentSyncs; i++ {
-		go strategy.startHelloWorker()
-	}
-
-	for i := int32(0); i < options.MaxConcurrentSyncs; i++ {
-		go strategy.startSynchronizeWorker()
-	}
-
-	return strategy
-}
-
 func (strategy *InstantStrategy) Type() env.RouterSyncStrategyType {
 	return RouterSyncStrategyInstant
 }
@@ -130,7 +170,7 @@ func (strategy *InstantStrategy) Stop() {
 }
 
 func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
-	rtx := newRouterTx(edgeRouter, router, strategy.RouterTxBufferSize)
+	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize)
 	rtx.Status = env.RouterSyncQueued
 
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
@@ -139,11 +179,11 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 		WithField("routerName", rtx.Router.Name).
 		WithField("routerFingerprint", rtx.Router.Fingerprint)
 
-	log.Info("edge router connected, adding to sync helloOutQueue")
+	log.Info("edge router connected, adding to sync routerConnectedQueue")
 
 	strategy.rtxMap.Add(router.Id, rtx)
 
-	strategy.helloOutQueue <- rtx
+	strategy.routerConnectedQueue <- rtx
 }
 
 func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
@@ -185,8 +225,8 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 	}
 
 	apiSessionAdded := &edge_ctrl_pb.ApiSessionAdded{
-		IsFullState:  false,
-		ApiSessions:  []*edge_ctrl_pb.ApiSession{apiSessionProto},
+		IsFullState: false,
+		ApiSessions: []*edge_ctrl_pb.ApiSession{apiSessionProto},
 	}
 
 	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
@@ -247,11 +287,11 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 	})
 }
 
-func (strategy *InstantStrategy) startHelloWorker() {
+func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
 	select {
 	case <-strategy.stop:
 		return
-	case rtx := <-strategy.helloOutQueue:
+	case rtx := <-strategy.routerConnectedQueue:
 		strategy.hello(rtx)
 	}
 }
@@ -260,7 +300,7 @@ func (strategy *InstantStrategy) startSynchronizeWorker() {
 	select {
 	case <-strategy.stop:
 		return
-	case rtx := <-strategy.helloInQueue:
+	case rtx := <-strategy.receivedClientHelloQueue:
 		strategy.synchronize(rtx)
 	}
 }
@@ -303,7 +343,7 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 			rtx.Status = env.RouterSyncHelloTimeout
 			rtx.logger().WithError(err).Error("timed out sending serverHello message for edge router, queuing again")
 			go func() {
-				strategy.helloOutQueue <- rtx
+				strategy.routerConnectedQueue <- rtx
 			}()
 		}
 	}
@@ -325,10 +365,10 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, hello *edge_ct
 
 	rtx.logger().WithField("strategy", strategy.Type()).Info("received resync from router, queuing")
 
-	strategy.helloInQueue <- rtx
+	strategy.receivedClientHelloQueue <- rtx
 }
 
-func (strategy *InstantStrategy) ReceiveHello(r *network.Router, respHello *edge_ctrl_pb.ClientHello) {
+func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello *edge_ctrl_pb.ClientHello) {
 
 	rtx := strategy.rtxMap.Get(r.Id)
 
@@ -371,7 +411,7 @@ func (strategy *InstantStrategy) ReceiveHello(r *network.Router, respHello *edge
 	rtx.EdgeRouter.VersionInfo = r.VersionInfo
 
 	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
-	strategy.helloInQueue <- rtx
+	strategy.receivedClientHelloQueue <- rtx
 }
 
 func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
@@ -503,8 +543,8 @@ func (strategy *InstantStrategy) sendSessionAdded(rtx *RouterSender, isFullState
 	stateBytes, _ := json.Marshal(state)
 
 	msgContent := &edge_ctrl_pb.SessionAdded{
-		IsFullState:  isFullState,
-		Sessions:     sessions,
+		IsFullState: isFullState,
+		Sessions:    sessions,
 	}
 
 	msgContentBytes, _ := proto.Marshal(msgContent)
@@ -513,13 +553,6 @@ func (strategy *InstantStrategy) sendSessionAdded(rtx *RouterSender, isFullState
 	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
 	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 	rtx.Send(msg)
-}
-
-type InstantStrategyOptions struct {
-	MaxOutstandingHellos int32
-	MaxConcurrentSyncs   int32
-	RouterTxBufferSize   int
-	HelloSendTimeout     time.Duration
 }
 
 type InstantSyncState struct {
