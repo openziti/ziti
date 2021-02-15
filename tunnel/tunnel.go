@@ -26,7 +26,7 @@ import (
 
 var log = logrus.StandardLogger()
 
-func DialAndRun(context ziti.Context, service string, clientConn net.Conn) {
+func DialAndRun(context ziti.Context, service string, clientConn net.Conn, halfClose bool) {
 	zitiConn, err := context.Dial(service)
 	if err != nil {
 		log.Errorf("zt.Dial(%s) failed: %s", service, err.Error())
@@ -34,10 +34,10 @@ func DialAndRun(context ziti.Context, service string, clientConn net.Conn) {
 		return
 	}
 
-	Run(zitiConn, clientConn)
+	Run(zitiConn, clientConn, halfClose)
 }
 
-func Run(zitiConn net.Conn, clientConn net.Conn) {
+func Run(zitiConn net.Conn, clientConn net.Conn, halfClose bool) {
 	loggerFields := logrus.Fields{
 		"src-remote": clientConn.RemoteAddr(), "src-local": clientConn.LocalAddr(),
 		"dst-local": zitiConn.LocalAddr(), "dst-remote": zitiConn.RemoteAddr()}
@@ -48,9 +48,9 @@ func Run(zitiConn net.Conn, clientConn net.Conn) {
 	doneSend := make(chan int64)
 	doneRecv := make(chan int64)
 
-	go myCopy(clientConn, zitiConn, doneSend)
+	go myCopy(clientConn, zitiConn, doneSend, halfClose)
 
-	go myCopy(zitiConn, clientConn, doneRecv)
+	go myCopy(zitiConn, clientConn, doneRecv, halfClose)
 
 	defer func() {
 		_ = clientConn.Close()
@@ -69,16 +69,18 @@ func Run(zitiConn net.Conn, clientConn net.Conn) {
 	log.Infof("tunnel closed: %d bytes sent; %d bytes received", n2, n1)
 }
 
-func myCopy(dst net.Conn, src net.Conn, done chan int64) {
+func myCopy(dst net.Conn, src net.Conn, done chan int64, halfClose bool) {
 	loggerFields := logrus.Fields{
 		"src-remote": src.RemoteAddr(), "src-local": src.LocalAddr(),
 		"dst-local": dst.LocalAddr(), "dst-remote": dst.RemoteAddr()}
 
 	logger := log.WithFields(loggerFields)
 	defer func() {
-		if cw, ok := dst.(edge.CloseWriter); ok {
+		if cw, ok := dst.(edge.CloseWriter); halfClose && ok {
+			logger.Debug("doing half-close")
 			_ = cw.CloseWrite()
 		} else {
+			logger.Debug("doing full-close")
 			_ = dst.Close()
 		}
 

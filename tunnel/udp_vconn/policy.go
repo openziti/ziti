@@ -58,9 +58,9 @@ type defaultExpirationPolicy struct {
 }
 
 func (policy defaultExpirationPolicy) IsExpired(now, lastUsed time.Time) bool {
-	return now.Sub(lastUsed) > time.Minute*10
+	return now.Sub(lastUsed) > time.Minute*5
 }
 
 func (policy defaultExpirationPolicy) PollFrequency() time.Duration {
-	return time.Minute * 1
+	return time.Second * 30
 }
