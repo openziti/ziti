@@ -98,8 +98,8 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 			internalMap: &sync.Map{},
 		},
 		ae:            ae,
-		helloOutQueue: make(chan *RouterSender, 100),
-		helloInQueue:  make(chan *RouterSender, 100),
+		helloOutQueue: make(chan *RouterSender, options.MaxOutstandingHellos),
+		helloInQueue:  make(chan *RouterSender, options.MaxOutstandingHellos),
 
 		stop: make(chan struct{}, 0),
 	}
@@ -107,11 +107,11 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveHello)
 	strategy.resyncHandler = handler_edge_ctrl.NewResyncHandler(ae, strategy.ReceiveResync)
 
-	for i := int32(0); i < options.MaxOutstandingHellos; i++ {
+	for i := int32(0); i < options.MaxConcurrentSyncs; i++ {
 		go strategy.startHelloWorker()
 	}
 
-	for i := int32(0); i < options.MaxOutstandingHellos; i++ {
+	for i := int32(0); i < options.MaxConcurrentSyncs; i++ {
 		go strategy.startSynchronizeWorker()
 	}
 
