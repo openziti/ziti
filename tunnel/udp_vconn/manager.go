@@ -98,7 +98,7 @@ func (manager *manager) CreateWriteQueue(srcAddr net.Addr, service string, write
 	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
 	pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("created new virtual UDP connection")
-	go tunnel.DialAndRun(manager.context, service, conn)
+	go tunnel.DialAndRun(manager.context, service, conn, false)
 	return conn, nil
 }
 

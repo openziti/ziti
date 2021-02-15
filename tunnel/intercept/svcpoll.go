@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 )
@@ -244,7 +245,7 @@ func (self *ServiceListener) host(svc *entities.Service) {
 			continue
 		}
 
-		go tunnel.Run(conn, externalConn)
+		go tunnel.Run(conn, externalConn, !strings.Contains(serverConfig.Protocol, "udp"))
 	}
 }
 
