@@ -35,8 +35,11 @@ func Test_Dataflow(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 	_, hostContext := ctx.AdminSession.RequireCreateSdkContext()
+	defer hostContext.Close()
+
 	listener, err := hostContext.Listen(service.Name)
 	ctx.Req.NoError(err)
+	defer listener.Close()
 
 	testServer := newTestServer(listener, func(conn *testServerConn) error {
 		for {
@@ -57,7 +60,10 @@ func Test_Dataflow(t *testing.T) {
 	testServer.start()
 
 	_, clientContext := ctx.AdminSession.RequireCreateSdkContext()
+	defer clientContext.Close()
+
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer conn.Close()
 
 	name := eid.New()
 	conn.WriteString(name, time.Second)

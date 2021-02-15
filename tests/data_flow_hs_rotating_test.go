@@ -73,6 +73,8 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 	var serverContexts []ziti.Context
 	for i := 0; i < 3; i++ {
 		_, context := ctx.AdminSession.RequireCreateSdkContext()
+		defer context.Close()
+
 		serverContexts = append(serverContexts, context)
 		serverContextC <- context
 	}
@@ -220,6 +222,8 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	for i := 0; i < 3; i++ {
 		_, context := ctx.AdminSession.RequireCreateSdkContext()
+		defer context.Close()
+
 		serverContexts = append(serverContexts, context)
 		serverContextC <- context
 	}
@@ -279,6 +283,8 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 		}
 
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))
+		defer conn.Close()
+
 		name := conn.ReadString(1024, time.Second)
 		conn.WriteString("hello, "+name, time.Second)
 		logger.Debugf("%v: done", i+1)

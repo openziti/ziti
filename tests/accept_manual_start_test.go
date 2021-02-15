@@ -49,6 +49,8 @@ func Test_ManualStart(t *testing.T) {
 	log.Info("starting listener1")
 	host1 := &host{}
 	host1.id, host1.context = ctx.AdminSession.RequireCreateSdkContext()
+	defer host1.context.Close()
+
 	listener, err := host1.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		Precedence:  ziti.PrecedenceRequired,
 		ManualStart: true,
@@ -63,6 +65,8 @@ func Test_ManualStart(t *testing.T) {
 	log.Info("starting listener2")
 	host2 := &host{}
 	host2.id, host2.context = ctx.AdminSession.RequireCreateSdkContext()
+	defer host2.context.Close()
+
 	listener, err = host2.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		Precedence:  ziti.PrecedenceDefault,
 		ManualStart: false,
@@ -116,6 +120,8 @@ func Test_ManualStart(t *testing.T) {
 	}()
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	for i := 0; i < 10; i++ {
 		log.Infof("dialing: %v", i)
 		conn := ctx.WrapConn(context.Dial(service.Name))
