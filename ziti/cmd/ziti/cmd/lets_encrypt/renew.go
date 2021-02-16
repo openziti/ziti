@@ -17,6 +17,7 @@
 package lets_encrypt
 
 import (
+	"fmt"
 	"io"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -24,17 +25,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type renewOptions struct {
+	leOptions
+	path string
+}
+
 // newListCmd creates a command object for the "controller list" command
 func newRenewCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &renewOptions{
+		leOptions: leOptions{},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "renew",
 		Short: "Renew a Let's Encrypt certificate",
 		Long:  "Renew a Let's Encrypt certificate",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
+			options.Cmd = cmd
+			options.Args = args
+			err := runRenew(options)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
 	return cmd
+}
+
+func runRenew(options *renewOptions) (err error) {
+	return fmt.Errorf("UNIMPLEMENTED: '%s'", "ziti pki le renew")
 }

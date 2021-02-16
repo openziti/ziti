@@ -17,6 +17,7 @@
 package lets_encrypt
 
 import (
+	"fmt"
 	"io"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -24,17 +25,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type listOptions struct {
+	leOptions
+	path string
+}
+
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &listOptions{
+		leOptions: leOptions{},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Display Let's Encrypt certificates and accounts information",
 		Long:  "Display Let's Encrypt certificates and accounts information",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
+			options.Cmd = cmd
+			options.Args = args
+			err := runList(options)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
 	return cmd
+}
+
+func runList(options *listOptions) (err error) {
+	return fmt.Errorf("UNIMPLEMENTED: '%s'", "ziti pki le list")
 }

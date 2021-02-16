@@ -17,6 +17,7 @@
 package lets_encrypt
 
 import (
+	"fmt"
 	"io"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -24,17 +25,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type revokeOptions struct {
+	leOptions
+	path string
+}
+
 // newListCmd creates a command object for the "controller list" command
 func newRevokeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &revokeOptions{
+		leOptions: leOptions{},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "revoke",
 		Short: "Revoke a Let's Encrypt certificate",
 		Long:  "Revoke a Let's Encrypt certificate",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cmd.Help()
+			options.Cmd = cmd
+			options.Args = args
+			err := runRevoke(options)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
 	return cmd
+}
+
+func runRevoke(options *revokeOptions) (err error) {
+	return fmt.Errorf("UNIMPLEMENTED: '%s'", "ziti pki le revoke")
 }
