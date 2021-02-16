@@ -33,6 +33,58 @@ func TestPostureCheckModelOs_Evaluate(t *testing.T) {
 		req.True(result)
 	})
 
+	t.Run("returns true for valid os type and is higer than the min and lower than max", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.0 <=10.6.0"
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.True(result)
+	})
+
+
+	t.Run("returns true for valid os type and is the min and lower than max", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.5.19041 <=10.6.0"
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.True(result)
+	})
+
+	t.Run("returns true for valid os type and higer than min and is the max", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.0.0 <=10.5.19041"
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.True(result)
+	})
+
+
+	t.Run("returns false for valid os type and lower than min", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.8.0 <=10.9.0"
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.False(result)
+	})
+
+	t.Run("returns false for valid os type and higher than the max", func(t *testing.T) {
+		osCheck, postureData := newMatchingOsCheckAndData()
+		osCheck.OperatingSystems[0].OsVersions[0] = ">=10.0.0 <=10.1.0"
+
+		result := osCheck.Evaluate("", postureData)
+
+		req := require.New(t)
+		req.False(result)
+	})
+
 	t.Run("returns true for valid os type and higher than required major version", func(t *testing.T) {
 		osCheck, postureData := newMatchingOsCheckAndData()
 		osCheck.OperatingSystems[0].OsVersions[0] = ">=1.0.0"
