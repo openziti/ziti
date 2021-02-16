@@ -21,10 +21,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"fmt"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge/http01"
-	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
+	// "github.com/go-acme/lego/v4/challenge/tlsalpn01"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -36,16 +35,15 @@ import (
 
 type createOptions struct {
 	leOptions
+	staging    bool
 	domain     string
 	acmeserver string
 	email      string
-	csr        string
-	keytype    KeyTypeVar
+	keyType    KeyTypeVar
 	path       string
 	http       bool
+	port       string
 }
-
-var keyType KeyTypeVar
 
 // We need a user or account type that implements acme.User
 type AcmeUser struct {
@@ -71,7 +69,7 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	}
 
 	cmd := &cobra.Command{
-		Use:   "create -d <domain> -p <path-to-where-data-is-saved> [options]",
+		Use:   "create -d <domain> -p <path-to-where-data-is-saved>",
 		Short: "Register a Let's Encrypt account, then create and install a certificate",
 		Long:  "Register a Let's Encrypt account, then create and install a certificate",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -88,13 +86,14 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 
 	cmd.Flags().StringVarP(&options.domain, "domain", "d", "", "Domain for which Cert is being generated (e.g. me.example.com)")
 	cmd.MarkFlagRequired("domain")
+	cmd.Flags().BoolVarP(&options.staging, "prod", "", false, "Enable creation of 'production' Certs (instead of staging Certs)")
 	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", "https://acme-staging-v02.api.letsencrypt.org/directory", "ACME CA hostname")
 	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
-	cmd.Flags().StringVarP(&options.csr, "csr", "c", "", "Certificate Signing Request filename, if an optional/external CSR is to be used")
-	keyType.Set("RSA4096") // set default
-	cmd.Flags().VarP(&keyType, "keytype", "k", "Key type to use for private keys")
+	options.keyType.Set("RSA4096") // set default
+	cmd.Flags().VarP(&options.keyType, "keytype", "k", "Key type to use for private keys")
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory to use for storing the data")
 	cmd.MarkFlagRequired("path")
+	cmd.Flags().StringVarP(&options.port, "port", "o", "80", "Port to listen on for HTTP based ACME challenges")
 
 	return cmd
 }
@@ -106,7 +105,6 @@ func runCreate(options *createOptions) (err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	acmeUser := AcmeUser{
 		Email: options.email,
 		key:   privateKey,
@@ -115,21 +113,21 @@ func runCreate(options *createOptions) (err error) {
 	config := lego.NewConfig(&acmeUser)
 
 	config.CADirURL = options.acmeserver
-	config.Certificate.KeyType = options.keytype.Get()
+	config.Certificate.KeyType = options.keyType.Get()
 
 	client, err := lego.NewClient(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", "80"))
+	err = client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", options.port))
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer("", "443"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	// err = client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer("", "443"))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
@@ -146,11 +144,11 @@ func runCreate(options *createOptions) (err error) {
 		log.Fatal(err)
 	}
 
-	// Each certificate comes back with the cert bytes, the bytes of the client's
-	// private key, and a certificate URL. SAVE THESE TO DISK.
-	fmt.Printf("%#v\n", certificates)
+	certsStorage := NewCertificatesStorage(options.path)
 
-	// ... all done.
+	certsStorage.CreateRootFolder()
+
+	certsStorage.SaveResource(certificates)
 
 	return nil
 }
