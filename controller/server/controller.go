@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/response"
+	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_server"
 	"github.com/openziti/fabric/controller/xtv"
@@ -129,7 +130,6 @@ func (c *Controller) SetHostController(h env.HostController) {
 func (c *Controller) GetCtrlHandlers() []channel2.ReceiveHandler {
 	return []channel2.ReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
-		handler_edge_ctrl.NewHelloHandler(c.AppEnv),
 	}
 }
 
@@ -188,7 +188,15 @@ func (c *Controller) Initialize() {
 	}
 
 	//after InitPersistence
-	c.AppEnv.Broker = env.NewBroker(c.AppEnv)
+	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{
+		MaxQueuedRouterConnects:  100,
+		MaxQueuedClientHellos:    100,
+		RouterConnectWorkerCount: 10,
+		SyncWorkerCount:          10,
+		RouterTxBufferSize:       100,
+		HelloSendTimeout:         10 * time.Second,
+		SessionChunkSize:         100,
+	}))
 
 	servicePolicyEnforcer := policy.NewServicePolicyEnforcer(c.AppEnv, policyAppWanFreq)
 	if err := c.policyEngine.AddOperation(servicePolicyEnforcer); err != nil {
@@ -356,6 +364,8 @@ func (c *Controller) Shutdown() {
 
 	c.apiServer.Shutdown(ctx)
 	_ = c.policyEngine.Stop()
+
+	c.AppEnv.Broker.Stop()
 
 	pfxlog.Logger().Info("edge controller shutting down")
 }

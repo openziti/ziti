@@ -55,8 +55,8 @@ type StateManager interface {
 	//ApiSessions
 	GetApiSession(token string) *edge_ctrl_pb.ApiSession
 	GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession
-	AddApiSession(ns *edge_ctrl_pb.ApiSession)
-	UpdateApiSession(ns *edge_ctrl_pb.ApiSession)
+	AddApiSession(apiSession *edge_ctrl_pb.ApiSession)
+	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
 	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession)
 	AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel)
@@ -97,20 +97,28 @@ func GetStateManager() StateManager {
 	return singleStateManager
 }
 
-func (sm *StateManagerImpl) AddApiSession(session *edge_ctrl_pb.ApiSession) {
-	pfxlog.Logger().Debugf("adding session [%s] fingerprints [%s]", session.Token, session.CertFingerprints)
-	sm.apiSessionsByToken.Store(session.Token, session)
-	sm.Emit(EventAddedSession, session)
+func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+	pfxlog.Logger().
+		WithField("apiSessionId", apiSession.Id).
+		WithField("apiSessionToken", apiSession.Token).
+		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
+		Debugf("adding apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
+	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
+	sm.Emit(EventAddedSession, apiSession)
 }
 
-func (sm *StateManagerImpl) UpdateApiSession(session *edge_ctrl_pb.ApiSession) {
-	pfxlog.Logger().Debugf("updating session [%s] fingerprints [%s]", session.Token, session.CertFingerprints)
-	sm.apiSessionsByToken.Store(session.Token, session)
+func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession) {
+	pfxlog.Logger().
+		WithField("apiSessionId", apiSession.Id).
+		WithField("apiSessionToken", apiSession.Token).
+		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
+		Debugf("updating apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
+	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
 
 	sm.sessionsByToken.Range(func(key, value interface{}) bool {
 		if ns, ok := value.(*edge_ctrl_pb.Session); ok {
-			if ns.ApiSessionId == session.Id { //only update the specific api session's sessions
-				ns.CertFingerprints = session.CertFingerprints //session.CertFingerprints is all currently valid
+			if ns.ApiSessionId == apiSession.Id { //only update the specific api apiSession's sessions
+				ns.CertFingerprints = apiSession.CertFingerprints //apiSession.CertFingerprints is all currently valid
 			}
 		} else {
 			pfxlog.Logger().Warn("could not convert value from concurrent map sessionsByToken to Session, this should not happen")
@@ -118,19 +126,19 @@ func (sm *StateManagerImpl) UpdateApiSession(session *edge_ctrl_pb.ApiSession) {
 		return true
 	})
 
-	sm.Emit(EventUpdatedSession, session)
+	sm.Emit(EventUpdatedSession, apiSession)
 }
 
 func (sm *StateManagerImpl) RemoveApiSession(token string) {
 	if ns, ok := sm.apiSessionsByToken.Load(token); ok {
-		pfxlog.Logger().Debugf("removing session [%s]", token)
+		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("removing api session [token: %s]", token)
 		sm.apiSessionsByToken.Delete(token)
 		eventName := sm.getSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
 		sm.Emit(EventRemovedSession, ns)
 	} else {
-		pfxlog.Logger().Debugf("could not remove session [%s]; not found", token)
+		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("could not remove api session [token: %s]; not found", token)
 	}
 }
 func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession) {
@@ -153,28 +161,42 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_
 	}
 }
 
-func (sm *StateManagerImpl) AddSession(ns *edge_ctrl_pb.Session) {
+func (sm *StateManagerImpl) AddSession(session *edge_ctrl_pb.Session) {
 	// BACKWARDS_COMPATIBILITY introduced 0.15.2
 	// support 0.14 (and older) style controller generated fingerprints, as fingerprint format changed from 0.14 to 0.15
-	for i := 0; i < len(ns.CertFingerprints); i++ {
-		ns.CertFingerprints[i] = strings.Replace(strings.ToLower(ns.CertFingerprints[i]), ":", "", -1)
+	for i := 0; i < len(session.CertFingerprints); i++ {
+		session.CertFingerprints[i] = strings.Replace(strings.ToLower(session.CertFingerprints[i]), ":", "", -1)
 	}
 
-	pfxlog.Logger().Debugf("adding network session [%s] fingerprints [%s] TypeId [%v]", ns.Token, ns.CertFingerprints, ns.Type.String())
-	sm.sessionsByToken.Store(ns.Token, ns)
-	sm.Emit(EventAddedNetworkSession, ns)
+	pfxlog.Logger().
+		WithField("apiSessionId", session.ApiSessionId).
+		WithField("sessionId", session.Id).
+		WithField("sessionToken", session.Token).
+		WithField("serviceId", session.Service.Id).
+		WithField("serviceName", session.Service.Name).
+		WithField("serviceEncryptionRequired", session.Service.EncryptionRequired).
+		Debugf("adding session [token: %s] [id: %s] fingerprints [%s] TypeId [%v]", session.Token, session.Id, session.CertFingerprints, session.Type.String())
+	sm.sessionsByToken.Store(session.Token, session)
+	sm.Emit(EventAddedNetworkSession, session)
 }
 
-func (sm *StateManagerImpl) UpdateSession(ns *edge_ctrl_pb.Session) {
+func (sm *StateManagerImpl) UpdateSession(session *edge_ctrl_pb.Session) {
 	// BACKWARDS_COMPATIBILITY introduced 0.15.2
 	// support 0.14 (and older) style controller generated fingerprints, as fingerprint format changed from 0.14 to 0.15
-	for i := 0; i < len(ns.CertFingerprints); i++ {
-		ns.CertFingerprints[i] = strings.Replace(strings.ToLower(ns.CertFingerprints[i]), ":", "", -1)
+	for i := 0; i < len(session.CertFingerprints); i++ {
+		session.CertFingerprints[i] = strings.Replace(strings.ToLower(session.CertFingerprints[i]), ":", "", -1)
 	}
 
-	pfxlog.Logger().Debugf("updating network session [%s] fingerprints [%s]", ns.Token, ns.CertFingerprints)
-	sm.sessionsByToken.Store(ns.Token, ns)
-	sm.Emit(EventUpdatedNetworkSession, ns)
+	pfxlog.Logger().
+		WithField("apiSessionId", session.ApiSessionId).
+		WithField("sessionId", session.Id).
+		WithField("sessionToken", session.Token).
+		WithField("serviceId", session.Service.Id).
+		WithField("serviceName", session.Service.Name).
+		WithField("serviceEncryptionRequired", session.Service.EncryptionRequired).
+		Debugf("updating session [token: %s] [id: %s] fingerprints [%s]", session.Token, session.Id, session.CertFingerprints)
+	sm.sessionsByToken.Store(session.Token, session)
+	sm.Emit(EventUpdatedNetworkSession, session)
 }
 
 func (sm *StateManagerImpl) RemoveMissingSessions(knownSessions []*edge_ctrl_pb.Session) {
@@ -199,14 +221,14 @@ func (sm *StateManagerImpl) RemoveMissingSessions(knownSessions []*edge_ctrl_pb.
 
 func (sm *StateManagerImpl) RemoveSession(token string) {
 	if ns, ok := sm.sessionsByToken.Load(token); ok {
-		pfxlog.Logger().Debugf("removing network session [%s]", token)
+		pfxlog.Logger().Debugf("removing session [token: %s]", token)
 		sm.sessionsByToken.Delete(token)
 		sm.Emit(EventRemovedNetworkSession, ns)
 		eventName := sm.getNetworkSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
 	} else {
-		pfxlog.Logger().Debugf("could not remove network session [%s]; not found", token)
+		pfxlog.Logger().Debugf("could not remove session [token: %s]; not found", token)
 	}
 }
 
@@ -245,7 +267,7 @@ func (sm *StateManagerImpl) GetSession(token string) *edge_ctrl_pb.Session {
 		if ns, ok := obj.(*edge_ctrl_pb.Session); ok {
 			return ns
 		}
-		pfxlog.Logger().Panic("encountered non-network session in network session map")
+		pfxlog.Logger().Panic("encountered non-session in network session map")
 	}
 
 	return nil

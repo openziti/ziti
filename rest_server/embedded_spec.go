@@ -7645,7 +7645,8 @@ func init() {
             "version",
             "arch",
             "buildDate",
-            "revision"
+            "revision",
+            "syncStatus"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -7689,6 +7690,9 @@ func init() {
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "syncStatus": {
+              "type": "string"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -27181,7 +27185,8 @@ func init() {
             "version",
             "arch",
             "buildDate",
-            "revision"
+            "revision",
+            "syncStatus"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -27225,6 +27230,9 @@ func init() {
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "syncStatus": {
+              "type": "string"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"

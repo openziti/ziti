@@ -5197,6 +5197,7 @@ definitions:
           - arch
           - buildDate
           - revision
+          - syncStatus
         properties:
           name:
             type: string
@@ -5227,6 +5228,8 @@ definitions:
           roleAttributes:
             $ref: '#/definitions/attributes'
           fingerprint:
+            type: string
+          syncStatus:
             type: string
           versionInfo:
             $ref: '#/definitions/versionInfo'

@@ -122,7 +122,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 	}
 
 	for _, edgeRouter := range edgeRoutersForSession.EdgeRouters {
-		onlineEdgeRouter := ae.Broker.GetOnlineEdgeRouter(edgeRouter.Id)
+		onlineEdgeRouter, _ := ae.Broker.GetOnlineEdgeRouter(edgeRouter.Id)
 
 		if onlineEdgeRouter != nil {
 			restModel := &rest_model.SessionEdgeRouter{

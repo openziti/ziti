@@ -52,6 +52,8 @@ func Test_AddressableTerminators(t *testing.T) {
 		hosts = append(hosts, host)
 
 		host.id, host.context = ctx.AdminSession.RequireCreateSdkContext()
+		defer host.context.Close()
+
 		host.listener, err = host.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
 			BindUsingEdgeIdentity: true,
 		})
@@ -69,6 +71,7 @@ func Test_AddressableTerminators(t *testing.T) {
 		client := &client{}
 		clients = append(clients, client)
 		client.id, client.context = ctx.AdminSession.RequireCreateSdkContext()
+		defer client.context.Close()
 	}
 
 	waitForConn := func(listener net.Listener, timeout time.Duration) (net.Conn, error) {
@@ -127,6 +130,8 @@ func Test_AddressableTerminatorSameIdentity(t *testing.T) {
 	}
 
 	identity, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		BindUsingEdgeIdentity: true,
 		ConnectTimeout:        5 * time.Second,
@@ -171,6 +176,8 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	}
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		Identity:       "foobar",
 		ConnectTimeout: 5 * time.Second,
@@ -180,6 +187,8 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	_, context2 := ctx.AdminSession.RequireCreateSdkContext()
+	defer context2.Close()
+
 	listener2, err := context2.ListenWithOptions(service.Name, &ziti.ListenOptions{
 		Identity:       "foobar",
 		ConnectTimeout: 5 * time.Second,

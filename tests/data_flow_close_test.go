@@ -39,6 +39,8 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
 
@@ -69,6 +71,8 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer conn.Close()
+
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -97,7 +101,11 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
+	defer listener.Close()
+
 	ctx.Req.NoError(err)
 
 	errC := make(chan error, 1)
@@ -128,6 +136,8 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer conn.Close()
+
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -157,7 +167,11 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
+	defer listener.Close()
+
 	ctx.Req.NoError(err)
 
 	errC := make(chan error, 1)
@@ -190,6 +204,8 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer conn.Close()
+
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
@@ -209,8 +225,11 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
+	defer listener.Close()
 
 	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
@@ -268,8 +287,11 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
+	defer listener.Close()
 
 	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
@@ -328,8 +350,11 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
+	defer listener.Close()
 
 	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
@@ -393,8 +418,11 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	defer context.Close()
+
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
+	defer listener.Close()
 
 	defer func() {
 		ctx.Req.NoError(listener.Close())

@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/lucsky/cuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
@@ -43,6 +44,7 @@ func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *ApiSessionHandler) Create(entity *ApiSession) (string, error) {
+	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
 	return handler.createEntity(entity)
 }
 
