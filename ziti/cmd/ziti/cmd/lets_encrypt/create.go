@@ -33,6 +33,9 @@ import (
 	"log"
 )
 
+const acmeStaging string = "https://acme-staging-v02.api.letsencrypt.org/directory"
+const acmeProd string = "https://acme-v02.api.letsencrypt.org/directory"
+
 type createOptions struct {
 	leOptions
 	staging    bool
@@ -86,8 +89,8 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 
 	cmd.Flags().StringVarP(&options.domain, "domain", "d", "", "Domain for which Cert is being generated (e.g. me.example.com)")
 	cmd.MarkFlagRequired("domain")
-	cmd.Flags().BoolVarP(&options.staging, "prod", "", false, "Enable creation of 'production' Certs (instead of staging Certs)")
-	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", "https://acme-staging-v02.api.letsencrypt.org/directory", "ACME CA hostname")
+	cmd.Flags().BoolVarP(&options.staging, "staging", "s", false, "Enable creation of 'staging' Certs (instead of production Certs)")
+	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", acmeProd, "ACME CA hostname")
 	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
 	options.keyType.Set("RSA4096") // set default
 	cmd.Flags().VarP(&options.keyType, "keytype", "k", "Key type to use for private keys")
@@ -111,6 +114,10 @@ func runCreate(options *createOptions) (err error) {
 	}
 
 	config := lego.NewConfig(&acmeUser)
+
+	if options.staging {
+		options.acmeserver = acmeStaging
+	}
 
 	config.CADirURL = options.acmeserver
 	config.Certificate.KeyType = options.keyType.Get()
