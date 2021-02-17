@@ -37,7 +37,7 @@ type apiSessionAddedHandler struct {
 	syncTracker *apiSessionSyncTracker
 
 	reqChan   chan *apiSessionAddedWithState
-	syncReady chan []*edge_ctrl_pb.ApiSession
+	syncReady chan *apiSessionSyncTracker
 	syncFail  chan error
 
 	stop chan struct{}
@@ -49,7 +49,7 @@ func NewApiSessionAddedHandler(sm fabric.StateManager, control channel2.Channel)
 		sm:      sm,
 		reqChan: make(chan *apiSessionAddedWithState, 100),
 
-		syncReady: make(chan []*edge_ctrl_pb.ApiSession, 0),
+		syncReady: make(chan *apiSessionSyncTracker, 0),
 		syncFail:  make(chan error, 0),
 
 		stop: make(chan struct{}, 0),
@@ -109,13 +109,20 @@ func (h *apiSessionAddedHandler) startSyncApplier() {
 		select {
 		case <-h.stop:
 			return
-		case apiSessions := <-h.syncReady:
+		case sync := <-h.syncReady:
+			lastId := ""
+			apiSessions := sync.all()
 			for _, apiSession := range apiSessions {
+				if lastId == "" || apiSession.Id > lastId {
+					lastId = apiSession.Id
+				}
+
 				h.sm.AddApiSession(apiSession)
 			}
-			h.sm.RemoveMissingApiSessions(apiSessions)
 
-			pfxlog.Logger().Infof("finished sychronizing api sessions [count: %d]", len(apiSessions))
+			h.sm.RemoveMissingApiSessions(apiSessions, lastId)
+
+			pfxlog.Logger().Infof("finished sychronizing api sessions [count: %d, syncId: %s]", len(apiSessions), sync.syncId)
 		}
 	}
 }
@@ -149,7 +156,7 @@ func (h *apiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithSta
 		h.sm.AddApiSession(apiSession)
 	}
 
-	h.sm.RemoveMissingApiSessions(reqWithState.ApiSessions)
+	h.sm.RemoveMissingApiSessions(reqWithState.ApiSessions, "")
 }
 
 func (h *apiSessionAddedHandler) startReceiveSync() {
@@ -188,7 +195,7 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 
 		if h.syncTracker == nil || h.syncTracker.syncId == "" {
 			logger.Infof("first api session syncId [%s], starting", reqWithState.Id)
-		} else if h.syncTracker.isDone{
+		} else if h.syncTracker.isDone {
 			logger.Infof("api session syncId [%s], starting", reqWithState.Id)
 		} else {
 			logger.Infof("api session with newer syncId [old: %s, new: %s], aborting old, starting new", h.syncTracker.syncId, reqWithState.Id)
@@ -214,13 +221,13 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 }
 
 type apiSessionSyncTracker struct {
-	syncId           string
-	reqsWithState    map[int]*apiSessionAddedWithState
-	hasLast          bool
-	lastSeq          int
-	stop             chan struct{}
-	deadline         sync.Once
-	isDone           bool
+	syncId        string
+	reqsWithState map[int]*apiSessionAddedWithState
+	hasLast       bool
+	lastSeq       int
+	stop          chan struct{}
+	deadline      sync.Once
+	isDone        bool
 }
 
 func newApiSessionSyncTracker(id string) *apiSessionSyncTracker {
@@ -251,7 +258,7 @@ func (tracker *apiSessionSyncTracker) IsDone() bool {
 	return tracker.isDone
 }
 
-func (tracker *apiSessionSyncTracker) StartDeadline(syncReady chan []*edge_ctrl_pb.ApiSession, syncFail chan error, timeout time.Duration) {
+func (tracker *apiSessionSyncTracker) StartDeadline(syncReady chan *apiSessionSyncTracker, syncFail chan error, timeout time.Duration) {
 	tracker.deadline.Do(func() {
 		go func() {
 			ticker := time.NewTicker(1 * time.Second)
@@ -261,7 +268,8 @@ func (tracker *apiSessionSyncTracker) StartDeadline(syncReady chan []*edge_ctrl_
 				return
 			case <-ticker.C:
 				if tracker.HasAll() {
-					syncReady <- tracker.all()
+					syncReady <- tracker
+
 					tracker.isDone = true
 					return
 				}
@@ -310,6 +318,11 @@ type apiSessionAddedWithState struct {
 	SyncStrategyType string
 	*sync_strats.InstantSyncState
 	*edge_ctrl_pb.ApiSessionAdded
+}
+
+type apiSessionSync struct {
+	syncId     string
+	apiSession []*edge_ctrl_pb.ApiSession
 }
 
 func parseInstantSyncHeaders(msg *channel2.Message) (string, *sync_strats.InstantSyncState, error) {
