@@ -51,7 +51,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channe
 				pfxlog.Logger().
 					WithError(err).
 					WithField("routerId", routerId).
-					Error("unable to set activity for heartbeat: %v", err)
+					Errorf("unable to set activity for heartbeat: %v", err)
 			}
 
 			if len(notFoundTokens) > 0 {
