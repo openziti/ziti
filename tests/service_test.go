@@ -168,7 +168,7 @@ func Test_Services(t *testing.T) {
 		entityJson := ctx.AdminSession.validateEntityWithQuery(service)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 100)
 		now = time.Now()
 		service.terminatorStrategy = "ha"
 		ctx.AdminSession.requireUpdateEntity(service)

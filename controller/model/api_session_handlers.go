@@ -90,23 +90,40 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-func (handler *ApiSessionHandler) MarkActivity(tokens []string) error {
-	return handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+// MarkActivity returns tokens that were not found if any and/or an error.
+func (handler *ApiSessionHandler) MarkActivity(tokens []string) ([]string, error) {
+	var notFoundTokens []string
+
+	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
 		store := handler.Store.(persistence.ApiSessionStore)
 		mutCtx := boltz.NewMutateContext(tx)
 		for _, token := range tokens {
 			apiSession, err := store.LoadOneByToken(tx, token)
 			if err != nil {
-				return err
+				if boltz.IsErrNotFoundErr(err) {
+					notFoundTokens = append(notFoundTokens, token)
+				} else {
+					return err
+				}
+
 			}
 			if err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{}); err != nil {
-				return err
+				if err != nil {
+					if boltz.IsErrNotFoundErr(err) {
+						notFoundTokens = append(notFoundTokens, token)
+					} else {
+						return err
+					}
+
+				}
 			}
 
 			handler.env.GetHandlers().Identity.SetActive(apiSession.IdentityId)
 		}
 		return nil
 	})
+
+	return notFoundTokens, err
 }
 
 func (handler *ApiSessionHandler) Stream(query string, collect func(*ApiSession, error) error) error {
