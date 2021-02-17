@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
+	"time"
 )
 
 type sessionHeartbeatHandler struct {
@@ -38,17 +39,35 @@ func (h *sessionHeartbeatHandler) ContentType() int32 {
 	return env.ApiSessionHeartbeatType
 }
 
-func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionHeartbeat{}
+		routerId := ch.Id().Token
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			err := h.appEnv.GetHandlers().ApiSession.MarkActivity(req.Tokens)
+			notFoundTokens, err := h.appEnv.GetHandlers().ApiSession.MarkActivity(req.Tokens)
 
 			if err != nil {
 				pfxlog.Logger().
 					WithError(err).
-					Error("unable to set activity for heartbeat")
+					WithField("routerId", routerId).
+					Error("unable to set activity for heartbeat: %v", err)
+			}
+
+			if len(notFoundTokens) > 0 {
+				pfxlog.Logger().
+					WithField("routerId", routerId).
+					Debugf("api session tokens not found during heartbeat, sending delete: %v", notFoundTokens)
+
+				msgStruct := &edge_ctrl_pb.ApiSessionRemoved{
+					Tokens: notFoundTokens,
+				}
+
+				msgBytes, _ := proto.Marshal(msgStruct)
+				msg := channel2.NewMessage(env.ApiSessionRemovedType, msgBytes)
+
+				//if we don't delete it this time, we will try again when we see it
+				ch.SendWithTimeout(msg, 5*time.Second)
 			}
 
 		} else {
