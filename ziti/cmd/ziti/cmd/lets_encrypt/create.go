@@ -18,35 +18,20 @@ package lets_encrypt
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/go-acme/lego/v4/challenge/http01"
-	// "github.com/go-acme/lego/v4/challenge/tlsalpn01"
 	"github.com/go-acme/lego/v4/lego"
+	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
-	"log"
 )
 
 const acmeStaging string = "https://acme-staging-v02.api.letsencrypt.org/directory"
 const acmeProd string = "https://acme-v02.api.letsencrypt.org/directory"
 
-type createOptions struct {
-	leOptions
-	staging    bool
-	domain     string
-	acmeserver string
-	email      string
-	keyType    KeyTypeVar
-	path       string
-	http       bool
-	port       string
-}
+const rootPathWarningMessage = `!!!! HEADS UP !!!!`
 
 // We need a user or account type that implements acme.User
 type AcmeUser struct {
@@ -67,9 +52,7 @@ func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
 
 // newCreateCmd creates the 'edge controller create ca local' command for the given entity type
 func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &createOptions{
-		leOptions: leOptions{},
-	}
+	options := &leOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "create -d <domain> -p <path-to-where-data-is-saved>",
@@ -97,55 +80,38 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory to use for storing the data")
 	cmd.MarkFlagRequired("path")
 	cmd.Flags().StringVarP(&options.port, "port", "o", "80", "Port to listen on for HTTP based ACME challenges")
+	cmd.Flags().StringVarP(&options.csr, "csr", "", "", "Certificate Signing Request filename, if an external CSR is to be used")
 
 	return cmd
 }
 
-func runCreate(options *createOptions) (err error) {
-
-	// Create a user. New accounts need an email and private key to start.
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	acmeUser := AcmeUser{
-		Email: options.email,
-		key:   privateKey,
-	}
-
-	config := lego.NewConfig(&acmeUser)
+func runCreate(options *leOptions) (err error) {
 
 	if options.staging {
 		options.acmeserver = acmeStaging
 	}
 
-	config.CADirURL = options.acmeserver
-	config.Certificate.KeyType = options.keyType.Get()
+	accountsStorage := NewAccountsStorage(options)
 
-	client, err := lego.NewClient(config)
-	if err != nil {
-		log.Fatal(err)
-	}
+	account, client := setup(options, accountsStorage)
 
-	err = client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", options.port))
-	if err != nil {
-		log.Fatal(err)
-	}
-	// err = client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer("", "443"))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	if account.Registration == nil {
+		reg, err := register(options, client)
+		if err != nil {
+			log.Fatalf("Could not complete registration\n\t%v", err)
+		}
 
-	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
-	if err != nil {
-		log.Fatal(err)
+		account.Registration = reg
+		if err = accountsStorage.Save(account); err != nil {
+			log.Fatal(err)
+		}
 	}
-	acmeUser.Registration = reg
 
 	request := certificate.ObtainRequest{
 		Domains: []string{options.domain},
 		Bundle:  true,
 	}
+
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
 		log.Fatal(err)
@@ -158,4 +124,9 @@ func runCreate(options *createOptions) (err error) {
 	certsStorage.SaveResource(certificates)
 
 	return nil
+}
+
+func register(options *leOptions, client *lego.Client) (*registration.Resource, error) {
+
+	return client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 }

@@ -38,11 +38,21 @@ func (options *leOptions) AddCommonFlags(cmd *cobra.Command) {
 
 // leOptions are common options for 'pki le' commands
 type leOptions struct {
-	Cmd     *cobra.Command
-	Args    []string
-	Verbose bool
-
-	// Flags leFlags
+	Cmd        *cobra.Command
+	Args       []string
+	Verbose    bool
+	staging    bool
+	domain     string
+	acmeserver string
+	email      string
+	keyType    KeyTypeVar
+	path       string
+	accounts   bool
+	names      bool
+	reuseKey   bool
+	port       string
+	csr        string
+	days       int
 }
 
 // type leFlags struct {

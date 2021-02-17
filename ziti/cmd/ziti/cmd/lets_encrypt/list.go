@@ -17,24 +17,23 @@
 package lets_encrypt
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/url"
+	"path/filepath"
+	"strings"
 
+	"github.com/go-acme/lego/v4/certcrypto"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
-type listOptions struct {
-	leOptions
-	path string
-}
-
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &listOptions{
-		leOptions: leOptions{},
-	}
+	options := &leOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -48,9 +47,112 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 		},
 	}
 
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().BoolVarP(&options.accounts, "accounts", "a", false, "Display Account info")
+	cmd.Flags().BoolVarP(&options.names, "names", "n", false, "Display Names info")
+	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory where data is stored")
+	cmd.MarkFlagRequired("path")
+
 	return cmd
 }
 
-func runList(options *listOptions) (err error) {
-	return fmt.Errorf("UNIMPLEMENTED: '%s'", "ziti pki le list")
+func runList(options *leOptions) (err error) {
+	if options.accounts && !options.names {
+		if err := listAccount(options); err != nil {
+			return err
+		}
+	}
+
+	return listCertificates(options)
+}
+
+func listAccount(options *leOptions) error {
+
+	accountsStorage := NewAccountsStorage(options)
+
+	matches, err := filepath.Glob(filepath.Join(accountsStorage.GetRootPath(), "*", "*", "*.json"))
+	if err != nil {
+		return err
+	}
+
+	if len(matches) == 0 {
+		fmt.Println("No accounts found.")
+		return nil
+	}
+
+	fmt.Println("Found the following accounts:")
+	for _, filename := range matches {
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		var account Account
+		err = json.Unmarshal(data, &account)
+		if err != nil {
+			return err
+		}
+
+		uri, err := url.Parse(account.Registration.URI)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("  Email:", account.Email)
+		fmt.Println("  Server:", uri.Host)
+		fmt.Println("  Path:", filepath.Dir(filename))
+		fmt.Println()
+	}
+
+	return nil
+}
+
+func listCertificates(options *leOptions) error {
+	certsStorage := NewCertificatesStorage(options.path)
+
+	matches, err := filepath.Glob(filepath.Join(certsStorage.GetRootPath(), "*.crt"))
+	if err != nil {
+		return err
+	}
+
+	if len(matches) == 0 {
+		if !options.names {
+			fmt.Println("No certificates found.")
+		}
+		return nil
+	}
+
+	if !options.names {
+		fmt.Println("Found the following certs:")
+	}
+
+	for _, filename := range matches {
+		if strings.HasSuffix(filename, ".issuer.crt") {
+			continue
+		}
+
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		pCert, err := certcrypto.ParsePEMCertificate(data)
+		if err != nil {
+			return err
+		}
+
+		if options.names {
+			fmt.Println(pCert.Subject.CommonName)
+		} else {
+			fmt.Println("  Certificate Name:", pCert.Subject.CommonName)
+			fmt.Println("    Domains:", strings.Join(pCert.DNSNames, ", "))
+			fmt.Println("    Expiry Date:", pCert.NotAfter)
+			fmt.Println("    Certificate Path:", filename)
+			fmt.Println()
+		}
+	}
+
+	return nil
 }
