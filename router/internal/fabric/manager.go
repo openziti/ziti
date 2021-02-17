@@ -58,7 +58,7 @@ type StateManager interface {
 	AddApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
-	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession)
+	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string)
 	AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel)
 	RemoveConnectedApiSession(token string, underlay channel2.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
@@ -67,8 +67,8 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	sessionsByToken    *sync.Map //"network" sessions
-	apiSessionsByToken *sync.Map
+	sessionsByToken    *sync.Map //token -> "network" sessions
+	apiSessionsByToken *sync.Map // token -> api session
 	activeApiSessions  cmap.ConcurrentMap
 
 	Hostname       string
@@ -141,16 +141,22 @@ func (sm *StateManagerImpl) RemoveApiSession(token string) {
 		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("could not remove api session [token: %s]; not found", token)
 	}
 }
-func (sm *StateManagerImpl) RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession) {
+
+// Removes API Sessions not present in the knownApiSessions argument. If the beforeSessionId value is not empty string,
+// it will be used as a monotonic comparison between it and  API session ids. API session ids later than the sync
+// will be ignored.
+func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string) {
 	validTokens := map[string]bool{}
-	for _, session := range knownSessions {
-		validTokens[session.Token] = true
+	for _, apiSession := range knownApiSessions {
+		validTokens[apiSession.Token] = true
 	}
 
 	var tokensToRemove []string
-	sm.apiSessionsByToken.Range(func(key, _ interface{}) bool {
+	sm.apiSessionsByToken.Range(func(key, val interface{}) bool {
 		token, _ := key.(string)
-		if _, ok := validTokens[token]; !ok {
+		apiSession, _ := val.(*edge_ctrl_pb.ApiSession)
+
+		if _, ok := validTokens[token]; !ok && (beforeSessionId == "" || apiSession.Id <= beforeSessionId) {
 			tokensToRemove = append(tokensToRemove, token)
 		}
 		return true
