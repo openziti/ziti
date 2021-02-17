@@ -28,4 +28,5 @@ type Xctrl interface {
 	Enabled() bool
 	Run(ctrl channel2.Channel, db boltz.Db, done chan struct{}) error
 	NotifyOfReconnect()
+	GetTraceDecoders() []channel2.TraceMessageDecoder
 }

@@ -34,10 +34,6 @@ type example struct {
 	enabled bool
 }
 
-func (example *example) NotifyOfReconnect() {
-	logrus.Info("control channel reconnected")
-}
-
 func NewExample() xctrl.Xctrl {
 	return &example{delay: 1, enabled: false}
 }
@@ -89,6 +85,14 @@ func (example *example) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{
 			}
 		}
 	}()
+	return nil
+}
+
+func (example *example) NotifyOfReconnect() {
+	logrus.Info("control channel reconnected")
+}
+
+func (example *example) GetTraceDecoders() []channel2.TraceMessageDecoder {
 	return nil
 }
 

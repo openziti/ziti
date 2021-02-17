@@ -39,13 +39,16 @@ type routeHandler struct {
 	pool      handlerPool
 }
 
-func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder) *routeHandler {
+func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *routeHandler {
 	handler := &routeHandler{
 		id:        id,
 		ctrl:      ctrl,
 		dialerCfg: dialerCfg,
 		forwarder: forwarder,
-		pool:      handlerPool{options: forwarder.Options.XgressDial},
+		pool: handlerPool{
+			options:     forwarder.Options.XgressDial,
+			closeNotify: closeNotify,
+		},
 	}
 
 	handler.pool.Start()
@@ -85,20 +88,17 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
-	if response, err := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId, attempt); err == nil {
-		for k, v := range peerData {
-			response.Headers[int32(k)] = v
-		}
+	response := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId, attempt)
+	for k, v := range peerData {
+		response.Headers[int32(k)] = v
+	}
 
-		response.ReplyTo(msg)
+	response.ReplyTo(msg)
 
-		if err := rh.ctrl.Channel().Send(response); err == nil {
-			log.Debugf("handled route for [s/%s]", route.SessionId)
-		} else {
-			log.Errorf("send response failed for [s/%s] (%s)", route.SessionId, err)
-		}
+	if err := rh.ctrl.Channel().Send(response); err == nil {
+		log.Debugf("handled route for [s/%s]", route.SessionId)
 	} else {
-		log.Errorf("error creating success response for [s/%s] (%v)", route.SessionId, err)
+		log.Errorf("send response failed for [s/%s] (%s)", route.SessionId, err)
 	}
 }
 
@@ -106,13 +106,10 @@ func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Cha
 	log := pfxlog.ContextLogger(ch.Label())
 	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
 
-	if response, err := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error()); err == nil {
-		response.ReplyTo(msg)
-		if err := rh.ctrl.Channel().Send(response); err != nil {
-			log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
-		}
-	} else {
-		log.Errorf("error creating failure response for [s/%s] (%v)", route.SessionId, err)
+	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error())
+	response.ReplyTo(msg)
+	if err := rh.ctrl.Channel().Send(response); err != nil {
+		log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
 	}
 }
 

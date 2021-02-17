@@ -23,33 +23,46 @@ import (
 )
 
 type handlerPool struct {
-	options   forwarder.WorkerPoolOptions
-	startOnce sync.Once
-	queue     chan func()
+	options     forwarder.WorkerPoolOptions
+	startOnce   sync.Once
+	queue       chan func()
+	closeNotify chan struct{}
 }
 
 func (pool *handlerPool) Start() {
 	pool.startOnce.Do(func() {
 		pool.queue = make(chan func(), pool.options.QueueLength)
 		for i := uint16(0); i < pool.options.WorkerCount; i++ {
-			go func() {
-				for handler := range pool.queue {
-					if handler != nil {
-						func() {
-							defer func() {
-								if err := recover(); err != nil {
-									pfxlog.Logger().Errorf("worker error: %v", err)
-								}
-							}()
-							handler()
-						}()
-					}
-				}
-			}()
+			go pool.worker()
 		}
 	})
 }
 
+func (pool *handlerPool) worker() {
+	for {
+		select {
+		case work := <-pool.queue:
+			if work != nil {
+				pool.doWork(work)
+			}
+		case <-pool.closeNotify:
+			return
+		}
+	}
+}
+
+func (pool *handlerPool) doWork(work func()) {
+	defer func() {
+		if err := recover(); err != nil {
+			pfxlog.Logger().Errorf("worker error: %v", err)
+		}
+	}()
+	work()
+}
+
 func (pool *handlerPool) Queue(handler func()) {
-	pool.queue <- handler
+	select {
+	case pool.queue <- handler:
+	case <-pool.closeNotify:
+	}
 }

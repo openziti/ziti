@@ -25,18 +25,23 @@ import (
 )
 
 type routerMonitor struct {
-	forwarder *forwarder.Forwarder
+	forwarder   *forwarder.Forwarder
+	closeNotify <-chan struct{}
 }
 
-func newRouterMonitor(forwarder *forwarder.Forwarder) *routerMonitor {
-	return &routerMonitor{forwarder: forwarder}
+func newRouterMonitor(forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *routerMonitor {
+	return &routerMonitor{forwarder: forwarder, closeNotify: closeNotify}
 }
 
 func (routerMonitor *routerMonitor) Monitor() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGUSR1)
 	for {
-		<-signalChan
-		pfxlog.Logger().Info("\n" + routerMonitor.forwarder.Debug())
+		select {
+		case <-signalChan:
+			pfxlog.Logger().Info("\n" + routerMonitor.forwarder.Debug())
+		case <-routerMonitor.closeNotify:
+			return
+		}
 	}
 }

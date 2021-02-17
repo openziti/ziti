@@ -17,10 +17,7 @@
 package ctrl_msg
 
 import (
-	"bytes"
-	"encoding/binary"
 	"github.com/openziti/foundation/channel2"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -45,24 +42,17 @@ func NewSessionFailedMsg(message string) *channel2.Message {
 	return channel2.NewMessage(SessionFailedType, []byte(message))
 }
 
-func NewRouteResultSuccessMsg(sessionId string, attempt int) (*channel2.Message, error) {
+func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel2.Message {
 	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.LittleEndian, uint32(attempt)); err != nil {
-		return nil, errors.Wrap(err, "error encoding route result attempt")
-	}
-	msg.Headers[RouteResultAttemptHeader] = buf.Bytes()
-	msg.Headers[RouteResultSuccessHeader] = []byte{1}
-	return msg, nil
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.PutBoolHeader(RouteResultSuccessHeader, true)
+	return msg
 }
 
-func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) (*channel2.Message, error) {
+func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *channel2.Message {
 	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.LittleEndian, uint32(attempt)); err != nil {
-		return nil, errors.Wrap(err, "error encoding route result attempt")
-	}
-	msg.Headers[RouteResultAttemptHeader] = buf.Bytes()
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.Headers[RouteResultErrorHeader] = []byte(rerr)
-	return msg, nil
+	return msg
 }

@@ -56,7 +56,7 @@ func (n noopReceiveHandler) HandleXgressReceive(payload *Payload, x *Xgress) {
 }
 
 func Test_Ordering(t *testing.T) {
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{})
+	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{}, nil)
 	closeNotify := make(chan struct{})
 	InitPayloadIngester(closeNotify)
 	InitMetrics(metricsRegistry)

@@ -34,8 +34,11 @@ func TestSimpleCircuit2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -96,8 +99,11 @@ func TestTransitCircuit2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
