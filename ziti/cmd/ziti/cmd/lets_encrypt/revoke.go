@@ -17,7 +17,7 @@
 package lets_encrypt
 
 import (
-	"fmt"
+	"github.com/go-acme/lego/v4/log"
 	"io"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -25,16 +25,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type revokeOptions struct {
-	leOptions
-	path string
-}
-
 // newListCmd creates a command object for the "controller list" command
 func newRevokeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &revokeOptions{
-		leOptions: leOptions{},
-	}
+	options := &leOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "revoke",
@@ -48,9 +41,62 @@ func newRevokeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+
+	cmd.Flags().StringVarP(&options.domain, "domain", "d", "", "Domain for which Cert is being generated (e.g. me.example.com)")
+	cmd.MarkFlagRequired("domain")
+	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory where data is stored")
+	cmd.MarkFlagRequired("path")
+	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
+	// options.keyType.Set("RSA4096") // set default
+	// cmd.Flags().VarP(&options.keyType, "keytype", "k", "Key type to use for private keys")
+	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", acmeProd, "ACME CA hostname")
+	cmd.Flags().BoolVarP(&options.staging, "staging", "s", false, "Enable creation of 'staging' Certs (instead of production Certs)")
+
 	return cmd
 }
 
-func runRevoke(options *revokeOptions) (err error) {
-	return fmt.Errorf("UNIMPLEMENTED: '%s'", "ziti pki le revoke")
+func runRevoke(options *leOptions) (err error) {
+
+	if options.staging {
+		options.acmeserver = acmeStaging
+	}
+
+	accountsStorage := NewAccountsStorage(options)
+
+	account, client := setup(options, accountsStorage)
+
+	if account.Registration == nil {
+		log.Fatalf("Account %s is not registered. Use 'run' to register a new account.\n", account.Email)
+	}
+
+	certsStorage := NewCertificatesStorage(options.path)
+	certsStorage.CreateRootFolder()
+
+	log.Printf("Trying to revoke certificate for domain %s", options.domain)
+
+	certBytes, err := certsStorage.ReadFile(options.domain, ".crt")
+	if err != nil {
+		log.Fatalf("Error while revoking the certificate for domain %s\n\t%v", options.domain, err)
+	}
+
+	err = client.Certificate.Revoke(certBytes)
+	if err != nil {
+		log.Fatalf("Error while revoking the certificate for domain %s\n\t%v", options.domain, err)
+	}
+
+	log.Println("Certificate was revoked.")
+
+	certsStorage.CreateArchiveFolder()
+
+	err = certsStorage.MoveToArchive(options.domain)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Certificate was archived for domain:", options.domain)
+
+	return nil
+
 }
