@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
-	"time"
 )
 
 type sessionHeartbeatHandler struct {
@@ -66,8 +65,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channe
 				msgBytes, _ := proto.Marshal(msgStruct)
 				msg := channel2.NewMessage(env.ApiSessionRemovedType, msgBytes)
 
-				//if we don't delete it this time, we will try again when we see it
-				ch.SendWithTimeout(msg, 5*time.Second)
+				_ = ch.Send(msg)
 			}
 
 		} else {
