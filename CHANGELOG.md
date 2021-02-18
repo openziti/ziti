@@ -1,3 +1,46 @@
+# Release 0.19.0
+
+## Breaking Changes
+
+* Edge session validation is now handled at the controller, not the edge router
+
+## Bug fixes
+
+* ziti ps now supports `router-disconnect` and `router-reconnect`, which disconnects/reconnects the
+  router from the controller. This allows easier testing of various failure states. Requires that
+  --debug-ops is passed to `ziti-router` on startup.
+* Golang SDK hosted service listeners are now properly closed when they receive close notifications
+* Golang SDK now recovers if the session is gone
+* Golang SDK now stops some go-routines that were previously left running after the SDK context was
+  closed
+* Fix session leak caused by using half close when tunneling UDP connections
+* Fix connection leak caused by not closing the UDP connection when it's activity timer expires
+
+## API Changes
+
+* Fabric Xctrl instances are now notified when the control channel reconnects
+* Fabric Xctrl instances may now provide message decoders for the trace infrastructure so that
+  custom messages will be properly displayed in trace logs
+
+## Edge Session Validation
+
+Before 0.19, edge sessions (note: network sessions, not API sessions) would be sent to edge routers
+after they were created. When the edge router received a dial or bind request it would verify that
+the session was valid, then request the controller to create a fabric session.
+
+This approach has two downsides.
+
+1. There is a race condition where the edge router may recieve a dial/bind request before it has
+   received the session from the controller. It thus has to wait a while before declaring the
+   session invalid.
+1. Sessions need to be managed across multiple edge routers, since we don't know where the client
+   will connect. This adds a lot of control channel traffic.
+
+Since the edge router makes a request to the controller anyway, we can pass the session token and
+fingerprints up to the controller and do the verification there. This allows us to minimize the
+amount of state the edge router needs to keep synchronized with the controller and removes the race
+condition.
+
 # Release 0.18.10
 
 # What's New
@@ -9,8 +52,8 @@
 * Allow list/updating router forwarding tables if --debug-ops is passed
     * new command `ziti ps route <optional target> <session> <src-address> <dest-address>`
     * new command `ziti ps dump-routes <optional target>`
-* If an xgress session fails in retransmit, sends fault notification to controller so 
-  controller can fix path or remove session, depending on session state
+* If an xgress session fails in retransmit, sends fault notification to controller so controller can
+  fix path or remove session, depending on session state
 
 # Release 0.18.9
 

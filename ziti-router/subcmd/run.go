@@ -67,7 +67,9 @@ func run(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		xgressEdgeFactory := xgress_edge.NewFactory(version.GetCmdBuildInfo())
+		config.SetFlags(getFlags(cmd))
+
+		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo())
 		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)
