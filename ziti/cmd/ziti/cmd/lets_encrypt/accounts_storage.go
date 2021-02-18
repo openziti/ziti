@@ -31,8 +31,8 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 )
 
 const (
@@ -88,7 +88,7 @@ func NewAccountsStorage(options *leOptions) *AccountsStorage {
 
 	serverURL, err := url.Parse(options.acmeserver)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 
 	rootPath := filepath.Join(options.path, baseAccountsRootFolderName)
@@ -110,7 +110,7 @@ func (s *AccountsStorage) ExistsAccountFilePath() bool {
 	if _, err := os.Stat(accountFile); os.IsNotExist(err) {
 		return false
 	} else if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 	return true
 }
@@ -170,7 +170,7 @@ func (s *AccountsStorage) GetPrivateKey(keyType certcrypto.KeyType) crypto.Priva
 	accKeyPath := filepath.Join(s.keysPath, s.userID+".key")
 
 	if _, err := os.Stat(accKeyPath); os.IsNotExist(err) {
-		log.Printf("No key found for account %s. Generating a %s key.", s.userID, keyType)
+		log.Infof("No key found for account %s. Generating a %s key.", s.userID, keyType)
 		s.createKeysFolder()
 
 		privateKey, err := generatePrivateKey(accKeyPath, keyType)
@@ -178,7 +178,7 @@ func (s *AccountsStorage) GetPrivateKey(keyType certcrypto.KeyType) crypto.Priva
 			log.Fatalf("Could not generate RSA private account key for account %s: %v", s.userID, err)
 		}
 
-		log.Printf("Saved key to %s", accKeyPath)
+		log.Infof("Saved key to %s", accKeyPath)
 		return privateKey
 	}
 

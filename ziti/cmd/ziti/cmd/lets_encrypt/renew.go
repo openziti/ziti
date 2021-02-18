@@ -22,9 +22,9 @@ import (
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/log"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/spf13/cobra"
 	"io"
 	"time"
@@ -134,7 +134,7 @@ func renewForDomains(options *leOptions, client *lego.Client, certsStorage *Cert
 	}
 	certRes, err := client.Certificate.Obtain(request)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 
 	certsStorage.SaveResource(certRes)
@@ -151,7 +151,7 @@ func needRenewal(x509Cert *x509.Certificate, domain string, days int) bool {
 	if days >= 0 {
 		notAfter := int(time.Until(x509Cert.NotAfter).Hours() / 24.0)
 		if notAfter > days {
-			log.Printf("[%s] The certificate expires in %d days, the number of days defined to perform the renewal is %d: no renewal.",
+			log.Infof("[%s] The certificate expires in %d days, the number of days defined to perform the renewal is %d: no renewal.",
 				domain, notAfter, days)
 			return false
 		}

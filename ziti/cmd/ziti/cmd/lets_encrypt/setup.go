@@ -26,8 +26,8 @@ import (
 
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 )
 
 func setup(options *leOptions, accountsStorage *AccountsStorage) (*Account, *lego.Client) {
@@ -45,7 +45,7 @@ func setup(options *leOptions, accountsStorage *AccountsStorage) (*Account, *leg
 
 	err := client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", options.port))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 
 	return account, client

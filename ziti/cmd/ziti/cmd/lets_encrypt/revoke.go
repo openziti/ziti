@@ -17,7 +17,7 @@
 package lets_encrypt
 
 import (
-	"github.com/go-acme/lego/v4/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
@@ -72,7 +72,7 @@ func runRevoke(options *leOptions) (err error) {
 	certsStorage := NewCertificatesStorage(options.path)
 	certsStorage.CreateRootFolder()
 
-	log.Printf("Trying to revoke certificate for domain %s", options.domain)
+	log.Infof("Trying to revoke certificate for domain %s", options.domain)
 
 	certBytes, err := certsStorage.ReadFile(options.domain, ".crt")
 	if err != nil {
@@ -84,7 +84,7 @@ func runRevoke(options *leOptions) (err error) {
 		log.Fatalf("Error while revoking the certificate for domain %s\n\t%v", options.domain, err)
 	}
 
-	log.Println("Certificate was revoked.")
+	log.Infof("Certificate was revoked.")
 
 	certsStorage.CreateArchiveFolder()
 
@@ -93,7 +93,7 @@ func runRevoke(options *leOptions) (err error) {
 		return err
 	}
 
-	log.Println("Certificate was archived for domain:", options.domain)
+	log.Infof("Certificate was archived for domain:", options.domain)
 
 	return nil
 

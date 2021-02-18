@@ -29,7 +29,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/go-acme/lego/v4/log"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"golang.org/x/net/idna"
 )
 
@@ -160,7 +160,7 @@ func (s *CertificatesStorage) ExistsFile(domain, extension string) bool {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false
 	} else if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 	return true
 }
@@ -217,7 +217,7 @@ func (s *CertificatesStorage) MoveToArchive(domain string) error {
 func sanitizedDomain(domain string) string {
 	safe, err := idna.ToASCII(strings.ReplaceAll(domain, "*", "_"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 	return safe
 }

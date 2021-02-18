@@ -20,10 +20,10 @@ import (
 	"crypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/spf13/cobra"
 	"io"
 )
@@ -103,7 +103,7 @@ func runCreate(options *leOptions) (err error) {
 
 		account.Registration = reg
 		if err = accountsStorage.Save(account); err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func runCreate(options *leOptions) (err error) {
 
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 
 	certsStorage := NewCertificatesStorage(options.path)
