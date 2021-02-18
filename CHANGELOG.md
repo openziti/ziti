@@ -3,6 +3,9 @@
 ## Breaking Changes
 
 * Edge session validation is now handled at the controller, not the edge router
+* Routing across the overlay is now handled in parallel, rather than serially. This changes the 
+  syntax and semantics of a couple of control plane messages between the controller and the
+  connected routers. See the section below on `Parallel Routing` for additional details.
 * API Session synchronization improvements and pluggability
 
 ## Bug fixes
@@ -42,7 +45,47 @@ fingerprints up to the controller and do the verification there. This allows us 
 amount of state the edge router needs to keep synchronized with the controller and removes the race
 condition.
 
-* API Session Synchronization
+## Parallel Routing
+
+Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire session setup would be abandoned. If the terminator responded successfully, the controller would then proceed to work through the chain of routers sending `Route` messages and creating the appropriate forwarding table entries. This all happened sequentially.
+
+In 0.19 route setup for session creation now happens in parallel. The controller sends `Route` commands to all of the routers in the chain (including the terminating router), and waits for responses and/or times out those responses. If all of the participating routers respond affirmatively within the timeout period, the entire session creation succeeds. If any participating router responds negatively, or the timeout period occurs, the session creation attempt fails, updating configured termination weights. Session creation will retry up to a configured number of attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be excluded from subsequent attempts.
+
+### Configuration of Parallel Routing
+
+The `terminationTimeoutSeconds` timeout parameter has been removed and will be ignored. The `routeTimeoutSeconds` controls the timeout for each route attempt.
+
+```
+#network:
+  #
+  # routeTimeoutSeconds controls the number of seconds the controller will wait for a route attempt to succeed.
+  #
+  #routeTimeoutSeconds:  10
+```
+
+You'll want to ensure that your participating routers' `getSessionTimeout` in the Xgress options is configured to a suitably large enough value to support the configured number of routing attempts, at the configured routing attempt timeout. In the router configuration, the `getSessionTimeout` value is configured for your Xgress listeners like this:
+
+```
+listeners:
+  # basic ssh proxy
+  - binding:            	proxy
+    address:            	tcp:0.0.0.0:1122
+    service:            	ssh
+    options:
+      getSessionTimeout:	120s
+```
+
+The new parallel routing implementation also supports a configurable number of session creation attempts. Prior to 0.19, the number of attempts was hard-coded at 3. In 0.19, the number of retries is controlled by the `createSessionRetries` parameter, which defaults to 3.
+
+```
+network:
+  #
+  # createSessionRetries controls the number of retries that will be attempted to create a circuit (and terminate it)
+  # for new sessions.
+  #
+  createSessionRetries: 5
+```
+## API Session Synchronization
 
 Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting
 edge routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be defined
@@ -54,7 +97,7 @@ fix issues that could arise during edge router reconnects where API Sessions wou
 on the reconnecting edge router. In addition, the instant strategy now allows for invalid
 synchronization detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
 
-** Edge Router Synchronization Status
+### Edge Router Synchronization Status
 
 The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include a `syncStatus`
 field. This value is updated during the lifetime of the edge router's connection to the controller
