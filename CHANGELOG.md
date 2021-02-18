@@ -85,7 +85,7 @@ network:
   #
   createSessionRetries: 5
 ```
-* API Session Synchronization
+# API Session Synchronization
 
 Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting
 edge routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be defined
