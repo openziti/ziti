@@ -85,7 +85,7 @@ network:
   #
   createSessionRetries: 5
 ```
-# API Session Synchronization
+## API Session Synchronization
 
 Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting
 edge routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be defined
@@ -97,7 +97,7 @@ fix issues that could arise during edge router reconnects where API Sessions wou
 on the reconnecting edge router. In addition, the instant strategy now allows for invalid
 synchronization detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
 
-** Edge Router Synchronization Status
+### Edge Router Synchronization Status
 
 The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include a `syncStatus`
 field. This value is updated during the lifetime of the edge router's connection to the controller
