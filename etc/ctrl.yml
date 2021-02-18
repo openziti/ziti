@@ -25,6 +25,15 @@ identity:
 #
 #network:
   #
+  # routeTimeoutSeconds controls the number of seconds the controller will wait for a route attempt to succeed.
+  #
+  #routeTimeoutSeconds:  10
+  #
+  # createSessionRetries controls the number of retries that will be attempted to create a circuit (and terminate it)
+  # for new sessions.
+  #
+  #createSessionRetries: 3  
+  #
   # Defines the period that the controller re-evaluates the performance of all of the sessions
   # running on the network.
   #
@@ -44,7 +53,7 @@ identity:
     # `smart.rerouteFraction` is set to `0.02`, then the upper limit of sessions that will be re-routed in this 
     # `cycleSeconds` period will be limited to 1.
     #
-    #rerouteCap:         4
+    #rerouteCap:         4  
 
 # Database Location
 #
