@@ -84,6 +84,8 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 	cmd.AddCommand(NewCmdPsSetLogLevel(f, out, errOut))
 	cmd.AddCommand(NewCmdPsRoute(f, out, errOut))
 	cmd.AddCommand(NewCmdPsDumpRoutes(f, out, errOut))
+	cmd.AddCommand(NewCmdPsRouterDisconnect(f, out, errOut))
+	cmd.AddCommand(NewCmdPsRouterReconnect(f, out, errOut))
 
 	// cmd.AddCommand(NewCmdPsController(f, out, errOut))
 	// cmd.AddCommand(NewCmdPsMgmt(f, out, errOut))
