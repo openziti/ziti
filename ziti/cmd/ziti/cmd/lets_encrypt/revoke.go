@@ -49,8 +49,6 @@ func newRevokeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "Directory where data is stored")
 	cmd.MarkFlagRequired("path")
 	cmd.Flags().StringVarP(&options.email, "email", "e", "openziti@netfoundry.io", "Email used for registration and recovery contact")
-	// options.keyType.Set("RSA4096") // set default
-	// cmd.Flags().VarP(&options.keyType, "keytype", "k", "Key type to use for private keys")
 	cmd.Flags().StringVarP(&options.acmeserver, "acmeserver", "a", acmeProd, "ACME CA hostname")
 	cmd.Flags().BoolVarP(&options.staging, "staging", "s", false, "Enable creation of 'staging' Certs (instead of production Certs)")
 
