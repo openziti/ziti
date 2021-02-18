@@ -101,11 +101,11 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	req := require.New(b)
 	req.NoError(mux.AddMsgSink(conn))
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{})
+	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{}, nil)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
-	fwd := forwarder.NewForwarder(metricsRegistry, fwdOptions)
+	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 
 	link := newMirrorLink(fwd)
 
@@ -171,11 +171,11 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	}
 	xgOptions := xgress.DefaultOptions()
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{})
+	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{}, nil)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
-	fwd := forwarder.NewForwarder(metricsRegistry, fwdOptions)
+	fwd := forwarder.NewForwarder(metricsRegistry, nil, fwdOptions, nil)
 
 	link := newMirrorLink(fwd)
 

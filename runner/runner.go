@@ -29,7 +29,7 @@ type Runner interface {
 	AddOperation(Operation) error
 	RemoveOperation(Operation) error
 	RemovePolicyById(uuid.UUID) (Operation, error)
-	Start() error
+	Start(closeNotify <-chan struct{}) error
 	Stop() error
 	IsRunning() bool
 }
@@ -96,7 +96,7 @@ func (r *LimitedRunner) RemovePolicyById(id uuid.UUID) (Operation, error) {
 	return te.Enforcer, nil
 }
 
-func (r *LimitedRunner) Start() error {
+func (r *LimitedRunner) Start(closeNotify <-chan struct{}) error {
 	if r.isRunning {
 		return errors.New("already running")
 	}
@@ -111,18 +111,24 @@ func (r *LimitedRunner) Start() error {
 		te.Ticker = time.NewTicker(te.Enforcer.GetFrequency())
 
 		go func(ite *tickerEnforcer) {
-			for v := range ite.Ticker.C {
-				if v.IsZero() {
-					return
-				}
-				err := ite.Enforcer.Run()
-
-				if err != nil {
-					if r.errHandler == nil {
-						panic(err)
+			for {
+				select {
+				case v := <-ite.Ticker.C:
+					if v.IsZero() {
+						return
 					}
+					err := ite.Enforcer.Run()
 
-					r.errHandler(err, ite.Enforcer)
+					if err != nil {
+						if r.errHandler == nil {
+							panic(err)
+						}
+
+						r.errHandler(err, ite.Enforcer)
+					}
+				case <-closeNotify:
+					te.Ticker.Stop()
+					return
 				}
 			}
 		}(te)

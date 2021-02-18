@@ -14,36 +14,44 @@
 	limitations under the License.
 */
 
-package router
+package edgerouter
 
 import (
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
-	DefaultHeartbeatIntervalSeconds = 60
-	MinHeartbeatIntervalSeconds     = 10
-	MaxHeartbeatIntervalSeconds     = 60
+	DefaultHeartbeatIntervalSeconds   = 60
+	MinHeartbeatIntervalSeconds       = 10
+	MaxHeartbeatIntervalSeconds       = 60
+	DefaultSessionValidateChunkSize   = 1000
+	DefaultSessionValidateMinInterval = "250ms"
+	DefaultSessionValidateMaxInterval = "1500ms"
 )
 
 type Config struct {
-	Enabled                  bool
-	ApiProxy                 ApiProxy
-	Advertise                string
-	WSAdvertise              string
-	Csr                      Csr
-	IdentityConfig           identity.IdentityConfig
-	HeartbeatIntervalSeconds int
-	Tcfg                     transport.Configuration
+	Enabled                    bool
+	ApiProxy                   ApiProxy
+	Advertise                  string
+	WSAdvertise                string
+	Csr                        Csr
+	IdentityConfig             identity.IdentityConfig
+	HeartbeatIntervalSeconds   int
+	SessionValidateChunkSize   uint32
+	SessionValidateMinInterval time.Duration
+	SessionValidateMaxInterval time.Duration
+	Tcfg                       transport.Configuration
 }
 
 type Csr struct {
@@ -113,6 +121,31 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	if config.HeartbeatIntervalSeconds > DefaultHeartbeatIntervalSeconds || config.HeartbeatIntervalSeconds <= MinHeartbeatIntervalSeconds {
 		pfxlog.Logger().Warnf("Invalid heartbeat interval [%v] (min: %v, max: %v), setting to default [%v]", config.HeartbeatIntervalSeconds, MaxHeartbeatIntervalSeconds, MinHeartbeatIntervalSeconds, DefaultHeartbeatIntervalSeconds)
 		config.HeartbeatIntervalSeconds = DefaultHeartbeatIntervalSeconds
+	}
+
+	config.SessionValidateChunkSize = DefaultSessionValidateChunkSize
+	if val, found := edgeConfigMap["sessionValidateChunkSize"]; found {
+		config.SessionValidateChunkSize = uint32(val.(int))
+	}
+
+	sessionValidateMinInterval := DefaultSessionValidateMinInterval
+	if val, found := edgeConfigMap["sessionValidateMinInterval"]; found {
+		sessionValidateMinInterval = val.(string)
+	}
+
+	config.SessionValidateMinInterval, err = time.ParseDuration(sessionValidateMinInterval)
+	if err != nil {
+		return errors.Wrap(err, "invalid duration value for sessionValidateMinInterval")
+	}
+
+	sessionValidateMaxInterval := DefaultSessionValidateMaxInterval
+	if val, found := edgeConfigMap["sessionValidateMaxInterval"]; found {
+		sessionValidateMaxInterval = val.(string)
+	}
+
+	config.SessionValidateMaxInterval, err = time.ParseDuration(sessionValidateMaxInterval)
+	if err != nil {
+		return errors.Wrap(err, "invalid duration value for sessionValidateMaxInterval")
 	}
 
 	if err = config.loadApiProxy(edgeConfigMap); err != nil {
@@ -201,7 +234,7 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		if value, found := submap["binding"]; found {
 			binding := value.(string)
 
-			if binding == "edge" {
+			if binding == edge_common.Binding {
 
 				if value, found := submap["address"]; found {
 					address := value.(string)

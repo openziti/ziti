@@ -72,7 +72,5 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionUpdated(apiSession *persistence.ApiSession, apiSessionCert *persistence.ApiSessionCertificate)
 	ApiSessionDeleted(apiSession *persistence.ApiSession)
 
-	//todo: To be removed inline session creation
-	SessionAdded(session *persistence.Session)
 	SessionDeleted(session *persistence.Session)
 }

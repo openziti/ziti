@@ -305,6 +305,26 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 	})
 }
 
+func (handler *IdentityHandler) visitAuthenticators(id string, visitor func(entity *Authenticator) bool) error {
+	return handler.GetDb().View(func(tx *bbolt.Tx) error {
+		_, err := handler.readInTx(tx, id)
+		if err != nil {
+			return err
+		}
+		authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
+		for _, authenticatorId := range authenticatorIds {
+			authenticator := &Authenticator{}
+			if err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
+				return err
+			}
+			if visitor(authenticator) {
+				return nil
+			}
+		}
+		return nil
+	})
+}
+
 func (handler *IdentityHandler) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		return handler.collectEnrollmentsInTx(tx, id, collector)
@@ -433,7 +453,7 @@ func (handler *IdentityHandler) QueryRoleAttributes(queryString string) ([]strin
 	return handler.queryRoleAttributes(index, queryString)
 }
 
-func (handler IdentityHandler) PatchInfo(identity *Identity) error {
+func (handler *IdentityHandler) PatchInfo(identity *Identity) error {
 	start := time.Now()
 	checker := boltz.MapFieldChecker{
 		persistence.FieldIdentityEnvInfoArch:       struct{}{},
@@ -455,12 +475,26 @@ func (handler IdentityHandler) PatchInfo(identity *Identity) error {
 	return err
 }
 
-func (handler IdentityHandler) SetActive(id string) {
+func (handler *IdentityHandler) SetActive(id string) {
 	handler.identityStatusMap.SetActive(id)
 }
 
-func (handler IdentityHandler) IsActive(id string) bool {
+func (handler *IdentityHandler) IsActive(id string) bool {
 	return handler.identityStatusMap.IsActive(id)
+}
+
+func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(identityId string, visitor func(string) bool) (bool, error) {
+	stopVisit := false
+	err := handler.visitAuthenticators(identityId, func(authenticator *Authenticator) bool {
+		for _, authPrint := range authenticator.Fingerprints() {
+			if visitor(authPrint) {
+				stopVisit = true
+				return true
+			}
+		}
+		return false
+	})
+	return stopVisit, err
 }
 
 type identityStatusMap struct {

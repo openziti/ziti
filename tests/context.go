@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/router/enroll"
@@ -247,6 +248,9 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 		log.WithError(err).Warn("error during initialize admin")
 	}
 
+	logrus.Infof("username: %v", ctx.AdminAuthenticator.Username)
+	logrus.Infof("password: %v", ctx.AdminAuthenticator.Password)
+
 	// Note we're not starting the fabric controller. Shouldn't need any of it for testing the edge API
 	ctx.EdgeController.Run()
 	go func() {
@@ -256,7 +260,6 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	err = ctx.waitForPort(time.Minute * 5)
 	ctx.Req.NoError(err)
 }
-
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
 	// If an edge router has already been created, delete it and create a new one
@@ -337,8 +340,8 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	xgressEdgeFactory := xgress_edge.NewFactory(NewVersionProviderTest())
-	xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
+	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest())
+	xgress.GlobalRegistry().Register(edge_common.Binding, xgressEdgeFactory)
 	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
 	ctx.Req.NoError(ctx.router.Start())
 }
@@ -413,9 +416,7 @@ func (ctx *TestContext) login(username, password string) (*session, error) {
 
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
-	if ctx.router != nil {
-		ctx.Req.NoError(ctx.router.Shutdown())
-	}
+	ctx.shutdownRouter()
 	ctx.EdgeController.Shutdown()
 	ctx.fabricController.Shutdown()
 }
@@ -693,6 +694,32 @@ func (ctx *TestContext) requireEntityEnrolled(name string, entity *gabs.Containe
 
 	expiresAt := entity.Path("enrollmentExpiresAt").Data()
 	ctx.Req.Nil(expiresAt, "expected "+name+" with isVerified=true to have an nil enrollment expires at date")
+}
+
+func (ctx *TestContext) requireNListener(count int, l edge.Listener, timeout time.Duration) {
+	sl, ok := l.(edge.SessionListener)
+	ctx.Req.True(ok, "must be session listener")
+
+	c := make(chan []edge.Listener, 5)
+	sl.SetConnectionChangeHandler(func(conn []edge.Listener) {
+		select {
+		case c <- conn:
+		default:
+		}
+	})
+
+	t := time.After(timeout)
+
+	for {
+		select {
+		case state := <-c:
+			if len(state) >= count {
+				return
+			}
+		case <-t:
+			ctx.Req.Failf("timeout", "listener did not have %v connections within %v", count, timeout)
+		}
+	}
 }
 
 func (ctx *TestContext) WrapNetConn(conn edge.Conn, err error) *testConn {

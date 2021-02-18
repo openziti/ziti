@@ -15,10 +15,10 @@ v: 3
 # as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
 # 'ca' value is used to populate an internally Trusted CA pool.
 identity:
-  cert:                 testdata/edge-router/edge-router-client.cert.pem
-  server_cert:          testdata/edge-router/edge-router-server.cert.pem
-  key:                  testdata/edge-router/edge-router.key.pem
-  ca:                   testdata/edge-router/edge-router-ca-chain.cert.pem
+  cert: testdata/edge-router/edge-router-client.cert.pem
+  server_cert: testdata/edge-router/edge-router-server.cert.pem
+  key: testdata/edge-router/edge-router.key.pem
+  ca: testdata/edge-router/edge-router-ca-chain.cert.pem
 
 #trace:
 # path:                 001.trace
@@ -30,7 +30,7 @@ identity:
 #    path:               001.cpuprof
 
 ctrl:
-  endpoint:             tls:127.0.0.1:6262
+  endpoint: tls:127.0.0.1:6262
 
 # By having an 'edge' section defined, the ziti-router will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
@@ -70,6 +70,3 @@ listeners:
     options:
       # (required) The public hostname and port combination that Ziti SDKs should connect on. Previously this was in the chanIngress section.
       advertise: 127.0.0.1:3022
-  - binding: transport
-    address: tls:0.0.0.0:7099
-

@@ -3,102 +3,149 @@ syntax = "proto3";
 package edge_ctrl.pb;
 
 enum ContentType {
-    Zero = 0;
-    ServerHelloType = 20000;
-    ClientHelloType = 20001;
-    ErrorType = 20002;
-    SessionAddedType = 20100;
-    SessionUpdatedType = 20101;
-    SessionRemovedType = 20102;
-    ApiSessionAddedType = 20200;
-    ApiSessionUpdatedType = 20201;
-    ApiSessionRemovedType = 20202;
-    ApiSessionHeartbeatType = 20203;
-    RequestClientReSyncType = 20204;
-    EnrollType = 20300;
-    EnrollCertsType = 20301;
+  Zero = 0;
+  ServerHelloType = 20000;
+  ClientHelloType = 20001;
+  ErrorType = 20002;
+  // SessionAddedType = 20100;
+  // SessionUpdatedType = 20101;
+  SessionRemovedType = 20102;
+  ApiSessionAddedType = 20200;
+  ApiSessionUpdatedType = 20201;
+  ApiSessionRemovedType = 20202;
+  ApiSessionHeartbeatType = 20203;
+  RequestClientReSyncType = 20204;
+  CreateCircuitRequestType = 20205;
+  CreateCircuitResponseType = 20206;
+  CreateTerminatorRequestType = 20207;
+  CreateTerminatorResponseType = 20208;
+  UpdateTerminatorRequestType = 20209;
+  UpdateTerminatorResponseType = 20210;
+  RemoveTerminatorRequestType = 20211;
+  RemoveTerminatorResponseType = 20212;
+  ValidateSessionsRequestType = 20213;
+  EnrollType = 20300;
+  EnrollCertsType = 20301;
 }
 
 enum SessionType {
-    Dial = 0;
-    Bind = 1;
+  Dial = 0;
+  Bind = 1;
 }
 
 message ServerHello {
-    string version = 1;
-    map<string, string> data = 2;
+  string version = 1;
+  map<string, string> data = 2;
 }
 
 message ClientHello {
-    string version = 1;
-    string hostname = 2;
-    repeated string protocols = 3;
-    map<string, string> data = 4;
-    repeated string protocolPorts = 5;
+  string version = 1;
+  string hostname = 2;
+  repeated string protocols = 3;
+  map<string, string> data = 4;
+  repeated string protocolPorts = 5;
 }
 
 message Error {
-    string code = 1;
-    string message = 2;
-    string cause = 3;
+  string code = 1;
+  string message = 2;
+  string cause = 3;
 }
 
 message Service {
-    string id = 1;
-    string name = 2;
-    bool encryptionRequired = 3;
+  string id = 1;
+  string name = 2;
+  bool encryptionRequired = 3;
 }
 
 message Session {
-    string token = 1;
-    SessionType type = 2;
-    repeated string certFingerprints = 3;
-    repeated string urls = 4;
-    Service service = 5;
-    string id = 7;
-    string apiSessionId = 8;
+  string token = 1;
+  SessionType type = 2;
+  repeated string certFingerprints = 3;
+  repeated string urls = 4;
+  Service service = 5;
+  string id = 7;
+  string apiSessionId = 8;
 }
 
 message ApiSession {
-    string token = 1;
-    repeated string certFingerprints = 2;
-    string id = 3;
+  string token = 1;
+  repeated string certFingerprints = 2;
+  string id = 3;
 }
 
 message ApiSessionAdded {
-    bool isFullState = 1;
-    repeated ApiSession apiSessions = 2;
+  bool isFullState = 1;
+  repeated ApiSession apiSessions = 2;
 }
 
 message ApiSessionUpdated {
-    repeated ApiSession apiSessions = 1;
+  repeated ApiSession apiSessions = 1;
 }
 
 message ApiSessionRemoved {
-    repeated string tokens = 1;
-    repeated string ids = 2;
+  repeated string tokens = 1;
+  repeated string ids = 2;
 }
 
 message ApiSessionHeartbeat {
-    repeated string tokens = 1;
-}
-
-message SessionAdded {
-    bool isFullState = 1;
-    repeated Session sessions = 2;
+  repeated string tokens = 1;
 }
 
 message SessionRemoved {
-    repeated string tokens = 1;
-    repeated string ids = 2;
-}
-
-message SessionUpdated {
-    string token = 1;
-    repeated string urls = 2;
-    Service service = 3;
+  repeated string tokens = 1;
+  repeated string ids = 2;
 }
 
 message RequestClientReSync {
-    string reason = 1;
+  string reason = 1;
+}
+
+message CreateCircuitRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorIdentity = 3;
+  map<uint32, bytes> peerData = 4;
+}
+
+message CreateCircuitResponse {
+  string sessionId = 1;
+  string address = 2;
+  map<uint32, bytes> peerData = 3;
+}
+
+enum TerminatorPrecedence {
+  Default = 0;
+  Required = 1;
+  Failed = 2;
+}
+
+message CreateTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  map<uint32, bytes> peerData = 3;
+  uint32 cost = 4;
+  TerminatorPrecedence precedence = 5;
+  string identity = 6;
+  bytes identitySecret = 7;
+}
+
+message RemoveTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+}
+
+message UpdateTerminatorRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+  uint32 cost = 4;
+  TerminatorPrecedence precedence = 5;
+  bool updatePrecedence = 6;
+  bool updateCost = 7;
+}
+
+message ValidateSessionsRequest {
+  repeated string sessionTokens = 1;
 }

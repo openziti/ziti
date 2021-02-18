@@ -19,16 +19,16 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/edge/router/internal/fabric"
-	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -62,7 +62,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
 	listener.underlayListener = channel2.NewClassicListenerWithTransportConfiguration(
-		listener.id, addr, listener.options.channelOptions.ConnectOptions, listener.factory.config.Tcfg, listener.headers)
+		listener.id, addr, listener.options.channelOptions.ConnectOptions, listener.factory.edgeRouterConfig.Tcfg, listener.headers)
 
 	if err := listener.underlayListener.Listen(); err != nil {
 		return err
@@ -88,10 +88,10 @@ type edgeClientConn struct {
 func (self *edgeClientConn) HandleClose(_ channel2.Channel) {
 	log := pfxlog.ContextLogger(self.ch.Label())
 	log.Debugf("closing")
-	listeners := self.listener.factory.hostedServices.cleanupServices(self)
-	for _, listener := range listeners {
-		if err := xgress.RemoveTerminator(self.listener.factory, listener.terminatorId); err != nil {
-			log.Warnf("failed to remove terminator on service %v for terminator %v on channel close", listener.service, listener.terminatorId)
+	terminators := self.listener.factory.hostedServices.cleanupServices(self)
+	for _, terminator := range terminators {
+		if err := self.removeTerminator(terminator); err != nil {
+			log.Warnf("failed to remove terminator %v for session with token %v on channel close", terminator.terminatorId, terminator.token)
 		}
 	}
 	self.msgMux.Close()
@@ -109,26 +109,6 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 		pfxlog.Logger().Errorf("connId not set. unable to process connect message")
 		return
 	}
-	log.Debug("validating network session")
-	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, self.listener.options.lookupSessionTimeout)
-
-	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Dial {
-		log.WithField("token", token).Error("session not found")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
-		log.WithField("token", token).
-			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", self.fingerprints.Prints()).
-			Error("matching fingerprint not found for connect")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	log.Debug("validating connection id")
 
 	conn := &edgeXgressConn{
 		mux:        self.msgMux,
@@ -136,7 +116,8 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 		seq:        NewMsgQueue(4),
 	}
 
-	sm.AddSessionRemovedListener(ns.Token, func(token string) {
+	// need to remove session remove listener on close
+	conn.onClose = self.listener.factory.stateManager.AddSessionRemovedListener(token, func(token string) {
 		conn.close(true, "session closed")
 	})
 
@@ -151,50 +132,37 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 	log.Debug("dialing fabric")
 	peerData := make(map[uint32][]byte)
 
-	if pk, found := req.Headers[edge.PublicKeyHeader]; found {
-		peerData[edge.PublicKeyHeader] = pk
+	for _, key := range []uint32{edge.PublicKeyHeader, edge.CallerIdHeader, edge.AppDataHeader} {
+		if pk, found := req.Headers[int32(key)]; found {
+			peerData[key] = pk
+		}
 	}
 
-	if callerId, found := req.Headers[edge.CallerIdHeader]; found {
-		peerData[edge.CallerIdHeader] = callerId
+	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
+
+	request := &edge_ctrl_pb.CreateCircuitRequest{
+		SessionToken:       token,
+		Fingerprints:       self.fingerprints.Prints(),
+		TerminatorIdentity: terminatorIdentity,
+		PeerData:           peerData,
 	}
 
-	if appData, found := req.Headers[edge.AppDataHeader]; found {
-		peerData[edge.AppDataHeader] = appData
-	}
+	response := &edge_ctrl_pb.CreateCircuitResponse{}
+	timeout := self.listener.options.Options.GetSessionTimeout
+	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
 
-	if ns.Service.EncryptionRequired && req.Headers[edge.PublicKeyHeader] == nil {
-		msg := "encryption required on service, initiator did not send public header"
-		self.sendStateClosedReply(msg, req)
-		conn.close(false, msg)
-		return
-	}
-
-	service := ns.Service.Id
-	if terminatorIdentity, found := req.GetStringHeader(edge.TerminatorIdentityHeader); found {
-		service = terminatorIdentity + "@" + service
-	}
-
-	sessionInfo, err := xgress.GetSession(self.listener.factory, ns.Id, service, self.listener.options.Options.GetSessionTimeout, peerData)
-	if err != nil {
+	if err = getResultOrFailure(responseMsg, err, response); err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
 		self.sendStateClosedReply(err.Error(), req)
 		conn.close(false, "failed to dial fabric")
 		return
 	}
 
-	if ns.Service.EncryptionRequired && sessionInfo.SessionId.Data[edge.PublicKeyHeader] == nil {
-		msg := "encryption required on service, terminator did not send public header"
-		self.sendStateClosedReply(msg, req)
-		conn.close(false, msg)
-		return
-	}
-
-	x := xgress.NewXgress(sessionInfo.SessionId, sessionInfo.Address, conn, xgress.Initiator, &self.listener.options.Options)
+	x := xgress.NewXgress(&identity.TokenId{Token: response.SessionId}, xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options)
 	self.listener.bindHandler.HandleXgressBind(x)
 
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
-	self.sendStateConnectedReply(req, sessionInfo.SessionId.Data)
+	self.sendStateConnectedReply(req, response.PeerData)
 	x.Start()
 }
 
@@ -205,24 +173,6 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
-		return
-	}
-	log.Debug("validating network session")
-	sm := fabric.GetStateManager()
-	ns := sm.GetSessionWithTimeout(token, self.listener.options.lookupSessionTimeout)
-
-	if ns == nil || ns.Type != edge_ctrl_pb.SessionType_Bind {
-		log.WithField("token", token).Error("session not found")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
-		log.WithField("token", token).
-			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", self.fingerprints.Prints()).
-			Error("matching fingerprint not found for bind")
-		self.sendStateClosedReply("Invalid Session", req)
 		return
 	}
 
@@ -239,13 +189,13 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 		cost = binary.LittleEndian.Uint16(costBytes)
 	}
 
-	precedence := ctrl_pb.TerminatorPrecedence_Default
+	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
 	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
 		edgePrecedence := precedenceData[0]
 		if edgePrecedence == edge.PrecedenceRequired {
-			precedence = ctrl_pb.TerminatorPrecedence_Required
+			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
 		} else if edgePrecedence == edge.PrecedenceFailed {
-			precedence = ctrl_pb.TerminatorPrecedence_Failed
+			precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
 	}
 
@@ -257,11 +207,11 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
 		token:          token,
-		service:        ns.Service.Id,
 		assignIds:      assignIds,
 	}
 
-	sm.AddSessionRemovedListener(ns.Token, func(token string) {
+	// need to remove session remove listener on close
+	messageSink.onClose = self.listener.factory.stateManager.AddSessionRemovedListener(token, func(token string) {
 		messageSink.close(true, "session ended")
 	})
 
@@ -273,17 +223,28 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 		terminatorIdentitySecret, _ = req.Headers[edge.TerminatorIdentitySecretHeader]
 	}
 
-	terminatorId, err := xgress.AddTerminator(self.listener.factory, ns.Service.Id, "edge", "hosted:"+token, terminatorIdentity, terminatorIdentitySecret, hostData, cost, precedence)
-	messageSink.terminatorId = terminatorId
+	request := &edge_ctrl_pb.CreateTerminatorRequest{
+		SessionToken:   token,
+		Fingerprints:   self.fingerprints.Prints(),
+		PeerData:       hostData,
+		Cost:           uint32(cost),
+		Precedence:     precedence,
+		Identity:       terminatorIdentity,
+		IdentitySecret: terminatorIdentitySecret,
+	}
 
-	log.Debugf("registered listener for terminator %v, token: %v", terminatorId, token)
-
-	if err != nil {
+	timeout := self.listener.factory.DefaultRequestTimeout()
+	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	if err = checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
+		log.WithError(err).Warn("error creating terminator")
 		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
 
+	messageSink.terminatorId = string(responseMsg.Body)
+
+	log.Debugf("registered listener for terminator %v, token: %v", messageSink.terminatorId, token)
 	log.Debug("returning connection state CONNECTED to client")
 	self.sendStateConnectedReply(req, nil)
 }
@@ -292,30 +253,12 @@ func (self *edgeClientConn) processUnbind(req *channel2.Message, ch channel2.Cha
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
-	sm := fabric.GetStateManager()
-	ns := sm.GetSession(token)
-
-	if ns == nil {
-		log.WithField("token", token).Error("session not found")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
-		log.WithField("token", token).
-			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", self.fingerprints.Prints()).
-			Error("matching fingerprint not found for unbind")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	localListener, ok := self.listener.factory.hostedServices.Get(token)
+	terminator, ok := self.listener.factory.hostedServices.Get(token)
 	if ok {
 		defer self.listener.factory.hostedServices.Delete(token)
 
-		log.Debugf("removing terminator %v for token: %v", localListener.terminatorId, token)
-		if err := xgress.RemoveTerminator(self.listener.factory, localListener.terminatorId); err != nil {
+		log.Debugf("removing terminator %v for token: %v", terminator.terminatorId, token)
+		if err := self.removeTerminator(terminator); err != nil {
 			self.sendStateClosedReply(err.Error(), req)
 		} else {
 			self.sendStateClosedReply("unbind successful", req)
@@ -325,55 +268,63 @@ func (self *edgeClientConn) processUnbind(req *channel2.Message, ch channel2.Cha
 	}
 }
 
+func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
+	request := &edge_ctrl_pb.RemoveTerminatorRequest{
+		SessionToken: terminator.token,
+		Fingerprints: self.fingerprints.Prints(),
+		TerminatorId: terminator.terminatorId,
+	}
+
+	timeout := self.listener.factory.DefaultRequestTimeout()
+	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	return checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
+}
+
 func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
-	localListener, ok := self.listener.factory.hostedServices.Get(token)
+	terminator, ok := self.listener.factory.hostedServices.Get(token)
 
 	if !ok {
 		log.Error("failed to update bind, no listener found")
 		return
 	}
 
-	sm := fabric.GetStateManager()
-	ns := sm.GetSession(token)
-
-	if ns == nil {
-		log.WithField("token", token).Error("session not found")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
+	request := &edge_ctrl_pb.UpdateTerminatorRequest{
+		TerminatorId: terminator.terminatorId,
 	}
 
-	if _, found := self.fingerprints.HasAny(ns.CertFingerprints); !found {
-		log.WithField("token", token).
-			WithField("serviceFingerprints", ns.CertFingerprints).
-			WithField("clientFingerprints", self.fingerprints.Prints()).
-			Error("matching fingerprint not found for update bind")
-		self.sendStateClosedReply("Invalid Session", req)
-		return
-	}
-
-	var cost *uint16
 	if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
-		cost = &costVal
+		request.UpdateCost = true
+		request.Cost = uint32(costVal)
 	}
 
-	var precedence *ctrl_pb.TerminatorPrecedence
 	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
 		edgePrecedence := precedenceData[0]
-		updatedPrecedence := ctrl_pb.TerminatorPrecedence_Default
+		request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
+		request.UpdatePrecedence = true
 		if edgePrecedence == edge.PrecedenceRequired {
-			updatedPrecedence = ctrl_pb.TerminatorPrecedence_Required
+			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Required
 		} else if edgePrecedence == edge.PrecedenceFailed {
-			updatedPrecedence = ctrl_pb.TerminatorPrecedence_Failed
+			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 		}
-		precedence = &updatedPrecedence
 	}
 
-	log.Debugf("updating terminator %v to precedence %v and cost %v", localListener.terminatorId, precedence, cost)
-	if err := xgress.UpdateTerminator(self.listener.factory, localListener.terminatorId, cost, precedence); err != nil {
-		log.WithError(err).Error("failed to update bind")
+	log = log.WithField("terminator", terminator.terminatorId).
+		WithField("precedence", request.Precedence).
+		WithField("cost", request.Cost).
+		WithField("updatingPrecedence", request.UpdatePrecedence).
+		WithField("updatingCost", request.UpdateCost)
+
+	log.Debug("updating terminator")
+
+	timeout := self.listener.factory.DefaultRequestTimeout()
+	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	if err := checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
+		log.WithError(err).Error("terminator update failed")
+	} else {
+		log.Debug("terminator updated successfully")
 	}
 }
 
@@ -436,4 +387,44 @@ func (self *edgeClientConn) sendStateClosed(connId uint32, message string) {
 	case <-time.After(time.Second * 5):
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
 	}
+}
+
+func getResultOrFailure(msg *channel2.Message, err error, result channel2.TypedMessage) error {
+	if err != nil {
+		return err
+	}
+
+	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
+		msg := string(msg.Body)
+		if msg == "" {
+			msg = "error state returned from controller with no message"
+		}
+		return errors.New(msg)
+	}
+
+	if msg.ContentType != result.GetContentType() {
+		return errors.Errorf("unexpected response type %v to request. expected %v", msg.ContentType, result.GetContentType())
+	}
+
+	return proto.Unmarshal(msg.Body, result)
+}
+
+func checkForFailureResult(msg *channel2.Message, err error, successType edge_ctrl_pb.ContentType) error {
+	if err != nil {
+		return err
+	}
+
+	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
+		msg := string(msg.Body)
+		if msg == "" {
+			msg = "error state returned from controller with no message"
+		}
+		return errors.New(msg)
+	}
+
+	if msg.ContentType != int32(successType) {
+		return errors.Errorf("unexpected response type %v to request. expected %v", msg.ContentType, successType)
+	}
+
+	return nil
 }

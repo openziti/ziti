@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/router/internal/router"
+	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
@@ -48,15 +48,15 @@ type Enroller interface {
 }
 
 type RestEnroller struct {
-	config *router.Config
+	config *edgerouter.Config
 }
 
 func NewRestEnroller() Enroller {
 	return &RestEnroller{}
 }
 
-func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*router.Config, error) {
-	config := router.NewConfig()
+func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*edgerouter.Config, error) {
+	config := edgerouter.NewConfig()
 	if err := config.LoadConfigFromMapForEnrollment(cfgmap); err != nil {
 		return nil, err
 	}
