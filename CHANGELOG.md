@@ -48,7 +48,7 @@ condition.
 
 Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire session setup would be abandoned. If the terminator responded successfully, the controller would then proceed to work through the chain of routers sending `Route` messages and creating the appropriate forwarding table entries. This all happened sequentially.
 
-In 0.19 route setup for session creation now happens in parallel. The controller sends `Route` commands to all of the routers in the chain (including the terminating router), and waits for responses and/or times out those responses. If all of the participating routers respond affirmatively within the timeout period, the entire session creation succeeds. If any participating router responds negatively, or the timeout period occurs, the session creation attempt fails.
+In 0.19 route setup for session creation now happens in parallel. The controller sends `Route` commands to all of the routers in the chain (including the terminating router), and waits for responses and/or times out those responses. If all of the participating routers respond affirmatively within the timeout period, the entire session creation succeeds. If any participating router responds negatively, or the timeout period occurs, the session creation attempt fails, updating configured termination weights. Session creation will retry up to a configured number of attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be excluded from subsequent attempts.
 
 ### Configuration of Parallel Routing
 
