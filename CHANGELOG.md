@@ -6,6 +6,7 @@
 * Routing across the overlay is now handled in parallel, rather than serially. This changes the 
   syntax and semantics of a couple of control plane messages between the controller and the
   connected routers. See the section below on `Parallel Routing` for additional details.
+* API Session synchronization improvements and pluggability
 
 ## Bug fixes
 
@@ -33,8 +34,8 @@ the session was valid, then request the controller to create a fabric session.
 
 This approach has two downsides.
 
-1. There is a race condition where the edge router may recieve a dial/bind request before it has
-   received the session from the controller. It thus has to wait a while before declaring the
+1. There is a race condition where the edge router may receive a dial/bind request before it has
+   received the session from the controller. It thus has to wait awhile before declaring the
    session invalid.
 1. Sessions need to be managed across multiple edge routers, since we don't know where the client
    will connect. This adds a lot of control channel traffic.
@@ -84,6 +85,36 @@ network:
   #
   createSessionRetries: 5
 ```
+* API Session Synchronization
+
+Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting
+edge routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be defined
+within the same code base. Future releases will be able to introduce configurable and negotiable
+strategies.
+
+The default strategy from prior releases, now named 'instant', has been improved to
+fix issues that could arise during edge router reconnects where API Sessions would become invalid
+on the reconnecting edge router. In addition, the instant strategy now allows for invalid
+synchronization detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
+
+** Edge Router Synchronization Status
+
+The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include a `syncStatus`
+field. This value is updated during the lifetime of the edge router's connection to the controller
+and will provide insight on its status.
+
+The possible `syncStatus` values are as follows:
+
+- "SYNC_NEW" - connection accepted but no strategy actions have been taken
+- "SYNC_QUEUED" - connection handed to a strategy and waiting for processing
+- "SYNC_HELLO_TIMEOUT" - sync failed due to a hello timeout, requeued for hello
+- "SYNC_HELLO" - controller edge hello being sent
+- "SYNC_HELLO_WAIT" - hello received from router and queued for processing
+- "SYNC_RESYNC_WAIT" - router requested a resync and queued for processing
+- "SYNC_IN_PROGRESS" - synchronization processing
+- "SYNC_DONE" - synchronization completed, router is now in maintenance updates
+- "SYNC_UNKNOWN" - state is unknown, edge router misbehaved, error state
+- "SYNC_DISCONNECTED" - strategy was disconnected before finishing, error state
 
 # Release 0.18.10
 
