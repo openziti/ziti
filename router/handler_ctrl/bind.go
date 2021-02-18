@@ -34,6 +34,7 @@ type bindHandler struct {
 	ctrl         xgress.CtrlChannel
 	forwarder    *forwarder.Forwarder
 	xctrls       []xctrl.Xctrl
+	closeNotify  chan struct{}
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -41,7 +42,8 @@ func NewBindHandler(id *identity.TokenId,
 	xlinkDialers []xlink.Dialer,
 	ctrl xgress.CtrlChannel,
 	forwarder *forwarder.Forwarder,
-	xctrls []xctrl.Xctrl) channel2.BindHandler {
+	xctrls []xctrl.Xctrl,
+	closeNotify chan struct{}) channel2.BindHandler {
 	return &bindHandler{
 		id:           id,
 		dialerCfg:    dialerCfg,
@@ -49,12 +51,13 @@ func NewBindHandler(id *identity.TokenId,
 		ctrl:         ctrl,
 		forwarder:    forwarder,
 		xctrls:       xctrls,
+		closeNotify:  closeNotify,
 	}
 }
 
 func (self *bindHandler) BindChannel(ch channel2.Channel) error {
-	ch.AddReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, self.forwarder))
-	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder))
+	ch.AddReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, self.forwarder, self.closeNotify))
+	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, self.closeNotify))
 	ch.AddReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))

@@ -36,6 +36,7 @@ type Forwarder struct {
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
+	CloseNotify     <-chan struct{}
 }
 
 type Destination interface {
@@ -52,14 +53,15 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options, closeNotify <-chan struct{}) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
 		faulter:         faulter,
 		metricsRegistry: metricsRegistry,
-		traceController: trace.NewController(),
+		traceController: trace.NewController(closeNotify),
 		Options:         options,
+		CloseNotify:     closeNotify,
 	}
 
 	return forwarder
@@ -187,8 +189,8 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 func (forwarder *Forwarder) ReportForwardingFault(sessionId string) {
 	if forwarder.faulter != nil {
 		forwarder.faulter.report(sessionId)
- 	} else {
- 		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
+	} else {
+		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
 	}
 }
 
@@ -205,19 +207,25 @@ func (forwarder *Forwarder) unrouteTimeout(sessionId string, interval time.Durat
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 
-	for {
-		time.Sleep(interval)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-		if dest := forwarder.getXgressForSession(sessionId); dest != nil {
-			elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
-			if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
+	for {
+		select {
+		case <-ticker.C:
+			if dest := forwarder.getXgressForSession(sessionId); dest != nil {
+				elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
+				if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
+					forwarder.sessions.removeForwardTable(sessionId)
+					forwarder.EndSession(sessionId)
+					return
+				}
+			} else {
 				forwarder.sessions.removeForwardTable(sessionId)
 				forwarder.EndSession(sessionId)
 				return
 			}
-		} else {
-			forwarder.sessions.removeForwardTable(sessionId)
-			forwarder.EndSession(sessionId)
+		case <-forwarder.CloseNotify:
 			return
 		}
 	}

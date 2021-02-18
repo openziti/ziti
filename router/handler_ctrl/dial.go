@@ -35,12 +35,15 @@ type dialHandler struct {
 	pool    handlerPool
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, forwarder *forwarder.Forwarder) *dialHandler {
+func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *dialHandler {
 	handler := &dialHandler{
 		id:      id,
 		ctrl:    ctrl,
 		dialers: dialers,
-		pool:    handlerPool{options: forwarder.Options.LinkDial},
+		pool: handlerPool{
+			options:     forwarder.Options.LinkDial,
+			closeNotify: closeNotify,
+		},
 	}
 	handler.pool.Start()
 
@@ -52,7 +55,7 @@ func (self *dialHandler) ContentType() int32 {
 }
 
 func (self *dialHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	self.pool.Queue(func(){
+	self.pool.Queue(func() {
 		self.handle(msg, ch)
 	})
 }

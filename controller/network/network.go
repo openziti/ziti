@@ -34,7 +34,6 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/sequence"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -62,8 +61,7 @@ type Network struct {
 	traceController        trace.Controller
 	routerPresenceHandlers []RouterPresenceHandler
 	capabilities           []string
-	shutdownChan           chan struct{}
-	isShutdown             concurrenz.AtomicBoolean
+	closeNotify            <-chan struct{}
 	lock                   sync.Mutex
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
@@ -71,14 +69,13 @@ type Network struct {
 	VersionProvider        common.VersionProvider
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider) (*Network, error) {
+func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
 	stores, err := db.InitStores(database)
 	if err != nil {
 		return nil, err
 	}
 
 	controllers := NewControllers(database, stores)
-	eventDispatcher := event.NewDispatcher()
 
 	network := &Network{
 		Controllers:           controllers,
@@ -91,9 +88,9 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		sessionController:     newSessionController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
-		eventDispatcher:       eventDispatcher,
-		traceController:       trace.NewController(),
-		shutdownChan:          make(chan struct{}),
+		eventDispatcher:       event.NewDispatcher(closeNotify),
+		traceController:       trace.NewController(closeNotify),
+		closeNotify:           closeNotify,
 		strategyRegistry:      xt.GlobalRegistry(),
 		lastSnapshot:          time.Now().Add(-time.Hour),
 		metricsRegistry:       metrics.NewRegistry(nodeId.Token, nil),
@@ -114,6 +111,8 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 	}
 	go func() {
 		timer := time.NewTicker(reportInterval)
+		defer timer.Stop()
+
 		dispatcher := metrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
 		for {
 			select {
@@ -121,6 +120,8 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 				if msg := network.metricsRegistry.Poll(); msg != nil {
 					dispatcher.AcceptMetrics(msg)
 				}
+			case <-network.closeNotify:
+				return
 			}
 		}
 	}()
@@ -638,18 +639,11 @@ func (network *Network) Run() {
 			network.clean()
 			network.smart()
 
-		case _, ok := <-network.shutdownChan:
-			if !ok {
-				return
-			}
+		case <-network.closeNotify:
+			events.RemoveMetricsEventHandler(network)
+			network.metricsRegistry.DisposeAll()
+			return
 		}
-	}
-}
-
-func (network *Network) Shutdown() {
-	if network.isShutdown.CompareAndSwap(false, true) {
-		close(network.shutdownChan)
-		events.RemoveMetricsEventHandler(network)
 	}
 }
 

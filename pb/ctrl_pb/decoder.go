@@ -113,7 +113,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_SessionSuccessType):
+	case int32(ctrl_msg.SessionSuccessType):
 		meta := channel2.NewTraceMessageDecode(DECODER, "Session Success Response")
 		meta["sessionId"] = string(msg.Body)
 		meta["address"] = string(msg.Headers[ctrl_msg.SessionSuccessAddressHeader])
@@ -125,7 +125,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 
 		return data, true
 
-	case int32(ContentType_SessionFailedType):
+	case int32(ctrl_msg.SessionFailedType):
 		meta := channel2.NewTraceMessageDecode(DECODER, "Session Failed Response")
 		message := string(msg.Body)
 		if message != "" {
@@ -278,6 +278,22 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 		}
 
+	case int32(ctrl_msg.RouteResultType):
+		meta := channel2.NewTraceMessageDecode(DECODER, "Route Result")
+		meta["sessionId"] = string(msg.Body)
+		meta["attempt"], _ = msg.GetUint32Header(ctrl_msg.RouteResultAttemptHeader)
+		success, _ := msg.GetBoolHeader(ctrl_msg.RouteResultSuccessHeader)
+		meta["success"] = success
+		if !success {
+			meta["errormsg"], _ = msg.GetStringHeader(ctrl_msg.RouteResultErrorHeader)
+		}
+
+		data, err := meta.MarshalTraceMessageDecode()
+		if err != nil {
+			return nil, true
+		}
+
+		return data, true
 	}
 
 	return nil, false

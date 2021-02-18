@@ -82,18 +82,19 @@ func (self *Router) DefaultRequestTimeout() time.Duration {
 }
 
 func Create(config *Config, versionProvider common.VersionProvider) *Router {
-	eventDispatcher := event.NewDispatcher()
+	closeNotify := make(chan struct{})
+
+	eventDispatcher := event.NewDispatcher(closeNotify)
 	metricsConfig := &metrics.Config{
 		Source:         config.Id.Token,
 		ReportInterval: time.Second * 15,
 		EventSink:      metrics.NewDispatchWrapper(eventDispatcher.Dispatch),
 	}
-	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig)
+	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
-	closeNotify := make(chan struct{})
 	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
-	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder)
+	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder, closeNotify)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
@@ -144,7 +145,6 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		self.eventDispatcher.Stop()
 		if self.metricsReporter != nil {
 			events.RemoveMetricsEventHandler(self.metricsReporter)
 		}
@@ -204,7 +204,7 @@ func (self *Router) startProfiling() {
 			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
 		}
 	}
-	go newRouterMonitor(self.forwarder).Monitor()
+	go newRouterMonitor(self.forwarder, self.shutdownC).Monitor()
 }
 
 func (self *Router) registerComponents() error {
@@ -313,6 +313,7 @@ func (self *Router) startControlPlane() error {
 		self,
 		self.forwarder,
 		self.xctrls,
+		self.shutdownC,
 	)
 
 	self.config.Ctrl.Options.BindHandlers = append(self.config.Ctrl.Options.BindHandlers, bindHandler)
