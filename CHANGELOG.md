@@ -1,3 +1,81 @@
+# Release 0.19.1
+
+## Bug fixes
+
+* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted during this upgrade
+* Fix Edge Router double connect leading to panics during Edge Router REST API rendering
+
+## What's New
+
+* Ziti CLI now has 'Let's Encrypt' PKI support to facilitate TLS connections to Controller from
+  BrowZer-based apps that use the `ziti-sdk-js`.
+
+    * New command to Register a Let's Encrypt account, then create and install a certificate
+
+        Usage:
+
+        `ziti pki le create -d domain -p path-to-where-data-is-saved [flags]`
+
+        Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for create
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory to use for storing the data
+          -o, --port string                                   Port to listen on for HTTP based ACME challenges (default "80")
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+
+    * New command to Display Let's Encrypt certificates and accounts information
+    
+        Usage:
+
+        `ziti pki le list -p path-to-where-data-is-saved [flags]`
+
+        Flags:
+
+          -a, --accounts      Display Account info
+          -h, --help          help for list
+          -n, --names         Display Names info
+          -p, --path string   Directory where data is stored
+
+    
+    * New command to Renew a Let's Encrypt certificate
+
+        Usage:
+
+        `ziti pki le renew -d domain -p path-to-where-data-is-saved [flags]`
+
+        Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+              --days int                                      The number of days left on a certificate to renew it (default 14)
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for renew
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory where data is stored
+          -r, --reuse-key                                     Used to indicate you want to reuse your current private key for the renewed certificate (default true)
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+    
+    
+    * New command to Revoke a Let's Encrypt certificate
+    
+        Usage:
+
+        `ziti pki le revoke -d domain -p path-to-where-data-is-saved [flags]`
+
+        Flags:
+
+          -a, --acmeserver string   ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string       Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string        Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                help for revoke
+          -p, --path string         Directory where data is stored
+          -s, --staging             Enable creation of 'staging' Certs (instead of production Certs)
+
+
 # Release 0.19.0
 
 ## Breaking Changes
