@@ -1,7 +1,7 @@
 v: 3
 
-trace:
-  path: /tmp/ctrl.trace
+#trace:
+#  path: /tmp/ctrl.trace
 
 #profile:
 #  memory:

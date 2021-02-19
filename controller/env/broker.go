@@ -73,19 +73,30 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 
 func (broker *Broker) RouterConnected(router *network.Router) {
 	go func() {
+
+		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
+
 		//check connection status, if already connected, ignore as it will be disconnected shortly
-		if router.Fingerprint != nil && !broker.ae.HostController.GetNetwork().ConnectedRouter(router.Id) {
-			log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
-			if edgeRouter, _ := broker.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
-				pfxlog.Logger().WithField("routerId", router.Id).
-					WithField("routerName", router.Name).
-					WithField("routerFingerprint", router.Fingerprint).
-					Infof("broker detected edge router with id %s connecting", router.Id)
-				broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
-			} else {
-				log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
-			}
+		if broker.ae.IsEdgeRouterOnline(router.Id) {
+			log.Errorf("duplicate router connection detected [id: %s], ignoring", router.Id)
+			return
 		}
+
+		if router.Fingerprint == nil {
+			log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
+			return
+		}
+
+		if edgeRouter, _ := broker.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
+			pfxlog.Logger().WithField("routerId", router.Id).
+				WithField("routerName", router.Name).
+				WithField("routerFingerprint", router.Fingerprint).
+				Infof("broker detected edge router with id %s connecting", router.Id)
+			broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
+		} else {
+			log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
+		}
+
 	}()
 }
 
