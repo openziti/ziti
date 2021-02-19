@@ -73,8 +73,9 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 
 func (broker *Broker) RouterConnected(router *network.Router) {
 	go func() {
-		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
-		if router.Fingerprint != nil {
+		//check connection status, if already connected, ignore as it will be disconnected shortly
+		if router.Fingerprint != nil && !broker.ae.HostController.GetNetwork().ConnectedRouter(router.Id) {
+			log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
 			if edgeRouter, _ := broker.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
 				pfxlog.Logger().WithField("routerId", router.Id).
 					WithField("routerName", router.Name).
