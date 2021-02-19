@@ -1,6 +1,11 @@
 # Release 0.19.1
 
-# What's New
+## Bug fixes
+
+* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted during this upgrade
+* Fix Edge Router double connect leading to panics during Edge Router REST API rendering
+
+## What's New
 
 * Ziti CLI now has 'Let's Encrypt' PKI support to facilitate TLS connections to Controller from
   BrowZer-based apps that use the `ziti-sdk-js`.
