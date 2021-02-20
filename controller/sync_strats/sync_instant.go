@@ -267,35 +267,41 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 }
 
 func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
-	defer func() {
-		if r := recover(); r != nil {
-			pfxlog.Logger().Errorf("router connect worker panic, recovering: %v\n%v", r, debugz.GenerateLocalStack())
-		}
-	}()
-
 	for {
 		select {
 		case <-strategy.stop:
 			return
 		case rtx := <-strategy.routerConnectedQueue:
-			strategy.hello(rtx)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						pfxlog.Logger().Errorf("router connect worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
+						rtx.Status = env.RouterSyncError
+						rtx.logger().Errorf("panic during edge router connection, sync failed")
+					}
+				}()
+				strategy.hello(rtx)
+			}()
 		}
 	}
 }
 
 func (strategy *InstantStrategy) startSynchronizeWorker() {
-	defer func() {
-		if r := recover(); r != nil {
-			pfxlog.Logger().Errorf("sync worker panic, recovering: %v\n%v", r, debugz.GenerateLocalStack())
-		}
-	}()
-
 	for {
 		select {
 		case <-strategy.stop:
 			return
 		case rtx := <-strategy.receivedClientHelloQueue:
-			strategy.synchronize(rtx)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						pfxlog.Logger().Errorf("sync worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
+						rtx.Status = env.RouterSyncError
+						rtx.logger().Errorf("panic during edge router sync, sync failed")
+					}
+				}()
+				strategy.synchronize(rtx)
+			}()
 		}
 	}
 }
