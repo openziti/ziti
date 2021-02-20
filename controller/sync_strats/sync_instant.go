@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/util/debugz"
 	"go.etcd.io/bbolt"
 	"strings"
 	"sync"
@@ -266,20 +267,36 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 }
 
 func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
-	select {
-	case <-strategy.stop:
-		return
-	case rtx := <-strategy.routerConnectedQueue:
-		strategy.hello(rtx)
+	defer func() {
+		if r := recover(); r != nil {
+			pfxlog.Logger().Errorf("router connect worker panic, recovering: %v\n%v", r, debugz.GenerateLocalStack())
+		}
+	}()
+
+	for {
+		select {
+		case <-strategy.stop:
+			return
+		case rtx := <-strategy.routerConnectedQueue:
+			strategy.hello(rtx)
+		}
 	}
 }
 
 func (strategy *InstantStrategy) startSynchronizeWorker() {
-	select {
-	case <-strategy.stop:
-		return
-	case rtx := <-strategy.receivedClientHelloQueue:
-		strategy.synchronize(rtx)
+	defer func() {
+		if r := recover(); r != nil {
+			pfxlog.Logger().Errorf("sync worker panic, recovering: %v\n%v", r, debugz.GenerateLocalStack())
+		}
+	}()
+
+	for {
+		select {
+		case <-strategy.stop:
+			return
+		case rtx := <-strategy.receivedClientHelloQueue:
+			strategy.synchronize(rtx)
+		}
 	}
 }
 
