@@ -1,8 +1,18 @@
+# Release 0.19.2
+
+## Bug fixes
+
+* Fix edge router synchronization from stopping after workers exit
+* Session validation intervals in the edge router were calculated incorrected
+* Notes on the configuration values related to session validation were missing from the 0.19 release
+  notes. They have been added in the section called `Edge Session Validation`
+
 # Release 0.19.1
 
 ## Bug fixes
 
-* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted during this upgrade
+* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted
+  during this upgrade
 * Fix Edge Router double connect leading to panics during Edge Router REST API rendering
 
 ## What's New
@@ -12,11 +22,11 @@
 
     * New command to Register a Let's Encrypt account, then create and install a certificate
 
-        Usage:
+      Usage:
 
-        `ziti pki le create -d domain -p path-to-where-data-is-saved [flags]`
+      `ziti pki le create -d domain -p path-to-where-data-is-saved [flags]`
 
-        Flags:
+      Flags:
 
           -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
           -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
@@ -28,26 +38,25 @@
           -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
 
     * New command to Display Let's Encrypt certificates and accounts information
-    
-        Usage:
 
-        `ziti pki le list -p path-to-where-data-is-saved [flags]`
+      Usage:
 
-        Flags:
+      `ziti pki le list -p path-to-where-data-is-saved [flags]`
+
+      Flags:
 
           -a, --accounts      Display Account info
           -h, --help          help for list
           -n, --names         Display Names info
           -p, --path string   Directory where data is stored
 
-    
     * New command to Renew a Let's Encrypt certificate
 
-        Usage:
+      Usage:
 
-        `ziti pki le renew -d domain -p path-to-where-data-is-saved [flags]`
+      `ziti pki le renew -d domain -p path-to-where-data-is-saved [flags]`
 
-        Flags:
+      Flags:
 
           -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
               --days int                                      The number of days left on a certificate to renew it (default 14)
@@ -58,15 +67,14 @@
           -p, --path string                                   Directory where data is stored
           -r, --reuse-key                                     Used to indicate you want to reuse your current private key for the renewed certificate (default true)
           -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
-    
-    
+
     * New command to Revoke a Let's Encrypt certificate
-    
-        Usage:
 
-        `ziti pki le revoke -d domain -p path-to-where-data-is-saved [flags]`
+      Usage:
 
-        Flags:
+      `ziti pki le revoke -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
 
           -a, --acmeserver string   ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
           -d, --domain string       Domain for which Cert is being generated (e.g. me.example.com)
@@ -75,13 +83,12 @@
           -p, --path string         Directory where data is stored
           -s, --staging             Enable creation of 'staging' Certs (instead of production Certs)
 
-
 # Release 0.19.0
 
 ## Breaking Changes
 
 * Edge session validation is now handled at the controller, not the edge router
-* Routing across the overlay is now handled in parallel, rather than serially. This changes the 
+* Routing across the overlay is now handled in parallel, rather than serially. This changes the
   syntax and semantics of a couple of control plane messages between the controller and the
   connected routers. See the section below on `Parallel Routing` for additional details.
 * API Session synchronization improvements and pluggability
@@ -113,8 +120,8 @@ the session was valid, then request the controller to create a fabric session.
 This approach has two downsides.
 
 1. There is a race condition where the edge router may receive a dial/bind request before it has
-   received the session from the controller. It thus has to wait awhile before declaring the
-   session invalid.
+   received the session from the controller. It thus has to wait awhile before declaring the session
+   invalid.
 1. Sessions need to be managed across multiple edge routers, since we don't know where the client
    will connect. This adds a lot of control channel traffic.
 
@@ -123,15 +130,41 @@ fingerprints up to the controller and do the verification there. This allows us 
 amount of state the edge router needs to keep synchronized with the controller and removes the race
 condition.
 
+When an edge controller loses connection to the controller, it needs to verify that its sessions are
+still valid, in case it missed any session deletion notifications. There are three new settings
+which control this behavior.
+
+* `sessionValidateChunkSize` - how many sessions to validate in each request to the controller.
+  Default value: 1000
+* `sessionValidateMinInterval` - minimum time to wait between chuenks of sessions. Default
+  value: `250ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+* `sessionValidateMaxInterval` - maximum time to wait between chuenks of sessions. Default
+  value: `1500ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+
+Intervals between sending session validation chunks is random, between min and max intervals. This
+is done to prevent the routers from flooding the controller after a controller restart.
+
 ## Parallel Routing
 
-Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire session setup would be abandoned. If the terminator responded successfully, the controller would then proceed to work through the chain of routers sending `Route` messages and creating the appropriate forwarding table entries. This all happened sequentially.
+Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to
+establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire
+session setup would be abandoned. If the terminator responded successfully, the controller would
+then proceed to work through the chain of routers sending `Route` messages and creating the
+appropriate forwarding table entries. This all happened sequentially.
 
-In 0.19 route setup for session creation now happens in parallel. The controller sends `Route` commands to all of the routers in the chain (including the terminating router), and waits for responses and/or times out those responses. If all of the participating routers respond affirmatively within the timeout period, the entire session creation succeeds. If any participating router responds negatively, or the timeout period occurs, the session creation attempt fails, updating configured termination weights. Session creation will retry up to a configured number of attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be excluded from subsequent attempts.
+In 0.19 route setup for session creation now happens in parallel. The controller sends `Route`
+commands to all of the routers in the chain (including the terminating router), and waits for
+responses and/or times out those responses. If all of the participating routers respond
+affirmatively within the timeout period, the entire session creation succeeds. If any participating
+router responds negatively, or the timeout period occurs, the session creation attempt fails,
+updating configured termination weights. Session creation will retry up to a configured number of
+attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be
+excluded from subsequent attempts.
 
 ### Configuration of Parallel Routing
 
-The `terminationTimeoutSeconds` timeout parameter has been removed and will be ignored. The `routeTimeoutSeconds` controls the timeout for each route attempt.
+The `terminationTimeoutSeconds` timeout parameter has been removed and will be ignored.
+The `routeTimeoutSeconds` controls the timeout for each route attempt.
 
 ```
 #network:
@@ -141,7 +174,10 @@ The `terminationTimeoutSeconds` timeout parameter has been removed and will be i
   #routeTimeoutSeconds:  10
 ```
 
-You'll want to ensure that your participating routers' `getSessionTimeout` in the Xgress options is configured to a suitably large enough value to support the configured number of routing attempts, at the configured routing attempt timeout. In the router configuration, the `getSessionTimeout` value is configured for your Xgress listeners like this:
+You'll want to ensure that your participating routers' `getSessionTimeout` in the Xgress options is
+configured to a suitably large enough value to support the configured number of routing attempts, at
+the configured routing attempt timeout. In the router configuration, the `getSessionTimeout` value
+is configured for your Xgress listeners like this:
 
 ```
 listeners:
@@ -153,7 +189,9 @@ listeners:
       getSessionTimeout:	120s
 ```
 
-The new parallel routing implementation also supports a configurable number of session creation attempts. Prior to 0.19, the number of attempts was hard-coded at 3. In 0.19, the number of retries is controlled by the `createSessionRetries` parameter, which defaults to 3.
+The new parallel routing implementation also supports a configurable number of session creation
+attempts. Prior to 0.19, the number of attempts was hard-coded at 3. In 0.19, the number of retries
+is controlled by the `createSessionRetries` parameter, which defaults to 3.
 
 ```
 network:
@@ -163,21 +201,23 @@ network:
   #
   createSessionRetries: 5
 ```
+
 ## API Session Synchronization
 
-Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting
-edge routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be defined
-within the same code base. Future releases will be able to introduce configurable and negotiable
-strategies.
+Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting edge
+routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be
+defined within the same code base. Future releases will be able to introduce configurable and
+negotiable strategies.
 
-The default strategy from prior releases, now named 'instant', has been improved to
-fix issues that could arise during edge router reconnects where API Sessions would become invalid
-on the reconnecting edge router. In addition, the instant strategy now allows for invalid
-synchronization detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
+The default strategy from prior releases, now named 'instant', has been improved to fix issues that
+could arise during edge router reconnects where API Sessions would become invalid on the
+reconnecting edge router. In addition, the instant strategy now allows for invalid synchronization
+detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
 
 ### Edge Router Synchronization Status
 
-The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include a `syncStatus`
+The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include
+a `syncStatus`
 field. This value is updated during the lifetime of the edge router's connection to the controller
 and will provide insight on its status.
 
