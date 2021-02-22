@@ -1,3 +1,9 @@
+# Release 0.19.2
+
+## Bug Fixes
+
+* Fix edge router synchronization from stopping after workers exit
+
 # Release 0.19.1
 
 ## Bug fixes
