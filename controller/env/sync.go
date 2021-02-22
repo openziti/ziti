@@ -41,6 +41,7 @@ const (
 	RouterSyncUnknown      RouterSyncStatus = "SYNC_UNKNOWN"       //the router is currently unknown
 	RouterSyncDisconnected RouterSyncStatus = "SYNC_DISCONNECTED"  //strategy was disconnected before finishing
 	RouterSyncHelloTimeout RouterSyncStatus = "SYNC_HELLO_TIMEOUT" //sync failed due to a hello timeout.
+	RouterSyncError        RouterSyncStatus = "SYNC_ERROR"         //sync failed due to an unexpected error
 
 	//msg headers
 	SyncStrategyTypeHeader  = 1013

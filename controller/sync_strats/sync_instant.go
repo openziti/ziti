@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/foundation/util/debugz"
 	"go.etcd.io/bbolt"
 	"strings"
 	"sync"
@@ -266,20 +267,42 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 }
 
 func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
-	select {
-	case <-strategy.stop:
-		return
-	case rtx := <-strategy.routerConnectedQueue:
-		strategy.hello(rtx)
+	for {
+		select {
+		case <-strategy.stop:
+			return
+		case rtx := <-strategy.routerConnectedQueue:
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						pfxlog.Logger().Errorf("router connect worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
+						rtx.Status = env.RouterSyncError
+						rtx.logger().Errorf("panic during edge router connection, sync failed")
+					}
+				}()
+				strategy.hello(rtx)
+			}()
+		}
 	}
 }
 
 func (strategy *InstantStrategy) startSynchronizeWorker() {
-	select {
-	case <-strategy.stop:
-		return
-	case rtx := <-strategy.receivedClientHelloQueue:
-		strategy.synchronize(rtx)
+	for {
+		select {
+		case <-strategy.stop:
+			return
+		case rtx := <-strategy.receivedClientHelloQueue:
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						pfxlog.Logger().Errorf("sync worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
+						rtx.Status = env.RouterSyncError
+						rtx.logger().Errorf("panic during edge router sync, sync failed")
+					}
+				}()
+				strategy.synchronize(rtx)
+			}()
+		}
 	}
 }
 
