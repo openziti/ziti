@@ -5157,23 +5157,7 @@ definitions:
     type: object
     allOf:
       - $ref: '#/definitions/baseEntity'
-      - type: object
-        required:
-          - name
-          - isOnline
-          - hostname
-          - supportedProtocols
-        properties:
-          name:
-            type: string
-          isOnline:
-            type: boolean
-          hostname:
-            type: string
-          supportedProtocols:
-            additionalProperties:
-              type: string
-            type: object
+      - $ref: '#/definitions/commonEdgeRouterProperties'
   edgeRouterList:
     description: A list of edge router resources
     type: array
@@ -5184,26 +5168,18 @@ definitions:
     type: object
     allOf:
       - $ref: '#/definitions/baseEntity'
+      - $ref: '#/definitions/commonEdgeRouterProperties'
       - type: object
         required:
-          - name
           - isVerified
-          - isOnline
-          - hostname
-          - supportedProtocols
           - roleAttributes
           - os
           - version
           - arch
           - buildDate
           - revision
-          - syncStatus
         properties:
-          name:
-            type: string
           isVerified:
-            type: boolean
-          isOnline:
             type: boolean
           enrollmentToken:
             type: string
@@ -5219,17 +5195,9 @@ definitions:
             type: string
             format: date-time
             x-nullable: true
-          hostname:
-            type: string
-          supportedProtocols:
-            additionalProperties:
-              type: string
-            type: object
           roleAttributes:
             $ref: '#/definitions/attributes'
           fingerprint:
-            type: string
-          syncStatus:
             type: string
           versionInfo:
             $ref: '#/definitions/versionInfo'
@@ -5747,16 +5715,38 @@ definitions:
             items:
               $ref: '#/definitions/sessionEdgeRouter'
   sessionEdgeRouter:
+    allOf:
+      - $ref: "#/definitions/commonEdgeRouterProperties"
+      - type: object
+        required:
+          - urls
+        properties:
+          # deprecated property, see supportedProtocols in commonEdgeRouterProperties
+          urls:
+            type: object
+            additionalProperties:
+              type: string
+  commonEdgeRouterProperties:
     type: object
+    required:
+      - hostname
+      - name
+      - supportedProtocols
+      - syncStatus
+      - isOnline
     properties:
       hostname:
         type: string
       name:
         type: string
-      urls:
-        type: object
+      supportedProtocols:
         additionalProperties:
           type: string
+        type: object
+      syncStatus:
+        type: string
+      isOnline:
+        type: boolean
   ###################################################################
   # Errors
   ##################################################################

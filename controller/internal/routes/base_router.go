@@ -455,7 +455,10 @@ func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, fil
 			return nil, err
 		}
 
-		filter := fmt.Sprintf(filterTemplate, id)
+		filter := filterTemplate
+		if strings.Contains(filterTemplate, "%v") || strings.Contains(filterTemplate, "%s") {
+			filter = fmt.Sprintf(filterTemplate, id)
+		}
 
 		filterQuery, err := ast.Parse(entityController.GetStore(), filter)
 		if err != nil {

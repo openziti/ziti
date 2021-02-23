@@ -281,9 +281,15 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 }
 
 func (r *CurrentIdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
-	rc.SetEntityId(rc.Identity.Id)
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+	if rc.Identity.IsAdmin {
+		filterTemplate := `isVerified = true`
+		rc.SetEntityId(rc.Identity.Id)
+		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+	} else {
+		filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
+		rc.SetEntityId(rc.Identity.Id)
+		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+	}
 }
 
 func detailCurrentUser(ae *env.AppEnv, rc *response.RequestContext) {

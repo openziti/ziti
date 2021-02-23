@@ -138,19 +138,22 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	}
 
 	ret := &rest_model.EdgeRouterDetail{
-		BaseEntity:          BaseEntityToRestModel(router, EdgeRouterLinkFactory),
-		Name:                &router.Name,
+		BaseEntity: BaseEntityToRestModel(router, EdgeRouterLinkFactory),
+		CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
+			Name:               &router.Name,
+			IsOnline:           &isOnline,
+			Hostname:           hostname,
+			SupportedProtocols: protocols,
+			SyncStatus:         &syncStatusStr,
+		},
 		RoleAttributes:      router.RoleAttributes,
 		EnrollmentToken:     nil,
 		EnrollmentCreatedAt: nil,
 		EnrollmentExpiresAt: nil,
 		EnrollmentJwt:       nil,
-		IsOnline:            &isOnline,
-		IsVerified:          &router.IsVerified,
-		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
-		Hostname:            hostname,
-		SupportedProtocols:  protocols,
-		SyncStatus:          &syncStatusStr,
+		IsVerified:  &router.IsVerified,
+		Fingerprint: stringz.OrEmpty(router.Fingerprint),
+
 		VersionInfo: &rest_model.VersionInfo{
 			Os:        &os,
 			Arch:      &arch,
