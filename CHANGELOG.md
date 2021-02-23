@@ -1,3 +1,52 @@
+# Release 0.19.3
+
+## What's New
+
+* Metric events formatting has changed
+
+## Metric Events Changes
+
+Each now gets its own event. Here are two example events:
+
+```
+{
+  "metric": "xgress.tx_write_time",
+  "metrics": {
+    "xgress.tx_write_time.count": 0,
+    "xgress.tx_write_time.m1_rate": 0,
+    "xgress.tx_write_time.mean": 0,
+    "xgress.tx_write_time.p99": 0
+  },
+  "namespace": "metrics",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+
+{
+  "metric": "link.rx.msgsize",
+  "metrics": {
+    "link.rx.msgsize.count": 3,
+    "link.rx.msgsize.mean": 0,
+    "link.rx.msgsize.p99": 0
+  },
+  "namespace": "metrics",
+  "source_entity_id": "8VEJ",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+```
+
+Changes of note:
+
+1. The metric name is now listed
+1. There's a new `source_event_id` which can be used to link together all the metrics that were
+   reported at a given time
+1. The timestamp format has been changed to match the other event times. Format is: RFC3339Nano
+1. Metrics which formerlly had an id in them, such as link and control channel metrics now have the
+   id extracted. The id is stored in the `source_entity_id` field.
+
 # Release 0.19.2
 
 ## Bug fixes
