@@ -34,8 +34,11 @@ func TestSimpleCircuit2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -65,7 +68,7 @@ func TestSimpleCircuit2(t *testing.T) {
 	assert.Equal(t, r1, circuit.EgressRouter())
 
 	s0 := &identity.TokenId{Token: "s0"}
-	routeMessages, err := circuit.CreateRouteMessages(s0, addr)
+	routeMessages, err := circuit.CreateRouteMessages(0, s0, addr)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(routeMessages))
@@ -96,8 +99,11 @@ func TestTransitCircuit2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
 	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest())
+	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -138,7 +144,7 @@ func TestTransitCircuit2(t *testing.T) {
 	assert.Equal(t, r2, circuit.EgressRouter())
 
 	s0 := &identity.TokenId{Token: "s0"}
-	routeMessages, err := circuit.CreateRouteMessages(s0, addr)
+	routeMessages, err := circuit.CreateRouteMessages(0, s0, addr)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(routeMessages))

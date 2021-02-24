@@ -25,15 +25,18 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
+	faulter         *Faulter
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
+	CloseNotify     <-chan struct{}
 }
 
 type Destination interface {
@@ -50,13 +53,15 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, options *Options) *Forwarder {
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options, closeNotify <-chan struct{}) *Forwarder {
 	forwarder := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
+		faulter:         faulter,
 		metricsRegistry: metricsRegistry,
-		traceController: trace.NewController(),
+		traceController: trace.NewController(closeNotify),
 		Options:         options,
+		CloseNotify:     closeNotify,
 	}
 
 	return forwarder
@@ -79,16 +84,16 @@ func (forwarder *Forwarder) UnregisterDestinations(sessionId string) {
 	if addresses, found := forwarder.destinations.getAddressesForSession(sessionId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
-				pfxlog.Logger().Debugf("unregistering destination with address a/%v for session s/%v", address, sessionId)
+				pfxlog.Logger().Debugf("unregistering destination [@/%v] for [s/%v]", address, sessionId)
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Close() // create close queue?
 			} else {
-				pfxlog.Logger().Debugf("no destinations found for address a/%v for session s/%v", address, sessionId)
+				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
 			}
 		}
 		forwarder.destinations.unlinkSession(sessionId)
 	} else {
-		pfxlog.Logger().Debugf("found no addresses to unregister for session s/%v", sessionId)
+		pfxlog.Logger().Debugf("found no addresses to unregister for [s/%v]", sessionId)
 	}
 }
 
@@ -181,6 +186,14 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 	}
 }
 
+func (forwarder *Forwarder) ReportForwardingFault(sessionId string) {
+	if forwarder.faulter != nil {
+		forwarder.faulter.report(sessionId)
+	} else {
+		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
+	}
+}
+
 func (forwarder *Forwarder) Debug() string {
 	return forwarder.sessions.debug() + forwarder.destinations.debug()
 }
@@ -194,19 +207,25 @@ func (forwarder *Forwarder) unrouteTimeout(sessionId string, interval time.Durat
 	log.Debug("scheduled")
 	defer log.Debug("timeout")
 
-	for {
-		time.Sleep(interval)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-		if dest := forwarder.getXgressForSession(sessionId); dest != nil {
-			elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
-			if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
+	for {
+		select {
+		case <-ticker.C:
+			if dest := forwarder.getXgressForSession(sessionId); dest != nil {
+				elapsedDelta := info.NowInMilliseconds() - dest.GetTimeOfLastRxFromLink()
+				if (time.Duration(elapsedDelta) * time.Millisecond) >= interval {
+					forwarder.sessions.removeForwardTable(sessionId)
+					forwarder.EndSession(sessionId)
+					return
+				}
+			} else {
 				forwarder.sessions.removeForwardTable(sessionId)
 				forwarder.EndSession(sessionId)
 				return
 			}
-		} else {
-			forwarder.sessions.removeForwardTable(sessionId)
-			forwarder.EndSession(sessionId)
+		case <-forwarder.CloseNotify:
 			return
 		}
 	}

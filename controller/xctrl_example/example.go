@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -84,6 +85,14 @@ func (example *example) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{
 			}
 		}
 	}()
+	return nil
+}
+
+func (example *example) NotifyOfReconnect() {
+	logrus.Info("control channel reconnected")
+}
+
+func (example *example) GetTraceDecoders() []channel2.TraceMessageDecoder {
 	return nil
 }
 

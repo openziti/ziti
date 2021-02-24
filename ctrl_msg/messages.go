@@ -21,18 +21,38 @@ import (
 )
 
 const (
-	ContentTypeSessionSuccessType = 1001
-	ContentTypeSessionFailedType  = 1016
+	SessionSuccessType      = 1001
+	SessionFailedType       = 1016
+	RouteResultType         = 1022
+	SessionConfirmationType = 1034
 
 	SessionSuccessAddressHeader = 1100
+	RouteResultAttemptHeader    = 1101
+	RouteResultSuccessHeader    = 1102
+	RouteResultErrorHeader      = 1103
 )
 
 func NewSessionSuccessMsg(sessionId, address string) *channel2.Message {
-	msg := channel2.NewMessage(ContentTypeSessionSuccessType, []byte(sessionId))
+	msg := channel2.NewMessage(SessionSuccessType, []byte(sessionId))
 	msg.Headers[SessionSuccessAddressHeader] = []byte(address)
 	return msg
 }
 
 func NewSessionFailedMsg(message string) *channel2.Message {
-	return channel2.NewMessage(ContentTypeSessionFailedType, []byte(message))
+	return channel2.NewMessage(SessionFailedType, []byte(message))
+}
+
+func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel2.Message {
+	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.PutBoolHeader(RouteResultSuccessHeader, true)
+	return msg
+}
+
+func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *channel2.Message {
+	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.Headers[RouteResultErrorHeader] = []byte(rerr)
+	return msg
 }

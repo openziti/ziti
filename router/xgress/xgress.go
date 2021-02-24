@@ -176,6 +176,12 @@ func (self *Xgress) markSessionEndReceived() {
 	self.endOfSessionRecvd = true
 }
 
+func (self *Xgress) IsSessionStarted() bool {
+	self.flagsMutex.Lock()
+	defer self.flagsMutex.Unlock()
+	return !self.IsTerminator() || self.rxerStarted
+}
+
 func (self *Xgress) firstSessionStartReceived() bool {
 	self.flagsMutex.Lock()
 	defer self.flagsMutex.Unlock()
@@ -188,14 +194,24 @@ func (self *Xgress) firstSessionStartReceived() bool {
 
 func (self *Xgress) Start() {
 	log := pfxlog.ContextLogger(self.Label())
-	if !self.IsTerminator() {
+	if self.IsTerminator() {
+		log.Debug("terminator: waiting for session start before starting receiver")
+		if self.Options.SessionStartTimeout > time.Second {
+			time.AfterFunc(self.Options.SessionStartTimeout, self.terminateIfNotStarted)
+		}
+	} else {
 		log.Debug("initiator: sending session start")
 		self.forwardPayload(self.GetStartSession())
 		go self.rx()
-	} else {
-		log.Debug("terminator: waiting for session start before starting receiver")
 	}
 	go self.tx()
+}
+
+func (self *Xgress) terminateIfNotStarted() {
+	if !self.IsSessionStarted() {
+		logrus.WithField("xgress", self.Label()).Warn("xgress session not started in time, closing")
+		self.Close()
+	}
 }
 
 func (self *Xgress) Label() string {
@@ -244,7 +260,9 @@ func (self *Xgress) IsEndOfSessionSent() bool {
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
-	go self.closeTimeoutHandler(duration)
+	if self.payloadBuffer.CloseWhenEmpty() { // If we clear the send buffer, close sooner
+		time.AfterFunc(duration, self.Close)
+	}
 }
 
 /*
@@ -409,7 +427,6 @@ func (self *Xgress) tx() {
 		payloadSize := len(payload.Data)
 		size := atomic.AddUint32(&self.linkRxBuffer.size, ^uint32(payloadSize-1)) // subtraction for uint32
 		payloadLogger.Debugf("Payload %v of size %v removed from rx buffer. New size: %v", payload.Sequence, payloadSize, size)
-		localRecvBufferSizeBytesHistogram.Update(int64(size))
 
 		lastBufferSizeSent := self.linkRxBuffer.getLastBufferSizeSent()
 		if lastBufferSizeSent > 10000 && (lastBufferSizeSent>>1) > size {
@@ -521,14 +538,6 @@ func (self *Xgress) nextReceiveSequence() int32 {
 	self.rxSequence++
 
 	return next
-}
-
-func (self *Xgress) closeTimeoutHandler(duration time.Duration) {
-	self.payloadBuffer.CloseWhenEmpty() // If we clear the send buffer, close sooner
-	time.Sleep(duration)
-	if !self.closed.Get() {
-		self.Close()
-	}
 }
 
 func (self *Xgress) PayloadReceived(payload *Payload) {

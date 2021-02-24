@@ -69,7 +69,7 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 
 	c.loadEventHandlers()
 
-	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider); err == nil {
+	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
 		c.network = n
 	} else {
 		return nil, err
@@ -134,6 +134,10 @@ func (c *Controller) Run() error {
 	return nil
 }
 
+func (c *Controller) GetCloseNotifyChannel() <-chan struct{} {
+	return c.shutdownC
+}
+
 func (c *Controller) Shutdown() {
 	if c.isShutdown.CompareAndSwap(false, true) {
 		close(c.shutdownC)
@@ -149,8 +153,6 @@ func (c *Controller) Shutdown() {
 				pfxlog.Logger().WithError(err).Error("failed to close mgmt channel listener")
 			}
 		}
-
-		c.network.Shutdown()
 
 		if c.config.Db != nil {
 			if err := c.config.Db.Close(); err != nil {
@@ -249,6 +251,11 @@ func (c *Controller) RegisterXctrl(x xctrl.Xctrl) error {
 	}
 	if x.Enabled() {
 		c.xctrls = append(c.xctrls, x)
+		if c.config.Trace.Handler != nil {
+			for _, decoder := range x.GetTraceDecoders() {
+				c.config.Trace.Handler.AddDecoder(decoder)
+			}
+		}
 	}
 	return nil
 }

@@ -14,19 +14,24 @@
 	limitations under the License.
 */
 
-package xctrl
+package handler_ctrl
 
 import (
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/config"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/sirupsen/logrus"
 )
 
-type Xctrl interface {
-	config.Subconfig
-	channel2.BindHandler
-	Enabled() bool
-	Run(ctrl channel2.Channel, db boltz.Db, done chan struct{}) error
-	NotifyOfReconnect()
-	GetTraceDecoders() []channel2.TraceMessageDecoder
+type sessionConfirmationHandler struct{}
+
+func newSessionConfirmationHandler() *sessionConfirmationHandler {
+	return &sessionConfirmationHandler{}
+}
+
+func (self *sessionConfirmationHandler) ContentType() int32 {
+	return int32(ctrl_msg.SessionConfirmationType)
+}
+
+func (self *sessionConfirmationHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	logrus.Infof("this controller does not process session confirmation broadcasts. consider upgrading to a newer controller")
 }

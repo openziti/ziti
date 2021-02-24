@@ -8,12 +8,17 @@ import (
 
 var retransmitter *Retransmitter
 
-func InitRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) {
-	retransmitter = NewRetransmitter(forwarder, metrics, closeNotify)
+func InitRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) {
+	retransmitter = NewRetransmitter(forwarder, faultReporter, metrics, closeNotify)
+}
+
+type RetransmitterFaultReporter interface {
+	ReportForwardingFault(sessionId string)
 }
 
 type Retransmitter struct {
 	forwarder            PayloadBufferForwarder
+	faultReporter        RetransmitterFaultReporter
 	retxTail             *txPayload
 	retxHead             *txPayload
 	retransmitIngest     chan *txPayload
@@ -22,12 +27,13 @@ type Retransmitter struct {
 	closeNotify          <-chan struct{}
 }
 
-func NewRetransmitter(forwarder PayloadBufferForwarder, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
+func NewRetransmitter(forwarder PayloadBufferForwarder, faultReporter RetransmitterFaultReporter, metrics metrics.Registry, closeNotify <-chan struct{}) *Retransmitter {
 	ctrl := &Retransmitter{
 		forwarder:        forwarder,
 		retransmitIngest: make(chan *txPayload, 16),
 		retransmitSend:   make(chan *txPayload, 1),
 		closeNotify:      closeNotify,
+		faultReporter:    faultReporter,
 	}
 
 	go ctrl.retransmitIngester()
@@ -142,10 +148,12 @@ func (retransmitter *Retransmitter) retransmitSender() {
 				if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
 					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of session
 					if !retransmit.x.closed.Get() {
-						logger.WithError(err).Errorf("unexpected error while retransmitting payload from %v", retransmit.x.address)
+						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
+						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.SessionId)
+
 					} else {
-						logger.WithError(err).Tracef("unexpected error while retransmitting payload from %v", retransmit.x.address)
+						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}
 				} else {
 					retransmit.markSent()

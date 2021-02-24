@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
@@ -27,6 +28,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type routeHandler struct {
@@ -37,13 +39,16 @@ type routeHandler struct {
 	pool      handlerPool
 }
 
-func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder) *routeHandler {
+func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *routeHandler {
 	handler := &routeHandler{
 		id:        id,
 		ctrl:      ctrl,
 		dialerCfg: dialerCfg,
 		forwarder: forwarder,
-		pool:      handlerPool{options: forwarder.Options.XgressDial},
+		pool: handlerPool{
+			options:     forwarder.Options.XgressDial,
+			closeNotify: closeNotify,
+		},
 	}
 
 	handler.pool.Start()
@@ -60,29 +65,30 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 
 	route := &ctrl_pb.Route{}
 	if err := proto.Unmarshal(msg.Body, route); err == nil {
+		logrus.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.SessionId)
+
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				pfxlog.Logger().Warnf("destination exists for [%s]", route.Egress.Address)
-				rh.success(msg, ch, route, nil)
+				rh.success(msg, int(route.Attempt), ch, route, nil)
 				return
 			} else {
-				rh.connectEgress(msg, ch, route)
+				rh.connectEgress(msg, int(route.Attempt), ch, route)
 				return
 			}
 		} else {
-			rh.success(msg, ch, route, nil)
+			rh.success(msg, int(route.Attempt), ch, route, nil)
 		}
 	} else {
 		log.Errorf("error unmarshaling (%s)", err)
 	}
 }
 
-func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
+func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData) {
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
-	response := channel2.NewResult(true, "")
-
+	response := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId, attempt)
 	for k, v := range peerData {
 		response.Headers[int32(k)] = v
 	}
@@ -96,18 +102,18 @@ func (rh *routeHandler) success(msg *channel2.Message, ch channel2.Channel, rout
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route, err error) {
+func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error) {
 	log := pfxlog.ContextLogger(ch.Label())
-	response := channel2.NewResult(false, err.Error())
-	response.ReplyTo(msg)
-
 	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
+
+	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error())
+	response.ReplyTo(msg)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
 		log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
 	}
 }
 
-func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel, route *ctrl_pb.Route) {
+func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
 		log := pfxlog.Logger().WithField("sessionId", route.SessionId)
 		log.Debugf("route request received. binding: %v, destination: %v, address: %v",
@@ -125,15 +131,15 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, ch channel2.Channel
 					sessionId,
 					xgress.Address(route.Egress.Address),
 					bindHandler); err == nil {
-					rh.success(msg, ch, route, peerData)
+					rh.success(msg, attempt, ch, route, peerData)
 				} else {
-					rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 				}
 			} else {
-				rh.fail(msg, ch, route, errors.Errorf("unable to create dialer (%s)", err))
+				rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
 			}
 		} else {
-			rh.fail(msg, ch, route, errors.Errorf("error creating route for [s/%s] (%s)", route.SessionId, err))
+			rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
 		}
 	})
 }

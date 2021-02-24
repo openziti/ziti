@@ -18,17 +18,13 @@ package router
 
 import (
 	"github.com/openziti/fabric/router/forwarder"
-	"time"
 )
 
 type routerMonitor struct{}
 
-func newRouterMonitor(forwarder *forwarder.Forwarder) *routerMonitor {
+func newRouterMonitor(forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *routerMonitor {
 	return &routerMonitor{}
 }
 
 func (routerMonitor *routerMonitor) Monitor() {
-	for {
-		time.Sleep(24 * time.Hour)
-	}
 }

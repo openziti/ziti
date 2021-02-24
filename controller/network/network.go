@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
@@ -33,7 +34,6 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/sequence"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -44,6 +44,8 @@ import (
 	"time"
 )
 
+const SmartRerouteAttempt = 99969996
+
 type Network struct {
 	*Controllers
 	nodeId                 *identity.TokenId
@@ -51,14 +53,15 @@ type Network struct {
 	routerChanged          chan *Router
 	linkController         *linkController
 	linkChanged            chan *Link
+	forwardingFaults       chan *ForwardingFaultReport
 	sessionController      *sessionController
+	routeSenderController  *routeSenderController
 	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
 	traceController        trace.Controller
 	routerPresenceHandlers []RouterPresenceHandler
 	capabilities           []string
-	shutdownChan           chan struct{}
-	isShutdown             concurrenz.AtomicBoolean
+	closeNotify            <-chan struct{}
 	lock                   sync.Mutex
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
@@ -66,31 +69,32 @@ type Network struct {
 	VersionProvider        common.VersionProvider
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider) (*Network, error) {
+func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
 	stores, err := db.InitStores(database)
 	if err != nil {
 		return nil, err
 	}
 
 	controllers := NewControllers(database, stores)
-	eventDispatcher := event.NewDispatcher()
 
 	network := &Network{
-		Controllers:       controllers,
-		nodeId:            nodeId,
-		options:           options,
-		routerChanged:     make(chan *Router),
-		linkController:    newLinkController(),
-		linkChanged:       make(chan *Link),
-		sessionController: newSessionController(),
-		sequence:          sequence.NewSequence(),
-		eventDispatcher:   eventDispatcher,
-		traceController:   trace.NewController(),
-		shutdownChan:      make(chan struct{}),
-		strategyRegistry:  xt.GlobalRegistry(),
-		lastSnapshot:      time.Now().Add(-time.Hour),
-		metricsRegistry:   metrics.NewRegistry(nodeId.Token, nil),
-		VersionProvider:   versionProvider,
+		Controllers:           controllers,
+		nodeId:                nodeId,
+		options:               options,
+		routerChanged:         make(chan *Router, 16),
+		linkController:        newLinkController(),
+		linkChanged:           make(chan *Link, 16),
+		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
+		sessionController:     newSessionController(),
+		routeSenderController: newRouteSenderController(),
+		sequence:              sequence.NewSequence(),
+		eventDispatcher:       event.NewDispatcher(closeNotify),
+		traceController:       trace.NewController(closeNotify),
+		closeNotify:           closeNotify,
+		strategyRegistry:      xt.GlobalRegistry(),
+		lastSnapshot:          time.Now().Add(-time.Hour),
+		metricsRegistry:       metrics.NewRegistry(nodeId.Token, nil),
+		VersionProvider:       versionProvider,
 	}
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
@@ -107,6 +111,8 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 	}
 	go func() {
 		timer := time.NewTicker(reportInterval)
+		defer timer.Stop()
+
 		dispatcher := metrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
 		for {
 			select {
@@ -114,6 +120,8 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 				if msg := network.metricsRegistry.Poll(); msg != nil {
 					dispatcher.AcceptMetrics(msg)
 				}
+			case <-network.closeNotify:
+				return
 			}
 		}
 	}()
@@ -173,6 +181,20 @@ func (network *Network) GetSession(sessionId *identity.TokenId) (*session, bool)
 
 func (network *Network) GetAllSessions() []*session {
 	return network.sessionController.all()
+}
+
+func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
+	return network.routeSenderController.forwardRouteResult(r, sessionId, attempt, success, rerr, peerData)
+}
+
+func (network *Network) newRouteSender(sessionId string) *routeSender {
+	rs := newRouteSender(sessionId, network.options.RouteTimeout)
+	network.routeSenderController.addRouteSender(rs)
+	return rs
+}
+
+func (network *Network) removeRouteSender(rs *routeSender) {
+	network.routeSenderController.removeRouteSender(rs)
 }
 
 func (network *Network) GetEventDispatcher() event.Dispatcher {
@@ -281,8 +303,6 @@ func (network *Network) LinkChanged(l *Link) {
 }
 
 func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*session, error) {
-	log := pfxlog.Logger()
-
 	// 1: Allocate Session Identifier
 	sessionIdHash, err := network.sequence.NextHash()
 	if err != nil {
@@ -292,7 +312,10 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
-	retryCount := 0
+	attempt := uint32(0)
+	allCleanups := make(map[string]struct{})
+	rs := network.newRouteSender(sessionId.Token)
+	defer func() { network.removeRouteSender(rs) }()
 	for {
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
@@ -321,35 +344,44 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 4a: Create Route Messages
-		rms, err := circuit.CreateRouteMessages(sessionId, terminator.GetAddress())
+		rms, err := circuit.CreateRouteMessages(attempt, sessionId, terminator.GetAddress())
 		if err != nil {
 			return nil, err
 		}
-
-		// 5: Route Egress
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
-		peerData, err := sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1], network.options.TerminationTimeout)
+
+		// 5: Routing
+		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt+1, sessionId.Token)
+		peerData, cleanups, err := rs.route(attempt, circuit, rms, strategy, terminator)
+		for k, v := range cleanups {
+			allCleanups[k] = v
+		}
 		if err != nil {
-			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-			retryCount++
-			if retryCount > 3 {
-				return nil, err
-			} else {
+			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, sessionId.Token, err)
+			attempt++
+			if attempt < network.options.CreateSessionRetries {
 				continue
+
+			} else {
+				// revert successful routes
+				logrus.Warnf("session creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
+				for cleanupRId, _ := range allCleanups {
+					if r, err := network.GetRouter(cleanupRId); err == nil {
+						if err := sendUnroute(r, sessionId, true); err == nil {
+							logrus.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						} else {
+							logrus.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						}
+					} else {
+						logrus.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, sessionId.Token)
+					}
+				}
+
+				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating session [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
 			}
-		} else {
-			strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 		}
 
-		// 6: Create Intermediate Routes
-		for i := 0; i < len(circuit.Path)-1; i++ {
-			_, err = sendRoute(circuit.Path[i], rms[i], network.options.RouteTimeout)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// 7: Create Session Object
+		// 6: Create Session Object
 		ss := &session{
 			Id:         sessionId,
 			ClientId:   clientId,
@@ -361,9 +393,13 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		network.sessionController.add(ss)
 		network.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
 
-		log.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+		logrus.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
 	}
+}
+
+func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
+	network.forwardingFaults <- ffr
 }
 
 func parseIdentityAndService(service string) (string, string) {
@@ -594,22 +630,20 @@ func (network *Network) Run() {
 				log.Errorf("unexpected error rerouting link (%s)", err)
 			}
 
+		case ffr := <-network.forwardingFaults:
+			network.fault(ffr)
+			network.clean()
+
 		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
 			network.assemble()
 			network.clean()
 			network.smart()
-		case _, ok := <-network.shutdownChan:
-			if !ok {
-				return
-			}
-		}
-	}
-}
 
-func (network *Network) Shutdown() {
-	if network.isShutdown.CompareAndSwap(false, true) {
-		close(network.shutdownChan)
-		events.RemoveMetricsEventHandler(network)
+		case <-network.closeNotify:
+			events.RemoveMetricsEventHandler(network)
+			network.metricsRegistry.DisposeAll()
+			return
+		}
 	}
 }
 
@@ -652,7 +686,7 @@ func (network *Network) rerouteSession(s *session) error {
 	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 		s.Circuit = cq
 
-		rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
+		rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 		if err != nil {
 			log.Errorf("error creating route messages (%s)", err)
 			return err
@@ -679,7 +713,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	s.Circuit = cq
 
-	rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
+	rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 	if err != nil {
 		log.Errorf("error creating route messages (%s)", err)
 		return err
@@ -740,11 +774,14 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 	}
 	select {
 	case msg := <-waitCh:
-		if msg.ContentType == channel2.ContentTypeResultType {
-			result := channel2.UnmarshalResult(msg)
-
-			if !result.Success {
-				return nil, errors.New(result.Message)
+		if msg.ContentType == ctrl_msg.RouteResultType {
+			_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+			if !success {
+				message := ""
+				if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
+					message = string(errMsg)
+				}
+				return nil, errors.New(message)
 			}
 
 			peerData := xt.PeerData{}
@@ -765,16 +802,16 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 }
 
 func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
-	remove := &ctrl_pb.Unroute{
+	unroute := &ctrl_pb.Unroute{
 		SessionId: sessionId.Token,
 		Now:       now,
 	}
-	body, err := proto.Marshal(remove)
+	body, err := proto.Marshal(unroute)
 	if err != nil {
 		return err
 	}
-	removeMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-	if err := r.Control.Send(removeMsg); err != nil {
+	unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+	if err := r.Control.Send(unrouteMsg); err != nil {
 		return err
 	}
 	return nil

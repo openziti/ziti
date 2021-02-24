@@ -2,10 +2,12 @@ package events
 
 import (
 	"encoding/json"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/iomonad"
 	"io"
 	"reflect"
+	"time"
 )
 
 type LoggingHandlerFactory interface {
@@ -50,17 +52,26 @@ type JsonMetricsEvent MetricsEvent
 func (event *JsonMetricsEvent) WriteTo(output io.WriteCloser) error {
 	jsonRep := map[string]interface{}{}
 	jsonRep["namespace"] = event.Namespace
-	jsonRep["source_id"] = event.SourceId
-	jsonRep["timestamp"] = event.Timestamp
-	jsonRep["tags"] = event.Tags
+	jsonRep["metric"] = event.Metric
+	jsonRep["source_id"] = event.SourceAppId
+	jsonRep["source_event_id"] = event.SourceEventId
+	if event.SourceEntityId != "" {
+		jsonRep["source_entity_id"] = event.SourceEntityId
+	}
+
+	ts, err := ptypes.Timestamp(event.Timestamp)
+	if err != nil {
+		return err
+	}
+
+	jsonRep["timestamp"] = ts.Format(time.RFC3339Nano)
+	if len(event.Tags) > 0 {
+		jsonRep["tags"] = event.Tags
+	}
 
 	metrics := map[string]interface{}{}
 
-	for name, val := range event.IntMetrics {
-		metrics[name] = val
-	}
-
-	for name, val := range event.FloatMetrics {
+	for name, val := range event.Metrics {
 		metrics[name] = val
 	}
 
@@ -136,12 +147,12 @@ type PlainTextMetricsEvent MetricsEvent
 
 func (event *PlainTextMetricsEvent) WriteTo(output io.WriteCloser) error {
 	w := iomonad.Wrap(output)
-	for name, val := range event.IntMetrics {
-		w.Printf("%v: %9d\n", name, val)
-	}
-
-	for name, val := range event.FloatMetrics {
-		w.Printf("%s: %v\n", name, val)
+	for name, val := range event.Metrics {
+		if intVal, ok := val.(int64); ok {
+			w.Printf("%v: %9d\n", name, intVal)
+		} else {
+			w.Printf("%s: %v\n", name, val)
+		}
 	}
 
 	return w.GetError()

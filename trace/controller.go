@@ -23,8 +23,6 @@ import (
 	"strings"
 )
 
-type controllerShutdown struct{}
-
 type SourceType int
 
 const (
@@ -150,13 +148,13 @@ type Controller interface {
 	DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult)
 	AddSource(source Source)
 	RemoveSource(source Source)
-	Shutdown()
 }
 
-func NewController() Controller {
+func NewController(closeNotify <-chan struct{}) Controller {
 	controller := &controllerImpl{
-		events:  make(chan interface{}, 1),
-		sources: make(map[Source]Source),
+		events:      make(chan interface{}, 1),
+		sources:     make(map[Source]Source),
+		closeNotify: closeNotify,
 	}
 	go controller.run()
 	return controller
@@ -183,8 +181,9 @@ type sourceRemovedEvent struct {
 }
 
 type controllerImpl struct {
-	events  chan interface{}
-	sources map[Source]Source
+	events      chan interface{}
+	sources     map[Source]Source
+	closeNotify <-chan struct{}
 }
 
 func (controller *controllerImpl) EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
@@ -203,14 +202,11 @@ func (controller *controllerImpl) RemoveSource(source Source) {
 	controller.events <- &sourceRemovedEvent{source}
 }
 
-func (controller *controllerImpl) Shutdown() {
-	controller.events <- &controllerShutdown{}
-}
-
 func (controller *controllerImpl) run() {
-	running := true
-	for running {
+	for {
 		select {
+		case <-controller.closeNotify:
+			return
 		case i := <-controller.events:
 			switch event := i.(type) {
 			case *enableSourcesEvent:
@@ -227,8 +223,6 @@ func (controller *controllerImpl) run() {
 				controller.sources[event.source] = event.source
 			case *sourceRemovedEvent:
 				delete(controller.sources, event.source)
-			case *controllerShutdown:
-				running = false
 			}
 		}
 	}

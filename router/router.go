@@ -17,11 +17,15 @@
 package router
 
 import (
+	"bufio"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
 	"github.com/openziti/fabric/router/handler_link"
@@ -42,6 +46,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/sirupsen/logrus"
+	"io"
 	"math/rand"
 	"time"
 )
@@ -52,6 +57,7 @@ type Router struct {
 	ctrlOptions     *channel2.Options
 	linkOptions     *channel2.Options
 	linkListener    channel2.UnderlayListener
+	faulter         *forwarder.Faulter
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
@@ -71,25 +77,32 @@ func (self *Router) Channel() channel2.Channel {
 	return self.ctrl
 }
 
+func (self *Router) DefaultRequestTimeout() time.Duration {
+	return self.config.Ctrl.DefaultRequestTimeout
+}
+
 func Create(config *Config, versionProvider common.VersionProvider) *Router {
-	eventDispatcher := event.NewDispatcher()
+	closeNotify := make(chan struct{})
+
+	eventDispatcher := event.NewDispatcher(closeNotify)
 	metricsConfig := &metrics.Config{
 		Source:         config.Id.Token,
 		ReportInterval: time.Second * 15,
 		EventSink:      metrics.NewDispatchWrapper(eventDispatcher.Dispatch),
 	}
-	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig)
+	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
-	closeNotify := make(chan struct{})
-	fwd := forwarder.NewForwarder(metricsRegistry, config.Forwarder)
+	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
+	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder, closeNotify)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
-	xgress.InitRetransmitter(fwd, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(fwd, fwd, metricsRegistry, closeNotify)
 
 	return &Router{
 		config:          config,
+		faulter:         faulter,
 		forwarder:       fwd,
 		metricsRegistry: metricsRegistry,
 		shutdownC:       closeNotify,
@@ -132,7 +145,6 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		self.eventDispatcher.Stop()
 		if self.metricsReporter != nil {
 			events.RemoveMetricsEventHandler(self.metricsReporter)
 		}
@@ -192,7 +204,7 @@ func (self *Router) startProfiling() {
 			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
 		}
 	}
-	go newRouterMonitor(self.forwarder).Monitor()
+	go newRouterMonitor(self.forwarder, self.shutdownC).Monitor()
 }
 
 func (self *Router) registerComponents() error {
@@ -283,11 +295,16 @@ func (self *Router) startControlPlane() error {
 	attributes[channel2.HelloVersionHeader] = version
 
 	if len(self.xlinkListeners) == 1 {
-
 		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
-	dialer := channel2.NewReconnectingDialer(self.config.Id, self.config.Ctrl.Endpoint, attributes)
+	reconnectHandler := func() {
+		for _, x := range self.xctrls {
+			x.NotifyOfReconnect()
+		}
+	}
+
+	dialer := channel2.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
 
 	bindHandler := handler_ctrl.NewBindHandler(
 		self.config.Id,
@@ -296,6 +313,7 @@ func (self *Router) startControlPlane() error {
 		self,
 		self.forwarder,
 		self.xctrls,
+		self.shutdownC,
 	)
 
 	self.config.Ctrl.Options.BindHandlers = append(self.config.Ctrl.Options.BindHandlers, bindHandler)
@@ -306,6 +324,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.ctrl = ch
+	self.faulter.SetCtrl(ch)
 
 	self.xctrlDone = make(chan struct{})
 	for _, x := range self.xctrls {
@@ -318,4 +337,84 @@ func (self *Router) startControlPlane() error {
 	events.AddMetricsEventHandler(self.metricsReporter)
 
 	return nil
+}
+
+const (
+	DumpForwarderTables byte = 1
+	UpdateRoute         byte = 2
+	CloseControlChannel byte = 3
+	OpenControlChannel  byte = 4
+)
+
+func (router *Router) HandleDebug(conn io.ReadWriter) error {
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	op, err := bconn.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	switch op {
+	case DumpForwarderTables:
+		tables := router.forwarder.Debug()
+		_, err := conn.Write([]byte(tables))
+		return err
+	case UpdateRoute:
+		logrus.Error("received debug operation to update routes")
+		sizeBuf := make([]byte, 4)
+		if _, err := bconn.Read(sizeBuf); err != nil {
+			return err
+		}
+		size := binary.LittleEndian.Uint32(sizeBuf)
+		messageBuf := make([]byte, size)
+
+		if _, err := bconn.Read(messageBuf); err != nil {
+			return err
+		}
+
+		route := &ctrl_pb.Route{}
+		if err := proto.Unmarshal(messageBuf, route); err != nil {
+			return err
+		}
+
+		logrus.Errorf("updating with route: %+v", route)
+		logrus.Errorf("updating with route: %v", route)
+
+		router.forwarder.Route(route)
+	case CloseControlChannel:
+		logrus.Warn("control channel: closing")
+		_, _ = bconn.WriteString("control channel: closing\n")
+		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+			if err := togglable.Disconnect(); err != nil {
+				logrus.WithError(err).Error("control channel: failed to close")
+				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+			} else {
+				logrus.Warn("control channel: closed")
+				_, _ = bconn.WriteString("control channel: closed")
+			}
+		} else {
+			logrus.Warn("control channel: error not toggleable")
+			_, _ = bconn.WriteString("control channel: error not toggleable")
+		}
+	case OpenControlChannel:
+		logrus.Warn("control channel: reconnecting")
+		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+			if err := togglable.Reconnect(); err != nil {
+				logrus.WithError(err).Error("control channel: failed to reconnect")
+				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+			} else {
+				logrus.Warn("control channel: reconnected")
+				_, _ = bconn.WriteString("control channel: reconnected")
+			}
+		} else {
+			logrus.Warn("control channel: error not toggleable")
+			_, _ = bconn.WriteString("control channel: error not toggleable")
+		}
+	}
+
+	return nil
+}
+
+type connectionToggle interface {
+	Disconnect() error
+	Reconnect() error
 }
