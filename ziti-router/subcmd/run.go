@@ -27,6 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"io"
 )
 
 func init() {
@@ -41,18 +42,34 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+	logrus.WithField("version", version.GetVersion()).
+		WithField("go-version", version.GetGoVersion()).
+		WithField("os", version.GetOS()).
+		WithField("arch", version.GetArchitecture()).
+		WithField("build-date", version.GetBuildDate()).
+		WithField("revision", version.GetRevision()).
+		Info("starting ziti-router")
+
 	if config, err := router.LoadConfig(args[0]); err == nil {
+		config.SetFlags(getFlags(cmd))
+
+		r := router.Create(config, version.GetCmdBuildInfo())
+
 		if cliAgentEnabled {
-			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
+			options := agent.Options{Addr: cliAgentAddr}
+			if debugOpsEnabled {
+				options.CustomOps = map[byte]func(conn io.ReadWriter) error{
+					agent.CustomOp: r.HandleDebug,
+				}
+			}
+			if err := agent.Listen(options); err != nil {
 				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 			}
 		}
 
 		config.SetFlags(getFlags(cmd))
 
-		r := router.Create(config, version.GetCmdBuildInfo())
-
-		xgressEdgeFactory := xgress_edge.NewFactory(version.GetCmdBuildInfo())
+		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo())
 		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)

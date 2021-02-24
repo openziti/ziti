@@ -1,3 +1,315 @@
+# Release 0.19.3
+
+## What's New
+
+* Metric events formatting has changed
+
+## Metric Events Changes
+
+Each now gets its own event. Here are two example events:
+
+```
+{
+  "metric": "xgress.tx_write_time",
+  "metrics": {
+    "xgress.tx_write_time.count": 0,
+    "xgress.tx_write_time.m1_rate": 0,
+    "xgress.tx_write_time.mean": 0,
+    "xgress.tx_write_time.p99": 0
+  },
+  "namespace": "metrics",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+
+{
+  "metric": "link.rx.msgsize",
+  "metrics": {
+    "link.rx.msgsize.count": 3,
+    "link.rx.msgsize.mean": 0,
+    "link.rx.msgsize.p99": 0
+  },
+  "namespace": "metrics",
+  "source_entity_id": "8VEJ",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+```
+
+Changes of note:
+
+1. The metric name is now listed
+1. There's a new `source_event_id` which can be used to link together all the metrics that were
+   reported at a given time
+1. The timestamp format has been changed to match the other event times. Format is: RFC3339Nano
+1. Metrics which formerlly had an id in them, such as link and control channel metrics now have the
+   id extracted. The id is stored in the `source_entity_id` field.
+
+# Release 0.19.2
+
+## Bug fixes
+
+* Fix edge router synchronization from stopping after workers exit
+* Session validation intervals in the edge router were calculated incorrected
+* Notes on the configuration values related to session validation were missing from the 0.19 release
+  notes. They have been added in the section called `Edge Session Validation`
+
+# Release 0.19.1
+
+## Bug fixes
+
+* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted
+  during this upgrade
+* Fix Edge Router double connect leading to panics during Edge Router REST API rendering
+
+## What's New
+
+* Ziti CLI now has 'Let's Encrypt' PKI support to facilitate TLS connections to Controller from
+  BrowZer-based apps that use the `ziti-sdk-js`.
+
+    * New command to Register a Let's Encrypt account, then create and install a certificate
+
+      Usage:
+
+      `ziti pki le create -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for create
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory to use for storing the data
+          -o, --port string                                   Port to listen on for HTTP based ACME challenges (default "80")
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+
+    * New command to Display Let's Encrypt certificates and accounts information
+
+      Usage:
+
+      `ziti pki le list -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --accounts      Display Account info
+          -h, --help          help for list
+          -n, --names         Display Names info
+          -p, --path string   Directory where data is stored
+
+    * New command to Renew a Let's Encrypt certificate
+
+      Usage:
+
+      `ziti pki le renew -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+              --days int                                      The number of days left on a certificate to renew it (default 14)
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for renew
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory where data is stored
+          -r, --reuse-key                                     Used to indicate you want to reuse your current private key for the renewed certificate (default true)
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+
+    * New command to Revoke a Let's Encrypt certificate
+
+      Usage:
+
+      `ziti pki le revoke -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string   ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string       Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string        Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                help for revoke
+          -p, --path string         Directory where data is stored
+          -s, --staging             Enable creation of 'staging' Certs (instead of production Certs)
+
+# Release 0.19.0
+
+## Breaking Changes
+
+* Edge session validation is now handled at the controller, not the edge router
+* Routing across the overlay is now handled in parallel, rather than serially. This changes the
+  syntax and semantics of a couple of control plane messages between the controller and the
+  connected routers. See the section below on `Parallel Routing` for additional details.
+* API Session synchronization improvements and pluggability
+
+## Bug fixes
+
+* ziti ps now supports `router-disconnect` and `router-reconnect`, which disconnects/reconnects the
+  router from the controller. This allows easier testing of various failure states. Requires that
+  --debug-ops is passed to `ziti-router` on startup.
+* Golang SDK hosted service listeners are now properly closed when they receive close notifications
+* Golang SDK now recovers if the session is gone
+* Golang SDK now stops some go-routines that were previously left running after the SDK context was
+  closed
+* Fix session leak caused by using half close when tunneling UDP connections
+* Fix connection leak caused by not closing the UDP connection when it's activity timer expires
+
+## API Changes
+
+* Fabric Xctrl instances are now notified when the control channel reconnects
+* Fabric Xctrl instances may now provide message decoders for the trace infrastructure so that
+  custom messages will be properly displayed in trace logs
+
+## Edge Session Validation
+
+Before 0.19, edge sessions (note: network sessions, not API sessions) would be sent to edge routers
+after they were created. When the edge router received a dial or bind request it would verify that
+the session was valid, then request the controller to create a fabric session.
+
+This approach has two downsides.
+
+1. There is a race condition where the edge router may receive a dial/bind request before it has
+   received the session from the controller. It thus has to wait awhile before declaring the session
+   invalid.
+1. Sessions need to be managed across multiple edge routers, since we don't know where the client
+   will connect. This adds a lot of control channel traffic.
+
+Since the edge router makes a request to the controller anyway, we can pass the session token and
+fingerprints up to the controller and do the verification there. This allows us to minimize the
+amount of state the edge router needs to keep synchronized with the controller and removes the race
+condition.
+
+When an edge controller loses connection to the controller, it needs to verify that its sessions are
+still valid, in case it missed any session deletion notifications. There are three new settings
+which control this behavior.
+
+* `sessionValidateChunkSize` - how many sessions to validate in each request to the controller.
+  Default value: 1000
+* `sessionValidateMinInterval` - minimum time to wait between chuenks of sessions. Default
+  value: `250ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+* `sessionValidateMaxInterval` - maximum time to wait between chuenks of sessions. Default
+  value: `1500ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+
+Intervals between sending session validation chunks is random, between min and max intervals. This
+is done to prevent the routers from flooding the controller after a controller restart.
+
+## Parallel Routing
+
+Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to
+establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire
+session setup would be abandoned. If the terminator responded successfully, the controller would
+then proceed to work through the chain of routers sending `Route` messages and creating the
+appropriate forwarding table entries. This all happened sequentially.
+
+In 0.19 route setup for session creation now happens in parallel. The controller sends `Route`
+commands to all of the routers in the chain (including the terminating router), and waits for
+responses and/or times out those responses. If all of the participating routers respond
+affirmatively within the timeout period, the entire session creation succeeds. If any participating
+router responds negatively, or the timeout period occurs, the session creation attempt fails,
+updating configured termination weights. Session creation will retry up to a configured number of
+attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be
+excluded from subsequent attempts.
+
+### Configuration of Parallel Routing
+
+The `terminationTimeoutSeconds` timeout parameter has been removed and will be ignored.
+The `routeTimeoutSeconds` controls the timeout for each route attempt.
+
+```
+#network:
+  #
+  # routeTimeoutSeconds controls the number of seconds the controller will wait for a route attempt to succeed.
+  #
+  #routeTimeoutSeconds:  10
+```
+
+You'll want to ensure that your participating routers' `getSessionTimeout` in the Xgress options is
+configured to a suitably large enough value to support the configured number of routing attempts, at
+the configured routing attempt timeout. In the router configuration, the `getSessionTimeout` value
+is configured for your Xgress listeners like this:
+
+```
+listeners:
+  # basic ssh proxy
+  - binding:            	proxy
+    address:            	tcp:0.0.0.0:1122
+    service:            	ssh
+    options:
+      getSessionTimeout:	120s
+```
+
+The new parallel routing implementation also supports a configurable number of session creation
+attempts. Prior to 0.19, the number of attempts was hard-coded at 3. In 0.19, the number of retries
+is controlled by the `createSessionRetries` parameter, which defaults to 3.
+
+```
+network:
+  #
+  # createSessionRetries controls the number of retries that will be attempted to create a circuit (and terminate it)
+  # for new sessions.
+  #
+  createSessionRetries: 5
+```
+
+## API Session Synchronization
+
+Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting edge
+routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be
+defined within the same code base. Future releases will be able to introduce configurable and
+negotiable strategies.
+
+The default strategy from prior releases, now named 'instant', has been improved to fix issues that
+could arise during edge router reconnects where API Sessions would become invalid on the
+reconnecting edge router. In addition, the instant strategy now allows for invalid synchronization
+detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
+
+### Edge Router Synchronization Status
+
+The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include
+a `syncStatus`
+field. This value is updated during the lifetime of the edge router's connection to the controller
+and will provide insight on its status.
+
+The possible `syncStatus` values are as follows:
+
+- "SYNC_NEW" - connection accepted but no strategy actions have been taken
+- "SYNC_QUEUED" - connection handed to a strategy and waiting for processing
+- "SYNC_HELLO_TIMEOUT" - sync failed due to a hello timeout, requeued for hello
+- "SYNC_HELLO" - controller edge hello being sent
+- "SYNC_HELLO_WAIT" - hello received from router and queued for processing
+- "SYNC_RESYNC_WAIT" - router requested a resync and queued for processing
+- "SYNC_IN_PROGRESS" - synchronization processing
+- "SYNC_DONE" - synchronization completed, router is now in maintenance updates
+- "SYNC_UNKNOWN" - state is unknown, edge router misbehaved, error state
+- "SYNC_DISCONNECTED" - strategy was disconnected before finishing, error state
+
+# Release 0.18.10
+
+# What's New
+
+* Close terminating xgress instances if no start is received with a configurable timeout
+    * Timeout is set in the router config under listener/dialer options: `sessionStartTimeout`
+      Default value: `3m`
+* Don't add a second shutdown timer if one is already set
+* Allow list/updating router forwarding tables if --debug-ops is passed
+    * new command `ziti ps route <optional target> <session> <src-address> <dest-address>`
+    * new command `ziti ps dump-routes <optional target>`
+* If an xgress session fails in retransmit, sends fault notification to controller so controller can
+  fix path or remove session, depending on session state
+
+# Release 0.18.9
+
+# What's New
+
+* Fix PATCH OS Posture Checks clearing data
+* Fix ziti-tunnel panic when removing
+  services. [edge#517](https://github.com/openziti/edge/issues/517)
+* ziti-tunnel tproxy now supports `--lanIf` option to automatically add rules to accept incoming
+  connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519)
+* Fix orphaned ottca enrollments after `DELETE /cas/<id>'
+* Add build info output when starting router/controller
+* Remove histograms from xgress dataflow path as they were causing bottlenecks
+
 # Release 0.18.8
 
 ## What's New
@@ -10,6 +322,8 @@
 * Fix terminator PATCH, don't update/clear peer data unless requested
 * Fix concurrency related crash in router
 * Fix resource leak in fabric: forwarder tables weren't always updated after unroute
+* Fix issue that prevented ziti-tunnel from cleaning up on shutdown in some cases.
+  [edge#506](https://github.com/openziti/edge/issues/506)
 
 ## Websocket Binding
 
