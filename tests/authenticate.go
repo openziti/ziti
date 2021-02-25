@@ -815,6 +815,33 @@ func (request *authenticatedRequests) validateEntityWithQuery(entity entity) *ga
 	return request.testContext.validateEntity(entity, jsonEntity)
 }
 
+func (request *authenticatedRequests) listTerminators(filter string) []*terminator {
+	query := "terminators"
+	if filter != "" {
+		query += "?" + filter
+	}
+
+	var result []*terminator
+	request.listEntities(query, func() loadableEntity {
+		t := &terminator{}
+		result = append(result, t)
+		return t
+	})
+
+	return result
+}
+
+func (request *authenticatedRequests) listEntities(query string, factory func() loadableEntity) {
+	result := request.requireQuery(query)
+	data := request.testContext.RequireGetNonNilPathValue(result, "data")
+	children, err := data.Children()
+	request.testContext.Req.NoError(err)
+	for _, child := range children {
+		entity := factory()
+		entity.fromJson(request.testContext, child)
+	}
+}
+
 func (request *authenticatedRequests) validateEntityWithLookup(entity entity) *gabs.Container {
 	result := request.requireQuery(entity.getEntityType() + "/" + entity.getId())
 	jsonEntity := request.testContext.RequireGetNonNilPathValue(result, "data")
