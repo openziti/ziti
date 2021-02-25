@@ -35,7 +35,7 @@ require (
 	github.com/lucsky/cuid v1.0.2
 	github.com/mdlayher/netlink v1.2.1
 	github.com/michaelquigley/pfxlog v0.3.7
-	github.com/miekg/dns v1.1.38
+	github.com/miekg/dns v1.1.39
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.16.11
