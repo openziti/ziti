@@ -75,7 +75,7 @@ func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, rc, TerminatorLinkFactory, func() (string, error) {
-		return ae.Handlers.Terminator.Create(MapCreateTerminatorToModel(params.Body))
+		return ae.Handlers.Terminator.Create(MapCreateTerminatorToModel(params.Terminator))
 	})
 }
 
@@ -85,12 +85,12 @@ func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Body))
+		return ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator))
 	})
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+		return ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }

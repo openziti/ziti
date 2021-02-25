@@ -86,11 +86,11 @@ for the create posture check operation typically these are written to a http.Req
 */
 type CreatePostureCheckParams struct {
 
-	/*Body
-	  A Posture Checks to create
+	/*PostureCheck
+	  A Posture Check to create
 
 	*/
-	Body rest_model.PostureCheckCreate
+	PostureCheck rest_model.PostureCheckCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreatePostureCheckParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create posture check params
-func (o *CreatePostureCheckParams) WithBody(body rest_model.PostureCheckCreate) *CreatePostureCheckParams {
-	o.SetBody(body)
+// WithPostureCheck adds the postureCheck to the create posture check params
+func (o *CreatePostureCheckParams) WithPostureCheck(postureCheck rest_model.PostureCheckCreate) *CreatePostureCheckParams {
+	o.SetPostureCheck(postureCheck)
 	return o
 }
 
-// SetBody adds the body to the create posture check params
-func (o *CreatePostureCheckParams) SetBody(body rest_model.PostureCheckCreate) {
-	o.Body = body
+// SetPostureCheck adds the postureCheck to the create posture check params
+func (o *CreatePostureCheckParams) SetPostureCheck(postureCheck rest_model.PostureCheckCreate) {
+	o.PostureCheck = postureCheck
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,7 +149,7 @@ func (o *CreatePostureCheckParams) WriteToRequest(r runtime.ClientRequest, reg s
 	}
 	var res []error
 
-	if err := r.SetBodyParam(o.Body); err != nil {
+	if err := r.SetBodyParam(o.PostureCheck); err != nil {
 		return err
 	}
 

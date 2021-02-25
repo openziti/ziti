@@ -86,11 +86,11 @@ for the create service policy operation typically these are written to a http.Re
 */
 type CreateServicePolicyParams struct {
 
-	/*Body
+	/*Policy
 	  A service policy to create
 
 	*/
-	Body *rest_model.ServicePolicyCreate
+	Policy *rest_model.ServicePolicyCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateServicePolicyParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create service policy params
-func (o *CreateServicePolicyParams) WithBody(body *rest_model.ServicePolicyCreate) *CreateServicePolicyParams {
-	o.SetBody(body)
+// WithPolicy adds the policy to the create service policy params
+func (o *CreateServicePolicyParams) WithPolicy(policy *rest_model.ServicePolicyCreate) *CreateServicePolicyParams {
+	o.SetPolicy(policy)
 	return o
 }
 
-// SetBody adds the body to the create service policy params
-func (o *CreateServicePolicyParams) SetBody(body *rest_model.ServicePolicyCreate) {
-	o.Body = body
+// SetPolicy adds the policy to the create service policy params
+func (o *CreateServicePolicyParams) SetPolicy(policy *rest_model.ServicePolicyCreate) {
+	o.Policy = policy
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateServicePolicyParams) WriteToRequest(r runtime.ClientRequest, reg 
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
 			return err
 		}
 	}

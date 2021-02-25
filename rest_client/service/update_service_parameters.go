@@ -86,16 +86,16 @@ for the update service operation typically these are written to a http.Request
 */
 type UpdateServiceParams struct {
 
-	/*Body
-	  A service update object
-
-	*/
-	Body *rest_model.ServiceUpdate
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Service
+	  A service update object
+
+	*/
+	Service *rest_model.ServiceUpdate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *UpdateServiceParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update service params
-func (o *UpdateServiceParams) WithBody(body *rest_model.ServiceUpdate) *UpdateServiceParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the update service params
-func (o *UpdateServiceParams) SetBody(body *rest_model.ServiceUpdate) {
-	o.Body = body
-}
-
 // WithID adds the id to the update service params
 func (o *UpdateServiceParams) WithID(id string) *UpdateServiceParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *UpdateServiceParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithService adds the service to the update service params
+func (o *UpdateServiceParams) WithService(service *rest_model.ServiceUpdate) *UpdateServiceParams {
+	o.SetService(service)
+	return o
+}
+
+// SetService adds the service to the update service params
+func (o *UpdateServiceParams) SetService(service *rest_model.ServiceUpdate) {
+	o.Service = service
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *UpdateServiceParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *UpdateServiceParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Service != nil {
+		if err := r.SetBodyParam(o.Service); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

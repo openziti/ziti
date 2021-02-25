@@ -86,16 +86,16 @@ for the update posture check operation typically these are written to a http.Req
 */
 type UpdatePostureCheckParams struct {
 
-	/*Body
-	  A Posture Checks update object
-
-	*/
-	Body rest_model.PostureCheckUpdate
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*PostureCheck
+	  A Posture Check update object
+
+	*/
+	PostureCheck rest_model.PostureCheckUpdate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *UpdatePostureCheckParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update posture check params
-func (o *UpdatePostureCheckParams) WithBody(body rest_model.PostureCheckUpdate) *UpdatePostureCheckParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the update posture check params
-func (o *UpdatePostureCheckParams) SetBody(body rest_model.PostureCheckUpdate) {
-	o.Body = body
-}
-
 // WithID adds the id to the update posture check params
 func (o *UpdatePostureCheckParams) WithID(id string) *UpdatePostureCheckParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *UpdatePostureCheckParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithPostureCheck adds the postureCheck to the update posture check params
+func (o *UpdatePostureCheckParams) WithPostureCheck(postureCheck rest_model.PostureCheckUpdate) *UpdatePostureCheckParams {
+	o.SetPostureCheck(postureCheck)
+	return o
+}
+
+// SetPostureCheck adds the postureCheck to the update posture check params
+func (o *UpdatePostureCheckParams) SetPostureCheck(postureCheck rest_model.PostureCheckUpdate) {
+	o.PostureCheck = postureCheck
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *UpdatePostureCheckParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,12 +165,12 @@ func (o *UpdatePostureCheckParams) WriteToRequest(r runtime.ClientRequest, reg s
 	}
 	var res []error
 
-	if err := r.SetBodyParam(o.Body); err != nil {
+	// path param id
+	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
 	}
 
-	// path param id
-	if err := r.SetPathParam("id", o.ID); err != nil {
+	if err := r.SetBodyParam(o.PostureCheck); err != nil {
 		return err
 	}
 

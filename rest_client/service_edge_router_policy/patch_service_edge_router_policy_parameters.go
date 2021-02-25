@@ -86,16 +86,16 @@ for the patch service edge router policy operation typically these are written t
 */
 type PatchServiceEdgeRouterPolicyParams struct {
 
-	/*Body
-	  A service edge router policy patch object
-
-	*/
-	Body *rest_model.ServiceEdgeRouterPolicyPatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Policy
+	  A service edge router policy patch object
+
+	*/
+	Policy *rest_model.ServiceEdgeRouterPolicyPatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchServiceEdgeRouterPolicyParams) SetHTTPClient(client *http.Client) 
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch service edge router policy params
-func (o *PatchServiceEdgeRouterPolicyParams) WithBody(body *rest_model.ServiceEdgeRouterPolicyPatch) *PatchServiceEdgeRouterPolicyParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch service edge router policy params
-func (o *PatchServiceEdgeRouterPolicyParams) SetBody(body *rest_model.ServiceEdgeRouterPolicyPatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch service edge router policy params
 func (o *PatchServiceEdgeRouterPolicyParams) WithID(id string) *PatchServiceEdgeRouterPolicyParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchServiceEdgeRouterPolicyParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithPolicy adds the policy to the patch service edge router policy params
+func (o *PatchServiceEdgeRouterPolicyParams) WithPolicy(policy *rest_model.ServiceEdgeRouterPolicyPatch) *PatchServiceEdgeRouterPolicyParams {
+	o.SetPolicy(policy)
+	return o
+}
+
+// SetPolicy adds the policy to the patch service edge router policy params
+func (o *PatchServiceEdgeRouterPolicyParams) SetPolicy(policy *rest_model.ServiceEdgeRouterPolicyPatch) {
+	o.Policy = policy
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchServiceEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchServiceEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequ
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

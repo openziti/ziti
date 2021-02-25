@@ -86,11 +86,11 @@ for the create service operation typically these are written to a http.Request
 */
 type CreateServiceParams struct {
 
-	/*Body
+	/*Service
 	  A service to create
 
 	*/
-	Body *rest_model.ServiceCreate
+	Service *rest_model.ServiceCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateServiceParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create service params
-func (o *CreateServiceParams) WithBody(body *rest_model.ServiceCreate) *CreateServiceParams {
-	o.SetBody(body)
+// WithService adds the service to the create service params
+func (o *CreateServiceParams) WithService(service *rest_model.ServiceCreate) *CreateServiceParams {
+	o.SetService(service)
 	return o
 }
 
-// SetBody adds the body to the create service params
-func (o *CreateServiceParams) SetBody(body *rest_model.ServiceCreate) {
-	o.Body = body
+// SetService adds the service to the create service params
+func (o *CreateServiceParams) SetService(service *rest_model.ServiceCreate) {
+	o.Service = service
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateServiceParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Service != nil {
+		if err := r.SetBodyParam(o.Service); err != nil {
 			return err
 		}
 	}

@@ -86,11 +86,11 @@ for the create posture response operation typically these are written to a http.
 */
 type CreatePostureResponseParams struct {
 
-	/*Body
+	/*PostureResponse
 	  A Posture Response
 
 	*/
-	Body rest_model.PostureResponseCreate
+	PostureResponse rest_model.PostureResponseCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreatePostureResponseParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create posture response params
-func (o *CreatePostureResponseParams) WithBody(body rest_model.PostureResponseCreate) *CreatePostureResponseParams {
-	o.SetBody(body)
+// WithPostureResponse adds the postureResponse to the create posture response params
+func (o *CreatePostureResponseParams) WithPostureResponse(postureResponse rest_model.PostureResponseCreate) *CreatePostureResponseParams {
+	o.SetPostureResponse(postureResponse)
 	return o
 }
 
-// SetBody adds the body to the create posture response params
-func (o *CreatePostureResponseParams) SetBody(body rest_model.PostureResponseCreate) {
-	o.Body = body
+// SetPostureResponse adds the postureResponse to the create posture response params
+func (o *CreatePostureResponseParams) SetPostureResponse(postureResponse rest_model.PostureResponseCreate) {
+	o.PostureResponse = postureResponse
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,7 +149,7 @@ func (o *CreatePostureResponseParams) WriteToRequest(r runtime.ClientRequest, re
 	}
 	var res []error
 
-	if err := r.SetBodyParam(o.Body); err != nil {
+	if err := r.SetBodyParam(o.PostureResponse); err != nil {
 		return err
 	}
 

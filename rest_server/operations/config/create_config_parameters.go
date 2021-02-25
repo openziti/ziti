@@ -60,7 +60,7 @@ type CreateConfigParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.ConfigCreate
+	Config *rest_model.ConfigCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateConfigParams) BindRequest(r *http.Request, route *middleware.Matc
 		var body rest_model.ConfigCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("config", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("config", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateConfigParams) BindRequest(r *http.Request, route *middleware.Matc
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Config = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("config", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

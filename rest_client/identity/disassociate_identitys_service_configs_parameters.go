@@ -86,16 +86,16 @@ for the disassociate identitys service configs operation typically these are wri
 */
 type DisassociateIdentitysServiceConfigsParams struct {
 
-	/*Body
-	  An array of service and config id pairs to remove
-
-	*/
-	Body rest_model.ServiceConfigsAssignList
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*ServiceConfigIDPairs
+	  An array of service and config id pairs to remove
+
+	*/
+	ServiceConfigIDPairs rest_model.ServiceConfigsAssignList
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *DisassociateIdentitysServiceConfigsParams) SetHTTPClient(client *http.C
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the disassociate identitys service configs params
-func (o *DisassociateIdentitysServiceConfigsParams) WithBody(body rest_model.ServiceConfigsAssignList) *DisassociateIdentitysServiceConfigsParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the disassociate identitys service configs params
-func (o *DisassociateIdentitysServiceConfigsParams) SetBody(body rest_model.ServiceConfigsAssignList) {
-	o.Body = body
-}
-
 // WithID adds the id to the disassociate identitys service configs params
 func (o *DisassociateIdentitysServiceConfigsParams) WithID(id string) *DisassociateIdentitysServiceConfigsParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *DisassociateIdentitysServiceConfigsParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithServiceConfigIDPairs adds the serviceConfigIDPairs to the disassociate identitys service configs params
+func (o *DisassociateIdentitysServiceConfigsParams) WithServiceConfigIDPairs(serviceConfigIDPairs rest_model.ServiceConfigsAssignList) *DisassociateIdentitysServiceConfigsParams {
+	o.SetServiceConfigIDPairs(serviceConfigIDPairs)
+	return o
+}
+
+// SetServiceConfigIDPairs adds the serviceConfigIdPairs to the disassociate identitys service configs params
+func (o *DisassociateIdentitysServiceConfigsParams) SetServiceConfigIDPairs(serviceConfigIDPairs rest_model.ServiceConfigsAssignList) {
+	o.ServiceConfigIDPairs = serviceConfigIDPairs
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *DisassociateIdentitysServiceConfigsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *DisassociateIdentitysServiceConfigsParams) WriteToRequest(r runtime.Cli
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.ServiceConfigIDPairs != nil {
+		if err := r.SetBodyParam(o.ServiceConfigIDPairs); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

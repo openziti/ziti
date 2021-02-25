@@ -86,11 +86,11 @@ for the create posture response bulk operation typically these are written to a 
 */
 type CreatePostureResponseBulkParams struct {
 
-	/*Body
+	/*PostureResponse
 	  A Posture Response
 
 	*/
-	Body []rest_model.PostureResponseCreate
+	PostureResponse []rest_model.PostureResponseCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreatePostureResponseBulkParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create posture response bulk params
-func (o *CreatePostureResponseBulkParams) WithBody(body []rest_model.PostureResponseCreate) *CreatePostureResponseBulkParams {
-	o.SetBody(body)
+// WithPostureResponse adds the postureResponse to the create posture response bulk params
+func (o *CreatePostureResponseBulkParams) WithPostureResponse(postureResponse []rest_model.PostureResponseCreate) *CreatePostureResponseBulkParams {
+	o.SetPostureResponse(postureResponse)
 	return o
 }
 
-// SetBody adds the body to the create posture response bulk params
-func (o *CreatePostureResponseBulkParams) SetBody(body []rest_model.PostureResponseCreate) {
-	o.Body = body
+// SetPostureResponse adds the postureResponse to the create posture response bulk params
+func (o *CreatePostureResponseBulkParams) SetPostureResponse(postureResponse []rest_model.PostureResponseCreate) {
+	o.PostureResponse = postureResponse
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreatePostureResponseBulkParams) WriteToRequest(r runtime.ClientRequest
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.PostureResponse != nil {
+		if err := r.SetBodyParam(o.PostureResponse); err != nil {
 			return err
 		}
 	}

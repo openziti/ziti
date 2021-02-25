@@ -86,11 +86,11 @@ for the create ca operation typically these are written to a http.Request
 */
 type CreateCaParams struct {
 
-	/*Body
+	/*Ca
 	  A CA to create
 
 	*/
-	Body *rest_model.CaCreate
+	Ca *rest_model.CaCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateCaParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create ca params
-func (o *CreateCaParams) WithBody(body *rest_model.CaCreate) *CreateCaParams {
-	o.SetBody(body)
+// WithCa adds the ca to the create ca params
+func (o *CreateCaParams) WithCa(ca *rest_model.CaCreate) *CreateCaParams {
+	o.SetCa(ca)
 	return o
 }
 
-// SetBody adds the body to the create ca params
-func (o *CreateCaParams) SetBody(body *rest_model.CaCreate) {
-	o.Body = body
+// SetCa adds the ca to the create ca params
+func (o *CreateCaParams) SetCa(ca *rest_model.CaCreate) {
+	o.Ca = ca
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateCaParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Regi
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Ca != nil {
+		if err := r.SetBodyParam(o.Ca); err != nil {
 			return err
 		}
 	}

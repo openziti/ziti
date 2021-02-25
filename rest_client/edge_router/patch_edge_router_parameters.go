@@ -86,11 +86,11 @@ for the patch edge router operation typically these are written to a http.Reques
 */
 type PatchEdgeRouterParams struct {
 
-	/*Body
+	/*EdgeRouter
 	  An edge router patch object
 
 	*/
-	Body *rest_model.EdgeRouterPatch
+	EdgeRouter *rest_model.EdgeRouterPatch
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *PatchEdgeRouterParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch edge router params
-func (o *PatchEdgeRouterParams) WithBody(body *rest_model.EdgeRouterPatch) *PatchEdgeRouterParams {
-	o.SetBody(body)
+// WithEdgeRouter adds the edgeRouter to the patch edge router params
+func (o *PatchEdgeRouterParams) WithEdgeRouter(edgeRouter *rest_model.EdgeRouterPatch) *PatchEdgeRouterParams {
+	o.SetEdgeRouter(edgeRouter)
 	return o
 }
 
-// SetBody adds the body to the patch edge router params
-func (o *PatchEdgeRouterParams) SetBody(body *rest_model.EdgeRouterPatch) {
-	o.Body = body
+// SetEdgeRouter adds the edgeRouter to the patch edge router params
+func (o *PatchEdgeRouterParams) SetEdgeRouter(edgeRouter *rest_model.EdgeRouterPatch) {
+	o.EdgeRouter = edgeRouter
 }
 
 // WithID adds the id to the patch edge router params
@@ -165,8 +165,8 @@ func (o *PatchEdgeRouterParams) WriteToRequest(r runtime.ClientRequest, reg strf
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.EdgeRouter != nil {
+		if err := r.SetBodyParam(o.EdgeRouter); err != nil {
 			return err
 		}
 	}

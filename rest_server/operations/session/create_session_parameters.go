@@ -60,7 +60,7 @@ type CreateSessionParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.SessionCreate
+	Session *rest_model.SessionCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateSessionParams) BindRequest(r *http.Request, route *middleware.Mat
 		var body rest_model.SessionCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("session", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("session", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateSessionParams) BindRequest(r *http.Request, route *middleware.Mat
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Session = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("session", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

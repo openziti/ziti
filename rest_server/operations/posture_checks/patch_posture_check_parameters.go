@@ -57,16 +57,16 @@ type PatchPostureCheckParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A Posture Checks patch object
-	  Required: true
-	  In: body
-	*/
-	Body rest_model.PostureCheckPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
 	*/
 	ID string
+	/*A Posture Check patch object
+	  Required: true
+	  In: body
+	*/
+	PostureCheck rest_model.PostureCheckPatch
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -78,12 +78,17 @@ func (o *PatchPostureCheckParams) BindRequest(r *http.Request, route *middleware
 
 	o.HTTPRequest = r
 
+	rID, rhkID, _ := route.Params.GetOK("id")
+	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
 		body, err := rest_model.UnmarshalPostureCheckPatch(r.Body, route.Consumer)
 		if err != nil {
 			if err == io.EOF {
-				err = errors.Required("Body", "body", "")
+				err = errors.Required("postureCheck", "body", "")
 			}
 			res = append(res, err)
 		} else {
@@ -93,17 +98,12 @@ func (o *PatchPostureCheckParams) BindRequest(r *http.Request, route *middleware
 			}
 
 			if len(res) == 0 {
-				o.Body = body
+				o.PostureCheck = body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("postureCheck", "body", ""))
 	}
-	rID, rhkID, _ := route.Params.GetOK("id")
-	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}

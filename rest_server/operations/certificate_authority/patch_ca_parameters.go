@@ -61,7 +61,7 @@ type PatchCaParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.CaPatch
+	Ca *rest_model.CaPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *PatchCaParams) BindRequest(r *http.Request, route *middleware.MatchedRo
 		var body rest_model.CaPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("ca", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("ca", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *PatchCaParams) BindRequest(r *http.Request, route *middleware.MatchedRo
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Ca = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("ca", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

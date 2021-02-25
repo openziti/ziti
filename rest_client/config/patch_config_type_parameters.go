@@ -86,11 +86,11 @@ for the patch config type operation typically these are written to a http.Reques
 */
 type PatchConfigTypeParams struct {
 
-	/*Body
+	/*ConfigType
 	  A config-type patch object
 
 	*/
-	Body *rest_model.ConfigTypePatch
+	ConfigType *rest_model.ConfigTypePatch
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *PatchConfigTypeParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch config type params
-func (o *PatchConfigTypeParams) WithBody(body *rest_model.ConfigTypePatch) *PatchConfigTypeParams {
-	o.SetBody(body)
+// WithConfigType adds the configType to the patch config type params
+func (o *PatchConfigTypeParams) WithConfigType(configType *rest_model.ConfigTypePatch) *PatchConfigTypeParams {
+	o.SetConfigType(configType)
 	return o
 }
 
-// SetBody adds the body to the patch config type params
-func (o *PatchConfigTypeParams) SetBody(body *rest_model.ConfigTypePatch) {
-	o.Body = body
+// SetConfigType adds the configType to the patch config type params
+func (o *PatchConfigTypeParams) SetConfigType(configType *rest_model.ConfigTypePatch) {
+	o.ConfigType = configType
 }
 
 // WithID adds the id to the patch config type params
@@ -165,8 +165,8 @@ func (o *PatchConfigTypeParams) WriteToRequest(r runtime.ClientRequest, reg strf
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.ConfigType != nil {
+		if err := r.SetBodyParam(o.ConfigType); err != nil {
 			return err
 		}
 	}

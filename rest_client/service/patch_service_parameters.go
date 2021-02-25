@@ -86,16 +86,16 @@ for the patch service operation typically these are written to a http.Request
 */
 type PatchServiceParams struct {
 
-	/*Body
-	  A service patch object
-
-	*/
-	Body *rest_model.ServicePatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Service
+	  A service patch object
+
+	*/
+	Service *rest_model.ServicePatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchServiceParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch service params
-func (o *PatchServiceParams) WithBody(body *rest_model.ServicePatch) *PatchServiceParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch service params
-func (o *PatchServiceParams) SetBody(body *rest_model.ServicePatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch service params
 func (o *PatchServiceParams) WithID(id string) *PatchServiceParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchServiceParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithService adds the service to the patch service params
+func (o *PatchServiceParams) WithService(service *rest_model.ServicePatch) *PatchServiceParams {
+	o.SetService(service)
+	return o
+}
+
+// SetService adds the service to the patch service params
+func (o *PatchServiceParams) SetService(service *rest_model.ServicePatch) {
+	o.Service = service
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchServiceParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchServiceParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Service != nil {
+		if err := r.SetBodyParam(o.Service); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

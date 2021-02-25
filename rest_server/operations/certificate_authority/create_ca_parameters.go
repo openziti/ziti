@@ -60,7 +60,7 @@ type CreateCaParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.CaCreate
+	Ca *rest_model.CaCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 		var body rest_model.CaCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("ca", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("ca", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateCaParams) BindRequest(r *http.Request, route *middleware.MatchedR
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Ca = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("ca", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

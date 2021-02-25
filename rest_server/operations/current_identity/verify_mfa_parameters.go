@@ -60,7 +60,7 @@ type VerifyMfaParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.MfaCode
+	MfaValidation *rest_model.MfaCode
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *VerifyMfaParams) BindRequest(r *http.Request, route *middleware.Matched
 		var body rest_model.MfaCode
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("mfaValidation", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("mfaValidation", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *VerifyMfaParams) BindRequest(r *http.Request, route *middleware.Matched
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.MfaValidation = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("mfaValidation", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

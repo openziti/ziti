@@ -61,7 +61,7 @@ type PatchAuthenticatorParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.AuthenticatorPatch
+	Authenticator *rest_model.AuthenticatorPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *PatchAuthenticatorParams) BindRequest(r *http.Request, route *middlewar
 		var body rest_model.AuthenticatorPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("authenticator", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("authenticator", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *PatchAuthenticatorParams) BindRequest(r *http.Request, route *middlewar
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Authenticator = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("authenticator", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

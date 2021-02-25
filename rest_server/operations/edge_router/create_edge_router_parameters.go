@@ -56,11 +56,11 @@ type CreateEdgeRouterParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A config-type to create
+	/*A edge router to create
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.EdgeRouterCreate
+	EdgeRouter *rest_model.EdgeRouterCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateEdgeRouterParams) BindRequest(r *http.Request, route *middleware.
 		var body rest_model.EdgeRouterCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("edgeRouter", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("edgeRouter", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateEdgeRouterParams) BindRequest(r *http.Request, route *middleware.
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.EdgeRouter = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("edgeRouter", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

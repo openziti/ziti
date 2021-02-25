@@ -75,7 +75,7 @@ func (r *TransitRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params transit_router.CreateTransitRouterParams) {
 	Create(rc, rc, TransitRouterLinkFactory, func() (string, error) {
-		return ae.Handlers.TransitRouter.Create(MapCreateTransitRouterToModel(params.Body))
+		return ae.Handlers.TransitRouter.Create(MapCreateTransitRouterToModel(params.Router))
 	})
 }
 
@@ -85,12 +85,12 @@ func (r *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params transit_router.UpdateTransitRouterParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.TransitRouter.Update(MapUpdateTransitRouterToModel(params.ID, params.Body), false)
+		return ae.Handlers.TransitRouter.Update(MapUpdateTransitRouterToModel(params.ID, params.Router), false)
 	})
 }
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params transit_router.PatchTransitRouterParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.TransitRouter.Patch(MapPatchTransitRouterToModel(params.ID, params.Body), fields.ConcatNestedNames().FilterMaps("tags"), false)
+		return ae.Handlers.TransitRouter.Patch(MapPatchTransitRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"), false)
 	})
 }

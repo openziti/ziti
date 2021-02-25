@@ -57,16 +57,16 @@ type AssociateIdentitysServiceConfigsParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*An identity patch object
-	  Required: true
-	  In: body
-	*/
-	Body rest_model.ServiceConfigsAssignList
 	/*The id of the requested resource
 	  Required: true
 	  In: path
 	*/
 	ID string
+	/*A service config patch object
+	  Required: true
+	  In: body
+	*/
+	ServiceConfigs rest_model.ServiceConfigsAssignList
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -78,14 +78,19 @@ func (o *AssociateIdentitysServiceConfigsParams) BindRequest(r *http.Request, ro
 
 	o.HTTPRequest = r
 
+	rID, rhkID, _ := route.Params.GetOK("id")
+	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
 		var body rest_model.ServiceConfigsAssignList
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("serviceConfigs", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("serviceConfigs", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,17 +99,12 @@ func (o *AssociateIdentitysServiceConfigsParams) BindRequest(r *http.Request, ro
 			}
 
 			if len(res) == 0 {
-				o.Body = body
+				o.ServiceConfigs = body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("serviceConfigs", "body", ""))
 	}
-	rID, rhkID, _ := route.Params.GetOK("id")
-	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}

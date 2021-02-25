@@ -182,7 +182,7 @@ func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service.CreateServiceParams) {
 	Create(rc, rc, ServiceLinkFactory, func() (string, error) {
-		return ae.Handlers.EdgeService.Create(MapCreateServiceToModel(params.Body))
+		return ae.Handlers.EdgeService.Create(MapCreateServiceToModel(params.Service))
 	})
 }
 
@@ -192,13 +192,13 @@ func (r *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Body))
+		return ae.Handlers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Service))
 	})
 }
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Body), fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Handlers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 

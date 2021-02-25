@@ -198,7 +198,7 @@ func init() {
         "operationId": "authenticate",
         "parameters": [
           {
-            "name": "Body",
+            "name": "auth",
             "in": "body",
             "schema": {
               "$ref": "#/definitions/authenticate"
@@ -240,7 +240,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaAuth",
             "in": "body",
             "required": true,
             "schema": {
@@ -291,8 +291,8 @@ func init() {
         "operationId": "createAuthenticator",
         "parameters": [
           {
-            "description": "A Authenticators create object",
-            "name": "Body",
+            "description": "A Authenticator create object",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -356,7 +356,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator put object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -418,7 +418,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator patch object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -492,7 +492,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA to create",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -553,7 +553,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA update object",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -615,7 +615,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA patch object",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -776,7 +776,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type to create",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -837,7 +837,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type update object",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -902,7 +902,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type patch object",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -1004,7 +1004,7 @@ func init() {
         "parameters": [
           {
             "description": "A config to create",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -1065,7 +1065,7 @@ func init() {
         "parameters": [
           {
             "description": "A config update object",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -1130,7 +1130,7 @@ func init() {
         "parameters": [
           {
             "description": "A config patch object",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -1247,7 +1247,7 @@ func init() {
         "parameters": [
           {
             "description": "The payload describing the CSR used to create a session certificate",
-            "name": "Body",
+            "name": "sessionCertificate",
             "in": "body",
             "required": true,
             "schema": {
@@ -1444,7 +1444,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator put object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -1482,7 +1482,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator patch object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -1602,12 +1602,16 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/mfaCode"
             }
+          },
+          {
+            "type": "string",
+            "name": "mfa-validation-code",
+            "in": "header"
           }
         ],
         "responses": {
@@ -1668,12 +1672,16 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/mfaCode"
             }
+          },
+          {
+            "type": "string",
+            "name": "mfa-validation-code",
+            "in": "header"
           }
         ],
         "responses": {
@@ -1704,7 +1712,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "mfaCode",
+            "name": "mfaValidation",
             "in": "body",
             "required": true,
             "schema": {
@@ -1742,7 +1750,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
             "required": true,
             "schema": {
@@ -1912,7 +1920,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -1973,7 +1981,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -2038,7 +2046,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -2216,8 +2224,8 @@ func init() {
         "operationId": "createEdgeRouter",
         "parameters": [
           {
-            "description": "A config-type to create",
-            "name": "Body",
+            "description": "A edge router to create",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -2278,7 +2286,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router update object",
-            "name": "Body",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -2343,7 +2351,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router patch object",
-            "name": "Body",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -2847,7 +2855,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity to create",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -2908,7 +2916,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity update object",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -2973,7 +2981,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity patch object",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -3200,8 +3208,8 @@ func init() {
         "operationId": "associateIdentitysServiceConfigs",
         "parameters": [
           {
-            "description": "An identity patch object",
-            "name": "Body",
+            "description": "A service config patch object",
+            "name": "serviceConfigs",
             "in": "body",
             "required": true,
             "schema": {
@@ -3239,7 +3247,7 @@ func init() {
         "parameters": [
           {
             "description": "An array of service and config id pairs to remove",
-            "name": "Body",
+            "name": "serviceConfigIdPairs",
             "in": "body",
             "schema": {
               "$ref": "#/definitions/serviceConfigsAssignList"
@@ -3546,8 +3554,8 @@ func init() {
         "operationId": "createPostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks to create",
-            "name": "Body",
+            "description": "A Posture Check to create",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -3607,8 +3615,8 @@ func init() {
         "operationId": "updatePostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks update object",
-            "name": "Body",
+            "description": "A Posture Check update object",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -3669,8 +3677,8 @@ func init() {
         "operationId": "patchPostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks patch object",
-            "name": "Body",
+            "description": "A Posture Check patch object",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -3715,7 +3723,7 @@ func init() {
         "parameters": [
           {
             "description": "A Posture Response",
-            "name": "Body",
+            "name": "postureResponse",
             "in": "body",
             "required": true,
             "schema": {
@@ -3752,7 +3760,7 @@ func init() {
         "parameters": [
           {
             "description": "A Posture Response",
-            "name": "Body",
+            "name": "postureResponse",
             "in": "body",
             "required": true,
             "schema": {
@@ -3839,7 +3847,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -3900,7 +3908,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -3965,7 +3973,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -4104,7 +4112,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -4165,7 +4173,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -4230,7 +4238,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -4473,7 +4481,7 @@ func init() {
         "parameters": [
           {
             "description": "A service to create",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -4534,7 +4542,7 @@ func init() {
         "parameters": [
           {
             "description": "A service update object",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -4599,7 +4607,7 @@ func init() {
         "parameters": [
           {
             "description": "A service patch object",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -4910,7 +4918,7 @@ func init() {
         "parameters": [
           {
             "description": "A session to create",
-            "name": "Body",
+            "name": "session",
             "in": "body",
             "required": true,
             "schema": {
@@ -5122,7 +5130,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator to create",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -5183,7 +5191,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator update object",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -5248,7 +5256,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator patch object",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -5325,7 +5333,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router to create",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {
@@ -5386,7 +5394,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router update object",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {
@@ -5451,7 +5459,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router patch object",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {
@@ -11202,7 +11210,7 @@ func init() {
         "operationId": "authenticate",
         "parameters": [
           {
-            "name": "Body",
+            "name": "auth",
             "in": "body",
             "schema": {
               "$ref": "#/definitions/authenticate"
@@ -11345,7 +11353,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaAuth",
             "in": "body",
             "required": true,
             "schema": {
@@ -11405,8 +11413,8 @@ func init() {
         "operationId": "createAuthenticator",
         "parameters": [
           {
-            "description": "A Authenticators create object",
-            "name": "Body",
+            "description": "A Authenticator create object",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -11572,7 +11580,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator put object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -11773,7 +11781,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator patch object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -11941,7 +11949,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA to create",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -12107,7 +12115,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA update object",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -12308,7 +12316,7 @@ func init() {
         "parameters": [
           {
             "description": "A CA patch object",
-            "name": "Body",
+            "name": "ca",
             "in": "body",
             "required": true,
             "schema": {
@@ -12696,7 +12704,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type to create",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -12862,7 +12870,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type update object",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -13088,7 +13096,7 @@ func init() {
         "parameters": [
           {
             "description": "A config-type patch object",
-            "name": "Body",
+            "name": "configType",
             "in": "body",
             "required": true,
             "schema": {
@@ -13312,7 +13320,7 @@ func init() {
         "parameters": [
           {
             "description": "A config to create",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -13478,7 +13486,7 @@ func init() {
         "parameters": [
           {
             "description": "A config update object",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -13704,7 +13712,7 @@ func init() {
         "parameters": [
           {
             "description": "A config patch object",
-            "name": "Body",
+            "name": "config",
             "in": "body",
             "required": true,
             "schema": {
@@ -13999,7 +14007,7 @@ func init() {
         "parameters": [
           {
             "description": "The payload describing the CSR used to create a session certificate",
-            "name": "Body",
+            "name": "sessionCertificate",
             "in": "body",
             "required": true,
             "schema": {
@@ -14532,7 +14540,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator put object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -14651,7 +14659,7 @@ func init() {
         "parameters": [
           {
             "description": "An authenticator patch object",
-            "name": "Body",
+            "name": "authenticator",
             "in": "body",
             "required": true,
             "schema": {
@@ -14970,12 +14978,16 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/mfaCode"
             }
+          },
+          {
+            "type": "string",
+            "name": "mfa-validation-code",
+            "in": "header"
           }
         ],
         "responses": {
@@ -15083,12 +15095,16 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/mfaCode"
             }
+          },
+          {
+            "type": "string",
+            "name": "mfa-validation-code",
+            "in": "header"
           }
         ],
         "responses": {
@@ -15166,7 +15182,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "mfaCode",
+            "name": "mfaValidation",
             "in": "body",
             "required": true,
             "schema": {
@@ -15251,7 +15267,7 @@ func init() {
         "parameters": [
           {
             "description": "An MFA validation request",
-            "name": "Body",
+            "name": "mfaValidation",
             "in": "body",
             "required": true,
             "schema": {
@@ -15654,7 +15670,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -15820,7 +15836,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -16046,7 +16062,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -16479,8 +16495,8 @@ func init() {
         "operationId": "createEdgeRouter",
         "parameters": [
           {
-            "description": "A config-type to create",
-            "name": "Body",
+            "description": "A edge router to create",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -16646,7 +16662,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router update object",
-            "name": "Body",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -16872,7 +16888,7 @@ func init() {
         "parameters": [
           {
             "description": "An edge router patch object",
-            "name": "Body",
+            "name": "edgeRouter",
             "in": "body",
             "required": true,
             "schema": {
@@ -18055,7 +18071,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity to create",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -18221,7 +18237,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity update object",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -18447,7 +18463,7 @@ func init() {
         "parameters": [
           {
             "description": "An identity patch object",
-            "name": "Body",
+            "name": "identity",
             "in": "body",
             "required": true,
             "schema": {
@@ -19065,8 +19081,8 @@ func init() {
         "operationId": "associateIdentitysServiceConfigs",
         "parameters": [
           {
-            "description": "An identity patch object",
-            "name": "Body",
+            "description": "A service config patch object",
+            "name": "serviceConfigs",
             "in": "body",
             "required": true,
             "schema": {
@@ -19185,7 +19201,7 @@ func init() {
         "parameters": [
           {
             "description": "An array of service and config id pairs to remove",
-            "name": "Body",
+            "name": "serviceConfigIdPairs",
             "in": "body",
             "schema": {
               "$ref": "#/definitions/serviceConfigsAssignList"
@@ -19867,8 +19883,8 @@ func init() {
         "operationId": "createPostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks to create",
-            "name": "Body",
+            "description": "A Posture Check to create",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -20033,8 +20049,8 @@ func init() {
         "operationId": "updatePostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks update object",
-            "name": "Body",
+            "description": "A Posture Check update object",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -20223,8 +20239,8 @@ func init() {
         "operationId": "patchPostureCheck",
         "parameters": [
           {
-            "description": "A Posture Checks patch object",
-            "name": "Body",
+            "description": "A Posture Check patch object",
+            "name": "postureCheck",
             "in": "body",
             "required": true,
             "schema": {
@@ -20354,7 +20370,7 @@ func init() {
         "parameters": [
           {
             "description": "A Posture Response",
-            "name": "Body",
+            "name": "postureResponse",
             "in": "body",
             "required": true,
             "schema": {
@@ -20449,7 +20465,7 @@ func init() {
         "parameters": [
           {
             "description": "A Posture Response",
-            "name": "Body",
+            "name": "postureResponse",
             "in": "body",
             "required": true,
             "schema": {
@@ -20627,7 +20643,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -20793,7 +20809,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -21019,7 +21035,7 @@ func init() {
         "parameters": [
           {
             "description": "A service edge router policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -21375,7 +21391,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy to create",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -21541,7 +21557,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy update object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -21767,7 +21783,7 @@ func init() {
         "parameters": [
           {
             "description": "A service policy patch object",
-            "name": "Body",
+            "name": "policy",
             "in": "body",
             "required": true,
             "schema": {
@@ -22334,7 +22350,7 @@ func init() {
         "parameters": [
           {
             "description": "A service to create",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -22500,7 +22516,7 @@ func init() {
         "parameters": [
           {
             "description": "A service update object",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -22726,7 +22742,7 @@ func init() {
         "parameters": [
           {
             "description": "A service patch object",
-            "name": "Body",
+            "name": "service",
             "in": "body",
             "required": true,
             "schema": {
@@ -23356,7 +23372,7 @@ func init() {
         "parameters": [
           {
             "description": "A session to create",
-            "name": "Body",
+            "name": "session",
             "in": "body",
             "required": true,
             "schema": {
@@ -23828,7 +23844,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator to create",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -23994,7 +24010,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator update object",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -24220,7 +24236,7 @@ func init() {
         "parameters": [
           {
             "description": "A terminator patch object",
-            "name": "Body",
+            "name": "terminator",
             "in": "body",
             "required": true,
             "schema": {
@@ -24412,7 +24428,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router to create",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {
@@ -24578,7 +24594,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router update object",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {
@@ -24804,7 +24820,7 @@ func init() {
         "parameters": [
           {
             "description": "A transit router patch object",
-            "name": "Body",
+            "name": "router",
             "in": "body",
             "required": true,
             "schema": {

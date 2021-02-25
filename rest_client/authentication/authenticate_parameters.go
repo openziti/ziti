@@ -86,8 +86,8 @@ for the authenticate operation typically these are written to a http.Request
 */
 type AuthenticateParams struct {
 
-	/*Body*/
-	Body *rest_model.Authenticate
+	/*Auth*/
+	Auth *rest_model.Authenticate
 	/*Method*/
 	Method string
 
@@ -129,15 +129,15 @@ func (o *AuthenticateParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the authenticate params
-func (o *AuthenticateParams) WithBody(body *rest_model.Authenticate) *AuthenticateParams {
-	o.SetBody(body)
+// WithAuth adds the auth to the authenticate params
+func (o *AuthenticateParams) WithAuth(auth *rest_model.Authenticate) *AuthenticateParams {
+	o.SetAuth(auth)
 	return o
 }
 
-// SetBody adds the body to the authenticate params
-func (o *AuthenticateParams) SetBody(body *rest_model.Authenticate) {
-	o.Body = body
+// SetAuth adds the auth to the authenticate params
+func (o *AuthenticateParams) SetAuth(auth *rest_model.Authenticate) {
+	o.Auth = auth
 }
 
 // WithMethod adds the method to the authenticate params
@@ -159,8 +159,8 @@ func (o *AuthenticateParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Auth != nil {
+		if err := r.SetBodyParam(o.Auth); err != nil {
 			return err
 		}
 	}

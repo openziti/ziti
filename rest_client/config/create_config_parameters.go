@@ -86,11 +86,11 @@ for the create config operation typically these are written to a http.Request
 */
 type CreateConfigParams struct {
 
-	/*Body
+	/*Config
 	  A config to create
 
 	*/
-	Body *rest_model.ConfigCreate
+	Config *rest_model.ConfigCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateConfigParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create config params
-func (o *CreateConfigParams) WithBody(body *rest_model.ConfigCreate) *CreateConfigParams {
-	o.SetBody(body)
+// WithConfig adds the config to the create config params
+func (o *CreateConfigParams) WithConfig(config *rest_model.ConfigCreate) *CreateConfigParams {
+	o.SetConfig(config)
 	return o
 }
 
-// SetBody adds the body to the create config params
-func (o *CreateConfigParams) SetBody(body *rest_model.ConfigCreate) {
-	o.Body = body
+// SetConfig adds the config to the create config params
+func (o *CreateConfigParams) SetConfig(config *rest_model.ConfigCreate) {
+	o.Config = config
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateConfigParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Config != nil {
+		if err := r.SetBodyParam(o.Config); err != nil {
 			return err
 		}
 	}

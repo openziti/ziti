@@ -61,7 +61,7 @@ type PatchEdgeRouterParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.EdgeRouterPatch
+	EdgeRouter *rest_model.EdgeRouterPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *PatchEdgeRouterParams) BindRequest(r *http.Request, route *middleware.M
 		var body rest_model.EdgeRouterPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("edgeRouter", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("edgeRouter", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *PatchEdgeRouterParams) BindRequest(r *http.Request, route *middleware.M
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.EdgeRouter = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("edgeRouter", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

@@ -54,14 +54,14 @@ func (r *PostureResponseRouter) Register(ae *env.AppEnv) {
 
 func (r *PostureResponseRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseParams) {
 	Create(rc, rc, PostureResponseLinkFactory, func() (string, error) {
-		apiPostureResponse := params.Body
+		apiPostureResponse := params.PostureResponse
 		r.handlePostureResponse(ae, rc, apiPostureResponse)
 		return "", nil
 	})
 }
 
 func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseBulkParams) {
-	for _, apiPostureResponse := range params.Body {
+	for _, apiPostureResponse := range params.PostureResponse {
 		r.handlePostureResponse(ae, rc, apiPostureResponse)
 	}
 

@@ -159,7 +159,7 @@ func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) str
 
 func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params identity.CreateIdentityParams) {
 	Create(rc, rc, IdentityLinkFactory, func() (string, error) {
-		identityModel, enrollments := MapCreateIdentityToModel(params.Body, getIdentityTypeId(ae, params.Body.Type))
+		identityModel, enrollments := MapCreateIdentityToModel(params.Identity, getIdentityTypeId(ae, params.Identity.Type))
 		identityId, _, err := ae.Handlers.Identity.CreateWithEnrollments(identityModel, enrollments)
 		return identityId, err
 	})
@@ -171,13 +171,13 @@ func (r *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Body, getIdentityTypeId(ae, params.Body.Type)))
+		return ae.Handlers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)))
 	})
 }
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Body, getIdentityTypeId(ae, params.Body.Type)), fields.FilterMaps("tags"))
+		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields.FilterMaps("tags"))
 	})
 }
 
@@ -233,7 +233,7 @@ func (r *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.Request
 func (r *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.RequestContext, params identity.AssociateIdentitysServiceConfigsParams) {
 	Update(rc, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
-		for _, serviceConfig := range params.Body {
+		for _, serviceConfig := range params.ServiceConfigs {
 			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
 		return ae.Handlers.Identity.AssignServiceConfigs(id, modelServiceConfigs)
@@ -243,7 +243,7 @@ func (r *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.Reque
 func (r *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.RequestContext, params identity.DisassociateIdentitysServiceConfigsParams) {
 	UpdateAllowEmptyBody(rc, func(id string) error {
 		var modelServiceConfigs []model.ServiceConfig
-		for _, serviceConfig := range params.Body {
+		for _, serviceConfig := range params.ServiceConfigIDPairs {
 			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
 		return ae.Handlers.Identity.RemoveServiceConfigs(id, modelServiceConfigs)

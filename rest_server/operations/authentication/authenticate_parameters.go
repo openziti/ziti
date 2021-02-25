@@ -60,7 +60,7 @@ type AuthenticateParams struct {
 	/*
 	  In: body
 	*/
-	Body *rest_model.Authenticate
+	Auth *rest_model.Authenticate
 	/*
 	  Required: true
 	  In: query
@@ -83,7 +83,7 @@ func (o *AuthenticateParams) BindRequest(r *http.Request, route *middleware.Matc
 		defer r.Body.Close()
 		var body rest_model.Authenticate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			res = append(res, errors.NewParseError("body", "body", "", err))
+			res = append(res, errors.NewParseError("auth", "body", "", err))
 		} else {
 			// validate body object
 			if err := body.Validate(route.Formats); err != nil {
@@ -91,7 +91,7 @@ func (o *AuthenticateParams) BindRequest(r *http.Request, route *middleware.Matc
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Auth = &body
 			}
 		}
 	}

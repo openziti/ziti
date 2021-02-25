@@ -49,7 +49,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.CurrentIdentityDeleteMfaHandler = current_identity.DeleteMfaHandlerFunc(func(params current_identity.DeleteMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.removeMfa(ae, rc, params.Body)
+			r.removeMfa(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
@@ -63,7 +63,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.CurrentIdentityVerifyMfaHandler = current_identity.VerifyMfaHandlerFunc(func(params current_identity.VerifyMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.verifyMfa(ae, rc, params.Body)
+			r.verifyMfa(ae, rc, params.MfaValidation)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
@@ -73,13 +73,13 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.CurrentIdentityCreateMfaRecoveryCodesHandler = current_identity.CreateMfaRecoveryCodesHandlerFunc(func(params current_identity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.createMfaRecoveryCodes(ae, rc, params.MfaCode)
+			r.createMfaRecoveryCodes(ae, rc, params.MfaValidation)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
 	ae.Api.CurrentIdentityDetailMfaRecoveryCodesHandler = current_identity.DetailMfaRecoveryCodesHandlerFunc(func(params current_identity.DetailMfaRecoveryCodesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.detailMfaRecoveryCodes(ae, rc, params.Body)
+			r.detailMfaRecoveryCodes(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
@@ -168,8 +168,16 @@ func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestCo
 	})
 }
 
-func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	err := ae.Handlers.Mfa.DeleteForIdentity(rc.Identity, *body.Code)
+func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, params current_identity.DeleteMfaParams) {
+	code := ""
+
+	if params.MfaValidation != nil && params.MfaValidation.Code != nil{
+		code = *params.MfaValidation.Code
+	} else if params.MfaValidationCode != nil {
+		code = *params.MfaValidationCode
+	}
+
+	err := ae.Handlers.Mfa.DeleteForIdentity(rc.Identity, code)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -247,7 +255,7 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 	rc.RespondWithEmptyOk()
 }
 
-func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
+func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, params current_identity.DetailMfaRecoveryCodesParams) {
 	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
@@ -265,7 +273,20 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.VerifyTOTP(mfa, *body.Code)
+	code := ""
+
+	if params.MfaValidation != nil && params.MfaValidation.Code != nil{
+		code = *params.MfaValidation.Code
+	} else if params.MfaValidationCode != nil {
+		code = *params.MfaValidationCode
+	}
+
+	if code == "" {
+		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
+		return
+	}
+
+	ok, _ := ae.Handlers.Mfa.VerifyTOTP(mfa, code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())

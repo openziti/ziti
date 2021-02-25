@@ -86,11 +86,11 @@ for the update ca operation typically these are written to a http.Request
 */
 type UpdateCaParams struct {
 
-	/*Body
+	/*Ca
 	  A CA update object
 
 	*/
-	Body *rest_model.CaUpdate
+	Ca *rest_model.CaUpdate
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *UpdateCaParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update ca params
-func (o *UpdateCaParams) WithBody(body *rest_model.CaUpdate) *UpdateCaParams {
-	o.SetBody(body)
+// WithCa adds the ca to the update ca params
+func (o *UpdateCaParams) WithCa(ca *rest_model.CaUpdate) *UpdateCaParams {
+	o.SetCa(ca)
 	return o
 }
 
-// SetBody adds the body to the update ca params
-func (o *UpdateCaParams) SetBody(body *rest_model.CaUpdate) {
-	o.Body = body
+// SetCa adds the ca to the update ca params
+func (o *UpdateCaParams) SetCa(ca *rest_model.CaUpdate) {
+	o.Ca = ca
 }
 
 // WithID adds the id to the update ca params
@@ -165,8 +165,8 @@ func (o *UpdateCaParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Regi
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Ca != nil {
+		if err := r.SetBodyParam(o.Ca); err != nil {
 			return err
 		}
 	}

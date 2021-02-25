@@ -56,11 +56,11 @@ type CreateAuthenticatorParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A Authenticators create object
+	/*A Authenticator create object
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.AuthenticatorCreate
+	Authenticator *rest_model.AuthenticatorCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateAuthenticatorParams) BindRequest(r *http.Request, route *middlewa
 		var body rest_model.AuthenticatorCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("authenticator", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("authenticator", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateAuthenticatorParams) BindRequest(r *http.Request, route *middlewa
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Authenticator = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("authenticator", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

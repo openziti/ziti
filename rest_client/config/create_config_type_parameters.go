@@ -86,11 +86,11 @@ for the create config type operation typically these are written to a http.Reque
 */
 type CreateConfigTypeParams struct {
 
-	/*Body
+	/*ConfigType
 	  A config-type to create
 
 	*/
-	Body *rest_model.ConfigTypeCreate
+	ConfigType *rest_model.ConfigTypeCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateConfigTypeParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create config type params
-func (o *CreateConfigTypeParams) WithBody(body *rest_model.ConfigTypeCreate) *CreateConfigTypeParams {
-	o.SetBody(body)
+// WithConfigType adds the configType to the create config type params
+func (o *CreateConfigTypeParams) WithConfigType(configType *rest_model.ConfigTypeCreate) *CreateConfigTypeParams {
+	o.SetConfigType(configType)
 	return o
 }
 
-// SetBody adds the body to the create config type params
-func (o *CreateConfigTypeParams) SetBody(body *rest_model.ConfigTypeCreate) {
-	o.Body = body
+// SetConfigType adds the configType to the create config type params
+func (o *CreateConfigTypeParams) SetConfigType(configType *rest_model.ConfigTypeCreate) {
+	o.ConfigType = configType
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateConfigTypeParams) WriteToRequest(r runtime.ClientRequest, reg str
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.ConfigType != nil {
+		if err := r.SetBodyParam(o.ConfigType); err != nil {
 			return err
 		}
 	}

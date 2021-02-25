@@ -86,11 +86,13 @@ for the detail mfa recovery codes operation typically these are written to a htt
 */
 type DetailMfaRecoveryCodesParams struct {
 
-	/*Body
+	/*MfaValidationCode*/
+	MfaValidationCode *string
+	/*MfaValidation
 	  An MFA validation request
 
 	*/
-	Body *rest_model.MfaCode
+	MfaValidation *rest_model.MfaCode
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +132,26 @@ func (o *DetailMfaRecoveryCodesParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the detail mfa recovery codes params
-func (o *DetailMfaRecoveryCodesParams) WithBody(body *rest_model.MfaCode) *DetailMfaRecoveryCodesParams {
-	o.SetBody(body)
+// WithMfaValidationCode adds the mfaValidationCode to the detail mfa recovery codes params
+func (o *DetailMfaRecoveryCodesParams) WithMfaValidationCode(mfaValidationCode *string) *DetailMfaRecoveryCodesParams {
+	o.SetMfaValidationCode(mfaValidationCode)
 	return o
 }
 
-// SetBody adds the body to the detail mfa recovery codes params
-func (o *DetailMfaRecoveryCodesParams) SetBody(body *rest_model.MfaCode) {
-	o.Body = body
+// SetMfaValidationCode adds the mfaValidationCode to the detail mfa recovery codes params
+func (o *DetailMfaRecoveryCodesParams) SetMfaValidationCode(mfaValidationCode *string) {
+	o.MfaValidationCode = mfaValidationCode
+}
+
+// WithMfaValidation adds the mfaValidation to the detail mfa recovery codes params
+func (o *DetailMfaRecoveryCodesParams) WithMfaValidation(mfaValidation *rest_model.MfaCode) *DetailMfaRecoveryCodesParams {
+	o.SetMfaValidation(mfaValidation)
+	return o
+}
+
+// SetMfaValidation adds the mfaValidation to the detail mfa recovery codes params
+func (o *DetailMfaRecoveryCodesParams) SetMfaValidation(mfaValidation *rest_model.MfaCode) {
+	o.MfaValidation = mfaValidation
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +162,17 @@ func (o *DetailMfaRecoveryCodesParams) WriteToRequest(r runtime.ClientRequest, r
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.MfaValidationCode != nil {
+
+		// header param mfa-validation-code
+		if err := r.SetHeaderParam("mfa-validation-code", *o.MfaValidationCode); err != nil {
+			return err
+		}
+
+	}
+
+	if o.MfaValidation != nil {
+		if err := r.SetBodyParam(o.MfaValidation); err != nil {
 			return err
 		}
 	}

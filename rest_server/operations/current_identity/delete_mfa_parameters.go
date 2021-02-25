@@ -30,12 +30,12 @@ package current_identity
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 
 	"github.com/openziti/edge/rest_model"
 )
@@ -56,11 +56,14 @@ type DeleteMfaParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
+	/*
+	  In: header
+	*/
+	MfaValidationCode *string
 	/*An MFA validation request
-	  Required: true
 	  In: body
 	*/
-	Body *rest_model.MfaCode
+	MfaValidation *rest_model.MfaCode
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -72,15 +75,15 @@ func (o *DeleteMfaParams) BindRequest(r *http.Request, route *middleware.Matched
 
 	o.HTTPRequest = r
 
+	if err := o.bindMfaValidationCode(r.Header[http.CanonicalHeaderKey("mfa-validation-code")], true, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
 		var body rest_model.MfaCode
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
-			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
-			}
+			res = append(res, errors.NewParseError("mfaValidation", "body", "", err))
 		} else {
 			// validate body object
 			if err := body.Validate(route.Formats); err != nil {
@@ -88,14 +91,30 @@ func (o *DeleteMfaParams) BindRequest(r *http.Request, route *middleware.Matched
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.MfaValidation = &body
 			}
 		}
-	} else {
-		res = append(res, errors.Required("body", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// bindMfaValidationCode binds and validates parameter MfaValidationCode from header.
+func (o *DeleteMfaParams) bindMfaValidationCode(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+
+	if raw == "" { // empty values pass all other validations
+		return nil
+	}
+
+	o.MfaValidationCode = &raw
+
 	return nil
 }
