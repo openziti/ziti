@@ -1,3 +1,22 @@
+# Release 0.19.4
+
+## What's New
+
+* Link latency probe timeout parameter in router configuration.
+
+## Link Latency Probe Timeout
+
+Control the link latency probe timeout parameter with the following router configuration syntax:
+
+```
+forwarder:
+  #
+  # After how many milliseconds does the link latency probe timeout?
+  # (default 10000)
+  #
+  latencyProbeTimeout: 10000
+```
+
 # Release 0.19.3
 
 ## What's New
