@@ -6672,6 +6672,36 @@ func init() {
         }
       }
     },
+    "commonEdgeRouterProperties": {
+      "type": "object",
+      "required": [
+        "hostname",
+        "name",
+        "supportedProtocols",
+        "syncStatus",
+        "isOnline"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string"
+        },
+        "isOnline": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "supportedProtocols": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "syncStatus": {
+          "type": "string"
+        }
+      }
+    },
     "configCreate": {
       "description": "A config create object",
       "type": "object",
@@ -7078,30 +7108,7 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
-          "type": "object",
-          "required": [
-            "name",
-            "isOnline",
-            "hostname",
-            "supportedProtocols"
-          ],
-          "properties": {
-            "hostname": {
-              "type": "string"
-            },
-            "isOnline": {
-              "type": "boolean"
-            },
-            "name": {
-              "type": "string"
-            },
-            "supportedProtocols": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          }
+          "$ref": "#/definitions/commonEdgeRouterProperties"
         }
       ]
     },
@@ -7633,20 +7640,18 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
+          "$ref": "#/definitions/commonEdgeRouterProperties"
+        },
+        {
           "type": "object",
           "required": [
-            "name",
             "isVerified",
-            "isOnline",
-            "hostname",
-            "supportedProtocols",
             "roleAttributes",
             "os",
             "version",
             "arch",
             "buildDate",
-            "revision",
-            "syncStatus"
+            "revision"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -7670,29 +7675,11 @@ func init() {
             "fingerprint": {
               "type": "string"
             },
-            "hostname": {
-              "type": "string"
-            },
-            "isOnline": {
-              "type": "boolean"
-            },
             "isVerified": {
               "type": "boolean"
             },
-            "name": {
-              "type": "string"
-            },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"
-            },
-            "supportedProtocols": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "syncStatus": {
-              "type": "string"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -9777,21 +9764,25 @@ func init() {
       ]
     },
     "sessionEdgeRouter": {
-      "type": "object",
-      "properties": {
-        "hostname": {
-          "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/commonEdgeRouterProperties"
         },
-        "name": {
-          "type": "string"
-        },
-        "urls": {
+        {
           "type": "object",
-          "additionalProperties": {
-            "type": "string"
+          "required": [
+            "urls"
+          ],
+          "properties": {
+            "urls": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
           }
         }
-      }
+      ]
     },
     "sessionList": {
       "type": "array",
@@ -26212,6 +26203,36 @@ func init() {
         }
       }
     },
+    "commonEdgeRouterProperties": {
+      "type": "object",
+      "required": [
+        "hostname",
+        "name",
+        "supportedProtocols",
+        "syncStatus",
+        "isOnline"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string"
+        },
+        "isOnline": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "supportedProtocols": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "syncStatus": {
+          "type": "string"
+        }
+      }
+    },
     "configCreate": {
       "description": "A config create object",
       "type": "object",
@@ -26618,30 +26639,7 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
-          "type": "object",
-          "required": [
-            "name",
-            "isOnline",
-            "hostname",
-            "supportedProtocols"
-          ],
-          "properties": {
-            "hostname": {
-              "type": "string"
-            },
-            "isOnline": {
-              "type": "boolean"
-            },
-            "name": {
-              "type": "string"
-            },
-            "supportedProtocols": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          }
+          "$ref": "#/definitions/commonEdgeRouterProperties"
         }
       ]
     },
@@ -27173,20 +27171,18 @@ func init() {
           "$ref": "#/definitions/baseEntity"
         },
         {
+          "$ref": "#/definitions/commonEdgeRouterProperties"
+        },
+        {
           "type": "object",
           "required": [
-            "name",
             "isVerified",
-            "isOnline",
-            "hostname",
-            "supportedProtocols",
             "roleAttributes",
             "os",
             "version",
             "arch",
             "buildDate",
-            "revision",
-            "syncStatus"
+            "revision"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -27210,29 +27206,11 @@ func init() {
             "fingerprint": {
               "type": "string"
             },
-            "hostname": {
-              "type": "string"
-            },
-            "isOnline": {
-              "type": "boolean"
-            },
             "isVerified": {
               "type": "boolean"
             },
-            "name": {
-              "type": "string"
-            },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"
-            },
-            "supportedProtocols": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "syncStatus": {
-              "type": "string"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -29317,21 +29295,25 @@ func init() {
       ]
     },
     "sessionEdgeRouter": {
-      "type": "object",
-      "properties": {
-        "hostname": {
-          "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/commonEdgeRouterProperties"
         },
-        "name": {
-          "type": "string"
-        },
-        "urls": {
+        {
           "type": "object",
-          "additionalProperties": {
-            "type": "string"
+          "required": [
+            "urls"
+          ],
+          "properties": {
+            "urls": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
           }
         }
-      }
+      ]
     },
     "sessionList": {
       "type": "array",

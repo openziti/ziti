@@ -33,7 +33,6 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // CurrentIdentityEdgeRouterDetail A detail edge router resource
@@ -42,21 +41,7 @@ import (
 type CurrentIdentityEdgeRouterDetail struct {
 	BaseEntity
 
-	// hostname
-	// Required: true
-	Hostname *string `json:"hostname"`
-
-	// is online
-	// Required: true
-	IsOnline *bool `json:"isOnline"`
-
-	// name
-	// Required: true
-	Name *string `json:"name"`
-
-	// supported protocols
-	// Required: true
-	SupportedProtocols map[string]string `json:"supportedProtocols"`
+	CommonEdgeRouterProperties
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -69,26 +54,11 @@ func (m *CurrentIdentityEdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 	m.BaseEntity = aO0
 
 	// AO1
-	var dataAO1 struct {
-		Hostname *string `json:"hostname"`
-
-		IsOnline *bool `json:"isOnline"`
-
-		Name *string `json:"name"`
-
-		SupportedProtocols map[string]string `json:"supportedProtocols"`
-	}
-	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
+	var aO1 CommonEdgeRouterProperties
+	if err := swag.ReadJSON(raw, &aO1); err != nil {
 		return err
 	}
-
-	m.Hostname = dataAO1.Hostname
-
-	m.IsOnline = dataAO1.IsOnline
-
-	m.Name = dataAO1.Name
-
-	m.SupportedProtocols = dataAO1.SupportedProtocols
+	m.CommonEdgeRouterProperties = aO1
 
 	return nil
 }
@@ -102,29 +72,12 @@ func (m CurrentIdentityEdgeRouterDetail) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	_parts = append(_parts, aO0)
-	var dataAO1 struct {
-		Hostname *string `json:"hostname"`
 
-		IsOnline *bool `json:"isOnline"`
-
-		Name *string `json:"name"`
-
-		SupportedProtocols map[string]string `json:"supportedProtocols"`
+	aO1, err := swag.WriteJSON(m.CommonEdgeRouterProperties)
+	if err != nil {
+		return nil, err
 	}
-
-	dataAO1.Hostname = m.Hostname
-
-	dataAO1.IsOnline = m.IsOnline
-
-	dataAO1.Name = m.Name
-
-	dataAO1.SupportedProtocols = m.SupportedProtocols
-
-	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
-	if errAO1 != nil {
-		return nil, errAO1
-	}
-	_parts = append(_parts, jsonDataAO1)
+	_parts = append(_parts, aO1)
 	return swag.ConcatJSON(_parts...), nil
 }
 
@@ -136,58 +89,14 @@ func (m *CurrentIdentityEdgeRouterDetail) Validate(formats strfmt.Registry) erro
 	if err := m.BaseEntity.Validate(formats); err != nil {
 		res = append(res, err)
 	}
-
-	if err := m.validateHostname(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateIsOnline(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateName(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateSupportedProtocols(formats); err != nil {
+	// validation for a type composition with CommonEdgeRouterProperties
+	if err := m.CommonEdgeRouterProperties.Validate(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *CurrentIdentityEdgeRouterDetail) validateHostname(formats strfmt.Registry) error {
-
-	if err := validate.Required("hostname", "body", m.Hostname); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *CurrentIdentityEdgeRouterDetail) validateIsOnline(formats strfmt.Registry) error {
-
-	if err := validate.Required("isOnline", "body", m.IsOnline); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *CurrentIdentityEdgeRouterDetail) validateName(formats strfmt.Registry) error {
-
-	if err := validate.Required("name", "body", m.Name); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *CurrentIdentityEdgeRouterDetail) validateSupportedProtocols(formats strfmt.Registry) error {
-
 	return nil
 }
 
