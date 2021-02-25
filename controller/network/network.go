@@ -381,6 +381,25 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			}
 		}
 
+		// 5.a: Unroute Abandoned Routers (from Previous Attempts)
+		usedRouters := make(map[string]struct{})
+		for _, r := range circuit.Path {
+			usedRouters[r.Id] = struct{}{}
+		}
+		for cleanupRId, _ := range allCleanups {
+			if _, found := usedRouters[cleanupRId]; !found {
+				if r, err := network.GetRouter(cleanupRId); err == nil {
+					if err := sendUnroute(r, sessionId, true); err == nil {
+						logrus.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+					} else {
+						logrus.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+					}
+				} else {
+					logrus.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, sessionId.Token)
+				}
+			}
+		}
+
 		// 6: Create Session Object
 		ss := &session{
 			Id:         sessionId,
