@@ -38,6 +38,7 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 			ch,
 			self.metricsRegistry.Histogram("link."+xlink.Id().Token+".latency"),
 			self.forwarderOptions.LatencyProbeInterval,
+			self.forwarderOptions.LatencyProbeTimeout,
 		)
 	}
 

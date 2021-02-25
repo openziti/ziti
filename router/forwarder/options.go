@@ -23,6 +23,7 @@ import (
 
 type Options struct {
 	LatencyProbeInterval     time.Duration
+	LatencyProbeTimeout      time.Duration
 	XgressCloseCheckInterval time.Duration
 	FaultTxInterval          time.Duration
 	XgressDial               WorkerPoolOptions
@@ -37,6 +38,7 @@ type WorkerPoolOptions struct {
 func DefaultOptions() *Options {
 	return &Options{
 		LatencyProbeInterval:     10 * time.Second,
+		LatencyProbeTimeout:	  10 * time.Second,
 		XgressCloseCheckInterval: 5 * time.Second,
 		FaultTxInterval:          15 * time.Second,
 		XgressDial: WorkerPoolOptions{
@@ -58,6 +60,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.LatencyProbeInterval = time.Duration(latencyProbeInterval) * time.Millisecond
 		} else {
 			return nil, errors.New("invalid value for 'latencyProbeInterval'")
+		}
+	}
+
+	if value, found := src["latencyProbeTimeout"]; found {
+		if latencyProbeTimeout, ok := value.(int); ok {
+			options.LatencyProbeTimeout = time.Duration(latencyProbeTimeout) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'latencyProbeTimeout'")
 		}
 	}
 
