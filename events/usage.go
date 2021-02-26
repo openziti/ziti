@@ -8,7 +8,7 @@ import (
 	"reflect"
 )
 
-func registerUsageEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func registerUsageEventHandler(val interface{}, _ map[interface{}]interface{}) error {
 	handler, ok := val.(UsageEventHandler)
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/events/UsageEventHandler interface.", reflect.TypeOf(val))
@@ -18,15 +18,22 @@ func registerUsageEventHandler(val interface{}, config map[interface{}]interface
 	return nil
 }
 
+func RegisterUsageEventHandler(handler UsageEventHandler) func() {
+	result := &usageAdapter{
+		handler: handler,
+	}
+
+	events.AddMetricsEventHandler(result)
+	return func() {
+		events.RemoveMetricsEventHandler(result)
+	}
+}
+
 type usageAdapter struct {
 	handler UsageEventHandler
 }
 
 func (adapter *usageAdapter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
-	if message.IntervalCounters == nil {
-		return
-	}
-
 	for name, interval := range message.IntervalCounters {
 		for _, bucket := range interval.Buckets {
 			for session, usage := range bucket.Values {

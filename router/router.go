@@ -73,6 +73,10 @@ type Router struct {
 	versionProvider common.VersionProvider
 }
 
+func (self *Router) MetricsRegistry() metrics.UsageRegistry {
+	return self.metricsRegistry
+}
+
 func (self *Router) Channel() channel2.Channel {
 	return self.ctrl
 }
@@ -88,7 +92,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	metricsConfig := &metrics.Config{
 		Source:         config.Id.Token,
 		ReportInterval: time.Second * 15,
-		EventSink:      metrics.NewDispatchWrapper(eventDispatcher.Dispatch),
+		EventSink:      metrics.NilHandler{},
 	}
 	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
@@ -334,7 +338,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
-	events.AddMetricsEventHandler(self.metricsReporter)
+	self.metricsRegistry.SetEventSink(self.metricsReporter)
 
 	return nil
 }

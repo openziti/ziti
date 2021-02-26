@@ -33,7 +33,7 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 		}
 	}
 
-	adapter := &SessionEventAdapter{
+	adapter := &sessionEventAdapter{
 		handler: handler,
 	}
 
@@ -124,11 +124,23 @@ type SessionEventHandler interface {
 	AcceptSessionEvent(event *SessionEvent)
 }
 
-type SessionEventAdapter struct {
+func RegisterSessionEventHandler(handler SessionEventHandler) func() {
+	adapter := &sessionEventAdapter{
+		handler: handler,
+	}
+
+	AddSessionEventHandler(adapter)
+
+	return func() {
+		RemoveSessionEventHandler(adapter)
+	}
+}
+
+type sessionEventAdapter struct {
 	handler SessionEventHandler
 }
 
-func (adapter *SessionEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
+func (adapter *sessionEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
 	event := &SessionEvent{
 		Namespace: "fabric.sessions",
 		EventType: "created",
@@ -142,7 +154,7 @@ func (adapter *SessionEventAdapter) SessionCreated(sessionId *identity.TokenId, 
 	adapter.handler.AcceptSessionEvent(event)
 }
 
-func (adapter *SessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
+func (adapter *sessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
 	event := &SessionEvent{
 		Namespace: "fabric.sessions",
 		EventType: "deleted",
@@ -154,7 +166,7 @@ func (adapter *SessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, 
 	adapter.handler.AcceptSessionEvent(event)
 }
 
-func (adapter *SessionEventAdapter) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
+func (adapter *sessionEventAdapter) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
 	event := &SessionEvent{
 		Namespace: "fabric.sessions",
 		EventType: "circuitUpdated",
