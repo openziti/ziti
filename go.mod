@@ -26,8 +26,8 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.3.7
 	github.com/openziti/edge v0.19.5
-	github.com/openziti/fabric v0.16.11
-	github.com/openziti/foundation v0.15.18
+	github.com/openziti/fabric v0.16.12
+	github.com/openziti/foundation v0.15.19
 	github.com/openziti/sdk-golang v0.15.16
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -35,7 +35,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil v2.20.9+incompatible
-	github.com/sirupsen/logrus v1.7.1
+	github.com/sirupsen/logrus v1.8.0
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
