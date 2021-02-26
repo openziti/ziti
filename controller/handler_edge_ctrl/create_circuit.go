@@ -105,7 +105,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 		serviceId = ctx.req.TerminatorIdentity + "@" + serviceId
 	}
 
-	clientId := &identity.TokenId{Token: ctx.req.SessionToken, Data: ctx.req.PeerData}
+	clientId := &identity.TokenId{Token: ctx.session.Id, Data: ctx.req.PeerData}
 
 	n := self.appEnv.GetHostController().GetNetwork()
 	sessionInfo, err := n.CreateSession(ctx.sourceRouter, clientId, serviceId)
