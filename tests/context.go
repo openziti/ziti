@@ -81,7 +81,7 @@ func init() {
 	pfxlog.SetPrefix("github.com/openziti/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 
-	_ = os.Setenv("ZITI_TRACE_ENABLED", "true")
+	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
@@ -417,8 +417,14 @@ func (ctx *TestContext) login(username, password string) (*session, error) {
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
 	ctx.shutdownRouter()
-	ctx.EdgeController.Shutdown()
-	ctx.fabricController.Shutdown()
+	if ctx.EdgeController != nil {
+		ctx.EdgeController.Shutdown()
+		ctx.EdgeController = nil
+	}
+	if ctx.fabricController != nil {
+		ctx.fabricController.Shutdown()
+		ctx.fabricController = nil
+	}
 }
 
 func (ctx *TestContext) newRequest() *resty.Request {
