@@ -292,6 +292,8 @@ func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2
 	}
 
 	request := &edge_ctrl_pb.UpdateTerminatorRequest{
+		SessionToken: token,
+		Fingerprints: self.fingerprints.Prints(),
 		TerminatorId: terminator.terminatorId,
 	}
 

@@ -81,7 +81,7 @@ func init() {
 	pfxlog.SetPrefix("github.com/openziti/")
 	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 
-	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
+	_ = os.Setenv("ZITI_TRACE_ENABLED", "true")
 
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
@@ -582,11 +582,13 @@ func (ctx *TestContext) newService(roleAttributes, configs []string) *service {
 
 func (ctx *TestContext) newTerminator(serviceId, routerId, binding, address string) *terminator {
 	return &terminator{
-		serviceId: serviceId,
-		routerId:  routerId,
-		binding:   binding,
-		address:   address,
-		tags:      nil,
+		serviceId:  serviceId,
+		routerId:   routerId,
+		binding:    binding,
+		address:    address,
+		cost:       0,
+		precedence: "default",
+		tags:       nil,
 	}
 }
 

@@ -44,6 +44,11 @@ type entity interface {
 	validate(ctx *TestContext, c *gabs.Container)
 }
 
+type loadableEntity interface {
+	entity
+	fromJson(ctx *TestContext, c *gabs.Container)
+}
+
 type postureCheck struct {
 	id             string
 	name           string
@@ -151,12 +156,14 @@ func (entity *service) validate(ctx *TestContext, c *gabs.Container) {
 }
 
 type terminator struct {
-	id        string
-	serviceId string
-	routerId  string
-	binding   string
-	address   string
-	tags      map[string]interface{}
+	id         string
+	serviceId  string
+	routerId   string
+	binding    string
+	address    string
+	cost       int
+	precedence string
+	tags       map[string]interface{}
 }
 
 func (entity *terminator) getId() string {
@@ -193,7 +200,19 @@ func (entity *terminator) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.routerId, path("routerId"))
 	ctx.pathEquals(c, entity.binding, path("binding"))
 	ctx.pathEquals(c, entity.address, path("address"))
+	ctx.pathEquals(c, float64(entity.cost), path("cost"))
+	ctx.pathEquals(c, entity.precedence, path("precedence"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
+}
+
+func (entity *terminator) fromJson(ctx *TestContext, c *gabs.Container) {
+	entity.id = ctx.requireString(c, "id")
+	entity.serviceId = ctx.requireString(c, "serviceId")
+	entity.routerId = ctx.requireString(c, "routerId")
+	entity.binding = ctx.requireString(c, "binding")
+	entity.address = ctx.requireString(c, "address")
+	entity.precedence = ctx.requireString(c, "precedence")
+	entity.cost = ctx.requireInt(c, "cost")
 }
 
 func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
