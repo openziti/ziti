@@ -86,16 +86,16 @@ for the update identity operation typically these are written to a http.Request
 */
 type UpdateIdentityParams struct {
 
-	/*Body
-	  An identity update object
-
-	*/
-	Body *rest_model.IdentityUpdate
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Identity
+	  An identity update object
+
+	*/
+	Identity *rest_model.IdentityUpdate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *UpdateIdentityParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update identity params
-func (o *UpdateIdentityParams) WithBody(body *rest_model.IdentityUpdate) *UpdateIdentityParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the update identity params
-func (o *UpdateIdentityParams) SetBody(body *rest_model.IdentityUpdate) {
-	o.Body = body
-}
-
 // WithID adds the id to the update identity params
 func (o *UpdateIdentityParams) WithID(id string) *UpdateIdentityParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *UpdateIdentityParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithIdentity adds the identity to the update identity params
+func (o *UpdateIdentityParams) WithIdentity(identity *rest_model.IdentityUpdate) *UpdateIdentityParams {
+	o.SetIdentity(identity)
+	return o
+}
+
+// SetIdentity adds the identity to the update identity params
+func (o *UpdateIdentityParams) SetIdentity(identity *rest_model.IdentityUpdate) {
+	o.Identity = identity
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *UpdateIdentityParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *UpdateIdentityParams) WriteToRequest(r runtime.ClientRequest, reg strfm
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Identity != nil {
+		if err := r.SetBodyParam(o.Identity); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

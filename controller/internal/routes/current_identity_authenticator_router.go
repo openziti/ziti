@@ -109,12 +109,12 @@ func (r *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response
 
 func (r *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.UpdateCurrentIdentityAuthenticatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Authenticator.UpdateSelf(MapUpdateAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Body))
+		return ae.Handlers.Authenticator.UpdateSelf(MapUpdateAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Authenticator))
 	})
 }
 
 func (r *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.PatchCurrentIdentityAuthenticatorParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Body), fields.FilterMaps("tags"))
+		return ae.Handlers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(params.ID, rc.Identity.Id, params.Authenticator), fields.FilterMaps("tags"))
 	})
 }

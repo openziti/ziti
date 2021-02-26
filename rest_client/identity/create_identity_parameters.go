@@ -86,11 +86,11 @@ for the create identity operation typically these are written to a http.Request
 */
 type CreateIdentityParams struct {
 
-	/*Body
+	/*Identity
 	  An identity to create
 
 	*/
-	Body *rest_model.IdentityCreate
+	Identity *rest_model.IdentityCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateIdentityParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create identity params
-func (o *CreateIdentityParams) WithBody(body *rest_model.IdentityCreate) *CreateIdentityParams {
-	o.SetBody(body)
+// WithIdentity adds the identity to the create identity params
+func (o *CreateIdentityParams) WithIdentity(identity *rest_model.IdentityCreate) *CreateIdentityParams {
+	o.SetIdentity(identity)
 	return o
 }
 
-// SetBody adds the body to the create identity params
-func (o *CreateIdentityParams) SetBody(body *rest_model.IdentityCreate) {
-	o.Body = body
+// SetIdentity adds the identity to the create identity params
+func (o *CreateIdentityParams) SetIdentity(identity *rest_model.IdentityCreate) {
+	o.Identity = identity
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateIdentityParams) WriteToRequest(r runtime.ClientRequest, reg strfm
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Identity != nil {
+		if err := r.SetBodyParam(o.Identity); err != nil {
 			return err
 		}
 	}

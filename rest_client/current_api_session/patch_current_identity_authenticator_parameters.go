@@ -86,11 +86,11 @@ for the patch current identity authenticator operation typically these are writt
 */
 type PatchCurrentIdentityAuthenticatorParams struct {
 
-	/*Body
+	/*Authenticator
 	  An authenticator patch object
 
 	*/
-	Body *rest_model.AuthenticatorPatchWithCurrent
+	Authenticator *rest_model.AuthenticatorPatchWithCurrent
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *PatchCurrentIdentityAuthenticatorParams) SetHTTPClient(client *http.Cli
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch current identity authenticator params
-func (o *PatchCurrentIdentityAuthenticatorParams) WithBody(body *rest_model.AuthenticatorPatchWithCurrent) *PatchCurrentIdentityAuthenticatorParams {
-	o.SetBody(body)
+// WithAuthenticator adds the authenticator to the patch current identity authenticator params
+func (o *PatchCurrentIdentityAuthenticatorParams) WithAuthenticator(authenticator *rest_model.AuthenticatorPatchWithCurrent) *PatchCurrentIdentityAuthenticatorParams {
+	o.SetAuthenticator(authenticator)
 	return o
 }
 
-// SetBody adds the body to the patch current identity authenticator params
-func (o *PatchCurrentIdentityAuthenticatorParams) SetBody(body *rest_model.AuthenticatorPatchWithCurrent) {
-	o.Body = body
+// SetAuthenticator adds the authenticator to the patch current identity authenticator params
+func (o *PatchCurrentIdentityAuthenticatorParams) SetAuthenticator(authenticator *rest_model.AuthenticatorPatchWithCurrent) {
+	o.Authenticator = authenticator
 }
 
 // WithID adds the id to the patch current identity authenticator params
@@ -165,8 +165,8 @@ func (o *PatchCurrentIdentityAuthenticatorParams) WriteToRequest(r runtime.Clien
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Authenticator != nil {
+		if err := r.SetBodyParam(o.Authenticator); err != nil {
 			return err
 		}
 	}

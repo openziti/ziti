@@ -61,7 +61,7 @@ type PatchConfigParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.ConfigPatch
+	Config *rest_model.ConfigPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *PatchConfigParams) BindRequest(r *http.Request, route *middleware.Match
 		var body rest_model.ConfigPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("config", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("config", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *PatchConfigParams) BindRequest(r *http.Request, route *middleware.Match
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Config = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("config", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

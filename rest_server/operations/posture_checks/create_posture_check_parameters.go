@@ -56,11 +56,11 @@ type CreatePostureCheckParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A Posture Checks to create
+	/*A Posture Check to create
 	  Required: true
 	  In: body
 	*/
-	Body rest_model.PostureCheckCreate
+	PostureCheck rest_model.PostureCheckCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,7 +77,7 @@ func (o *CreatePostureCheckParams) BindRequest(r *http.Request, route *middlewar
 		body, err := rest_model.UnmarshalPostureCheckCreate(r.Body, route.Consumer)
 		if err != nil {
 			if err == io.EOF {
-				err = errors.Required("Body", "body", "")
+				err = errors.Required("postureCheck", "body", "")
 			}
 			res = append(res, err)
 		} else {
@@ -87,11 +87,11 @@ func (o *CreatePostureCheckParams) BindRequest(r *http.Request, route *middlewar
 			}
 
 			if len(res) == 0 {
-				o.Body = body
+				o.PostureCheck = body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("postureCheck", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

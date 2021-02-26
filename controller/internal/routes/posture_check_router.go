@@ -117,7 +117,7 @@ func (r *PostureCheckRouter) Detail(ae *env.AppEnv, rc *response.RequestContext)
 
 func (r *PostureCheckRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureCheckParams) {
 	Create(rc, rc, PostureCheckLinkFactory, func() (string, error) {
-		return ae.Handlers.PostureCheck.Create(MapCreatePostureCheckToModel(params.Body))
+		return ae.Handlers.PostureCheck.Create(MapCreatePostureCheckToModel(params.PostureCheck))
 	})
 }
 
@@ -127,13 +127,13 @@ func (r *PostureCheckRouter) Delete(ae *env.AppEnv, rc *response.RequestContext)
 
 func (r *PostureCheckRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.UpdatePostureCheckParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.Body))
+		return ae.Handlers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.PostureCheck))
 	})
 }
 
 func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.PatchPostureCheckParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		check := MapPatchPostureCheckToModel(params.ID, params.Body)
+		check := MapPatchPostureCheckToModel(params.ID, params.PostureCheck)
 
 		if fields.IsUpdated("operatingSystems") {
 			fields.AddField(persistence.FieldPostureCheckOsType)

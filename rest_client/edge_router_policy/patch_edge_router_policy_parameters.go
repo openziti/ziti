@@ -86,16 +86,16 @@ for the patch edge router policy operation typically these are written to a http
 */
 type PatchEdgeRouterPolicyParams struct {
 
-	/*Body
-	  An edge router policy patch object
-
-	*/
-	Body *rest_model.EdgeRouterPolicyPatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Policy
+	  An edge router policy patch object
+
+	*/
+	Policy *rest_model.EdgeRouterPolicyPatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchEdgeRouterPolicyParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch edge router policy params
-func (o *PatchEdgeRouterPolicyParams) WithBody(body *rest_model.EdgeRouterPolicyPatch) *PatchEdgeRouterPolicyParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch edge router policy params
-func (o *PatchEdgeRouterPolicyParams) SetBody(body *rest_model.EdgeRouterPolicyPatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch edge router policy params
 func (o *PatchEdgeRouterPolicyParams) WithID(id string) *PatchEdgeRouterPolicyParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchEdgeRouterPolicyParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithPolicy adds the policy to the patch edge router policy params
+func (o *PatchEdgeRouterPolicyParams) WithPolicy(policy *rest_model.EdgeRouterPolicyPatch) *PatchEdgeRouterPolicyParams {
+	o.SetPolicy(policy)
+	return o
+}
+
+// SetPolicy adds the policy to the patch edge router policy params
+func (o *PatchEdgeRouterPolicyParams) SetPolicy(policy *rest_model.EdgeRouterPolicyPatch) {
+	o.Policy = policy
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, re
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

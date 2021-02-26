@@ -86,16 +86,16 @@ for the associate identitys service configs operation typically these are writte
 */
 type AssociateIdentitysServiceConfigsParams struct {
 
-	/*Body
-	  An identity patch object
-
-	*/
-	Body rest_model.ServiceConfigsAssignList
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*ServiceConfigs
+	  A service config patch object
+
+	*/
+	ServiceConfigs rest_model.ServiceConfigsAssignList
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *AssociateIdentitysServiceConfigsParams) SetHTTPClient(client *http.Clie
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the associate identitys service configs params
-func (o *AssociateIdentitysServiceConfigsParams) WithBody(body rest_model.ServiceConfigsAssignList) *AssociateIdentitysServiceConfigsParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the associate identitys service configs params
-func (o *AssociateIdentitysServiceConfigsParams) SetBody(body rest_model.ServiceConfigsAssignList) {
-	o.Body = body
-}
-
 // WithID adds the id to the associate identitys service configs params
 func (o *AssociateIdentitysServiceConfigsParams) WithID(id string) *AssociateIdentitysServiceConfigsParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *AssociateIdentitysServiceConfigsParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithServiceConfigs adds the serviceConfigs to the associate identitys service configs params
+func (o *AssociateIdentitysServiceConfigsParams) WithServiceConfigs(serviceConfigs rest_model.ServiceConfigsAssignList) *AssociateIdentitysServiceConfigsParams {
+	o.SetServiceConfigs(serviceConfigs)
+	return o
+}
+
+// SetServiceConfigs adds the serviceConfigs to the associate identitys service configs params
+func (o *AssociateIdentitysServiceConfigsParams) SetServiceConfigs(serviceConfigs rest_model.ServiceConfigsAssignList) {
+	o.ServiceConfigs = serviceConfigs
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *AssociateIdentitysServiceConfigsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *AssociateIdentitysServiceConfigsParams) WriteToRequest(r runtime.Client
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.ServiceConfigs != nil {
+		if err := r.SetBodyParam(o.ServiceConfigs); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

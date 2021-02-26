@@ -103,7 +103,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 	start := time.Now()
 	responder := &SessionRequestResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
-		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.ApiSession.Id, params.Body))
+		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.ApiSession.Id, params.Session))
 	})
 	r.createTimer.UpdateSince(start)
 }

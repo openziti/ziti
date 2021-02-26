@@ -79,16 +79,16 @@ func (r *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigTypeParams) {
-	if params.Body.Schema != nil {
-		if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+	if params.ConfigType.Schema != nil {
+		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
 
 	Create(rc, rc, ConfigTypeLinkFactory, func() (string, error) {
-		return ae.Handlers.ConfigType.Create(MapCreateConfigTypeToModel(params.Body))
+		return ae.Handlers.ConfigType.Create(MapCreateConfigTypeToModel(params.ConfigType))
 	})
 }
 
@@ -97,34 +97,34 @@ func (r *ConfigTypeRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigTypeParams) {
-	if params.Body.Schema != nil {
-		if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+	if params.ConfigType.Schema != nil {
+		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
 
 	Update(rc, func(id string) error {
-		return ae.Handlers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.Body))
+		return ae.Handlers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType))
 	})
 }
 
 func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigTypeParams) {
 
-	if _, ok := params.Body.Schema.(map[string]interface{}); !ok {
+	if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.Body.Schema))
+		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 		return
 	}
-	if params.Body.Schema == nil {
+	if params.ConfigType.Schema == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
 		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
 		return
 	}
 
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.Body), fields.FilterMaps("tags", "schema"))
+		return ae.Handlers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
 	})
 }
 

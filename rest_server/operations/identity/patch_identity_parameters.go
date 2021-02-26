@@ -57,16 +57,16 @@ type PatchIdentityParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*An identity patch object
-	  Required: true
-	  In: body
-	*/
-	Body *rest_model.IdentityPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
 	*/
 	ID string
+	/*An identity patch object
+	  Required: true
+	  In: body
+	*/
+	Identity *rest_model.IdentityPatch
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -78,14 +78,19 @@ func (o *PatchIdentityParams) BindRequest(r *http.Request, route *middleware.Mat
 
 	o.HTTPRequest = r
 
+	rID, rhkID, _ := route.Params.GetOK("id")
+	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
 		var body rest_model.IdentityPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("identity", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("identity", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,17 +99,12 @@ func (o *PatchIdentityParams) BindRequest(r *http.Request, route *middleware.Mat
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Identity = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("identity", "body", ""))
 	}
-	rID, rhkID, _ := route.Params.GetOK("id")
-	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}

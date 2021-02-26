@@ -75,14 +75,14 @@ func (r *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigParams) {
-	if params.Body.Data == nil {
+	if params.Config.Data == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
 		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 
 	Create(rc, rc, ConfigLinkFactory, func() (string, error) {
-		return ae.Handlers.Config.Create(MapCreateConfigToModel(params.Body))
+		return ae.Handlers.Config.Create(MapCreateConfigToModel(params.Config))
 	})
 }
 
@@ -91,19 +91,19 @@ func (r *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigParams) {
-	if params.Body.Data == nil {
+	if params.Config.Data == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
 		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 
 	Update(rc, func(id string) error {
-		return ae.Handlers.Config.Update(MapUpdateConfigToModel(params.ID, params.Body))
+		return ae.Handlers.Config.Update(MapUpdateConfigToModel(params.ID, params.Config))
 	})
 }
 
 func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.Config.Patch(MapPatchConfigToModel(params.ID, params.Body), fields.FilterMaps("tags", "data"))
+		return ae.Handlers.Config.Patch(MapPatchConfigToModel(params.ID, params.Config), fields.FilterMaps("tags", "data"))
 	})
 }

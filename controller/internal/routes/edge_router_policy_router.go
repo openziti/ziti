@@ -85,7 +85,7 @@ func (r *EdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestCont
 
 func (r *EdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.CreateEdgeRouterPolicyParams) {
 	Create(rc, rc, EdgeRouterPolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.EdgeRouterPolicy.Create(MapCreateEdgeRouterPolicyToModel(params.Body))
+		return ae.Handlers.EdgeRouterPolicy.Create(MapCreateEdgeRouterPolicyToModel(params.Policy))
 	})
 }
 
@@ -95,13 +95,13 @@ func (r *EdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestCont
 
 func (r *EdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.UpdateEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Body))
+		return ae.Handlers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Policy))
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.PatchEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.EdgeRouterPolicy.Patch(MapPatchEdgeRouterPolicyToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+		return ae.Handlers.EdgeRouterPolicy.Patch(MapPatchEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 

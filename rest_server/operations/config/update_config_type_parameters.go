@@ -61,7 +61,7 @@ type UpdateConfigTypeParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.ConfigTypeUpdate
+	ConfigType *rest_model.ConfigTypeUpdate
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *UpdateConfigTypeParams) BindRequest(r *http.Request, route *middleware.
 		var body rest_model.ConfigTypeUpdate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("configType", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("configType", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *UpdateConfigTypeParams) BindRequest(r *http.Request, route *middleware.
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.ConfigType = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("configType", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {

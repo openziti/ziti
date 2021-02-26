@@ -86,16 +86,16 @@ for the update edge router policy operation typically these are written to a htt
 */
 type UpdateEdgeRouterPolicyParams struct {
 
-	/*Body
-	  An edge router policy update object
-
-	*/
-	Body *rest_model.EdgeRouterPolicyUpdate
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Policy
+	  An edge router policy update object
+
+	*/
+	Policy *rest_model.EdgeRouterPolicyUpdate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *UpdateEdgeRouterPolicyParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update edge router policy params
-func (o *UpdateEdgeRouterPolicyParams) WithBody(body *rest_model.EdgeRouterPolicyUpdate) *UpdateEdgeRouterPolicyParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the update edge router policy params
-func (o *UpdateEdgeRouterPolicyParams) SetBody(body *rest_model.EdgeRouterPolicyUpdate) {
-	o.Body = body
-}
-
 // WithID adds the id to the update edge router policy params
 func (o *UpdateEdgeRouterPolicyParams) WithID(id string) *UpdateEdgeRouterPolicyParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *UpdateEdgeRouterPolicyParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithPolicy adds the policy to the update edge router policy params
+func (o *UpdateEdgeRouterPolicyParams) WithPolicy(policy *rest_model.EdgeRouterPolicyUpdate) *UpdateEdgeRouterPolicyParams {
+	o.SetPolicy(policy)
+	return o
+}
+
+// SetPolicy adds the policy to the update edge router policy params
+func (o *UpdateEdgeRouterPolicyParams) SetPolicy(policy *rest_model.EdgeRouterPolicyUpdate) {
+	o.Policy = policy
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *UpdateEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *UpdateEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, r
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

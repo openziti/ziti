@@ -60,7 +60,7 @@ type CreateTerminatorParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.TerminatorCreate
+	Terminator *rest_model.TerminatorCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateTerminatorParams) BindRequest(r *http.Request, route *middleware.
 		var body rest_model.TerminatorCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("terminator", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("terminator", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateTerminatorParams) BindRequest(r *http.Request, route *middleware.
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Terminator = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("terminator", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

@@ -57,16 +57,16 @@ type PatchTerminatorParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*A terminator patch object
-	  Required: true
-	  In: body
-	*/
-	Body *rest_model.TerminatorPatch
 	/*The id of the requested resource
 	  Required: true
 	  In: path
 	*/
 	ID string
+	/*A terminator patch object
+	  Required: true
+	  In: body
+	*/
+	Terminator *rest_model.TerminatorPatch
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -78,14 +78,19 @@ func (o *PatchTerminatorParams) BindRequest(r *http.Request, route *middleware.M
 
 	o.HTTPRequest = r
 
+	rID, rhkID, _ := route.Params.GetOK("id")
+	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
 		var body rest_model.TerminatorPatch
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("terminator", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("terminator", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,17 +99,12 @@ func (o *PatchTerminatorParams) BindRequest(r *http.Request, route *middleware.M
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Terminator = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("terminator", "body", ""))
 	}
-	rID, rhkID, _ := route.Params.GetOK("id")
-	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}

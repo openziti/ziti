@@ -86,11 +86,11 @@ for the patch ca operation typically these are written to a http.Request
 */
 type PatchCaParams struct {
 
-	/*Body
+	/*Ca
 	  A CA patch object
 
 	*/
-	Body *rest_model.CaPatch
+	Ca *rest_model.CaPatch
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *PatchCaParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch ca params
-func (o *PatchCaParams) WithBody(body *rest_model.CaPatch) *PatchCaParams {
-	o.SetBody(body)
+// WithCa adds the ca to the patch ca params
+func (o *PatchCaParams) WithCa(ca *rest_model.CaPatch) *PatchCaParams {
+	o.SetCa(ca)
 	return o
 }
 
-// SetBody adds the body to the patch ca params
-func (o *PatchCaParams) SetBody(body *rest_model.CaPatch) {
-	o.Body = body
+// SetCa adds the ca to the patch ca params
+func (o *PatchCaParams) SetCa(ca *rest_model.CaPatch) {
+	o.Ca = ca
 }
 
 // WithID adds the id to the patch ca params
@@ -165,8 +165,8 @@ func (o *PatchCaParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Regis
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Ca != nil {
+		if err := r.SetBodyParam(o.Ca); err != nil {
 			return err
 		}
 	}

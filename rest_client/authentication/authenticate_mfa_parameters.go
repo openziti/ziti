@@ -86,11 +86,11 @@ for the authenticate mfa operation typically these are written to a http.Request
 */
 type AuthenticateMfaParams struct {
 
-	/*Body
+	/*MfaAuth
 	  An MFA validation request
 
 	*/
-	Body *rest_model.MfaCode
+	MfaAuth *rest_model.MfaCode
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *AuthenticateMfaParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the authenticate mfa params
-func (o *AuthenticateMfaParams) WithBody(body *rest_model.MfaCode) *AuthenticateMfaParams {
-	o.SetBody(body)
+// WithMfaAuth adds the mfaAuth to the authenticate mfa params
+func (o *AuthenticateMfaParams) WithMfaAuth(mfaAuth *rest_model.MfaCode) *AuthenticateMfaParams {
+	o.SetMfaAuth(mfaAuth)
 	return o
 }
 
-// SetBody adds the body to the authenticate mfa params
-func (o *AuthenticateMfaParams) SetBody(body *rest_model.MfaCode) {
-	o.Body = body
+// SetMfaAuth adds the mfaAuth to the authenticate mfa params
+func (o *AuthenticateMfaParams) SetMfaAuth(mfaAuth *rest_model.MfaCode) {
+	o.MfaAuth = mfaAuth
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *AuthenticateMfaParams) WriteToRequest(r runtime.ClientRequest, reg strf
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.MfaAuth != nil {
+		if err := r.SetBodyParam(o.MfaAuth); err != nil {
 			return err
 		}
 	}

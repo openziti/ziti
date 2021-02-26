@@ -86,11 +86,11 @@ for the create terminator operation typically these are written to a http.Reques
 */
 type CreateTerminatorParams struct {
 
-	/*Body
+	/*Terminator
 	  A terminator to create
 
 	*/
-	Body *rest_model.TerminatorCreate
+	Terminator *rest_model.TerminatorCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateTerminatorParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create terminator params
-func (o *CreateTerminatorParams) WithBody(body *rest_model.TerminatorCreate) *CreateTerminatorParams {
-	o.SetBody(body)
+// WithTerminator adds the terminator to the create terminator params
+func (o *CreateTerminatorParams) WithTerminator(terminator *rest_model.TerminatorCreate) *CreateTerminatorParams {
+	o.SetTerminator(terminator)
 	return o
 }
 
-// SetBody adds the body to the create terminator params
-func (o *CreateTerminatorParams) SetBody(body *rest_model.TerminatorCreate) {
-	o.Body = body
+// SetTerminator adds the terminator to the create terminator params
+func (o *CreateTerminatorParams) SetTerminator(terminator *rest_model.TerminatorCreate) {
+	o.Terminator = terminator
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateTerminatorParams) WriteToRequest(r runtime.ClientRequest, reg str
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Terminator != nil {
+		if err := r.SetBodyParam(o.Terminator); err != nil {
 			return err
 		}
 	}

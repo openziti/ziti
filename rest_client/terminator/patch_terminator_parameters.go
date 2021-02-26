@@ -86,16 +86,16 @@ for the patch terminator operation typically these are written to a http.Request
 */
 type PatchTerminatorParams struct {
 
-	/*Body
-	  A terminator patch object
-
-	*/
-	Body *rest_model.TerminatorPatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Terminator
+	  A terminator patch object
+
+	*/
+	Terminator *rest_model.TerminatorPatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchTerminatorParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch terminator params
-func (o *PatchTerminatorParams) WithBody(body *rest_model.TerminatorPatch) *PatchTerminatorParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch terminator params
-func (o *PatchTerminatorParams) SetBody(body *rest_model.TerminatorPatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch terminator params
 func (o *PatchTerminatorParams) WithID(id string) *PatchTerminatorParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchTerminatorParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithTerminator adds the terminator to the patch terminator params
+func (o *PatchTerminatorParams) WithTerminator(terminator *rest_model.TerminatorPatch) *PatchTerminatorParams {
+	o.SetTerminator(terminator)
+	return o
+}
+
+// SetTerminator adds the terminator to the patch terminator params
+func (o *PatchTerminatorParams) SetTerminator(terminator *rest_model.TerminatorPatch) {
+	o.Terminator = terminator
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchTerminatorParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchTerminatorParams) WriteToRequest(r runtime.ClientRequest, reg strf
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Terminator != nil {
+		if err := r.SetBodyParam(o.Terminator); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

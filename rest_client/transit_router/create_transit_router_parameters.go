@@ -86,11 +86,11 @@ for the create transit router operation typically these are written to a http.Re
 */
 type CreateTransitRouterParams struct {
 
-	/*Body
+	/*Router
 	  A transit router to create
 
 	*/
-	Body *rest_model.TransitRouterCreate
+	Router *rest_model.TransitRouterCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateTransitRouterParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create transit router params
-func (o *CreateTransitRouterParams) WithBody(body *rest_model.TransitRouterCreate) *CreateTransitRouterParams {
-	o.SetBody(body)
+// WithRouter adds the router to the create transit router params
+func (o *CreateTransitRouterParams) WithRouter(router *rest_model.TransitRouterCreate) *CreateTransitRouterParams {
+	o.SetRouter(router)
 	return o
 }
 
-// SetBody adds the body to the create transit router params
-func (o *CreateTransitRouterParams) SetBody(body *rest_model.TransitRouterCreate) {
-	o.Body = body
+// SetRouter adds the router to the create transit router params
+func (o *CreateTransitRouterParams) SetRouter(router *rest_model.TransitRouterCreate) {
+	o.Router = router
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateTransitRouterParams) WriteToRequest(r runtime.ClientRequest, reg 
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Router != nil {
+		if err := r.SetBodyParam(o.Router); err != nil {
 			return err
 		}
 	}

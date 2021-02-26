@@ -62,7 +62,7 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
 	start := time.Now()
 	logger := pfxlog.Logger()
-	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Body)
+	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Auth)
 
 	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
 
@@ -115,8 +115,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	token := uuid.New().String()
 	configTypes := map[string]struct{}{}
 
-	if params.Body != nil {
-		configTypes = mapConfigTypeNamesToIds(ae, params.Body.ConfigTypes, identity.Id)
+	if params.Auth != nil {
+		configTypes = mapConfigTypeNamesToIds(ae, params.Auth.ConfigTypes, identity.Id)
 	}
 	remoteIpStr := ""
 	if remoteIp, _, err := net.SplitHostPort(rc.Request.RemoteAddr); err == nil {
@@ -188,7 +188,7 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.Verify(mfa, *params.Body.Code)
+	ok, _ := ae.Handlers.Mfa.Verify(mfa, *params.MfaAuth.Code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())

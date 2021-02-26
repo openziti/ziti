@@ -60,7 +60,7 @@ type CreateEdgeRouterPolicyParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.EdgeRouterPolicyCreate
+	Policy *rest_model.EdgeRouterPolicyCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,9 +77,9 @@ func (o *CreateEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middl
 		var body rest_model.EdgeRouterPolicyCreate
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("policy", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("policy", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -88,11 +88,11 @@ func (o *CreateEdgeRouterPolicyParams) BindRequest(r *http.Request, route *middl
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Policy = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("policy", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

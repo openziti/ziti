@@ -86,11 +86,11 @@ for the create edge router policy operation typically these are written to a htt
 */
 type CreateEdgeRouterPolicyParams struct {
 
-	/*Body
+	/*Policy
 	  An edge router policy to create
 
 	*/
-	Body *rest_model.EdgeRouterPolicyCreate
+	Policy *rest_model.EdgeRouterPolicyCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateEdgeRouterPolicyParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create edge router policy params
-func (o *CreateEdgeRouterPolicyParams) WithBody(body *rest_model.EdgeRouterPolicyCreate) *CreateEdgeRouterPolicyParams {
-	o.SetBody(body)
+// WithPolicy adds the policy to the create edge router policy params
+func (o *CreateEdgeRouterPolicyParams) WithPolicy(policy *rest_model.EdgeRouterPolicyCreate) *CreateEdgeRouterPolicyParams {
+	o.SetPolicy(policy)
 	return o
 }
 
-// SetBody adds the body to the create edge router policy params
-func (o *CreateEdgeRouterPolicyParams) SetBody(body *rest_model.EdgeRouterPolicyCreate) {
-	o.Body = body
+// SetPolicy adds the policy to the create edge router policy params
+func (o *CreateEdgeRouterPolicyParams) SetPolicy(policy *rest_model.EdgeRouterPolicyCreate) {
+	o.Policy = policy
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateEdgeRouterPolicyParams) WriteToRequest(r runtime.ClientRequest, r
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
 			return err
 		}
 	}

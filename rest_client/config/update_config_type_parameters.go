@@ -86,11 +86,11 @@ for the update config type operation typically these are written to a http.Reque
 */
 type UpdateConfigTypeParams struct {
 
-	/*Body
+	/*ConfigType
 	  A config-type update object
 
 	*/
-	Body *rest_model.ConfigTypeUpdate
+	ConfigType *rest_model.ConfigTypeUpdate
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *UpdateConfigTypeParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update config type params
-func (o *UpdateConfigTypeParams) WithBody(body *rest_model.ConfigTypeUpdate) *UpdateConfigTypeParams {
-	o.SetBody(body)
+// WithConfigType adds the configType to the update config type params
+func (o *UpdateConfigTypeParams) WithConfigType(configType *rest_model.ConfigTypeUpdate) *UpdateConfigTypeParams {
+	o.SetConfigType(configType)
 	return o
 }
 
-// SetBody adds the body to the update config type params
-func (o *UpdateConfigTypeParams) SetBody(body *rest_model.ConfigTypeUpdate) {
-	o.Body = body
+// SetConfigType adds the configType to the update config type params
+func (o *UpdateConfigTypeParams) SetConfigType(configType *rest_model.ConfigTypeUpdate) {
+	o.ConfigType = configType
 }
 
 // WithID adds the id to the update config type params
@@ -165,8 +165,8 @@ func (o *UpdateConfigTypeParams) WriteToRequest(r runtime.ClientRequest, reg str
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.ConfigType != nil {
+		if err := r.SetBodyParam(o.ConfigType); err != nil {
 			return err
 		}
 	}

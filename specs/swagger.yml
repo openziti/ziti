@@ -269,7 +269,7 @@ paths:
         - Authentication
       operationId: authenticate
       parameters:
-        - name: Body
+        - name: auth
           in: body
           required: false
           schema:
@@ -293,7 +293,7 @@ paths:
         - MFA
       operationId: authenticateMfa
       parameters:
-        - name: Body
+        - name: mfaAuth
           in: body
           required: true
           description: 'An MFA validation request'
@@ -332,10 +332,10 @@ paths:
         - Authenticator
       operationId: createAuthenticator
       parameters:
-        - name: Body
+        - name: authenticator
           in: body
           required: true
-          description: A Authenticators create object
+          description: A Authenticator create object
           schema:
             $ref: '#/definitions/authenticatorCreate'
       responses:
@@ -374,7 +374,7 @@ paths:
         - Authenticator
       operationId: updateAuthenticator
       parameters:
-        - name: Body
+        - name: authenticator
           in: body
           required: true
           description: 'An authenticator put object'
@@ -398,7 +398,7 @@ paths:
         - Authenticator
       operationId: patchAuthenticator
       parameters:
-        - name: Body
+        - name: authenticator
           in: body
           required: true
           description: An authenticator patch object
@@ -460,7 +460,7 @@ paths:
       operationId: createCa
 
       parameters:
-        - name: Body
+        - name: ca
           in: body
           required: true
           description: A CA to create
@@ -500,7 +500,7 @@ paths:
         - Certificate Authority
       operationId: updateCa
       parameters:
-        - name: Body
+        - name: ca
           in: body
           required: true
           description: A CA update object
@@ -524,7 +524,7 @@ paths:
         - Certificate Authority
       operationId: patchCa
       parameters:
-        - name: Body
+        - name: ca
           in: body
           required: true
           description: A CA patch object
@@ -646,7 +646,7 @@ paths:
         - Config
       operationId: createConfigType
       parameters:
-        - name: Body
+        - name: configType
           in: body
           required: true
           description: A config-type to create
@@ -686,7 +686,7 @@ paths:
         - Config
       operationId: updateConfigType
       parameters:
-        - name: Body
+        - name: configType
           in: body
           required: true
           description: A config-type update object
@@ -710,7 +710,7 @@ paths:
         - Config
       operationId: patchConfigType
       parameters:
-        - name: Body
+        - name: configType
           in: body
           required: true
           description: A config-type patch object
@@ -787,7 +787,7 @@ paths:
         - Config
       operationId: createConfig
       parameters:
-        - name: Body
+        - name: config
           in: body
           required: true
           description: A config to create
@@ -827,7 +827,7 @@ paths:
         - Config
       operationId: updateConfig
       parameters:
-        - name: Body
+        - name: config
           in: body
           required: true
           description: A config update object
@@ -851,7 +851,7 @@ paths:
         - Config
       operationId: patchConfig
       parameters:
-        - name: Body
+        - name: config
           in: body
           required: true
           description: A config patch object
@@ -940,7 +940,7 @@ paths:
         - Current API Session
       operationId: createCurrentApiSessionCertificate
       parameters:
-        - name: Body
+        - name: sessionCertificate
           in: body
           required: true
           description: The payload describing the CSR used to create a session certificate
@@ -1089,12 +1089,16 @@ paths:
         - MFA
       operationId: deleteMfa
       parameters:
-        - name: Body
+        - name: mfaValidation
           in: body
-          required: true
+          required: false
           description: 'An MFA validation request'
           schema:
             $ref: '#/definitions/mfaCode'
+        - name: mfa-validation-code
+          in: header
+          required: false
+          type: string
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
@@ -1135,7 +1139,7 @@ paths:
         - MFA
       operationId: verifyMfa
       parameters:
-        - name: Body
+        - name: mfaValidation
           in: body
           required: true
           description: 'An MFA validation request'
@@ -1161,12 +1165,16 @@ paths:
         - MFA
       operationId: detailMfaRecoveryCodes
       parameters:
-        - name: Body
+        - name: mfaValidation
           in: body
-          required: true
+          required: false
           description: 'An MFA validation request'
           schema:
             $ref: '#/definitions/mfaCode'
+        - name: mfa-validation-code
+          in: header
+          required: false
+          type: string
       responses:
         '200':
           $ref: '#/responses/emptyResponse'
@@ -1187,7 +1195,7 @@ paths:
         - MFA
       operationId: createMfaRecoveryCodes
       parameters:
-        - name: mfaCode
+        - name: mfaValidation
           in: body
           required: true
           description: 'An MFA validation request'
@@ -1247,7 +1255,7 @@ paths:
         - Current API Session
       operationId: updateCurrentIdentityAuthenticator
       parameters:
-        - name: Body
+        - name: authenticator
           in: body
           required: true
           description: 'An authenticator put object'
@@ -1273,7 +1281,7 @@ paths:
         - Current API Session
       operationId: patchCurrentIdentityAuthenticator
       parameters:
-        - name: Body
+        - name: authenticator
           in: body
           required: true
           description: An authenticator patch object
@@ -1320,7 +1328,7 @@ paths:
         - Edge Router Policy
       operationId: createEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: An edge router policy to create
@@ -1360,7 +1368,7 @@ paths:
         - Edge Router Policy
       operationId: updateEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: An edge router policy update object
@@ -1384,7 +1392,7 @@ paths:
         - Edge Router Policy
       operationId: patchEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: An edge router policy patch object
@@ -1487,10 +1495,10 @@ paths:
         - Edge Router
       operationId: createEdgeRouter
       parameters:
-        - name: Body
+        - name: edgeRouter
           in: body
           required: true
-          description: A config-type to create
+          description: A edge router to create
           schema:
             $ref: '#/definitions/edgeRouterCreate'
       responses:
@@ -1527,7 +1535,7 @@ paths:
         - Edge Router
       operationId: updateEdgeRouter
       parameters:
-        - name: Body
+        - name: edgeRouter
           in: body
           required: true
           description: An edge router update object
@@ -1551,7 +1559,7 @@ paths:
         - Edge Router
       operationId: patchEdgeRouter
       parameters:
-        - name: Body
+        - name: edgeRouter
           in: body
           required: true
           description: An edge router patch object
@@ -1902,7 +1910,7 @@ paths:
         - Identity
       operationId: createIdentity
       parameters:
-        - name: Body
+        - name: identity
           in: body
           required: true
           description: An identity to create
@@ -1942,7 +1950,7 @@ paths:
         - Identity
       operationId: updateIdentity
       parameters:
-        - name: Body
+        - name: identity
           in: body
           required: true
           description: An identity update object
@@ -1966,7 +1974,7 @@ paths:
         - Identity
       operationId: patchIdentity
       parameters:
-        - name: Body
+        - name: identity
           in: body
           required: true
           description: An identity patch object
@@ -2038,10 +2046,10 @@ paths:
       summary: Associate service configs for a specific identity
       description: Associate service configs to a specific identity
       parameters:
-        - name: Body
+        - name: serviceConfigs
           in: body
           required: true
-          description: An identity patch object
+          description: A service config patch object
           schema:
             $ref: '#/definitions/serviceConfigsAssignList'
       security:
@@ -2062,7 +2070,7 @@ paths:
       summary: Remove associated service configs from a specific identity
       description: Remove service configs from a specific identity
       parameters:
-        - name: Body
+        - name: serviceConfigIdPairs
           in: body
           required: false
           description: An array of service and config id pairs to remove
@@ -2275,7 +2283,7 @@ paths:
         - Service Edge Router Policy
       operationId: createServiceEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service edge router policy to create
@@ -2315,7 +2323,7 @@ paths:
         - Service Edge Router Policy
       operationId: updateServiceEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service edge router policy update object
@@ -2339,7 +2347,7 @@ paths:
         - Service Edge Router Policy
       operationId: patchServiceEdgeRouterPolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service edge router policy patch object
@@ -2439,7 +2447,7 @@ paths:
         - Service Policy
       operationId: createServicePolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service policy to create
@@ -2479,7 +2487,7 @@ paths:
         - Service Policy
       operationId: updateServicePolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service policy update object
@@ -2503,7 +2511,7 @@ paths:
         - Service Policy
       operationId: patchServicePolicy
       parameters:
-        - name: Body
+        - name: policy
           in: body
           required: true
           description: A service policy patch object
@@ -2637,7 +2645,7 @@ paths:
         - Service
       operationId: createService
       parameters:
-        - name: Body
+        - name: service
           in: body
           required: true
           description: A service to create
@@ -2677,7 +2685,7 @@ paths:
         - Service
       operationId: updateService
       parameters:
-        - name: Body
+        - name: service
           in: body
           required: true
           description: A service update object
@@ -2701,7 +2709,7 @@ paths:
         - Service
       operationId: patchService
       parameters:
-        - name: Body
+        - name: service
           in: body
           required: true
           description: A service patch object
@@ -2896,7 +2904,7 @@ paths:
         - Session
       operationId: createSession
       parameters:
-        - name: Body
+        - name: session
           in: body
           required: true
           description: A session to create
@@ -2975,7 +2983,7 @@ paths:
         - Terminator
       operationId: createTerminator
       parameters:
-        - name: Body
+        - name: terminator
           in: body
           required: true
           description: A terminator to create
@@ -3015,7 +3023,7 @@ paths:
         - Terminator
       operationId: updateTerminator
       parameters:
-        - name: Body
+        - name: terminator
           in: body
           required: true
           description: A terminator update object
@@ -3039,7 +3047,7 @@ paths:
         - Terminator
       operationId: patchTerminator
       parameters:
-        - name: Body
+        - name: terminator
           in: body
           required: true
           description: A terminator patch object
@@ -3165,7 +3173,7 @@ paths:
         - Transit Router
       operationId: createTransitRouter
       parameters:
-        - name: Body
+        - name: router
           in: body
           required: true
           description: A transit router to create
@@ -3205,7 +3213,7 @@ paths:
         - Transit Router
       operationId: updateTransitRouter
       parameters:
-        - name: Body
+        - name: router
           in: body
           required: true
           description: A transit router update object
@@ -3229,7 +3237,7 @@ paths:
         - Transit Router
       operationId: patchTransitRouter
       parameters:
-        - name: Body
+        - name: router
           in: body
           required: true
           description: A transit router patch object
@@ -3381,7 +3389,7 @@ paths:
         - Posture Checks
       operationId: createPostureResponse
       parameters:
-        - name: Body
+        - name: postureResponse
           in: body
           required: true
           description: A Posture Response
@@ -3404,7 +3412,7 @@ paths:
         - Posture Checks
       operationId: createPostureResponseBulk
       parameters:
-        - name: Body
+        - name: postureResponse
           in: body
           required: true
           description: A Posture Response
@@ -3453,10 +3461,10 @@ paths:
         - Posture Checks
       operationId: createPostureCheck
       parameters:
-        - name: Body
+        - name: postureCheck
           in: body
           required: true
-          description: A Posture Checks to create
+          description: A Posture Check to create
           schema:
             $ref: '#/definitions/PostureCheckCreate'
       responses:
@@ -3493,10 +3501,10 @@ paths:
         - Posture Checks
       operationId: updatePostureCheck
       parameters:
-        - name: Body
+        - name: postureCheck
           in: body
           required: true
-          description: A Posture Checks update object
+          description: A Posture Check update object
           schema:
             $ref: '#/definitions/PostureCheckUpdate'
       responses:
@@ -3517,10 +3525,10 @@ paths:
         - Posture Checks
       operationId: patchPostureCheck
       parameters:
-        - name: Body
+        - name: postureCheck
           in: body
           required: true
-          description: A Posture Checks patch object
+          description: A Posture Check patch object
           schema:
             $ref: '#/definitions/PostureCheckPatch'
       responses:

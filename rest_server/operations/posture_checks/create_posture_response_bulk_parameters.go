@@ -60,7 +60,7 @@ type CreatePostureResponseBulkParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body []rest_model.PostureResponseCreate
+	PostureResponse []rest_model.PostureResponseCreate
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -77,7 +77,7 @@ func (o *CreatePostureResponseBulkParams) BindRequest(r *http.Request, route *mi
 		body, err := rest_model.UnmarshalPostureResponseCreateSlice(r.Body, route.Consumer)
 		if err != nil {
 			if err == io.EOF {
-				err = errors.Required("Body", "body", "")
+				err = errors.Required("postureResponse", "body", "")
 			}
 			res = append(res, err)
 		} else {
@@ -89,11 +89,11 @@ func (o *CreatePostureResponseBulkParams) BindRequest(r *http.Request, route *mi
 				}
 			}
 			if len(res) == 0 {
-				o.Body = body
+				o.PostureResponse = body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("postureResponse", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

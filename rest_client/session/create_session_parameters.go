@@ -86,11 +86,11 @@ for the create session operation typically these are written to a http.Request
 */
 type CreateSessionParams struct {
 
-	/*Body
+	/*Session
 	  A session to create
 
 	*/
-	Body *rest_model.SessionCreate
+	Session *rest_model.SessionCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateSessionParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create session params
-func (o *CreateSessionParams) WithBody(body *rest_model.SessionCreate) *CreateSessionParams {
-	o.SetBody(body)
+// WithSession adds the session to the create session params
+func (o *CreateSessionParams) WithSession(session *rest_model.SessionCreate) *CreateSessionParams {
+	o.SetSession(session)
 	return o
 }
 
-// SetBody adds the body to the create session params
-func (o *CreateSessionParams) SetBody(body *rest_model.SessionCreate) {
-	o.Body = body
+// SetSession adds the session to the create session params
+func (o *CreateSessionParams) SetSession(session *rest_model.SessionCreate) {
+	o.Session = session
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateSessionParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Session != nil {
+		if err := r.SetBodyParam(o.Session); err != nil {
 			return err
 		}
 	}

@@ -86,16 +86,16 @@ for the update service policy operation typically these are written to a http.Re
 */
 type UpdateServicePolicyParams struct {
 
-	/*Body
-	  A service policy update object
-
-	*/
-	Body *rest_model.ServicePolicyUpdate
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Policy
+	  A service policy update object
+
+	*/
+	Policy *rest_model.ServicePolicyUpdate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *UpdateServicePolicyParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update service policy params
-func (o *UpdateServicePolicyParams) WithBody(body *rest_model.ServicePolicyUpdate) *UpdateServicePolicyParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the update service policy params
-func (o *UpdateServicePolicyParams) SetBody(body *rest_model.ServicePolicyUpdate) {
-	o.Body = body
-}
-
 // WithID adds the id to the update service policy params
 func (o *UpdateServicePolicyParams) WithID(id string) *UpdateServicePolicyParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *UpdateServicePolicyParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithPolicy adds the policy to the update service policy params
+func (o *UpdateServicePolicyParams) WithPolicy(policy *rest_model.ServicePolicyUpdate) *UpdateServicePolicyParams {
+	o.SetPolicy(policy)
+	return o
+}
+
+// SetPolicy adds the policy to the update service policy params
+func (o *UpdateServicePolicyParams) SetPolicy(policy *rest_model.ServicePolicyUpdate) {
+	o.Policy = policy
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *UpdateServicePolicyParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *UpdateServicePolicyParams) WriteToRequest(r runtime.ClientRequest, reg 
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Policy != nil {
+		if err := r.SetBodyParam(o.Policy); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

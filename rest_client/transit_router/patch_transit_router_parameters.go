@@ -86,16 +86,16 @@ for the patch transit router operation typically these are written to a http.Req
 */
 type PatchTransitRouterParams struct {
 
-	/*Body
-	  A transit router patch object
-
-	*/
-	Body *rest_model.TransitRouterPatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Router
+	  A transit router patch object
+
+	*/
+	Router *rest_model.TransitRouterPatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchTransitRouterParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch transit router params
-func (o *PatchTransitRouterParams) WithBody(body *rest_model.TransitRouterPatch) *PatchTransitRouterParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch transit router params
-func (o *PatchTransitRouterParams) SetBody(body *rest_model.TransitRouterPatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch transit router params
 func (o *PatchTransitRouterParams) WithID(id string) *PatchTransitRouterParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchTransitRouterParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithRouter adds the router to the patch transit router params
+func (o *PatchTransitRouterParams) WithRouter(router *rest_model.TransitRouterPatch) *PatchTransitRouterParams {
+	o.SetRouter(router)
+	return o
+}
+
+// SetRouter adds the router to the patch transit router params
+func (o *PatchTransitRouterParams) SetRouter(router *rest_model.TransitRouterPatch) {
+	o.Router = router
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchTransitRouterParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchTransitRouterParams) WriteToRequest(r runtime.ClientRequest, reg s
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Router != nil {
+		if err := r.SetBodyParam(o.Router); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

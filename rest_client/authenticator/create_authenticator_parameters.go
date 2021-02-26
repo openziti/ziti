@@ -86,11 +86,11 @@ for the create authenticator operation typically these are written to a http.Req
 */
 type CreateAuthenticatorParams struct {
 
-	/*Body
-	  A Authenticators create object
+	/*Authenticator
+	  A Authenticator create object
 
 	*/
-	Body *rest_model.AuthenticatorCreate
+	Authenticator *rest_model.AuthenticatorCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateAuthenticatorParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create authenticator params
-func (o *CreateAuthenticatorParams) WithBody(body *rest_model.AuthenticatorCreate) *CreateAuthenticatorParams {
-	o.SetBody(body)
+// WithAuthenticator adds the authenticator to the create authenticator params
+func (o *CreateAuthenticatorParams) WithAuthenticator(authenticator *rest_model.AuthenticatorCreate) *CreateAuthenticatorParams {
+	o.SetAuthenticator(authenticator)
 	return o
 }
 
-// SetBody adds the body to the create authenticator params
-func (o *CreateAuthenticatorParams) SetBody(body *rest_model.AuthenticatorCreate) {
-	o.Body = body
+// SetAuthenticator adds the authenticator to the create authenticator params
+func (o *CreateAuthenticatorParams) SetAuthenticator(authenticator *rest_model.AuthenticatorCreate) {
+	o.Authenticator = authenticator
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateAuthenticatorParams) WriteToRequest(r runtime.ClientRequest, reg 
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Authenticator != nil {
+		if err := r.SetBodyParam(o.Authenticator); err != nil {
 			return err
 		}
 	}

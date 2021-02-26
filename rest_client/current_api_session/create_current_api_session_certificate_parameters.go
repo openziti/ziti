@@ -86,11 +86,11 @@ for the create current Api session certificate operation typically these are wri
 */
 type CreateCurrentAPISessionCertificateParams struct {
 
-	/*Body
+	/*SessionCertificate
 	  The payload describing the CSR used to create a session certificate
 
 	*/
-	Body *rest_model.CurrentAPISessionCertificateCreate
+	SessionCertificate *rest_model.CurrentAPISessionCertificateCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateCurrentAPISessionCertificateParams) SetHTTPClient(client *http.Cl
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create current Api session certificate params
-func (o *CreateCurrentAPISessionCertificateParams) WithBody(body *rest_model.CurrentAPISessionCertificateCreate) *CreateCurrentAPISessionCertificateParams {
-	o.SetBody(body)
+// WithSessionCertificate adds the sessionCertificate to the create current Api session certificate params
+func (o *CreateCurrentAPISessionCertificateParams) WithSessionCertificate(sessionCertificate *rest_model.CurrentAPISessionCertificateCreate) *CreateCurrentAPISessionCertificateParams {
+	o.SetSessionCertificate(sessionCertificate)
 	return o
 }
 
-// SetBody adds the body to the create current Api session certificate params
-func (o *CreateCurrentAPISessionCertificateParams) SetBody(body *rest_model.CurrentAPISessionCertificateCreate) {
-	o.Body = body
+// SetSessionCertificate adds the sessionCertificate to the create current Api session certificate params
+func (o *CreateCurrentAPISessionCertificateParams) SetSessionCertificate(sessionCertificate *rest_model.CurrentAPISessionCertificateCreate) {
+	o.SessionCertificate = sessionCertificate
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateCurrentAPISessionCertificateParams) WriteToRequest(r runtime.Clie
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.SessionCertificate != nil {
+		if err := r.SetBodyParam(o.SessionCertificate); err != nil {
 			return err
 		}
 	}

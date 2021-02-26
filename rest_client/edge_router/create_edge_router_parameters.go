@@ -86,11 +86,11 @@ for the create edge router operation typically these are written to a http.Reque
 */
 type CreateEdgeRouterParams struct {
 
-	/*Body
-	  A config-type to create
+	/*EdgeRouter
+	  A edge router to create
 
 	*/
-	Body *rest_model.EdgeRouterCreate
+	EdgeRouter *rest_model.EdgeRouterCreate
 
 	timeout    time.Duration
 	Context    context.Context
@@ -130,15 +130,15 @@ func (o *CreateEdgeRouterParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the create edge router params
-func (o *CreateEdgeRouterParams) WithBody(body *rest_model.EdgeRouterCreate) *CreateEdgeRouterParams {
-	o.SetBody(body)
+// WithEdgeRouter adds the edgeRouter to the create edge router params
+func (o *CreateEdgeRouterParams) WithEdgeRouter(edgeRouter *rest_model.EdgeRouterCreate) *CreateEdgeRouterParams {
+	o.SetEdgeRouter(edgeRouter)
 	return o
 }
 
-// SetBody adds the body to the create edge router params
-func (o *CreateEdgeRouterParams) SetBody(body *rest_model.EdgeRouterCreate) {
-	o.Body = body
+// SetEdgeRouter adds the edgeRouter to the create edge router params
+func (o *CreateEdgeRouterParams) SetEdgeRouter(edgeRouter *rest_model.EdgeRouterCreate) {
+	o.EdgeRouter = edgeRouter
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -149,8 +149,8 @@ func (o *CreateEdgeRouterParams) WriteToRequest(r runtime.ClientRequest, reg str
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.EdgeRouter != nil {
+		if err := r.SetBodyParam(o.EdgeRouter); err != nil {
 			return err
 		}
 	}

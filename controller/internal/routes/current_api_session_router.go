@@ -113,7 +113,7 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		return ae.GetHandlers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.Body.Csr))
+		return ae.GetHandlers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr))
 	})
 }
 

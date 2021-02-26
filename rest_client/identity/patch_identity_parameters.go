@@ -86,16 +86,16 @@ for the patch identity operation typically these are written to a http.Request
 */
 type PatchIdentityParams struct {
 
-	/*Body
-	  An identity patch object
-
-	*/
-	Body *rest_model.IdentityPatch
 	/*ID
 	  The id of the requested resource
 
 	*/
 	ID string
+	/*Identity
+	  An identity patch object
+
+	*/
+	Identity *rest_model.IdentityPatch
 
 	timeout    time.Duration
 	Context    context.Context
@@ -135,17 +135,6 @@ func (o *PatchIdentityParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch identity params
-func (o *PatchIdentityParams) WithBody(body *rest_model.IdentityPatch) *PatchIdentityParams {
-	o.SetBody(body)
-	return o
-}
-
-// SetBody adds the body to the patch identity params
-func (o *PatchIdentityParams) SetBody(body *rest_model.IdentityPatch) {
-	o.Body = body
-}
-
 // WithID adds the id to the patch identity params
 func (o *PatchIdentityParams) WithID(id string) *PatchIdentityParams {
 	o.SetID(id)
@@ -157,6 +146,17 @@ func (o *PatchIdentityParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithIdentity adds the identity to the patch identity params
+func (o *PatchIdentityParams) WithIdentity(identity *rest_model.IdentityPatch) *PatchIdentityParams {
+	o.SetIdentity(identity)
+	return o
+}
+
+// SetIdentity adds the identity to the patch identity params
+func (o *PatchIdentityParams) SetIdentity(identity *rest_model.IdentityPatch) {
+	o.Identity = identity
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *PatchIdentityParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -165,15 +165,15 @@ func (o *PatchIdentityParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
-			return err
-		}
-	}
-
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+
+	if o.Identity != nil {
+		if err := r.SetBodyParam(o.Identity); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

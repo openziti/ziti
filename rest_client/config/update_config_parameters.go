@@ -86,11 +86,11 @@ for the update config operation typically these are written to a http.Request
 */
 type UpdateConfigParams struct {
 
-	/*Body
+	/*Config
 	  A config update object
 
 	*/
-	Body *rest_model.ConfigUpdate
+	Config *rest_model.ConfigUpdate
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *UpdateConfigParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the update config params
-func (o *UpdateConfigParams) WithBody(body *rest_model.ConfigUpdate) *UpdateConfigParams {
-	o.SetBody(body)
+// WithConfig adds the config to the update config params
+func (o *UpdateConfigParams) WithConfig(config *rest_model.ConfigUpdate) *UpdateConfigParams {
+	o.SetConfig(config)
 	return o
 }
 
-// SetBody adds the body to the update config params
-func (o *UpdateConfigParams) SetBody(body *rest_model.ConfigUpdate) {
-	o.Body = body
+// SetConfig adds the config to the update config params
+func (o *UpdateConfigParams) SetConfig(config *rest_model.ConfigUpdate) {
+	o.Config = config
 }
 
 // WithID adds the id to the update config params
@@ -165,8 +165,8 @@ func (o *UpdateConfigParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Config != nil {
+		if err := r.SetBodyParam(o.Config); err != nil {
 			return err
 		}
 	}

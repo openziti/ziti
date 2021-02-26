@@ -89,7 +89,7 @@ func (r *ServicePolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *ServicePolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_policy.CreateServicePolicyParams) {
 	Create(rc, rc, ServicePolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.ServicePolicy.Create(MapCreateServicePolicyToModel(params.Body))
+		return ae.Handlers.ServicePolicy.Create(MapCreateServicePolicyToModel(params.Policy))
 	})
 }
 
@@ -99,13 +99,13 @@ func (r *ServicePolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_policy.UpdateServicePolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.ServicePolicy.Update(MapUpdateServicePolicyToModel(params.ID, params.Body))
+		return ae.Handlers.ServicePolicy.Update(MapUpdateServicePolicyToModel(params.ID, params.Policy))
 	})
 }
 
 func (r *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_policy.PatchServicePolicyParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.ServicePolicy.Patch(MapPatchServicePolicyToModel(params.ID, params.Body), fields.FilterMaps("tags"))
+		return ae.Handlers.ServicePolicy.Patch(MapPatchServicePolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 

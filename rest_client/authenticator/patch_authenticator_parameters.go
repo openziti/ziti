@@ -86,11 +86,11 @@ for the patch authenticator operation typically these are written to a http.Requ
 */
 type PatchAuthenticatorParams struct {
 
-	/*Body
+	/*Authenticator
 	  An authenticator patch object
 
 	*/
-	Body *rest_model.AuthenticatorPatch
+	Authenticator *rest_model.AuthenticatorPatch
 	/*ID
 	  The id of the requested resource
 
@@ -135,15 +135,15 @@ func (o *PatchAuthenticatorParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithBody adds the body to the patch authenticator params
-func (o *PatchAuthenticatorParams) WithBody(body *rest_model.AuthenticatorPatch) *PatchAuthenticatorParams {
-	o.SetBody(body)
+// WithAuthenticator adds the authenticator to the patch authenticator params
+func (o *PatchAuthenticatorParams) WithAuthenticator(authenticator *rest_model.AuthenticatorPatch) *PatchAuthenticatorParams {
+	o.SetAuthenticator(authenticator)
 	return o
 }
 
-// SetBody adds the body to the patch authenticator params
-func (o *PatchAuthenticatorParams) SetBody(body *rest_model.AuthenticatorPatch) {
-	o.Body = body
+// SetAuthenticator adds the authenticator to the patch authenticator params
+func (o *PatchAuthenticatorParams) SetAuthenticator(authenticator *rest_model.AuthenticatorPatch) {
+	o.Authenticator = authenticator
 }
 
 // WithID adds the id to the patch authenticator params
@@ -165,8 +165,8 @@ func (o *PatchAuthenticatorParams) WriteToRequest(r runtime.ClientRequest, reg s
 	}
 	var res []error
 
-	if o.Body != nil {
-		if err := r.SetBodyParam(o.Body); err != nil {
+	if o.Authenticator != nil {
+		if err := r.SetBodyParam(o.Authenticator); err != nil {
 			return err
 		}
 	}

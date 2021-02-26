@@ -61,7 +61,7 @@ type PatchCurrentIdentityAuthenticatorParams struct {
 	  Required: true
 	  In: body
 	*/
-	Body *rest_model.AuthenticatorPatchWithCurrent
+	Authenticator *rest_model.AuthenticatorPatchWithCurrent
 	/*The id of the requested resource
 	  Required: true
 	  In: path
@@ -83,9 +83,9 @@ func (o *PatchCurrentIdentityAuthenticatorParams) BindRequest(r *http.Request, r
 		var body rest_model.AuthenticatorPatchWithCurrent
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("body", "body", ""))
+				res = append(res, errors.Required("authenticator", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("body", "body", "", err))
+				res = append(res, errors.NewParseError("authenticator", "body", "", err))
 			}
 		} else {
 			// validate body object
@@ -94,11 +94,11 @@ func (o *PatchCurrentIdentityAuthenticatorParams) BindRequest(r *http.Request, r
 			}
 
 			if len(res) == 0 {
-				o.Body = &body
+				o.Authenticator = &body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("body", "body", ""))
+		res = append(res, errors.Required("authenticator", "body", ""))
 	}
 	rID, rhkID, _ := route.Params.GetOK("id")
 	if err := o.bindID(rID, rhkID, route.Formats); err != nil {
