@@ -607,10 +607,12 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
 github.com/openziti/edge v0.19.5 h1:yhgWyZyU6ecTlrq9LGOTHX10AfFDLD9kgYm6K8ioNqE=
 github.com/openziti/edge v0.19.5/go.mod h1:M7Im2HrWZlDMW+xAgl16vh46zKO0Y1woTtwkVo8qxug=
-github.com/openziti/fabric v0.16.11 h1:Gvqln+sK8JD6KhhWaKRaQMZuSYD+kXCKteqya7OT4b0=
 github.com/openziti/fabric v0.16.11/go.mod h1:YOsSTUbiocI3iHFTjWCid1pMdqebJu9Y0VVQKPxGiiY=
-github.com/openziti/foundation v0.15.18 h1:LtjJw5kbX0115PZ9R0j9HiMLTKd+BB/wSWTZuR91xz4=
+github.com/openziti/fabric v0.16.12 h1:JEg2hNasGDnFVUfPv6B52PXm51KIr0DxkF47zoqrkAs=
+github.com/openziti/fabric v0.16.12/go.mod h1:Scja7v9rrpH8zK7joUqcNJO2VZyscMHFXI8EZM+et4A=
 github.com/openziti/foundation v0.15.18/go.mod h1:4IJmKD13EpQfUD2NGbW95ug3D9ets9TgVhU9N5Iabuk=
+github.com/openziti/foundation v0.15.19 h1:PhdXN2ObjgLRJ2M3OalN53++oHk7lblokbjalYXbf6M=
+github.com/openziti/foundation v0.15.19/go.mod h1:hn08t1O+fLsrk0N6ZQKF76mBQdPvbLDZtM82KT+a0CU=
 github.com/openziti/sdk-golang v0.15.16 h1:5szZozunAUjuTbl2pkaNBZQ0aYE6SdeGNOdRPh/9W4I=
 github.com/openziti/sdk-golang v0.15.16/go.mod h1:YhC+TlbW0W2g9r0dHmap6YpZ2rNUf60Nr/1uXsltYy4=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
@@ -707,8 +709,9 @@ github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMB
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.5.0/go.mod h1:+F7Ogzej0PZc/94MaYx/nvG9jOFMD2osvC3s+Squfpo=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
-github.com/sirupsen/logrus v1.7.1 h1:rsizeFmZP+GYwyb4V6t6qpG7ZNWzA2bvgW/yC2xHCcg=
 github.com/sirupsen/logrus v1.7.1/go.mod h1:4GuYW9TZmE769R5STWrRakJc4UqQ3+QQ95fyz7ENv1A=
+github.com/sirupsen/logrus v1.8.0 h1:nfhvjKcUMhBMVqbKHJlk5RPrrfYr/NMo3692g0dwfWU=
+github.com/sirupsen/logrus v1.8.0/go.mod h1:4GuYW9TZmE769R5STWrRakJc4UqQ3+QQ95fyz7ENv1A=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
