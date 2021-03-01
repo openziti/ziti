@@ -432,8 +432,7 @@ github.com/michaelquigley/pfxlog v0.3.7 h1:itV+da+Kek0GwApI2vOcGhLdMk6eCNfjXoR6/
 github.com/michaelquigley/pfxlog v0.3.7/go.mod h1:s4uqqB54PDLSU6JvpizMBJ2VU4cpG3bXsXJvFHqHDLU=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
-github.com/miekg/dns v1.1.39 h1:6dRfDGnHiXOMmTZkwWANy7bBXXlKls5Qu+pn+Ue0TLo=
-github.com/miekg/dns v1.1.39/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
+github.com/miekg/dns v1.1.40 h1:pyyPFfGMnciYUk/mXpKkVmeMQjfXqt3FAJ2hy7tPiLA=
 github.com/miekg/dns v1.1.40/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/pkcs11 v1.0.3 h1:iMwmD7I5225wv84WxIG/bmxz9AXjWvTWIbM/TYHvWtw=
 github.com/miekg/pkcs11 v1.0.3/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
@@ -481,11 +480,11 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/fabric v0.16.12 h1:JEg2hNasGDnFVUfPv6B52PXm51KIr0DxkF47zoqrkAs=
-github.com/openziti/fabric v0.16.12/go.mod h1:Scja7v9rrpH8zK7joUqcNJO2VZyscMHFXI8EZM+et4A=
+github.com/openziti/fabric v0.16.13 h1:IUJ3Lgr/4er2RRUAqMdKeNF+KK5ESn/z8084b1KQWmA=
+github.com/openziti/fabric v0.16.13/go.mod h1:WpPkQ3LV5TeTzM95APPORBhfTxELxvcMVSfuTXpheJU=
 github.com/openziti/foundation v0.15.18/go.mod h1:4IJmKD13EpQfUD2NGbW95ug3D9ets9TgVhU9N5Iabuk=
-github.com/openziti/foundation v0.15.19 h1:PhdXN2ObjgLRJ2M3OalN53++oHk7lblokbjalYXbf6M=
-github.com/openziti/foundation v0.15.19/go.mod h1:hn08t1O+fLsrk0N6ZQKF76mBQdPvbLDZtM82KT+a0CU=
+github.com/openziti/foundation v0.15.21 h1:YyjqSVQqOZ69wZ1EvxkobU7uLPqoCN6kj7gffIlfWgc=
+github.com/openziti/foundation v0.15.21/go.mod h1:e5SiDK0Hfz5RJvhEbvWMHMqmVzm8AvFRHC5fqUigoNU=
 github.com/openziti/sdk-golang v0.15.16 h1:5szZozunAUjuTbl2pkaNBZQ0aYE6SdeGNOdRPh/9W4I=
 github.com/openziti/sdk-golang v0.15.16/go.mod h1:YhC+TlbW0W2g9r0dHmap6YpZ2rNUf60Nr/1uXsltYy4=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
@@ -578,6 +577,8 @@ github.com/spf13/cobra v0.0.3/go.mod h1:1l0Ry5zgKvJasoi3XT1TypsSe7PqH0Sj9dhYf7v3
 github.com/spf13/cobra v1.0.0/go.mod h1:/6GTrnGXV9HjY+aR4k0oJ5tcvakLuG6EuKReYlHNrgE=
 github.com/spf13/cobra v1.1.1 h1:KfztREH0tPxJJ+geloSLaAkaPkr4ki2Er5quFV1TDo4=
 github.com/spf13/cobra v1.1.1/go.mod h1:WnodtKOvamDL/PwE2M4iKs8aMDBZ5Q5klgD3qfVJQMI=
+github.com/spf13/cobra v1.1.3 h1:xghbfqPkxzxP3C/f3n5DdpAbdKLj4ZE4BWQI362l53M=
+github.com/spf13/cobra v1.1.3/go.mod h1:pGADOWyqRD/YMrPZigI/zbliZ2wVD/23d+is3pSWzOo=
 github.com/spf13/jwalterweatherman v1.0.0/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
 github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
