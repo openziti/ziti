@@ -53,8 +53,8 @@ func (network *Network) smart() {
 	/*
 	 * Develop candidates for rerouting.
 	 */
-	newCircuits := make(map[*session]*Circuit)
-	var candidates []*session
+	newCircuits := make(map[*Session]*Circuit)
+	var candidates []*Session
 	count := 0
 	ceiling := int(float32(len(sessions)) * network.options.Smart.RerouteFraction)
 	if ceiling < 1 {
