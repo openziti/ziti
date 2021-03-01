@@ -20,11 +20,11 @@ package protocols
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/intercept/protocols/ip"
 	"github.com/openziti/edge/tunnel/intercept/protocols/tcp"
 	"github.com/openziti/edge/tunnel/intercept/protocols/udp"
 	"github.com/openziti/edge/tunnel/udp_vconn"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 )
@@ -35,7 +35,7 @@ type rxPacket struct {
 }
 
 // Read packets from the tun interface
-func HandleInboundPackets(context ziti.Context, dev io.ReadWriter, mtu uint, udpManager *udp.TunUDPManager) {
+func HandleInboundPackets(provider tunnel.FabricProvider, dev io.ReadWriter, mtu uint, udpManager *udp.TunUDPManager) {
 	log := pfxlog.Logger()
 
 	// initialize a buffer pool for incoming packets
@@ -51,7 +51,7 @@ func HandleInboundPackets(context ziti.Context, dev io.ReadWriter, mtu uint, udp
 		rxq <- &packet
 	}
 
-	vconnMgr := udp_vconn.NewManager(context, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+	vconnMgr := udp_vconn.NewManager(provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 
 	for {
 		packet := <-rxq
@@ -69,10 +69,10 @@ func HandleInboundPackets(context ziti.Context, dev io.ReadWriter, mtu uint, udp
 		enqueued := false
 		switch proto {
 		case tcp.TCPProtocolNumber:
-			enqueued = tcp.Enqueue(context, src, dst, payload, dev, mtu, packet.release)
+			enqueued = tcp.Enqueue(provider, src, dst, payload, dev, mtu, packet.release)
 		case udp.ProtocolNumber:
 			log.Infof("Received udp packet %v, %v", src, dst)
-			event := udpManager.CreateEvent(context, src, dst, payload, dev, packet.release)
+			event := udpManager.CreateEvent(src, dst, payload, packet.release)
 			vconnMgr.QueueEvent(event)
 			enqueued = true
 		default:

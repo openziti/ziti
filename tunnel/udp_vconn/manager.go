@@ -21,7 +21,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/foundation/util/mempool"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -30,7 +29,7 @@ import (
 
 type manager struct {
 	eventC           chan Event
-	context          ziti.Context
+	provider         tunnel.FabricProvider
 	connMap          map[string]*udpConn
 	newConnPolicy    NewConnPolicy
 	expirationPolicy ConnExpirationPolicy
@@ -98,7 +97,7 @@ func (manager *manager) CreateWriteQueue(srcAddr net.Addr, service string, write
 	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
 	pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("created new virtual UDP connection")
-	go tunnel.DialAndRun(manager.context, service, conn, false)
+	go tunnel.DialAndRun(manager.provider, service, conn, false)
 	return conn, nil
 }
 

@@ -18,10 +18,10 @@ package host
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +31,7 @@ func New() intercept.Interceptor {
 	return &interceptor{}
 }
 
-func (p *interceptor) Start(ziti.Context) {
+func (p *interceptor) Start(provider tunnel.FabricProvider) {
 	log := pfxlog.Logger()
 	log.Info("starting host interceptor")
 }

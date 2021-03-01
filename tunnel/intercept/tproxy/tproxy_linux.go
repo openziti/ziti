@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/edge/tunnel/udp_vconn"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/mempool"
-	"github.com/openziti/sdk-golang/ziti"
 	"golang.org/x/sys/unix"
 	"net"
 	"strconv"
@@ -169,12 +168,12 @@ func NewWithLanIf(lanIf string) (intercept.Interceptor, error) {
 	return &t, nil
 }
 
-func (t *tProxyInterceptor) Start(context ziti.Context) {
-	go t.accept(context)
-	go t.acceptUDP(context)
+func (t *tProxyInterceptor) Start(provider tunnel.FabricProvider) {
+	go t.accept(provider)
+	go t.acceptUDP(provider)
 }
 
-func (t *tProxyInterceptor) accept(context ziti.Context) {
+func (t *tProxyInterceptor) accept(provider tunnel.FabricProvider) {
 	log := pfxlog.Logger()
 	for {
 		client, err := t.tcpLn.Accept()
@@ -192,12 +191,12 @@ func (t *tProxyInterceptor) accept(context ziti.Context) {
 			client.Close()
 			continue
 		}
-		go tunnel.DialAndRun(context, service.Name, client, true)
+		go tunnel.DialAndRun(provider, service.Name, client, true)
 	}
 }
 
-func (t *tProxyInterceptor) acceptUDP(context ziti.Context) {
-	vconnMgr := udp_vconn.NewManager(context, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+func (t *tProxyInterceptor) acceptUDP(provider tunnel.FabricProvider) {
+	vconnMgr := udp_vconn.NewManager(provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 	t.generateReadEvents(vconnMgr)
 }
 

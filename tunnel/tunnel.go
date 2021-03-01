@@ -17,7 +17,6 @@
 package tunnel
 
 import (
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -26,15 +25,11 @@ import (
 
 var log = logrus.StandardLogger()
 
-func DialAndRun(context ziti.Context, service string, clientConn net.Conn, halfClose bool) {
-	zitiConn, err := context.Dial(service)
-	if err != nil {
-		log.Errorf("zt.Dial(%s) failed: %s", service, err.Error())
-		clientConn.Close()
-		return
+func DialAndRun(provider FabricProvider, service string, clientConn net.Conn, halfClose bool) {
+	if err := provider.TunnelService(clientConn, service, halfClose); err != nil {
+		log.WithError(err).WithField("service", service).Error("tunnel failed")
+		_ = clientConn.Close()
 	}
-
-	Run(zitiConn, clientConn, halfClose)
 }
 
 func Run(zitiConn net.Conn, clientConn net.Conn, halfClose bool) {
