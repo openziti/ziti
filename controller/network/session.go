@@ -22,7 +22,7 @@ import (
 	"github.com/orcaman/concurrent-map"
 )
 
-type session struct {
+type Session struct {
 	Id         *identity.TokenId
 	ClientId   *identity.TokenId
 	Service    *Service
@@ -31,7 +31,7 @@ type session struct {
 	PeerData   xt.PeerData
 }
 
-func (s *session) latency() int64 {
+func (s *Session) latency() int64 {
 	var latency int64
 	for _, l := range s.Circuit.Links {
 		latency += l.GetSrcLatency()
@@ -52,7 +52,7 @@ func newSessionController() *sessionController {
 	}
 }
 
-func (c *sessionController) add(sn *session) {
+func (c *sessionController) add(sn *Session) {
 	c.sessions.Set(sn.Id.Token, sn)
 
 	if !c.sessionsByService.Has(sn.Service.Id) {
@@ -63,22 +63,22 @@ func (c *sessionController) add(sn *session) {
 	sessionsForService.Set(sn.Id.Token, sn)
 }
 
-func (c *sessionController) get(id *identity.TokenId) (*session, bool) {
+func (c *sessionController) get(id *identity.TokenId) (*Session, bool) {
 	if t, found := c.sessions.Get(id.Token); found {
-		return t.(*session), true
+		return t.(*Session), true
 	}
 	return nil, false
 }
 
-func (c *sessionController) all() []*session {
-	sessions := make([]*session, 0)
+func (c *sessionController) all() []*Session {
+	sessions := make([]*Session, 0)
 	for i := range c.sessions.IterBuffered() {
-		sessions = append(sessions, i.Val.(*session))
+		sessions = append(sessions, i.Val.(*Session))
 	}
 	return sessions
 }
 
-func (c *sessionController) remove(sn *session) {
+func (c *sessionController) remove(sn *Session) {
 	c.sessions.Remove(sn.Id.Token)
 
 	if t, found := c.sessionsByService.Get(sn.Service.Id); found {
