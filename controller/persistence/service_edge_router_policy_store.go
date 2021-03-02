@@ -6,8 +6,8 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
 	"sort"
 )
@@ -57,7 +57,7 @@ func (entity *ServiceEdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	if !isSemanticValid(entity.Semantic) {
-		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
+		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
 

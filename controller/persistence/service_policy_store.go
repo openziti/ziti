@@ -6,8 +6,8 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
 	"math/rand"
 	"sort"
@@ -86,7 +86,7 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 
 	if ctx.ProceedWithSet(FieldServicePolicyType) {
 		if entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
-			ctx.Bucket.SetError(validation.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
+			ctx.Bucket.SetError(errorz.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
 			return
 		}
 	} else {
@@ -108,7 +108,7 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	if ctx.ProceedWithSet(FieldSemantic) && !isSemanticValid(entity.Semantic) {
-		ctx.Bucket.SetError(validation.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
+		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
 

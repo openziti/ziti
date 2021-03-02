@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/openziti/edge/controller/apierror"
-	"net/http"
+	"github.com/openziti/foundation/util/errorz"
 )
 
 type AuthModuleUpdb struct {
@@ -55,12 +55,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
 	}
 
 	if username == "" || password == "" {
-		return "", &apierror.ApiError{
-			Code:    apierror.CouldNotValidateCode,
-			Message: apierror.CouldNotValidateMessage,
-			Cause:   errors.New("username and password fields are required"),
-			Status:  http.StatusBadRequest,
-		}
+		return "", errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
 	}
 
 	authenticator, err := handler.env.GetHandlers().Authenticator.ReadByUsername(username)

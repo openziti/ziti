@@ -19,8 +19,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -33,7 +33,7 @@ const (
 
 func validateRolesAndIds(field string, values []string) error {
 	if len(values) > 1 && stringz.Contains(values, AllRole) {
-		return validation.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole), field, values)
+		return errorz.NewFieldError(fmt.Sprintf("if using %v, it should be the only role specified", AllRole), field, values)
 	}
 
 	var invalidKeys []string
@@ -43,7 +43,7 @@ func validateRolesAndIds(field string, values []string) error {
 		}
 	}
 	if len(invalidKeys) > 0 {
-		return validation.NewFieldError("role entries must prefixed with # (to indicate role attributes) or @ (to indicate a name or id)", field, invalidKeys)
+		return errorz.NewFieldError("role entries must prefixed with # (to indicate role attributes) or @ (to indicate a name or id)", field, invalidKeys)
 	}
 	return nil
 }

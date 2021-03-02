@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -40,7 +40,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 		providedType := entity.TypeId
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
 		if !configTypeStore.IsEntityPresent(tx, entity.TypeId) {
-			return nil, validation.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
+			return nil, errorz.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 		}
 	}
 
@@ -77,7 +77,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 
 func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	if entity.TypeId == "" {
-		return nil, validation.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
+		return nil, errorz.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
 	}
 	return entity.toBoltEntity(tx, handler)
 }

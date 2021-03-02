@@ -8,6 +8,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 )
 
@@ -16,16 +17,16 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 	if openApiError, ok := inErr.(openApiErrors.Error); ok {
 		//openApiErrors from the Open API framework mean that we never hit any of the Edge logic and thus
 		//do not have any context established (i.e. no request id)
-		var apiError *apierror.ApiError
+		var apiError *errorz.ApiError
 		if openApiError.Code() == http.StatusUnprocessableEntity {
 			// triggered by validation failures and consumer errors
-			var newApiError *apierror.ApiError
+			var newApiError *errorz.ApiError
 
 			if compositeError, ok := openApiError.(*openApiErrors.CompositeError); ok {
 				if len(compositeError.Errors) > 0 {
 					//validation errors
 					if validationError, ok := compositeError.Errors[0].(*openApiErrors.Validation); ok {
-						newApiError = apierror.NewCouldNotValidate(validationError)
+						newApiError = errorz.NewCouldNotValidate(validationError)
 					}
 				}
 			}
@@ -39,17 +40,17 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 
 		} else if openApiError.Code() == http.StatusNotFound {
 			// handle open API openApiErrors we have existing ApiErrors for
-			apiError = apierror.NewNotFound()
+			apiError = errorz.NewNotFound()
 		} else if openApiError.Code() == http.StatusMethodNotAllowed {
 			apiError = apierror.NewMethodNotAllowed()
 		} else if openApiError.Code() == http.StatusUnauthorized {
-			apiError = apierror.NewUnauthorized()
+			apiError = errorz.NewUnauthorized()
 		} else if openApiError.Code() >= 600 && openApiError.Code() < 700 {
 			//openapi defines error codes 601+ for validation errors
-			apiError = apierror.NewCouldNotValidate(inErr)
+			apiError = errorz.NewCouldNotValidate(inErr)
 
 		} else {
-			apiError = apierror.NewUnhandled(openApiError)
+			apiError = errorz.NewUnhandled(openApiError)
 		}
 		apiError.Cause = openApiError
 
@@ -60,7 +61,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 	requestContext, err := GetRequestContextFromHttpContext(r)
 
 	if err != nil {
-		apiError := apierror.NewUnhandled(err)
+		apiError := errorz.NewUnhandled(err)
 
 		apiError.Cause = fmt.Errorf("error retrieveing request context: %w", err)
 
@@ -69,7 +70,7 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 	}
 
 	if requestContext == nil {
-		apiError := apierror.NewUnhandled(err)
+		apiError := errorz.NewUnhandled(err)
 		apiError.Cause = errors.New("expected request context is nil")
 		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
 		return

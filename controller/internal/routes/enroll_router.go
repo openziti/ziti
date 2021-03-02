@@ -23,7 +23,6 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
@@ -32,6 +31,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/enroll"
 	"github.com/openziti/edge/rest_server/operations/well_known"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"strings"
 )
@@ -97,11 +97,7 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 	data, err = pkcs7.DegenerateCertificate(data)
 	if err != nil {
 		pfxlog.Logger().Errorf("unexpected issue creating pkcs7 degenerate: %s", err)
-		rc.RespondWithError(&apierror.ApiError{
-			Code:    apierror.UnhandledCode,
-			Message: apierror.UnhandledMessage,
-			Status:  http.StatusInternalServerError,
-		})
+		rc.RespondWithError(errorz.NewUnhandled(err))
 		return
 	}
 
@@ -139,7 +135,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 	}
 
 	if result == nil {
-		rc.RespondWithApiError(apierror.NewUnauthorized())
+		rc.RespondWithApiError(errorz.NewUnauthorized())
 		return
 	}
 

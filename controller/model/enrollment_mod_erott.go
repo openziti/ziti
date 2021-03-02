@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/foundation/util/errorz"
 	"time"
 )
 
@@ -118,7 +119,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	if cr.Subject.CommonName != edgeRouter.Id {
 
-		return nil, &apierror.ApiError{
+		return nil, &errorz.ApiError{
 			Code:        EdgeRouterEnrollmentCommonNameInvalidCode,
 			Message:     EdgeRouterEnrollmentCommonNameInvalidMessage,
 			Status:      400,

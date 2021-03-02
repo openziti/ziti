@@ -20,11 +20,10 @@ package tests
 
 import (
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/foundation/util/errorz"
 	"math"
 	"testing"
 	"time"
-
-	"github.com/openziti/edge/controller/apierror"
 )
 
 func Test_ConfigTypes(t *testing.T) {
@@ -41,7 +40,7 @@ func Test_ConfigTypes(t *testing.T) {
 		configType := ctx.newConfigType()
 		configType.Name = ""
 		resp := ctx.AdminSession.createEntity(configType)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create config type without schema should pass", func(t *testing.T) {
@@ -74,7 +73,7 @@ func Test_ConfigTypes(t *testing.T) {
 			},
 		}
 		resp := ctx.AdminSession.createEntity(configType)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "schema")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "schema")
 	})
 
 	t.Run("create config type with schema should pass", func(t *testing.T) {

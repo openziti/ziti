@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"reflect"
 	"strings"
@@ -232,7 +232,7 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 			return
 		}
 
-		if fe, ok := err.(*validation.FieldError); ok {
+		if fe, ok := err.(*errorz.FieldError); ok {
 			rc.RespondWithFieldError(fe)
 			return
 		}
@@ -344,7 +344,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
 			return
 		}
 
-		if fe, ok := err.(*validation.FieldError); ok {
+		if fe, ok := err.(*errorz.FieldError); ok {
 			rc.RespondWithFieldError(fe)
 			return
 		}
@@ -385,7 +385,7 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 			return
 		}
 
-		if fe, ok := err.(*validation.FieldError); ok {
+		if fe, ok := err.(*errorz.FieldError); ok {
 			rc.RespondWithFieldError(fe)
 			return
 		}

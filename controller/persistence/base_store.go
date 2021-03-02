@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/validation"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -137,7 +136,7 @@ func (store *baseStore) getRoleAttributesCursorProvider(index boltz.SetReadIndex
 	}
 
 	if !isSemanticValid(semantic) {
-		return nil, validation.NewFieldError("invalid semantic", FieldSemantic, semantic)
+		return nil, errorz.NewFieldError("invalid semantic", FieldSemantic, semantic)
 	}
 
 	roles, ids, err := splitRolesAndIds(values)

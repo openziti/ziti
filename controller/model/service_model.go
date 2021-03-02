@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -75,7 +75,7 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, handler Handler) error {
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
 				conflictConfig.Name, config.Name, configTypeName)
-			return validation.NewFieldError(msg, "configs", entity.Configs)
+			return errorz.NewFieldError(msg, "configs", entity.Configs)
 		}
 		typeMap[config.Type] = config
 	}

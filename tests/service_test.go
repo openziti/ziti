@@ -21,13 +21,12 @@ package tests
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"net/url"
 	"sort"
 	"testing"
 	"time"
-
-	"github.com/openziti/edge/controller/apierror"
 )
 
 func Test_Services(t *testing.T) {
@@ -44,7 +43,7 @@ func Test_Services(t *testing.T) {
 		service := ctx.newService(nil, nil)
 		service.Name = ""
 		resp := ctx.AdminSession.createEntity(service)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
@@ -351,7 +350,7 @@ func Test_ServiceListWithConfigDuplicate(t *testing.T) {
 
 	service := ctx.newService(nil, s(config1.Id, config2.Id))
 	resp := ctx.AdminSession.createEntity(service)
-	ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "configs")
+	ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "configs")
 }
 
 func Test_ServiceRoleAttributes(t *testing.T) {

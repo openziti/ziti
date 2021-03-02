@@ -8,7 +8,6 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -176,7 +175,7 @@ func validateEntityIds(tx *bbolt.Tx, store boltz.ListStore, field string, ids []
 		}
 	}
 	if len(invalid) > 0 {
-		return validation.NewFieldError(fmt.Sprintf("no %v found with the given ids", store.GetEntityType()), field, invalid)
+		return errorz.NewFieldError(fmt.Sprintf("no %v found with the given ids", store.GetEntityType()), field, invalid)
 	}
 	return nil
 }
