@@ -175,11 +175,11 @@ func (network *Network) GetAllLinksForRouter(routerId string) []*Link {
 	return network.linkController.allLinksForRouter(routerId)
 }
 
-func (network *Network) GetSession(sessionId *identity.TokenId) (*session, bool) {
+func (network *Network) GetSession(sessionId *identity.TokenId) (*Session, bool) {
 	return network.sessionController.get(sessionId)
 }
 
-func (network *Network) GetAllSessions() []*session {
+func (network *Network) GetAllSessions() []*Session {
 	return network.sessionController.all()
 }
 
@@ -302,7 +302,7 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*session, error) {
+func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*Session, error) {
 	// 1: Allocate Session Identifier
 	sessionIdHash, err := network.sequence.NextHash()
 	if err != nil {
@@ -381,8 +381,30 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			}
 		}
 
+		// 5.a: Unroute Abandoned Routers (from Previous Attempts)
+		usedRouters := make(map[string]struct{})
+		for _, r := range circuit.Path {
+			usedRouters[r.Id] = struct{}{}
+		}
+		cleanupCount := 0
+		for cleanupRId, _ := range allCleanups {
+			if _, found := usedRouters[cleanupRId]; !found {
+				cleanupCount++
+				if r, err := network.GetRouter(cleanupRId); err == nil {
+					if err := sendUnroute(r, sessionId, true); err == nil {
+						logrus.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+					} else {
+						logrus.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+					}
+				} else {
+					logrus.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, sessionId.Token)
+				}
+			}
+		}
+		logrus.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, sessionId.Token)
+
 		// 6: Create Session Object
-		ss := &session{
+		ss := &Session{
 			Id:         sessionId,
 			ClientId:   clientId,
 			Service:    svc,
@@ -679,7 +701,7 @@ func (network *Network) rerouteLink(l *Link) error {
 	return nil
 }
 
-func (network *Network) rerouteSession(s *session) error {
+func (network *Network) rerouteSession(s *Session) error {
 	log := pfxlog.Logger()
 	log.Warnf("rerouting [s/%s]", s.Id.Token)
 
@@ -708,7 +730,7 @@ func (network *Network) rerouteSession(s *session) error {
 	}
 }
 
-func (network *Network) smartReroute(s *session, cq *Circuit) error {
+func (network *Network) smartReroute(s *Session, cq *Circuit) error {
 	log := pfxlog.Logger()
 
 	s.Circuit = cq
