@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	log "github.com/sirupsen/logrus"
 	"net"
@@ -36,9 +35,8 @@ import (
 	"syscall"
 )
 
-func NewServiceListener(context ziti.Context, interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
+func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
 	return &ServiceListener{
-		context:        context,
 		interceptor:    interceptor,
 		resolver:       resolver,
 		healthCheckMgr: health.NewManager(),
@@ -48,7 +46,7 @@ func NewServiceListener(context ziti.Context, interceptor Interceptor, resolver 
 }
 
 type ServiceListener struct {
-	context        ziti.Context
+	provider       tunnel.FabricProvider
 	interceptor    Interceptor
 	resolver       dns.Resolver
 	healthCheckMgr health.Manager
@@ -75,15 +73,19 @@ func (self *ServiceListener) WaitForShutdown() {
 	self.interceptor.Stop()
 }
 
-func (self *ServiceListener) HandleServicesChange(eventType config.ServiceEventType, service *edge.Service) {
+func (self *ServiceListener) HandleProviderReady(provider tunnel.FabricProvider) {
+	self.provider = provider
+}
+
+func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventType, service *edge.Service) {
 	tunnelerService := &entities.Service{Service: *service}
 
 	switch eventType {
-	case config.ServiceAdded:
+	case ziti.ServiceAdded:
 		self.addService(tunnelerService)
-	case config.ServiceRemoved:
+	case ziti.ServiceRemoved:
 		self.removeService(tunnelerService)
-	case config.ServiceChanged:
+	case ziti.ServiceChanged:
 		self.removeService(tunnelerService)
 		self.addService(tunnelerService)
 	default:
@@ -165,11 +167,11 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 }
 
 func (self *ServiceListener) host(svc *entities.Service) {
-	logger := pfxlog.Logger()
+	logger := pfxlog.Logger().WithField("service", svc.Name)
 
-	currentIdentity, err := self.context.GetCurrentIdentity()
+	currentIdentity, err := self.provider.GetCurrentIdentity()
 	if err != nil {
-		logger.WithError(err).WithField("service", svc.Name).Errorf("error getting current identity information")
+		logger.WithError(err).Error("error getting current identity information")
 		return
 	}
 
@@ -178,80 +180,37 @@ func (self *ServiceListener) host(svc *entities.Service) {
 	options.Precedence = ziti.GetPrecedenceForLabel(currentIdentity.DefaultHostingPrecedence)
 	options.Cost = currentIdentity.DefaultHostingCost
 
-	listener, err := self.context.ListenWithOptions(svc.Name, options)
+	context := &hostingContext{
+		service: svc,
+		options: options,
+		onClose: func() {
+			self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
+		},
+	}
+
+	hostControl, err := self.provider.HostService(context)
 	if err != nil {
 		logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
 		return
 	}
 
 	stopHook := func() {
-		_ = listener.Close()
+		_ = hostControl.Close()
 		self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
 	}
 
 	svc.StopHostHook = stopHook
-	defer stopHook()
 
-	if err := self.setupHealthChecks(listener, svc, currentIdentity); err != nil {
-		logger.WithError(err).WithField("service", svc.Name).Error("error setting up health checks")
+	if err := self.setupHealthChecks(hostControl, svc, currentIdentity); err != nil {
+		logger.WithError(err).Error("error setting up health checks")
+		stopHook()
 		return
-	}
-
-	serverConfig := svc.ServerConfig
-	for {
-		logger.WithField("service", svc.Name).
-			WithField("dialAddr", serverConfig.String()).
-			Info("hosting service, waiting for connections")
-		conn, err := listener.AcceptEdge()
-		if err != nil {
-			logger.WithError(err).WithField("service", svc.Name).Error("closing listener for service")
-			return
-		}
-		externalConn, err := net.Dial(serverConfig.Protocol, serverConfig.Hostname+":"+strconv.Itoa(serverConfig.Port))
-		if err != nil {
-			logger.WithError(err).
-				WithField("service", svc.Name).
-				WithField("dialAddr", serverConfig.String()).
-				Error("dial failed")
-			conn.CompleteAcceptFailed(err)
-			if closeErr := conn.Close(); closeErr != nil {
-				logger.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", serverConfig.String()).
-					Error("close of ziti connection failed")
-			}
-			continue
-		}
-
-		if err := conn.CompleteAcceptSuccess(); err != nil {
-			logger.WithError(err).
-				WithField("service", svc.Name).
-				WithField("dialAddr", serverConfig.String()).
-				Error("complete accept success failed")
-
-			if closeErr := conn.Close(); closeErr != nil {
-				logger.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", serverConfig.String()).
-					Error("close of ziti connection failed")
-			}
-
-			if closeErr := externalConn.Close(); closeErr != nil {
-				logger.WithError(closeErr).
-					WithField("service", svc.Name).
-					WithField("dialAddr", serverConfig.String()).
-					Error("close of external connection failed")
-			}
-			continue
-		}
-
-		go tunnel.Run(conn, externalConn, !strings.Contains(serverConfig.Protocol, "udp"))
 	}
 }
 
-func (self *ServiceListener) setupHealthChecks(listener edge.Listener, service *entities.Service, identity *edge.CurrentIdentity) error {
+func (self *ServiceListener) setupHealthChecks(serviceUpdater health.ServiceUpdater, service *entities.Service, identity *edge.CurrentIdentity) error {
 	precedence := ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
-	serviceState := health.NewServiceState(service.Name, precedence, identity.DefaultHostingCost, listener)
+	serviceState := health.NewServiceState(service.Name, precedence, identity.DefaultHostingCost, serviceUpdater)
 
 	var checkDefinitions []health.CheckDefinition
 
@@ -268,4 +227,31 @@ func (self *ServiceListener) setupHealthChecks(listener edge.Listener, service *
 	}
 
 	return nil
+}
+
+type hostingContext struct {
+	service *entities.Service
+	options *ziti.ListenOptions
+	onClose func()
+}
+
+func (self *hostingContext) ServiceName() string {
+	return self.service.Name
+}
+
+func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
+	return self.options
+}
+
+func (self *hostingContext) Dial() (net.Conn, error) {
+	config := self.service.ServerConfig
+	return net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
+}
+
+func (self *hostingContext) SupportHalfClose() bool {
+	return !strings.Contains(self.service.ServerConfig.Protocol, "udp")
+}
+
+func (self *hostingContext) OnClose() {
+	self.onClose()
 }

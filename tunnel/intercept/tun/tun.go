@@ -20,6 +20,7 @@ package tun
 
 import (
 	"fmt"
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
@@ -28,7 +29,6 @@ import (
 	"github.com/openziti/edge/tunnel/intercept/protocols/udp"
 	"github.com/openziti/edge/tunnel/router"
 	"github.com/openziti/edge/tunnel/utils"
-	"github.com/openziti/sdk-golang/ziti"
 	"net"
 )
 
@@ -65,8 +65,8 @@ func New(devName string, mtu uint) (intercept.Interceptor, error) {
 	return &i, nil
 }
 
-func (t *tunInterceptor) Start(context ziti.Context) {
-	go protocols.HandleInboundPackets(context, t.tunIf.dev, uint(t.tunIf.iFace.MTU), t.udpManager)
+func (t *tunInterceptor) Start(provider tunnel.FabricProvider) {
+	go protocols.HandleInboundPackets(provider, t.tunIf.dev, uint(t.tunIf.iFace.MTU), t.udpManager)
 }
 
 func (t *tunInterceptor) Stop() {
