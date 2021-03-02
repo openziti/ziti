@@ -18,13 +18,13 @@ package subcmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -59,7 +59,6 @@ var root = &cobra.Command{
 }
 
 var interceptor intercept.Interceptor
-var resolver dns.Resolver
 var logFormatter string
 var cliAgentEnabled bool
 var cliAgentAddr string
@@ -92,11 +91,6 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	}
 }
 
-type serviceChangeEvent struct {
-	eventType config.ServiceEventType
-	service   *edge.Service
-}
-
 func rootPostRun(cmd *cobra.Command, _ []string) {
 	log := pfxlog.Logger()
 
@@ -119,37 +113,29 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		entities.ServerConfigV1,
 	}
 
-	var serviceListener *intercept.ServiceListener
-	var serviceEventsC = make(chan *serviceChangeEvent)
+	resolverConfig := cmd.Flag("resolver").Value.String()
+	resolver := dns.NewResolver(resolverConfig)
+
+	serviceListener := intercept.NewServiceListener(interceptor, resolver)
 
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
-	options := &config.Options{
+	options := &ziti.Options{
 		RefreshInterval: time.Duration(svcPollRate) * time.Second,
-		OnServiceUpdate: func(eventType config.ServiceEventType, service *edge.Service) {
-			serviceEventsC <- &serviceChangeEvent{
-				eventType: eventType,
-				service:   service,
-			}
+		OnContextReady: func(ctx ziti.Context) {
+			serviceListener.HandleProviderReady(tunnel.NewContextProvider(ctx))
 		},
+		OnServiceUpdate: serviceListener.HandleServicesChange,
 	}
 
 	rootPrivateContext := ziti.NewContextWithOpts(zitiCfg, options)
 
-	resolverConfig := cmd.Flag("resolver").Value.String()
-	resolver = dns.NewResolver(resolverConfig)
 	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
 	if err = intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
 		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
 	}
 
-	interceptor.Start(rootPrivateContext)
-	serviceListener = intercept.NewServiceListener(rootPrivateContext, interceptor, resolver)
+	interceptor.Start(tunnel.NewContextProvider(rootPrivateContext))
 
-	go func() {
-		for event := range serviceEventsC {
-			serviceListener.HandleServicesChange(event.eventType, event.service)
-		}
-	}()
 	if err = rootPrivateContext.Authenticate(); err != nil {
 		log.WithError(err).Fatal("failed to authenticate")
 	}
