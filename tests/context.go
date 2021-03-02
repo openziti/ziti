@@ -629,7 +629,9 @@ func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, t
 }
 
 func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreatedAt time.Time, jsonEntity *gabs.Container) time.Time {
-	now := time.Now()
+	// we lose a little time resolution, so if it's in the same millisecond, it's ok
+	start = start.Add(-time.Millisecond)
+	now := time.Now().Add(time.Millisecond)
 	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
 	ctx.Req.Equal(origCreatedAt, createdAt)
 
