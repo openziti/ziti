@@ -25,7 +25,7 @@ import (
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error
 func ClientDial(addr transport.Address, id *identity.TokenId, serviceId *identity.TokenId, tcfg transport.Configuration) (transport.Connection, error) {
-	peer, err := addr.Dial("i/"+id.Token, id, tcfg)
+	peer, err := addr.Dial("i/"+id.Token, id, 0, tcfg)
 	if err != nil {
 		return nil, err
 	}
