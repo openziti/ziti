@@ -2,9 +2,9 @@ module github.com/openziti/edge
 
 go 1.15
 
-replace github.com/openziti/foundation => ../foundation
+//replace github.com/openziti/foundation => ../foundation
 
-replace github.com/openziti/fabric => ../fabric
+//replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
@@ -39,8 +39,8 @@ require (
 	github.com/miekg/dns v1.1.40
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.16.14
-	github.com/openziti/foundation v0.15.23
+	github.com/openziti/fabric v0.16.15
+	github.com/openziti/foundation v0.15.24
 	github.com/openziti/sdk-golang v0.15.17
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
