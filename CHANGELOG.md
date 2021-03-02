@@ -1,3 +1,25 @@
+# Release 0.19.4
+
+## What's New
+
+* Link latency probe timeout parameter in router configuration.
+* Fix 0.19 regression: updating terminator cost/precedence from the sdk was broken
+* Fix 0.19 regression: fabric session client id was incorrectly set to edge session token instead of
+  id
+
+## Link Latency Probe Timeout
+
+Control the link latency probe timeout parameter with the following router configuration syntax:
+
+```
+forwarder:
+  #
+  # After how many milliseconds does the link latency probe timeout?
+  # (default 10000)
+  #
+  latencyProbeTimeout: 10000
+```
+
 # Release 0.19.3
 
 ## What's New

@@ -12,21 +12,35 @@ forwarder:
   # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
   # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
   # probes, control plane utilization, and CPU utilization processing the results.
+  # (default 10000)
   #
-  latencyProbeInterval: 1000
+  latencyProbeInterval: 10000
+  #
+  # After how many milliseconds does the link latency probe timeout?
+  # (default 10000)
+  #
+  latencyProbeTimeout: 10000
+  #
   # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
   # for services that have a terminator egress specified with an xgress binding (e.g. transport)
   # (minimum 1, max 10000, default 1000)
+  #
   xgressDialQueueLength: 1000
+  #
   # The number of xgress dial workers used to process the xgress dial queue.
   # (minimum 1, max 10000, default 10)
+  #
   xgressDialWorkerCount: 10
+  #
   # How many link dials can be queued for processing by the link dial workers. An link dial occurs
   # when a router is notified of a new router by the controller.
   # (minimum 1, max 10000, default 1000)
+  #
   linkDialQueueLength: 1000
+  #
   # The number of link dial workers used to process the link dial queue.
   # (minimum 1, max 10000, default 10)
+  #
   linkDialWorkerCount: 10
 
 #trace:
