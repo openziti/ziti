@@ -2,15 +2,15 @@ module github.com/openziti/ziti
 
 go 1.15
 
-//replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
 //replace github.com/michaelquigley/dilithium => ../../q/research/dilithium
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
-//replace github.com/openziti/edge => ../edge
+replace github.com/openziti/edge => ../edge
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -27,7 +27,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.3.7
 	github.com/openziti/edge v0.19.10
 	github.com/openziti/fabric v0.16.14
-	github.com/openziti/foundation v0.15.22
+	github.com/openziti/foundation v0.15.23
 	github.com/openziti/sdk-golang v0.15.17
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1

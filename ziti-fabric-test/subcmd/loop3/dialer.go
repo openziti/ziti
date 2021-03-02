@@ -202,7 +202,7 @@ func (cmd *dialerCmd) connect() net.Conn {
 }
 
 func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, error) {
-	peer, err := endpoint.Dial("loop", id, nil)
+	peer, err := endpoint.Dial("loop", id, 0, nil)
 	if err != nil {
 		return nil, err
 	}
