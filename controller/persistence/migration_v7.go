@@ -52,13 +52,11 @@ func (m *Migrations) moveEdgeRoutersUnderFabricRouters(step *boltz.MigrationStep
 
 			router = &db.Router{
 				BaseExtEntity: boltz.BaseExtEntity{
-					Id: routerId,
-					ExtEntityFields: boltz.ExtEntityFields{
-						CreatedAt: createdAt,
-						UpdatedAt: updatedAt,
-						Tags:      tags,
-						Migrate:   true,
-					},
+					Id:        routerId,
+					CreatedAt: createdAt,
+					UpdatedAt: updatedAt,
+					Tags:      tags,
+					Migrate:   true,
 				},
 				Name:        name,
 				Fingerprint: fingerprint,
