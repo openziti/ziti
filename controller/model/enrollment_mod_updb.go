@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 )
 
 type EnrollModuleUpdb struct {
@@ -73,7 +74,7 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 
 	val, ok := data["password"]
 	if !ok {
-		return nil, apierror.NewUnhandled(errors.New("password expected for updb enrollment"))
+		return nil, errorz.NewUnhandled(errors.New("password expected for updb enrollment"))
 	}
 	password = val.(string)
 

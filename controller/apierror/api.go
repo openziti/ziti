@@ -22,27 +22,10 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/foundation/util/errorz"
 )
 
-type ApiError struct {
-	Code        string `json:"code"`
-	Message     string `json:"message"`
-	Status      int    `json:"-"`
-	Cause       error  `json:"cause"`
-	AppendCause bool   `json:"-"`
-}
-
-func (e ApiError) Error() string {
-	s := e.Code + ": " + e.Message
-
-	if e.Cause != nil && e.AppendCause {
-		s = s + ": " + e.Cause.Error()
-	}
-	return s
-}
-
-func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
-
+func ToRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
 	ret := &rest_model.APIError{
 		Args:      nil,
 		Code:      e.Code,
@@ -51,10 +34,10 @@ func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
 	}
 
 	if e.Cause != nil {
-		if causeApiError, ok := e.Cause.(*ApiError); ok {
+		if causeApiError, ok := e.Cause.(*errorz.ApiError); ok {
 			//standard apierror
 			ret.Cause = &rest_model.APIErrorCause{
-				APIError: *causeApiError.ToRestModel(requestId),
+				APIError: *ToRestModel(causeApiError, requestId),
 			}
 		} else if causeJsonSchemaError, ok := e.Cause.(*schema.ValidationErrors); ok {
 			//only possible from config type JSON schema validation
@@ -65,7 +48,7 @@ func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
 					Value:  fmt.Sprintf("%v", causeJsonSchemaError.Errors[0].Value),
 				},
 			}
-		} else if causeFieldErr, ok := e.Cause.(*FieldError); ok {
+		} else if causeFieldErr, ok := e.Cause.(*errorz.FieldError); ok {
 			//authenticator modules and enrollment only
 			//todo: see if we can remove this by not using FieldError
 			ret.Cause = &rest_model.APIErrorCause{
@@ -75,9 +58,9 @@ func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
 					Reason: causeFieldErr.Reason,
 				},
 			}
-			if ret.Code == InvalidFieldCode {
-				ret.Code = CouldNotValidateCode
-				ret.Message = CouldNotValidateMessage
+			if ret.Code == errorz.InvalidFieldCode {
+				ret.Code = errorz.CouldNotValidateCode
+				ret.Message = errorz.CouldNotValidateMessage
 			}
 
 		} else if causeFieldErr, ok := e.Cause.(*errors.Validation); ok {
@@ -99,7 +82,7 @@ func (e ApiError) ToRestModel(requestId string) *rest_model.APIError {
 		} else {
 			ret.Cause = &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{
-					Code:    UnhandledCode,
+					Code:    errorz.UnhandledCode,
 					Message: e.Cause.Error(),
 				},
 			}

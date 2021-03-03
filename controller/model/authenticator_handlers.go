@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
@@ -200,7 +201,7 @@ func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorS
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
-		return apierror.NewUnhandled(errors.New("authenticator does not match identity id for update"))
+		return errorz.NewUnhandled(errors.New("authenticator does not match identity id for update"))
 	}
 
 	updbAuth := authenticator.ToUpdb()
@@ -212,8 +213,8 @@ func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorS
 	curHashResult := handler.ReHashPassword(authenticatorSelf.CurrentPassword, updbAuth.DecodedSalt())
 
 	if curHashResult.Password != updbAuth.Password {
-		apiErr := apierror.NewUnauthorized()
-		apiErr.Cause = apierror.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
+		apiErr := errorz.NewUnauthorized()
+		apiErr.Cause = errorz.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
 		return apiErr
 	}
 
@@ -265,7 +266,7 @@ func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSe
 	}
 
 	if authenticator.IdentityId != authenticatorSelf.IdentityId {
-		return apierror.NewUnhandled(errors.New("authenticator does not match identity id for patch"))
+		return errorz.NewUnhandled(errors.New("authenticator does not match identity id for patch"))
 	}
 
 	updbAuth := authenticator.ToUpdb()
@@ -277,8 +278,8 @@ func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSe
 	curHashResult := handler.ReHashPassword(authenticatorSelf.CurrentPassword, updbAuth.DecodedSalt())
 
 	if curHashResult.Password != updbAuth.Password {
-		apiErr := apierror.NewUnauthorized()
-		apiErr.Cause = apierror.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
+		apiErr := errorz.NewUnauthorized()
+		apiErr.Cause = errorz.NewFieldError("invalid current password", "currentPassword", authenticatorSelf.CurrentPassword)
 		return apiErr
 	}
 

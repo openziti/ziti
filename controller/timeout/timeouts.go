@@ -10,6 +10,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"path"
 	goruntime "runtime"
@@ -18,7 +19,7 @@ import (
 	"time"
 )
 
-func TimeoutHandler(h http.Handler, dt time.Duration, apiErr *apierror.ApiError) http.Handler {
+func TimeoutHandler(h http.Handler, dt time.Duration, apiErr *errorz.ApiError) http.Handler {
 	return &timeoutHandler{
 		handler:  h,
 		apiError: apiErr,
@@ -30,7 +31,7 @@ func TimeoutHandler(h http.Handler, dt time.Duration, apiErr *apierror.ApiError)
 type timeoutHandler struct {
 	handler  http.Handler
 	dt       time.Duration
-	apiError *apierror.ApiError
+	apiError *errorz.ApiError
 	producer runtime.Producer
 }
 
@@ -41,7 +42,7 @@ func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error
 		if rc != nil {
 			requestId = rc.Id
 		}
-		apiError := h.apiError.ToRestModel(requestId)
+		apiError := apierror.ToRestModel(h.apiError, requestId)
 		err := h.producer.Produce(w, apiError)
 
 		return err

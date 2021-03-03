@@ -19,17 +19,9 @@ package apierror
 import "net/http"
 
 const (
-	NotFoundCode    string = "NOT_FOUND"
-	NotFoundMessage string = "The resource requested was not found or is no longer available"
-	NotFoundStatus  int    = http.StatusNotFound
-
 	MethodNotAllowedCode    string = "METHOD_NOT_ALLOWED"
 	MethodNotAllowedMessage string = "The resource requested does not support this HTTP verb"
 	MethodNotAllowedStatus  int    = http.StatusMethodNotAllowed
-
-	UnhandledCode    string = "UNHANDLED"
-	UnhandledMessage string = "An unhandled error occurred"
-	UnhandledStatus  int    = http.StatusInternalServerError
 
 	CouldNotParseBodyCode    string = "COULD_NOT_PARSE_BODY"
 	CouldNotParseBodyMessage string = "The body of the request could not be parsed"
@@ -38,14 +30,6 @@ const (
 	CouldNotReadBodyCode    string = "COULD_NOT_READ_BODY"
 	CouldNotReadBodyMessage string = "The body of the request could not be read"
 	CouldNotReadBodyStatus  int    = http.StatusInternalServerError
-
-	InvalidFieldCode    string = "INVALID_FIELD"
-	InvalidFieldMessage string = "The field contains an invalid value"
-	InvalidFieldStatus  int    = http.StatusBadRequest
-
-	EntityCanNotBeDeletedCode    string = "ENTITY_CAN_NOT_BE_DELETED"
-	EntityCanNotBeDeletedMessage string = "The entity requested for delete can not be deleted"
-	EntityCanNotBeDeletedStatus         = http.StatusBadRequest
 
 	InvalidUuidCode    string = "INVALID_UUID"
 	InvalidUuidMessage string = "The supplied UUID is invalid"
@@ -90,30 +74,9 @@ const (
 	InvalidEnrollMethodMessage string = "The supplied enrollment method is not valid"
 	InvalidEnrollMethodStatus  int    = http.StatusBadRequest
 
-	InvalidFilterCode       string = "INVALID_FILTER"
-	InvalidFilterMessage    string = "The filter query supplied is invalid"
-	httpStatusInvalidFilter        = 480
-	InvalidFilterStatus     int    = httpStatusInvalidFilter
-
-	InvalidPaginationCode    string = "INVALID_PAGINATION"
-	InvalidPaginationMessage string = "The pagination properties provided are invalid"
-	InvalidPaginationStatus  int    = http.StatusBadRequest
-
 	NoEdgeRoutersAvailableCode    string = "NO_EDGE_ROUTERS_AVAILABLE"
 	NoEdgeRoutersAvailableMessage string = "No edge routers are assigned and online to handle the requested connection"
 	NoEdgeRoutersAvailableStatus  int    = http.StatusBadRequest
-
-	InvalidSortCode    string = "INVALID_SORT_IDENTIFIER"
-	InvalidSortMessage string = "The sort order supplied is invalid"
-	InvalidSortStatus  int    = http.StatusBadRequest
-
-	CouldNotValidateCode    string = "COULD_NOT_VALIDATE"
-	CouldNotValidateMessage string = "The supplied request contains an invalid document or no valid accept content were available, see cause"
-	CouldNotValidateStatus  int    = http.StatusBadRequest
-
-	UnauthorizedCode    string = "UNAUTHORIZED"
-	UnauthorizedMessage string = "The request could not be completed. The session is not authorized or the credentials are invalid"
-	UnauthorizedStatus  int    = http.StatusUnauthorized
 
 	CouldNotDecodeProxiedCertCode    string = "COULD_NOT_PARSE_PROXY_CERT"
 	CouldNotDecodeProxiedCertMessage string = "could not decode proxy client cert"

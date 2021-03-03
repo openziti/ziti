@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/authentication"
 	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"net"
 	"net/http"
@@ -72,7 +73,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	if identity == nil {
-		rc.RespondWithApiError(apierror.NewUnauthorized())
+		rc.RespondWithApiError(errorz.NewUnauthorized())
 		return
 	}
 
@@ -154,7 +155,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 
 	if err != nil {
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
-		rc.RespondWithApiError(apierror.NewUnauthorized())
+		rc.RespondWithApiError(errorz.NewUnauthorized())
 	}
 
 	apiSession := MapToCurrentApiSessionRestModel(filledApiSession, ae.Config.SessionTimeoutDuration())

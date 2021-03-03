@@ -19,8 +19,8 @@ package persistence
 import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -67,7 +67,7 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	if !stringz.Contains(validSessionTypes, entity.Type) {
-		ctx.Bucket.SetError(validation.NewFieldError("invalid session type", FieldSessionType, entity.Type))
+		ctx.Bucket.SetError(errorz.NewFieldError("invalid session type", FieldSessionType, entity.Type))
 		return
 	}
 

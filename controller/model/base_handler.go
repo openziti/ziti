@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -159,11 +159,11 @@ func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntit
 	// validate name for named entities
 	if namedEntity, ok := boltEntity.(boltz.NamedExtEntity); ok {
 		if namedEntity.GetName() == "" {
-			return "", validation.NewFieldError("name is required", "name", namedEntity.GetName())
+			return "", errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 		}
 		if nameIndexStore, ok := store.(persistence.NameIndexedStore); ok {
 			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-				return "", validation.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+				return "", errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 			}
 		} else {
 			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
@@ -216,11 +216,11 @@ func (handler *baseHandler) updateGeneralBatch(modelEntity boltEntitySource, che
 			existingNamed := existing.(boltz.NamedExtEntity)
 			if (checker == nil || checker.IsUpdated("name")) && namedEntity.GetName() != existingNamed.GetName() {
 				if namedEntity.GetName() == "" {
-					return validation.NewFieldError("name is required", "name", namedEntity.GetName())
+					return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 				}
 				if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
 					if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-						return validation.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+						return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 					}
 				} else {
 					pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
@@ -267,11 +267,11 @@ func (handler *baseHandler) updateGeneral(modelEntity boltEntitySource, checker 
 			existingNamed := existing.(boltz.NamedExtEntity)
 			if (checker == nil || checker.IsUpdated("name")) && namedEntity.GetName() != existingNamed.GetName() {
 				if namedEntity.GetName() == "" {
-					return validation.NewFieldError("name is required", "name", namedEntity.GetName())
+					return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 				}
 				if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
 					if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-						return validation.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+						return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 					}
 				} else {
 					pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))

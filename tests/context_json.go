@@ -22,12 +22,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"reflect"
 	"strings"
-
-	"github.com/openziti/edge/controller/apierror"
 
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
@@ -172,7 +171,7 @@ func (ctx *TestContext) requireFieldError(httpStatus int, body []byte, errorCode
 func (ctx *TestContext) RequireNotFoundError(httpStatus int, body []byte) *gabs.Container {
 	ctx.Req.Equal(http.StatusNotFound, httpStatus)
 	parsed := ctx.parseJson(body)
-	ctx.pathEquals(parsed, apierror.NotFoundCode, path("error.code"))
+	ctx.pathEquals(parsed, errorz.NotFoundCode, path("error.code"))
 	ctx.pathEquals(parsed, "The resource requested was not found or is no longer available", path("error.message"))
 	return parsed
 }
@@ -180,7 +179,7 @@ func (ctx *TestContext) RequireNotFoundError(httpStatus int, body []byte) *gabs.
 func (ctx *TestContext) requireUnauthorizedError(httpStatus int, body []byte) *gabs.Container {
 	ctx.Req.Equal(http.StatusUnauthorized, httpStatus)
 	parsed := ctx.parseJson(body)
-	ctx.pathEquals(parsed, apierror.UnauthorizedCode, path("error.code"))
+	ctx.pathEquals(parsed, errorz.UnauthorizedCode, path("error.code"))
 	ctx.pathEquals(parsed, "The request could not be completed. The session is not authorized or the credentials are invalid", path("error.message"))
 	return parsed
 }

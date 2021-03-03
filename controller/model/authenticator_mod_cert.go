@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/foundation/util/errorz"
 	nfpem "github.com/openziti/foundation/util/pem"
 	cmap "github.com/orcaman/concurrent-map"
 	"net/http"
@@ -195,7 +196,7 @@ func (module *AuthModuleCert) GetFingerprints(ctx AuthContext) (cert.Fingerprint
 		_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxiedRaw64))
 
 		if err != nil {
-			return nil, &apierror.ApiError{
+			return nil, &errorz.ApiError{
 				Code:    apierror.CouldNotDecodeProxiedCertCode,
 				Message: apierror.CouldNotDecodeProxiedCertMessage,
 				Cause:   err,
@@ -206,7 +207,7 @@ func (module *AuthModuleCert) GetFingerprints(ctx AuthContext) (cert.Fingerprint
 		proxiedCerts, err := x509.ParseCertificates(proxiedRaw)
 
 		if err != nil {
-			return nil, &apierror.ApiError{
+			return nil, &errorz.ApiError{
 				Code:    apierror.CouldNotParseX509FromDerCode,
 				Message: apierror.CouldNotParseX509FromDerMessage,
 				Cause:   err,

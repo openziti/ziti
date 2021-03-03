@@ -17,27 +17,11 @@
 package apierror
 
 import (
-	"net/http"
+	"github.com/openziti/foundation/util/errorz"
 )
 
-func NewNotFound() *ApiError {
-	return &ApiError{
-		Code:    NotFoundCode,
-		Message: NotFoundMessage,
-		Status:  NotFoundStatus,
-	}
-}
-
-func NewUnhandled(cause error) *ApiError {
-	return &ApiError{
-		Code:    UnhandledCode,
-		Message: UnhandledMessage,
-		Status:  UnhandledStatus,
-		Cause:   cause,
-	}
-}
-func NewCouldNotParseBody(err error) *ApiError {
-	return &ApiError{
+func NewCouldNotParseBody(err error) *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CouldNotParseBodyCode,
 		Message: CouldNotParseBodyMessage,
 		Status:  CouldNotParseBodyStatus,
@@ -45,16 +29,16 @@ func NewCouldNotParseBody(err error) *ApiError {
 	}
 }
 
-func NewInvalidContentType(contentType string) *ApiError {
-	return &ApiError{
+func NewInvalidContentType(contentType string) *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidContentTypeCode,
 		Message: InvalidContentTypeMessage + ": " + contentType,
 		Status:  InvalidContentTypeStatus,
 	}
 }
 
-func NewCouldNotReadBody(err error) *ApiError {
-	return &ApiError{
+func NewCouldNotReadBody(err error) *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:        CouldNotReadBodyCode,
 		Message:     CouldNotReadBodyMessage,
 		Status:      CouldNotReadBodyStatus,
@@ -62,209 +46,143 @@ func NewCouldNotReadBody(err error) *ApiError {
 		AppendCause: false,
 	}
 }
-func NewInvalidField() *ApiError {
-	return &ApiError{
-		Code:    InvalidFieldCode,
-		Message: InvalidFieldMessage,
-		Status:  InvalidFieldStatus,
-	}
-}
 
-func NewEntityCanNotBeDeleted() *ApiError {
-	return &ApiError{
-		Code:    EntityCanNotBeDeletedCode,
-		Message: EntityCanNotBeDeletedMessage,
-		Status:  EntityCanNotBeDeletedStatus,
-	}
-}
-func NewInvalidAuth() *ApiError {
-	return &ApiError{
+func NewInvalidAuth() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidAuthCode,
 		Message: InvalidAuthMessage,
 		Status:  InvalidAuthStatus,
 	}
 }
-func NewInvalidAuthMethod() *ApiError {
-	return &ApiError{
+func NewInvalidAuthMethod() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidAuthMethodCode,
 		Message: InvalidAuthMethodMessage,
 		Status:  InvalidAuthMethodStatus,
 	}
 }
-func NewEnrollmentExpired() *ApiError {
-	return &ApiError{
+func NewEnrollmentExpired() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    EnrollmentExpiredCode,
 		Message: EnrollmentExpiredMessage,
 		Status:  EnrollmentExpiredStatus,
 	}
 }
-func NewCouldNotProcessCsr() *ApiError {
-	return &ApiError{
+func NewCouldNotProcessCsr() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CouldNotProcessCsrCode,
 		Message: CouldNotProcessCsrMessage,
 		Status:  CouldNotProcessCsrStatus,
 	}
 }
-func NewEnrollmentCaNoLongValid() *ApiError {
-	return &ApiError{
+func NewEnrollmentCaNoLongValid() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    EnrollmentCaNoLongValidCode,
 		Message: EnrollmentCaNoLongValidMessage,
 		Status:  EnrollmentCaNoLongValidStatus,
 	}
 }
-func NewEnrollmentNoValidCas() *ApiError {
-	return &ApiError{
+func NewEnrollmentNoValidCas() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    EnrollmentNoValidCasCode,
 		Message: EnrollmentNoValidCasMessage,
 		Status:  EnrollmentNoValidCasStatus,
 	}
 }
-func NewInvalidEnrollmentToken() *ApiError {
-	return &ApiError{
+func NewInvalidEnrollmentToken() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidEnrollmentTokenCode,
 		Message: InvalidEnrollmentTokenMessage,
 		Status:  InvalidEnrollmentTokenStatus,
 	}
 }
-func NewInvalidEnrollMethod() *ApiError {
-	return &ApiError{
+func NewInvalidEnrollMethod() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidEnrollMethodCode,
 		Message: InvalidEnrollMethodMessage,
 		Status:  InvalidEnrollMethodStatus,
 	}
 }
-func NewInvalidFilter(cause error) *ApiError {
-	return &ApiError{
-		Code:        InvalidFilterCode,
-		Message:     InvalidFilterMessage,
-		Status:      InvalidFilterStatus,
-		Cause:       cause,
-		AppendCause: true,
-	}
-}
-func NewInvalidPagination(err error) *ApiError {
-	return &ApiError{
-		Code:        InvalidPaginationCode,
-		Message:     InvalidPaginationMessage,
-		Status:      InvalidPaginationStatus,
-		Cause:       err,
-		AppendCause: true,
-	}
-}
-func NewNoEdgeRoutersAvailable() *ApiError {
-	return &ApiError{
+func NewNoEdgeRoutersAvailable() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    NoEdgeRoutersAvailableCode,
 		Message: NoEdgeRoutersAvailableMessage,
 		Status:  NoEdgeRoutersAvailableStatus,
 	}
 }
-func NewInvalidSort(err error) *ApiError {
-	return &ApiError{
-		Code:        InvalidSortCode,
-		Message:     InvalidSortMessage,
-		Status:      InvalidSortStatus,
-		Cause:       err,
-		AppendCause: true,
-	}
-}
-func NewCouldNotValidate(err error) *ApiError {
-	return &ApiError{
-		Code:    CouldNotValidateCode,
-		Message: CouldNotValidateMessage,
-		Status:  CouldNotValidateStatus,
-		Cause:   err,
-	}
-}
-func NewUnauthorized() *ApiError {
-	return &ApiError{
-		Code:    UnauthorizedCode,
-		Message: UnauthorizedMessage,
-		Status:  UnauthorizedStatus,
-	}
-}
-func NewCouldNotParseX509FromDer() *ApiError {
-	return &ApiError{
+func NewCouldNotParseX509FromDer() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CouldNotParseX509FromDerCode,
 		Message: CouldNotParseX509FromDerMessage,
 		Status:  CouldNotParseX509FromDerStatus,
 	}
 }
-func NewCertFailedValidation() *ApiError {
-	return &ApiError{
+func NewCertFailedValidation() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CertFailedValidationCode,
 		Message: CertFailedValidationMessage,
 		Status:  CertFailedValidationStatus,
 	}
 }
-func NewCertInUse() *ApiError {
-	return &ApiError{
+func NewCertInUse() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CertInUseCode,
 		Message: CertInUseMessage,
 		Status:  CertInUseStatus,
 	}
 }
-func NewCaAlreadyVerified() *ApiError {
-	return &ApiError{
+func NewCaAlreadyVerified() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CaAlreadyVerifiedCode,
 		Message: CaAlreadyVerifiedMessage,
 		Status:  CaAlreadyVerifiedStatus,
 	}
 }
-func NewExpectedPemBlockCertificate() *ApiError {
-	return &ApiError{
+func NewExpectedPemBlockCertificate() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    ExpectedPemBlockCertificateCode,
 		Message: ExpectedPemBlockCertificateMessage,
 		Status:  ExpectedPemBlockCertificateStatus,
 	}
 }
-func NewCouldNotParseDerBlock() *ApiError {
-	return &ApiError{
+func NewCouldNotParseDerBlock() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CouldNotParseDerBlockCode,
 		Message: CouldNotParseDerBlockMessage,
 		Status:  CouldNotParseDerBlockStatus,
 	}
 }
-func NewCouldNotParsePem() *ApiError {
-	return &ApiError{
+func NewCouldNotParsePem() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CouldNotParsePemCode,
 		Message: CouldNotParsePemMessage,
 		Status:  CouldNotParsePemStatus,
 	}
 }
-func NewInvalidCommonName() *ApiError {
-	return &ApiError{
+func NewInvalidCommonName() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidCommonNameCode,
 		Message: InvalidCommonNameMessage,
 		Status:  InvalidCommonNameStatus,
 	}
 }
-func NewFailedCertificateValidation() *ApiError {
-	return &ApiError{
+func NewFailedCertificateValidation() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    FailedCertificateValidationCode,
 		Message: FailedCertificateValidationMessage,
 		Status:  FailedCertificateValidationStatus,
 	}
 }
-func NewCertificateIsNotCa() *ApiError {
-	return &ApiError{
+func NewCertificateIsNotCa() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    CertificateIsNotCaCode,
 		Message: CertificateIsNotCaMessage,
 		Status:  CertificateIsNotCaStatus,
 	}
 }
 
-func NewField(fieldError *FieldError) *ApiError {
-	return &ApiError{
-		Code:        InvalidFieldCode,
-		Message:     InvalidFieldMessage,
-		Status:      http.StatusBadRequest,
-		Cause:       fieldError,
-		AppendCause: true,
-	}
-}
-
-func NewInvalidUuid(val string) *ApiError {
-	return &ApiError{
+func NewInvalidUuid(val string) *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidUuidCode,
 		Message: InvalidUuidMessage,
 		Status:  InvalidUuidStatus,
@@ -277,64 +195,64 @@ func NewInvalidUuid(val string) *ApiError {
 	}
 }
 
-func NewInvalidAuthenticatorProperties() *ApiError {
-	return &ApiError{
+func NewInvalidAuthenticatorProperties() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    InvalidAuthenticatorPropertiesCode,
 		Message: InvalidAuthenticatorPropertiesMessage,
 		Status:  InvalidAuthenticatorPropertiesStatus,
 	}
 }
 
-func NewAuthenticatorCannotBeUpdated() *ApiError {
-	return &ApiError{
+func NewAuthenticatorCannotBeUpdated() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    AuthenticatorCanNotBeUpdatedCode,
 		Message: AuthenticatorCanNotBeUpdatedMessage,
 		Status:  AuthenticatorCanNotBeUpdatedStatus,
 	}
 }
 
-func NewFabricRouterCannotBeUpdate() *ApiError {
-	return &ApiError{
+func NewFabricRouterCannotBeUpdate() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    RouterCanNotBeUpdatedCode,
 		Message: RouterCanNotBeUpdatedMessage,
 		Status:  RouterCanNotBeUpdatedStatus,
 	}
 }
 
-func NewAuthenticatorMethodMax() *ApiError {
-	return &ApiError{
+func NewAuthenticatorMethodMax() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    AuthenticatorMethodMaxCode,
 		Message: AuthenticatorMethodMaxMessage,
 		Status:  AuthenticatorMethodMaxStatus,
 	}
 }
 
-func NewMethodNotAllowed() *ApiError {
-	return &ApiError{
+func NewMethodNotAllowed() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    MethodNotAllowedCode,
 		Message: MethodNotAllowedMessage,
 		Status:  MethodNotAllowedStatus,
 	}
 }
 
-func NewRateLimited() *ApiError {
-	return &ApiError{
+func NewRateLimited() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    RateLimitedCode,
 		Message: RateLimitedMessage,
 		Status:  RateLimitedStatus,
 	}
 }
 
-func NewTimeoutError() *ApiError {
-	return &ApiError{
+func NewTimeoutError() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    TimeoutCode,
 		Message: TimeoutMessage,
 		Status:  TimeoutStatus,
 	}
 }
 
-func NewInvalidPosture(cause error) *ApiError {
-	return &ApiError{
+func NewInvalidPosture(cause error) *errorz.ApiError {
+	return &errorz.ApiError{
 		Cause:   cause,
 		Code:    InvalidPostureCode,
 		Message: InvalidPostureMessage,
@@ -342,24 +260,24 @@ func NewInvalidPosture(cause error) *ApiError {
 	}
 }
 
-func NewMfaExistsError() *ApiError {
-	return &ApiError{
+func NewMfaExistsError() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    MfaExistsCode,
 		Message: MfaExistsMessage,
 		Status:  MfaExistsStatus,
 	}
 }
 
-func NewMfaNotEnrolledError() *ApiError {
-	return &ApiError{
+func NewMfaNotEnrolledError() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    MfaNotEnrolledCode,
 		Message: MfaNotEnrolledMessage,
 		Status:  MfaNotEnrolledStatus,
 	}
 }
 
-func NewInvalidMfaTokenError() *ApiError {
-	return &ApiError{
+func NewInvalidMfaTokenError() *errorz.ApiError {
+	return &errorz.ApiError{
 		Code:    MfaInvalidTokenCode,
 		Message: MfaInvalidTokenMessage,
 		Status:  MfaInvalidTokenStatus,

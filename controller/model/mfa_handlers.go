@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -164,7 +165,7 @@ func (handler *MfaHandler) DeleteForIdentity(identity *Identity, code string) er
 	}
 
 	if mfa == nil {
-		return apierror.NewNotFound()
+		return errorz.NewNotFound()
 	}
 
 	if mfa.IsVerified {

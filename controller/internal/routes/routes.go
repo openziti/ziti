@@ -17,10 +17,10 @@
 package routes
 
 import (
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"strconv"
 )
@@ -87,12 +87,7 @@ func GetRequestPaging(r *http.Request) (*Paging, error) {
 		i, err := strconv.ParseInt(l, 10, 64)
 
 		if err != nil {
-			return nil, &apierror.ApiError{
-				Code:        apierror.InvalidPaginationCode,
-				Message:     apierror.InvalidPaginationMessage,
-				Cause:       apierror.NewFieldError("could not parse limit, value is not an integer", "limit", l),
-				AppendCause: true,
-			}
+			return nil, errorz.NewInvalidPagination(errorz.NewFieldError("could not parse limit, value is not an integer", "limit", l))
 		}
 		p = &Paging{}
 		p.Limit = i
@@ -102,12 +97,7 @@ func GetRequestPaging(r *http.Request) (*Paging, error) {
 		i, err := strconv.ParseInt(o, 10, 64)
 
 		if err != nil {
-			return nil, &apierror.ApiError{
-				Code:        apierror.InvalidPaginationCode,
-				Message:     apierror.InvalidPaginationMessage,
-				Cause:       apierror.NewFieldError("could not parse offset, value is not an integer", "offset", o),
-				AppendCause: true,
-			}
+			return nil, errorz.NewInvalidPagination(errorz.NewFieldError("could not parse offset, value is not an integer", "offset", o))
 		}
 		if p == nil {
 			p = &Paging{}

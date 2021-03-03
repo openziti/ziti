@@ -19,9 +19,9 @@ package routes
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 )
 
 const (
@@ -53,11 +53,11 @@ func (qo *PublicQueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, er
 
 	query, err := ast.Parse(store, qo.Predicate)
 	if err != nil {
-		return nil, apierror.NewInvalidFilter(err)
+		return nil, errorz.NewInvalidFilter(err)
 	}
 
 	if err = boltz.ValidateSymbolsArePublic(query, store); err != nil {
-		return nil, apierror.NewInvalidFilter(err)
+		return nil, errorz.NewInvalidFilter(err)
 	}
 
 	pfxlog.Logger().Debugf("query: %v", qo)
@@ -83,15 +83,15 @@ func (qo *PublicQueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, er
 
 		sortQuery, err := ast.Parse(store, sortQueryString)
 		if err != nil {
-			return nil, apierror.NewInvalidSort(err)
+			return nil, errorz.NewInvalidSort(err)
 		}
 
 		if err = boltz.ValidateSymbolsArePublic(sortQuery, store); err != nil {
-			return nil, apierror.NewInvalidSort(err)
+			return nil, errorz.NewInvalidSort(err)
 		}
 
 		if err = query.AdoptSortFields(sortQuery); err != nil {
-			return nil, apierror.NewInvalidSort(err)
+			return nil, errorz.NewInvalidSort(err)
 		}
 	}
 

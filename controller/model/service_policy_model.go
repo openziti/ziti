@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -41,7 +41,7 @@ type ServicePolicy struct {
 func (entity *ServicePolicy) validatePolicyType() error {
 	if !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) && !strings.EqualFold(entity.PolicyType, persistence.PolicyTypeBindName) {
 		msg := fmt.Sprintf("invalid policy type. valid types are '%v' and '%v'", persistence.PolicyTypeDialName, persistence.PolicyTypeBindName)
-		return validation.NewFieldError(msg, "policyType", entity.PolicyType)
+		return errorz.NewFieldError(msg, "policyType", entity.PolicyType)
 	}
 	return nil
 }

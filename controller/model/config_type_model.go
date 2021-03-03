@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -45,12 +45,12 @@ func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
 
 func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
 	if entity.Name == ConfigTypeAll {
-		return nil, validation.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
+		return nil, errorz.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
 
 	if len(entity.Schema) > 0 {
 		if _, err := entity.GetCompiledSchema(); err != nil {
-			return nil, validation.NewFieldError(fmt.Sprintf("invalid schema %v", err), "schema", entity.Schema)
+			return nil, errorz.NewFieldError(fmt.Sprintf("invalid schema %v", err), "schema", entity.Schema)
 		}
 	}
 	return &persistence.ConfigType{

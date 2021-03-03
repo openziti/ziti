@@ -20,12 +20,11 @@ package tests
 
 import (
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/foundation/util/errorz"
 	"math"
 	"net/http"
 	"testing"
 	"time"
-
-	"github.com/openziti/edge/controller/apierror"
 )
 
 func Test_Configs(t *testing.T) {
@@ -43,7 +42,7 @@ func Test_Configs(t *testing.T) {
 		config := ctx.newConfig(configType.Id, map[string]interface{}{"port": 22})
 		config.Name = ""
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "name")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create without data should fail", func(t *testing.T) {
@@ -51,21 +50,21 @@ func Test_Configs(t *testing.T) {
 		configType := ctx.AdminSession.requireCreateNewConfigType()
 		config := ctx.newConfig(configType.Id, nil)
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "data")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "data")
 	})
 
 	t.Run("create without type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		config := ctx.newConfig("", map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "type")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create with invalid config type should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		config := ctx.newConfig(eid.New(), map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "type")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "type")
 	})
 
 	t.Run("create should pass", func(t *testing.T) {
@@ -230,7 +229,7 @@ func Test_Configs(t *testing.T) {
 			"name":   eid.New(),
 			"schema": "not-object",
 		})
-		standardErrorJsonResponseTests(resp, apierror.CouldNotValidateCode, http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(resp, errorz.CouldNotValidateCode, http.StatusBadRequest, t)
 	})
 
 	t.Run("create config type with schema should pass", func(t *testing.T) {
@@ -259,7 +258,7 @@ func Test_Configs(t *testing.T) {
 
 		config := ctx.newConfig(configType.Id, map[string]interface{}{"port": 22})
 		resp := ctx.AdminSession.createEntity(config)
-		ctx.requireFieldError(resp.StatusCode(), resp.Body(), apierror.CouldNotValidateCode, "(root)")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "(root)")
 
 		now := time.Now()
 		config = ctx.newConfig(configType.Id, map[string]interface{}{
