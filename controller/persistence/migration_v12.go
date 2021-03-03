@@ -54,26 +54,22 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 	types := []*PostureCheckType{
 		{
 			BaseExtEntity: boltz.BaseExtEntity{
-				Id: "OS",
-				ExtEntityFields: boltz.ExtEntityFields{
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-					Tags:      map[string]interface{}{},
-					Migrate:   false,
-				},
+				Id:        "OS",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Tags:      map[string]interface{}{},
+				Migrate:   false,
 			},
 			Name:             "Operating System Check",
 			OperatingSystems: allOS,
 		},
 		{
 			BaseExtEntity: boltz.BaseExtEntity{
-				Id: "PROCESS",
-				ExtEntityFields: boltz.ExtEntityFields{
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-					Tags:      map[string]interface{}{},
-					Migrate:   false,
-				},
+				Id:        "PROCESS",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Tags:      map[string]interface{}{},
+				Migrate:   false,
 			},
 			Name: "Process Check",
 			OperatingSystems: []OperatingSystem{
@@ -84,13 +80,11 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		},
 		{
 			BaseExtEntity: boltz.BaseExtEntity{
-				Id: "DOMAIN",
-				ExtEntityFields: boltz.ExtEntityFields{
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-					Tags:      map[string]interface{}{},
-					Migrate:   false,
-				},
+				Id:        "DOMAIN",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Tags:      map[string]interface{}{},
+				Migrate:   false,
 			},
 			Name: "Windows Domain Check",
 			OperatingSystems: []OperatingSystem{
@@ -99,13 +93,11 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		},
 		{
 			BaseExtEntity: boltz.BaseExtEntity{
-				Id: "MAC",
-				ExtEntityFields: boltz.ExtEntityFields{
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-					Tags:      map[string]interface{}{},
-					Migrate:   false,
-				},
+				Id:        "MAC",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Tags:      map[string]interface{}{},
+				Migrate:   false,
 			},
 			Name: "MAC Address Check",
 			OperatingSystems: []OperatingSystem{
