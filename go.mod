@@ -6,7 +6,7 @@ go 1.15
 
 //replace github.com/michaelquigley/dilithium => ../../q/research/dilithium
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
