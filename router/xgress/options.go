@@ -47,6 +47,7 @@ type Options struct {
 	MaxCloseWait        time.Duration
 	GetSessionTimeout   time.Duration
 	SessionStartTimeout time.Duration
+	ConnectTimeout      time.Duration
 }
 
 func LoadOptions(data OptionsData) (*Options, error) {
@@ -128,6 +129,14 @@ func LoadOptions(data OptionsData) (*Options, error) {
 			}
 			options.SessionStartTimeout = sessionStartTimeout
 		}
+
+		if value, found := data["connectTimeout"]; found {
+			connectTimeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid 'connectTimeout' value")
+			}
+			options.ConnectTimeout = connectTimeout
+		}
 	}
 
 	return options, nil
@@ -155,6 +164,7 @@ func DefaultOptions() *Options {
 		MaxCloseWait:           30 * time.Second,
 		GetSessionTimeout:      30 * time.Second,
 		SessionStartTimeout:    3 * time.Minute,
+		ConnectTimeout:         0, // operating system default
 	}
 }
 
