@@ -26,13 +26,38 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
+	"path"
 )
 
 const (
 	EntityNameApiSession = "api-sessions"
 )
 
-var ApiSessionLinkFactory = NewBasicLinkFactory(EntityNameApiSession)
+var ApiSessionLinkFactory LinksFactory = NewApiSessionLinkFactory()
+
+type ApiSessionLinkFactoryImpl struct {
+	BasicLinkFactory
+}
+
+func NewApiSessionLinkFactory() *ApiSessionLinkFactoryImpl {
+	return &ApiSessionLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameApiSession),
+	}
+}
+
+func (factory ApiSessionLinkFactoryImpl) NewNestedLink(entity models.Entity, elem ...string) rest_model.Link {
+	elem = append([]string{EntityNameApiSession, entity.GetId()}, elem...)
+	return NewLink("./" + path.Join(elem...))
+}
+
+func (factory *ApiSessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	return rest_model.Links{
+		EntityNameSelf:          factory.SelfLink(entity),
+		EntityNameSession:    factory.NewNestedLink(entity, EntityNameSession),
+	}
+}
+
+
 
 func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, apiSessionEntity models.Entity) (interface{}, error) {
 	apiSession, ok := apiSessionEntity.(*model.ApiSession)

@@ -28,8 +28,26 @@ import (
 )
 
 const EntityNameSession = "sessions"
+const EntityNameRoutePath = "route-path"
 
-var SessionLinkFactory = NewBasicLinkFactory(EntityNameSession)
+var SessionLinkFactory = NewSessionLinkFactory()
+
+type SessionLinkFactoryImpl struct {
+	BasicLinkFactory
+}
+
+func NewSessionLinkFactory() *SessionLinkFactoryImpl {
+	return &SessionLinkFactoryImpl{
+		BasicLinkFactory: *NewBasicLinkFactory(EntityNameSession),
+	}
+}
+
+func (factory *SessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
+	links := factory.BasicLinkFactory.Links(entity)
+	links[EntityNameRoutePath] = factory.NewNestedLink(entity, EntityNameRoutePath)
+	return links
+}
+
 
 func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCreate) *model.Session {
 	ret := &model.Session{

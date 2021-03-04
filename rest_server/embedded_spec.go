@@ -4997,6 +4997,37 @@ func init() {
         }
       ]
     },
+    "/sessions/{id}/route-path": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single session's route path by id. Requires admin access.",
+        "tags": [
+          "Session"
+        ],
+        "summary": "Retrieves a single session's router path",
+        "operationId": "detailSessionRoutePath",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailSessionRoutePath"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
+    },
     "/specs": {
       "get": {
         "security": [],
@@ -7534,6 +7565,21 @@ func init() {
         }
       }
     },
+    "detailSessionRoutePathEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/sessionRoutePathDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailSpecBodyEnvelope": {
       "type": "object",
       "required": [
@@ -9798,6 +9844,17 @@ func init() {
         "$ref": "#/definitions/sessionDetail"
       }
     },
+    "sessionRoutePathDetail": {
+      "type": "object",
+      "properties": {
+        "routePath": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "specBodyDetail": {
       "type": "string"
     },
@@ -10586,6 +10643,12 @@ func init() {
       "description": "A single session",
       "schema": {
         "$ref": "#/definitions/detailSessionEnvelope"
+      }
+    },
+    "detailSessionRoutePath": {
+      "description": "A single session's route path",
+      "schema": {
+        "$ref": "#/definitions/detailSessionRoutePathEnvelope"
       }
     },
     "detailSpec": {
@@ -23640,6 +23703,88 @@ func init() {
         }
       ]
     },
+    "/sessions/{id}/route-path": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single session's route path by id. Requires admin access.",
+        "tags": [
+          "Session"
+        ],
+        "summary": "Retrieves a single session's router path",
+        "operationId": "detailSessionRoutePath",
+        "responses": {
+          "200": {
+            "description": "A single session's route path",
+            "schema": {
+              "$ref": "#/definitions/detailSessionRoutePathEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/specs": {
       "get": {
         "security": [],
@@ -27073,6 +27218,21 @@ func init() {
         }
       }
     },
+    "detailSessionRoutePathEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/sessionRoutePathDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
     "detailSpecBodyEnvelope": {
       "type": "object",
       "required": [
@@ -29337,6 +29497,17 @@ func init() {
         "$ref": "#/definitions/sessionDetail"
       }
     },
+    "sessionRoutePathDetail": {
+      "type": "object",
+      "properties": {
+        "routePath": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "specBodyDetail": {
       "type": "string"
     },
@@ -30126,6 +30297,12 @@ func init() {
       "description": "A single session",
       "schema": {
         "$ref": "#/definitions/detailSessionEnvelope"
+      }
+    },
+    "detailSessionRoutePath": {
+      "description": "A single session's route path",
+      "schema": {
+        "$ref": "#/definitions/detailSessionRoutePathEnvelope"
       }
     },
     "detailSpec": {

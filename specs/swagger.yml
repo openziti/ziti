@@ -1565,6 +1565,7 @@ paths:
           description: An edge router patch object
           schema:
             $ref: '#/definitions/edgeRouterPatch'
+            $ref: '#/definitions/edgeRouterPatch'
       responses:
         '200':
           $ref: '#/responses/patchResponse'
@@ -2952,6 +2953,24 @@ paths:
           $ref: '#/responses/unauthorizedResponse'
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+  '/sessions/{id}/route-path':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single session's router path
+      description: Retrieves a single session's route path by id. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Session
+      operationId: detailSessionRoutePath
+      responses:
+        '200':
+          $ref: '#/responses/detailSessionRoutePath'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
   ###################################################################
   # Terminators
   ##################################################################
@@ -3886,6 +3905,7 @@ responses:
     description: The recovery codes of an MFA enrollment
     schema:
       $ref: '#/definitions/detailMfaRecoveryCodesEnvelope'
+
   ###################################################################
   # API Session
   ##################################################################
@@ -4107,6 +4127,10 @@ responses:
     description: A single session
     schema:
       $ref: '#/definitions/detailSessionEnvelope'
+  detailSessionRoutePath:
+    description: A single session's route path
+    schema:
+      $ref: '#/definitions/detailSessionRoutePathEnvelope'
   ###################################################################
   # Terminators
   ##################################################################
@@ -5692,6 +5716,13 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/sessionDetail'
+  sessionRoutePathDetail:
+    type: object
+    properties:
+      routePath:
+        type: array
+        items:
+          type: string
   sessionDetail:
     type: object
     allOf:
@@ -6313,6 +6344,16 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         $ref: '#/definitions/sessionDetail'
+  detailSessionRoutePathEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionRoutePathDetail'
   envInfo:
     description: Environment information an authenticating client may provide
     properties:
