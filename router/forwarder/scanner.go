@@ -17,11 +17,13 @@
 package forwarder
 
 import (
+	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Scanner struct {
+	ctrl        channel2.Channel
 	sessions    *sessionTable
 	interval    time.Duration
 	timeout     time.Duration
@@ -40,6 +42,10 @@ func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
 		logrus.Warnf("scanner disabled")
 	}
 	return s
+}
+
+func (self *Scanner) SetCtrl(ch channel2.Channel) {
+	self.ctrl = ch
 }
 
 func (self *Scanner) setSessionTable(sessions *sessionTable) {
