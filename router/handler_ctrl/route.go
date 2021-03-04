@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type routeHandler struct {
@@ -116,8 +117,7 @@ func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Cha
 func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
 		log := pfxlog.Logger().WithField("sessionId", route.SessionId)
-		log.Debugf("route request received. binding: %v, destination: %v, address: %v",
-			route.Egress.Binding, route.Egress.Destination, route.Egress.Address)
+		log.Debugf("route request received. binding: %v, destination: %v, address: %v", route.Egress.Binding, route.Egress.Destination, route.Egress.Address)
 		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 				sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
@@ -126,6 +126,9 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 					handler_xgress.NewReceiveHandler(rh.forwarder),
 					handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
 					rh.forwarder)
+
+				logrus.Infof("sleeping 10 seconds on dial")
+				time.Sleep(10 * time.Second)
 
 				if peerData, err := dialer.Dial(route.Egress.Destination,
 					sessionId,
