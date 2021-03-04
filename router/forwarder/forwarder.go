@@ -64,7 +64,7 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, optio
 		Options:         options,
 		CloseNotify:     closeNotify,
 	}
-	forwarder.scanner = newScanner(forwarder.sessions, 30 * time.Second, 30 * time.Second, forwarder.CloseNotify)
+	forwarder.scanner = newScanner(forwarder.sessions, options.IdleTxInterval, options.IdleSessionTimeout, forwarder.CloseNotify)
 	go forwarder.scanner.run()
 
 	return forwarder
