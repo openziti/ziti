@@ -33,7 +33,7 @@ type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
 	faulter         *Faulter
-	scanner         *scanner
+	scanner         *Scanner
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -54,20 +54,19 @@ type XgressDestination interface {
 	GetTimeOfLastRxFromLink() int64
 }
 
-func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, options *Options, closeNotify <-chan struct{}) *Forwarder {
-	forwarder := &Forwarder{
+func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, scanner *Scanner, options *Options, closeNotify <-chan struct{}) *Forwarder {
+	f := &Forwarder{
 		sessions:        newSessionTable(),
 		destinations:    newDestinationTable(),
 		faulter:         faulter,
+		scanner:         scanner,
 		metricsRegistry: metricsRegistry,
 		traceController: trace.NewController(closeNotify),
 		Options:         options,
 		CloseNotify:     closeNotify,
 	}
-	forwarder.scanner = newScanner(forwarder.sessions, options.IdleTxInterval, options.IdleSessionTimeout, forwarder.CloseNotify)
-	go forwarder.scanner.run()
-
-	return forwarder
+	f.scanner.setSessionTable(f.sessions)
+	return f
 }
 
 func (forwarder *Forwarder) MetricsRegistry() metrics.UsageRegistry {

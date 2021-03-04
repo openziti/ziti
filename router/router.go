@@ -98,7 +98,8 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	xgress.InitMetrics(metricsRegistry)
 
 	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
-	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder, closeNotify)
+	scanner := forwarder.NewScanner(config.Forwarder, closeNotify)
+	fwd := forwarder.NewForwarder(metricsRegistry, faulter, scanner, config.Forwarder, closeNotify)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)

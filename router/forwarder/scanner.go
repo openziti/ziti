@@ -21,23 +21,32 @@ import (
 	"time"
 )
 
-type scanner struct {
+type Scanner struct {
 	sessions    *sessionTable
 	interval    time.Duration
 	timeout     time.Duration
 	closeNotify <-chan struct{}
 }
 
-func newScanner(sessions *sessionTable, interval time.Duration, timeout time.Duration, closeNotify <-chan struct{}) *scanner {
-	return &scanner{
-		sessions:    sessions,
-		interval:    interval,
-		timeout:     timeout,
+func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
+	s := &Scanner{
+		interval:    options.IdleTxInterval,
+		timeout:     options.IdleSessionTimeout,
 		closeNotify: closeNotify,
 	}
+	if s.interval > 0 {
+		go s.run()
+	} else {
+		logrus.Warnf("scanner disabled")
+	}
+	return s
 }
 
-func (self *scanner) run() {
+func (self *Scanner) setSessionTable(sessions *sessionTable) {
+	self.sessions = sessions
+}
+
+func (self *Scanner) run() {
 	logrus.Info("started")
 	defer logrus.Warn("exited")
 
@@ -52,12 +61,16 @@ func (self *scanner) run() {
 	}
 }
 
-func (self *scanner) scan() {
-	for sessionId, ft := range self.sessions.sessions.Items() {
-		var idleSessionIds []string
+func (self *Scanner) scan() {
+	sessions := self.sessions.sessions.Items()
+	logrus.Infof("scanning [%d] sessions", len(sessions))
+
+	var idleSessionIds []string
+	for sessionId, ft := range sessions {
 		if time.Since(ft.(*forwardTable).last) > self.timeout {
 			idleSessionIds = append(idleSessionIds, sessionId)
 			logrus.Warnf("[s/%s] idle after [%s]", sessionId, self.timeout)
 		}
 	}
+	logrus.Infof("found [%d] idle sessions", len(idleSessionIds))
 }
