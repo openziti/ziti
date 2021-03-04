@@ -33,6 +33,7 @@ type Forwarder struct {
 	sessions        *sessionTable
 	destinations    *destinationTable
 	faulter         *Faulter
+	scanner         *scanner
 	metricsRegistry metrics.UsageRegistry
 	traceController trace.Controller
 	Options         *Options
@@ -63,6 +64,8 @@ func NewForwarder(metricsRegistry metrics.UsageRegistry, faulter *Faulter, optio
 		Options:         options,
 		CloseNotify:     closeNotify,
 	}
+	forwarder.scanner = newScanner(forwarder.sessions, 30 * time.Second, 30 * time.Second, forwarder.CloseNotify)
+	go forwarder.scanner.run()
 
 	return forwarder
 }
