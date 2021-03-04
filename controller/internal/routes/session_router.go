@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/session"
 	"github.com/openziti/foundation/metrics"
 	"time"
@@ -59,6 +60,10 @@ func (r *SessionRouter) Register(ae *env.AppEnv) {
 
 	ae.Api.SessionCreateSessionHandler = session.CreateSessionHandlerFunc(func(params session.CreateSessionParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.Api.SessionDetailSessionRoutePathHandler = session.DetailSessionRoutePathHandlerFunc(func(params session.DetailSessionRoutePathParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.DetailRoutePath(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
 
@@ -106,4 +111,25 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.ApiSession.Id, params.Session))
 	})
 	r.createTimer.UpdateSince(start)
+}
+
+func (r *SessionRouter) DetailRoutePath(ae *env.AppEnv, rc *response.RequestContext, params session.DetailSessionRoutePathParams) {
+	path := []string{} //must be non null
+
+	for _, fabricSession := range ae.HostController.GetNetwork().GetAllSessions() {
+		if fabricSession.ClientId != nil && fabricSession.ClientId.Token == params.ID {
+			if fabricSession.Circuit != nil {
+				for _, pathSeg := range fabricSession.Circuit.Path {
+					path = append(path, pathSeg.Id)
+				}
+				break
+			}
+		}
+	}
+
+	routePath := &rest_model.SessionRoutePathDetail{
+		RoutePath: path,
+	}
+
+	rc.RespondWithOk(routePath, &rest_model.Meta{})
 }

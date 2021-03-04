@@ -446,6 +446,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation session.DetailSession has not yet been implemented")
 		})
 	}
+	if api.SessionDetailSessionRoutePathHandler == nil {
+		api.SessionDetailSessionRoutePathHandler = session.DetailSessionRoutePathHandlerFunc(func(params session.DetailSessionRoutePathParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation session.DetailSessionRoutePath has not yet been implemented")
+		})
+	}
 	if api.InformationalDetailSpecHandler == nil {
 		api.InformationalDetailSpecHandler = informational.DetailSpecHandlerFunc(func(params informational.DetailSpecParams) middleware.Responder {
 			return middleware.NotImplemented("operation informational.DetailSpec has not yet been implemented")

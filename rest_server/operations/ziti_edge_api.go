@@ -310,6 +310,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		SessionDetailSessionHandler: session.DetailSessionHandlerFunc(func(params session.DetailSessionParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation session.DetailSession has not yet been implemented")
 		}),
+		SessionDetailSessionRoutePathHandler: session.DetailSessionRoutePathHandlerFunc(func(params session.DetailSessionRoutePathParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation session.DetailSessionRoutePath has not yet been implemented")
+		}),
 		InformationalDetailSpecHandler: informational.DetailSpecHandlerFunc(func(params informational.DetailSpecParams) middleware.Responder {
 			return middleware.NotImplemented("operation informational.DetailSpec has not yet been implemented")
 		}),
@@ -827,6 +830,8 @@ type ZitiEdgeAPI struct {
 	ServicePolicyDetailServicePolicyHandler service_policy.DetailServicePolicyHandler
 	// SessionDetailSessionHandler sets the operation handler for the detail session operation
 	SessionDetailSessionHandler session.DetailSessionHandler
+	// SessionDetailSessionRoutePathHandler sets the operation handler for the detail session route path operation
+	SessionDetailSessionRoutePathHandler session.DetailSessionRoutePathHandler
 	// InformationalDetailSpecHandler sets the operation handler for the detail spec operation
 	InformationalDetailSpecHandler informational.DetailSpecHandler
 	// InformationalDetailSpecBodyHandler sets the operation handler for the detail spec body operation
@@ -1336,6 +1341,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.SessionDetailSessionHandler == nil {
 		unregistered = append(unregistered, "session.DetailSessionHandler")
+	}
+	if o.SessionDetailSessionRoutePathHandler == nil {
+		unregistered = append(unregistered, "session.DetailSessionRoutePathHandler")
 	}
 	if o.InformationalDetailSpecHandler == nil {
 		unregistered = append(unregistered, "informational.DetailSpecHandler")
@@ -2024,6 +2032,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/sessions/{id}"] = session.NewDetailSession(o.context, o.SessionDetailSessionHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/sessions/{id}/route-path"] = session.NewDetailSessionRoutePath(o.context, o.SessionDetailSessionRoutePathHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
