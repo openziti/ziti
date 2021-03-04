@@ -21,7 +21,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -138,7 +138,7 @@ func (p *PostureCheckOperatingSystem) validateOsVersions() error {
 		for versionIdx, version := range os.OsVersions {
 			if _, err := semver.ParseRange(version); err != nil {
 				msg := fmt.Sprintf("invalid version for os: [%s], version: [%s]: %v ", os, version, err)
-				return validation.NewFieldError(msg, fmt.Sprintf("operatingSystems[%s][%d]", os, versionIdx), msg)
+				return errorz.NewFieldError(msg, fmt.Sprintf("operatingSystems[%s][%d]", os, versionIdx), msg)
 			}
 		}
 	}

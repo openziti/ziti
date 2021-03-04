@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -69,17 +69,17 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.En
 		blocks, err := cert.PemChain2Blocks(entity.CertPem)
 
 		if err != nil {
-			return nil, validation.NewFieldError(err.Error(), "certPem", entity.CertPem)
+			return nil, errorz.NewFieldError(err.Error(), "certPem", entity.CertPem)
 		}
 
 		if len(blocks) == 0 {
-			return nil, validation.NewFieldError("at least one leaf certificate must be supplied", "certPem", entity.CertPem)
+			return nil, errorz.NewFieldError("at least one leaf certificate must be supplied", "certPem", entity.CertPem)
 		}
 
 		certs, err := cert.Blocks2Certs(blocks)
 
 		if err != nil {
-			return nil, validation.NewFieldError(err.Error(), "certPem", entity.CertPem)
+			return nil, errorz.NewFieldError(err.Error(), "certPem", entity.CertPem)
 		}
 
 		leaf := certs[0]
@@ -106,7 +106,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.En
 		return nil, err
 	}
 	if len(queryResults) > 0 {
-		return nil, validation.NewFieldError(fmt.Sprintf("certificate already used as CA %s", queryResults[0]), "certPem", entity.CertPem)
+		return nil, errorz.NewFieldError(fmt.Sprintf("certificate already used as CA %s", queryResults[0]), "certPem", entity.CertPem)
 	}
 
 	boltEntity := &persistence.Ca{

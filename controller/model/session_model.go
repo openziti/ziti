@@ -23,8 +23,8 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
-	"github.com/openziti/foundation/validation"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -53,7 +53,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		return nil, err
 	}
 	if apiSession == nil {
-		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
+		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
 	service, err := handler.GetEnv().GetHandlers().EdgeService.ReadForIdentityInTx(tx, entity.ServiceId, apiSession.IdentityId, nil)
@@ -66,11 +66,11 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	}
 
 	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
-		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+		return nil, errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
-		return nil, validation.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+		return nil, errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
 	checkCache := map[string]bool{} //cache individual check status

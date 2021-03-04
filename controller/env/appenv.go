@@ -29,7 +29,6 @@ import (
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
@@ -47,6 +46,7 @@ import (
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/xeipuuv/gojsonschema"
@@ -195,18 +195,18 @@ func (a authorizer) Authorize(request *http.Request, principal interface{}) erro
 
 	if !ok {
 		pfxlog.Logger().Error("principal expected to be an ApiSession and was not")
-		return apierror.NewUnauthorized()
+		return errorz.NewUnauthorized()
 	}
 
 	rc, err := GetRequestContextFromHttpContext(request)
 
 	if rc == nil || err != nil {
 		pfxlog.Logger().WithError(err).Error("attempting to retrieve request context failed")
-		return apierror.NewUnauthorized()
+		return errorz.NewUnauthorized()
 	}
 
 	if rc.Identity == nil {
-		return apierror.NewUnauthorized()
+		return errorz.NewUnauthorized()
 	}
 
 	return nil
@@ -253,7 +253,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 		rc.Identity, err = ae.GetHandlers().Identity.Read(rc.ApiSession.IdentityId)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
-				apiErr := apierror.NewUnauthorized()
+				apiErr := errorz.NewUnauthorized()
 				apiErr.Cause = fmt.Errorf("associated identity %s not found", rc.ApiSession.IdentityId)
 				apiErr.AppendCause = true
 				return apiErr
@@ -321,7 +321,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 				pfxlog.Logger().WithError(err).Errorf("encountered error checking for session that was not expected; returning masking unauthorized response")
 			}
 
-			return nil, apierror.NewUnauthorized()
+			return nil, errorz.NewUnauthorized()
 		}
 
 		return principal, nil
@@ -475,7 +475,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		for _, permission := range permissions {
 			if !permission.IsAllowed(rc.ActivePermissions...) {
-				rc.RespondWithApiError(apierror.NewUnauthorized())
+				rc.RespondWithApiError(errorz.NewUnauthorized())
 				return
 			}
 		}

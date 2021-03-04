@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/edge/tunnel/udp_vconn"
 	"github.com/openziti/foundation/util/mempool"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +41,7 @@ type interceptor struct {
 	interceptIP net.IP
 	services    map[string]*Service
 	closeCh     chan interface{}
-	context     ziti.Context
+	provider    tunnel.FabricProvider
 }
 
 func New(ip net.IP, services map[string]*Service) (intercept.Interceptor, error) {
@@ -54,12 +53,12 @@ func New(ip net.IP, services map[string]*Service) (intercept.Interceptor, error)
 	return &p, nil
 }
 
-func (p *interceptor) Start(context ziti.Context) {
+func (p *interceptor) Start(provider tunnel.FabricProvider) {
 	log := pfxlog.Logger()
 	log.Info("starting proxy interceptor")
 
 	// just stash the context
-	p.context = context
+	p.provider = provider
 }
 
 func (p interceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
@@ -72,10 +71,10 @@ func (p interceptor) Intercept(service *entities.Service, resolver dns.Resolver)
 	}
 
 	// pre-fetch network session todo move this to service poller?
-	if ns, err := p.context.GetSession(service.Id); err != nil {
+	if err := p.provider.PrepForUse(service.Id); err != nil {
 		return fmt.Errorf("failed to acquire network session: %v", err)
 	} else {
-		log.WithField("id", ns.Id).Debug("acquired network session")
+		log.Debug("acquired network session")
 	}
 
 	go p.runServiceListener(proxiedService)
@@ -116,7 +115,7 @@ func (p *interceptor) handleTCP(service *Service) {
 			p.closeCh <- err
 			return
 		}
-		go tunnel.DialAndRun(p.context, service.Name, conn, true)
+		go tunnel.DialAndRun(p.provider, service.Name, conn, true)
 	}
 }
 
@@ -138,7 +137,7 @@ func (p *interceptor) handleUDP(service *Service) {
 		service: service.Name,
 		conn:    udpPacketConn,
 	}
-	vconnManager := udp_vconn.NewManager(p.context, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+	vconnManager := udp_vconn.NewManager(p.provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 	go reader.generateReadEvents(vconnManager)
 }
 

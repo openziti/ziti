@@ -19,9 +19,9 @@ package intercept
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"math"
 	"net"
@@ -35,7 +35,7 @@ const (
 )
 
 type Interceptor interface {
-	Start(context ziti.Context)
+	Start(provider tunnel.FabricProvider)
 	Stop()
 	Intercept(service *entities.Service, resolver dns.Resolver) error
 	StopIntercepting(serviceName string, removeRoute bool) error

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/udp_vconn"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -89,7 +88,7 @@ func (manager *TunUDPManager) UnregisterService(service string) {
 	delete(manager.services, key)
 }
 
-func (manager *TunUDPManager) CreateEvent(_ ziti.Context, srcIP, dstIP net.IP, pdu []byte, _ io.ReadWriter, release func()) udp_vconn.Event {
+func (manager *TunUDPManager) CreateEvent(srcIP, dstIP net.IP, pdu []byte, release func()) udp_vconn.Event {
 	udpQItem := &udpQItem{
 		segment:    UDP(pdu),
 		srcIP:      srcIP,

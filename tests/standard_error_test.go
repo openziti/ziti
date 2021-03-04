@@ -20,6 +20,7 @@ package tests
 
 import (
 	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -40,7 +41,7 @@ func Test_StandardErrorMessages(t *testing.T) {
 		req := require.New(t)
 		resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/i-do-not-exist")
 		req.NoError(err)
-		standardErrorJsonResponseTests(resp, apierror.NotFoundCode, apierror.NotFoundStatus, t)
+		standardErrorJsonResponseTests(resp, errorz.NotFoundCode, errorz.NotFoundStatus, t)
 	})
 
 }

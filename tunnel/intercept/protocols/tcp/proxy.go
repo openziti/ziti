@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -75,7 +74,7 @@ func UnregisterService(serviceName string) {
 	delete(services, key)
 }
 
-func Enqueue(context ziti.Context, srcIP, dstIP net.IP, pdu []byte, dev io.ReadWriter, tunMTU uint, release func()) bool {
+func Enqueue(provider tunnel.FabricProvider, srcIP, dstIP net.IP, pdu []byte, dev io.ReadWriter, tunMTU uint, release func()) bool {
 	segment := TCP(pdu)
 	svcKey := key(dstIP, int(segment.DestinationPort()))
 	service := services[svcKey]
@@ -98,7 +97,7 @@ func Enqueue(context ziti.Context, srcIP, dstIP net.IP, pdu []byte, dev io.ReadW
 				release()
 				return true // this packet is effectively handled here, even though we're dropping it
 			}
-			go tunnel.DialAndRun(context, service, clientConn, true)
+			go tunnel.DialAndRun(provider, service, clientConn, true)
 		} else {
 			log.Debugf("packet from %s lacks TCP syn", clientKey)
 			release()

@@ -17,8 +17,8 @@
 package udp_vconn
 
 import (
+	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/foundation/util/mempool"
-	"github.com/openziti/sdk-golang/ziti"
 	"io"
 	"net"
 	"time"
@@ -74,10 +74,10 @@ func (u UnpooledBuffer) Release() {
 	// does nothing
 }
 
-func NewManager(context ziti.Context, newConnPolicy NewConnPolicy, expirationPolicy ConnExpirationPolicy) Manager {
+func NewManager(provider tunnel.FabricProvider, newConnPolicy NewConnPolicy, expirationPolicy ConnExpirationPolicy) Manager {
 	manager := &manager{
 		eventC:           make(chan Event),
-		context:          context,
+		provider:         provider,
 		connMap:          make(map[string]*udpConn),
 		newConnPolicy:    newConnPolicy,
 		expirationPolicy: expirationPolicy,

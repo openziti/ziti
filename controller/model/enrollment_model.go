@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -107,8 +107,8 @@ func (entity *Enrollment) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 	if entity.Method == persistence.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
-			apiErr := apierror.NewNotFound()
-			apiErr.Cause = apierror.NewFieldError("ca not found", "caId", *entity.CaId)
+			apiErr := errorz.NewNotFound()
+			apiErr.Cause = errorz.NewFieldError("ca not found", "caId", *entity.CaId)
 			apiErr.AppendCause = true
 			return nil, apiErr
 		}
@@ -116,8 +116,8 @@ func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 		ca, _ := handler.GetEnv().GetHandlers().Ca.Read(*entity.CaId)
 
 		if ca == nil {
-			apiErr := apierror.NewNotFound()
-			apiErr.Cause = apierror.NewFieldError("ca not found", "caId", *entity.CaId)
+			apiErr := errorz.NewNotFound()
+			apiErr.Cause = errorz.NewFieldError("ca not found", "caId", *entity.CaId)
 			apiErr.AppendCause = true
 			return nil, apiErr
 		}

@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -40,7 +40,7 @@ type ApiSessionCertificate struct {
 
 func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().ApiSession.IsEntityPresent(tx, entity.ApiSessionId) {
-		return nil, validation.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
+		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
 	boltEntity := &persistence.ApiSessionCertificate{

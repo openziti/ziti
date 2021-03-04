@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/internal/version"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"strings"
 )
@@ -34,7 +34,7 @@ type Responder interface {
 	RespondWithOk(data interface{}, meta *rest_model.Meta)
 	RespondWithEmptyOk()
 	RespondWithError(err error)
-	RespondWithApiError(apiError *apierror.ApiError)
+	RespondWithApiError(apiError *errorz.ApiError)
 	SetProducer(producer runtime.Producer)
 	GetProducer() runtime.Producer
 	RespondWithCouldNotReadBody(err error)
@@ -42,7 +42,7 @@ type Responder interface {
 	RespondWithValidationErrors(errors *schema.ValidationErrors)
 	RespondWithNotFound()
 	RespondWithNotFoundWithCause(cause error)
-	RespondWithFieldError(fe *validation.FieldError)
+	RespondWithFieldError(fe *errorz.FieldError)
 	RespondWithCreatedId(id string, link rest_model.Link)
 }
 
@@ -72,21 +72,21 @@ func (responder *ResponderImpl) RespondWithCouldNotParseBody(err error) {
 }
 
 func (responder *ResponderImpl) RespondWithValidationErrors(errors *schema.ValidationErrors) {
-	responder.RespondWithApiError(apierror.NewCouldNotValidate(errors))
+	responder.RespondWithApiError(errorz.NewCouldNotValidate(errors))
 }
 
 func (responder *ResponderImpl) RespondWithNotFound() {
-	responder.RespondWithApiError(apierror.NewNotFound())
+	responder.RespondWithApiError(errorz.NewNotFound())
 }
 
 func (responder *ResponderImpl) RespondWithNotFoundWithCause(cause error) {
-	apiErr := apierror.NewNotFound()
+	apiErr := errorz.NewNotFound()
 	apiErr.Cause = cause
 	responder.RespondWithApiError(apiErr)
 }
 
-func (responder *ResponderImpl) RespondWithFieldError(fe *validation.FieldError) {
-	responder.RespondWithApiError(apierror.NewField(apierror.NewFieldError(fe.Reason, fe.FieldName, fe.FieldValue)))
+func (responder *ResponderImpl) RespondWithFieldError(fe *errorz.FieldError) {
+	responder.RespondWithApiError(errorz.NewFieldApiError(errorz.NewFieldError(fe.Reason, fe.FieldName, fe.FieldValue)))
 }
 
 func (responder *ResponderImpl) RespondWithCreatedId(id string, link rest_model.Link) {
@@ -122,7 +122,7 @@ func (responder *ResponderImpl) RespondWithError(err error) {
 	RespondWithError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), err)
 }
 
-func (responder *ResponderImpl) RespondWithApiError(apiError *apierror.ApiError) {
+func (responder *ResponderImpl) RespondWithApiError(apiError *errorz.ApiError) {
 	RespondWithApiError(responder.rc.ResponseWriter, responder.rc.Request, responder.rc.Id, responder.GetProducer(), apiError)
 }
 
@@ -137,19 +137,19 @@ func Respond(w http.ResponseWriter, path, requestId string, producer runtime.Pro
 }
 
 func RespondWithError(w http.ResponseWriter, r *http.Request, requestId string, producer runtime.Producer, err error) {
-	var apiError *apierror.ApiError
+	var apiError *errorz.ApiError
 	var ok bool
 
-	if apiError, ok = err.(*apierror.ApiError); !ok {
-		apiError = apierror.NewUnhandled(err)
+	if apiError, ok = err.(*errorz.ApiError); !ok {
+		apiError = errorz.NewUnhandled(err)
 	}
 
 	RespondWithApiError(w, r, requestId, producer, apiError)
 }
 
-func RespondWithApiError(w http.ResponseWriter, r *http.Request, requestId string, producer runtime.Producer, apiError *apierror.ApiError) {
+func RespondWithApiError(w http.ResponseWriter, r *http.Request, requestId string, producer runtime.Producer, apiError *errorz.ApiError) {
 	data := &rest_model.APIErrorEnvelope{
-		Error: apiError.ToRestModel(requestId),
+		Error: apierror.ToRestModel(apiError, requestId),
 		Meta: &rest_model.Meta{
 			APIEnrolmentVersion: version.GetApiVersion(),
 			APIVersion:          version.GetApiEnrollmentVersion(),

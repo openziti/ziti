@@ -19,13 +19,12 @@ package model
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"
 	"sync"
@@ -72,8 +71,8 @@ func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) 
 	}
 
 	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = validation.NewFieldError("typeId not found", "typeId", identityModel.IdentityTypeId)
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", identityModel.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", apiErr
 	}
@@ -91,8 +90,8 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 	}
 
 	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identityModel.IdentityTypeId)
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identityModel.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", nil, apiErr
 	}
@@ -150,8 +149,8 @@ func (handler *IdentityHandler) Update(identity *Identity) error {
 	}
 
 	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
 		apiErr.AppendCause = true
 		return apiErr
 	}
@@ -170,8 +169,8 @@ func (handler *IdentityHandler) Patch(identity *Identity, checker boltz.FieldChe
 		}
 
 		if identityType == nil {
-			apiErr := apierror.NewNotFound()
-			apiErr.Cause = validation.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
+			apiErr := errorz.NewNotFound()
+			apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
 			apiErr.AppendCause = true
 			return apiErr
 		}
@@ -190,7 +189,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 	}
 
 	if identity.IsDefaultAdmin {
-		return apierror.NewEntityCanNotBeDeleted()
+		return errorz.NewEntityCanNotBeDeleted()
 	}
 
 	return handler.deleteEntity(id)
@@ -372,8 +371,8 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 	}
 
 	if identityType == nil {
-		apiErr := apierror.NewNotFound()
-		apiErr.Cause = validation.NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", identity.IdentityTypeId)
 		apiErr.AppendCause = true
 		return "", "", apiErr
 	}

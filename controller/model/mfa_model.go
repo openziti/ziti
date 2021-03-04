@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/validation"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -42,7 +42,7 @@ type Mfa struct {
 
 func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
-		return nil, validation.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
+		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
 	boltEntity := &persistence.Mfa{

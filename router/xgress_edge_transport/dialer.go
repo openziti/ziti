@@ -95,7 +95,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
 	}
 
-	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId, nil)
+	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId, txd.options.ConnectTimeout, nil)
 	if err != nil {
 		return nil, err
 	}
