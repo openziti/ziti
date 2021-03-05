@@ -32,6 +32,10 @@ message SessionRequest {
   map<uint32, bytes> peerData = 3;
 }
 
+message SessionConfirmation {
+    repeated string sessionIds = 1;
+}
+
 enum TerminatorPrecedence {
   Default = 0;
   Required = 1;

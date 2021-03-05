@@ -17,6 +17,9 @@
 package forwarder
 
 import (
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -78,5 +81,26 @@ func (self *Scanner) scan() {
 			logrus.Warnf("[s/%s] idle after [%s]", sessionId, self.timeout)
 		}
 	}
-	logrus.Infof("found [%d] idle sessions", len(idleSessionIds))
+
+	if len(idleSessionIds) > 0 {
+		logrus.Infof("found [%d] idle sessions, confirming with controller", len(idleSessionIds))
+
+		if self.ctrl != nil {
+			confirm := &ctrl_pb.SessionConfirmation{}
+			for _, idleSessionId := range idleSessionIds {
+				confirm.SessionIds = append(confirm.SessionIds, idleSessionId)
+			}
+			body, err := proto.Marshal(confirm)
+			if err == nil {
+				msg := channel2.NewMessage(ctrl_msg.SessionConfirmationType, body)
+				if err := self.ctrl.Send(msg); err == nil {
+					logrus.Warnf("sent confirmation for [%d] sessions", len(idleSessionIds))
+				} else {
+					logrus.Errorf("error sending confirmation request (%v)", err)
+				}
+			}
+		} else {
+			logrus.Errorf("no ctrl channel, cannot request session confirmations")
+		}
+	}
 }
