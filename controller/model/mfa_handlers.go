@@ -52,7 +52,7 @@ func (handler *MfaHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *MfaHandler) CreateForIdentity(identity *Identity) (string, error) {
-	secretBytes := make([]byte, 80)
+	secretBytes := make([]byte, 10)
 	_, _ = rand.Read(secretBytes)
 	secret := base32.StdEncoding.EncodeToString(secretBytes)
 
