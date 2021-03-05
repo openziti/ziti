@@ -59,7 +59,7 @@ func (self *sessionConfirmationHandler) HandleReceive(msg *channel2.Message, ch 
 					logrus.Errorf("error marshalling unroute to [r/%s] for [s/%s] (%v)", self.r.Id, sessionId, err)
 				}
 			} else {
-				logrus.Debugf("[s/%s] found, ignoring")
+				logrus.Debugf("[s/%s] found, ignoring", sessionId)
 			}
 		}
 	} else {
