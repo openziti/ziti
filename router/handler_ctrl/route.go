@@ -127,8 +127,10 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 					handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
 					rh.forwarder)
 
-				logrus.Infof("sleeping 10 seconds on dial")
-				time.Sleep(10 * time.Second)
+				if rh.forwarder.Options.XgressDialDwellTime > 0 {
+					logrus.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
+					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
+				}
 
 				if peerData, err := dialer.Dial(route.Egress.Destination,
 					sessionId,

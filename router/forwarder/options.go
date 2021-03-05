@@ -25,6 +25,7 @@ type Options struct {
 	LatencyProbeInterval     time.Duration
 	LatencyProbeTimeout      time.Duration
 	XgressCloseCheckInterval time.Duration
+	XgressDialDwellTime      time.Duration
 	FaultTxInterval          time.Duration
 	IdleTxInterval           time.Duration
 	IdleSessionTimeout       time.Duration
@@ -42,6 +43,7 @@ func DefaultOptions() *Options {
 		LatencyProbeInterval:     10 * time.Second,
 		LatencyProbeTimeout:      10 * time.Second,
 		XgressCloseCheckInterval: 5 * time.Second,
+		XgressDialDwellTime:      0,
 		FaultTxInterval:          15 * time.Second,
 		IdleTxInterval:           60 * time.Second,
 		IdleSessionTimeout:       60 * time.Second,
@@ -80,6 +82,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.XgressCloseCheckInterval = time.Duration(val) * time.Millisecond
 		} else {
 			return nil, errors.New("invalid value for 'latencyProbeInterval'")
+		}
+	}
+
+	if value, found := src["xgressDialDwellTime"]; found {
+		if v, ok := value.(int); ok {
+			options.XgressDialDwellTime = time.Duration(v) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'xgressDialDwellTime'")
 		}
 	}
 
