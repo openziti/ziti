@@ -7,6 +7,7 @@
 * Fix 0.19 regression: updating terminator cost/precedence from the sdk was broken
 * Fix 0.19 regression: fabric session client id was incorrectly set to edge session token instead of
   id
+* Fix MFA secret length, lowered from 80 bytes to 80 bits
 
 ## Link Latency Probe Timeout
 
