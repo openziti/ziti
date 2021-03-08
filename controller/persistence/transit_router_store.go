@@ -71,10 +71,11 @@ type TransitRouterStore interface {
 }
 
 func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
-	store := &transitRouterStoreImpl{
-		baseStore: newExtendedBaseStore(stores, stores.Router, TransitRouterPath),
-	}
+	store := &transitRouterStoreImpl{}
+	stores.Router.AddDeleteHandler(store.cleanupEnrollments) // do cleanup first
+	store.baseStore = newExtendedBaseStore(stores, stores.Router, TransitRouterPath)
 	store.InitImpl(store)
+
 	return store
 }
 
@@ -95,25 +96,6 @@ func (store *transitRouterStoreImpl) initializeLocal() {
 }
 
 func (store *transitRouterStoreImpl) initializeLinked() {
-}
-
-func (store *transitRouterStoreImpl) CleanupExternal(ctx boltz.MutateContext, id string) error {
-	entity, err := store.LoadOneById(ctx.Tx(), id)
-	if err != nil {
-		return err
-	}
-
-	//no edge cleanup
-	if entity.IsBase {
-		return nil
-	}
-
-	//edge cleanup
-	if err = store.stores.enrollment.DeleteWhere(ctx, fmt.Sprintf(`transitRouter="%s"`, id)); err != nil {
-		return nil
-	}
-
-	return store.BaseStore.CleanupExternal(ctx, id)
 }
 
 func (store *transitRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -144,12 +126,12 @@ func (store *transitRouterStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) 
 	return entity, nil
 }
 
-func (store *transitRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+func (store *transitRouterStoreImpl) cleanupEnrollments(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove outstanding enrollments
 		if err := store.stores.enrollment.DeleteWhere(ctx, fmt.Sprintf(`transitRouter="%s"`, entity.Id)); err != nil {
 			return err
 		}
 	}
-	return store.BaseStore.DeleteById(ctx, id)
+	return nil
 }
