@@ -180,8 +180,8 @@ func (broker *Broker) apiSessionCertificateHandler(args ...interface{}) {
 }
 
 func (broker *Broker) IsEdgeRouterOnline(id string) bool {
-	status := broker.GetEdgeRouterState(id)
-	return status.IsOnline
+	state := broker.GetEdgeRouterState(id)
+	return state.IsOnline
 }
 
 func (broker *Broker) GetEdgeRouterState(id string) RouterStateValues {
