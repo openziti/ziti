@@ -11,6 +11,7 @@
 * Fix MFA secret length, lowered from 80 bytes to 80 bits
 * Ensure that negative lengths in message headers are properly handled
 * Fix panic when updating session activity for removed session
+* Fix panic when shared router state is used when a router disconnects or reconnects
 
 ## Link Latency Probe Timeout
 
