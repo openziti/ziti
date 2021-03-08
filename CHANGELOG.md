@@ -3,11 +3,14 @@
 ## What's New
 
 * Link latency probe timeout parameter in router configuration.
-* Support configurable timeout on Xgress dial operations. Router terminated services can now specify a short timeout for dial operations.
+* Support configurable timeout on Xgress dial operations. Router terminated services can now specify
+  a short timeout for dial operations.
 * Fix 0.19 regression: updating terminator cost/precedence from the sdk was broken
 * Fix 0.19 regression: fabric session client id was incorrectly set to edge session token instead of
   id
 * Fix MFA secret length, lowered from 80 bytes to 80 bits
+* Ensure that negative lengths in message headers are properly handled
+* Fix panic when updating session activity for removed session
 
 ## Link Latency Probe Timeout
 
@@ -33,7 +36,8 @@ dialers:
       connectTimeout:   2s
 ```
 
-You will need to specify Xgress options for each dialer binding that you want to use with your configuration.
+You will need to specify Xgress options for each dialer binding that you want to use with your
+configuration.
 
 # Release 0.19.3
 
