@@ -12,6 +12,7 @@
 * Ensure that negative lengths in message headers are properly handled
 * Fix panic when updating session activity for removed session
 * Fix panic when shared router state is used when a router disconnects or reconnects
+* Additional garbage collection for parallel route algorithm, removes successful routes created during failed attempts, after final successful attempt.
 
 ## Link Latency Probe Timeout
 
