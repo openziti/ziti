@@ -104,19 +104,18 @@ func (handler *ApiSessionHandler) MarkActivity(tokens []string) ([]string, error
 			if err != nil {
 				if boltz.IsErrNotFoundErr(err) {
 					notFoundTokens = append(notFoundTokens, token)
+					continue
 				} else {
 					return err
 				}
 
 			}
 			if err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{}); err != nil {
-				if err != nil {
-					if boltz.IsErrNotFoundErr(err) {
-						notFoundTokens = append(notFoundTokens, token)
-					} else {
-						return err
-					}
-
+				if boltz.IsErrNotFoundErr(err) {
+					notFoundTokens = append(notFoundTokens, token)
+					continue
+				} else {
+					return err
 				}
 			}
 
