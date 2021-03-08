@@ -20,6 +20,8 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/foundation/common"
+	"sync"
 )
 
 // Aliased type for router strategies
@@ -52,8 +54,7 @@ const (
 // any upfront state and then maintaining state after that.
 type RouterSyncStrategy interface {
 	Type() RouterSyncStrategyType
-	Status(id string) RouterSyncStatus
-	GetOnlineEdgeRouter(id string) (*model.EdgeRouter, RouterSyncStatus)
+	GetEdgeRouterState(id string) RouterStateValues
 	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
@@ -74,4 +75,161 @@ type RouterSynchronizerEventHandler interface {
 	ApiSessionDeleted(apiSession *persistence.ApiSession)
 
 	SessionDeleted(session *persistence.Session)
+}
+
+// RouterState provides a thread save mechanism to access and set router status information that may be influx
+// due to reouter connection/disconnection.
+type RouterState interface {
+	SetIsOnline(isOnline bool)
+	IsOnline() bool
+
+	SetHostname(hostname string)
+	Hostname() string
+
+	SetProtocols(protocols map[string]string)
+	Protocols() map[string]string
+
+	SetSyncStatus(status RouterSyncStatus)
+	SyncStatus() RouterSyncStatus
+
+	SetVersionInfo(versionInfo common.VersionInfo)
+	GetVersionInfo() common.VersionInfo
+
+	Values() RouterStateValues
+}
+
+var _ RouterState = &LockingRouterState{}
+
+type RouterStateValues struct {
+	IsOnline    bool
+	Hostname    string
+	Protocols   map[string]string
+	SyncStatus  RouterSyncStatus
+	VersionInfo common.VersionInfo
+}
+
+func NewRouterStatusValues() RouterStateValues {
+	return RouterStateValues{
+		IsOnline:   false,
+		Hostname:   "",
+		Protocols:  map[string]string{},
+		SyncStatus: RouterSyncUnknown,
+		VersionInfo: common.VersionInfo{
+			Version:   "",
+			Revision:  "",
+			BuildDate: "",
+			OS:        "",
+			Arch:      "",
+		},
+	}
+}
+
+type LockingRouterState struct {
+	internal RouterStateValues
+	lock     sync.Mutex
+}
+
+func NewLockingRouterStatus() *LockingRouterState {
+	return &LockingRouterState{
+		internal: NewRouterStatusValues(),
+		lock: sync.Mutex{},
+	}
+}
+
+func (r *LockingRouterState) Values() RouterStateValues {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	ret := r.internal
+
+	ret.Protocols = map[string]string{}
+
+	for k, v := range r.internal.Protocols {
+		ret.Protocols[k] = v
+	}
+
+	return ret
+}
+
+func (r *LockingRouterState) SetIsOnline(isOnline bool) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.internal.IsOnline = isOnline
+}
+
+func (r *LockingRouterState) IsOnline() bool {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.internal.IsOnline
+}
+
+func (r *LockingRouterState) SetHostname(hostname string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.internal.Hostname = hostname
+}
+
+func (r *LockingRouterState) Hostname() string {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.internal.Hostname
+}
+
+func (r *LockingRouterState) SetProtocols(protocols map[string]string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	newProtocols := map[string]string{}
+
+	for k, v := range protocols {
+		newProtocols[k] = v
+	}
+
+	r.internal.Protocols = newProtocols
+}
+
+func (r *LockingRouterState) Protocols() map[string]string {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	//to return empty, not nil
+	copy := map[string]string{}
+
+	for k, v := range r.internal.Protocols {
+		copy[k] = v
+	}
+
+	return copy
+}
+
+func (r *LockingRouterState) SetSyncStatus(syncStatus RouterSyncStatus) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.internal.SyncStatus = syncStatus
+}
+
+func (r *LockingRouterState) SyncStatus() RouterSyncStatus {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.internal.SyncStatus
+}
+
+func (r *LockingRouterState) SetVersionInfo(versionInfo common.VersionInfo) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.internal.VersionInfo = versionInfo
+}
+
+func (r *LockingRouterState) GetVersionInfo() common.VersionInfo {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.internal.VersionInfo
 }

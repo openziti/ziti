@@ -19,7 +19,6 @@ package env
 import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
@@ -181,12 +180,12 @@ func (broker *Broker) apiSessionCertificateHandler(args ...interface{}) {
 }
 
 func (broker *Broker) IsEdgeRouterOnline(id string) bool {
-	er, _ := broker.GetOnlineEdgeRouter(id)
-	return er != nil
+	state := broker.GetEdgeRouterState(id)
+	return state.IsOnline
 }
 
-func (broker *Broker) GetOnlineEdgeRouter(id string) (*model.EdgeRouter, RouterSyncStatus) {
-	return broker.routerSyncStrategy.GetOnlineEdgeRouter(id)
+func (broker *Broker) GetEdgeRouterState(id string) RouterStateValues {
+	return broker.routerSyncStrategy.GetEdgeRouterState(id)
 }
 
 func (broker *Broker) Stop() {

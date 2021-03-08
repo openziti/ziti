@@ -31,27 +31,37 @@ import (
 // RouterSender represents a connection from an Edge Router to the controller. Used
 // to asynchronously buffer and send messages to an Edge Router via Start() then Send()
 type RouterSender struct {
+	env.RouterState
 	Id         string
 	EdgeRouter *model.EdgeRouter
 	Router     *network.Router
-	Status     env.RouterSyncStatus
 	send       chan *channel2.Message
 	stop       chan interface{}
 	running    concurrenz.AtomicBoolean
 	stopping   concurrenz.AtomicBoolean
+
+	sync.Mutex
 }
 
 func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
 	return &RouterSender{
-		Id:         eid.New(),
-		EdgeRouter: edgeRouter,
-		Router:     router,
-		Status:     env.RouterSyncNew,
-		send:       make(chan *channel2.Message, sendBufferSize),
-		stop:       make(chan interface{}, 0),
-		running:    concurrenz.AtomicBoolean(0),
-		stopping:   concurrenz.AtomicBoolean(0),
+		Id:          eid.New(),
+		EdgeRouter:  edgeRouter,
+		Router:      router,
+		send:        make(chan *channel2.Message, sendBufferSize),
+		stop:        make(chan interface{}, 0),
+		running:     concurrenz.AtomicBoolean(0),
+		stopping:    concurrenz.AtomicBoolean(0),
+		RouterState: env.NewLockingRouterStatus(),
 	}
+}
+
+func (rtx *RouterSender) GetState() env.RouterStateValues {
+	if rtx == nil {
+		return env.NewRouterStatusValues()
+	}
+
+	return rtx.Values()
 }
 
 func (rtx *RouterSender) Start() {
@@ -112,6 +122,11 @@ func (m *routerTxMap) Get(id string) *RouterSender {
 		return nil
 	}
 	return val.(*RouterSender)
+}
+
+func (m *routerTxMap) GetState(id string) env.RouterStateValues {
+	rtx := m.Get(id)
+	return rtx.GetState()
 }
 
 func (m *routerTxMap) Remove(id string) {
