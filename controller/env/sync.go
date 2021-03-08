@@ -140,7 +140,15 @@ func (r *LockingRouterState) Values() RouterStateValues {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	return r.internal
+	ret := r.internal
+
+	ret.Protocols = map[string]string{}
+
+	for k, v := range r.internal.Protocols {
+		ret.Protocols[k] = v
+	}
+
+	return ret
 }
 
 func (r *LockingRouterState) SetIsOnline(isOnline bool) {
