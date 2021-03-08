@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/util/stringz"
 	"strings"
 )
@@ -110,40 +111,29 @@ func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 	return restModel, nil
 }
 
-func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_model.EdgeRouterDetail, error) {
-	var hostname *string
-	protocols := map[string]string{}
-	os := ""
-	arch := ""
-	buildDate := ""
-	revision := ""
-	version := ""
-
-	onlineEdgeRouter, syncStatus := ae.Broker.GetOnlineEdgeRouter(router.Id)
-	syncStatusStr := string(syncStatus)
-
-	isOnline := onlineEdgeRouter != nil
-
-	if isOnline {
-		hostname = onlineEdgeRouter.Hostname
-		protocols = onlineEdgeRouter.EdgeRouterProtocols
-
-		if onlineEdgeRouter.VersionInfo != nil {
-			os = onlineEdgeRouter.VersionInfo.OS
-			arch = onlineEdgeRouter.VersionInfo.Arch
-			buildDate = onlineEdgeRouter.VersionInfo.BuildDate
-			revision = onlineEdgeRouter.VersionInfo.Revision
-			version = onlineEdgeRouter.VersionInfo.Version
-		}
+func MapVersionInfoToRestModel(versionInfo common.VersionInfo) (*rest_model.VersionInfo) {
+	ret := &rest_model.VersionInfo{
+		Arch:      &versionInfo.Arch,
+		BuildDate: &versionInfo.BuildDate,
+		Os:        &versionInfo.OS,
+		Revision:  &versionInfo.Revision,
+		Version:   &versionInfo.Version,
 	}
+
+	return ret
+}
+
+func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_model.EdgeRouterDetail, error) {
+	routerState := ae.Broker.GetEdgeRouterState(router.Id)
+	syncStatusStr := string(routerState.SyncStatus)
 
 	ret := &rest_model.EdgeRouterDetail{
 		BaseEntity: BaseEntityToRestModel(router, EdgeRouterLinkFactory),
 		CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
 			Name:               &router.Name,
-			IsOnline:           &isOnline,
-			Hostname:           hostname,
-			SupportedProtocols: protocols,
+			IsOnline:           &routerState.IsOnline,
+			Hostname:           &routerState.Hostname,
+			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatusStr,
 		},
 		RoleAttributes:      router.RoleAttributes,
@@ -151,16 +141,9 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		EnrollmentCreatedAt: nil,
 		EnrollmentExpiresAt: nil,
 		EnrollmentJwt:       nil,
-		IsVerified:  &router.IsVerified,
-		Fingerprint: stringz.OrEmpty(router.Fingerprint),
-
-		VersionInfo: &rest_model.VersionInfo{
-			Os:        &os,
-			Arch:      &arch,
-			Revision:  &revision,
-			BuildDate: &buildDate,
-			Version:   &version,
-		},
+		IsVerified:          &router.IsVerified,
+		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
+		VersionInfo:         MapVersionInfoToRestModel(routerState.VersionInfo),
 	}
 
 	if !router.IsVerified {

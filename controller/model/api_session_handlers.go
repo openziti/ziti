@@ -107,7 +107,6 @@ func (handler *ApiSessionHandler) MarkActivity(tokens []string) ([]string, error
 				} else {
 					return err
 				}
-
 			}
 			if err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{}); err != nil {
 				if err != nil {

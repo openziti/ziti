@@ -162,23 +162,18 @@ func MapCurrentIdentityEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.Reques
 
 func MapCurrentIdentityEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_model.CurrentIdentityEdgeRouterDetail, error) {
 	hostname := ""
-	protocols := map[string]string{}
-	onlineEdgeRouter, erSyncStatus := ae.Broker.GetOnlineEdgeRouter(router.Id)
-	syncStatus := string(erSyncStatus)
-	isOnline := onlineEdgeRouter != nil
 
-	if isOnline {
-		hostname = *onlineEdgeRouter.Hostname
-		protocols = onlineEdgeRouter.EdgeRouterProtocols
-	}
+	routerState := ae.Broker.GetEdgeRouterState(router.Id)
+
+	syncStatus := string(routerState.SyncStatus)
 
 	ret := &rest_model.CurrentIdentityEdgeRouterDetail{
 		BaseEntity: BaseEntityToRestModel(router, EdgeRouterLinkFactory),
 		CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
 			Hostname:           &hostname,
-			IsOnline:           &isOnline,
+			IsOnline:           &routerState.IsOnline,
 			Name:               &router.Name,
-			SupportedProtocols: protocols,
+			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatus,
 		},
 	}

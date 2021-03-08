@@ -140,23 +140,9 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 
 	return strategy
 }
-func (strategy *InstantStrategy) GetOnlineEdgeRouter(id string) (*model.EdgeRouter, env.RouterSyncStatus) {
-	rtx := strategy.rtxMap.Get(id)
 
-	if rtx != nil {
-		return rtx.EdgeRouter, rtx.Status
-	}
-
-	return nil, env.RouterSyncUnknown
-}
-
-func (strategy *InstantStrategy) Status(id string) env.RouterSyncStatus {
-	rtx := strategy.rtxMap.Get(id)
-	if rtx == nil {
-		return env.RouterSyncUnknown
-	}
-
-	return rtx.Status
+func (strategy *InstantStrategy) GetEdgeRouterState(id string) env.RouterStateValues {
+	return strategy.rtxMap.GetState(id)
 }
 
 func (strategy *InstantStrategy) Type() env.RouterSyncStrategyType {
@@ -172,10 +158,10 @@ func (strategy *InstantStrategy) Stop() {
 
 func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
 	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize)
-	rtx.Status = env.RouterSyncQueued
+	rtx.SetSyncStatus(env.RouterSyncQueued)
 
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
-		WithField("syncStatus", rtx.Status).
+		WithField("syncStatus", rtx.SyncStatus()).
 		WithField("routerId", rtx.Router.Id).
 		WithField("routerName", rtx.Router.Name).
 		WithField("routerFingerprint", rtx.Router.Fingerprint)
@@ -276,7 +262,7 @@ func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
 				defer func() {
 					if r := recover(); r != nil {
 						pfxlog.Logger().Errorf("router connect worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
-						rtx.Status = env.RouterSyncError
+						rtx.SetSyncStatus(env.RouterSyncError)
 						rtx.logger().Errorf("panic during edge router connection, sync failed")
 					}
 				}()
@@ -296,7 +282,7 @@ func (strategy *InstantStrategy) startSynchronizeWorker() {
 				defer func() {
 					if r := recover(); r != nil {
 						pfxlog.Logger().Errorf("sync worker panic, worker recovering: %v\n%v", r, debugz.GenerateLocalStack())
-						rtx.Status = env.RouterSyncError
+						rtx.SetSyncStatus(env.RouterSyncError)
 						rtx.logger().Errorf("panic during edge router sync, sync failed")
 					}
 				}()
@@ -307,19 +293,20 @@ func (strategy *InstantStrategy) startSynchronizeWorker() {
 }
 
 func (strategy *InstantStrategy) hello(rtx *RouterSender) {
+
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 
 	logger.Info("edge router sync starting")
 
 	if rtx.Router.Control.IsClosed() {
-		rtx.Status = env.RouterSyncDisconnected
-		logger.WithField("syncStatus", rtx.Status).Info("edge router sync aborting, edge router disconnected before sync started")
+		rtx.SetSyncStatus(env.RouterSyncDisconnected)
+		logger.WithField("syncStatus", rtx.SyncStatus()).Info("edge router sync aborting, edge router disconnected before sync started")
 		return
 	}
 
 	rtx.Router.Control.AddReceiveHandler(strategy.helloHandler)
-	rtx.Status = env.RouterSyncHello
-	logger.WithField("syncStatus", rtx.Status).Info("sending edge router hello")
+	rtx.SetSyncStatus(env.RouterSyncHello)
+	logger.WithField("syncStatus", rtx.SyncStatus()).Info("sending edge router hello")
 	strategy.sendHello(rtx)
 }
 
@@ -338,10 +325,10 @@ func (strategy *InstantStrategy) sendHello(rtx *RouterSender) {
 
 	if err = rtx.Router.Control.SendWithTimeout(channel2.NewMessage(env.ServerHelloType, buf), strategy.HelloSendTimeout); err != nil {
 		if rtx.Router.Control.IsClosed() {
-			rtx.Status = env.RouterSyncDisconnected
+			rtx.SetSyncStatus(env.RouterSyncDisconnected)
 			rtx.logger().WithError(err).Error("timed out sending serverHello message for edge router, connection closed, giving up")
 		} else {
-			rtx.Status = env.RouterSyncHelloTimeout
+			rtx.SetSyncStatus(env.RouterSyncHelloTimeout)
 			rtx.logger().WithError(err).Error("timed out sending serverHello message for edge router, queuing again")
 			go func() {
 				strategy.routerConnectedQueue <- rtx
@@ -362,7 +349,7 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_p
 		return
 	}
 
-	rtx.Status = env.RouterSyncResyncWait
+	rtx.SetSyncStatus(env.RouterSyncResyncWait)
 
 	rtx.logger().WithField("strategy", strategy.Type()).Info("received resync from router, queuing")
 
@@ -381,8 +368,7 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 			Error("received hello from router that is currently not tracked by the strategy, dropping hello")
 		return
 	}
-
-	rtx.Status = env.RouterSyncHelloWait
+	rtx.SetSyncStatus(env.RouterSyncHelloWait)
 
 	logger := rtx.logger().WithField("strategy", strategy.Type()).
 		WithField("hostname", respHello.Hostname).
@@ -407,9 +393,9 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 		protocols[parts[0]] = ingressUrl
 	}
 
-	rtx.EdgeRouter.Hostname = &respHello.Hostname
-	rtx.EdgeRouter.EdgeRouterProtocols = protocols
-	rtx.EdgeRouter.VersionInfo = r.VersionInfo
+	rtx.SetHostname(respHello.Hostname)
+	rtx.SetProtocols(protocols)
+	rtx.SetVersionInfo(*r.VersionInfo)
 
 	logger.Infof("edge router sent hello with version [%s] to controller with version [%s]", respHello.Version, serverVersion)
 	strategy.receivedClientHelloQueue <- rtx
@@ -417,15 +403,15 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 
 func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 	defer func() {
-		rtx.logger().WithField("strategy", strategy.Type()).Infof("exiting synchronization, final status: %s", rtx.Status)
+		rtx.logger().WithField("strategy", strategy.Type()).Infof("exiting synchronization, final status: %s", rtx.SyncStatus())
 	}()
 
 	if rtx.Router.Control.IsClosed() {
-		rtx.Status = env.RouterSyncDisconnected
+		rtx.SetSyncStatus(env.RouterSyncDisconnected)
 		rtx.logger().WithField("strategy", strategy.Type()).Error("attempting to start synchronization with edge router, but it has disconnected")
 	}
 
-	rtx.Status = env.RouterSynInProgress
+	rtx.SetSyncStatus(env.RouterSynInProgress)
 	logger := rtx.logger().WithField("strategy", strategy.Type())
 	logger.Info("started synchronizing edge router")
 
@@ -478,7 +464,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 		logger.WithError(err).Error("failure synchronizing api sessions")
 	}
 
-	rtx.Status = env.RouterSyncDone
+	rtx.SetSyncStatus(env.RouterSyncDone)
 }
 
 func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) {
