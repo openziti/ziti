@@ -147,7 +147,7 @@ func (retransmitter *Retransmitter) retransmitSender() {
 			if !retransmit.isAcked() {
 				if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
 					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of session
-					if !retransmit.x.closed.Get() {
+					if !retransmit.x.Closed() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
 						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.SessionId)
