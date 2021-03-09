@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -173,7 +174,9 @@ func (cmd *listenerCmd) handle(conn net.Conn, context string) {
 			test = cmd.test
 		} else {
 			if test, err = proto.rxTest(); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("failure receiving test parameters, closing")
+				_ = conn.Close()
+				return
 			}
 		}
 
