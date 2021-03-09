@@ -708,29 +708,27 @@ func (network *Network) rerouteLink(l *Link) error {
 }
 
 func (network *Network) rerouteSession(s *Session) error {
-	log := pfxlog.Logger()
-
 	if s.Rerouting.CompareAndSwap(false, true) {
 		defer s.Rerouting.Set(false)
 
-		log.Warnf("rerouting [s/%s]", s.Id.Token)
+		logrus.Warnf("rerouting [s/%s]", s.Id.Token)
 
 		if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 			s.Circuit = cq
 
 			rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 			if err != nil {
-				log.Errorf("error creating route messages (%s)", err)
+				logrus.Errorf("error creating route messages (%s)", err)
 				return err
 			}
 
 			for i := 0; i < len(cq.Path); i++ {
 				if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
-					log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
+					logrus.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 				}
 			}
 
-			log.Infof("rerouted session [s/%s]", s.Id.Token)
+			logrus.Infof("rerouted session [s/%s]", s.Id.Token)
 
 			network.CircuitUpdated(s.Id, s.Circuit)
 
@@ -739,14 +737,12 @@ func (network *Network) rerouteSession(s *Session) error {
 			return err
 		}
 	} else {
-		log.Warnf("already re-routing [s/%s], ignoring", s.Id.Token)
+		logrus.Warnf("not rerouting [s/%s], already in progress", s.Id.Token)
 		return nil
 	}
 }
 
 func (network *Network) smartReroute(s *Session, cq *Circuit) error {
-	log := pfxlog.Logger()
-
 	if s.Rerouting.CompareAndSwap(false, true) {
 		defer s.Rerouting.Set(false)
 
@@ -754,24 +750,24 @@ func (network *Network) smartReroute(s *Session, cq *Circuit) error {
 
 		rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 		if err != nil {
-			log.Errorf("error creating route messages (%s)", err)
+			logrus.Errorf("error creating route messages (%s)", err)
 			return err
 		}
 
 		for i := 0; i < len(cq.Path); i++ {
 			if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
-				log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
+				logrus.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 			}
 		}
 
-		log.Debugf("rerouted session [s/%s]", s.Id.Token)
+		logrus.Debugf("rerouted session [s/%s]", s.Id.Token)
 
 		network.CircuitUpdated(s.Id, s.Circuit)
 
 		return nil
 
 	} else {
-		log.Warnf("elready re-routing [s/%s], ignoring", s.Id.Token)
+		logrus.Warnf("not rerouting [s/%s], already in progress", s.Id.Token)
 		return nil
 	}
 }
