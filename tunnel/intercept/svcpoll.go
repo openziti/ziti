@@ -102,15 +102,16 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 
 		if found && err == nil {
 			svc.ClientConfig = clientConfig
-
-			log.Infof("starting tunnel for newly available service %s", svc.Name)
-			if err := self.interceptor.Intercept(svc, self.resolver); err != nil {
-				log.Errorf("failed to intercept service: %v", err)
-			}
 		} else if !found {
 			pfxlog.Logger().Debugf("no service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
 		} else if err != nil {
 			pfxlog.Logger().WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+		}
+
+		// not all interceptors need a config, specifically proxy doesn't need one
+		log.Infof("starting tunnel for newly available service %s", svc.Name)
+		if err := self.interceptor.Intercept(svc, self.resolver); err != nil {
+			log.Errorf("failed to intercept service: %v", err)
 		}
 	}
 

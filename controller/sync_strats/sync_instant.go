@@ -159,6 +159,7 @@ func (strategy *InstantStrategy) Stop() {
 func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
 	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize)
 	rtx.SetSyncStatus(env.RouterSyncQueued)
+	rtx.SetIsOnline(true)
 
 	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
 		WithField("syncStatus", rtx.SyncStatus()).
