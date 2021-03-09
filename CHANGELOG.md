@@ -5,6 +5,8 @@
 * [fabric#206](https://github.com/openziti/fabric/issues/206) Fix controller deadlock which can
   happen when links go down
 * Use AtomicBitSet for xgress flags. Minimize memory use and contention
+* edge router status wasn't getting set online on connect
+* ziti-tunnel proxy wasn't working for services without a client config
 * Add queue for metrics messages. Add config setting for metrics report interval and message queue
   size
     * metrics.reportInterval - how often to report metrics to controller. Default: `15s`
