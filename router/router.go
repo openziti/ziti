@@ -89,12 +89,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
 	eventDispatcher := event.NewDispatcher(closeNotify)
-	metricsConfig := &metrics.Config{
-		Source:         config.Id.Token,
-		ReportInterval: time.Second * 15,
-		EventSink:      metrics.NilHandler{},
-	}
-	metricsRegistry := metrics.NewUsageRegistryFromConfig(metricsConfig, closeNotify)
+	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
 	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
@@ -190,8 +185,14 @@ func (self *Router) Run() error {
 }
 
 func (self *Router) showOptions() {
-	if ctrl, err := json.Marshal(self.config.Ctrl.Options); err == nil {
-		pfxlog.Logger().Infof("ctrl = %s", string(ctrl))
+	if output, err := json.Marshal(self.config.Ctrl.Options); err == nil {
+		pfxlog.Logger().Infof("ctrl = %s", string(output))
+	} else {
+		logrus.Fatalf("unable to display options (%v)", err)
+	}
+
+	if output, err := json.Marshal(self.config.Metrics); err == nil {
+		pfxlog.Logger().Infof("metrics = %s", string(output))
 	} else {
 		logrus.Fatalf("unable to display options (%v)", err)
 	}
@@ -338,7 +339,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
-	self.metricsRegistry.SetEventSink(self.metricsReporter)
+	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
 }
