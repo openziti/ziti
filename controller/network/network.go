@@ -737,7 +737,7 @@ func (network *Network) rerouteSession(s *Session) error {
 			return err
 		}
 	} else {
-		logrus.Warnf("not rerouting [s/%s], already in progress", s.Id.Token)
+		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
 		return nil
 	}
 }
@@ -767,7 +767,7 @@ func (network *Network) smartReroute(s *Session, cq *Circuit) error {
 		return nil
 
 	} else {
-		logrus.Warnf("not rerouting [s/%s], already in progress", s.Id.Token)
+		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
 		return nil
 	}
 }
