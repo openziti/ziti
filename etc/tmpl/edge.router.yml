@@ -23,6 +23,10 @@ identity:
 #trace:
 # path:                 001.trace
 
+metrics:
+  reportInterval: 20s
+  messageQueueSize: 20
+
 #profile:
 #  memory:
 #    path:               001.memprof
