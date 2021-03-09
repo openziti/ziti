@@ -36,6 +36,10 @@ link:
   dialers:
     - binding:          transport
 
+metrics:
+  reportInterval: 15s
+  messageQueueSize: 10
+
 # By having an 'edge' section defined, the ziti-router will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the router to no longer operate as an Edge
 # Router.
