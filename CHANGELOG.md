@@ -1,3 +1,26 @@
+# Release 0.19.5
+
+## What's New
+
+* [fabric#206](https://github.com/openziti/fabric/issues/206) Fix controller deadlock which can
+  happen when links go down
+* Use AtomicBitSet for xgress flags. Minimize memory use and contention
+* edge router status wasn't getting set online on connect
+* ziti-tunnel proxy wasn't working for services without a client config
+* Add queue for metrics messages. Add config setting for metrics report interval and message queue
+  size
+    * metrics.reportInterval - how often to report metrics to controller. Default: `15s`
+    * metrics.messageQueueSize - how many metrics message to allow to queue before blocking.
+      Default: 10
+
+Example stanza from router config file:
+
+```yaml
+metrics:
+  reportInterval: 15s
+  messageQueueSize: 10
+```
+
 # Release 0.19.4
 
 ## What's New
@@ -12,7 +35,8 @@
 * Ensure that negative lengths in message headers are properly handled
 * Fix panic when updating session activity for removed session
 * Fix panic when shared router state is used when a router disconnects or reconnects
-* Additional garbage collection for parallel route algorithm, removes successful routes created during failed attempts, after final successful attempt.
+* Additional garbage collection for parallel route algorithm, removes successful routes created
+  during failed attempts, after final successful attempt.
 
 ## Link Latency Probe Timeout
 
