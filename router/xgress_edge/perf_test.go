@@ -14,7 +14,6 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 type noopMetricsHandler struct{}
@@ -101,7 +100,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	req := require.New(b)
 	req.NoError(mux.AddMsgSink(conn))
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{}, nil)
+	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, nil)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
@@ -171,7 +170,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	}
 	xgOptions := xgress.DefaultOptions()
 
-	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, time.Minute, noopMetricsHandler{}, nil)
+	metricsRegistry := metrics.NewUsageRegistry("test", map[string]string{}, nil)
 	xgress.InitMetrics(metricsRegistry)
 
 	fwdOptions := forwarder.DefaultOptions()
