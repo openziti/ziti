@@ -20,15 +20,15 @@ require (
 	github.com/go-acme/lego/v4 v4.2.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.4
+	github.com/google/go-cmp v0.5.5
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.3.7
-	github.com/openziti/edge v0.19.13
-	github.com/openziti/fabric v0.16.15
-	github.com/openziti/foundation v0.15.24
-	github.com/openziti/sdk-golang v0.15.17
+	github.com/openziti/edge v0.19.23
+	github.com/openziti/fabric v0.16.21
+	github.com/openziti/foundation v0.15.35
+	github.com/openziti/sdk-golang v0.15.21
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
