@@ -67,6 +67,12 @@ type Network struct {
 	lastSnapshot           time.Time
 	metricsRegistry        metrics.Registry
 	VersionProvider        common.VersionProvider
+
+	serviceEventMetrics          metrics.UsageRegistry
+	serviceDialSuccessCounter    metrics.IntervalCounter
+	serviceDialFailCounter       metrics.IntervalCounter
+	serviceDialTimeoutCounter    metrics.IntervalCounter
+	serviceDialOtherErrorCounter metrics.IntervalCounter
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
@@ -76,6 +82,8 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 	}
 
 	controllers := NewControllers(database, stores)
+
+	serviceEventMetrics := metrics.NewUsageRegistry(nodeId.Token, nil, closeNotify)
 
 	network := &Network{
 		Controllers:           controllers,
@@ -95,7 +103,14 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		lastSnapshot:          time.Now().Add(-time.Hour),
 		metricsRegistry:       metrics.NewRegistry(nodeId.Token, nil),
 		VersionProvider:       versionProvider,
+
+		serviceEventMetrics:          serviceEventMetrics,
+		serviceDialSuccessCounter:    serviceEventMetrics.IntervalCounter("service.dial.success", time.Minute),
+		serviceDialFailCounter:       serviceEventMetrics.IntervalCounter("service.dial.fail", time.Minute),
+		serviceDialTimeoutCounter:    serviceEventMetrics.IntervalCounter("service.dial.timeout", time.Minute),
+		serviceDialOtherErrorCounter: serviceEventMetrics.IntervalCounter("service.dial.error_other", time.Minute),
 	}
+
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
@@ -125,6 +140,10 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 			}
 		}
 	}()
+}
+
+func (network *Network) InitServiceCounterDispatch(handler metrics.Handler) {
+	network.serviceEventMetrics.StartReporting(handler, time.Minute, 10)
 }
 
 func (network *Network) GetAppId() *identity.TokenId {
@@ -188,7 +207,7 @@ func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32,
 }
 
 func (network *Network) newRouteSender(sessionId string) *routeSender {
-	rs := newRouteSender(sessionId, network.options.RouteTimeout)
+	rs := newRouteSender(sessionId, network.options.RouteTimeout, network)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
@@ -320,18 +339,21 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
 		if err != nil {
+			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
 
 		// 3: select terminator
 		strategy, terminator, path, err := network.selectPath(srcR, svc, targetIdentity)
 		if err != nil {
+			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
 
 		// 4: Create Circuit
 		circuit, err := network.CreateCircuitWithPath(path)
 		if err != nil {
+			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
 		circuit.Binding = "transport"
@@ -346,6 +368,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		// 4a: Create Route Messages
 		rms, err := circuit.CreateRouteMessages(attempt, sessionId, terminator.GetAddress())
 		if err != nil {
+			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
