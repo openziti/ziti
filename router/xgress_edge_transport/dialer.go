@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/sirupsen/logrus"
 )
 
 type dialer struct {
@@ -99,6 +100,8 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	if err != nil {
 		return nil, err
 	}
+
+	logrus.Infof("successful connection to %v from %v (s/%v)", destination, peer.Conn().LocalAddr(), sessionId.Token)
 
 	conn := newEdgeTransportXgressConn(peer)
 
