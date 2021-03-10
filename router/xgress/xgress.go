@@ -34,6 +34,11 @@ import (
 
 const (
 	HeaderKeyUUID = 0
+
+	closedFlag            = 0
+	rxerStartedFlag       = 1
+	endOfSessionRecvdFlag = 2
+	endOfSessionSentFlag  = 3
 )
 
 type Address string
@@ -107,11 +112,7 @@ type Xgress struct {
 	linkRxBuffer         *LinkReceiveBuffer
 	closeHandler         CloseHandler
 	peekHandlers         []PeekHandler
-	closed               concurrenz.AtomicBoolean
-	rxerStarted          bool
-	endOfSessionRecvd    bool
-	endOfSessionSent     bool
-	flagsMutex           sync.Mutex
+	flags                concurrenz.AtomicBitSet
 	timeOfLastRxFromLink int64
 }
 
@@ -165,31 +166,19 @@ func (self *Xgress) AddPeekHandler(peekHandler PeekHandler) {
 }
 
 func (self *Xgress) IsEndOfSessionReceived() bool {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-	return self.endOfSessionRecvd
+	return self.flags.IsSet(endOfSessionRecvdFlag)
 }
 
 func (self *Xgress) markSessionEndReceived() {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-	self.endOfSessionRecvd = true
+	self.flags.Set(endOfSessionRecvdFlag, true)
 }
 
 func (self *Xgress) IsSessionStarted() bool {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-	return !self.IsTerminator() || self.rxerStarted
+	return !self.IsTerminator() || self.flags.IsSet(rxerStartedFlag)
 }
 
 func (self *Xgress) firstSessionStartReceived() bool {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-	if self.rxerStarted {
-		return false
-	}
-	self.rxerStarted = true
-	return true
+	return self.flags.CompareAndSet(rxerStartedFlag, false, true)
 }
 
 func (self *Xgress) Start() {
@@ -243,20 +232,15 @@ func (self *Xgress) GetEndSession() *Payload {
 }
 
 func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload) bool) {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-
 	// for now always send end of session. too many is better than not enough
-	if !self.endOfSessionRecvd {
+	if !self.IsEndOfSessionSent() {
 		sendF(self.GetEndSession())
-		self.endOfSessionSent = true
+		self.flags.Set(endOfSessionSentFlag, true)
 	}
 }
 
 func (self *Xgress) IsEndOfSessionSent() bool {
-	self.flagsMutex.Lock()
-	defer self.flagsMutex.Unlock()
-	return self.endOfSessionSent
+	return self.flags.IsSet(endOfSessionSentFlag)
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
@@ -277,7 +261,7 @@ Things which can trigger close
 func (self *Xgress) Close() {
 	log := pfxlog.ContextLogger(self.Label())
 
-	if self.closed.CompareAndSwap(false, true) {
+	if self.flags.CompareAndSet(closedFlag, false, true) {
 		log.Debug("closing xgress peer")
 		if err := self.peer.Close(); err != nil {
 			log.WithError(err).Warn("error while closing xgress peer")
@@ -301,11 +285,11 @@ func (self *Xgress) Close() {
 }
 
 func (self *Xgress) Closed() bool {
-	return self.closed.Get()
+	return self.flags.IsSet(closedFlag)
 }
 
 func (self *Xgress) SendPayload(payload *Payload) error {
-	if self.closed.Get() {
+	if self.Closed() {
 		return nil
 	}
 
@@ -479,7 +463,7 @@ func (self *Xgress) rx() {
 			return
 		}
 
-		if self.closed.Get() {
+		if self.Closed() {
 			return
 		}
 		start := 0

@@ -635,25 +635,21 @@ func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
 }
 
 func (network *Network) Run() {
-	log := pfxlog.Logger()
-	defer log.Error("exited")
-	log.Info("started")
+	defer logrus.Error("exited")
+	logrus.Info("started")
 
 	for {
 		select {
 		case r := <-network.routerChanged:
-			log.Infof("changed router [r/%s]", r.Id)
+			logrus.Infof("changed router [r/%s]", r.Id)
 			network.assemble()
 			network.clean()
 
 		case l := <-network.linkChanged:
-			log.Infof("changed link [l/%s]", l.Id.Token)
-			if err := network.rerouteLink(l); err != nil {
-				log.Errorf("unexpected error rerouting link (%s)", err)
-			}
+			go network.handleLinkChanged(l)
 
 		case ffr := <-network.forwardingFaults:
-			network.fault(ffr)
+			go network.handleForwardingFaults(ffr)
 			network.clean()
 
 		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
@@ -669,6 +665,17 @@ func (network *Network) Run() {
 	}
 }
 
+func (network *Network) handleLinkChanged(l *Link) {
+	logrus.Infof("changed link [l/%s]", l.Id.Token)
+	if err := network.rerouteLink(l); err != nil {
+		logrus.Errorf("unexpected error rerouting link (%s)", err)
+	}
+}
+
+func (network *Network) handleForwardingFaults(ffr *ForwardingFaultReport) {
+	network.fault(ffr)
+}
+
 func (network *Network) AddCapability(capability string) {
 	network.lock.Lock()
 	defer network.lock.Unlock()
@@ -682,17 +689,16 @@ func (network *Network) GetCapabilities() []string {
 }
 
 func (network *Network) rerouteLink(l *Link) error {
-	log := pfxlog.Logger()
-	log.Infof("link [l/%s] changed", l.Id.Token)
+	logrus.Infof("link [l/%s] changed", l.Id.Token)
 
 	sessions := network.sessionController.all()
 	for _, s := range sessions {
 		if s.Circuit.usesLink(l) {
-			log.Infof("session [s/%s] uses link [l/%s]", s.Id.Token, l.Id.Token)
+			logrus.Infof("session [s/%s] uses link [l/%s]", s.Id.Token, l.Id.Token)
 			if err := network.rerouteSession(s); err != nil {
-				log.Errorf("error rerouting session [s/%s], removing", s.Id.Token)
+				logrus.Errorf("error rerouting session [s/%s], removing", s.Id.Token)
 				if err := network.RemoveSession(s.Id, true); err != nil {
-					log.Errorf("error removing session [s/%s] (%s)", s.Id.Token, err)
+					logrus.Errorf("error removing session [s/%s] (%s)", s.Id.Token, err)
 				}
 			}
 		}
@@ -702,56 +708,68 @@ func (network *Network) rerouteLink(l *Link) error {
 }
 
 func (network *Network) rerouteSession(s *Session) error {
-	log := pfxlog.Logger()
-	log.Warnf("rerouting [s/%s]", s.Id.Token)
+	if s.Rerouting.CompareAndSwap(false, true) {
+		defer s.Rerouting.Set(false)
 
-	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
+		logrus.Warnf("rerouting [s/%s]", s.Id.Token)
+
+		if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
+			s.Circuit = cq
+
+			rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
+			if err != nil {
+				logrus.Errorf("error creating route messages (%s)", err)
+				return err
+			}
+
+			for i := 0; i < len(cq.Path); i++ {
+				if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
+					logrus.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
+				}
+			}
+
+			logrus.Infof("rerouted session [s/%s]", s.Id.Token)
+
+			network.CircuitUpdated(s.Id, s.Circuit)
+
+			return nil
+		} else {
+			return err
+		}
+	} else {
+		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
+		return nil
+	}
+}
+
+func (network *Network) smartReroute(s *Session, cq *Circuit) error {
+	if s.Rerouting.CompareAndSwap(false, true) {
+		defer s.Rerouting.Set(false)
+
 		s.Circuit = cq
 
 		rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
 		if err != nil {
-			log.Errorf("error creating route messages (%s)", err)
+			logrus.Errorf("error creating route messages (%s)", err)
 			return err
 		}
 
 		for i := 0; i < len(cq.Path); i++ {
 			if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
-				log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
+				logrus.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
 			}
 		}
 
-		log.Infof("rerouted session [s/%s]", s.Id.Token)
+		logrus.Debugf("rerouted session [s/%s]", s.Id.Token)
 
 		network.CircuitUpdated(s.Id, s.Circuit)
 
 		return nil
+
 	} else {
-		return err
+		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
+		return nil
 	}
-}
-
-func (network *Network) smartReroute(s *Session, cq *Circuit) error {
-	log := pfxlog.Logger()
-
-	s.Circuit = cq
-
-	rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator.GetAddress())
-	if err != nil {
-		log.Errorf("error creating route messages (%s)", err)
-		return err
-	}
-
-	for i := 0; i < len(cq.Path); i++ {
-		if _, err := sendRoute(cq.Path[i], rms[i], network.options.RouteTimeout); err != nil {
-			log.Errorf("error sending route to [r/%s] (%s)", cq.Path[i].Id, err)
-		}
-	}
-
-	log.Debugf("rerouted session [s/%s]", s.Id.Token)
-
-	network.CircuitUpdated(s.Id, s.Circuit)
-
-	return nil
 }
 
 func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
