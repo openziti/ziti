@@ -107,7 +107,7 @@ func (self *actionImpl) Matches(result *health.Result) bool {
 	logger := pfxlog.Logger()
 	logger.WithField("action", self.Description()).Debug("evaluating")
 
-	now := time.Now()
+	now := roundToClosest(time.Now(), timeClamp)
 	if result.IsHealthy() {
 		if self.consectivePasses == 0 {
 			self.passingSince = now
@@ -137,6 +137,9 @@ func (self *actionImpl) Matches(result *health.Result) bool {
 	if self.Duration != nil {
 		if result.IsHealthy() && now.Sub(self.passingSince) < *self.Duration {
 			return false
+		}
+		if result.TimeOfFirstFailure != nil {
+			fmt.Printf("current fail duration: %v, required duration: %v\n", now.Sub(*result.TimeOfFirstFailure), *self.Duration)
 		}
 		if !result.IsHealthy() && now.Sub(*result.TimeOfFirstFailure) < *self.Duration {
 			return false

@@ -9,6 +9,11 @@ import (
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"reflect"
 	"sync"
+	"time"
+)
+
+const (
+	timeClamp = 100 * time.Millisecond
 )
 
 type ServiceUpdater interface {
@@ -121,6 +126,10 @@ func (self *manager) handleResults() {
 }
 
 func (self *manager) handleResult(result *result) {
+	if result.TimeOfFirstFailure != nil {
+		rounded := roundToClosest(*result.TimeOfFirstFailure, timeClamp)
+		result.TimeOfFirstFailure = &rounded
+	}
 	if val, ok := self.checks.Load(result.name); ok {
 		if check, ok := val.(*checkContext); ok {
 			for _, action := range check.actions {
@@ -227,4 +236,12 @@ func (self *manager) OnCheckCompleted(name string, r health.Result) {
 type result struct {
 	name string
 	health.Result
+}
+
+func roundToClosest(t time.Time, interval time.Duration) time.Time {
+	roundDown := t.Truncate(interval)
+	if t.Sub(roundDown) >= interval/2 {
+		return roundDown.Add(interval)
+	}
+	return roundDown
 }
