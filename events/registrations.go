@@ -10,6 +10,7 @@ import (
 
 func init() {
 	RegisterEventType("metrics", registerMetricsEventHandler)
+	RegisterEventType("services", registerServiceEventHandler)
 	RegisterEventType("fabric.usage", registerUsageEventHandler)
 	RegisterEventType("fabric.sessions", registerSessionEventHandler)
 	RegisterEventType("fabric.terminators", registerTerminatorEventHandler)
@@ -45,4 +46,12 @@ func AddTerminatorEventHandler(handler TerminatorEventHandler) {
 
 func RemoveTerminatorEventHandler(handler TerminatorEventHandler) {
 	cowslice.Delete(terminatorEventHandlerRegistry, handler)
+}
+
+func AddServiceEventHandler(handler ServiceEventHandler) {
+	cowslice.Append(serviceEventHandlerRegistry, handler)
+}
+
+func RemoveServiceEventHandler(handler ServiceEventHandler) {
+	cowslice.Delete(serviceEventHandlerRegistry, handler)
 }

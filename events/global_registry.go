@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/metrics"
 	"github.com/pkg/errors"
 	"strings"
 	"sync"
@@ -136,9 +137,12 @@ events:
       path: /tmp/ziti-events.log
 
 */
-func WireEventHandlers() error {
+func WireEventHandlers(serviceEventInitializer func(handler metrics.Handler)) error {
 	registryLock.Lock()
 	defer registryLock.Unlock()
+
+	serviceEventInitializer(serviceEventAdapter{})
+
 	logger := pfxlog.Logger()
 	for _, eventHandlerConfig := range eventHandlerConfigs {
 		handler, err := eventHandlerConfig.createHandler()
