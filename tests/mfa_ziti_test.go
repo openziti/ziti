@@ -527,6 +527,23 @@ func Test_MFA(t *testing.T) {
 				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
 			})
 
+			t.Run("create new recovery codes with empty code should return invalid token/bad request", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/recovery-codes")
+
+				ctx.Req.NoError(err)
+				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			})
+
+			t.Run("create recovery codes with an invalid code should return invalid token/bad request", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.testContextChanged(t)
+				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("6sa5d4f56sad")).Post("/current-identity/mfa/recovery-codes")
+
+				ctx.Req.NoError(err)
+				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			})
+
 			t.Run("newly authenticated sessions", func(t *testing.T) {
 				var newValidatedSession *session
 
