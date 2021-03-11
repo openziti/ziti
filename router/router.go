@@ -272,19 +272,23 @@ func (self *Router) startXgressListeners() {
 			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.name, err)
 		}
 		self.xgressListeners = append(self.xgressListeners, listener)
-		if address, found := binding.options["address"]; found {
-			err = listener.Listen(address.(string),
-				handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(self.forwarder),
-					handler_xgress.NewCloseHandler(self, self.forwarder),
-					self.forwarder,
-				),
-			)
-			if err != nil {
-				logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
-			}
-			logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
+
+		var address string
+		if addressVal, found := binding.options["address"]; found {
+			address = addressVal.(string)
 		}
+
+		err = listener.Listen(address,
+			handler_xgress.NewBindHandler(
+				handler_xgress.NewReceiveHandler(self.forwarder),
+				handler_xgress.NewCloseHandler(self, self.forwarder),
+				self.forwarder,
+			),
+		)
+		if err != nil {
+			logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
+		}
+		logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
 	}
 }
 

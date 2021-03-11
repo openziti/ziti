@@ -297,10 +297,6 @@ func LoadConfig(path string) (*Config, error) {
 					if !found {
 						return nil, fmt.Errorf("[listener] must provide [binding] (%v)", submap)
 					}
-					_, found = submap["address"]
-					if !found {
-						return nil, fmt.Errorf("[listener] must provide [address] (%v)", submap)
-					}
 					cfg.Listeners = append(cfg.Listeners, listenerBinding{name: binding, options: submap})
 				}
 			}

@@ -17,6 +17,7 @@
 package xgress_transport_udp
 
 import (
+	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
@@ -28,6 +29,9 @@ import (
 )
 
 func (l *listener) Listen(address string, bindHandler xgress.BindHandler) error {
+	if address == "" {
+		return errors.New("address must be specified for transport_udp listeners")
+	}
 	l.address = address
 	l.bindHandler = bindHandler
 
