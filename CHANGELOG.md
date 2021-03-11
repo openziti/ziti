@@ -1,3 +1,56 @@
+# Release 0.19.6
+
+## What's New
+
+* Service Event Counters
+* New log message which shows local (router side) address, including port, when router dials are
+  successful. This allows correlating server side access logs with ziti logs
+
+## Service Event Counters
+
+There are new events emitted for service, with statistics for how many dials are successful, failed,
+timed out, or fail for non-dial related reasons. Stats are aggregated per-minute, similar to usage
+statistics. They can be enabled in the controller config as follows:
+
+```yaml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: services
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
+```
+
+Example of the events JSON output:
+
+```json
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.fail",
+  "service_id": "HSfgHzIom",
+  "count": 8,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.success",
+  "service_id": "HSfgHzIom",
+  "count": 29,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+```
+
+Event types:
+
+* `service.dial.success`
+* `service.dial.fail`
+* `service.dial.timeout`
+* `service.dial.error_other`
+
 # Release 0.19.5
 
 ## What's New
