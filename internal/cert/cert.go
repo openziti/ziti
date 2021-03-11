@@ -18,12 +18,12 @@ package cert
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"math/big"
 	"net"
 	"net/url"
@@ -39,9 +39,11 @@ type CertPem struct {
 }
 
 type Signer interface {
-	Sign([]byte, *SigningOpts) ([]byte, error)
-	ToPem([]byte) ([]byte, error)
-	SigningCertPEM() string
+	SignCsr(*x509.CertificateRequest, *SigningOpts) ([]byte, error)
+	SigningCert() *x509.Certificate
+
+	Cert() *x509.Certificate
+	Signer() crypto.Signer
 }
 
 type SigningOpts struct {
@@ -83,13 +85,23 @@ func (DefaultSerialGenerator) Generate() *big.Int {
 	return r
 }
 
+var _ Signer = &ServerSigner{}
+
 type ServerSigner struct {
 	caCert          *x509.Certificate
-	caKey           interface{}
+	caKey           crypto.PrivateKey
 	SerialGenerator SerialGenerator
 }
 
-func NewServerSigner(caCert *x509.Certificate, caKey interface{}) *ServerSigner {
+func (s *ServerSigner) Cert() *x509.Certificate {
+	return s.caCert
+}
+
+func (s *ServerSigner) Signer() crypto.Signer {
+	return s.caKey.(crypto.Signer)
+}
+
+func NewServerSigner(caCert *x509.Certificate, caKey crypto.PrivateKey) *ServerSigner {
 	return &ServerSigner{
 		caCert:          caCert,
 		caKey:           caKey,
@@ -97,28 +109,12 @@ func NewServerSigner(caCert *x509.Certificate, caKey interface{}) *ServerSigner 
 	}
 }
 
-func (s *ServerSigner) SigningCertPEM() string {
-	b, err := s.ToPem(s.caCert.Raw)
-	if err != nil {
-		pfxlog.Logger().WithError(err).Error("failed to convert signing cert into PEM")
-		return ""
-	}
-
-	return string(b)
+func (s *ServerSigner) SigningCert() *x509.Certificate {
+	return s.caCert
 }
 
-func (s *ServerSigner) ToPem(raw []byte) ([]byte, error) {
-	return cert2pem(raw)
-}
-
-func (s *ServerSigner) Sign(csrPem []byte, opts *SigningOpts) ([]byte, error) {
-	csr, err := ParseCsr(csrPem)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse PEM bytes as CSR: %s", err)
-	}
-
-	if err = csr.CheckSignature(); err != nil {
+func (s *ServerSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) ([]byte, error) {
+	if err := csr.CheckSignature(); err != nil {
 		return nil, fmt.Errorf("CSR signature validation failed: %s", err)
 	}
 
@@ -151,17 +147,23 @@ func (s *ServerSigner) Sign(csrPem []byte, opts *SigningOpts) ([]byte, error) {
 	return cert, nil
 }
 
+var _ Signer = &ClientSigner{}
+
 type ClientSigner struct {
 	caCert          *x509.Certificate
-	caKey           interface{}
+	caKey           crypto.PrivateKey
 	SerialGenerator SerialGenerator
 }
 
-func (s *ClientSigner) SigningCertPEM() string {
-	return ""
+func (s *ClientSigner) Cert() *x509.Certificate {
+	return s.caCert
 }
 
-func NewClientSigner(caCert *x509.Certificate, caKey interface{}) *ClientSigner {
+func (s *ClientSigner) Signer() crypto.Signer {
+	return s.caKey.(crypto.Signer)
+}
+
+func NewClientSigner(caCert *x509.Certificate, caKey crypto.PrivateKey) *ClientSigner {
 	return &ClientSigner{
 		caCert:          caCert,
 		caKey:           caKey,
@@ -169,18 +171,12 @@ func NewClientSigner(caCert *x509.Certificate, caKey interface{}) *ClientSigner 
 	}
 }
 
-func (s *ClientSigner) ToPem(raw []byte) ([]byte, error) {
-	return cert2pem(raw)
+func (s *ClientSigner) SigningCert() *x509.Certificate {
+	return nil
 }
 
-func (s *ClientSigner) Sign(csrPem []byte, opts *SigningOpts) ([]byte, error) {
-	csr, err := ParseCsr(csrPem)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse PEM bytes as CSR: %s", err)
-	}
-
-	if err = csr.CheckSignature(); err != nil {
+func (s *ClientSigner) SignCsr(csr *x509.CertificateRequest, opts *SigningOpts) ([]byte, error) {
+	if err := csr.CheckSignature(); err != nil {
 		return nil, fmt.Errorf("CSR signature validation failed: %s", err)
 	}
 
@@ -214,7 +210,7 @@ func (s *ClientSigner) Sign(csrPem []byte, opts *SigningOpts) ([]byte, error) {
 	return cert, nil
 }
 
-func cert2pem(raw []byte) ([]byte, error) {
+func RawToPem(raw []byte) ([]byte, error) {
 	cert := bytes.NewBuffer(make([]byte, 0))
 
 	err := pem.Encode(cert, &pem.Block{Type: "CERTIFICATE", Bytes: raw})
@@ -226,7 +222,7 @@ func cert2pem(raw []byte) ([]byte, error) {
 	return cert.Bytes(), nil
 }
 
-func ParseCsr(csrPem []byte) (*x509.CertificateRequest, error) {
+func ParseCsrPem(csrPem []byte) (*x509.CertificateRequest, error) {
 	if len(csrPem) == 0 {
 		return nil, errors.New("csrPem must not be null or empty")
 	}

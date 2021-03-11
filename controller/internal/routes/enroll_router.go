@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/fullsailor/pkcs7"
@@ -28,6 +29,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	cert2 "github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/enroll"
 	"github.com/openziti/edge/rest_server/operations/well_known"
@@ -50,6 +52,8 @@ func NewEnrollRouter() *EnrollRouter {
 
 func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 
+	//Enroll
+
 	ae.Api.EnrollEnrollHandler = enroll.EnrollHandlerFunc(func(params enroll.EnrollParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
@@ -70,6 +74,14 @@ func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
+	// Extend Enrollment
+	ae.Api.EnrollExtendRouterEnrollmentHandler = enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.extendRouterEnrollment(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	// Utility, well-known
 	ae.Api.WellKnownListWellKnownCasHandler = well_known.ListWellKnownCasHandlerFunc(func(params well_known.ListWellKnownCasParams) middleware.Responder {
 		return ae.IsAllowed(ro.getCaCerts, params.HTTPRequest, "", "", permissions.Always())
 	})
@@ -163,4 +175,113 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 	}
 
 	rc.RespondWithOk(result.Content, &rest_model.Meta{})
+}
+
+func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.RequestContext, params enroll.ExtendRouterEnrollmentParams) {
+	peerCerts := rc.Request.TLS.PeerCertificates
+
+	if len(peerCerts) == 0 {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	var cert *x509.Certificate
+	for _, peerCert := range peerCerts {
+		if !peerCert.IsCA {
+			cert = peerCert
+		}
+	}
+
+	if cert == nil {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	fingerprint := ae.GetFingerprintGenerator().FromCert(cert)
+
+	if fingerprint == "" {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	if params.RouterExtendEnrollmentRequest.CertCsr == nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "client CSR is required",
+			FieldName:  "certCsr",
+			FieldValue: params.RouterExtendEnrollmentRequest.CertCsr,
+		}))
+		return
+	}
+
+	if params.RouterExtendEnrollmentRequest.ServerCertCsr == nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "server CSR is required",
+			FieldName:  "serverCertCsr",
+			FieldValue: params.RouterExtendEnrollmentRequest.ServerCertCsr,
+		}))
+		return
+	}
+
+	if edgeRouter, _ := ae.Handlers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+		certs, err := ae.Handlers.EdgeRouter.ExtendEnrollment(edgeRouter, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		clientPem, err := cert2.RawToPem(certs.RawClientCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithOk(&rest_model.EnrollmentCerts{
+			Cert:       string(clientPem),
+			ServerCert: string(serverPem),
+		}, &rest_model.Meta{})
+
+		return
+	}
+
+	if router, _ := ae.Handlers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
+		certs, err := ae.Handlers.TransitRouter.ExtendEnrollment(router, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		clientPem, err := cert2.RawToPem(certs.RawClientCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithOk(&rest_model.EnrollmentCerts{
+			Cert:       string(clientPem),
+			ServerCert: string(serverPem),
+		}, &rest_model.Meta{})
+
+		return
+	}
+
+	//default unauthorized
+	rc.RespondWithApiError(errorz.NewUnauthorized())
 }

@@ -66,7 +66,18 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	certRaw, err := module.env.GetApiClientCsrSigner().Sign(ctx.GetDataAsByteArray(), &cert.SigningOpts{})
+	csrPem := ctx.GetDataAsByteArray()
+
+	csr, err := cert.ParseCsrPem(csrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	certRaw, err := module.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{})
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()

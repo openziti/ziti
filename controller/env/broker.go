@@ -37,6 +37,9 @@ const (
 
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
+
+	EnrollmentCertsResponseType       = int32(edge_ctrl_pb.ContentType_EnrollmentCertsResponseType)
+	EnrollmentExtendRouterRequestType = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterRequestType)
 )
 
 // The Broker delegates Ziti Edge events to a RouterSyncStrategy. Handling the details of which events to watch

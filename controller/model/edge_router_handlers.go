@@ -19,8 +19,11 @@ package model
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
@@ -103,6 +106,10 @@ func (handler *EdgeRouterHandler) Update(modelEntity *EdgeRouter, restrictFields
 func (handler *EdgeRouterHandler) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler.allowedFieldsChecker, second: checker}
 	return handler.patchEntity(modelEntity, combinedChecker)
+}
+
+func (handler *EdgeRouterHandler) PatchUnrestricted(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
+	return handler.patchEntity(modelEntity, checker)
 }
 
 func (handler *EdgeRouterHandler) Delete(id string) error {
@@ -246,6 +253,59 @@ func (handler *EdgeRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 		}
 	}
 	return nil
+}
+
+type ExtendedCerts struct {
+	RawClientCert []byte
+	RawServerCert []byte
+}
+
+func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+
+	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	clientPem, _ := cert.RawToPem(clientCertRaw)
+	clientPemString := string(clientPem)
+
+	pfxlog.Logger().Debugf("extending enrollment for edge router %s, old fingerprint: %s new fingerprint: %s", router.Id, *router.Fingerprint, fingerprint)
+
+	router.Fingerprint = &fingerprint
+	router.CertPem = &clientPemString
+
+	err = handler.PatchUnrestricted(router, &boltz.MapFieldChecker{
+		persistence.FieldEdgeRouterCertPEM: struct{}{},
+		db.FieldRouterFingerprint:          struct{}{},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	//Otherwise the controller will continue to use old fingerprint if the router is cached
+	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, fingerprint)
+
+	return &ExtendedCerts{
+		RawClientCert: clientCertRaw,
+		RawServerCert: serverCertRaw,
+	}, nil
 }
 
 type EdgeRouterListResult struct {

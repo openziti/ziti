@@ -27,8 +27,10 @@ enum ContentType {
   RemoveTerminatorResponseType = 20212;
   ValidateSessionsRequestType = 20213;
   HealthEventType = 20214;
+
   EnrollType = 20300;
-  EnrollCertsType = 20301;
+  EnrollmentCertsResponseType = 20301;
+  EnrollmentExtendRouterRequestType = 20302;
 
   CreateApiSessionRequestType = 20400;
   CreateApiSessionResponseType = 20401;
@@ -272,4 +274,15 @@ message UpdateTunnelTerminatorRequest {
   TerminatorPrecedence precedence = 3;
   bool updatePrecedence = 4;
   bool updateCost = 5;
+}
+
+message EnrollmentExtendRouterRequest {
+  string clientCertCsr = 1;
+  string serverCertCsr = 2;
+}
+
+message EnrollmentCertsResponse {
+  string clientCertPem = 1;
+  string serverCertPem = 2;
+  string caCertsPem = 3;
 }
