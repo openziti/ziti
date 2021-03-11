@@ -85,7 +85,11 @@ type Config struct {
 	Dialers   map[string]xgress.OptionsData
 	Listeners []listenerBinding
 	Transport map[interface{}]interface{}
-	src       map[interface{}]interface{}
+	Metrics   struct {
+		ReportInterval   time.Duration
+		MessageQueueSize int
+	}
+	src map[interface{}]interface{}
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -293,10 +297,6 @@ func LoadConfig(path string) (*Config, error) {
 					if !found {
 						return nil, fmt.Errorf("[listener] must provide [binding] (%v)", submap)
 					}
-					_, found = submap["address"]
-					if !found {
-						return nil, fmt.Errorf("[listener] must provide [address] (%v)", submap)
-					}
 					cfg.Listeners = append(cfg.Listeners, listenerBinding{name: binding, options: submap})
 				}
 			}
@@ -309,6 +309,24 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	cfg.Metrics.ReportInterval = 15 * time.Second
+	cfg.Metrics.MessageQueueSize = 10
+	if value, found := cfgmap["metrics"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["reportInterval"]; found {
+				if cfg.Metrics.ReportInterval, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for metrics.reportInterval")
+				}
+			}
+			if value, found := submap["messageQueueSize"]; found {
+				if intVal, ok := value.(int); ok {
+					cfg.Metrics.MessageQueueSize = intVal
+				} else {
+					return nil, errors.Wrap(err, "invalid value for metrics.messageQueueSize")
+				}
+			}
+		}
+	}
 	return cfg, nil
 }
 

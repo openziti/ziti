@@ -17,6 +17,7 @@
 package xgress_transport
 
 import (
+	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
@@ -43,6 +44,9 @@ func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.
 }
 
 func (listener *listener) Listen(address string, bindHandler xgress.BindHandler) error {
+	if address == "" {
+		return errors.New("address must be specified for transport listeners")
+	}
 	txAddress, err := transport.ParseAddress(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)

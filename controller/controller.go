@@ -125,7 +125,7 @@ func (c *Controller) Run() error {
 	/* */
 
 	// event handlers
-	if err := events.WireEventHandlers(); err != nil {
+	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
 		panic(err)
 	}
 

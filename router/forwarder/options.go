@@ -117,14 +117,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
-	if value, found := src["xgressDialQueueLength "]; found {
+	if value, found := src["xgressDialQueueLength"]; found {
 		if length, ok := value.(int); ok {
 			if length <= 0 || length > 10000 {
-				return nil, errors.New("invalid value for 'xgressDialQueueLength ', expected integer between 1 and 1000")
+				return nil, errors.New("invalid value for 'xgressDialQueueLength', expected integer between 1 and 1000")
 			}
 			options.XgressDial.QueueLength = uint16(length)
 		} else {
-			return nil, errors.New("invalid value for 'xgressDialQueueLength ', expected integer between 1 and 1000")
+			return nil, errors.New("invalid value for 'xgressDialQueueLength', expected integer between 1 and 1000")
 		}
 	}
 

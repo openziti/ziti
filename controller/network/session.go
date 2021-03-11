@@ -19,6 +19,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
 )
 
@@ -28,6 +29,7 @@ type Session struct {
 	Service    *Service
 	Terminator xt.Terminator
 	Circuit    *Circuit
+	Rerouting  concurrenz.AtomicBoolean
 	PeerData   xt.PeerData
 }
 
