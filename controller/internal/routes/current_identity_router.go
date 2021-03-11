@@ -235,12 +235,7 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, err := ae.Handlers.Mfa.Verify(mfa, *body.Code)
-
-	if err != nil {
-		rc.RespondWithError(err)
-		return
-	}
+	ok, _ := ae.Handlers.Mfa.Verify(mfa, *body.Code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
