@@ -23,12 +23,34 @@ import (
 	"strings"
 )
 
+var _ PostureCheckSubType = &PostureCheckProcess{}
+
 type PostureCheckProcess struct {
 	PostureCheckId  string
 	OperatingSystem string
 	Path            string
 	Hashes          []string
 	Fingerprint     string
+}
+
+func (p *PostureCheckProcess) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
+	ret := &PostureCheckFailureValuesProcess{
+		ActualValue: PostureResponseProcess{
+			PostureResponse:    nil,
+			IsRunning:          false,
+			BinaryHash:         "",
+			SignerFingerprints: nil,
+		},
+		ExpectedValue: *p,
+	}
+	for _, processData := range pd.Processes {
+		if processData.PostureCheckId == p.PostureCheckId {
+			ret.ActualValue = *processData
+		}
+		break
+	}
+
+	return ret
 }
 
 func (p *PostureCheckProcess) Evaluate(_ string, pd *PostureData) bool {
@@ -116,4 +138,17 @@ func (p *PostureCheckProcess) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler
 		Hashes:          p.Hashes,
 		Fingerprint:     p.Fingerprint,
 	}, nil
+}
+
+type PostureCheckFailureValuesProcess struct {
+	ActualValue   PostureResponseProcess
+	ExpectedValue PostureCheckProcess
+}
+
+func (p PostureCheckFailureValuesProcess) Expected() interface{} {
+	return p.ExpectedValue
+}
+
+func (p PostureCheckFailureValuesProcess) Actual() interface{} {
+	return p.ActualValue
 }

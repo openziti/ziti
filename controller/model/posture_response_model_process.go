@@ -46,7 +46,7 @@ func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
 	}
 
 	if !found {
-		pr.LastUpdatedAt = time.Now()
+		pr.LastUpdatedAt = time.Now().UTC()
 		postureData.Processes = append(postureData.Processes, pr)
 	}
 }

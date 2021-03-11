@@ -63,13 +63,45 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 	pc.Emit(EventIdentityPostureDataAltered, identityId)
 }
 
-func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks []*PostureCheck) bool {
+const MaxPostureFailures = 100
+
+func (pc *PostureCache) AddSessionRequestFailure(identityId string, failure *PostureSessionRequestFailure) {
+	pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		var postureData *PostureData
+		if exist {
+			postureData = valueInMap.(*PostureData)
+		} else {
+			postureData = newValue.(*PostureData)
+		}
+
+		postureData.SessionRequestFailures = append(postureData.SessionRequestFailures, failure)
+
+		if len(postureData.SessionRequestFailures) > MaxPostureFailures {
+			postureData.SessionRequestFailures = postureData.SessionRequestFailures[1:]
+		}
+
+		return postureData
+	})
+}
+
+func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks []*PostureCheck) (bool, []*PostureCheckFailure) {
 	if val, found := pc.identityToPostureData.Get(identityId); found {
 		postureData := val.(*PostureData)
 		return postureData.Evaluate(apiSessionId, postureChecks)
 	}
 
-	return false
+	//mock failures with nil provided data, no posture data found
+	var failures []*PostureCheckFailure
+	for _, check := range postureChecks {
+		failures = append(failures, &PostureCheckFailure{
+			PostureCheckId:            check.Id,
+			PostureCheckName:          check.Name,
+			PostureCheckType:          check.TypeId,
+			PostureCheckFailureValues: check.SubType.FailureValues("", newPostureData()),
+		})
+	}
+
+	return false, failures
 }
 
 func (pc *PostureCache) PostureData(identityId string) *PostureData {
@@ -84,51 +116,92 @@ type ApiSessionPostureData struct {
 	Mfa *PostureResponseMfa `json:"mfa"`
 }
 
-type PostureData struct {
-	Mac         *PostureResponseMac               `json:"mac"`
-	Domain      *PostureResponseDomain            `json:"domain"`
-	Os          *PostureResponseOs                `json:"os"`
-	Processes   []*PostureResponseProcess         `json:"process"`
-	ApiSessions map[string]*ApiSessionPostureData `json:"sessionPostureData"`
+type PostureCheckFailureSubType interface {
+	Value() interface{}
+	Expected() interface{}
 }
 
-func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) bool {
+type PostureCheckFailure struct {
+	PostureCheckId   string `json:"postureCheckId'"`
+	PostureCheckName string `json: "postureCheckName"`
+	PostureCheckType string `json: "postureCheckType"'`
+	PostureCheckFailureValues
+}
+
+func (self PostureCheckFailure) ToClientErrorData() interface{} {
+	return map[string]interface{}{
+		"id":        self.PostureCheckId,
+		"typeId":    self.PostureCheckType,
+		"isPassing": false,
+	}
+}
+
+type PosturePolicyFailure struct {
+	PolicyId   string
+	PolicyName string
+	Checks     []*PostureCheckFailure
+}
+
+type PostureSessionRequestFailure struct {
+	When           time.Time
+	ServiceId      string
+	ServiceName    string
+	SessionType    string
+	PolicyFailures []*PosturePolicyFailure
+	ApiSessionId   string
+}
+
+type PostureData struct {
+	Mac                    PostureResponseMac
+	Domain                 PostureResponseDomain
+	Os                     PostureResponseOs
+	Processes              []*PostureResponseProcess
+	ApiSessions            map[string]*ApiSessionPostureData
+	SessionRequestFailures []*PostureSessionRequestFailure
+}
+
+func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) (bool, []*PostureCheckFailure) {
+
+	var failures []*PostureCheckFailure
 	for _, check := range checks {
-		if result := check.Evaluate(apiSessionId, pd); !result {
-			return false
+		if isValid, failure := check.Evaluate(apiSessionId, pd); !isValid {
+			failures = append(failures, failure)
 		}
 	}
 
-	return true
+	return len(failures) == 0, failures
 }
 
 func newPostureData() *PostureData {
-	return &PostureData{
-		Mac: &PostureResponseMac{
+	ret := &PostureData{
+		Mac: PostureResponseMac{
 			PostureResponse: &PostureResponse{},
 			Addresses:       []string{},
 		},
-		Domain: &PostureResponseDomain{
+		Domain: PostureResponseDomain{
 			PostureResponse: &PostureResponse{},
 			Name:            "",
 		},
-		Os: &PostureResponseOs{
+		Os: PostureResponseOs{
 			PostureResponse: &PostureResponse{},
 			Type:            "",
 			Version:         "",
 			Build:           "",
 		},
-		Processes:   []*PostureResponseProcess{},
-		ApiSessions: map[string]*ApiSessionPostureData{},
+		Processes:              []*PostureResponseProcess{},
+		ApiSessions:            map[string]*ApiSessionPostureData{},
+		SessionRequestFailures: []*PostureSessionRequestFailure{},
 	}
+
+	return ret
 }
 
 type PostureResponse struct {
-	PostureCheckId string                 `json:"postureCheckId"`
-	TypeId         string                 `json:"-"`
-	TimedOut       bool                   `json:"timedOut"`
-	LastUpdatedAt  time.Time              `json:"lastUpdatedAt"`
-	SubType        PostureResponseSubType `json:"-"`
+	PostureCheckId string
+	TypeId         string
+	TimedOut       bool
+	LastUpdatedAt  time.Time
+	SubType        PostureResponseSubType
 }
 
 func (pr *PostureResponse) Apply(postureData *PostureData) {

@@ -36,22 +36,22 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// GetIdentityPostureDataEnvelope get identity posture data envelope
+// GetIdentityPostureDataFailedServiceRequestEnvelope get identity posture data failed service request envelope
 //
-// swagger:model getIdentityPostureDataEnvelope
-type GetIdentityPostureDataEnvelope struct {
+// swagger:model getIdentityPostureDataFailedServiceRequestEnvelope
+type GetIdentityPostureDataFailedServiceRequestEnvelope struct {
 
 	// data
 	// Required: true
-	Data *PostureData `json:"data"`
+	Data PostureDataFailedServiceRequestList `json:"data"`
 
 	// meta
 	// Required: true
 	Meta *Meta `json:"meta"`
 }
 
-// Validate validates this get identity posture data envelope
-func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error {
+// Validate validates this get identity posture data failed service request envelope
+func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateData(formats); err != nil {
@@ -68,25 +68,23 @@ func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *GetIdentityPostureDataEnvelope) validateData(formats strfmt.Registry) error {
+func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateData(formats strfmt.Registry) error {
 
 	if err := validate.Required("data", "body", m.Data); err != nil {
 		return err
 	}
 
-	if m.Data != nil {
-		if err := m.Data.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("data")
-			}
-			return err
+	if err := m.Data.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("data")
 		}
+		return err
 	}
 
 	return nil
 }
 
-func (m *GetIdentityPostureDataEnvelope) validateMeta(formats strfmt.Registry) error {
+func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateMeta(formats strfmt.Registry) error {
 
 	if err := validate.Required("meta", "body", m.Meta); err != nil {
 		return err
@@ -105,7 +103,7 @@ func (m *GetIdentityPostureDataEnvelope) validateMeta(formats strfmt.Registry) e
 }
 
 // MarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
+func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -113,8 +111,8 @@ func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) UnmarshalBinary(b []byte) error {
-	var res GetIdentityPostureDataEnvelope
+func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) UnmarshalBinary(b []byte) error {
+	var res GetIdentityPostureDataFailedServiceRequestEnvelope
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

@@ -95,7 +95,7 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 							if !isEvaluatedPolicy { //not checked yet
 								validPolicies[policyId] = false
 								isValidPolicy = false
-								if handler.postureCache.Evaluate(identityId, apiSessionId, checks) {
+								if ok, _ := handler.postureCache.Evaluate(identityId, apiSessionId, checks); ok {
 									isValidService = true
 									isValidPolicy = true
 								}
@@ -135,8 +135,14 @@ func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
 
 }
 
-func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string, check *PostureCheck) bool {
-	return handler.postureCache.Evaluate(identityId, apiSessionId, []*PostureCheck{check})
+func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string, check *PostureCheck) (bool, *PostureCheckFailure) {
+	isValid, failures := handler.postureCache.Evaluate(identityId, apiSessionId, []*PostureCheck{check})
+
+	if isValid {
+		return true, nil
+	} else {
+		return false, failures[0]
+	}
 }
 
 func (handler *PostureResponseHandler) PostureData(id string) *PostureData {

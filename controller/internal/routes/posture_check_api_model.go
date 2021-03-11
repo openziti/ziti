@@ -74,7 +74,7 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 		ret.SubType = subType
 
 	case *rest_model.PostureCheckDomainCreate:
-		ret.SubType = &model.PostureCheckWindowsDomains{
+		ret.SubType = &model.PostureCheckDomains{
 			Domains: apiSubType.Domains,
 		}
 	case *rest_model.PostureCheckMacAddressCreate:
@@ -108,7 +108,7 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 	switch postureCheck.(type) {
 	case *rest_model.PostureCheckDomainUpdate:
 		check := postureCheck.(*rest_model.PostureCheckDomainUpdate)
-		ret.SubType = &model.PostureCheckWindowsDomains{
+		ret.SubType = &model.PostureCheckDomains{
 			Domains: check.Domains,
 		}
 	case *rest_model.PostureCheckMacAddressUpdate:
@@ -157,7 +157,7 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 	switch postureCheck.(type) {
 	case *rest_model.PostureCheckDomainPatch:
 		check := postureCheck.(*rest_model.PostureCheckDomainPatch)
-		ret.SubType = &model.PostureCheckWindowsDomains{
+		ret.SubType = &model.PostureCheckDomains{
 			Domains: check.Domains,
 		}
 		ret.TypeId = model.PostureCheckTypeDomain
@@ -247,7 +247,7 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 
 	switch subType := i.SubType.(type) {
 	case *model.PostureCheckOperatingSystem:
-		osArray := rest_model.OperatingSystemArray{}
+		osArray := []*rest_model.OperatingSystem{}
 
 		for _, osMatch := range subType.OperatingSystems {
 			osArray = append(osArray, &rest_model.OperatingSystem{
@@ -275,7 +275,7 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 		}
 
 		setBaseEntityDetailsOnPostureCheck(ret, i)
-	case *model.PostureCheckWindowsDomains:
+	case *model.PostureCheckDomains:
 		ret = &rest_model.PostureCheckDomainDetail{
 			Domains: subType.Domains,
 		}

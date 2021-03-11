@@ -30,27 +30,25 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
-// PostureCheckTypeDetail posture check type detail
+// PostureDataOs posture data os
 //
-// swagger:model PostureCheckTypeDetail
-type PostureCheckTypeDetail struct {
-	BaseEntity
+// swagger:model postureDataOs
+type PostureDataOs struct {
+	PostureDataBase
 
-	// name
+	// build
 	// Required: true
-	Name *string `json:"name"`
+	Build *string `json:"build"`
 
-	// operating systems
+	// type
 	// Required: true
-	OperatingSystems []*OperatingSystem `json:"operatingSystems"`
+	Type *string `json:"type"`
 
 	// version
 	// Required: true
@@ -58,19 +56,19 @@ type PostureCheckTypeDetail struct {
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
-func (m *PostureCheckTypeDetail) UnmarshalJSON(raw []byte) error {
+func (m *PostureDataOs) UnmarshalJSON(raw []byte) error {
 	// AO0
-	var aO0 BaseEntity
+	var aO0 PostureDataBase
 	if err := swag.ReadJSON(raw, &aO0); err != nil {
 		return err
 	}
-	m.BaseEntity = aO0
+	m.PostureDataBase = aO0
 
 	// AO1
 	var dataAO1 struct {
-		Name *string `json:"name"`
+		Build *string `json:"build"`
 
-		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
+		Type *string `json:"type"`
 
 		Version *string `json:"version"`
 	}
@@ -78,9 +76,9 @@ func (m *PostureCheckTypeDetail) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 
-	m.Name = dataAO1.Name
+	m.Build = dataAO1.Build
 
-	m.OperatingSystems = dataAO1.OperatingSystems
+	m.Type = dataAO1.Type
 
 	m.Version = dataAO1.Version
 
@@ -88,25 +86,25 @@ func (m *PostureCheckTypeDetail) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object to a JSON structure
-func (m PostureCheckTypeDetail) MarshalJSON() ([]byte, error) {
+func (m PostureDataOs) MarshalJSON() ([]byte, error) {
 	_parts := make([][]byte, 0, 2)
 
-	aO0, err := swag.WriteJSON(m.BaseEntity)
+	aO0, err := swag.WriteJSON(m.PostureDataBase)
 	if err != nil {
 		return nil, err
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		Name *string `json:"name"`
+		Build *string `json:"build"`
 
-		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
+		Type *string `json:"type"`
 
 		Version *string `json:"version"`
 	}
 
-	dataAO1.Name = m.Name
+	dataAO1.Build = m.Build
 
-	dataAO1.OperatingSystems = m.OperatingSystems
+	dataAO1.Type = m.Type
 
 	dataAO1.Version = m.Version
 
@@ -118,20 +116,20 @@ func (m PostureCheckTypeDetail) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(_parts...), nil
 }
 
-// Validate validates this posture check type detail
-func (m *PostureCheckTypeDetail) Validate(formats strfmt.Registry) error {
+// Validate validates this posture data os
+func (m *PostureDataOs) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	// validation for a type composition with BaseEntity
-	if err := m.BaseEntity.Validate(formats); err != nil {
+	// validation for a type composition with PostureDataBase
+	if err := m.PostureDataBase.Validate(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateName(formats); err != nil {
+	if err := m.validateBuild(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateOperatingSystems(formats); err != nil {
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -145,41 +143,25 @@ func (m *PostureCheckTypeDetail) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *PostureCheckTypeDetail) validateName(formats strfmt.Registry) error {
+func (m *PostureDataOs) validateBuild(formats strfmt.Registry) error {
 
-	if err := validate.Required("name", "body", m.Name); err != nil {
+	if err := validate.Required("build", "body", m.Build); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *PostureCheckTypeDetail) validateOperatingSystems(formats strfmt.Registry) error {
+func (m *PostureDataOs) validateType(formats strfmt.Registry) error {
 
-	if err := validate.Required("operatingSystems", "body", m.OperatingSystems); err != nil {
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
-	}
-
-	for i := 0; i < len(m.OperatingSystems); i++ {
-		if swag.IsZero(m.OperatingSystems[i]) { // not required
-			continue
-		}
-
-		if m.OperatingSystems[i] != nil {
-			if err := m.OperatingSystems[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
 	}
 
 	return nil
 }
 
-func (m *PostureCheckTypeDetail) validateVersion(formats strfmt.Registry) error {
+func (m *PostureDataOs) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version); err != nil {
 		return err
@@ -189,7 +171,7 @@ func (m *PostureCheckTypeDetail) validateVersion(formats strfmt.Registry) error 
 }
 
 // MarshalBinary interface implementation
-func (m *PostureCheckTypeDetail) MarshalBinary() ([]byte, error) {
+func (m *PostureDataOs) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -197,8 +179,8 @@ func (m *PostureCheckTypeDetail) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *PostureCheckTypeDetail) UnmarshalBinary(b []byte) error {
-	var res PostureCheckTypeDetail
+func (m *PostureDataOs) UnmarshalBinary(b []byte) error {
+	var res PostureDataOs
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

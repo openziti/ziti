@@ -335,10 +335,7 @@ func newMatchingOsCheckAndData() (*PostureCheckOperatingSystem, *PostureData) {
 	postureResponseOs.PostureResponse = postureResponse
 
 	validPostureData := &PostureData{
-		Mac:       nil,
-		Domain:    nil,
-		Os:        postureResponseOs,
-		Processes: nil,
+		Os:        *postureResponseOs,
 	}
 
 	processCheck := &PostureCheckOperatingSystem{

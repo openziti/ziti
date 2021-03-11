@@ -36,29 +36,38 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// GetIdentityPostureDataEnvelope get identity posture data envelope
+// PostureDataBase posture data base
 //
-// swagger:model getIdentityPostureDataEnvelope
-type GetIdentityPostureDataEnvelope struct {
+// swagger:model postureDataBase
+type PostureDataBase struct {
 
-	// data
+	// last updated at
 	// Required: true
-	Data *PostureData `json:"data"`
+	// Format: date-time
+	LastUpdatedAt *strfmt.DateTime `json:"lastUpdatedAt"`
 
-	// meta
+	// posture check Id
 	// Required: true
-	Meta *Meta `json:"meta"`
+	PostureCheckID *string `json:"postureCheckId"`
+
+	// timed out
+	// Required: true
+	TimedOut *bool `json:"timedOut"`
 }
 
-// Validate validates this get identity posture data envelope
-func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error {
+// Validate validates this posture data base
+func (m *PostureDataBase) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateData(formats); err != nil {
+	if err := m.validateLastUpdatedAt(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateMeta(formats); err != nil {
+	if err := m.validatePostureCheckID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTimedOut(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -68,44 +77,39 @@ func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *GetIdentityPostureDataEnvelope) validateData(formats strfmt.Registry) error {
+func (m *PostureDataBase) validateLastUpdatedAt(formats strfmt.Registry) error {
 
-	if err := validate.Required("data", "body", m.Data); err != nil {
+	if err := validate.Required("lastUpdatedAt", "body", m.LastUpdatedAt); err != nil {
 		return err
 	}
 
-	if m.Data != nil {
-		if err := m.Data.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("data")
-			}
-			return err
-		}
+	if err := validate.FormatOf("lastUpdatedAt", "body", "date-time", m.LastUpdatedAt.String(), formats); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (m *GetIdentityPostureDataEnvelope) validateMeta(formats strfmt.Registry) error {
+func (m *PostureDataBase) validatePostureCheckID(formats strfmt.Registry) error {
 
-	if err := validate.Required("meta", "body", m.Meta); err != nil {
+	if err := validate.Required("postureCheckId", "body", m.PostureCheckID); err != nil {
 		return err
 	}
 
-	if m.Meta != nil {
-		if err := m.Meta.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("meta")
-			}
-			return err
-		}
+	return nil
+}
+
+func (m *PostureDataBase) validateTimedOut(formats strfmt.Registry) error {
+
+	if err := validate.Required("timedOut", "body", m.TimedOut); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
+func (m *PostureDataBase) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -113,8 +117,8 @@ func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) UnmarshalBinary(b []byte) error {
-	var res GetIdentityPostureDataEnvelope
+func (m *PostureDataBase) UnmarshalBinary(b []byte) error {
+	var res PostureDataBase
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

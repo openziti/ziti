@@ -19,10 +19,15 @@ package model
 import (
 	"fmt"
 	"github.com/lucsky/cuid"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 func NewSessionHandler(env Env) *SessionHandler {
@@ -43,6 +48,128 @@ func (handler *SessionHandler) newModelEntity() boltEntitySink {
 
 func (handler *SessionHandler) Create(entity *Session) (string, error) {
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+
+	apiSession, err := handler.GetEnv().GetHandlers().ApiSession.Read(entity.ApiSessionId)
+	if err != nil {
+		return "", err
+	}
+	if apiSession == nil {
+		return "", errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
+	}
+
+	service, err := handler.GetEnv().GetHandlers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if entity.Type == "" {
+		entity.Type = persistence.SessionTypeDial
+	}
+
+	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
+		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
+	}
+
+	failureByPostureCheckId := map[string]*PostureCheckFailure{} //cache individual check status
+	validPosture := false
+	hasMatchingPolicies := false
+
+	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
+
+	failedPolicies := map[string][]*PostureCheckFailure{}
+	failedPoliciesIdToName := map[string]string{}
+
+	var failedPolicyIds []string
+
+	for policyId, postureChecks := range postureCheckMap {
+		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
+
+		if err != nil {
+			continue
+		}
+
+		if policy.PolicyType != entity.Type {
+			continue
+		}
+		hasMatchingPolicies = true
+		var failedChecks []*PostureCheckFailure
+
+		for _, postureCheck := range postureChecks {
+
+			found := false
+
+			if _, found = failureByPostureCheckId[postureCheck.Id]; !found {
+				_, failureByPostureCheckId[postureCheck.Id] = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, apiSession.Id, postureCheck)
+			}
+
+			if failureByPostureCheckId[postureCheck.Id] != nil {
+				failedChecks = append(failedChecks, failureByPostureCheckId[postureCheck.Id])
+			}
+		}
+
+		if len(failedChecks) == 0 {
+			//no failed check pass and exit
+			validPosture = true
+			break
+		} else {
+			//save for error output
+			failedPolicies[policy.Id] = failedChecks
+			failedPoliciesIdToName[policy.Id] = policy.Name
+			failedPolicyIds = append(failedPolicyIds, policy.Id)
+		}
+	}
+
+	if hasMatchingPolicies && !validPosture {
+		failureMap := map[string]interface{}{}
+
+		sessionFailure := &PostureSessionRequestFailure{
+			When:           time.Now(),
+			ServiceId:      service.Id,
+			ServiceName:    service.Name,
+			ApiSessionId:   apiSession.Id,
+			SessionType:    entity.Type,
+			PolicyFailures: []*PosturePolicyFailure{},
+		}
+
+		for policyId, failures := range failedPolicies {
+			policyFailure := &PosturePolicyFailure{
+				PolicyId:   policyId,
+				PolicyName: failedPoliciesIdToName[policyId],
+				Checks:     failures,
+			}
+
+			var outFailures []interface{}
+
+			for _, failure := range failures {
+				outFailures = append(outFailures, failure.ToClientErrorData())
+			}
+			failureMap[policyId] = outFailures
+
+			sessionFailure.PolicyFailures = append(sessionFailure.PolicyFailures, policyFailure)
+		}
+
+		handler.env.GetHandlers().PostureResponse.postureCache.AddSessionRequestFailure(apiSession.IdentityId, sessionFailure)
+
+		cause := apierror.GenericCauseError{
+			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", failedPolicyIds),
+			DataMap: failureMap,
+		}
+		return "", apierror.NewInvalidPosture(cause)
+	}
+
+	maxRows := 1
+	result, err := handler.GetEnv().GetHandlers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
+	if err != nil {
+		return "", err
+	}
+	if result.Count < 1 {
+		return "", apierror.NewNoEdgeRoutersAvailable()
+	}
+
 	return handler.createEntity(entity)
 }
 

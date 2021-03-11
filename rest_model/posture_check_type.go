@@ -55,6 +55,9 @@ const (
 
 	// PostureCheckTypeMAC captures enum value "MAC"
 	PostureCheckTypeMAC PostureCheckType = "MAC"
+
+	// PostureCheckTypeMFA captures enum value "MFA"
+	PostureCheckTypeMFA PostureCheckType = "MFA"
 )
 
 // for schema
@@ -62,7 +65,7 @@ var postureCheckTypeEnum []interface{}
 
 func init() {
 	var res []PostureCheckType
-	if err := json.Unmarshal([]byte(`["OS","PROCESS","DOMAIN","MAC"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["OS","PROCESS","DOMAIN","MAC","MFA"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

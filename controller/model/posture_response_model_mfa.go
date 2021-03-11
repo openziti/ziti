@@ -42,5 +42,5 @@ func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
 	}
 
 	apiSessionPostureData.Mfa = pr
-	apiSessionPostureData.Mfa.LastUpdatedAt = time.Now()
+	apiSessionPostureData.Mfa.LastUpdatedAt = time.Now().UTC()
 }

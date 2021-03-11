@@ -41,6 +41,12 @@ type PostureCheckSubType interface {
 	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
 	fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
+	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
+}
+
+type PostureCheckFailureValues interface {
+	Expected() interface{}
+	Actual() interface{}
 }
 
 type newPostureCheckSubType func() PostureCheckSubType
@@ -119,6 +125,15 @@ func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, 
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) bool {
-	return entity.SubType.Evaluate(apiSessionId, pd)
+func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool, *PostureCheckFailure) {
+	if !entity.SubType.Evaluate(apiSessionId, pd) {
+		return false, &PostureCheckFailure{
+			PostureCheckId:   entity.Id,
+			PostureCheckName: entity.Name,
+			PostureCheckType: entity.TypeId,
+			PostureCheckFailureValues: entity.SubType.FailureValues(apiSessionId, pd),
+		}
+	}
+
+	return true, nil
 }

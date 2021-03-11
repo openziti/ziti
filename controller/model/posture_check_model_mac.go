@@ -22,8 +22,17 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+var _ PostureCheckSubType = &PostureCheckMacAddresses{}
+
 type PostureCheckMacAddresses struct {
 	MacAddresses []string
+}
+
+func (p *PostureCheckMacAddresses) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
+	return &PostureCheckFailureValuesMac{
+		ActualValue: pd.Mac.Addresses,
+		ExpectedValue:  p.MacAddresses,
+	}
 }
 
 func (p *PostureCheckMacAddresses) Evaluate(_ string, pd *PostureData) bool {
@@ -76,4 +85,17 @@ func (p *PostureCheckMacAddresses) toBoltEntityForPatch(tx *bbolt.Tx, handler Ha
 	return &persistence.PostureCheckMacAddresses{
 		MacAddresses: p.MacAddresses,
 	}, nil
+}
+
+type PostureCheckFailureValuesMac struct {
+	ActualValue   []string
+	ExpectedValue []string
+}
+
+func (p PostureCheckFailureValuesMac) Expected() interface{} {
+	return p.Expected()
+}
+
+func (p PostureCheckFailureValuesMac) Actual() interface{} {
+	return p.ActualValue
 }

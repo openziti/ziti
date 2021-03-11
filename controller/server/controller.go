@@ -70,6 +70,8 @@ const (
 	policyMaxFreq     = 1 * time.Hour
 	policyAppWanFreq  = 1 * time.Second
 	policySessionFreq = 5 * time.Second
+
+	ZitiInstanceId = "ziti-instance-id"
 )
 
 func NewController(cfg config.Configurable) (*Controller, error) {
@@ -83,6 +85,8 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 	}
 
 	ae := env.NewAppEnv(c.config)
+
+	pfxlog.Logger().Infof("edge controller instance id: %s", ae.InstanceId)
 
 	pe, err := runner.NewRunner(policyMinFreq, policyMaxFreq, func(e error, enforcer runner.Operation) {
 		pfxlog.Logger().
@@ -286,6 +290,7 @@ func (c *Controller) Run() {
 	})
 
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set(ZitiInstanceId, c.AppEnv.InstanceId)
 		//if not edge prefix, translate to "/edge/v<latest>"
 		if !strings.HasPrefix(request.URL.Path, controller.RestApiBase) {
 			request.URL.Path = controller.RestApiBaseUrlLatest + request.URL.Path

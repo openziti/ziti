@@ -26,8 +26,17 @@ import (
 	"strings"
 )
 
+var _ PostureCheckSubType = &PostureCheckOperatingSystem{}
+
 type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
+}
+
+func (p *PostureCheckOperatingSystem) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
+	return &PostureCheckFailureValuesOperatingSystem{
+		ActualValue: pd.Os,
+		ExpectedValue: p.OperatingSystems,
+	}
 }
 
 func (p *PostureCheckOperatingSystem) Evaluate(_ string, pd *PostureData) bool {
@@ -201,4 +210,17 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForPatch(tx *bbolt.Tx, handler
 	}
 
 	return ret, nil
+}
+
+type PostureCheckFailureValuesOperatingSystem struct {
+	ActualValue   PostureResponseOs
+	ExpectedValue []OperatingSystem
+}
+
+func (p PostureCheckFailureValuesOperatingSystem) Expected() interface{} {
+	return p.ExpectedValue
+}
+
+func (p PostureCheckFailureValuesOperatingSystem) Actual() interface{} {
+	return p.ActualValue
 }
