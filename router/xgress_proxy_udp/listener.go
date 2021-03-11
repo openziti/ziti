@@ -21,12 +21,16 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/util/info"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net"
 	"time"
 )
 
 func (l *listener) Listen(address string, bindHandler xgress.BindHandler) error {
+	if address == "" {
+		return errors.New("address must be specified for proxy_udp listeners")
+	}
 	l.address = address
 	l.bindHandler = bindHandler
 
