@@ -18,8 +18,11 @@ package subcmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/edge/router/xgress_edge_transport"
+	"github.com/openziti/edge/router/xgress_edge_tunnel"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/agent"
@@ -69,14 +72,22 @@ func run(cmd *cobra.Command, args []string) {
 
 		config.SetFlags(getFlags(cmd))
 
-		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo())
-		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
+		stateManager := fabric.NewStateManager()
+
+		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager)
+		xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)
 		}
 
-		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(config.Id, r)
+		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(r)
 		xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+
+		xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
+		xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
+		if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
+			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
+		}
 
 		if err := r.Run(); err != nil {
 			logrus.WithError(err).Fatal("error starting")

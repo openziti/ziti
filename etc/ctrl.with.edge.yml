@@ -52,10 +52,10 @@ metrics:
     #url:                http://localhost:8086
     #database:           ziti
 
-# events:
-#  jsonLogger:
-#    subscriptions:
-#       - type: fabric.terminators
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*egress.*m1_rate*
@@ -66,10 +66,11 @@ metrics:
 #        include:
 #          - created
 #      - type: fabric.usage
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+      - type: services
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
 
 terminator:
   validators:
