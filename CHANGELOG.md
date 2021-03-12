@@ -3,6 +3,39 @@
 ## What's New
 
 * Update to Golang 1.16
+* Idle route garbage collection: orphaned routing table entries will be garbage collected. New
+  infrastructure for session confirmation facilitating additional types of garbage collection
+* Configurable Xgress dial "dwell time"
+
+### Idle Route Garbage Collection
+
+The following router configuration stanza controls idle route garbage collection:
+
+```
+forwarder:
+  #
+  # After how many milliseconds of inactivity is a forwarding table entry considered idle?
+  #
+  idleSessionTimeout: 60000
+  #
+  # How frequently will we confirm idle sessions with the controller?
+  #
+  idleTxInterval: 60000
+```
+
+### Xgress Dial Dwell Time
+
+The following router configuration stanza controls Xgress dial "dwell time". You probably don't want to 
+use this unless you're debugging a timing-related issue in the overlay:
+
+```
+forwarder:
+  #
+  # (Debugging) Xgress dial "dwell time". When dialing, the Xgress framework will wait this number of milliseconds
+  # before responding in the affirmative to the controller.
+  #
+  xgressDialDwellTime: 0
+```
 
 # Release 0.19.6
 
