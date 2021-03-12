@@ -3,6 +3,8 @@
 ## What's New
 
 * Update to Golang 1.16
+* Idle route garbage collection: orphaned routing table entries will be garbage collected. New
+  infrastructure for session confirmation facilitating additional types of garbage collection
 
 # Release 0.19.6
 
