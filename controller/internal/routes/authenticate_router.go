@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/edge/rest_server/operations/authentication"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
 	"net"
 	"net/http"
 	"time"
@@ -117,7 +116,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	configTypes := map[string]struct{}{}
 
 	if params.Auth != nil {
-		configTypes = mapConfigTypeNamesToIds(ae, params.Auth.ConfigTypes, identity.Id)
+		configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(params.Auth.ConfigTypes, identity.Id)
 	}
 	remoteIpStr := ""
 	if remoteIp, _, err := net.SplitHostPort(rc.Request.RemoteAddr); err == nil {
@@ -219,22 +218,4 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, param
 	ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 
 	rc.RespondWithEmptyOk()
-}
-
-func mapConfigTypeNamesToIds(ae *env.AppEnv, values []string, identityId string) map[string]struct{} {
-	var result []string
-	if stringz.Contains(values, "all") {
-		result = []string{"all"}
-	} else {
-		for _, val := range values {
-			if configType, _ := ae.GetHandlers().ConfigType.Read(val); configType != nil {
-				result = append(result, val)
-			} else if configType, _ := ae.GetHandlers().ConfigType.ReadByName(val); configType != nil {
-				result = append(result, configType.Id)
-			} else {
-				pfxlog.Logger().Debugf("user %v submitted %v as a config type of interest, but no matching records found", identityId, val)
-			}
-		}
-	}
-	return stringz.SliceToSet(result)
 }

@@ -44,7 +44,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channe
 		routerId := ch.Id().Token
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			notFoundTokens, err := h.appEnv.GetHandlers().ApiSession.MarkActivityByTokens(req.Tokens)
+			notFoundTokens, err := h.appEnv.GetHandlers().ApiSession.MarkActivityByTokens(req.Tokens...)
 
 			if err != nil {
 				pfxlog.Logger().

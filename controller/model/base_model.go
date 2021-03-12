@@ -31,5 +31,5 @@ type boltEntitySource interface {
 	models.Entity
 	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
 	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error)
 }

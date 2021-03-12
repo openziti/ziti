@@ -67,7 +67,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 	}, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 

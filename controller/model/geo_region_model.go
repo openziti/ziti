@@ -45,7 +45,7 @@ func (entity *GeoRegion) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity
 	return entity.toBoltEntity()
 }
 
-func (entity *GeoRegion) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *GeoRegion) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

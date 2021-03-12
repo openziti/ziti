@@ -55,6 +55,15 @@ func (handler *EdgeServiceHandler) Read(id string) (*Service, error) {
 	return entity, nil
 }
 
+func (handler *EdgeServiceHandler) ReadByName(name string) (*Service, error) {
+	entity := &Service{}
+	nameIndex := handler.env.GetStores().EdgeService.GetNameIndex()
+	if err := handler.readEntityWithIndex("name", []byte(name), nameIndex, entity); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
 func (handler *EdgeServiceHandler) readInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
 	entity := &ServiceDetail{}
 	if err := handler.readEntityInTx(tx, id, entity); err != nil {

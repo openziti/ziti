@@ -100,7 +100,7 @@ func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
 
 		err := store.Update(mutCtx, &persistence.ApiSession{
 			BaseExtEntity: boltz.BaseExtEntity{
-				Id:        apiSessionId,
+				Id: apiSessionId,
 			},
 		}, persistence.UpdateTimeOnlyFieldChecker{})
 
@@ -113,7 +113,7 @@ func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
 }
 
 // MarkActivityByTokens returns tokens that were not found if any and/or an error.
-func (handler *ApiSessionHandler) MarkActivityByTokens(tokens []string) ([]string, error) {
+func (handler *ApiSessionHandler) MarkActivityByTokens(tokens ...string) ([]string, error) {
 	var notFoundTokens []string
 
 	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {

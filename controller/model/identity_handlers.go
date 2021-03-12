@@ -207,6 +207,15 @@ func (handler *IdentityHandler) Read(id string) (*Identity, error) {
 	return entity, nil
 }
 
+func (handler *IdentityHandler) ReadByName(name string) (*Identity, error) {
+	entity := &Identity{}
+	nameIndex := handler.env.GetStores().Identity.GetNameIndex()
+	if err := handler.readEntityWithIndex("name", []byte(name), nameIndex, entity); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
 func (handler *IdentityHandler) readInTx(tx *bbolt.Tx, id string) (*Identity, error) {
 	identity := &Identity{}
 	if err := handler.readEntityInTx(tx, id, identity); err != nil {

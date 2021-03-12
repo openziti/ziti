@@ -203,7 +203,7 @@ func (handler *baseHandler) updateGeneralBatch(modelEntity boltEntitySource, che
 		}
 		var boltEntity boltz.Entity
 		if patch {
-			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl)
+			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl, checker)
 		} else {
 			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, handler.impl)
 		}
@@ -254,7 +254,7 @@ func (handler *baseHandler) updateGeneral(modelEntity boltEntitySource, checker 
 		}
 		var boltEntity boltz.Entity
 		if patch {
-			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl)
+			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl, checker)
 		} else {
 			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, handler.impl)
 		}
@@ -414,18 +414,10 @@ func (checker *OrFieldChecker) IsUpdated(field string) bool {
 	return checker.first.IsUpdated(field) || checker.second.IsUpdated(field)
 }
 
-type FieldChecker map[string]struct{}
-
-func NewFieldChecker(fields ...string) *FieldChecker {
-	ret := FieldChecker{}
+func NewFieldChecker(fields ...string) boltz.FieldChecker {
+	result := boltz.MapFieldChecker{}
 	for _, field := range fields {
-		ret[field] = struct{}{}
+		result[field] = struct{}{}
 	}
-
-	return &ret
-}
-
-func (fc *FieldChecker) IsUpdated(field string) bool {
-	_, found := (*fc)[field]
-	return found
+	return result
 }
