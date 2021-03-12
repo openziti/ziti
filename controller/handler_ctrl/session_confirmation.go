@@ -45,24 +45,28 @@ func (self *sessionConfirmationHandler) HandleReceive(msg *channel2.Message, ch 
 	if err := proto.Unmarshal(msg.Body, confirm); err == nil {
 		for _, sessionId := range confirm.SessionIds {
 			if _, found := self.n.GetSession(&identity.TokenId{Token: sessionId}); !found {
-				unroute := &ctrl_pb.Unroute{}
-				unroute.SessionId = sessionId
-				unroute.Now = true
-				if body, err := proto.Marshal(unroute); err == nil {
-					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-					if err := self.r.Control.Send(msg); err == nil {
-						logrus.Infof("sent unroute to [r/%s] for [s/%s]", self.r.Id, sessionId)
-					} else {
-						logrus.Errorf("error sending unroute to [r/%s] for [s/%s] (%v)", self.r.Id, sessionId, err)
-					}
-				} else {
-					logrus.Errorf("error marshalling unroute to [r/%s] for [s/%s] (%v)", self.r.Id, sessionId, err)
-				}
+				go self.sendUnroute(sessionId)
 			} else {
 				logrus.Debugf("[s/%s] found, ignoring", sessionId)
 			}
 		}
 	} else {
 		logrus.Errorf("error unmarshaling session confirmation from [r/%s] (%v)", self.r.Id, err)
+	}
+}
+
+func (self *sessionConfirmationHandler) sendUnroute(sessionId string) {
+	unroute := &ctrl_pb.Unroute{}
+	unroute.SessionId = sessionId
+	unroute.Now = true
+	if body, err := proto.Marshal(unroute); err == nil {
+		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+		if err := self.r.Control.Send(msg); err == nil {
+			logrus.Infof("sent unroute to [r/%s] for [s/%s]", self.r.Id, sessionId)
+		} else {
+			logrus.Errorf("error sending unroute to [r/%s] for [s/%s] (%v)", self.r.Id, sessionId, err)
+		}
+	} else {
+		logrus.Errorf("error marshalling unroute to [r/%s] for [s/%s] (%v)", self.r.Id, sessionId, err)
 	}
 }
