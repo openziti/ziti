@@ -86,10 +86,7 @@ func (self *Scanner) scan() {
 		logrus.Debugf("found [%d] idle sessions, confirming with controller", len(idleSessionIds))
 
 		if self.ctrl != nil {
-			confirm := &ctrl_pb.SessionConfirmation{}
-			for _, idleSessionId := range idleSessionIds {
-				confirm.SessionIds = append(confirm.SessionIds, idleSessionId)
-			}
+			confirm := &ctrl_pb.SessionConfirmation{SessionIds: idleSessionIds}
 			body, err := proto.Marshal(confirm)
 			if err == nil {
 				msg := channel2.NewMessage(ctrl_msg.SessionConfirmationType, body)
