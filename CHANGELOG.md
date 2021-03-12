@@ -1,3 +1,9 @@
+# Release 0.19.7
+
+## What's New
+
+* Update to Golang 1.16
+
 # Release 0.19.6
 
 ## What's New
