@@ -72,7 +72,7 @@ func (self *Scanner) run() {
 
 func (self *Scanner) scan() {
 	sessions := self.sessions.sessions.Items()
-	logrus.Infof("scanning [%d] sessions", len(sessions))
+	logrus.Debugf("scanning [%d] sessions", len(sessions))
 
 	var idleSessionIds []string
 	for sessionId, ft := range sessions {
@@ -83,7 +83,7 @@ func (self *Scanner) scan() {
 	}
 
 	if len(idleSessionIds) > 0 {
-		logrus.Infof("found [%d] idle sessions, confirming with controller", len(idleSessionIds))
+		logrus.Debugf("found [%d] idle sessions, confirming with controller", len(idleSessionIds))
 
 		if self.ctrl != nil {
 			confirm := &ctrl_pb.SessionConfirmation{}
