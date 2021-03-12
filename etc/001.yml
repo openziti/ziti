@@ -21,6 +21,14 @@ forwarder:
   #
   latencyProbeTimeout: 10000
   #
+  # After how many milliseconds of inactivity is a forwarding table entry considered idle?
+  #
+  idleSessionTimeout: 60000
+  #
+  # How frequently will we confirm idle sessions with the controller?
+  #
+  idleTxInterval: 60000
+  #
   # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
   # for services that have a terminator egress specified with an xgress binding (e.g. transport)
   # (minimum 1, max 10000, default 1000)
@@ -42,6 +50,11 @@ forwarder:
   # (minimum 1, max 10000, default 10)
   #
   linkDialWorkerCount: 10
+  #
+  # (Debugging) Xgress dial "dwell time". When dialing, the Xgress framework will wait this number of milliseconds
+  # before responding in the affirmative to the controller.
+  #
+  xgressDialDwellTime: 0
 
 #trace:
 #  path:                 001.trace
