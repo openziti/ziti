@@ -1,12 +1,101 @@
+# Release 0.19.7
+
+## What's New
+
+* Update to Golang 1.16
+
+# Release 0.19.6
+
+## What's New
+
+* Service Event Counters
+* New log message which shows local (router side) address, including port, when router dials are
+  successful. This allows correlating server side access logs with ziti logs
+
+## Service Event Counters
+
+There are new events emitted for service, with statistics for how many dials are successful, failed,
+timed out, or fail for non-dial related reasons. Stats are aggregated per-minute, similar to usage
+statistics. They can be enabled in the controller config as follows:
+
+```yaml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: services
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
+```
+
+Example of the events JSON output:
+
+```json
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.fail",
+  "service_id": "HSfgHzIom",
+  "count": 8,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.success",
+  "service_id": "HSfgHzIom",
+  "count": 29,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+```
+
+Event types:
+
+* `service.dial.success`
+* `service.dial.fail`
+* `service.dial.timeout`
+* `service.dial.error_other`
+
+# Release 0.19.5
+
+## What's New
+
+* [fabric#206](https://github.com/openziti/fabric/issues/206) Fix controller deadlock which can
+  happen when links go down
+* Use AtomicBitSet for xgress flags. Minimize memory use and contention
+* edge router status wasn't getting set online on connect
+* ziti-tunnel proxy wasn't working for services without a client config
+* Add queue for metrics messages. Add config setting for metrics report interval and message queue
+  size
+    * metrics.reportInterval - how often to report metrics to controller. Default: `15s`
+    * metrics.messageQueueSize - how many metrics message to allow to queue before blocking.
+      Default: 10
+
+Example stanza from router config file:
+
+```yaml
+metrics:
+  reportInterval: 15s
+  messageQueueSize: 10
+```
+
 # Release 0.19.4
 
 ## What's New
 
 * Link latency probe timeout parameter in router configuration.
-* Support configurable timeout on Xgress dial operations. Router terminated services can now specify a short timeout for dial operations.
+* Support configurable timeout on Xgress dial operations. Router terminated services can now specify
+  a short timeout for dial operations.
 * Fix 0.19 regression: updating terminator cost/precedence from the sdk was broken
 * Fix 0.19 regression: fabric session client id was incorrectly set to edge session token instead of
   id
+* Fix MFA secret length, lowered from 80 bytes to 80 bits
+* Ensure that negative lengths in message headers are properly handled
+* Fix panic when updating session activity for removed session
+* Fix panic when shared router state is used when a router disconnects or reconnects
+* Additional garbage collection for parallel route algorithm, removes successful routes created
+  during failed attempts, after final successful attempt.
 
 ## Link Latency Probe Timeout
 
@@ -32,7 +121,8 @@ dialers:
       connectTimeout:   2s
 ```
 
-You will need to specify Xgress options for each dialer binding that you want to use with your configuration.
+You will need to specify Xgress options for each dialer binding that you want to use with your
+configuration.
 
 # Release 0.19.3
 
