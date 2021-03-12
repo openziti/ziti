@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.15
+go 1.16
 
 //replace github.com/openziti/foundation => ../foundation
 
