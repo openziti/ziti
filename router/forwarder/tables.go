@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/orcaman/concurrent-map"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"time"
 )
@@ -45,7 +44,6 @@ func (st *sessionTable) setForwardTable(sessionId string, ft *forwardTable) {
 func (st *sessionTable) getForwardTable(sessionId string) (*forwardTable, bool) {
 	if ft, found := st.sessions.Get(sessionId); found {
 		ft.(*forwardTable).last = time.Now()
-		logrus.Infof("ft.last = %s", ft.(*forwardTable).last)
 		return ft.(*forwardTable), true
 	}
 	return nil, false
