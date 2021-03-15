@@ -239,13 +239,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 
 	//updates updatedAt for session timeouts
 	if rc.ApiSession != nil {
-		err := ae.GetHandlers().ApiSession.Update(rc.ApiSession)
-		if err == nil {
-			//re-read session to get new updatedAt
-			rc.ApiSession, _ = ae.GetHandlers().ApiSession.Read(rc.ApiSession.Id)
-		} else {
-			logger.WithError(err).Errorf("could not update API session to extend timeout for token %s", rc.SessionToken)
-		}
+		ae.GetHandlers().ApiSession.MarkActivityById(rc.ApiSession.Id)
 	}
 
 	if rc.ApiSession != nil {
