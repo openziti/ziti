@@ -98,13 +98,11 @@ func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
 		store := handler.Store.(persistence.ApiSessionStore)
 		mutCtx := boltz.NewMutateContext(tx)
 
-		apiSession, err := store.LoadOneById(tx, apiSessionId)
-
-		if err != nil {
-			return err
-		}
-
-		err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{})
+		err := store.Update(mutCtx, &persistence.ApiSession{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id:        apiSessionId,
+			},
+		}, persistence.UpdateTimeOnlyFieldChecker{})
 
 		return err
 	})
