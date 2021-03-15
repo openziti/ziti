@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/lucsky/cuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
@@ -92,8 +93,27 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-// MarkActivity returns tokens that were not found if any and/or an error.
-func (handler *ApiSessionHandler) MarkActivity(tokens []string) ([]string, error) {
+func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
+	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+		store := handler.Store.(persistence.ApiSessionStore)
+		mutCtx := boltz.NewMutateContext(tx)
+
+		err := store.Update(mutCtx, &persistence.ApiSession{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id:        apiSessionId,
+			},
+		}, persistence.UpdateTimeOnlyFieldChecker{})
+
+		return err
+	})
+
+	if err != nil {
+		pfxlog.Logger().Errorf("could not mark activity for api session by id: %v", err)
+	}
+}
+
+// MarkActivityByTokens returns tokens that were not found if any and/or an error.
+func (handler *ApiSessionHandler) MarkActivityByTokens(tokens []string) ([]string, error) {
 	var notFoundTokens []string
 
 	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
