@@ -17,6 +17,7 @@
 package network
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -55,20 +56,22 @@ func (self *routeSenderController) removeRouteSender(rs *routeSender) {
 }
 
 type routeSender struct {
-	sessionId  string
-	circuit    *Circuit
-	routeMsgs  []*ctrl_pb.Route
-	timeout    time.Duration
-	in         chan *routeStatus
-	attendance map[string]bool
+	sessionId       string
+	circuit         *Circuit
+	routeMsgs       []*ctrl_pb.Route
+	timeout         time.Duration
+	in              chan *routeStatus
+	attendance      map[string]bool
+	serviceCounters ServiceCounters
 }
 
-func newRouteSender(sessionId string, timeout time.Duration) *routeSender {
+func newRouteSender(sessionId string, timeout time.Duration, serviceCounters ServiceCounters) *routeSender {
 	return &routeSender{
-		sessionId:  sessionId,
-		timeout:    timeout,
-		in:         make(chan *routeStatus, 16),
-		attendance: make(map[string]bool),
+		sessionId:       sessionId,
+		timeout:         timeout,
+		in:              make(chan *routeStatus, 16),
+		attendance:      make(map[string]bool),
+		serviceCounters: serviceCounters,
 	}
 }
 
@@ -95,6 +98,7 @@ attendance:
 					if status.r == tr {
 						peerData = status.peerData
 						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId())
 					}
 				} else {
 					logrus.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
@@ -106,6 +110,7 @@ attendance:
 
 					if status.r == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+						self.serviceCounters.ServiceDialFail(terminator.GetServiceId())
 					}
 					cleanups = self.cleanups(circuit)
 
@@ -117,7 +122,8 @@ attendance:
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(circuit)
-			return nil, cleanups, errors.Errorf("timeout creating routes for [s/%s]", self.sessionId)
+			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId())
+			return nil, cleanups, &routeTimeoutError{sessionId: self.sessionId}
 		}
 
 		allPresent := true
@@ -165,4 +171,12 @@ type routeStatus struct {
 	success   bool
 	rerr      string
 	peerData  xt.PeerData
+}
+
+type routeTimeoutError struct {
+	sessionId string
+}
+
+func (self routeTimeoutError) Error() string {
+	return fmt.Sprintf("timeout creating routes for [s/%s]", self.sessionId)
 }

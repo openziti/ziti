@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/orcaman/concurrent-map"
 	"reflect"
+	"time"
 )
 
 // sessionTable implements a directory of forwardTables, keyed by sessionId.
@@ -36,11 +37,13 @@ func newSessionTable() *sessionTable {
 }
 
 func (st *sessionTable) setForwardTable(sessionId string, ft *forwardTable) {
+	ft.last = time.Now()
 	st.sessions.Set(sessionId, ft)
 }
 
 func (st *sessionTable) getForwardTable(sessionId string) (*forwardTable, bool) {
 	if ft, found := st.sessions.Get(sessionId); found {
+		ft.(*forwardTable).last = time.Now()
 		return ft.(*forwardTable), true
 	}
 	return nil, false
@@ -63,6 +66,7 @@ func (st *sessionTable) debug() string {
 // forwardTable implements a directory of destinations, keyed by source address.
 //
 type forwardTable struct {
+	last         time.Time
 	destinations cmap.ConcurrentMap // map[string]string
 }
 

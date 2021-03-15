@@ -58,6 +58,7 @@ type Router struct {
 	linkOptions     *channel2.Options
 	linkListener    channel2.UnderlayListener
 	faulter         *forwarder.Faulter
+	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
@@ -93,7 +94,8 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	xgress.InitMetrics(metricsRegistry)
 
 	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
-	fwd := forwarder.NewForwarder(metricsRegistry, faulter, config.Forwarder, closeNotify)
+	scanner := forwarder.NewScanner(config.Forwarder, closeNotify)
+	fwd := forwarder.NewForwarder(metricsRegistry, faulter, scanner, config.Forwarder, closeNotify)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
@@ -102,6 +104,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	return &Router{
 		config:          config,
 		faulter:         faulter,
+		scanner:         scanner,
 		forwarder:       fwd,
 		metricsRegistry: metricsRegistry,
 		shutdownC:       closeNotify,
@@ -272,19 +275,23 @@ func (self *Router) startXgressListeners() {
 			logrus.Fatalf("error creating xgress listener [%s] (%v)", binding.name, err)
 		}
 		self.xgressListeners = append(self.xgressListeners, listener)
-		if address, found := binding.options["address"]; found {
-			err = listener.Listen(address.(string),
-				handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(self.forwarder),
-					handler_xgress.NewCloseHandler(self, self.forwarder),
-					self.forwarder,
-				),
-			)
-			if err != nil {
-				logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
-			}
-			logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
+
+		var address string
+		if addressVal, found := binding.options["address"]; found {
+			address = addressVal.(string)
 		}
+
+		err = listener.Listen(address,
+			handler_xgress.NewBindHandler(
+				handler_xgress.NewReceiveHandler(self.forwarder),
+				handler_xgress.NewCloseHandler(self, self.forwarder),
+				self.forwarder,
+			),
+		)
+		if err != nil {
+			logrus.Fatalf("error listening [%s] (%v)", binding.name, err)
+		}
+		logrus.Infof("created xgress listener [%s] at [%s]", binding.name, address)
 	}
 }
 
@@ -330,6 +337,7 @@ func (self *Router) startControlPlane() error {
 
 	self.ctrl = ch
 	self.faulter.SetCtrl(ch)
+	self.scanner.SetCtrl(ch)
 
 	self.xctrlDone = make(chan struct{})
 	for _, x := range self.xctrls {

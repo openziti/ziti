@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/sirupsen/logrus"
 )
 
 type dialer struct {
@@ -55,6 +56,8 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 	if err != nil {
 		return nil, err
 	}
+
+	logrus.Infof("successful connection to %v from %v (s/%v)", destination, peer.Conn().LocalAddr(), sessionId.Token)
 
 	conn := &transportXgressConn{Connection: peer}
 	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, txd.options)

@@ -25,7 +25,10 @@ type Options struct {
 	LatencyProbeInterval     time.Duration
 	LatencyProbeTimeout      time.Duration
 	XgressCloseCheckInterval time.Duration
+	XgressDialDwellTime      time.Duration
 	FaultTxInterval          time.Duration
+	IdleTxInterval           time.Duration
+	IdleSessionTimeout       time.Duration
 	XgressDial               WorkerPoolOptions
 	LinkDial                 WorkerPoolOptions
 }
@@ -38,9 +41,12 @@ type WorkerPoolOptions struct {
 func DefaultOptions() *Options {
 	return &Options{
 		LatencyProbeInterval:     10 * time.Second,
-		LatencyProbeTimeout:	  10 * time.Second,
+		LatencyProbeTimeout:      10 * time.Second,
 		XgressCloseCheckInterval: 5 * time.Second,
+		XgressDialDwellTime:      0,
 		FaultTxInterval:          15 * time.Second,
+		IdleTxInterval:           60 * time.Second,
+		IdleSessionTimeout:       60 * time.Second,
 		XgressDial: WorkerPoolOptions{
 			QueueLength: 1000,
 			WorkerCount: 10,
@@ -79,11 +85,35 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
+	if value, found := src["xgressDialDwellTime"]; found {
+		if v, ok := value.(int); ok {
+			options.XgressDialDwellTime = time.Duration(v) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'xgressDialDwellTime'")
+		}
+	}
+
 	if value, found := src["faultTxInterval"]; found {
 		if val, ok := value.(int); ok {
 			options.FaultTxInterval = time.Duration(val) * time.Millisecond
 		} else {
-			return nil, errors.New("invalid value for 'faultTxInterval")
+			return nil, errors.New("invalid value for 'faultTxInterval'")
+		}
+	}
+
+	if value, found := src["idleTxInterval"]; found {
+		if val, ok := value.(int); ok {
+			options.IdleTxInterval = time.Duration(val) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'idleTxInterval'")
+		}
+	}
+
+	if value, found := src["idleSessionTimeout"]; found {
+		if val, ok := value.(int); ok {
+			options.IdleSessionTimeout = time.Duration(val) * time.Millisecond
+		} else {
+			return nil, errors.New("invalid value for 'idleSessionTimeout'")
 		}
 	}
 
