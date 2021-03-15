@@ -33,6 +33,9 @@ func NewApiSessionHandler(env Env) *ApiSessionHandler {
 	handler := &ApiSessionHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().ApiSession),
 	}
+
+	handler.HeartbeatCollector = NewHeartbeatCollector(env, env.GetConfig().Api.ActivityUpdateBatchSize, env.GetConfig().Api.ActivityUpdateInterval, handler.heartbeatFlush)
+
 	handler.impl = handler
 
 	return handler
@@ -40,6 +43,7 @@ func NewApiSessionHandler(env Env) *ApiSessionHandler {
 
 type ApiSessionHandler struct {
 	baseHandler
+	HeartbeatCollector *HeartbeatCollector
 }
 
 func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
@@ -86,7 +90,7 @@ func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
 
 func (handler *ApiSessionHandler) MfaCompleted(apiSession *ApiSession) error {
 	apiSession.MfaComplete = true
-	return handler.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldAPiSessionMfaComplete), handler})
+	return handler.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), handler})
 }
 
 func (handler *ApiSessionHandler) Delete(id string) error {
@@ -94,31 +98,15 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 }
 
 func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
-	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
-		store := handler.Store.(persistence.ApiSessionStore)
-		mutCtx := boltz.NewMutateContext(tx)
-
-		err := store.Update(mutCtx, &persistence.ApiSession{
-			BaseExtEntity: boltz.BaseExtEntity{
-				Id: apiSessionId,
-			},
-		}, persistence.UpdateTimeOnlyFieldChecker{})
-
-		return err
-	})
-
-	if err != nil {
-		pfxlog.Logger().Errorf("could not mark activity for api session by id: %v", err)
-	}
+	handler.HeartbeatCollector.Mark(apiSessionId)
 }
 
 // MarkActivityByTokens returns tokens that were not found if any and/or an error.
 func (handler *ApiSessionHandler) MarkActivityByTokens(tokens ...string) ([]string, error) {
 	var notFoundTokens []string
+	store := handler.Store.(persistence.ApiSessionStore)
 
-	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
-		store := handler.Store.(persistence.ApiSessionStore)
-		mutCtx := boltz.NewMutateContext(tx)
+	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
 		for _, token := range tokens {
 			apiSession, err := store.LoadOneByToken(tx, token)
 			if err != nil {
@@ -129,21 +117,39 @@ func (handler *ApiSessionHandler) MarkActivityByTokens(tokens ...string) ([]stri
 					return err
 				}
 			}
-			if err = store.Update(mutCtx, apiSession, persistence.UpdateTimeOnlyFieldChecker{}); err != nil {
-				if boltz.IsErrNotFoundErr(err) {
-					notFoundTokens = append(notFoundTokens, token)
-					continue
-				} else {
-					return err
-				}
-			}
-
+			handler.HeartbeatCollector.Mark(apiSession.Id)
 			handler.env.GetHandlers().Identity.SetActive(apiSession.IdentityId)
 		}
 		return nil
 	})
 
 	return notFoundTokens, err
+}
+
+func (handler *ApiSessionHandler) heartbeatFlush(beats []*Heartbeat) {
+	err := handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+		store := handler.Store.(persistence.ApiSessionStore)
+		mutCtx := boltz.NewMutateContext(tx)
+
+		for _, beat := range beats {
+			err := store.Update(mutCtx, &persistence.ApiSession{
+				BaseExtEntity: boltz.BaseExtEntity{
+					Id:        beat.ApiSessionId,
+				},
+				LastActivityAt: beat.LastActivityAt,
+			}, persistence.UpdateLastActivityAtChecker{})
+
+			if err != nil {
+				pfxlog.Logger().Errorf("could not flush heartbeat activity for api session id %s: %v", beat.ApiSessionId, err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		pfxlog.Logger().Errorf("could not flush heartbeat activity: %v", err)
+	}
 }
 
 func (handler *ApiSessionHandler) Stream(query string, collect func(*ApiSession, error) error) error {

@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -52,14 +53,12 @@ func (factory ApiSessionLinkFactoryImpl) NewNestedLink(entity models.Entity, ele
 
 func (factory *ApiSessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 	return rest_model.Links{
-		EntityNameSelf:          factory.SelfLink(entity),
-		EntityNameSession:    factory.NewNestedLink(entity, EntityNameSession),
+		EntityNameSelf:    factory.SelfLink(entity),
+		EntityNameSession: factory.NewNestedLink(entity, EntityNameSession),
 	}
 }
 
-
-
-func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, apiSessionEntity models.Entity) (interface{}, error) {
+func MapApiSessionToRestInterface(ae *env.AppEnv, _ *response.RequestContext, apiSessionEntity models.Entity) (interface{}, error) {
 	apiSession, ok := apiSessionEntity.(*model.ApiSession)
 
 	if !ok {
@@ -69,7 +68,7 @@ func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, api
 		return nil, err
 	}
 
-	restModel, err := MapApiSessionToRestModel(apiSession)
+	restModel, err := MapApiSessionToRestModel(ae, apiSession)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", apiSessionEntity.GetId(), err)
@@ -80,22 +79,36 @@ func MapApiSessionToRestInterface(_ *env.AppEnv, _ *response.RequestContext, api
 	return restModel, nil
 }
 
-func MapApiSessionToRestModel(apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
+func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
 	authQueries := rest_model.AuthQueryList{}
 
-	if apiSession.MfaRequired && !apiSession.MfaComplete {
+	isMfaEnabled := apiSession.MfaRequired && !apiSession.MfaComplete
+
+	if isMfaEnabled {
 		authQueries = append(authQueries, newAuthCheckZitiMfa())
 	}
 
+	lastActivityAt := strfmt.DateTime(apiSession.LastActivityAt)
+
 	ret := &rest_model.APISessionDetail{
-		BaseEntity:  BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
-		IdentityID:  &apiSession.IdentityId,
-		Identity:    ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-		Token:       &apiSession.Token,
-		IPAddress:   &apiSession.IPAddress,
-		ConfigTypes: stringz.SetToSlice(apiSession.ConfigTypes),
-		AuthQueries: authQueries,
+		BaseEntity:     BaseEntityToRestModel(apiSession, ApiSessionLinkFactory),
+		IdentityID:     &apiSession.IdentityId,
+		Identity:       ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+		Token:          &apiSession.Token,
+		IPAddress:      &apiSession.IPAddress,
+		ConfigTypes:    stringz.SetToSlice(apiSession.ConfigTypes),
+		AuthQueries:    authQueries,
+		IsMfaEnabled:   &isMfaEnabled,
+		LastActivityAt: lastActivityAt,
 	}
+
+	if val, ok := ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
+		cachedActivityAt := strfmt.DateTime(val)
+		ret.CachedLastActivityAt = cachedActivityAt
+	} else {
+		ret.CachedLastActivityAt = lastActivityAt
+	}
+
 	return ret, nil
 }
 

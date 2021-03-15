@@ -29,13 +29,13 @@ const (
 	maxDeletePerIteration = 500
 )
 
-type SessionEnforcer struct {
+type ApiSessionEnforcer struct {
 	appEnv         *env.AppEnv
 	sessionTimeout time.Duration
 	*runner.BaseOperation
 }
 
-func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTimeout time.Duration) *SessionEnforcer {
+func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTimeout time.Duration) *ApiSessionEnforcer {
 	if sessionTimeout < 60*time.Second {
 		pfxlog.Logger().Panic("sessionTimeout can not be less than 60 seconds")
 	}
@@ -45,21 +45,24 @@ func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTime
 		WithField("frequency", frequency.String()).
 		Info("session enforcer configured")
 
-	return &SessionEnforcer{
+	return &ApiSessionEnforcer{
 		appEnv:         appEnv,
 		sessionTimeout: sessionTimeout,
-		BaseOperation:  runner.NewBaseOperation("SessionEnforcer", frequency),
+		BaseOperation:  runner.NewBaseOperation("ApiSessionEnforcer", frequency),
 	}
 }
 
-func (s *SessionEnforcer) Run() error {
+func (s *ApiSessionEnforcer) Run() error {
 	oldest := time.Now().Add(s.sessionTimeout * -1)
-	query := fmt.Sprintf("updatedAt < datetime(%s) limit %d", oldest.UTC().Format(time.RFC3339), maxDeletePerIteration)
+	query := fmt.Sprintf("lastActivityAt < datetime(%s) limit %d", oldest.UTC().Format(time.RFC3339), maxDeletePerIteration)
 
 	for i := 0; i < maxIterations; i++ {
 		ids := make([]string, 0, maxDeletePerIteration)
 		err := s.appEnv.GetHandlers().ApiSession.StreamIds(query, func(id string, err error) error {
-			ids = append(ids, id)
+			if lastActivityAt, hasUnflushedValue := s.appEnv.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(id); !hasUnflushedValue || lastActivityAt.Before(oldest) {
+				ids = append(ids, id)
+			}
+
 			return nil
 		})
 

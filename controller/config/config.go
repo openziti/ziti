@@ -20,11 +20,12 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/pkg/errors"
 	"io/ioutil"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,12 +54,16 @@ type EnrollmentOption struct {
 
 type Api struct {
 	SessionTimeoutSeconds time.Duration
+	ActivityUpdateBatchSize int
+	ActivityUpdateInterval  time.Duration
+
 	Listener              string
 	Advertise             string
 	Identity              identity.Identity
 	IdentityConfig        identity.IdentityConfig
 	IdentityCaPem         []byte
 	HttpTimeouts          HttpTimeouts
+
 }
 
 type Config struct {
@@ -178,6 +183,9 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 	c.Api = Api{}
 	var err error
 
+	c.Api.ActivityUpdateBatchSize = 250
+	c.Api.ActivityUpdateInterval = 90 * time.Second
+
 	if value, found := edgeConfigMap["api"]; found {
 		submap := value.(map[interface{}]interface{})
 
@@ -217,6 +225,32 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 		if err = c.loadHttpTimeouts(submap); err != nil {
 			return fmt.Errorf("error loading Edge API Http Timeouts: %s", err)
 		}
+
+		if val, ok := submap["activityUpdateBatchSize"]; ok {
+			if c.Api.ActivityUpdateBatchSize, ok = val.(int); !ok {
+				return errors.Errorf("invalid type %v for apiSessions.activityUpdateBatchSize, must be int", reflect.TypeOf(val))
+			}
+		}
+
+		if val, ok := submap["activityUpdateInterval"]; ok {
+			if strVal, ok := val.(string); !ok {
+				return errors.Errorf("invalid type %v for apiSessions.activityUpdateInterval, must be string duration", reflect.TypeOf(val))
+			} else {
+				if c.Api.ActivityUpdateInterval, err = time.ParseDuration(strVal); err != nil {
+					return errors.Wrapf(err, "invalid value %v for apiSessions.activityUpdateInterval, must be string duration", val)
+				}
+			}
+		}
+
+		if c.Api.ActivityUpdateBatchSize < 1 || c.Api.ActivityUpdateBatchSize > 10000 {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between 1 and 10000", c.Api.ActivityUpdateBatchSize)
+		}
+
+		if c.Api.ActivityUpdateInterval < time.Millisecond || c.Api.ActivityUpdateInterval > 10*time.Minute {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between 1ms and 10m", c.Api.ActivityUpdateInterval.String())
+		}
+
+		return nil
 
 	} else {
 		return errors.New("required configuration section [edge.api] missing")

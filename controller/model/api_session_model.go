@@ -39,6 +39,7 @@ type ApiSession struct {
 	MfaRequired        bool
 	ExpiresAt          time.Time
 	ExpirationDuration time.Duration
+	LastActivityAt     time.Time
 }
 
 func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
@@ -47,13 +48,14 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Ent
 	}
 
 	boltEntity := &persistence.ApiSession{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Token:         entity.Token,
-		IdentityId:    entity.IdentityId,
-		ConfigTypes:   stringz.SetToSlice(entity.ConfigTypes),
-		IPAddress:     entity.IPAddress,
-		MfaComplete:   entity.MfaComplete,
-		MfaRequired:   entity.MfaRequired,
+		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:          entity.Token,
+		IdentityId:     entity.IdentityId,
+		ConfigTypes:    stringz.SetToSlice(entity.ConfigTypes),
+		IPAddress:      entity.IPAddress,
+		MfaComplete:    entity.MfaComplete,
+		MfaRequired:    entity.MfaRequired,
+		LastActivityAt: entity.LastActivityAt,
 	}
 
 	return boltEntity, nil
@@ -85,6 +87,7 @@ func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.MfaComplete = boltApiSession.MfaComplete
 	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds)
 	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds
+	entity.LastActivityAt = boltApiSession.LastActivityAt
 
 	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
