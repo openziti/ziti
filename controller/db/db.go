@@ -20,8 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"os"
+	"reflect"
+	"runtime"
 	"time"
 )
 
@@ -38,6 +41,26 @@ func Open(path string) (*Db, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open controller database [%s] (%s)", path, err)
 	}
+
+	db.TraceUpdateEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Enter Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+	db.TraceUpdateExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Exit Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+	db.TraceViewEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Enter View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+	db.TraceViewExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Exit View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+	db.TraceBatchEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Enter Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+	db.TraceBatchExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+		logrus.Infof("Exit Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+	}
+
 	if err := db.Update(createRoots); err != nil {
 		return nil, err
 	}
