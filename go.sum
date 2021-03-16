@@ -499,8 +499,10 @@ github.com/openziti/fabric v0.16.27 h1:/7hzhjm5X7pWLm/2aXM9YZyU2JSRhQ0KNEVt125FA
 github.com/openziti/fabric v0.16.27/go.mod h1:jjIq2i9XcSmaGpYAkm8lX/0JVeSycAF3Zi9SaXSEDkE=
 github.com/openziti/foundation v0.15.35 h1:FYL2TNKqRzXVN70XhU15Nw2OrWnd5Lbz0hz4heVsxqg=
 github.com/openziti/foundation v0.15.35/go.mod h1:0vyGpNqnK/WuVhUE1Kfq+UvCWIf/rUYViMrCrCZ2cTc=
-github.com/openziti/sdk-golang v0.15.21 h1:HeBvSXTSFixV1D8EdioNiO9nvGdqvIsxxx4Rkrs2ZLA=
-github.com/openziti/sdk-golang v0.15.21/go.mod h1:yck2z5JbHb/Ruw3PcB3AMgankYZUwUnL2WQqat120xo=
+github.com/openziti/foundation v0.15.36 h1:3XADgT1VwDJd/R+YmTu+EuLeQEMhtWn+0RvI5d4Blgo=
+github.com/openziti/foundation v0.15.36/go.mod h1:wWyy60CAEKBKF354v1FpRGaMIWJIjI/i+hpwsQ5IiZo=
+github.com/openziti/sdk-golang v0.15.22 h1:eS46beclsNctfLJpdJwFktpJE/G4bsfw2xp98BvTJjs=
+github.com/openziti/sdk-golang v0.15.22/go.mod h1:cjT24isgVKpjfSfxVgJyUwc64AgHVvTPje/3Vs96DZE=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
@@ -574,6 +576,8 @@ github.com/sirupsen/logrus v1.5.0/go.mod h1:+F7Ogzej0PZc/94MaYx/nvG9jOFMD2osvC3s
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/sirupsen/logrus v1.8.0 h1:nfhvjKcUMhBMVqbKHJlk5RPrrfYr/NMo3692g0dwfWU=
 github.com/sirupsen/logrus v1.8.0/go.mod h1:4GuYW9TZmE769R5STWrRakJc4UqQ3+QQ95fyz7ENv1A=
+github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
+github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
