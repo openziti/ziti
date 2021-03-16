@@ -2,11 +2,13 @@ module github.com/openziti/ziti
 
 go 1.16
 
+replace go.etcd.io/bbolt => ../bbolt
+
 //replace github.com/openziti/foundation => ../foundation
 
 //replace github.com/michaelquigley/dilithium => ../../q/research/dilithium
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
