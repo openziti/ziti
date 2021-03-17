@@ -2,7 +2,7 @@ module github.com/openziti/ziti
 
 go 1.16
 
-replace go.etcd.io/bbolt => ../bbolt
+replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 //replace github.com/openziti/foundation => ../foundation
 
