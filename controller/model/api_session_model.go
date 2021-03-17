@@ -67,7 +67,7 @@ func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 

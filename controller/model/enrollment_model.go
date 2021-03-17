@@ -149,6 +149,6 @@ func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, handler Handler) (b
 
 }
 
-func (entity *Enrollment) toBoltEntityForPatch(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(handler)
 }

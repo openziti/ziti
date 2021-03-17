@@ -49,7 +49,7 @@ func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Ent
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *IdentityType) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

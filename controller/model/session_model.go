@@ -79,9 +79,6 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 
 	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
 
-	failedPolicies := map[string]interface{}{}
-	var failedPolicyIds []string
-
 	for policyId, postureChecks := range postureCheckMap {
 		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
 
@@ -93,9 +90,10 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 			continue
 		}
 		hasMatchingPolicies = true
-		var failedChecks []interface{}
+		isPolicyPassing := true
 
 		for _, postureCheck := range postureChecks {
+
 			isCheckPassing := true
 			found := false
 			if isCheckPassing, found = checkCache[postureCheck.Id]; !found {
@@ -104,30 +102,40 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 			}
 
 			if !isCheckPassing {
-				failedChecks = append(failedChecks, map[string]interface{}{
-					"id":        postureCheck.Id,
-					"typeId":    postureCheck.TypeId,
-					"isPassing": false,
-				})
+				isPolicyPassing = false //failed, move to next policy
+				break
 			}
 		}
-
-		if len(failedChecks) == 0 {
-			//no failed check pass and exit
+		if isPolicyPassing {
 			validPosture = true
 			break
-		} else {
-			//save for error output
-			failedPolicies[policy.Id] = failedChecks
-			failedPolicyIds = append(failedPolicyIds, policy.Id)
 		}
 	}
 
 	if hasMatchingPolicies && !validPosture {
+		var policyIds []string
+
+		dataMap := map[string]interface{}{}
+
+		for policyId, checks := range postureCheckMap {
+			policyIds = append(policyIds, policyId)
+
+			var queries []interface{}
+
+			for _, check := range checks {
+				queries = append(queries, map[string]interface{}{
+					"id":        check.Id,
+					"typeId":    check.TypeId,
+					"isPassing": checkCache[check.Id],
+				})
+			}
+
+			dataMap[policyId] = queries
+		}
 
 		cause := apierror.GenericCauseError{
-			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", failedPolicyIds),
-			DataMap: failedPolicies,
+			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", policyIds),
+			DataMap: dataMap,
 		}
 		return nil, apierror.NewInvalidPosture(cause)
 	}
@@ -194,7 +202,7 @@ func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, 
 	}, nil
 }
 
-func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
