@@ -122,7 +122,7 @@ func (r *ServiceRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 		// allow overriding config types
 		configTypes := rc.ApiSession.ConfigTypes
 		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
-			configTypes = mapConfigTypeNamesToIds(ae, strings.Split(requestedConfigTypes, ","), identity.Id)
+			configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), identity.Id)
 		}
 
 		query, err := queryOptions.getFullQuery(ae.Handlers.EdgeService.GetStore())

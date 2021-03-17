@@ -73,7 +73,7 @@ func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.En
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

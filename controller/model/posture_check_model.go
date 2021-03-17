@@ -115,7 +115,7 @@ func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler)
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 

@@ -61,7 +61,7 @@ func (entity *EventLog) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity,
 	return entity.toBoltEntity()
 }
 
-func (entity *EventLog) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *EventLog) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

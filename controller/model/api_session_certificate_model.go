@@ -64,7 +64,7 @@ func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, handler
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 

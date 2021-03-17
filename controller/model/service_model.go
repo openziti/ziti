@@ -86,7 +86,7 @@ func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (bol
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 

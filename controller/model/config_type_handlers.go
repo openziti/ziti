@@ -17,7 +17,9 @@
 package model
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/stringz"
 	"go.etcd.io/bbolt"
 )
 
@@ -80,4 +82,22 @@ func (handler *ConfigTypeHandler) Patch(configType *ConfigType, checker boltz.Fi
 
 func (handler *ConfigTypeHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
+}
+
+func (handler *ConfigTypeHandler) MapConfigTypeNamesToIds(values []string, identityId string) map[string]struct{} {
+	var result []string
+	if stringz.Contains(values, "all") {
+		result = []string{"all"}
+	} else {
+		for _, val := range values {
+			if configType, _ := handler.Read(val); configType != nil {
+				result = append(result, val)
+			} else if configType, _ := handler.ReadByName(val); configType != nil {
+				result = append(result, configType.Id)
+			} else {
+				pfxlog.Logger().Debugf("user %v submitted %v as a config type of interest, but no matching records found", identityId, val)
+			}
+		}
+	}
+	return stringz.SliceToSet(result)
 }

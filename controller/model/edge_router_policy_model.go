@@ -51,7 +51,7 @@ func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
