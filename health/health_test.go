@@ -48,8 +48,8 @@ func (self *eventTracker) assertEvent(t time.Duration, cost uint16, p edge.Prece
 		return
 	}
 
-	self.Equal(cost, evt.cost)
-	self.Equal(p, evt.precedence)
+	self.Equal(int(cost), int(evt.cost))
+	self.Equal(int(p), int(evt.precedence))
 }
 
 func (self *eventTracker) assertNoEvent(t time.Duration) {
@@ -250,6 +250,25 @@ func runHttpCheck(req *require.Assertions, f func(http.ResponseWriter, *http.Req
 	var handler http.HandlerFunc = f
 	s := http.Server{Handler: handler}
 	go func() { _ = s.Serve(listener) }()
+
+	now := time.Now()
+	endTime := now.Add(2 * time.Second)
+	maxWait := 2 * time.Second
+	for {
+		conn, err := net.DialTimeout("tcp", "localhost:9876", maxWait)
+		if err == nil {
+			_ = conn.Close()
+			break
+		}
+		now = time.Now()
+		if !now.Before(endTime) {
+			_ = listener.Close()
+			req.NoError(err)
+		}
+		maxWait = endTime.Sub(now)
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	return func() {
 		_ = s.Shutdown(context.Background())
 		_ = listener.Close()
