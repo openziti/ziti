@@ -39,7 +39,7 @@ func (ctx *TestContext) Init() {
 	ctx.InitDbFile()
 
 	var err error
-	ctx.db, err = Open(ctx.GetDbFile().Name())
+	ctx.db, err = Open(ctx.GetDbFile().Name(), false)
 	ctx.NoError(err)
 
 	ctx.stores, err = InitStores(ctx.GetDb())
