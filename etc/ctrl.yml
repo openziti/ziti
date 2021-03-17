@@ -60,6 +60,7 @@ identity:
 # Define the path to where the controller's database will be stored.
 #
 db:                     /tmp/devctrl.db
+#dbTrace:		true
 
 # Overlay Tracing
 #

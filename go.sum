@@ -496,7 +496,6 @@ github.com/lucas-clemente/quic-go v0.18.1/go.mod h1:yXttHsSNxQi8AWijC/vLP+OJczXq
 github.com/lucsky/cuid v1.0.2 h1:z4XlExeoderxoPj2/dxKOyPxe9RCOu7yNq9/XWxIUMQ=
 github.com/lucsky/cuid v1.0.2/go.mod h1:QaaJqckboimOmhRSJXSx/+IT+VTfxfPGSo/6mfgUfmE=
 github.com/lunixbochs/vtclean v1.0.0/go.mod h1:pHhQNgMf3btfWnGBVipUOjRYhoOsdGqdm/+2c2E2WMI=
-github.com/magefile/mage v1.10.0 h1:3HiXzCUY12kh9bIuyXShaVe529fJfyqoVM42o/uom2g=
 github.com/magefile/mage v1.10.0/go.mod h1:z5UZb/iS3GoOSn0JgWuiw7dxlurVYTu+/jHXqQg881A=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/magiconair/properties v1.8.1 h1:ZC2Vc7/ZFkGmsVC9KvOjumD+G5lXy2RtTKyzRKO2BQ4=
@@ -622,12 +621,11 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
-github.com/openziti/edge v0.19.32 h1:66e9qAMALX3y8XsOF5+AXSSvhDDDrfnO8T16z9taKaw=
-github.com/openziti/edge v0.19.32/go.mod h1:9QOQtG0uNsfRlt2jtJalPEYYbALrz27NykztBMxX7qc=
-github.com/openziti/foundation v0.15.35 h1:FYL2TNKqRzXVN70XhU15Nw2OrWnd5Lbz0hz4heVsxqg=
 github.com/openziti/foundation v0.15.35/go.mod h1:0vyGpNqnK/WuVhUE1Kfq+UvCWIf/rUYViMrCrCZ2cTc=
-github.com/openziti/sdk-golang v0.15.21 h1:HeBvSXTSFixV1D8EdioNiO9nvGdqvIsxxx4Rkrs2ZLA=
-github.com/openziti/sdk-golang v0.15.21/go.mod h1:yck2z5JbHb/Ruw3PcB3AMgankYZUwUnL2WQqat120xo=
+github.com/openziti/foundation v0.15.36 h1:3XADgT1VwDJd/R+YmTu+EuLeQEMhtWn+0RvI5d4Blgo=
+github.com/openziti/foundation v0.15.36/go.mod h1:wWyy60CAEKBKF354v1FpRGaMIWJIjI/i+hpwsQ5IiZo=
+github.com/openziti/sdk-golang v0.15.24 h1:qHIAi4Bdw1lCmAmlxb7AwsyHXiVdi+FMyxVVkeXI5fM=
+github.com/openziti/sdk-golang v0.15.24/go.mod h1:g+iKa5l2XJWJHYwkiBbkhA9NTyZc4M38YVchCxbC78k=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
@@ -722,8 +720,9 @@ github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMB
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.5.0/go.mod h1:+F7Ogzej0PZc/94MaYx/nvG9jOFMD2osvC3s+Squfpo=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
-github.com/sirupsen/logrus v1.8.0 h1:nfhvjKcUMhBMVqbKHJlk5RPrrfYr/NMo3692g0dwfWU=
 github.com/sirupsen/logrus v1.8.0/go.mod h1:4GuYW9TZmE769R5STWrRakJc4UqQ3+QQ95fyz7ENv1A=
+github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
+github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
