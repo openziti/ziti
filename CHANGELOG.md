@@ -6,6 +6,7 @@
 * Idle route garbage collection: orphaned routing table entries will be garbage collected. New
   infrastructure for session confirmation facilitating additional types of garbage collection
 * Configurable Xgress dial "dwell time"
+* Database tracing support
 
 ### Idle Route Garbage Collection
 
@@ -35,6 +36,24 @@ forwarder:
   # before responding in the affirmative to the controller.
   #
   xgressDialDwellTime: 0
+```
+
+### Database Tracing
+
+Enable database tracing using the `dbTrace` controller configuration directive:
+
+```
+dbTrace: true
+```
+
+This will result in log output that describes the entrance into and exit from transactional functions operating against the underlying database:
+
+```
+[   0.003]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.003]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.006]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
+[   0.006]    INFO foundation/storage/boltz.(*migrationManager).Migrate.func1: fabric datastore is up to date at version 4
+[   0.006]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
 ```
 
 # Release 0.19.6
