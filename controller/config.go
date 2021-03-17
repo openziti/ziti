@@ -130,8 +130,13 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
+	dbTrace := false
+	if value, found := cfgmap["dbTrace"]; found {
+		dbTrace = value.(bool)
+	}
+
 	if value, found := cfgmap["db"]; found {
-		str, err := db.Open(value.(string))
+		str, err := db.Open(value.(string), dbTrace)
 		if err != nil {
 			return nil, err
 		}
