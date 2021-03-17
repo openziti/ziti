@@ -4,11 +4,13 @@ go 1.16
 
 //replace github.com/openziti/foundation => ../foundation
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
 //replace github.com/kataras/go-events => ../go-events
+
+replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.2.0

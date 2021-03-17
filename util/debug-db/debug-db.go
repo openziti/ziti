@@ -50,7 +50,7 @@ func (provider *dbProvider) GetControllers() *network.Controllers {
 }
 
 func run(dbFile string) {
-	boltDb, err := db.Open(dbFile)
+	boltDb, err := db.Open(dbFile, false)
 	noError(err)
 
 	fabricStores, err := db.InitStores(boltDb)
