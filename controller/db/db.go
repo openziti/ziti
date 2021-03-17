@@ -42,24 +42,12 @@ func Open(path string) (*Db, error) {
 		return nil, fmt.Errorf("unable to open controller database [%s] (%s)", path, err)
 	}
 
-	db.TraceUpdateEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Enter Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
-	db.TraceUpdateExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Exit Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
-	db.TraceViewEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Enter View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
-	db.TraceViewExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Exit View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
-	db.TraceBatchEnter = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Enter Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
-	db.TraceBatchExit = func(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
-		logrus.Infof("Exit Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
-	}
+	db.TraceUpdateEnter = traceUpdateEnter
+	db.TraceUpdateExit = traceUpdateExit
+	db.TraceViewEnter = traceViewEnter
+	db.TraceViewExit = traceViewExit
+	db.TraceBatchEnter = traceBatchEnter
+	db.TraceBatchExit = traceBatchExit
 
 	if err := db.Update(createRoots); err != nil {
 		return nil, err
@@ -136,4 +124,28 @@ func createRoots(tx *bbolt.Tx) error {
 		}
 	}
 	return nil
+}
+
+func traceUpdateEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceUpdateExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceViewEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceViewExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceBatchEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceBatchExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
 }
