@@ -42,7 +42,7 @@ func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 	x.SetReceiveHandler(bindHandler.receiveHandler)
 	x.AddPeekHandler(bindHandler.metricsPeekHandler)
 
-	x.SetCloseHandler(bindHandler.closeHandler)
+	x.AddCloseHandler(bindHandler.closeHandler)
 
 	bindHandler.forwarder.RegisterDestination(x.SessionId(), x.Address(), x)
 }
