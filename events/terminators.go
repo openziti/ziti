@@ -84,6 +84,7 @@ func (self *terminatorEventRouter) RouterDisconnected(r *network.Router) {
 }
 
 func (self *terminatorEventRouter) routerChange(eventType string, r *network.Router) {
+	var terminators []*db.Terminator
 	err := self.network.GetDb().View(func(tx *bbolt.Tx) error {
 		cursor := self.network.GetStores().Router.GetRelatedEntitiesCursor(tx, r.Id, db.EntityTypeTerminators, true)
 		for cursor.IsValid() {
@@ -92,7 +93,7 @@ func (self *terminatorEventRouter) routerChange(eventType string, r *network.Rou
 			if err != nil {
 				pfxlog.Logger().WithError(err).Errorf("failure while generating terminator events for %v with terminator %v on router %v", eventType, string(id), r.Id)
 			} else {
-				self.terminatorChanged(eventType, terminator)
+				terminators = append(terminators, terminator)
 			}
 			cursor.Next()
 		}
@@ -101,6 +102,11 @@ func (self *terminatorEventRouter) routerChange(eventType string, r *network.Rou
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure while generating terminator events for %v for router %v", eventType, r.Id)
+	}
+
+	for _, terminator := range terminators {
+		// This calls Db.View() down the line, so avoid nesting tx
+		self.terminatorChanged(eventType, terminator)
 	}
 }
 

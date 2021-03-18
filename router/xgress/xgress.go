@@ -83,6 +83,13 @@ type CloseHandler interface {
 	HandleXgressClose(x *Xgress)
 }
 
+// CloseHandlerF is the function version of CloseHandler
+type CloseHandlerF func(x *Xgress)
+
+func (self CloseHandlerF) HandleXgressClose(x *Xgress) {
+	self(x)
+}
+
 // PeekHandler allows registering watcher to react to data flowing an xgress instance
 type PeekHandler interface {
 	Rx(x *Xgress, payload *Payload)
@@ -110,7 +117,7 @@ type Xgress struct {
 	receiveHandler       ReceiveHandler
 	payloadBuffer        *LinkSendBuffer
 	linkRxBuffer         *LinkReceiveBuffer
-	closeHandler         CloseHandler
+	closeHandlers        []CloseHandler
 	peekHandlers         []PeekHandler
 	flags                concurrenz.AtomicBitSet
 	timeOfLastRxFromLink int64
@@ -157,8 +164,8 @@ func (self *Xgress) SetReceiveHandler(receiveHandler ReceiveHandler) {
 	self.receiveHandler = receiveHandler
 }
 
-func (self *Xgress) SetCloseHandler(closeHandler CloseHandler) {
-	self.closeHandler = closeHandler
+func (self *Xgress) AddCloseHandler(closeHandler CloseHandler) {
+	self.closeHandlers = append(self.closeHandlers, closeHandler)
 }
 
 func (self *Xgress) AddPeekHandler(peekHandler PeekHandler) {
@@ -276,8 +283,10 @@ func (self *Xgress) Close() {
 			peekHandler.Close(self)
 		}
 
-		if self.closeHandler != nil {
-			self.closeHandler.HandleXgressClose(self)
+		if len(self.closeHandlers) != 0 {
+			for _, closeHandler := range self.closeHandlers {
+				closeHandler.HandleXgressClose(self)
+			}
 		} else {
 			pfxlog.ContextLogger(self.Label()).Warn("no close handler")
 		}
