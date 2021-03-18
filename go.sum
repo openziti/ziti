@@ -495,8 +495,8 @@ github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYr
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
-github.com/openziti/fabric v0.16.29 h1:yWAsIzpnyUY8J0i+cI9twPkWfpytjVdrh3FmYO/IeWE=
-github.com/openziti/fabric v0.16.29/go.mod h1:p+SwZBxWiB98i4YKwrxGtGQT280erLHYC5h0mZLv0mM=
+github.com/openziti/fabric v0.16.30 h1:KYsH8cvIBWOb15Rxw9nWg0H4Wxyd34OzOTkZZPRytF4=
+github.com/openziti/fabric v0.16.30/go.mod h1:p+SwZBxWiB98i4YKwrxGtGQT280erLHYC5h0mZLv0mM=
 github.com/openziti/foundation v0.15.36 h1:3XADgT1VwDJd/R+YmTu+EuLeQEMhtWn+0RvI5d4Blgo=
 github.com/openziti/foundation v0.15.36/go.mod h1:wWyy60CAEKBKF354v1FpRGaMIWJIjI/i+hpwsQ5IiZo=
 github.com/openziti/sdk-golang v0.15.24 h1:qHIAi4Bdw1lCmAmlxb7AwsyHXiVdi+FMyxVVkeXI5fM=
