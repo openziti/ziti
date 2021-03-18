@@ -56,10 +56,14 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 						if versionInfo, err := ctrlAccepter.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
 							r.VersionInfo = versionInfo
 						} else {
-							log.Warnf("could not parse version info from router hello: %v", err)
+							log.WithError(err).Warn("could not parse version info from router hello, closing router connection")
+							_ = ch.Close()
+							return
 						}
 					} else {
-						log.Warn("no version info header")
+						log.Warn("no version info header, closing router connection")
+						_ = ch.Close()
+						return
 					}
 
 					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloRouterAdvertisementsHeader]; found {
@@ -86,9 +90,7 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 
 		} else {
 			log.Errorf("error accepting (%s)", err)
-			if err.Error() == "closed" {
-				return
-			}
+			_ = ch.Close()
 		}
 	}
 }

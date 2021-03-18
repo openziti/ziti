@@ -20,8 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"os"
+	"reflect"
+	"runtime"
 	"time"
 )
 
@@ -29,7 +32,7 @@ type Db struct {
 	db *bbolt.DB
 }
 
-func Open(path string) (*Db, error) {
+func Open(path string, trace bool) (*Db, error) {
 	// Only wait 1 second if database file can't be locked, as it most likely means another controller is running
 	options := *bbolt.DefaultOptions
 	options.Timeout = time.Second
@@ -38,6 +41,16 @@ func Open(path string) (*Db, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open controller database [%s] (%s)", path, err)
 	}
+
+	if trace {
+		db.TraceUpdateEnter = traceUpdateEnter
+		db.TraceUpdateExit = traceUpdateExit
+		db.TraceViewEnter = traceViewEnter
+		db.TraceViewExit = traceViewExit
+		db.TraceBatchEnter = traceBatchEnter
+		db.TraceBatchExit = traceBatchExit
+	}
+
 	if err := db.Update(createRoots); err != nil {
 		return nil, err
 	}
@@ -113,4 +126,28 @@ func createRoots(tx *bbolt.Tx) error {
 		}
 	}
 	return nil
+}
+
+func traceUpdateEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceUpdateExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit Update (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceViewEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceViewExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit View (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceBatchEnter(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Enter Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
+}
+
+func traceBatchExit(tx *bbolt.Tx, fn func(tx *bbolt.Tx) error) {
+	logrus.Infof("Exit Batch (tx:%d) [%s]", tx.ID(), runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name())
 }
