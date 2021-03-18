@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
+	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -102,6 +103,8 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
 	}
+
+	ziti.SetApplication("ziti-tunnel", version.GetVersion())
 
 	identityJson := cmd.Flag("identity").Value.String()
 	zitiCfg, err := config.NewFromFile(identityJson)
