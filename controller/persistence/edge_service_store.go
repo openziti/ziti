@@ -143,7 +143,9 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 
 	store.symbolBindIdentities = store.AddFkSetSymbol(FieldEdgeServiceBindIdentities, store.stores.identity)
 	store.symbolDialIdentities = store.AddFkSetSymbol(FieldEdgeServiceDialIdentities, store.stores.identity)
-	store.symbolEdgeRouters = store.AddFkSetSymbol(migrationEntityTypeEdgeRouters, store.stores.edgeRouter)
+
+	// TODO: migrate this field name to routers, to match identity store
+	store.symbolEdgeRouters = store.AddFkSetSymbol(FieldEdgeRouters, store.stores.edgeRouter)
 
 	store.indexRoleAttributes.AddListener(store.rolesChanged)
 }

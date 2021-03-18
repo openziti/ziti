@@ -19,7 +19,6 @@ package persistence
 import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -50,65 +49,9 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		return step.CurrentVersion
 	}
 
-	if step.CurrentVersion < 4 {
-		m.createInitialTunnelerConfigTypes(step)
-		m.createInitialTunnelerConfigs(step)
-	}
-
-	if step.CurrentVersion < 5 {
-		m.createEnrollmentsForEdgeRouters(step)
-	}
-
-	if step.CurrentVersion < 6 {
-		m.fixIdentityBuckets(step)
-	}
-
-	if step.CurrentVersion < 7 {
-		m.moveTransitRouters(step)
-		m.moveEdgeRoutersUnderFabricRouters(step)
-		m.copyNamesToParent(step, m.stores.EdgeService)
-		m.copyNamesToParent(step, m.stores.EdgeRouter)
-		m.copyNamesToParent(step, m.stores.TransitRouter)
-		m.fixAuthenticatorCertFingerprints(step)
-	}
-
-	policyTypesFixed := false
-	policiesRepaired := false
-	if step.CurrentVersion < 8 {
-		m.fixServicePolicyTypes(step)
-		policyTypesFixed = true
-
-		m.repairPolicies(step)
-		policiesRepaired = true
-
-		m.fixNameIndices(step)
-	}
-
-	if step.CurrentVersion < 9 {
-		if !policyTypesFixed {
-			m.fixServicePolicyTypes(step)
-		}
-	}
-
-	if step.CurrentVersion < 10 {
-		if !policiesRepaired {
-			m.repairPolicies(step)
-		}
-	}
-
-	if step.CurrentVersion < 11 {
-		step.SetError(m.stores.EdgeRouterPolicy.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
-			log.WithError(err).Debugf("attempting to update session token index. Fixed? %v", fixed)
-		}))
-	}
-
-	if step.CurrentVersion < 12 {
-		m.addPostureCheckTypes(step)
-	}
-
 	if step.CurrentVersion < 13 {
-		//do again because in v12 the init wasn't run so some instances at v12 don't have posture check types
-		m.addPostureCheckTypes(step)
+		step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))
+		return step.CurrentVersion
 	}
 
 	if step.CurrentVersion < 14 {
