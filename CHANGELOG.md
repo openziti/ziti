@@ -7,6 +7,8 @@
   infrastructure for session confirmation facilitating additional types of garbage collection
 * Configurable Xgress dial "dwell time"
 * Database tracing support
+* Immediately close router ctrl channel connection if fingerprint validation fails
+* Immediately close router ctrl channel if no version info is provided
 
 ### Idle Route Garbage Collection
 
@@ -26,8 +28,8 @@ forwarder:
 
 ### Xgress Dial Dwell Time
 
-The following router configuration stanza controls Xgress dial "dwell time". You probably don't want to 
-use this unless you're debugging a timing-related issue in the overlay:
+The following router configuration stanza controls Xgress dial "dwell time". You probably don't want
+to use this unless you're debugging a timing-related issue in the overlay:
 
 ```
 forwarder:
@@ -46,7 +48,8 @@ Enable database tracing using the `dbTrace` controller configuration directive:
 dbTrace: true
 ```
 
-This will result in log output that describes the entrance into and exit from transactional functions operating against the underlying database:
+This will result in log output that describes the entrance into and exit from transactional
+functions operating against the underlying database:
 
 ```
 [   0.003]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
