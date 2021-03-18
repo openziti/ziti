@@ -956,6 +956,10 @@ func (conn *testServerConn) RequireClose() {
 type VersionProviderTest struct {
 }
 
+func (v VersionProviderTest) Branch() string {
+	return "local"
+}
+
 func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
 	return &common.StdVersionEncDec
 }
