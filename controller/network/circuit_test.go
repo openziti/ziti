@@ -196,6 +196,10 @@ func newRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 type VersionProviderTest struct {
 }
 
+func (v VersionProviderTest) Branch() string {
+	return "local"
+}
+
 func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
 	return &common.StdVersionEncDec
 }
