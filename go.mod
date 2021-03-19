@@ -43,6 +43,7 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/negroni v1.0.0
+	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 	golang.org/x/net v0.0.0-20210226101413-39120d07d75e
 	google.golang.org/grpc v1.27.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
