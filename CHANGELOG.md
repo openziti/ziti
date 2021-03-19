@@ -1,3 +1,117 @@
+# Release 0.19.7
+
+## What's New
+
+* Update to Golang 1.16
+* Idle route garbage collection: orphaned routing table entries will be garbage collected. New
+  infrastructure for session confirmation facilitating additional types of garbage collection
+* Configurable Xgress dial "dwell time"
+* Database tracing support
+* Immediately close router ctrl channel connection if fingerprint validation fails
+* Immediately close router ctrl channel if no version info is provided
+
+### Idle Route Garbage Collection
+
+The following router configuration stanza controls idle route garbage collection:
+
+```
+forwarder:
+  #
+  # After how many milliseconds of inactivity is a forwarding table entry considered idle?
+  #
+  idleSessionTimeout: 60000
+  #
+  # How frequently will we confirm idle sessions with the controller?
+  #
+  idleTxInterval: 60000
+```
+
+### Xgress Dial Dwell Time
+
+The following router configuration stanza controls Xgress dial "dwell time". You probably don't want
+to use this unless you're debugging a timing-related issue in the overlay:
+
+```
+forwarder:
+  #
+  # (Debugging) Xgress dial "dwell time". When dialing, the Xgress framework will wait this number of milliseconds
+  # before responding in the affirmative to the controller.
+  #
+  xgressDialDwellTime: 0
+```
+
+### Database Tracing
+
+Enable database tracing using the `dbTrace` controller configuration directive:
+
+```
+dbTrace: true
+```
+
+This will result in log output that describes the entrance into and exit from transactional
+functions operating against the underlying database:
+
+```
+[   0.003]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.003]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.006]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
+[   0.006]    INFO foundation/storage/boltz.(*migrationManager).Migrate.func1: fabric datastore is up to date at version 4
+[   0.006]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
+```
+
+# Release 0.19.6
+
+## What's New
+
+* Service Event Counters
+* New log message which shows local (router side) address, including port, when router dials are
+  successful. This allows correlating server side access logs with ziti logs
+
+## Service Event Counters
+
+There are new events emitted for service, with statistics for how many dials are successful, failed,
+timed out, or fail for non-dial related reasons. Stats are aggregated per-minute, similar to usage
+statistics. They can be enabled in the controller config as follows:
+
+```yaml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: services
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
+```
+
+Example of the events JSON output:
+
+```json
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.fail",
+  "service_id": "HSfgHzIom",
+  "count": 8,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.success",
+  "service_id": "HSfgHzIom",
+  "count": 29,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+```
+
+Event types:
+
+* `service.dial.success`
+* `service.dial.fail`
+* `service.dial.timeout`
+* `service.dial.error_other`
+
 # Release 0.19.5
 
 ## What's New
