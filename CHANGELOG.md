@@ -9,9 +9,11 @@
 * Database tracing support
 * Immediately close router ctrl channel connection if fingerprint validation fails
 * Immediately close router ctrl channel if no version info is provided
-* Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and Edge Sessions
+* Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and
+  Edge Sessions
 * Fixed posture check error responses to include only failed checks
 * Add Service Request Failures for Posture Checks
+* Remove database migration code for versions older than 0.17.1
 
 ### Idle Route Garbage Collection
 
@@ -64,9 +66,9 @@ functions operating against the underlying database:
 
 ### Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and Edge Sessions
 
-With the Ziti Controller shutdown, it is now possible to clear out all API Sessions and Edge Sessions
-that were persisted prior to the controller being stopped. All connecting identities will need to
-re-authenticate when the controller is restarted.
+With the Ziti Controller shutdown, it is now possible to clear out all API Sessions and Edge
+Sessions that were persisted prior to the controller being stopped. All connecting identities will
+need to re-authenticate when the controller is restarted.
 
 This command is useful in situations where the number of sessions is large and the database is being
 copied and/or used for debugging.
@@ -75,6 +77,7 @@ Example Command:
 `ziti-controller delete-sessions`
 
 Example Output:
+
 ```
 [   0.017]    INFO ziti/ziti-controller/subcmd.deleteSessions: {go-version=[go1.16] revision=[local] build-date=[2020-01-01 01:01:01] os=[windows] arch=[amd64] version=[v0.0.0]} removing API Sessions and Edge Sessions from ziti-controller
 [   9.469]    INFO ziti/ziti-controller/subcmd.deleteSessions.func2: existing api Sessions: 2785
@@ -87,14 +90,14 @@ Example Output:
 ### Add Service Request Failures for Posture Checks
 
 When a Ziti Identity (endpoint) requests a service that is provided via a Service Policy with
-Posture Checks associated with it, failure to meet the Posture Check requirements results in
-an error message with a code of `INVALID_POSTURE` and data elaborating on what Service Policies ids and
-Posture Check ids failed. Additionally, now the controller will log the most recent requests and provide
-detailed error output for administrators.
+Posture Checks associated with it, failure to meet the Posture Check requirements results in an
+error message with a code of `INVALID_POSTURE` and data elaborating on what Service Policies ids and
+Posture Check ids failed. Additionally, now the controller will log the most recent requests and
+provide detailed error output for administrators.
 
-The output will show every Service Policy that was checked for access and every Posture Check that failed.
-The failed Posture Checks include the Posture Data that was available for the identity and the
-requirements defined in the Posture Check at the time of the Edge Session request.
+The output will show every Service Policy that was checked for access and every Posture Check that
+failed. The failed Posture Checks include the Posture Data that was available for the identity and
+the requirements defined in the Posture Check at the time of the Edge Session request.
 
 New Endpoint: `GET /identities/{id}/failed-service-requests`
 
