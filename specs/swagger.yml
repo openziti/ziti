@@ -2192,7 +2192,7 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
-  '/identities/{id}/posture-data/failed-service-requests':
+  '/identities/{id}/failed-service-requests':
     parameters:
       - $ref: '#/parameters/id'
     get:
@@ -2205,10 +2205,10 @@ paths:
         - ztSession: [ ]
       tags:
         - Identity
-      operationId: getIdentityPostureDataFailedServiceRequests
+      operationId: getIdentityFailedServiceRequests
       responses:
         '200':
-          $ref: '#/responses/getIdentityPostureDataFailedServiceRequest'
+          $ref: '#/responses/getIdentityFailedServiceRequest'
         '404':
           $ref: '#/responses/notFoundResponse'
         '401':
@@ -4200,10 +4200,10 @@ responses:
     description: Returns the document that represents posture data
     schema:
       $ref: '#/definitions/getIdentityPostureDataEnvelope'
-  getIdentityPostureDataFailedServiceRequest:
+  getIdentityFailedServiceRequest:
     description: Returns a list of service request failures
     schema:
-      $ref: '#/definitions/getIdentityPostureDataFailedServiceRequestEnvelope'
+      $ref: '#/definitions/getIdentityFailedServiceRequestEnvelope'
   ###################################################################
   # Transit Routers
   ##################################################################
@@ -6850,7 +6850,7 @@ definitions:
   ###################################################################
   # Posture Data
   ##################################################################
-  getIdentityPostureDataFailedServiceRequestEnvelope:
+  getIdentityFailedServiceRequestEnvelope:
     type: object
     required:
       - meta
@@ -6859,7 +6859,7 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
-        $ref: '#/definitions/postureDataFailedServiceRequestList'
+        $ref: '#/definitions/failedServiceRequestList'
 
   getIdentityPostureDataEnvelope:
     type: object
@@ -7096,7 +7096,7 @@ definitions:
         items:
           $ref: '#/definitions/postureCheckFailure'
 
-  sessionRequestFailure:
+  failedSessionRequest:
     type: object
     properties:
       apiSessionId:
@@ -7139,10 +7139,10 @@ definitions:
         additionalProperties:
           $ref: '#/definitions/apiSessionPostureData'
 
-  postureDataFailedServiceRequestList:
+  failedServiceRequestList:
     type: array
     items:
-      $ref: '#/definitions/sessionRequestFailure'
+      $ref: '#/definitions/failedSessionRequest'
 
   ###################################################################
   # Posture Query

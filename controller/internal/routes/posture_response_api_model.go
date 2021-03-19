@@ -22,8 +22,11 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-const EntityNamePostureResponse = "posture-response"
-const EntityNamePostureData = "posture-data"
+const (
+	EntityNamePostureResponse      = "posture-response"
+	EntityNamePostureData          = "posture-data"
+	EntityNameFailedServiceRequest = "failed-service-requests"
+)
 
 var PostureResponseLinkFactory = NewBasicLinkFactory(EntityNamePostureResponse)
 

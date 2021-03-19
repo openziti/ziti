@@ -36,8 +36,8 @@ import (
 	"strings"
 )
 
-// GetIdentityPostureDataFailedServiceRequestsURL generates an URL for the get identity posture data failed service requests operation
-type GetIdentityPostureDataFailedServiceRequestsURL struct {
+// GetIdentityFailedServiceRequestsURL generates an URL for the get identity failed service requests operation
+type GetIdentityFailedServiceRequestsURL struct {
 	ID string
 
 	_basePath string
@@ -48,7 +48,7 @@ type GetIdentityPostureDataFailedServiceRequestsURL struct {
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) WithBasePath(bp string) *GetIdentityPostureDataFailedServiceRequestsURL {
+func (o *GetIdentityFailedServiceRequestsURL) WithBasePath(bp string) *GetIdentityFailedServiceRequestsURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -56,21 +56,21 @@ func (o *GetIdentityPostureDataFailedServiceRequestsURL) WithBasePath(bp string)
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) SetBasePath(bp string) {
+func (o *GetIdentityFailedServiceRequestsURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) Build() (*url.URL, error) {
+func (o *GetIdentityFailedServiceRequestsURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/identities/{id}/posture-data/failed-service-requests"
+	var _path = "/identities/{id}/failed-service-requests"
 
 	id := o.ID
 	if id != "" {
 		_path = strings.Replace(_path, "{id}", id, -1)
 	} else {
-		return nil, errors.New("id is required on GetIdentityPostureDataFailedServiceRequestsURL")
+		return nil, errors.New("id is required on GetIdentityFailedServiceRequestsURL")
 	}
 
 	_basePath := o._basePath
@@ -83,7 +83,7 @@ func (o *GetIdentityPostureDataFailedServiceRequestsURL) Build() (*url.URL, erro
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) Must(u *url.URL, err error) *url.URL {
+func (o *GetIdentityFailedServiceRequestsURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -94,17 +94,17 @@ func (o *GetIdentityPostureDataFailedServiceRequestsURL) Must(u *url.URL, err er
 }
 
 // String returns the string representation of the path with query string
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) String() string {
+func (o *GetIdentityFailedServiceRequestsURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *GetIdentityFailedServiceRequestsURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetIdentityPostureDataFailedServiceRequestsURL")
+		return nil, errors.New("scheme is required for a full url on GetIdentityFailedServiceRequestsURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetIdentityPostureDataFailedServiceRequestsURL")
+		return nil, errors.New("host is required for a full url on GetIdentityFailedServiceRequestsURL")
 	}
 
 	base, err := o.Build()
@@ -118,6 +118,6 @@ func (o *GetIdentityPostureDataFailedServiceRequestsURL) BuildFull(scheme, host 
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetIdentityPostureDataFailedServiceRequestsURL) StringFull(scheme, host string) string {
+func (o *GetIdentityFailedServiceRequestsURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

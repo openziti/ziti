@@ -244,28 +244,28 @@ func MapPostureCheckFailureMfaToRestModel(failure *model.PostureCheckFailure) *r
 	return ret
 }
 
-func MapPostureDataSessionRequestFailuresToRestModel(sessionRequestFailures []*model.PostureSessionRequestFailure) []*rest_model.SessionRequestFailure {
-	ret := []*rest_model.SessionRequestFailure{}
+func MapPostureDataFailedSessionRequestToRestModel(modelFailedSessionRequests []*model.PostureSessionRequestFailure) []*rest_model.FailedSessionRequest {
+	ret := []*rest_model.FailedSessionRequest{}
 
-	for _, pdSessionRequestFailure := range sessionRequestFailures {
-		sessionRequestFailure := &rest_model.SessionRequestFailure{
-			APISessionID:   pdSessionRequestFailure.ApiSessionId,
+	for _, modelFailedSessionRequest := range modelFailedSessionRequests {
+		failedSessionRequest := &rest_model.FailedSessionRequest{
+			APISessionID:   modelFailedSessionRequest.ApiSessionId,
 			PolicyFailures: []*rest_model.PolicyFailure{},
-			ServiceID:      pdSessionRequestFailure.ServiceId,
-			ServiceName:    pdSessionRequestFailure.ServiceName,
-			SessionType:    rest_model.DialBind(pdSessionRequestFailure.SessionType),
-			When:           toStrFmtDateTime(pdSessionRequestFailure.When),
+			ServiceID:      modelFailedSessionRequest.ServiceId,
+			ServiceName:    modelFailedSessionRequest.ServiceName,
+			SessionType:    rest_model.DialBind(modelFailedSessionRequest.SessionType),
+			When:           toStrFmtDateTime(modelFailedSessionRequest.When),
 		}
 
-		for _, pdPolicyFailure := range pdSessionRequestFailure.PolicyFailures {
+		for _, modelPolicyFailure := range modelFailedSessionRequest.PolicyFailures {
 			policyFailure := &rest_model.PolicyFailure{
-				PolicyID:   pdPolicyFailure.PolicyId,
-				PolicyName: pdPolicyFailure.PolicyName,
+				PolicyID:   modelPolicyFailure.PolicyId,
+				PolicyName: modelPolicyFailure.PolicyName,
 			}
 
 			checks := []rest_model.PostureCheckFailure{}
 
-			for _, pdCheck := range pdPolicyFailure.Checks {
+			for _, pdCheck := range modelPolicyFailure.Checks {
 				switch pdCheck.PostureCheckType {
 				case string(rest_model.PostureCheckTypePROCESS):
 					checks = append(checks, MapPostureCheckFailureProcessToRestModel(pdCheck))
@@ -281,10 +281,10 @@ func MapPostureDataSessionRequestFailuresToRestModel(sessionRequestFailures []*m
 				policyFailure.SetChecks(checks)
 			}
 
-			sessionRequestFailure.PolicyFailures = append(sessionRequestFailure.PolicyFailures, policyFailure)
+			failedSessionRequest.PolicyFailures = append(failedSessionRequest.PolicyFailures, policyFailure)
 		}
 
-		ret = append(ret, sessionRequestFailure)
+		ret = append(ret, failedSessionRequest)
 	}
 
 	return ret

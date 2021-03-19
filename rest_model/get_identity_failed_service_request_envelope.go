@@ -36,22 +36,22 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// GetIdentityPostureDataFailedServiceRequestEnvelope get identity posture data failed service request envelope
+// GetIdentityFailedServiceRequestEnvelope get identity failed service request envelope
 //
-// swagger:model getIdentityPostureDataFailedServiceRequestEnvelope
-type GetIdentityPostureDataFailedServiceRequestEnvelope struct {
+// swagger:model getIdentityFailedServiceRequestEnvelope
+type GetIdentityFailedServiceRequestEnvelope struct {
 
 	// data
 	// Required: true
-	Data PostureDataFailedServiceRequestList `json:"data"`
+	Data FailedServiceRequestList `json:"data"`
 
 	// meta
 	// Required: true
 	Meta *Meta `json:"meta"`
 }
 
-// Validate validates this get identity posture data failed service request envelope
-func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) Validate(formats strfmt.Registry) error {
+// Validate validates this get identity failed service request envelope
+func (m *GetIdentityFailedServiceRequestEnvelope) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateData(formats); err != nil {
@@ -68,7 +68,7 @@ func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) Validate(formats st
 	return nil
 }
 
-func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateData(formats strfmt.Registry) error {
+func (m *GetIdentityFailedServiceRequestEnvelope) validateData(formats strfmt.Registry) error {
 
 	if err := validate.Required("data", "body", m.Data); err != nil {
 		return err
@@ -84,7 +84,7 @@ func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateData(format
 	return nil
 }
 
-func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateMeta(formats strfmt.Registry) error {
+func (m *GetIdentityFailedServiceRequestEnvelope) validateMeta(formats strfmt.Registry) error {
 
 	if err := validate.Required("meta", "body", m.Meta); err != nil {
 		return err
@@ -103,7 +103,7 @@ func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) validateMeta(format
 }
 
 // MarshalBinary interface implementation
-func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) MarshalBinary() ([]byte, error) {
+func (m *GetIdentityFailedServiceRequestEnvelope) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -111,8 +111,8 @@ func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) MarshalBinary() ([]
 }
 
 // UnmarshalBinary interface implementation
-func (m *GetIdentityPostureDataFailedServiceRequestEnvelope) UnmarshalBinary(b []byte) error {
-	var res GetIdentityPostureDataFailedServiceRequestEnvelope
+func (m *GetIdentityFailedServiceRequestEnvelope) UnmarshalBinary(b []byte) error {
+	var res GetIdentityFailedServiceRequestEnvelope
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

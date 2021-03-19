@@ -35,25 +35,25 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// GetIdentityPostureDataFailedServiceRequestsHandlerFunc turns a function with the right signature into a get identity posture data failed service requests handler
-type GetIdentityPostureDataFailedServiceRequestsHandlerFunc func(GetIdentityPostureDataFailedServiceRequestsParams, interface{}) middleware.Responder
+// GetIdentityFailedServiceRequestsHandlerFunc turns a function with the right signature into a get identity failed service requests handler
+type GetIdentityFailedServiceRequestsHandlerFunc func(GetIdentityFailedServiceRequestsParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn GetIdentityPostureDataFailedServiceRequestsHandlerFunc) Handle(params GetIdentityPostureDataFailedServiceRequestsParams, principal interface{}) middleware.Responder {
+func (fn GetIdentityFailedServiceRequestsHandlerFunc) Handle(params GetIdentityFailedServiceRequestsParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// GetIdentityPostureDataFailedServiceRequestsHandler interface for that can handle valid get identity posture data failed service requests params
-type GetIdentityPostureDataFailedServiceRequestsHandler interface {
-	Handle(GetIdentityPostureDataFailedServiceRequestsParams, interface{}) middleware.Responder
+// GetIdentityFailedServiceRequestsHandler interface for that can handle valid get identity failed service requests params
+type GetIdentityFailedServiceRequestsHandler interface {
+	Handle(GetIdentityFailedServiceRequestsParams, interface{}) middleware.Responder
 }
 
-// NewGetIdentityPostureDataFailedServiceRequests creates a new http.Handler for the get identity posture data failed service requests operation
-func NewGetIdentityPostureDataFailedServiceRequests(ctx *middleware.Context, handler GetIdentityPostureDataFailedServiceRequestsHandler) *GetIdentityPostureDataFailedServiceRequests {
-	return &GetIdentityPostureDataFailedServiceRequests{Context: ctx, Handler: handler}
+// NewGetIdentityFailedServiceRequests creates a new http.Handler for the get identity failed service requests operation
+func NewGetIdentityFailedServiceRequests(ctx *middleware.Context, handler GetIdentityFailedServiceRequestsHandler) *GetIdentityFailedServiceRequests {
+	return &GetIdentityFailedServiceRequests{Context: ctx, Handler: handler}
 }
 
-/*GetIdentityPostureDataFailedServiceRequests swagger:route GET /identities/{id}/posture-data/failed-service-requests Identity getIdentityPostureDataFailedServiceRequests
+/*GetIdentityFailedServiceRequests swagger:route GET /identities/{id}/failed-service-requests Identity getIdentityFailedServiceRequests
 
 Retrieve a list of the most recent service failure requests due to posture checks
 
@@ -63,17 +63,17 @@ the historical posture data and posture check configuration.
 
 
 */
-type GetIdentityPostureDataFailedServiceRequests struct {
+type GetIdentityFailedServiceRequests struct {
 	Context *middleware.Context
-	Handler GetIdentityPostureDataFailedServiceRequestsHandler
+	Handler GetIdentityFailedServiceRequestsHandler
 }
 
-func (o *GetIdentityPostureDataFailedServiceRequests) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *GetIdentityFailedServiceRequests) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		r = rCtx
 	}
-	var Params = NewGetIdentityPostureDataFailedServiceRequestsParams()
+	var Params = NewGetIdentityFailedServiceRequestsParams()
 
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
