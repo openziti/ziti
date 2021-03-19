@@ -24,17 +24,15 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 const (
+	FieldEdgeRouters           = "edgeRouters"
 	FieldEdgeRouterCertPEM     = "certPem"
 	FieldEdgeRouterIsVerified  = "isVerified"
 	FieldEdgeRouterHostname    = "hostname"
 	FieldEdgeRouterProtocols   = "protocols"
 	FieldEdgeRouterEnrollments = "enrollments"
-
-	MethodEnrollEdgeRouterOtt = "erott"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -55,12 +53,6 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 	RoleAttributes      []string
 	Enrollments         []string
-
-	//old v4, migrations only
-	EnrollmentToken     *string
-	EnrollmentJwt       *string
-	EnrollmentCreatedAt *time.Time
-	EnrollmentExpiresAt *time.Time
 }
 
 func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
