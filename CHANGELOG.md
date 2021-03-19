@@ -10,6 +10,8 @@
 * Immediately close router ctrl channel connection if fingerprint validation fails
 * Immediately close router ctrl channel if no version info is provided
 * Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and Edge Sessions
+* Fixed posture check error responses to include only failed checks
+* Add Service Request Failures for Posture Checks
 
 ### Idle Route Garbage Collection
 
@@ -80,6 +82,92 @@ Example Output:
 [  47.104]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing api Sessions
 [  55.866]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing api session indexes
 [  58.325]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing edge session indexes
+```
+
+### Add Service Request Failures for Posture Checks
+
+When a Ziti Identity (endpoint) requests a service that is provided via a Service Policy with
+Posture Checks associated with it, failure to meet the Posture Check requirements results in
+an error message with a code of `INVALID_POSTURE` and data elaborating on what Service Policies ids and
+Posture Check ids failed. Additionally, now the controller will log the most recent requests and provide
+detailed error output for administrators.
+
+The output will show every Service Policy that was checked for access and every Posture Check that failed.
+The failed Posture Checks include the Posture Data that was available for the identity and the
+requirements defined in the Posture Check at the time of the Edge Session request.
+
+New Endpoint: `GET /identities/{id}/failed-service-requests`
+
+Example Output:
+
+```
+{
+    "data": [
+        {
+            "apiSessionId": "ckmgcom680002cc61hggmcy1n",
+            "policyFailures": [
+                {
+                    "policyId": "eqggCQlBm",
+                    "policyName": "alldial",
+                    "checks": [
+                        {
+                            "actualValue": {
+                                "hash": "123",
+                                "isRunning": true,
+                                "signerFingerprints": [
+                                    "834f29a60152ce36eb54af37ca5f8ec029eccf01",
+                                    "123248b9e8b0dd41938018a871a13dd92bed4456"
+                                ]
+                            },
+                            "expectedValue": {
+                                "hashes": [
+                                    "3af35956a71c2afefbfe356f86c9139725eeecb15f0de7d98557d4d696c434f51fbc2fa5f7543aef4f5f1afb83caa4a43619973bae52e1f4f92ec10c39b039e8"
+                                ],
+                                "osType": "Windows",
+                                "path": "C:\\Program Files\\TestApp\\test.exe",
+                                "signerFingerprint": "834f29a60152ce36eb54af37ca5f8ec029eccf01"
+                            },
+                            "postureCheckId": "UF9aOqlD3",
+                            "postureCheckName": "processCheck",
+                            "postureCheckType": "PROCESS"
+                        },
+                        {
+                            "actualValue": {
+                                "type": "Windows",
+                                "version": "6.0.18364"
+                            },
+                            "expectedValue": [
+                                {
+                                    "type": "Windows",
+                                    "versions": [
+                                        ">=10.0.18364 <=10.0.19041"
+                                    ]
+                                }
+                            ],
+                            "postureCheckId": "fK0aOQFD3",
+                            "postureCheckName": "osCheck",
+                            "postureCheckType": "OS"
+                        },
+                        {
+                            "actualValue": "wrong.com",
+                            "expectedValue": [
+                                "right.com"
+                            ],
+                            "postureCheckId": "i2wgOQlBm",
+                            "postureCheckName": "domainCheck",
+                            "postureCheckType": "DOMAIN"
+                        }
+                    ]
+                }
+            ],
+            "serviceId": "ll-aOqFDm",
+            "serviceName": "test-service",
+            "sessionType": "Dial",
+            "when": "2021-03-19T09:41:10.117-04:00"
+        }
+    ],
+    "meta": {}
+}
 ```
 
 # Release 0.19.6
