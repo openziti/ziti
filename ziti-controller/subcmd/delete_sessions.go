@@ -86,7 +86,7 @@ func deleteSessions(_ *cobra.Command, args []string) {
 					count++
 					return nil
 				})
-				logger.Infof("existing API Sessions: %v", count)
+				logger.Infof("existing api Sessions: %v", count)
 			}
 
 			sessionBucket := root.Bucket([]byte(SessionBucketName))
@@ -145,7 +145,7 @@ func deleteSessions(_ *cobra.Command, args []string) {
 				if err := root.DeleteBucket([]byte(ApiSessionBucketName)); err != nil {
 					logger.Infof("could not delete apiSessions: %v", err)
 				} else {
-					logger.Infof("done removing API Sessions")
+					logger.Infof("done removing api Sessions")
 				}
 			}
 
