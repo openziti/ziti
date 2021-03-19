@@ -6243,11 +6243,17 @@ func init() {
             "identityId",
             "configTypes",
             "ipAddress",
-            "authQueries"
+            "authQueries",
+            "cachedUpdatedAt",
+            "isMfaEnabled"
           ],
           "properties": {
             "authQueries": {
               "$ref": "#/definitions/authQueryList"
+            },
+            "cachedLastActivityAt": {
+              "type": "string",
+              "format": "date-time"
             },
             "configTypes": {
               "type": "array",
@@ -6263,6 +6269,13 @@ func init() {
             },
             "ipAddress": {
               "type": "string"
+            },
+            "isMfaEnabled": {
+              "type": "boolean"
+            },
+            "lastActivityAt": {
+              "type": "string",
+              "format": "date-time"
             },
             "token": {
               "type": "string"
@@ -25896,11 +25909,17 @@ func init() {
             "identityId",
             "configTypes",
             "ipAddress",
-            "authQueries"
+            "authQueries",
+            "cachedUpdatedAt",
+            "isMfaEnabled"
           ],
           "properties": {
             "authQueries": {
               "$ref": "#/definitions/authQueryList"
+            },
+            "cachedLastActivityAt": {
+              "type": "string",
+              "format": "date-time"
             },
             "configTypes": {
               "type": "array",
@@ -25916,6 +25935,13 @@ func init() {
             },
             "ipAddress": {
               "type": "string"
+            },
+            "isMfaEnabled": {
+              "type": "boolean"
+            },
+            "lastActivityAt": {
+              "type": "string",
+              "format": "date-time"
             },
             "token": {
               "type": "string"

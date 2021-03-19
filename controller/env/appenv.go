@@ -56,14 +56,14 @@ import (
 	"time"
 )
 
+var _ model.Env = &AppEnv{}
+
 type AppEnv struct {
 	BoltStores             *persistence.Stores
 	Handlers               *model.Handlers
 	Config                 *edgeConfig.Config
 	EnrollmentJwtGenerator jwt.EnrollmentGenerator
 	Versions               *config.Versions
-	AuthHeaderName         string
-	AuthCookieName         string
 	ApiServerCsrSigner     cert.Signer
 	ApiClientCsrSigner     cert.Signer
 	ControlClientCsrSigner cert.Signer
@@ -138,6 +138,7 @@ type HostController interface {
 	RegisterXmgmt(x xmgmt.Xmgmt) error
 	GetNetwork() *network.Network
 	GetCloseNotifyChannel() <-chan struct{}
+	Shutdown()
 }
 
 type Schemes struct {
@@ -237,7 +238,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 		}
 	}
 
-	//updates updatedAt for session timeouts
+	//updates for session timeouts
 	if rc.ApiSession != nil {
 		ae.GetHandlers().ApiSession.MarkActivityById(rc.ApiSession.Id)
 	}
@@ -287,8 +288,6 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
-		AuthCookieName:     constants.ZitiSession,
-		AuthHeaderName:     constants.ZitiSession,
 		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
 		Api:                api,
@@ -394,15 +393,7 @@ func getJwtSigningMethod(cert *tls.Certificate) jwt2.SigningMethod {
 }
 
 func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
-	token := r.Header.Get(ae.AuthHeaderName)
-
-	if token == "" {
-		sessionCookie, _ := r.Cookie(ae.AuthCookieName)
-		if sessionCookie != nil {
-			token = sessionCookie.Value
-		}
-	}
-	return token
+	return r.Header.Get(constants.ZitiSession)
 }
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {

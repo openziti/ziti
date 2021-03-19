@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 17
+	CurrentDbVersion = 18
 	FieldVersion     = "version"
 )
 
@@ -126,6 +126,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 17 {
 		m.removeAllSessions(step)
+	}
+
+	if step.CurrentVersion < 18 {
+		m.setLastActivityAt(step)
 	}
 
 	// current version

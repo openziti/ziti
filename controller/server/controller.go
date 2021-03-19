@@ -34,6 +34,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/openziti/edge/controller/internal/policy"
@@ -280,11 +281,6 @@ func (c *Controller) Run() {
 			//after request context is filled so that api session is present for session expiration headers
 			response.AddHeaders(rc)
 
-			//attempt to patch in cookie support, Swagger/Open API 2.0 doesn't support defining it
-			if r.Header.Get(c.AppEnv.AuthHeaderName) == "" {
-				r.Header.Set(c.AppEnv.AuthHeaderName, c.AppEnv.GetSessionTokenFromRequest(r))
-			}
-
 			handler.ServeHTTP(rw, r)
 		})
 	})
@@ -350,33 +346,38 @@ func (c *Controller) RunAndWait() {
 }
 
 func (c *Controller) waitForShutdown() {
-	log := pfxlog.Logger()
+
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
 	<-ch
-
-	if c.config.Enabled {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-		defer cancel()
-
-		c.apiServer.Shutdown(ctx)
-	}
-
-	log.Info("shutting down")
-	os.Exit(0)
+	c.Shutdown()
 }
 
 func (c *Controller) Shutdown() {
+	log := pfxlog.Logger()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
+	pfxlog.Logger().Info("edge controller: shutting down...")
 	c.apiServer.Shutdown(ctx)
-	// _ = c.policyEngine.Stop()
 
 	c.AppEnv.Broker.Stop()
 
-	pfxlog.Logger().Info("edge controller shutting down")
+	c.AppEnv.GetHandlers().ApiSession.HeartbeatCollector.Stop()
+
+	pfxlog.Logger().Info("edge controller: stopped")
+
+	pfxlog.Logger().Info("fabric controller: shutting down...")
+
+	c.AppEnv.GetHostController().Shutdown()
+
+	pfxlog.Logger().Info("fabric controller: stopped")
+
+	log.Info("shutdown complete")
+
+	//if we reach here and the controller is still running, something hasn't been stopped
 }
 
 type subctrl struct {

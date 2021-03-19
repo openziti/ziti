@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/authentication"
+	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/errorz"
 	"net"
@@ -125,10 +126,11 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 
 	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	newApiSession := &model.ApiSession{
-		IdentityId:  identity.Id,
-		Token:       token,
-		ConfigTypes: configTypes,
-		IPAddress:   remoteIpStr,
+		IdentityId:     identity.Id,
+		Token:          token,
+		ConfigTypes:    configTypes,
+		IPAddress:      remoteIpStr,
+		LastActivityAt: time.Now().UTC(),
 	}
 
 	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)
@@ -157,7 +159,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 		rc.RespondWithApiError(errorz.NewUnauthorized())
 	}
 
-	apiSession := MapToCurrentApiSessionRestModel(filledApiSession, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession
 
 	//re-calc session headers as they were not set wwhen ApiSession == NIL
@@ -165,11 +167,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
-	expiration := time.Time(*apiSession.ExpiresAt)
-	cookie := http.Cookie{Name: ae.AuthCookieName, Value: token, Expires: expiration}
+	rc.ResponseWriter.Header().Set(constants.ZitiSession, filledApiSession.Token)
 
-	rc.ResponseWriter.Header().Set(ae.AuthHeaderName, filledApiSession.Token)
-	http.SetCookie(rc.ResponseWriter, &cookie)
 	ro.createTimer.UpdateSince(start)
 
 	rc.Respond(envelope, http.StatusOK)

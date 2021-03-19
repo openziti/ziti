@@ -4461,6 +4461,8 @@ definitions:
           - configTypes
           - ipAddress
           - authQueries
+          - cachedUpdatedAt
+          - isMfaEnabled
         properties:
           token:
             type: string
@@ -4476,6 +4478,16 @@ definitions:
               type: string
           authQueries:
             $ref: '#/definitions/authQueryList'
+          isMfaEnabled:
+            type: boolean
+          lastActivityAt:
+            type: string
+            format: date-time
+          cachedLastActivityAt:
+            type: string
+            format: date-time
+
+
   currentApiSessionDetail:
     description: An API Session object for the current API session
     type: object
@@ -5098,7 +5110,7 @@ definitions:
             type: string
           expiresAt:
             type: string
-            format: 'date-time'
+            format: date-time
           identityId:
             type: string
           identity:

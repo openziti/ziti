@@ -57,31 +57,43 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 	}
 }
 
-func MapToCurrentApiSessionRestModel(s *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
-	expiresAt := strfmt.DateTime(s.UpdatedAt.Add(sessionTimeout))
-	expirationSeconds := int64(s.ExpirationDuration.Seconds())
-
+func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 	authQueries := rest_model.AuthQueryList{}
+	isMfaEnabled := apiSession.MfaRequired && !apiSession.MfaComplete
 
-	if s.MfaRequired && !s.MfaComplete {
+	if isMfaEnabled {
 		authQueries = append(authQueries, newAuthCheckZitiMfa())
 	}
 
-	apiSession := &rest_model.CurrentAPISessionDetail{
+	lastActivityAt := apiSession.LastActivityAt
+	var cachedLastActivityAt time.Time
+	var ok bool
+
+	if cachedLastActivityAt, ok = ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
+		lastActivityAt = cachedLastActivityAt
+	}
+
+	expiresAt := strfmt.DateTime(lastActivityAt.Add(sessionTimeout))
+	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
+
+	ret := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail: rest_model.APISessionDetail{
-			BaseEntity:  BaseEntityToRestModel(s, CurrentApiSessionLinkFactory),
-			ConfigTypes: stringz.SetToSlice(s.ConfigTypes),
-			Identity:    ToEntityRef(s.Identity.Name, s.Identity, IdentityLinkFactory),
-			IdentityID:  &s.IdentityId,
-			IPAddress:   &s.IPAddress,
-			Token:       &s.Token,
-			AuthQueries: authQueries,
+			BaseEntity:           BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
+			ConfigTypes:          stringz.SetToSlice(apiSession.ConfigTypes),
+			Identity:             ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+			IdentityID:           &apiSession.IdentityId,
+			IPAddress:            &apiSession.IPAddress,
+			Token:                &apiSession.Token,
+			AuthQueries:          authQueries,
+			IsMfaEnabled:         &isMfaEnabled,
+			LastActivityAt:       strfmt.DateTime(lastActivityAt),
+			CachedLastActivityAt: strfmt.DateTime(cachedLastActivityAt),
 		},
 		ExpiresAt:         &expiresAt,
 		ExpirationSeconds: &expirationSeconds,
 	}
 
-	return apiSession
+	return ret
 }
 
 func MapApiSessionCertificateToRestEntity(appEnv *env.AppEnv, context *response.RequestContext, e models.Entity) (interface{}, error) {

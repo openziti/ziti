@@ -74,7 +74,7 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 }
 
 func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	apiSession := MapToCurrentApiSessionRestModel(rc.ApiSession, ae.Config.SessionTimeoutDuration())
+	apiSession := MapToCurrentApiSessionRestModel(ae, rc.ApiSession, ae.Config.SessionTimeoutDuration())
 	rc.Respond(rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}, http.StatusOK)
 }
 

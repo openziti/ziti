@@ -21,25 +21,28 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 const (
-	FieldApiSessionIdentity    = "identity"
-	FieldApiSessionToken       = "token"
-	FieldApiSessionConfigTypes = "configTypes"
-	FieldApiSessionIPAddress   = "ipAddress"
-	FieldAPiSessionMfaComplete = "mfaComplete"
-	FieldAPiSessionMfaRequired = "mfaRequired"
+	FieldApiSessionIdentity       = "identity"
+	FieldApiSessionToken          = "token"
+	FieldApiSessionConfigTypes    = "configTypes"
+	FieldApiSessionIPAddress      = "ipAddress"
+	FieldApiSessionMfaComplete    = "mfaComplete"
+	FieldApiSessionMfaRequired    = "mfaRequired"
+	FieldApiSessionLastActivityAt = "lastActivityAt"
 )
 
 type ApiSession struct {
 	boltz.BaseExtEntity
-	IdentityId  string
-	Token       string
-	IPAddress   string
-	ConfigTypes []string
-	MfaComplete bool
-	MfaRequired bool
+	IdentityId     string
+	Token          string
+	IPAddress      string
+	ConfigTypes    []string
+	MfaComplete    bool
+	MfaRequired    bool
+	LastActivityAt time.Time
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -56,8 +59,13 @@ func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
 	entity.ConfigTypes = bucket.GetStringList(FieldApiSessionConfigTypes)
 	entity.IPAddress = bucket.GetStringWithDefault(FieldApiSessionIPAddress, "")
-	entity.MfaComplete = bucket.GetBoolWithDefault(FieldAPiSessionMfaComplete, false)
-	entity.MfaRequired = bucket.GetBoolWithDefault(FieldAPiSessionMfaRequired, false)
+	entity.MfaComplete = bucket.GetBoolWithDefault(FieldApiSessionMfaComplete, false)
+	entity.MfaRequired = bucket.GetBoolWithDefault(FieldApiSessionMfaRequired, false)
+	lastActivityAt := bucket.GetTime(FieldApiSessionLastActivityAt) //not orError due to migration v18
+
+	if lastActivityAt != nil {
+		entity.LastActivityAt = *lastActivityAt
+	}
 }
 
 func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
@@ -66,8 +74,9 @@ func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldApiSessionToken, entity.Token)
 	ctx.SetStringList(FieldApiSessionConfigTypes, entity.ConfigTypes)
 	ctx.SetString(FieldApiSessionIPAddress, entity.IPAddress)
-	ctx.SetBool(FieldAPiSessionMfaComplete, entity.MfaComplete)
-	ctx.SetBool(FieldAPiSessionMfaRequired, entity.MfaRequired)
+	ctx.SetBool(FieldApiSessionMfaComplete, entity.MfaComplete)
+	ctx.SetBool(FieldApiSessionMfaRequired, entity.MfaRequired)
+	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
 }
 
 func (entity *ApiSession) GetEntityType() string {
@@ -110,6 +119,7 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	symbolToken := store.AddSymbol(FieldApiSessionToken, ast.NodeTypeString)
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 	store.symbolIdentity = store.AddFkSymbol(FieldApiSessionIdentity, store.stores.identity)
+	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
 
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)
 }
@@ -139,4 +149,10 @@ func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*A
 		return nil, err
 	}
 	return entity, nil
+}
+
+type UpdateLastActivityAtChecker struct{}
+
+func (u UpdateLastActivityAtChecker) IsUpdated(field string) bool {
+	return field == FieldApiSessionLastActivityAt
 }

@@ -46,6 +46,10 @@ type APISessionDetail struct {
 	// Required: true
 	AuthQueries AuthQueryList `json:"authQueries"`
 
+	// cached last activity at
+	// Format: date-time
+	CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
+
 	// config types
 	// Required: true
 	ConfigTypes []string `json:"configTypes"`
@@ -61,6 +65,14 @@ type APISessionDetail struct {
 	// ip address
 	// Required: true
 	IPAddress *string `json:"ipAddress"`
+
+	// is mfa enabled
+	// Required: true
+	IsMfaEnabled *bool `json:"isMfaEnabled"`
+
+	// last activity at
+	// Format: date-time
+	LastActivityAt strfmt.DateTime `json:"lastActivityAt,omitempty"`
 
 	// token
 	// Required: true
@@ -80,6 +92,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		AuthQueries AuthQueryList `json:"authQueries"`
 
+		CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
+
 		ConfigTypes []string `json:"configTypes"`
 
 		Identity *EntityRef `json:"identity"`
@@ -87,6 +101,10 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 		IdentityID *string `json:"identityId"`
 
 		IPAddress *string `json:"ipAddress"`
+
+		IsMfaEnabled *bool `json:"isMfaEnabled"`
+
+		LastActivityAt strfmt.DateTime `json:"lastActivityAt,omitempty"`
 
 		Token *string `json:"token"`
 	}
@@ -96,6 +114,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 
 	m.AuthQueries = dataAO1.AuthQueries
 
+	m.CachedLastActivityAt = dataAO1.CachedLastActivityAt
+
 	m.ConfigTypes = dataAO1.ConfigTypes
 
 	m.Identity = dataAO1.Identity
@@ -103,6 +123,10 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	m.IdentityID = dataAO1.IdentityID
 
 	m.IPAddress = dataAO1.IPAddress
+
+	m.IsMfaEnabled = dataAO1.IsMfaEnabled
+
+	m.LastActivityAt = dataAO1.LastActivityAt
 
 	m.Token = dataAO1.Token
 
@@ -121,6 +145,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		AuthQueries AuthQueryList `json:"authQueries"`
 
+		CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
+
 		ConfigTypes []string `json:"configTypes"`
 
 		Identity *EntityRef `json:"identity"`
@@ -129,10 +155,16 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 
 		IPAddress *string `json:"ipAddress"`
 
+		IsMfaEnabled *bool `json:"isMfaEnabled"`
+
+		LastActivityAt strfmt.DateTime `json:"lastActivityAt,omitempty"`
+
 		Token *string `json:"token"`
 	}
 
 	dataAO1.AuthQueries = m.AuthQueries
+
+	dataAO1.CachedLastActivityAt = m.CachedLastActivityAt
 
 	dataAO1.ConfigTypes = m.ConfigTypes
 
@@ -141,6 +173,10 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IdentityID = m.IdentityID
 
 	dataAO1.IPAddress = m.IPAddress
+
+	dataAO1.IsMfaEnabled = m.IsMfaEnabled
+
+	dataAO1.LastActivityAt = m.LastActivityAt
 
 	dataAO1.Token = m.Token
 
@@ -165,6 +201,10 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateCachedLastActivityAt(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateConfigTypes(formats); err != nil {
 		res = append(res, err)
 	}
@@ -178,6 +218,14 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateIPAddress(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsMfaEnabled(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateLastActivityAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -201,6 +249,19 @@ func (m *APISessionDetail) validateAuthQueries(formats strfmt.Registry) error {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("authQueries")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateCachedLastActivityAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.CachedLastActivityAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("cachedLastActivityAt", "body", "date-time", m.CachedLastActivityAt.String(), formats); err != nil {
 		return err
 	}
 
@@ -246,6 +307,28 @@ func (m *APISessionDetail) validateIdentityID(formats strfmt.Registry) error {
 func (m *APISessionDetail) validateIPAddress(formats strfmt.Registry) error {
 
 	if err := validate.Required("ipAddress", "body", m.IPAddress); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateIsMfaEnabled(formats strfmt.Registry) error {
+
+	if err := validate.Required("isMfaEnabled", "body", m.IsMfaEnabled); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateLastActivityAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.LastActivityAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("lastActivityAt", "body", "date-time", m.LastActivityAt.String(), formats); err != nil {
 		return err
 	}
 

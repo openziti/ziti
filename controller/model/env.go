@@ -45,6 +45,7 @@ type Env interface {
 
 type HostController interface {
 	GetNetwork() *network.Network
+	Shutdown()
 }
 
 type Schemas interface {
