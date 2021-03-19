@@ -47,7 +47,7 @@ func MapPostureCheckTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, 
 
 func MapPostureCheckTypeToRestModel(postureCheckType *model.PostureCheckType) *rest_model.PostureCheckTypeDetail {
 
-	operatingSystems := rest_model.OperatingSystemArray{}
+	operatingSystems := []*rest_model.OperatingSystem{}
 
 	for _, os := range postureCheckType.OperatingSystems {
 

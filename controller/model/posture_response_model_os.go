@@ -28,6 +28,6 @@ type PostureResponseOs struct {
 }
 
 func (pr *PostureResponseOs) Apply(postureData *PostureData) {
-	postureData.Os = pr
-	postureData.Os.LastUpdatedAt = time.Now()
+	postureData.Os = *pr
+	postureData.Os.LastUpdatedAt = time.Now().UTC()
 }

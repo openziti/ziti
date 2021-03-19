@@ -120,6 +120,10 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(r.getPostureData, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
+	ae.Api.IdentityGetIdentityPostureDataFailedServiceRequestsHandler = identity.GetIdentityPostureDataFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityPostureDataFailedServiceRequestsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.getPostureDataFailedServiceRequests, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
 	// mfa
 	ae.Api.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.removeMfa, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
@@ -293,7 +297,14 @@ func (r *IdentityRouter) getPostureData(ae *env.AppEnv, rc *response.RequestCont
 	id, _ := rc.GetEntityId()
 	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
 
-	rc.RespondWithOk(postureData, nil)
+	rc.RespondWithOk(MapPostureDataToRestModel(ae, postureData), &rest_model.Meta{})
+}
+
+func (r *IdentityRouter) getPostureDataFailedServiceRequests(ae *env.AppEnv, rc *response.RequestContext) {
+	id, _ := rc.GetEntityId()
+	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
+
+	rc.RespondWithOk(MapPostureDataSessionRequestFailuresToRestModel(postureData.SessionRequestFailures), &rest_model.Meta{})
 }
 
 func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) {

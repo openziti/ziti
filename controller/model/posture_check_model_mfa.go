@@ -22,7 +22,22 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+var _ PostureCheckSubType = &PostureCheckMfa{}
+
 type PostureCheckMfa struct {
+}
+
+func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) PostureCheckFailureValues {
+	ret := &PostureCheckFailureValuesMfa{
+		ActualValue:   false,
+		ExpectedValue: true,
+	}
+
+	if val, ok := pd.ApiSessions[apiSessionId]; ok {
+		ret.ActualValue = val.Mfa.PassedMfa
+	}
+
+	return ret
 }
 
 func (p *PostureCheckMfa) Evaluate(apiSessionId string, pd *PostureData) bool {
@@ -59,4 +74,17 @@ func (p *PostureCheckMfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (
 
 func (p *PostureCheckMfa) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckMfa{}, nil
+}
+
+type PostureCheckFailureValuesMfa struct {
+	ActualValue   bool
+	ExpectedValue bool
+}
+
+func (p PostureCheckFailureValuesMfa) Expected() interface{} {
+	return p.ExpectedValue
+}
+
+func (p PostureCheckFailureValuesMfa) Actual() interface{} {
+	return p.ActualValue
 }

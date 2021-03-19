@@ -17,14 +17,11 @@
 package model
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -54,99 +51,6 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	}
 	if apiSession == nil {
 		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
-	}
-
-	service, err := handler.GetEnv().GetHandlers().EdgeService.ReadForIdentityInTx(tx, entity.ServiceId, apiSession.IdentityId, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if entity.Type == "" {
-		entity.Type = persistence.SessionTypeDial
-	}
-
-	if persistence.SessionTypeDial == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeDialName) {
-		return nil, errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
-	}
-
-	if persistence.SessionTypeBind == entity.Type && !stringz.Contains(service.Permissions, persistence.PolicyTypeBindName) {
-		return nil, errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
-	}
-
-	checkCache := map[string]bool{} //cache individual check status
-	validPosture := false
-	hasMatchingPolicies := false
-
-	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
-
-	for policyId, postureChecks := range postureCheckMap {
-		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
-
-		if err != nil {
-			continue
-		}
-
-		if policy.PolicyType != entity.Type {
-			continue
-		}
-		hasMatchingPolicies = true
-		isPolicyPassing := true
-
-		for _, postureCheck := range postureChecks {
-
-			isCheckPassing := true
-			found := false
-			if isCheckPassing, found = checkCache[postureCheck.Id]; !found {
-				isCheckPassing = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(apiSession.IdentityId, apiSession.Id, postureCheck)
-				checkCache[postureCheck.Id] = isCheckPassing
-			}
-
-			if !isCheckPassing {
-				isPolicyPassing = false //failed, move to next policy
-				break
-			}
-		}
-		if isPolicyPassing {
-			validPosture = true
-			break
-		}
-	}
-
-	if hasMatchingPolicies && !validPosture {
-		var policyIds []string
-
-		dataMap := map[string]interface{}{}
-
-		for policyId, checks := range postureCheckMap {
-			policyIds = append(policyIds, policyId)
-
-			var queries []interface{}
-
-			for _, check := range checks {
-				queries = append(queries, map[string]interface{}{
-					"id":        check.Id,
-					"typeId":    check.TypeId,
-					"isPassing": checkCache[check.Id],
-				})
-			}
-
-			dataMap[policyId] = queries
-		}
-
-		cause := apierror.GenericCauseError{
-			Message: fmt.Sprintf("Failed to pass posture checks for service policies: %v", policyIds),
-			DataMap: dataMap,
-		}
-		return nil, apierror.NewInvalidPosture(cause)
-	}
-
-	maxRows := 1
-	result, err := handler.GetEnv().GetHandlers().EdgeRouter.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, entity.ServiceId, &maxRows)
-	if err != nil {
-		return nil, err
-	}
-	if result.Count < 1 {
-		return nil, apierror.NewNoEdgeRoutersAvailable()
 	}
 
 	boltEntity := &persistence.Session{

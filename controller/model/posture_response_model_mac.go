@@ -33,6 +33,6 @@ func (pr *PostureResponseMac) Apply(postureData *PostureData) {
 
 	pr.Addresses = cleanedAddresses
 
-	postureData.Mac = pr
-	postureData.Mac.LastUpdatedAt = time.Now()
+	postureData.Mac = *pr
+	postureData.Mac.LastUpdatedAt = time.Now().UTC()
 }

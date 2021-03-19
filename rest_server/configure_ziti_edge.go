@@ -546,6 +546,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.GetIdentityPostureData has not yet been implemented")
 		})
 	}
+	if api.IdentityGetIdentityPostureDataFailedServiceRequestsHandler == nil {
+		api.IdentityGetIdentityPostureDataFailedServiceRequestsHandler = identity.GetIdentityPostureDataFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityPostureDataFailedServiceRequestsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityPostureDataFailedServiceRequests has not yet been implemented")
+		})
+	}
 	if api.APISessionListAPISessionsHandler == nil {
 		api.APISessionListAPISessionsHandler = api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.ListAPISessions has not yet been implemented")

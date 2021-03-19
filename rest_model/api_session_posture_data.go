@@ -36,29 +36,21 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// GetIdentityPostureDataEnvelope get identity posture data envelope
+// APISessionPostureData api session posture data
 //
-// swagger:model getIdentityPostureDataEnvelope
-type GetIdentityPostureDataEnvelope struct {
+// swagger:model apiSessionPostureData
+type APISessionPostureData struct {
 
-	// data
+	// mfa
 	// Required: true
-	Data *PostureData `json:"data"`
-
-	// meta
-	// Required: true
-	Meta *Meta `json:"meta"`
+	Mfa *PostureDataMfa `json:"mfa"`
 }
 
-// Validate validates this get identity posture data envelope
-func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error {
+// Validate validates this api session posture data
+func (m *APISessionPostureData) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateData(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateMeta(formats); err != nil {
+	if err := m.validateMfa(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -68,34 +60,16 @@ func (m *GetIdentityPostureDataEnvelope) Validate(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *GetIdentityPostureDataEnvelope) validateData(formats strfmt.Registry) error {
+func (m *APISessionPostureData) validateMfa(formats strfmt.Registry) error {
 
-	if err := validate.Required("data", "body", m.Data); err != nil {
+	if err := validate.Required("mfa", "body", m.Mfa); err != nil {
 		return err
 	}
 
-	if m.Data != nil {
-		if err := m.Data.Validate(formats); err != nil {
+	if m.Mfa != nil {
+		if err := m.Mfa.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("data")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *GetIdentityPostureDataEnvelope) validateMeta(formats strfmt.Registry) error {
-
-	if err := validate.Required("meta", "body", m.Meta); err != nil {
-		return err
-	}
-
-	if m.Meta != nil {
-		if err := m.Meta.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("meta")
+				return ve.ValidateName("mfa")
 			}
 			return err
 		}
@@ -105,7 +79,7 @@ func (m *GetIdentityPostureDataEnvelope) validateMeta(formats strfmt.Registry) e
 }
 
 // MarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
+func (m *APISessionPostureData) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -113,8 +87,8 @@ func (m *GetIdentityPostureDataEnvelope) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *GetIdentityPostureDataEnvelope) UnmarshalBinary(b []byte) error {
-	var res GetIdentityPostureDataEnvelope
+func (m *APISessionPostureData) UnmarshalBinary(b []byte) error {
+	var res APISessionPostureData
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

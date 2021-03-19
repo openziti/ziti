@@ -28,6 +28,7 @@ import (
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
+	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
@@ -75,6 +76,7 @@ type AppEnv struct {
 	Api                    *operations.ZitiEdgeAPI
 	IdentityRefreshMap     cmap.ConcurrentMap
 	StartupTime            time.Time
+	InstanceId             string
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -288,6 +290,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
+		InstanceId:         cuid.New(),
 		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
 		Api:                api,

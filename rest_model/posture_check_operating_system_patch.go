@@ -32,10 +32,12 @@ package rest_model
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // PostureCheckOperatingSystemPatch posture check operating system patch
@@ -49,7 +51,8 @@ type PostureCheckOperatingSystemPatch struct {
 	tagsField Tags
 
 	// operating systems
-	OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
+	// Min Items: 1
+	OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 }
 
 // Name gets the name of this subtype
@@ -87,7 +90,8 @@ func (m *PostureCheckOperatingSystemPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// operating systems
-		OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
+		// Min Items: 1
+		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -136,7 +140,8 @@ func (m PostureCheckOperatingSystemPatch) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// operating systems
-		OperatingSystems OperatingSystemArray `json:"operatingSystems,omitempty"`
+		// Min Items: 1
+		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 	}{
 
 		OperatingSystems: m.OperatingSystems,
@@ -225,11 +230,26 @@ func (m *PostureCheckOperatingSystemPatch) validateOperatingSystems(formats strf
 		return nil
 	}
 
-	if err := m.OperatingSystems.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("operatingSystems")
-		}
+	iOperatingSystemsSize := int64(len(m.OperatingSystems))
+
+	if err := validate.MinItems("operatingSystems", "body", iOperatingSystemsSize, 1); err != nil {
 		return err
+	}
+
+	for i := 0; i < len(m.OperatingSystems); i++ {
+		if swag.IsZero(m.OperatingSystems[i]) { // not required
+			continue
+		}
+
+		if m.OperatingSystems[i] != nil {
+			if err := m.OperatingSystems[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

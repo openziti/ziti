@@ -32,6 +32,7 @@ package rest_model
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -61,7 +62,7 @@ type PostureCheckOperatingSystemDetail struct {
 
 	// operating systems
 	// Required: true
-	OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+	OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 }
 
 // Links gets the links of this subtype
@@ -159,7 +160,7 @@ func (m *PostureCheckOperatingSystemDetail) UnmarshalJSON(raw []byte) error {
 
 		// operating systems
 		// Required: true
-		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -235,7 +236,7 @@ func (m PostureCheckOperatingSystemDetail) MarshalJSON() ([]byte, error) {
 
 		// operating systems
 		// Required: true
-		OperatingSystems OperatingSystemArray `json:"operatingSystems"`
+		OperatingSystems []*OperatingSystem `json:"operatingSystems"`
 	}{
 
 		OperatingSystems: m.OperatingSystems,
@@ -441,11 +442,20 @@ func (m *PostureCheckOperatingSystemDetail) validateOperatingSystems(formats str
 		return err
 	}
 
-	if err := m.OperatingSystems.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("operatingSystems")
+	for i := 0; i < len(m.OperatingSystems); i++ {
+		if swag.IsZero(m.OperatingSystems[i]) { // not required
+			continue
 		}
-		return err
+
+		if m.OperatingSystems[i] != nil {
+			if err := m.OperatingSystems[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

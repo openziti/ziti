@@ -173,9 +173,6 @@ func newMatchingProcessCheckAndData() (*PostureCheckProcess, *PostureData) {
 	postureResponseProcess.PostureResponse = postureResponse
 
 	validPostureData := &PostureData{
-		Mac:    nil,
-		Domain: nil,
-		Os:     nil,
 		Processes: []*PostureResponseProcess{
 			postureResponseProcess,
 		},

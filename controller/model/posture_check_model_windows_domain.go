@@ -23,11 +23,30 @@ import (
 	"strings"
 )
 
-type PostureCheckWindowsDomains struct {
+var _ PostureCheckSubType = &PostureCheckDomains{}
+
+type PostureCheckDomains struct {
 	Domains []string
 }
 
-func (p *PostureCheckWindowsDomains) Evaluate(_ string, pd *PostureData) bool {
+func (p *PostureCheckDomains) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
+	return &PostureCheckFailureValuesDomain{
+		ActualValue:   pd.Domain.Name,
+		ExpectedValue: p.Domains,
+	}
+}
+
+func (p *PostureCheckDomains) ActualValue(apiSessionId string, pd *PostureData) interface{} {
+	return pd.Domain.Name
+}
+
+func (p *PostureCheckDomains) ExpectedValue() interface{} {
+	return map[string]interface{}{
+		"domains": p.Domains,
+	}
+}
+
+func (p *PostureCheckDomains) Evaluate(_ string, pd *PostureData) bool {
 	if pd.Domain.TimedOut {
 		return false
 	}
@@ -42,10 +61,10 @@ func (p *PostureCheckWindowsDomains) Evaluate(_ string, pd *PostureData) bool {
 }
 
 func newPostureCheckWindowsDomains() PostureCheckSubType {
-	return &PostureCheckWindowsDomains{}
+	return &PostureCheckDomains{}
 }
 
-func (p *PostureCheckWindowsDomains) fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckDomains) fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
@@ -56,20 +75,33 @@ func (p *PostureCheckWindowsDomains) fillFrom(handler Handler, tx *bbolt.Tx, che
 	return nil
 }
 
-func (p *PostureCheckWindowsDomains) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
 }
 
-func (p *PostureCheckWindowsDomains) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
 }
 
-func (p *PostureCheckWindowsDomains) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
+}
+
+type PostureCheckFailureValuesDomain struct {
+	ActualValue   string
+	ExpectedValue []string
+}
+
+func (p PostureCheckFailureValuesDomain) Expected() interface{} {
+	return p.ExpectedValue
+}
+
+func (p PostureCheckFailureValuesDomain) Actual() interface{} {
+	return p.ActualValue
 }

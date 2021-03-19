@@ -30,47 +30,76 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
-// OperatingSystemArray operating system array
+// PostureDataMfa posture data mfa
 //
-// swagger:model operatingSystemArray
-type OperatingSystemArray []*OperatingSystem
+// swagger:model postureDataMfa
+type PostureDataMfa struct {
 
-// Validate validates this operating system array
-func (m OperatingSystemArray) Validate(formats strfmt.Registry) error {
+	// api session Id
+	// Required: true
+	APISessionID *string `json:"apiSessionId"`
+
+	// passed mfa
+	// Required: true
+	PassedMfa *bool `json:"passedMfa"`
+}
+
+// Validate validates this posture data mfa
+func (m *PostureDataMfa) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	iOperatingSystemArraySize := int64(len(m))
-
-	if err := validate.MinItems("", "body", iOperatingSystemArraySize, 1); err != nil {
-		return err
+	if err := m.validateAPISessionID(formats); err != nil {
+		res = append(res, err)
 	}
 
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
-
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
+	if err := m.validatePassedMfa(formats); err != nil {
+		res = append(res, err)
 	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *PostureDataMfa) validateAPISessionID(formats strfmt.Registry) error {
+
+	if err := validate.Required("apiSessionId", "body", m.APISessionID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureDataMfa) validatePassedMfa(formats strfmt.Registry) error {
+
+	if err := validate.Required("passedMfa", "body", m.PassedMfa); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (m *PostureDataMfa) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
+}
+
+// UnmarshalBinary interface implementation
+func (m *PostureDataMfa) UnmarshalBinary(b []byte) error {
+	var res PostureDataMfa
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*m = res
 	return nil
 }

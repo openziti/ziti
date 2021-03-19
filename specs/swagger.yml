@@ -1565,7 +1565,6 @@ paths:
           description: An edge router patch object
           schema:
             $ref: '#/definitions/edgeRouterPatch'
-            $ref: '#/definitions/edgeRouterPatch'
       responses:
         '200':
           $ref: '#/responses/patchResponse'
@@ -2189,6 +2188,27 @@ paths:
       responses:
         '200':
           $ref: '#/responses/getIdentityPostureData'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/identities/{id}/posture-data/failed-service-requests':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieve a list of the most recent service failure requests due to posture checks
+      description: |
+        Returns a list of service session requests that failed due to posture checks. The entries will contain
+        every policy that was verified against and every failed check in each policy. Each check will include
+        the historical posture data and posture check configuration.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+      operationId: getIdentityPostureDataFailedServiceRequests
+      responses:
+        '200':
+          $ref: '#/responses/getIdentityPostureDataFailedServiceRequest'
         '404':
           $ref: '#/responses/notFoundResponse'
         '401':
@@ -4180,7 +4200,10 @@ responses:
     description: Returns the document that represents posture data
     schema:
       $ref: '#/definitions/getIdentityPostureDataEnvelope'
-
+  getIdentityPostureDataFailedServiceRequest:
+    description: Returns a list of service request failures
+    schema:
+      $ref: '#/definitions/getIdentityPostureDataFailedServiceRequestEnvelope'
   ###################################################################
   # Transit Routers
   ##################################################################
@@ -4378,11 +4401,6 @@ definitions:
         type: array
         items:
           type: string
-  operatingSystemArray:
-    type: array
-    minItems: 1
-    items:
-      $ref: '#/definitions/operatingSystem'
   process:
     type: object
     required:
@@ -4406,6 +4424,7 @@ definitions:
       - PROCESS
       - DOMAIN
       - MAC
+      - MFA
   ###################################################################
   # Authentication
   ##################################################################
@@ -6831,6 +6850,17 @@ definitions:
   ###################################################################
   # Posture Data
   ##################################################################
+  getIdentityPostureDataFailedServiceRequestEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/postureDataFailedServiceRequestList'
+
   getIdentityPostureDataEnvelope:
     type: object
     required:
@@ -6842,9 +6872,277 @@ definitions:
       data:
         $ref: '#/definitions/postureData'
 
+  postureDataBase:
+    type: object
+    required:
+      - postureCheckId
+      - timedOut
+      - lastUpdatedAt
+    properties:
+      postureCheckId:
+        type: string
+      timedOut:
+        type: boolean
+      lastUpdatedAt:
+        type: string
+        format: date-time
+
+  postureDataMac:
+    type: object
+    allOf:
+      - $ref: '#/definitions/postureDataBase'
+      - type: object
+        required:
+          - addresses
+        properties:
+          addresses:
+            type: array
+            items:
+              type: string
+
+  postureDataDomain:
+    type: object
+    allOf:
+      - $ref: '#/definitions/postureDataBase'
+      - type: object
+        required:
+          - domain
+        properties:
+          domain:
+            type: string
+
+  postureDataOs:
+    type: object
+    allOf:
+      - $ref: '#/definitions/postureDataBase'
+      - type: object
+        required:
+          - type
+          - version
+          - build
+        properties:
+          type:
+            type: string
+          version:
+            type: string
+          build:
+            type: string
+
+  postureDataProcess:
+    type: object
+    allOf:
+      - $ref: '#/definitions/postureDataBase'
+      - type: object
+        properties:
+          isRunning:
+            type: boolean
+          binaryHash:
+            type: string
+          signerFingerprints:
+            type: array
+            items:
+              type: string
+
+  postureDataMfa:
+    type: object
+    required:
+      - apiSessionId
+      - passedMfa
+    properties:
+      apiSessionId:
+        type: string
+      passedMfa:
+        type: boolean
+
+  apiSessionPostureData:
+    type: object
+    required:
+      - mfa
+    properties:
+      mfa:
+        $ref: '#/definitions/postureDataMfa'
+
+  postureCheckFailure:
+    type: object
+    discriminator: postureCheckType
+    required:
+      - postureCheckId
+      - postureCheckName
+      - postureCheckType
+    properties:
+      postureCheckId:
+        type: string
+      postureCheckName:
+        type: string
+      postureCheckType:
+        type: string
+
+  postureCheckFailureMacAddress:
+    x-class: MAC
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+        properties:
+          actualValue:
+            type: array
+            items:
+              type: string
+          expectedValue:
+            type: array
+            items:
+              type: string
+
+  postureCheckFailureDomain:
+    x-class: DOMAIN
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+        properties:
+          actualValue:
+            type: string
+          expectedValue:
+            type: array
+            items:
+              type: string
+  postureCheckFailureOperatingSystemActual:
+    type: object
+    required:
+      - type
+      - version
+    properties:
+      type:
+        type: string
+      version:
+        type: string
+
+  postureCheckFailureOperatingSystem:
+    x-class: OS
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+        properties:
+          actualValue:
+            $ref: '#/definitions/postureCheckFailureOperatingSystemActual'
+          expectedValue:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/operatingSystem'
+
+  postureCheckFailureProcessActual:
+    type: object
+    required:
+      - isRunning
+      - hash
+      - signerFingerprints
+    properties:
+      isRunning:
+        type: boolean
+      hash:
+        type: string
+      signerFingerprints:
+        type: array
+        items:
+          type: string
+      osType:
+        $ref: '#/definitions/osType'
+
+  postureCheckFailureProcess:
+    x-class: PROCESS
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+        properties:
+          actualValue:
+            $ref: '#/definitions/postureCheckFailureProcessActual'
+          expectedValue:
+            $ref: '#/definitions/process'
+
+  postureCheckFailureMfa:
+    x-class: MFA
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+        properties:
+          actualValue:
+            type: boolean
+          expectedValue:
+            type: boolean
+
+  policyFailure:
+    type: object
+    properties:
+      policyId:
+        type: string
+      policyName:
+        type: string
+      checks:
+        type: array
+        items:
+          $ref: '#/definitions/postureCheckFailure'
+
+  sessionRequestFailure:
+    type: object
+    properties:
+      apiSessionId:
+        type: string
+      when:
+        type: string
+        format: date-time
+      serviceId:
+        type: string
+      serviceName:
+        type: string
+      sessionType:
+        $ref: '#/definitions/dialBind'
+      policyFailures:
+        type: array
+        items:
+          $ref: '#/definitions/policyFailure'
+
   postureData:
     type: object
-    additionalProperties: true
+    required:
+      - mac
+      - domain
+      - os
+      - processes
+      - apiSessionPostureData
+    properties:
+      mac:
+        $ref: '#/definitions/postureDataMac'
+      domain:
+        $ref: '#/definitions/postureDataDomain'
+      os:
+        $ref: '#/definitions/postureDataOs'
+      processes:
+        type: array
+        items:
+          $ref: '#/definitions/postureDataProcess'
+      apiSessionPostureData:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/apiSessionPostureData'
+
+  postureDataFailedServiceRequestList:
+    type: array
+    items:
+      $ref: '#/definitions/sessionRequestFailure'
 
   ###################################################################
   # Posture Query
@@ -6928,7 +7226,9 @@ definitions:
           name:
             type: string
           operatingSystems:
-            $ref: '#/definitions/operatingSystemArray'
+            type: array
+            items:
+              $ref: '#/definitions/operatingSystem'
           version:
             type: string
 
@@ -7045,7 +7345,9 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemArray'
+            type: array
+            items:
+              $ref: '#/definitions/operatingSystem'
     x-class: "OS"
 
   PostureCheckOperatingSystemCreate:
@@ -7056,7 +7358,10 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemArray'
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/operatingSystem'
     x-class: "OS"
   PostureCheckOperatingSystemUpdate:
     allOf:
@@ -7066,7 +7371,10 @@ definitions:
           - operatingSystems
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemArray'
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/operatingSystem'
     x-class: "OS"
   PostureCheckOperatingSystemPatch:
     allOf:
@@ -7074,7 +7382,10 @@ definitions:
       - type: object
         properties:
           operatingSystems:
-            $ref: '#/definitions/operatingSystemArray'
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/operatingSystem'
     x-class: "OS"
 
   ###################################################################

@@ -26,6 +26,6 @@ type PostureResponseDomain struct {
 }
 
 func (pr *PostureResponseDomain) Apply(postureData *PostureData) {
-	postureData.Domain = pr
-	postureData.Domain.LastUpdatedAt = time.Now()
+	postureData.Domain = *pr
+	postureData.Domain.LastUpdatedAt = time.Now().UTC()
 }

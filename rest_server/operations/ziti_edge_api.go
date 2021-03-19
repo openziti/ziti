@@ -370,6 +370,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		IdentityGetIdentityPostureDataHandler: identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPostureData has not yet been implemented")
 		}),
+		IdentityGetIdentityPostureDataFailedServiceRequestsHandler: identity.GetIdentityPostureDataFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityPostureDataFailedServiceRequestsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityPostureDataFailedServiceRequests has not yet been implemented")
+		}),
 		APISessionListAPISessionsHandler: api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.ListAPISessions has not yet been implemented")
 		}),
@@ -870,6 +873,8 @@ type ZitiEdgeAPI struct {
 	IdentityGetIdentityPolicyAdviceHandler identity.GetIdentityPolicyAdviceHandler
 	// IdentityGetIdentityPostureDataHandler sets the operation handler for the get identity posture data operation
 	IdentityGetIdentityPostureDataHandler identity.GetIdentityPostureDataHandler
+	// IdentityGetIdentityPostureDataFailedServiceRequestsHandler sets the operation handler for the get identity posture data failed service requests operation
+	IdentityGetIdentityPostureDataFailedServiceRequestsHandler identity.GetIdentityPostureDataFailedServiceRequestsHandler
 	// APISessionListAPISessionsHandler sets the operation handler for the list API sessions operation
 	APISessionListAPISessionsHandler api_session.ListAPISessionsHandler
 	// AuthenticatorListAuthenticatorsHandler sets the operation handler for the list authenticators operation
@@ -1401,6 +1406,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.IdentityGetIdentityPostureDataHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityPostureDataHandler")
+	}
+	if o.IdentityGetIdentityPostureDataFailedServiceRequestsHandler == nil {
+		unregistered = append(unregistered, "identity.GetIdentityPostureDataFailedServiceRequestsHandler")
 	}
 	if o.APISessionListAPISessionsHandler == nil {
 		unregistered = append(unregistered, "api_session.ListAPISessionsHandler")
@@ -2112,6 +2120,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/identities/{id}/posture-data"] = identity.NewGetIdentityPostureData(o.context, o.IdentityGetIdentityPostureDataHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/identities/{id}/posture-data/failed-service-requests"] = identity.NewGetIdentityPostureDataFailedServiceRequests(o.context, o.IdentityGetIdentityPostureDataFailedServiceRequestsHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

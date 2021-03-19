@@ -138,6 +138,17 @@ func (handler *EdgeRouterHandler) ListForSession(sessionId string) (*EdgeRouterL
 	return result, err
 }
 
+func (handler *EdgeRouterHandler) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+	var list *EdgeRouterListResult
+	var err error
+	handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		list, err = handler.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
+		return nil
+	})
+
+	return list, err
+}
+
 func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
 	if err != nil {
