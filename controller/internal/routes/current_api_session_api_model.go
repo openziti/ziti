@@ -66,8 +66,10 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 	}
 
 	lastActivityAt := apiSession.LastActivityAt
+	var cachedLastActivityAt time.Time
+	var ok bool
 
-	if cachedLastActivityAt, ok := ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
+	if cachedLastActivityAt, ok = ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
 		lastActivityAt = cachedLastActivityAt
 	}
 
@@ -76,15 +78,16 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 
 	ret := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail: rest_model.APISessionDetail{
-			BaseEntity:     BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
-			ConfigTypes:    stringz.SetToSlice(apiSession.ConfigTypes),
-			Identity:       ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-			IdentityID:     &apiSession.IdentityId,
-			IPAddress:      &apiSession.IPAddress,
-			Token:          &apiSession.Token,
-			AuthQueries:    authQueries,
-			IsMfaEnabled:   &isMfaEnabled,
-			LastActivityAt: strfmt.DateTime(lastActivityAt),
+			BaseEntity:           BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
+			ConfigTypes:          stringz.SetToSlice(apiSession.ConfigTypes),
+			Identity:             ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+			IdentityID:           &apiSession.IdentityId,
+			IPAddress:            &apiSession.IPAddress,
+			Token:                &apiSession.Token,
+			AuthQueries:          authQueries,
+			IsMfaEnabled:         &isMfaEnabled,
+			LastActivityAt:       strfmt.DateTime(lastActivityAt),
+			CachedLastActivityAt: strfmt.DateTime(cachedLastActivityAt),
 		},
 		ExpiresAt:         &expiresAt,
 		ExpirationSeconds: &expirationSeconds,
