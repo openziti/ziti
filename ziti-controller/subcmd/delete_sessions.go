@@ -112,7 +112,7 @@ func deleteSessions(_ *cobra.Command, args []string) {
 				apiSessionTokenBucket := indexBucket.Bucket([]byte(ApiSessionBucketName))
 
 				if apiSessionTokenBucket == nil {
-					logger.Print("api sessions index bucket does not exist, skipping,")
+					logger.Print("api sessions index bucket does not exist, skipping")
 				} else {
 					apiSessionTokenBucketExists = true
 				}
@@ -120,7 +120,7 @@ func deleteSessions(_ *cobra.Command, args []string) {
 				sessionTokenBucket := indexBucket.Bucket([]byte(SessionBucketName))
 
 				if sessionTokenBucket == nil {
-					logger.Print("edge sessions index bucket does not exist, skipping,")
+					logger.Print("edge sessions index bucket does not exist, skipping")
 				} else {
 					sessionTokenBucketExists = true
 				}
