@@ -12,6 +12,7 @@
 * Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and
   Edge Sessions
 * Fixed posture check error responses to include only failed checks
+* Heartbeat Collection And Batching
 * Add Service Request Failures for Posture Checks
 * Remove database migration code for versions older than 0.17.1
 
@@ -86,6 +87,31 @@ Example Output:
 [  55.866]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing api session indexes
 [  58.325]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing edge session indexes
 ```
+
+### Heartbeat Collection And Batching
+
+In previous versions heartbeats from REST API usage and discrete Edge Router connection would all cause writes
+for the same API Session as they were encountered. In situations where one or more REST API requests were issues and/or one or more
+Edge Router connections were held by a ZitI Application, multiple simultaneous heartbeats could occur for no apparent benefit
+and consume disk write I/O.
+
+Heartbeats are now aggregated over a window of time in a cache and written to disk on an interval. The write interval defaults to 90s
+and the batch size (for write transactions) to 250. Additionally, all heartbeats are flush to disk when the controller is properly shut down.
+
+These settings can be defined in the `edge.api` section for the Ziti Controller configuration.
+
+Example:
+```
+edge:
+  api:
+    ...
+    #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
+    activityUpdateInterval: 90s
+    #(optional, default 250) The number of API Sessions updated for last activity per transaction
+    activityUpdateBatchSize: 250
+    ...
+```
+
 
 ### Add Service Request Failures for Posture Checks
 
