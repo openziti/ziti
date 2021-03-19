@@ -345,10 +345,6 @@ func (c *Controller) RunAndWait() {
 	c.waitForShutdown()
 }
 
-func (c *Controller) shutdown(ctx context.Context) {
-
-}
-
 func (c *Controller) waitForShutdown() {
 
 	ch := make(chan os.Signal, 1)
