@@ -39,7 +39,10 @@ var deleteSessionsCmd = &cobra.Command{
 
 const (
 	ApiSessionBucketName = "apiSessions"
-	SessionBucketName = "sessions"
+	SessionBucketName    = "sessions"
+	RootBucketName       = "ziti"
+
+	IndexBucketName = "indexes"
 )
 
 func deleteSessions(_ *cobra.Command, args []string) {
@@ -56,6 +59,9 @@ func deleteSessions(_ *cobra.Command, args []string) {
 		apiSessionBucketExists := false
 		sessionBucketExists := false
 
+		apiSessionTokenBucketExists := false
+		sessionTokenBucketExists := false
+
 		logger := pfxlog.Logger()
 
 		defer func() {
@@ -63,7 +69,7 @@ func deleteSessions(_ *cobra.Command, args []string) {
 		}()
 
 		err = config.Db.View(func(tx *bbolt.Tx) error {
-			root := tx.Bucket([]byte("ziti"))
+			root := tx.Bucket([]byte(RootBucketName))
 
 			if root == nil {
 				return errors.New("root 'ziti' bucket not found")
@@ -72,21 +78,21 @@ func deleteSessions(_ *cobra.Command, args []string) {
 			apiSessionBucket := root.Bucket([]byte(ApiSessionBucketName))
 
 			if apiSessionBucket == nil {
-				logger.Info("API Session bucket does not exist, skipping, count is: 0")
-			}else {
+				logger.Info("api Session bucket does not exist, skipping, count is: 0")
+			} else {
 				apiSessionBucketExists = true
 				count := 0
 				_ = apiSessionBucket.ForEach(func(_, _ []byte) error {
 					count++
 					return nil
 				})
-				logger.Infof("Existing API Sessions: %v", count)
+				logger.Infof("existing API Sessions: %v", count)
 			}
 
 			sessionBucket := root.Bucket([]byte(SessionBucketName))
 
 			if sessionBucket == nil {
-				logger.Print("Edge Sessions bucket does not exist, skipping, count is: 0")
+				logger.Print("edge sessions bucket does not exist, skipping, count is: 0")
 			} else {
 				sessionBucketExists = true
 				count := 0
@@ -95,14 +101,36 @@ func deleteSessions(_ *cobra.Command, args []string) {
 					return nil
 				})
 
-				logger.Infof("Existing Edge Sessions: %v", count)
+				logger.Infof("existing edge Sessions: %v", count)
+			}
+
+			indexBucket := root.Bucket([]byte(IndexBucketName))
+
+			if indexBucket == nil {
+				logger.Info("ziti index bucket does not exist, skipping indexes")
+			} else {
+				apiSessionTokenBucket := indexBucket.Bucket([]byte(ApiSessionBucketName))
+
+				if apiSessionTokenBucket == nil {
+					logger.Print("api sessions index bucket does not exist, skipping,")
+				} else {
+					apiSessionTokenBucketExists = true
+				}
+
+				sessionTokenBucket := indexBucket.Bucket([]byte(SessionBucketName))
+
+				if sessionTokenBucket == nil {
+					logger.Print("edge sessions index bucket does not exist, skipping,")
+				} else {
+					sessionTokenBucketExists = true
+				}
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			pfxlog.Logger().Errorf("Could not read databse stats: %v", err)
+			pfxlog.Logger().Errorf("could not read databse stats: %v", err)
 		}
 
 		_ = config.Db.Update(func(tx *bbolt.Tx) error {
@@ -115,22 +143,41 @@ func deleteSessions(_ *cobra.Command, args []string) {
 
 			if apiSessionBucketExists {
 				if err := root.DeleteBucket([]byte(ApiSessionBucketName)); err != nil {
-					logger.Infof("Could not delete apiSessions: %v", err)
+					logger.Infof("could not delete apiSessions: %v", err)
 				} else {
-					logger.Infof("Done removing API Sessions")
+					logger.Infof("done removing API Sessions")
 				}
 			}
 
 			if sessionBucketExists {
 				if err := root.DeleteBucket([]byte(SessionBucketName)); err != nil {
-					logger.Infof("Could not delete sessions: %v", err)
+					logger.Infof("could not delete sessions: %v", err)
 				} else {
-					logger.Infof("Done removing Edge Sessions")
+					logger.Infof("done removing Edge Sessions")
+				}
+			}
+
+			indexBucket := root.Bucket([]byte(IndexBucketName))
+
+			if apiSessionTokenBucketExists {
+				if err := indexBucket.DeleteBucket([]byte(ApiSessionBucketName)); err != nil {
+					logger.Infof("could not delete api session indexes: %v", err)
+				} else {
+					logger.Infof("done removing api session indexes")
+				}
+			}
+
+			if sessionTokenBucketExists {
+				if err := indexBucket.DeleteBucket([]byte(SessionBucketName)); err != nil {
+					logger.Infof("could not delete edge session indexes: %v", err)
+				} else {
+					logger.Infof("done removing edge session indexes")
 				}
 			}
 
 			return nil
 		})
+
 	} else {
 		panic(err)
 	}
