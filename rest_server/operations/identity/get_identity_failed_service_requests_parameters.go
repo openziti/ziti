@@ -37,18 +37,18 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-// NewGetIdentityPostureDataFailedServiceRequestsParams creates a new GetIdentityPostureDataFailedServiceRequestsParams object
+// NewGetIdentityFailedServiceRequestsParams creates a new GetIdentityFailedServiceRequestsParams object
 // no default values defined in spec.
-func NewGetIdentityPostureDataFailedServiceRequestsParams() GetIdentityPostureDataFailedServiceRequestsParams {
+func NewGetIdentityFailedServiceRequestsParams() GetIdentityFailedServiceRequestsParams {
 
-	return GetIdentityPostureDataFailedServiceRequestsParams{}
+	return GetIdentityFailedServiceRequestsParams{}
 }
 
-// GetIdentityPostureDataFailedServiceRequestsParams contains all the bound params for the get identity posture data failed service requests operation
+// GetIdentityFailedServiceRequestsParams contains all the bound params for the get identity failed service requests operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters getIdentityPostureDataFailedServiceRequests
-type GetIdentityPostureDataFailedServiceRequestsParams struct {
+// swagger:parameters getIdentityFailedServiceRequests
+type GetIdentityFailedServiceRequestsParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -63,8 +63,8 @@ type GetIdentityPostureDataFailedServiceRequestsParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewGetIdentityPostureDataFailedServiceRequestsParams() beforehand.
-func (o *GetIdentityPostureDataFailedServiceRequestsParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewGetIdentityFailedServiceRequestsParams() beforehand.
+func (o *GetIdentityFailedServiceRequestsParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
@@ -81,7 +81,7 @@ func (o *GetIdentityPostureDataFailedServiceRequestsParams) BindRequest(r *http.
 }
 
 // bindID binds and validates parameter ID from path.
-func (o *GetIdentityPostureDataFailedServiceRequestsParams) bindID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *GetIdentityFailedServiceRequestsParams) bindID(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]

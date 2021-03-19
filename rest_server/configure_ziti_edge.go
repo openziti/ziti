@@ -536,6 +536,11 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 			return middleware.NotImplemented("operation current_identity.GetCurrentIdentityEdgeRouters has not yet been implemented")
 		})
 	}
+	if api.IdentityGetIdentityFailedServiceRequestsHandler == nil {
+		api.IdentityGetIdentityFailedServiceRequestsHandler = identity.GetIdentityFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityFailedServiceRequestsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityFailedServiceRequests has not yet been implemented")
+		})
+	}
 	if api.IdentityGetIdentityPolicyAdviceHandler == nil {
 		api.IdentityGetIdentityPolicyAdviceHandler = identity.GetIdentityPolicyAdviceHandlerFunc(func(params identity.GetIdentityPolicyAdviceParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPolicyAdvice has not yet been implemented")
@@ -544,11 +549,6 @@ func configureAPI(api *operations.ZitiEdgeAPI) http.Handler {
 	if api.IdentityGetIdentityPostureDataHandler == nil {
 		api.IdentityGetIdentityPostureDataHandler = identity.GetIdentityPostureDataHandlerFunc(func(params identity.GetIdentityPostureDataParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityPostureData has not yet been implemented")
-		})
-	}
-	if api.IdentityGetIdentityPostureDataFailedServiceRequestsHandler == nil {
-		api.IdentityGetIdentityPostureDataFailedServiceRequestsHandler = identity.GetIdentityPostureDataFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityPostureDataFailedServiceRequestsParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation identity.GetIdentityPostureDataFailedServiceRequests has not yet been implemented")
 		})
 	}
 	if api.APISessionListAPISessionsHandler == nil {

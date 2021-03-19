@@ -38,10 +38,10 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SessionRequestFailure session request failure
+// FailedSessionRequest failed session request
 //
-// swagger:model sessionRequestFailure
-type SessionRequestFailure struct {
+// swagger:model failedSessionRequest
+type FailedSessionRequest struct {
 
 	// api session Id
 	APISessionID string `json:"apiSessionId,omitempty"`
@@ -63,8 +63,8 @@ type SessionRequestFailure struct {
 	When strfmt.DateTime `json:"when,omitempty"`
 }
 
-// Validate validates this session request failure
-func (m *SessionRequestFailure) Validate(formats strfmt.Registry) error {
+// Validate validates this failed session request
+func (m *FailedSessionRequest) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validatePolicyFailures(formats); err != nil {
@@ -85,7 +85,7 @@ func (m *SessionRequestFailure) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *SessionRequestFailure) validatePolicyFailures(formats strfmt.Registry) error {
+func (m *FailedSessionRequest) validatePolicyFailures(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.PolicyFailures) { // not required
 		return nil
@@ -110,7 +110,7 @@ func (m *SessionRequestFailure) validatePolicyFailures(formats strfmt.Registry) 
 	return nil
 }
 
-func (m *SessionRequestFailure) validateSessionType(formats strfmt.Registry) error {
+func (m *FailedSessionRequest) validateSessionType(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.SessionType) { // not required
 		return nil
@@ -126,7 +126,7 @@ func (m *SessionRequestFailure) validateSessionType(formats strfmt.Registry) err
 	return nil
 }
 
-func (m *SessionRequestFailure) validateWhen(formats strfmt.Registry) error {
+func (m *FailedSessionRequest) validateWhen(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.When) { // not required
 		return nil
@@ -140,7 +140,7 @@ func (m *SessionRequestFailure) validateWhen(formats strfmt.Registry) error {
 }
 
 // MarshalBinary interface implementation
-func (m *SessionRequestFailure) MarshalBinary() ([]byte, error) {
+func (m *FailedSessionRequest) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -148,8 +148,8 @@ func (m *SessionRequestFailure) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *SessionRequestFailure) UnmarshalBinary(b []byte) error {
-	var res SessionRequestFailure
+func (m *FailedSessionRequest) UnmarshalBinary(b []byte) error {
+	var res FailedSessionRequest
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

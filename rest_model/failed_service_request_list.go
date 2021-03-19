@@ -37,13 +37,13 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// PostureDataFailedServiceRequestList posture data failed service request list
+// FailedServiceRequestList failed service request list
 //
-// swagger:model postureDataFailedServiceRequestList
-type PostureDataFailedServiceRequestList []*SessionRequestFailure
+// swagger:model failedServiceRequestList
+type FailedServiceRequestList []*FailedSessionRequest
 
-// Validate validates this posture data failed service request list
-func (m PostureDataFailedServiceRequestList) Validate(formats strfmt.Registry) error {
+// Validate validates this failed service request list
+func (m FailedServiceRequestList) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	for i := 0; i < len(m); i++ {
