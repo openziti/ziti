@@ -58,9 +58,6 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 }
 
 func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
-	expiresAt := strfmt.DateTime(apiSession.UpdatedAt.Add(sessionTimeout))
-	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
-
 	authQueries := rest_model.AuthQueryList{}
 	isMfaEnabled := apiSession.MfaRequired && !apiSession.MfaComplete
 
@@ -68,28 +65,29 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 		authQueries = append(authQueries, newAuthCheckZitiMfa())
 	}
 
-	lastActivityAt := strfmt.DateTime(apiSession.LastActivityAt)
+	lastActivityAt := apiSession.LastActivityAt
+
+	if cachedLastActivityAt, ok := ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
+		lastActivityAt = cachedLastActivityAt
+	}
+
+	expiresAt := strfmt.DateTime(lastActivityAt.Add(sessionTimeout))
+	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
 
 	ret := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail: rest_model.APISessionDetail{
-			BaseEntity:   BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
-			ConfigTypes:  stringz.SetToSlice(apiSession.ConfigTypes),
-			Identity:     ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-			IdentityID:   &apiSession.IdentityId,
-			IPAddress:    &apiSession.IPAddress,
-			Token:        &apiSession.Token,
-			AuthQueries:  authQueries,
-			IsMfaEnabled: &isMfaEnabled,
+			BaseEntity:     BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
+			ConfigTypes:    stringz.SetToSlice(apiSession.ConfigTypes),
+			Identity:       ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
+			IdentityID:     &apiSession.IdentityId,
+			IPAddress:      &apiSession.IPAddress,
+			Token:          &apiSession.Token,
+			AuthQueries:    authQueries,
+			IsMfaEnabled:   &isMfaEnabled,
+			LastActivityAt: strfmt.DateTime(lastActivityAt),
 		},
 		ExpiresAt:         &expiresAt,
 		ExpirationSeconds: &expirationSeconds,
-	}
-
-	if val, ok := ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
-		cachedActivityAt := strfmt.DateTime(val)
-		ret.LastActivityAt = cachedActivityAt
-	} else {
-		ret.CachedLastActivityAt = lastActivityAt
 	}
 
 	return ret
