@@ -39,6 +39,10 @@ func (c cmdBuildInfo) BuildDate() string {
 	return BuildDate
 }
 
+func (c cmdBuildInfo) Branch() string {
+	return Branch
+}
+
 func (c cmdBuildInfo) AsVersionInfo() *common.VersionInfo {
 	return &common.VersionInfo{
 		Version:   c.Version(),
