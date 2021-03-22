@@ -71,6 +71,22 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err error) {
 	}
 }
 
+func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
+	logger := logrus.
+		WithField("router", ctx.GetHandler().getChannel().Id().Token).
+		WithField("operation", ctx.GetHandler().Label())
+
+	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
+		logger = logger.WithField("token", sessionCtx.GetSessionToken())
+	}
+
+	if err != nil {
+		logger.WithError(err).Error("operation failed")
+	} else {
+		logger.Debug("operation success")
+	}
+}
+
 type requestContext interface {
 	GetHandler() requestHandler
 	GetMessage() *channel2.Message

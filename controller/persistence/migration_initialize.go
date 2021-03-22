@@ -39,6 +39,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.addPostureCheckTypes(step)
 	m.createInterceptV1ConfigType(step)
 	m.createHostV1ConfigType(step)
+	step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
 
 	return CurrentDbVersion
 }
@@ -125,6 +126,7 @@ var serverConfigTypeV1 = &ConfigType{
 						"enum": []interface{}{
 							"fail",
 							"pass",
+							"change",
 						},
 					},
 					"consecutiveEvents": map[string]interface{}{
@@ -137,7 +139,7 @@ var serverConfigTypeV1 = &ConfigType{
 					},
 					"action": map[string]interface{}{
 						"type":    "string",
-						"pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+)",
+						"pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
 					},
 				},
 			},
@@ -228,6 +230,474 @@ var serverConfigTypeV1 = &ConfigType{
 			},
 			"httpChecks": map[string]interface{}{
 				"$ref": "#/definitions/httpCheckList",
+			},
+		},
+	},
+}
+
+var hostV1ConfigTypeId = "NH5p4FpGR"
+var hostV1ConfigType = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: hostV1ConfigTypeId},
+	Name:          "host.v1",
+	Schema: map[string]interface{}{
+		"$id": "http://ziti-edge.netfoundry.io/schemas/host-v1.schema.json",
+		"definitions": map[string]interface{}{
+			"duration": map[string]interface{}{
+				"type":    "string",
+				"pattern": "[0-9]+(h|m|s|ms)",
+			},
+			"method": map[string]interface{}{
+				"type": "string",
+				"enum": []interface{}{
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+				},
+			},
+			"action": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"trigger",
+					"action",
+				},
+				"properties": map[string]interface{}{
+					"trigger": map[string]interface{}{
+						"type": "string",
+						"enum": []interface{}{
+							"fail",
+							"pass",
+							"change",
+						},
+					},
+					"consecutiveEvents": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(0),
+						"maximum": float64(math.MaxUint16),
+					},
+					"duration": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"action": map[string]interface{}{
+						"type":    "string",
+						"pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
+					},
+				},
+			},
+			"actionList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/action",
+				},
+				"minItems": 1,
+				"maxItems": 20,
+			},
+			"portCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"address",
+				},
+				"properties": map[string]interface{}{
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"address":  map[string]interface{}{"type": "string"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+				},
+			},
+			"httpCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"url",
+				},
+				"properties": map[string]interface{}{
+					"url":      map[string]interface{}{"type": "string"},
+					"method":   map[string]interface{}{"$ref": "#/definitions/method"},
+					"body":     map[string]interface{}{"type": "string"},
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+					"expectStatus": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(100),
+						"maximum": float64(599),
+					},
+					"expectInBody": map[string]interface{}{"type": "string"},
+				},
+			},
+			"portCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/portCheck",
+				},
+			},
+			"httpCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/httpCheck",
+				},
+			},
+			"ipAddressFormat": map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"format": "ipv4"},
+					map[string]interface{}{"format": "ipv6"},
+				},
+			},
+			"ipAddress": map[string]interface{}{
+				"type": "string",
+				"$ref": "#/definitions/ipAddressFormat",
+			},
+			"hostname": map[string]interface{}{
+				"type":   "string",
+				"format": "hostname",
+				"not":    map[string]interface{}{"$ref": "#/definitions/ipAddressFormat"},
+			},
+			"address": map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/ipAddress"},
+					map[string]interface{}{"$ref": "#/definitions/hostname"},
+				},
+			},
+		},
+		"type": "object",
+		"properties": map[string]interface{}{
+			"protocol": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"tcp", "udp", "sctp"},
+				"description": "Dial the specified protocol when a ziti client connects to the service.",
+			},
+			"dialInterceptedProtocol": map[string]interface{}{
+				"type":        "boolean",
+				"enum":        []interface{}{true},
+				"description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'dialInterceptedProtocol' are mutually exclusive.",
+			},
+			"address": map[string]interface{}{
+				"$ref":        "#/definitions/address",
+				"description": "Dial the specified ip address or hostname when a ziti client connects to the service.",
+			},
+			"dialInterceptedAddress": map[string]interface{}{
+				"type":        "boolean",
+				"enum":        []interface{}{true},
+				"description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'dialInterceptedAddress' are mutually exclusive.",
+			},
+			"port": map[string]interface{}{
+				"type":        "integer",
+				"minimum":     0,
+				"maximum":     65535,
+				"description": "Dial the specified port when a ziti client connects to the service.",
+			},
+			"dialInterceptedPort": map[string]interface{}{
+				"type":        "boolean",
+				"enum":        []interface{}{true},
+				"description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'dialInterceptedPort' are mutually exclusive.",
+			},
+			"portChecks": map[string]interface{}{
+				"$ref": "#/definitions/portCheckList",
+			},
+			"httpChecks": map[string]interface{}{
+				"$ref": "#/definitions/httpCheckList",
+			},
+			"listenOptions": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"cost": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     65535,
+						"description": "defaults to 0",
+					},
+					"precedence": map[string]interface{}{
+						"type":        "string",
+						"enum":        []interface{}{"default", "required", "failed"},
+						"description": "defaults to 'default'",
+					},
+					"connectTimeoutSeconds": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     2147483647,
+						"description": "defaults to 5",
+					},
+					"maxConnections": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     1,
+						"description": "defaults to 3",
+					},
+					"identity": map[string]interface{}{
+						"type":        "string",
+						"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+					},
+					"bindUsingEdgeIdentity": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+					},
+				},
+			},
+		},
+		"additionalProperties": false,
+		"allOf": []interface{}{
+			map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"required": []interface{}{"protocol"}},
+					map[string]interface{}{"required": []interface{}{"dialInterceptedProtocol"}},
+				},
+			},
+			map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"required": []interface{}{"address"}},
+					map[string]interface{}{"required": []interface{}{"dialInterceptedAddress"}},
+				},
+			},
+			map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"required": []interface{}{"port"}},
+					map[string]interface{}{"required": []interface{}{"dialInterceptedPort"}},
+				},
+			},
+		},
+	},
+}
+
+var hostV2ConfigTypeId = "host.v2"
+var hostV2ConfigType = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: hostV2ConfigTypeId},
+	Name:          "host.v2",
+	Schema: map[string]interface{}{
+		"$id": "http://ziti-edge.netfoundry.io/schemas/host-v2.schema.json",
+		"definitions": map[string]interface{}{
+			"duration": map[string]interface{}{
+				"type":    "string",
+				"pattern": "[0-9]+(h|m|s|ms)",
+			},
+			"method": map[string]interface{}{
+				"type": "string",
+				"enum": []interface{}{
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+				},
+			},
+			"action": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"trigger",
+					"action",
+				},
+				"properties": map[string]interface{}{
+					"trigger": map[string]interface{}{
+						"type": "string",
+						"enum": []interface{}{
+							"fail",
+							"pass",
+							"change",
+						},
+					},
+					"consecutiveEvents": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(0),
+						"maximum": float64(math.MaxUint16),
+					},
+					"duration": map[string]interface{}{
+						"$ref": "#/definitions/duration",
+					},
+					"action": map[string]interface{}{
+						"type":    "string",
+						"pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
+					},
+				},
+			},
+			"actionList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/action",
+				},
+				"minItems": 1,
+				"maxItems": 20,
+			},
+			"portCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"address",
+				},
+				"properties": map[string]interface{}{
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"address":  map[string]interface{}{"type": "string"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+				},
+			},
+			"httpCheck": map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required": []interface{}{
+					"interval",
+					"timeout",
+					"url",
+				},
+				"properties": map[string]interface{}{
+					"url":      map[string]interface{}{"type": "string"},
+					"method":   map[string]interface{}{"$ref": "#/definitions/method"},
+					"body":     map[string]interface{}{"type": "string"},
+					"interval": map[string]interface{}{"$ref": "#/definitions/duration"},
+					"timeout":  map[string]interface{}{"$ref": "#/definitions/duration"},
+					"actions":  map[string]interface{}{"$ref": "#/definitions/actionList"},
+					"expectStatus": map[string]interface{}{
+						"type":    "integer",
+						"minimum": float64(100),
+						"maximum": float64(599),
+					},
+					"expectInBody": map[string]interface{}{"type": "string"},
+				},
+			},
+			"portCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/portCheck",
+				},
+			},
+			"httpCheckList": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/httpCheck",
+				},
+			},
+			"ipAddressFormat": map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"format": "ipv4"},
+					map[string]interface{}{"format": "ipv6"},
+				},
+			},
+			"ipAddress": map[string]interface{}{
+				"type": "string",
+				"$ref": "#/definitions/ipAddressFormat",
+			},
+			"hostname": map[string]interface{}{
+				"type":   "string",
+				"format": "hostname",
+				"not":    map[string]interface{}{"$ref": "#/definitions/ipAddressFormat"},
+			},
+			"address": map[string]interface{}{
+				"oneOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/ipAddress"},
+					map[string]interface{}{"$ref": "#/definitions/hostname"},
+				},
+			},
+			"terminator": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"protocol": map[string]interface{}{
+						"type":        "string",
+						"enum":        []interface{}{"tcp", "udp", "sctp"},
+						"description": "Dial the specified protocol when a ziti client connects to the service.",
+					},
+					"dialInterceptedProtocol": map[string]interface{}{
+						"type":        "boolean",
+						"enum":        []interface{}{true},
+						"description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'dialInterceptedProtocol' are mutually exclusive.",
+					},
+					"address": map[string]interface{}{
+						"$ref":        "#/definitions/address",
+						"description": "Dial the specified ip address or hostname when a ziti client connects to the service.",
+					},
+					"dialInterceptedAddress": map[string]interface{}{
+						"type":        "boolean",
+						"enum":        []interface{}{true},
+						"description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'dialInterceptedAddress' are mutually exclusive.",
+					},
+					"port": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     65535,
+						"description": "Dial the specified port when a ziti client connects to the service.",
+					},
+					"dialInterceptedPort": map[string]interface{}{
+						"type":        "boolean",
+						"enum":        []interface{}{true},
+						"description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'dialInterceptedPort' are mutually exclusive.",
+					},
+					"portChecks": map[string]interface{}{
+						"$ref": "#/definitions/portCheckList",
+					},
+					"httpChecks": map[string]interface{}{
+						"$ref": "#/definitions/httpCheckList",
+					},
+					"listenOptions": map[string]interface{}{
+						"type":                 "object",
+						"additionalProperties": false,
+						"properties": map[string]interface{}{
+							"cost": map[string]interface{}{
+								"type":        "integer",
+								"minimum":     0,
+								"maximum":     65535,
+								"description": "defaults to 0",
+							},
+							"precedence": map[string]interface{}{
+								"type":        "string",
+								"enum":        []interface{}{"default", "required", "failed"},
+								"description": "defaults to 'default'",
+							},
+							"connectTimeout": map[string]interface{}{"$ref": "#/definitions/duration"},
+							"maxConnections": map[string]interface{}{
+								"type":        "integer",
+								"minimum":     1,
+								"description": "defaults to 3",
+							},
+							"identity": map[string]interface{}{
+								"type":        "string",
+								"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+							},
+							"bindUsingEdgeIdentity": map[string]interface{}{
+								"type":        "boolean",
+								"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+							},
+						},
+					},
+				},
+				"additionalProperties": false,
+				"allOf": []interface{}{
+					map[string]interface{}{
+						"oneOf": []interface{}{
+							map[string]interface{}{"required": []interface{}{"protocol"}},
+							map[string]interface{}{"required": []interface{}{"dialInterceptedProtocol"}},
+						},
+					},
+					map[string]interface{}{
+						"oneOf": []interface{}{
+							map[string]interface{}{"required": []interface{}{"address"}},
+							map[string]interface{}{"required": []interface{}{"dialInterceptedAddress"}},
+						},
+					},
+					map[string]interface{}{
+						"oneOf": []interface{}{
+							map[string]interface{}{"required": []interface{}{"port"}},
+							map[string]interface{}{"required": []interface{}{"dialInterceptedPort"}},
+						},
+					},
+				},
+			},
+			"terminatorList": map[string]interface{}{
+				"type":     "array",
+				"minItems": 1,
+				"items": map[string]interface{}{
+					"$ref": "#/definitions/terminator",
+				},
+			},
+		},
+		"type": "object",
+		"properties": map[string]interface{}{
+			"terminators": map[string]interface{}{
+				"$ref": "#/definitions/terminatorList",
 			},
 		},
 	},

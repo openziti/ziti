@@ -53,7 +53,7 @@ func (h *sessionRemovedHandler) HandleReceive(msg *channel2.Message, ch channel2
 				pfxlog.Logger().
 					WithField("sessionToken", token).
 					WithField("sessionId", id).
-					Debugf("removing api session [token: %s] [id: %s]", token, id)
+					Debugf("removing session [token: %s] [id: %s]", token, id)
 				h.sm.RemoveSession(token)
 			}
 		} else {

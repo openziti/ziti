@@ -138,7 +138,7 @@ func (handler *ApiSessionHandler) heartbeatFlush(beats []*Heartbeat) {
 		for _, beat := range beats {
 			err := store.Update(mutCtx, &persistence.ApiSession{
 				BaseExtEntity: boltz.BaseExtEntity{
-					Id:        beat.ApiSessionId,
+					Id: beat.ApiSessionId,
 				},
 				LastActivityAt: beat.LastActivityAt,
 			}, persistence.UpdateLastActivityAtChecker{})
@@ -204,21 +204,22 @@ func (handler *ApiSessionHandler) Query(query string) (*ApiSessionListResult, er
 }
 
 func (handler *ApiSessionHandler) VisitFingerprintsForApiSessionId(apiSessionId string, visitor func(fingerprint string) bool) error {
-	apiSession, err := handler.Read(apiSessionId)
+	return handler.GetDb().View(func(tx *bbolt.Tx) error {
+		apiSession, err := handler.readInTx(tx, apiSessionId)
+		if err != nil {
+			return errors.Wrapf(err, "could not query fingerprints by api session id [%s]", apiSessionId)
+		}
 
-	if err != nil {
-		return errors.Wrapf(err, "could not query fingerprints by api session id [%s]", apiSessionId)
-	}
-
-	return handler.VisitFingerprintsForApiSession(apiSession.IdentityId, apiSessionId, visitor)
+		return handler.VisitFingerprintsForApiSession(tx, apiSession.IdentityId, apiSessionId, visitor)
+	})
 }
 
-func (handler *ApiSessionHandler) VisitFingerprintsForApiSession(identityId, apiSessionId string, visitor func(fingerprint string) bool) error {
-	if stopVisiting, err := handler.env.GetHandlers().Identity.VisitIdentityAuthenticatorFingerprints(identityId, visitor); stopVisiting || err != nil {
+func (handler *ApiSessionHandler) VisitFingerprintsForApiSession(tx *bbolt.Tx, identityId, apiSessionId string, visitor func(fingerprint string) bool) error {
+	if stopVisiting, err := handler.env.GetHandlers().Identity.VisitIdentityAuthenticatorFingerprints(tx, identityId, visitor); stopVisiting || err != nil {
 		return err
 	}
 
-	apiSessionCerts, err := handler.env.GetHandlers().ApiSessionCertificate.ReadByApiSessionId(apiSessionId)
+	apiSessionCerts, err := handler.env.GetHandlers().ApiSessionCertificate.ReadByApiSessionId(tx, apiSessionId)
 	if err != nil {
 		return err
 	}

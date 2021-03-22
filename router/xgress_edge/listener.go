@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/openziti/foundation/util/protobufs"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"time"
@@ -331,6 +332,35 @@ func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2
 		log.WithError(err).Error("terminator update failed")
 	} else {
 		log.Debug("terminator updated successfully")
+	}
+}
+
+func (self *edgeClientConn) processHealthEvent(req *channel2.Message, ch channel2.Channel) {
+	token := string(req.Body)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+
+	terminator, ok := self.listener.factory.hostedServices.Get(token)
+
+	if !ok {
+		log.Error("failed to update bind, no listener found")
+		return
+	}
+
+	checkPassed, _ := req.GetBoolHeader(edge.HealthStatusHeader)
+
+	request := &edge_ctrl_pb.HealthEventRequest{
+		SessionToken: token,
+		Fingerprints: self.fingerprints.Prints(),
+		TerminatorId: terminator.terminatorId,
+		CheckPassed:  checkPassed,
+	}
+
+	log = log.WithField("terminator", terminator.terminatorId).
+		WithField("checkPassed", checkPassed)
+	log.Debug("sending health event")
+
+	if err := protobufs.Send(self.listener.factory.Channel(), request); err != nil {
+		log.WithError(err).Error("send failed")
 	}
 }
 

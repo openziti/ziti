@@ -17,13 +17,23 @@
 package sync_strats
 
 import (
-	"fmt"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"go.etcd.io/bbolt"
 )
 
 func apiSessionToProto(ae *env.AppEnv, token, identityId, apiSessionId string) (*edge_ctrl_pb.ApiSession, error) {
-	fingerprints, err := getFingerprints(ae, identityId, apiSessionId)
+	var result *edge_ctrl_pb.ApiSession
+	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		result, err = apiSessionToProtoWithTx(tx, ae, token, identityId, apiSessionId)
+		return err
+	})
+	return result, err
+}
+
+func apiSessionToProtoWithTx(tx *bbolt.Tx, ae *env.AppEnv, token, identityId, apiSessionId string) (*edge_ctrl_pb.ApiSession, error) {
+	fingerprints, err := getFingerprints(tx, ae, identityId, apiSessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -35,19 +45,9 @@ func apiSessionToProto(ae *env.AppEnv, token, identityId, apiSessionId string) (
 	}, nil
 }
 
-func GetFingerprintsByApiSessionId(ae *env.AppEnv, apiSessionId string) ([]string, error) {
-	apiSession, err := ae.GetHandlers().ApiSession.Read(apiSessionId)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not query fingerprints by api session id [%s]: %s", apiSessionId, err)
-	}
-
-	return getFingerprints(ae, apiSession.IdentityId, apiSessionId)
-}
-
-func getFingerprints(ae *env.AppEnv, identityId, apiSessionId string) ([]string, error) {
+func getFingerprints(tx *bbolt.Tx, ae *env.AppEnv, identityId, apiSessionId string) ([]string, error) {
 	prints := map[string]struct{}{}
-	err := ae.Handlers.ApiSession.VisitFingerprintsForApiSession(identityId, apiSessionId, func(fingerprint string) bool {
+	err := ae.Handlers.ApiSession.VisitFingerprintsForApiSession(tx, identityId, apiSessionId, func(fingerprint string) bool {
 		prints[fingerprint] = struct{}{}
 		return false
 	})

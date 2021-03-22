@@ -267,7 +267,7 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 		}
 	})
 
-	terminator.terminatorId = string(responseMsg.Body)
+	terminator.terminatorId = response.TerminatorId
 	return terminator, nil
 }
 
@@ -314,6 +314,24 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 	return nil
 }
 
+func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed bool) error {
+	msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_TunnelHealthEventType), nil)
+	msg.Headers[int32(edge_ctrl_pb.Header_TerminatorId)] = []byte(terminatorId)
+	msg.PutBoolHeader(int32(edge_ctrl_pb.Header_CheckPassed), checkPassed)
+
+	logger := logrus.WithField("terminator", terminatorId).
+		WithField("checkPassed", checkPassed)
+	logger.Debug("sending health event")
+
+	if err := self.ctrlCh.Channel().Send(msg); err != nil {
+		logger.WithError(err).Error("health event send failed")
+	} else {
+		logger.Debug("health event sent")
+	}
+
+	return nil
+}
+
 func (self *fabricProvider) requestServiceList(lastUpdateToken []byte) {
 	msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_ListServicesRequestType), lastUpdateToken)
 	if err := self.ctrlCh.Channel().Send(msg); err != nil {
@@ -329,9 +347,18 @@ type tunnelTerminator struct {
 	closed        concurrenz.AtomicBoolean
 }
 
+func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
+	return self.provider.sendHealthEvent(self.terminatorId, pass)
+}
+
 func (self *tunnelTerminator) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
+		log := logrus.WithField("service", self.context.ServiceName()).WithField("terminator", self.terminatorId)
+		log.Debug("closing tunnel terminator context")
+		self.context.OnClose()
+		log.Debug("unregistering session listener for tunnel terminator")
 		self.closeCallback()
+		log.Debug("removing tunnel terminator")
 		return self.provider.removeTerminator(self.terminatorId)
 	}
 	return nil

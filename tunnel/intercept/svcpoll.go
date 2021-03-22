@@ -25,12 +25,10 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	log "github.com/sirupsen/logrus"
-	"net"
+	logrus "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 )
@@ -60,7 +58,7 @@ func (self *ServiceListener) WaitForShutdown() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
 	for s := range sig {
-		log.Debugf("caught signal %v", s)
+		logrus.Debugf("caught signal %v", s)
 		break
 	}
 
@@ -80,13 +78,20 @@ func (self *ServiceListener) HandleProviderReady(provider tunnel.FabricProvider)
 func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventType, service *edge.Service) {
 	tunnelerService := &entities.Service{Service: *service}
 
+	log := logrus.WithField("service", service.Name)
+
 	switch eventType {
 	case ziti.ServiceAdded:
+		log.Info("adding service")
 		self.addService(tunnelerService)
 	case ziti.ServiceRemoved:
+		log.Info("removing service")
 		self.removeService(tunnelerService)
 	case ziti.ServiceChanged:
+		log.Info("updating service: removing old service")
 		self.removeService(tunnelerService)
+
+		log.Info("updating service: adding new service")
 		self.addService(tunnelerService)
 	default:
 		pfxlog.Logger().Errorf("unhandled service change event type: %v", eventType)
@@ -116,11 +121,27 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 	}
 
 	if stringz.Contains(svc.Permissions, "Bind") {
-		serverConfig := &entities.ServiceConfig{}
-		found, err := svc.GetConfigOfType(entities.ServerConfigV1, serverConfig)
+		hostV2config := &entities.HostV2Config{}
+		found, err := svc.GetConfigOfType(entities.HostConfigV2, hostV2config)
+		if found {
+			svc.HostV2Config = hostV2config
+		}
+
+		if !found {
+			hostV1config := &entities.HostV1Config{}
+			if found, err = svc.GetConfigOfType(entities.HostConfigV1, hostV1config); found {
+				svc.HostV2Config = hostV1config.ToHostV2Config()
+			}
+		}
+
+		if !found {
+			serverConfig := &entities.ServiceConfig{}
+			if found, err = svc.GetConfigOfType(entities.ServerConfigV1, serverConfig); found {
+				svc.ServerConfig = serverConfig
+			}
+		}
 
 		if found && err == nil {
-			svc.ServerConfig = serverConfig
 			log.Infof("Hosting newly available service %s", svc.Name)
 			go self.host(svc)
 		} else if !found {
@@ -176,83 +197,40 @@ func (self *ServiceListener) host(svc *entities.Service) {
 		return
 	}
 
-	options := ziti.DefaultListenOptions()
-	options.ManualStart = true
-	options.Precedence = ziti.GetPrecedenceForLabel(currentIdentity.DefaultHostingPrecedence)
-	options.Cost = currentIdentity.DefaultHostingCost
+	hostContexts := createHostingContexts(svc, currentIdentity)
 
-	context := &hostingContext{
-		service: svc,
-		options: options,
-		onClose: func() {
-			self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
-		},
-	}
-
-	hostControl, err := self.provider.HostService(context)
-	if err != nil {
-		logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
-		return
-	}
+	var hostControls []tunnel.HostControl
 
 	stopHook := func() {
-		_ = hostControl.Close()
+		for _, hostControl := range hostControls {
+			_ = hostControl.Close()
+		}
 		self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
 	}
-
 	svc.StopHostHook = stopHook
 
-	if err := self.setupHealthChecks(hostControl, svc, currentIdentity); err != nil {
-		logger.WithError(err).Error("error setting up health checks")
-		stopHook()
-		return
+	for idx, hostContext := range hostContexts {
+		hostControl, err := self.provider.HostService(hostContext)
+		if err != nil {
+			logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
+			return
+		}
+
+		context := strconv.Itoa(idx)
+
+		hostContext.SetCloseCallback(func() {
+			self.healthCheckMgr.UnregisterServiceContextChecks(svc.Name, context)
+		})
+
+		hostControls = append(hostControls, hostControl)
+
+		precedence, cost := hostContext.GetInitialHealthState()
+		serviceState := health.NewServiceStateWithContext(svc.Name, context, precedence, cost, hostControl)
+
+		if err := self.healthCheckMgr.RegisterServiceChecks(serviceState, hostContext.GetHealthChecks()); err != nil {
+			logger.WithError(err).Error("error setting up health checks")
+			hostContext.OnClose()
+			return
+		}
 	}
-}
-
-func (self *ServiceListener) setupHealthChecks(serviceUpdater health.ServiceUpdater, service *entities.Service, identity *edge.CurrentIdentity) error {
-	precedence := ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
-	serviceState := health.NewServiceState(service.Name, precedence, identity.DefaultHostingCost, serviceUpdater)
-
-	var checkDefinitions []health.CheckDefinition
-
-	for _, checkDef := range service.ServerConfig.PortChecks {
-		checkDefinitions = append(checkDefinitions, checkDef)
-	}
-
-	for _, checkDef := range service.ServerConfig.HttpChecks {
-		checkDefinitions = append(checkDefinitions, checkDef)
-	}
-
-	if len(checkDefinitions) > 0 {
-		return self.healthCheckMgr.RegisterServiceChecks(serviceState, checkDefinitions)
-	}
-
-	return nil
-}
-
-type hostingContext struct {
-	service *entities.Service
-	options *ziti.ListenOptions
-	onClose func()
-}
-
-func (self *hostingContext) ServiceName() string {
-	return self.service.Name
-}
-
-func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
-	return self.options
-}
-
-func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, error) {
-	config := self.service.ServerConfig
-	return net.Dial(config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
-}
-
-func (self *hostingContext) SupportHalfClose() bool {
-	return !strings.Contains(self.service.ServerConfig.Protocol, "udp")
-}
-
-func (self *hostingContext) OnClose() {
-	self.onClose()
 }

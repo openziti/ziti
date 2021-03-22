@@ -1,0 +1,305 @@
+{
+  "$id": "http://ziti-edge.netfoundry.io/schemas/host-v2.schema.json",
+  "definitions": {
+    "action": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
+          "type": "string"
+        },
+        "consecutiveEvents": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duration": {
+          "$ref": "#/definitions/duration"
+        },
+        "trigger": {
+          "enum": [
+            "fail",
+            "pass",
+            "change"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "trigger",
+        "action"
+      ],
+      "type": "object"
+    },
+    "actionList": {
+      "items": {
+        "$ref": "#/definitions/action"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+    },
+    "address": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ipAddress"
+        },
+        {
+          "$ref": "#/definitions/hostname"
+        }
+      ]
+    },
+    "duration": {
+      "pattern": "[0-9]+(h|m|s|ms)",
+      "type": "string"
+    },
+    "hostname": {
+      "format": "hostname",
+      "not": {
+        "$ref": "#/definitions/ipAddressFormat"
+      },
+      "type": "string"
+    },
+    "httpCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "$ref": "#/definitions/actionList"
+        },
+        "body": {
+          "type": "string"
+        },
+        "expectInBody": {
+          "type": "string"
+        },
+        "expectStatus": {
+          "maximum": 599,
+          "minimum": 100,
+          "type": "integer"
+        },
+        "interval": {
+          "$ref": "#/definitions/duration"
+        },
+        "method": {
+          "$ref": "#/definitions/method"
+        },
+        "timeout": {
+          "$ref": "#/definitions/duration"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "interval",
+        "timeout",
+        "url"
+      ],
+      "type": "object"
+    },
+    "httpCheckList": {
+      "items": {
+        "$ref": "#/definitions/httpCheck"
+      },
+      "type": "array"
+    },
+    "ipAddress": {
+      "$ref": "#/definitions/ipAddressFormat",
+      "type": "string"
+    },
+    "ipAddressFormat": {
+      "oneOf": [
+        {
+          "format": "ipv4"
+        },
+        {
+          "format": "ipv6"
+        }
+      ]
+    },
+    "method": {
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH"
+      ],
+      "type": "string"
+    },
+    "portCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "$ref": "#/definitions/actionList"
+        },
+        "address": {
+          "type": "string"
+        },
+        "interval": {
+          "$ref": "#/definitions/duration"
+        },
+        "timeout": {
+          "$ref": "#/definitions/duration"
+        }
+      },
+      "required": [
+        "interval",
+        "timeout",
+        "address"
+      ],
+      "type": "object"
+    },
+    "portCheckList": {
+      "items": {
+        "$ref": "#/definitions/portCheck"
+      },
+      "type": "array"
+    },
+    "terminator": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": [
+                "protocol"
+              ]
+            },
+            {
+              "required": [
+                "dialInterceptedProtocol"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [
+                "address"
+              ]
+            },
+            {
+              "required": [
+                "dialInterceptedAddress"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [
+                "port"
+              ]
+            },
+            {
+              "required": [
+                "dialInterceptedPort"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/address",
+          "description": "Dial the specified ip address or hostname when a ziti client connects to the service."
+        },
+        "dialInterceptedAddress": {
+          "description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'dialInterceptedAddress' are mutually exclusive.",
+          "enum": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "dialInterceptedPort": {
+          "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'dialInterceptedPort' are mutually exclusive.",
+          "enum": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "dialInterceptedProtocol": {
+          "description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'dialInterceptedProtocol' are mutually exclusive.",
+          "enum": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "httpChecks": {
+          "$ref": "#/definitions/httpCheckList"
+        },
+        "listenOptions": {
+          "additionalProperties": false,
+          "properties": {
+            "bindUsingEdgeIdentity": {
+              "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+              "type": "boolean"
+            },
+            "connectTimeout": {
+              "$ref": "#/definitions/duration"
+            },
+            "cost": {
+              "description": "defaults to 0",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "identity": {
+              "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+              "type": "string"
+            },
+            "maxConnections": {
+              "description": "defaults to 3",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "precedence": {
+              "description": "defaults to 'default'",
+              "enum": [
+                "default",
+                "required",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "port": {
+          "description": "Dial the specified port when a ziti client connects to the service.",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "portChecks": {
+          "$ref": "#/definitions/portCheckList"
+        },
+        "protocol": {
+          "description": "Dial the specified protocol when a ziti client connects to the service.",
+          "enum": [
+            "tcp",
+            "udp",
+            "sctp"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "terminatorList": {
+      "items": {
+        "$ref": "#/definitions/terminator"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "properties": {
+    "terminators": {
+      "$ref": "#/definitions/terminatorList"
+    }
+  },
+  "type": "object"
+}

@@ -26,6 +26,7 @@ enum ContentType {
   RemoveTerminatorRequestType = 20211;
   RemoveTerminatorResponseType = 20212;
   ValidateSessionsRequestType = 20213;
+  HealthEventType = 20214;
   EnrollType = 20300;
   EnrollCertsType = 20301;
 
@@ -43,11 +44,19 @@ enum ContentType {
 
   RemoveTunnelTerminatorRequestType = 20410;
   RemoveTunnelTerminatorResponseType = 20411;
+
+  TunnelHealthEventType = 20412;
 }
 
 enum SessionType {
   Dial = 0;
   Bind = 1;
+}
+
+enum Header {
+  HeaderZero = 0;
+  TerminatorId = 1022;
+  CheckPassed = 1023;
 }
 
 message ServerHello {
@@ -161,6 +170,13 @@ message UpdateTerminatorRequest {
   TerminatorPrecedence precedence = 5;
   bool updatePrecedence = 6;
   bool updateCost = 7;
+}
+
+message HealthEventRequest {
+  string sessionToken = 1;
+  repeated string fingerprints = 2;
+  string terminatorId = 3;
+  bool checkPassed = 4;
 }
 
 message ValidateSessionsRequest {
