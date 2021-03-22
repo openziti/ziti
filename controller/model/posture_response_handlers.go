@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"go.etcd.io/bbolt"
 	"runtime/debug"
+	"time"
 )
 
 func NewPostureResponseHandler(env Env) *PostureResponseHandler {
@@ -40,6 +41,25 @@ type PostureResponseHandler struct {
 
 func (handler *PostureResponseHandler) Create(identityId string, postureResponses []*PostureResponse) {
 	handler.postureCache.Add(identityId, postureResponses)
+}
+
+func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessionId string, isPassed bool) {
+	postureResponse := &PostureResponse{
+		PostureCheckId: MfaProviderZiti,
+		TypeId:         "MFA",
+		TimedOut:       false,
+		LastUpdatedAt:  time.Now(),
+	}
+
+	postureSubType := &PostureResponseMfa{
+		ApiSessionId: apiSessionId,
+		PassedMfa:    isPassed,
+	}
+
+	postureResponse.SubType = postureSubType
+	postureSubType.PostureResponse = postureResponse
+
+	handler.Create(identityId, []*PostureResponse{postureResponse})
 }
 
 func (handler *PostureResponseHandler) AddPostureDataListener(cb func(identityId string)) {

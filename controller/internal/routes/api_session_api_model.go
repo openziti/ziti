@@ -82,9 +82,7 @@ func MapApiSessionToRestInterface(ae *env.AppEnv, _ *response.RequestContext, ap
 func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
 	authQueries := rest_model.AuthQueryList{}
 
-	isMfaEnabled := apiSession.MfaRequired && !apiSession.MfaComplete
-
-	if isMfaEnabled {
+	if apiSession.MfaRequired && !apiSession.MfaComplete {
 		authQueries = append(authQueries, newAuthCheckZitiMfa())
 	}
 
@@ -98,7 +96,8 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 		IPAddress:      &apiSession.IPAddress,
 		ConfigTypes:    stringz.SetToSlice(apiSession.ConfigTypes),
 		AuthQueries:    authQueries,
-		IsMfaEnabled:   &isMfaEnabled,
+		IsMfaComplete:  &apiSession.MfaComplete,
+		IsMfaRequired:  &apiSession.MfaRequired,
 		LastActivityAt: lastActivityAt,
 	}
 

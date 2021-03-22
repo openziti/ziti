@@ -199,22 +199,7 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	postureResponse := &model.PostureResponse{
-		PostureCheckId: model.MfaProviderZiti,
-		TypeId:         "MFA",
-		TimedOut:       false,
-		LastUpdatedAt:  time.Now(),
-	}
-
-	postureSubType := &model.PostureResponseMfa{
-		ApiSessionId: rc.ApiSession.Id,
-		PassedMfa:    true,
-	}
-
-	postureResponse.SubType = postureSubType
-	postureSubType.PostureResponse = postureResponse
-
-	ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+	ae.Handlers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
 
 	rc.RespondWithEmptyOk()
 }

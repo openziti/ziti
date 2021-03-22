@@ -447,6 +447,38 @@ func Test_MFA(t *testing.T) {
 
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
+			
+			
+			t.Run("current api session should be", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				respContainer := mfaValidatedSession.requireQuery("/current-api-session")
+
+				t.Run("marked as mfa required", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.True(respContainer.ExistsP("data.isMfaRequired"), "could not find isMfaRequired by path")
+					isMfaRequired, ok := respContainer.Path("data.isMfaRequired").Data().(bool)
+					ctx.Req.True(ok, "should be a bool")
+					ctx.Req.True(isMfaRequired)
+				})
+
+				t.Run("marked as mfa complete", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.True(respContainer.ExistsP("data.isMfaComplete"), "could not find isMfaComplete by path")
+					isMfaComplete, ok := respContainer.Path("data.isMfaComplete").Data().(bool)
+					ctx.Req.True(ok, "should be a bool")
+					ctx.Req.True(isMfaComplete)
+				})
+			})
+
+			t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",mfaValidatedIdentityId))
+				mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", mfaValidatedSession.id)
+				postureDataContainer.ExistsP(mfaPath)
+				isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
+				ctx.Req.True(ok, "should be a bool")
+				ctx.Req.True(isMfaPassed)
+			})
 		})
 
 		t.Run("a second verify with should error with not found", func(t *testing.T) {
@@ -634,16 +666,48 @@ func Test_MFA(t *testing.T) {
 					ctx.Req.NoError(err)
 
 					standardJsonResponseTests(resp, http.StatusOK, t)
+
+					t.Run("and should have access to the API", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
+						ctx.Req.NoError(err)
+
+						standardJsonResponseTests(resp, http.StatusOK, t)
+					})
+
+					t.Run("current api session should be", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						respContainer := newValidatedSession.requireQuery("/current-api-session")
+
+						t.Run("marked as mfa required", func(t *testing.T) {
+							ctx.testContextChanged(t)
+							ctx.Req.True(respContainer.ExistsP("data.isMfaRequired"), "could not find isMfaRequired by path")
+							isMfaRequired, ok := respContainer.Path("data.isMfaRequired").Data().(bool)
+							ctx.Req.True(ok, "should be a bool")
+							ctx.Req.True(isMfaRequired)
+						})
+
+						t.Run("marked as mfa complete", func(t *testing.T) {
+							ctx.testContextChanged(t)
+							ctx.Req.True(respContainer.ExistsP("data.isMfaComplete"), "could not find isMfaComplete by path")
+							isMfaComplete, ok := respContainer.Path("data.isMfaComplete").Data().(bool)
+							ctx.Req.True(ok, "should be a bool")
+							ctx.Req.True(isMfaComplete)
+						})
+					})
+
+					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",newValidatedSession.identityId))
+						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
+						postureDataContainer.ExistsP(mfaPath)
+						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
+						ctx.Req.True(ok, "should be a bool")
+						ctx.Req.True(isMfaPassed)
+					})
 				})
 
-				t.Run("with validated MFA should have access to the API", func(t *testing.T) {
-					ctx.testContextChanged(t)
-
-					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
-					ctx.Req.NoError(err)
-
-					standardJsonResponseTests(resp, http.StatusOK, t)
-				})
 			})
 
 			t.Run("admin identity endpoint", func(t *testing.T) {

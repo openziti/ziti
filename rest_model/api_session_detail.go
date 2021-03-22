@@ -66,9 +66,13 @@ type APISessionDetail struct {
 	// Required: true
 	IPAddress *string `json:"ipAddress"`
 
-	// is mfa enabled
+	// is mfa complete
 	// Required: true
-	IsMfaEnabled *bool `json:"isMfaEnabled"`
+	IsMfaComplete *bool `json:"isMfaComplete"`
+
+	// is mfa required
+	// Required: true
+	IsMfaRequired *bool `json:"isMfaRequired"`
 
 	// last activity at
 	// Format: date-time
@@ -102,7 +106,9 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 
 		IPAddress *string `json:"ipAddress"`
 
-		IsMfaEnabled *bool `json:"isMfaEnabled"`
+		IsMfaComplete *bool `json:"isMfaComplete"`
+
+		IsMfaRequired *bool `json:"isMfaRequired"`
 
 		LastActivityAt strfmt.DateTime `json:"lastActivityAt,omitempty"`
 
@@ -124,7 +130,9 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 
 	m.IPAddress = dataAO1.IPAddress
 
-	m.IsMfaEnabled = dataAO1.IsMfaEnabled
+	m.IsMfaComplete = dataAO1.IsMfaComplete
+
+	m.IsMfaRequired = dataAO1.IsMfaRequired
 
 	m.LastActivityAt = dataAO1.LastActivityAt
 
@@ -155,7 +163,9 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 
 		IPAddress *string `json:"ipAddress"`
 
-		IsMfaEnabled *bool `json:"isMfaEnabled"`
+		IsMfaComplete *bool `json:"isMfaComplete"`
+
+		IsMfaRequired *bool `json:"isMfaRequired"`
 
 		LastActivityAt strfmt.DateTime `json:"lastActivityAt,omitempty"`
 
@@ -174,7 +184,9 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 
 	dataAO1.IPAddress = m.IPAddress
 
-	dataAO1.IsMfaEnabled = m.IsMfaEnabled
+	dataAO1.IsMfaComplete = m.IsMfaComplete
+
+	dataAO1.IsMfaRequired = m.IsMfaRequired
 
 	dataAO1.LastActivityAt = m.LastActivityAt
 
@@ -221,7 +233,11 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateIsMfaEnabled(formats); err != nil {
+	if err := m.validateIsMfaComplete(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsMfaRequired(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -313,9 +329,18 @@ func (m *APISessionDetail) validateIPAddress(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *APISessionDetail) validateIsMfaEnabled(formats strfmt.Registry) error {
+func (m *APISessionDetail) validateIsMfaComplete(formats strfmt.Registry) error {
 
-	if err := validate.Required("isMfaEnabled", "body", m.IsMfaEnabled); err != nil {
+	if err := validate.Required("isMfaComplete", "body", m.IsMfaComplete); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateIsMfaRequired(formats strfmt.Registry) error {
+
+	if err := validate.Required("isMfaRequired", "body", m.IsMfaRequired); err != nil {
 		return err
 	}
 
