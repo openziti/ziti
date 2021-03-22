@@ -151,12 +151,12 @@ func Test_MFA_PostureChecks(t *testing.T) {
 				ctx.Req.NoError(err)
 				standardJsonResponseTests(resp, http.StatusOK, t)
 
-				t.Run(" does not allow service session creation", func(t *testing.T) {
+				t.Run("allows service session creation", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					resp, err := enrolledIdentitySession.createNewSession(service.Id)
 					ctx.Req.NoError(err)
 
-					ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+					ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 				})
 			})
 
