@@ -18,6 +18,7 @@ package xgress_edge
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -27,17 +28,13 @@ import (
 	"sync/atomic"
 )
 
-const (
-	PayloadFlagsHeader uint8 = 0x10
-)
-
 // headers to pass through fabric to the other side
 var headersTofabric = map[int32]uint8{
-	edge.FlagsHeader: PayloadFlagsHeader,
+	edge.FlagsHeader: xgress_common.PayloadFlagsHeader,
 }
 
 var headersFromFabric = map[uint8]int32{
-	PayloadFlagsHeader: edge.FlagsHeader,
+	xgress_common.PayloadFlagsHeader: edge.FlagsHeader,
 }
 
 type edgeTerminator struct {

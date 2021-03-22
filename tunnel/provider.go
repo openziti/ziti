@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"encoding/json"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
@@ -11,7 +12,7 @@ import (
 type HostingContext interface {
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
-	Dial() (net.Conn, error)
+	Dial(options map[string]interface{}) (net.Conn, error)
 	SupportHalfClose() bool
 	OnClose()
 }
@@ -24,10 +25,20 @@ type HostControl interface {
 }
 
 type FabricProvider interface {
-	PrepForUse(serviceId string) error
+	PrepForUse(serviceId string)
 	GetCurrentIdentity() (*edge.CurrentIdentity, error)
 	TunnelService(conn net.Conn, service string, halfClose bool) error
 	HostService(hostCtx HostingContext) (HostControl, error)
+}
+
+func AppDataToMap(appData []byte) (map[string]interface{}, error) {
+	result := map[string]interface{}{}
+	if len(appData) != 0 {
+		if err := json.Unmarshal(appData, &result); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func NewContextProvider(context ziti.Context) FabricProvider {
@@ -40,9 +51,12 @@ type contextProvider struct {
 	ziti.Context
 }
 
-func (self *contextProvider) PrepForUse(serviceId string) error {
-	_, err := self.Context.GetSession(serviceId)
-	return err
+func (self *contextProvider) PrepForUse(serviceId string) {
+	if _, err := self.Context.GetSession(serviceId); err != nil {
+		logrus.WithError(err).Error("failed to acquire network session")
+	} else {
+		logrus.Debug("acquired network session")
+	}
 }
 
 func (self *contextProvider) TunnelService(conn net.Conn, service string, halfClose bool) error {
@@ -79,7 +93,18 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 			logger.WithError(err).Error("closing listener for service")
 			return
 		}
-		externalConn, err := hostCtx.Dial()
+
+		options, err := AppDataToMap(conn.GetAppData())
+		if err != nil {
+			logger.Error("dial failed")
+			conn.CompleteAcceptFailed(err)
+			if closeErr := conn.Close(); closeErr != nil {
+				logger.WithError(closeErr).Error("close of ziti connection failed")
+			}
+			continue
+		}
+
+		externalConn, err := hostCtx.Dial(options)
 		if err != nil {
 			logger.Error("dial failed")
 			conn.CompleteAcceptFailed(err)

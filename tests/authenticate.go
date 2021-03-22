@@ -444,6 +444,13 @@ func (request *authenticatedRequests) requireNewEdgeRouter(roleAttributes ...str
 	return edgeRouter
 }
 
+func (request *authenticatedRequests) requireNewTunnelerEnabledEdgeRouter(roleAttributes ...string) *edgeRouter {
+	edgeRouter := newTestEdgeRouter(roleAttributes...)
+	edgeRouter.isTunnelerEnabled = true
+	request.requireCreateEntity(edgeRouter)
+	return edgeRouter
+}
+
 func (request *authenticatedRequests) requireNewTransitRouter() *transitRouter {
 	transitRouter := newTestTransitRouter()
 	request.requireCreateEntity(transitRouter)
@@ -824,6 +831,38 @@ func (request *authenticatedRequests) listTerminators(filter string) []*terminat
 	var result []*terminator
 	request.listEntities(query, func() loadableEntity {
 		t := &terminator{}
+		result = append(result, t)
+		return t
+	})
+
+	return result
+}
+
+func (request *authenticatedRequests) listIdentities(filter string) []*identity {
+	query := "identities"
+	if filter != "" {
+		query += "?" + filter
+	}
+
+	var result []*identity
+	request.listEntities(query, func() loadableEntity {
+		t := &identity{}
+		result = append(result, t)
+		return t
+	})
+
+	return result
+}
+
+func (request *authenticatedRequests) listEdgeRouterPolicies(filter string) []*edgeRouterPolicy {
+	query := "edge-router-policies"
+	if filter != "" {
+		query += "?" + filter
+	}
+
+	var result []*edgeRouterPolicy
+	request.listEntities(query, func() loadableEntity {
+		t := &edgeRouterPolicy{}
 		result = append(result, t)
 		return t
 	})

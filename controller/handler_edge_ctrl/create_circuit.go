@@ -23,9 +23,6 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/pkg/errors"
 )
 
 type createCircuitHandler struct {
@@ -73,8 +70,8 @@ func (self *createCircuitHandler) HandleReceive(msg *channel2.Message, ch channe
 	}
 
 	ctx := &CreateCircuitRequestContext{
-		baseRequestContext: baseRequestContext{handler: self, msg: msg},
-		req:                req,
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
 	}
 
 	go self.CreateCircuit(ctx)
@@ -89,28 +86,10 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()
+	sessionInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
-		return
-	}
-
-	if ctx.service.EncryptionRequired && ctx.req.PeerData[edge.PublicKeyHeader] == nil {
-		self.returnError(ctx, errors.New("encryption required on service, initiator did not send public header"))
-		return
-	}
-
-	serviceId := ctx.session.ServiceId
-	if ctx.req.TerminatorIdentity != "" {
-		serviceId = ctx.req.TerminatorIdentity + "@" + serviceId
-	}
-
-	clientId := &identity.TokenId{Token: ctx.session.Id, Data: ctx.req.PeerData}
-
-	n := self.appEnv.GetHostController().GetNetwork()
-	sessionInfo, err := n.CreateSession(ctx.sourceRouter, clientId, serviceId)
-	if err != nil {
-		self.returnError(ctx, err)
 		return
 	}
 
@@ -119,25 +98,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	response := &edge_ctrl_pb.CreateCircuitResponse{
 		SessionId: sessionInfo.Id.Token,
 		Address:   sessionInfo.Circuit.IngressId,
-		PeerData:  map[uint32][]byte{},
-	}
-
-	//static terminator peer data
-	for k, v := range sessionInfo.Terminator.GetPeerData() {
-		response.PeerData[k] = v
-	}
-
-	//runtime peer data
-	for k, v := range sessionInfo.PeerData {
-		response.PeerData[k] = v
-	}
-
-	if ctx.service.EncryptionRequired && response.PeerData[edge.PublicKeyHeader] == nil {
-		self.returnError(ctx, errors.New("encryption required on service, terminator did not send public header"))
-		if err := n.RemoveSession(sessionInfo.Id, true); err != nil {
-			log.WithError(err).Error("failed to remove session")
-		}
-		return
+		PeerData:  peerData,
 	}
 
 	log.Debugf("responding with successful circuit setup")
@@ -145,7 +106,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 }
 
 type CreateCircuitRequestContext struct {
-	baseRequestContext
+	baseSessionRequestContext
 	req *edge_ctrl_pb.CreateCircuitRequest
 }
 

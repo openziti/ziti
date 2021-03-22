@@ -19,10 +19,10 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/edge/router/internal/apiproxy"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/edge/router/internal/fabric"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
@@ -136,10 +136,10 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider) *Factory {
+func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider, stateManager fabric.StateManager) *Factory {
 	factory := &Factory{
 		hostedServices:  &hostedServiceRegistry{},
-		stateManager:    fabric.NewStateManager(),
+		stateManager:    stateManager,
 		versionProvider: versionProvider,
 		routerConfig:    routerConfig,
 	}

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package edge_ctrl.pb;
 
+option go_package = "github.com/openziti/edge/pb/edge_ctrl_pb";
+
 enum ContentType {
   Zero = 0;
   ServerHelloType = 20000;
@@ -26,6 +28,21 @@ enum ContentType {
   ValidateSessionsRequestType = 20213;
   EnrollType = 20300;
   EnrollCertsType = 20301;
+
+  CreateApiSessionRequestType = 20400;
+  CreateApiSessionResponseType = 20401;
+  CreateCircuitForServiceRequestType = 20402;
+  CreateCircuitForServiceResponseType = 20403;
+  ListServicesRequestType = 20404;
+  ServiceListType = 20405;
+  CreateTunnelTerminatorRequestType = 20406;
+  CreateTunnelTerminatorResponseType = 20407;
+
+  UpdateTunnelTerminatorRequestType = 20408;
+  UpdateTunnelTerminatorResponseType = 20409;
+
+  RemoveTunnelTerminatorRequestType = 20410;
+  RemoveTunnelTerminatorResponseType = 20411;
 }
 
 enum SessionType {
@@ -148,4 +165,95 @@ message UpdateTerminatorRequest {
 
 message ValidateSessionsRequest {
   repeated string sessionTokens = 1;
+}
+
+message EnvInfo  {
+  string arch = 1;
+  string Os = 2;
+  string OsRelease = 3;
+  string OsVersion = 4;
+}
+
+message SdkInfo {
+  string AppId = 1;
+  string AppVersion = 2;
+  string Branch = 3;
+  string Revision = 4;
+  string Type = 5;
+  string Version = 6;
+}
+
+message CreateApiSessionRequest {
+  EnvInfo envInfo = 1;
+  SdkInfo sdkInfo = 2;
+  repeated string configTypes = 3;
+}
+
+message CreateApiSessionResponse {
+  string sessionId = 1;
+  string token = 2;
+  uint32 refreshIntervalSeconds = 3;
+  string identityId = 4;
+  string identityName = 5;
+  TerminatorPrecedence defaultHostingPrecedence = 6;
+  uint32 defaultHostingCost = 7;
+}
+
+message CreateCircuitForServiceRequest {
+  string sessionId = 1;
+  string serviceName = 2;
+  string terminatorIdentity = 3;
+  map<uint32, bytes> peerData = 4;
+}
+
+message CreateSessionResponse {
+  string sessionId = 1;
+  string token = 2;
+}
+
+message CreateCircuitForServiceResponse {
+  CreateApiSessionResponse apiSession = 1;
+  CreateSessionResponse session = 2;
+  string circuitId = 3;
+  string address = 4;
+  map<uint32, bytes> peerData = 5;
+}
+
+message ServicesList {
+  bytes lastUpdate = 1;
+  repeated TunnelService services = 2;
+}
+
+message TunnelService {
+  string id = 1;
+  string name = 2;
+  repeated string permissions = 3;
+  bool encryption = 4;
+  bytes config = 5;
+  bytes tags = 6;
+}
+
+message CreateTunnelTerminatorRequest {
+  string serviceName = 1;
+  string sessionId = 2;
+  string address = 3;
+  map<uint32, bytes> peerData = 4;
+  uint32 cost = 5;
+  TerminatorPrecedence precedence = 6;
+  string identity = 7;
+  bytes identitySecret = 8;
+}
+
+message CreateTunnelTerminatorResponse {
+  CreateApiSessionResponse apiSession = 1;
+  CreateSessionResponse session = 2;
+  string terminatorId = 3;
+}
+
+message UpdateTunnelTerminatorRequest {
+  string terminatorId = 1;
+  uint32 cost = 2;
+  TerminatorPrecedence precedence = 3;
+  bool updatePrecedence = 4;
+  bool updateCost = 5;
 }

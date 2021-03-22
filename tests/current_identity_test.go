@@ -28,7 +28,7 @@ func Test_CurrentIdentity(t *testing.T) {
 	t.Run("edge routers endpoint", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		er1 := ctx.createAndEnrollEdgeRouter("test1")
+		er1 := ctx.createAndEnrollEdgeRouter(false, "test1")
 
 		_ = ctx.AdminSession.requireNewEdgeRouter("test1")
 

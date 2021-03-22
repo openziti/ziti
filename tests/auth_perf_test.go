@@ -1,4 +1,4 @@
-// +build apitests,perftests,ignore
+// +build apitests,perftests
 
 /*
 	Copyright NetFoundry, Inc.
@@ -55,19 +55,18 @@ func Test_AuthPerformance(t *testing.T) {
 	ctx.Req.NoError(err)
 	id, err := identity2.LoadIdentity(config.ID)
 	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig())
+	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
 	ctx.Req.NoError(err)
 
-	info, ok := sdkinfo.GetSdkInfo().(map[string]interface{})
-	ctx.Req.True(ok)
-	_, err = client.Login(info, []string{"all"})
+	info := sdkinfo.GetSdkInfo()
+	_, err = client.Login(info)
 	ctx.Req.NoError(err)
 
 	for i := 0; i < 25; i++ {
 		go func() {
 			for {
 				start := time.Now()
-				_, err := client.Login(info, []string{"all"})
+				_, err := client.Login(info)
 				ctx.Req.NoError(err)
 				meter.Mark(1)
 				done := time.Now()
@@ -111,12 +110,11 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 	ctx.Req.NoError(err)
 	id, err := identity2.LoadIdentity(config.ID)
 	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig())
+	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
 	ctx.Req.NoError(err)
 
-	info, ok := sdkinfo.GetSdkInfo().(map[string]interface{})
-	ctx.Req.True(ok)
-	_, err = client.Login(info, []string{"all"})
+	info := sdkinfo.GetSdkInfo()
+	_, err = client.Login(info)
 	ctx.Req.NoError(err)
 
 	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
@@ -125,7 +123,7 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 		go func() {
 			for {
 				start := time.Now()
-				_, err := client.Login(info, []string{"all"})
+				_, err := client.Login(info)
 				ctx.Req.NoError(err)
 				apiSessionCreateMeter.Mark(1)
 				done := time.Now()
@@ -174,12 +172,11 @@ func Test_SessionCreatePerformance(t *testing.T) {
 	ctx.Req.NoError(err)
 	id, err := identity2.LoadIdentity(config.ID)
 	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig())
+	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
 	ctx.Req.NoError(err)
 
-	info, ok := sdkinfo.GetSdkInfo().(map[string]interface{})
-	ctx.Req.True(ok)
-	_, err = client.Login(info, []string{"all"})
+	info := sdkinfo.GetSdkInfo()
+	_, err = client.Login(info)
 	ctx.Req.NoError(err)
 
 	for i := 0; i < 50; i++ {

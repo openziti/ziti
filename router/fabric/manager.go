@@ -54,8 +54,10 @@ type StateManager interface {
 	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	RemoveApiSession(token string)
 	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string)
-	AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel)
-	RemoveConnectedApiSession(token string, underlay channel2.Channel)
+	AddConnectedApiSession(token string)
+	RemoveConnectedApiSession(token string)
+	AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel2.Channel)
+	RemoveConnectedApiSessionWithChannel(token string, underlay channel2.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
 	StartHeartbeat(channel channel2.Channel, seconds int, closeNotify <-chan struct{})
@@ -63,9 +65,10 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	apiSessionsByToken *sync.Map // token -> api session
-	activeApiSessions  cmap.ConcurrentMap
-	sessions           cmap.ConcurrentMap
+	apiSessionsByToken      *sync.Map // token -> api session
+	activeApiSessions       cmap.ConcurrentMap
+	sessions                cmap.ConcurrentMap
+	recentlyRemovedSessions cmap.ConcurrentMap
 
 	Hostname       string
 	ControllerAddr string
@@ -78,10 +81,11 @@ type StateManagerImpl struct {
 
 func NewStateManager() StateManager {
 	return &StateManagerImpl{
-		EventEmmiter:       events.New(),
-		apiSessionsByToken: &sync.Map{},
-		activeApiSessions:  cmap.New(),
-		sessions:           cmap.New(),
+		EventEmmiter:            events.New(),
+		apiSessionsByToken:      &sync.Map{},
+		activeApiSessions:       cmap.New(),
+		sessions:                cmap.New(),
+		recentlyRemovedSessions: cmap.New(),
 	}
 }
 
@@ -148,6 +152,13 @@ func (sm *StateManagerImpl) RemoveSession(token string) {
 	eventName := sm.getNetworkSessionRemovedEventName(token)
 	sm.Emit(eventName)
 	sm.RemoveAllListeners(eventName)
+	sm.sessions.RemoveCb(token, func(key string, v interface{}, exists bool) bool {
+		if exists {
+			sm.recentlyRemovedSessions.Set(token, time.Now())
+		}
+		return true
+	})
+
 }
 
 func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession {
@@ -181,6 +192,11 @@ func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession
 }
 
 func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+	if sm.recentlyRemovedSessions.Has(token) {
+		callBack(token)
+		return func() {}
+	}
+
 	sm.sessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		if !exist {
 			return uint32(1)
@@ -194,9 +210,12 @@ func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack fun
 	}
 	sm.AddListener(eventName, listener)
 
+	once := &sync.Once{}
 	return func() {
-		sm.SessionConnectionClosed(token)
-		go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
+		once.Do(func() {
+			sm.SessionConnectionClosed(token)
+			go sm.RemoveListener(eventName, listener) // likely to be called from Emit, which will cause a deadlock
+		})
 	}
 }
 
@@ -212,7 +231,13 @@ func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
 		if !exists {
 			return false
 		}
-		return v.(uint32) == 0
+
+		if v.(uint32) == 0 {
+			sm.recentlyRemovedSessions.Set(token, time.Now())
+			return true
+		}
+
+		return false
 	})
 }
 
@@ -261,7 +286,20 @@ func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSecond
 	pfxlog.Logger().Info("heartbeat starting")
 }
 
-func (sm *StateManagerImpl) AddConnectedApiSession(token string, removeCB func(), ch channel2.Channel) {
+func (sm *StateManagerImpl) AddConnectedApiSession(token string) {
+	sm.activeApiSessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		if exist {
+			return valueInMap
+		}
+		return newMapWithMutex()
+	})
+}
+
+func (sm *StateManagerImpl) RemoveConnectedApiSession(token string) {
+	sm.activeApiSessions.Remove(token)
+}
+
+func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel2.Channel) {
 	var sessions *MapWithMutex
 
 	for sessions == nil {
@@ -280,7 +318,7 @@ func (sm *StateManagerImpl) AddConnectedApiSession(token string, removeCB func()
 	}
 }
 
-func (sm *StateManagerImpl) RemoveConnectedApiSession(token string, ch channel2.Channel) {
+func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel2.Channel) {
 	if val, ok := sm.activeApiSessions.Get(token); ok {
 		sessions, ok := val.(*MapWithMutex)
 
@@ -302,8 +340,26 @@ func (sm *StateManagerImpl) RemoveConnectedApiSession(token string, ch channel2.
 	}
 }
 
-func (sm *StateManagerImpl) ActiveSessionTokens() []string {
+func (sm *StateManagerImpl) ActiveApiSessionTokens() []string {
 	return sm.activeApiSessions.Keys()
+}
+
+func (sm *StateManagerImpl) flushRecentlyRemoved() {
+	now := time.Now()
+	sm.recentlyRemovedSessions.IterCb(func(key string, v interface{}) {
+		remove := false
+		if t, ok := v.(time.Time); ok {
+			if now.Sub(t) >= time.Minute {
+				remove = true
+			}
+		} else {
+			remove = true
+		}
+
+		if remove {
+			sm.recentlyRemovedSessions.Remove(key)
+		}
+	})
 }
 
 func newMapWithMutex() *MapWithMutex {

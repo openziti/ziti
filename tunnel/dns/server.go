@@ -123,7 +123,7 @@ func (r *resolver) testSystemResolver() error {
 }
 
 func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
-	log.Debugf("received:\n%s\n", query.String())
+	log.Tracef("received:\n%s\n", query.String())
 	msg := dns.Msg{}
 	msg.SetReply(query)
 	msg.RecursionAvailable = false
@@ -145,7 +145,7 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 			msg.Rcode = dns.RcodeRefused // fail fast, and inspire resolver to query next name server in its list.
 		}
 	}
-	log.Debugf("response:\n%s\n", msg.String())
+	log.Tracef("response:\n%s\n", msg.String())
 	err := w.WriteMsg(&msg)
 	if err != nil {
 		log.Errorf("write failed: %s", err)

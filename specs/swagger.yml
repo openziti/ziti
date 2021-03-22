@@ -3,7 +3,7 @@ swagger: '2.0'
 info:
   version: 0.16.3
   title: Ziti Edge
-  contact: { }
+  contact: {}
 host: demo.ziti.dev
 basePath: /edge/v1
 schemes:
@@ -3673,7 +3673,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause:
             field: '(root)'
             type: required
@@ -3700,7 +3700,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause: ''
           causeMessage: ''
           code: UNAUTHORIZED
@@ -3718,7 +3718,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           cause: ''
           causeMessage: ''
           code: INVALID_AUTH
@@ -3786,7 +3786,7 @@ responses:
       'application/json':
         error:
           args:
-            urlVars: { }
+            urlVars: {}
           causeMessage: 'you have hit a rate limit in the requested operation'
           code: RATE_LIMITED
           message: The resource is rate limited and the rate limit has been exceeded. Please try again later
@@ -3831,7 +3831,7 @@ responses:
       $ref: '#/definitions/currentAPISessionDetailEnvelope'
     examples:
       default:
-        meta: { }
+        meta: {}
         data:
           id: 27343114-b44f-406e-9981-f3c4f2f28d54
           createdAt: '2020-03-09T19:03:49.1883693Z'
@@ -3878,7 +3878,7 @@ responses:
       $ref: '#/definitions/currentIdentityDetailEnvelope'
     examples:
       default:
-        meta: { }
+        meta: {}
         data:
           id: 66352d7b-a6b2-4ce9-85bb-9f18e318704d
           createdAt: '2020-01-13T16:38:13.6854788Z'
@@ -3890,21 +3890,21 @@ responses:
               href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d'
             service-policies:
               href: './identities/66352d7b-a6b2-4ce9-85bb-9f18e318704d/identities'
-          tags: { }
+          tags: {}
           name: Default Admin
           type:
             urlName: identity-types
-            id: 577104f2-1e3a-4947-a927-7383baefbc9a
+            id: User
             name: User
             _links:
               self:
-                href: './identity-types/577104f2-1e3a-4947-a927-7383baefbc9a'
+                href: './identity-types/User'
           isDefaultAdmin: true
           isAdmin: true
           authenticators:
             updb:
               username: admin
-          enrollment: { }
+          enrollment: {}
           roleAttributes:
             $ref: '#/definitions/attributes'
 
@@ -4531,6 +4531,7 @@ definitions:
       - User
       - Device
       - Service
+      - Router
   identityCreate:
     description: An identity to create
     type: object
@@ -5184,6 +5185,8 @@ definitions:
     properties:
       name:
         type: string
+      isTunnelerEnabled:
+        type: boolean
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -5196,6 +5199,8 @@ definitions:
     properties:
       name:
         type: string
+      isTunnelerEnabled:
+        type: boolean
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -5206,6 +5211,8 @@ definitions:
     properties:
       name:
         type: string
+      isTunnelerEnabled:
+        type: boolean
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -5241,6 +5248,7 @@ definitions:
           - arch
           - buildDate
           - revision
+          - isTunnelerEnabled
         properties:
           isVerified:
             type: boolean
@@ -5264,6 +5272,8 @@ definitions:
             type: string
           versionInfo:
             $ref: '#/definitions/versionInfo'
+          isTunnelerEnabled:
+            type: boolean
     example:
       id: b0766b8d-bd1a-4d28-8415-639b29d3c83d
       createdAt: '2020-03-16T17:13:31.5807454Z'
@@ -5273,7 +5283,7 @@ definitions:
           href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d/edge-routers"
         self:
           href: "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
-      tags: { }
+      tags: {}
       name: TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e
       fingerprint:
       roleAttributes:
@@ -5282,6 +5292,7 @@ definitions:
         - test
       isVerified: false
       isOnline: false
+      isTunnelerEnabled: false
       enrollmentToken: 30a1f0ea-d39b-4aae-b852-304cf1c30d1f
       enrollmentJwt: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbSI6ImVyb3R0IiwiZXhwIjoxNTg0Mzc5MTExLCJpc3MiOiJodHRwczovL
       2xvY2FsaG9zdDoxMjgwIiwianRpIjoiMzBhMWYwZWEtZDM5Yi00YWFlLWI4NTItMzA0Y2YxYzMwZDFmIiwic3ViIjoiYjA3NjZiOGQtYmQxYS00ZDI
@@ -5292,7 +5303,7 @@ definitions:
       enrollmentCreatedAt: '2020-03-16T17:13:31.5777637Z'
       enrollmentExpiresAt: '2020-03-16T17:18:31.5777637Z'
       hostname: ''
-      supportedProtocols: { }
+      supportedProtocols: {}
   ###################################################################
   # Edge Router Policies
   ##################################################################
@@ -5865,7 +5876,7 @@ definitions:
     type: object
     properties:
       urlVars:
-        properties: { }
+        properties: {}
         additionalProperties:
           type: string
         type: object
@@ -5882,7 +5893,7 @@ definitions:
         $ref: '#/definitions/meta'
       data:
         type: object
-        example: { }
+        example: {}
   meta:
     type: object
     properties:

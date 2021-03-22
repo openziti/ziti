@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
@@ -52,6 +53,9 @@ func newListener(id *identity.TokenId, factory *Factory, options *Options, heade
 }
 
 func (listener *listener) Listen(address string, bindHandler xgress.BindHandler) error {
+	if address == "" {
+		return errors.New("address must be specified for edge listeners")
+	}
 	listener.bindHandler = bindHandler
 	addr, err := transport.ParseAddress(address)
 
@@ -235,7 +239,7 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
 	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
-	if err = checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
+	if err = xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
 		log.WithError(err).Warn("error creating terminator")
 		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
 		self.sendStateClosedReply(err.Error(), req)
@@ -277,7 +281,7 @@ func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
 	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
-	return checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
+	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
 func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
@@ -323,7 +327,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
 	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
-	if err := checkForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
+	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
 		log.WithError(err).Error("terminator update failed")
 	} else {
 		log.Debug("terminator updated successfully")
@@ -409,24 +413,4 @@ func getResultOrFailure(msg *channel2.Message, err error, result channel2.TypedM
 	}
 
 	return proto.Unmarshal(msg.Body, result)
-}
-
-func checkForFailureResult(msg *channel2.Message, err error, successType edge_ctrl_pb.ContentType) error {
-	if err != nil {
-		return err
-	}
-
-	if msg.ContentType == int32(edge_ctrl_pb.ContentType_ErrorType) {
-		msg := string(msg.Body)
-		if msg == "" {
-			msg = "error state returned from controller with no message"
-		}
-		return errors.New(msg)
-	}
-
-	if msg.ContentType != int32(successType) {
-		return errors.Errorf("unexpected response type %v to request. expected %v", msg.ContentType, successType)
-	}
-
-	return nil
 }

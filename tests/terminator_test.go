@@ -27,7 +27,7 @@ func Test_Terminators(t *testing.T) {
 	ctx.RequireAdminLogin()
 
 	service := ctx.AdminSession.requireNewService(nil, nil)
-	edgeRouter := ctx.createAndEnrollEdgeRouter()
+	edgeRouter := ctx.createAndEnrollEdgeRouter(false)
 	terminator := ctx.AdminSession.requireNewTerminator(service.Id, edgeRouter.id, "transport", "tcp:localhost:2020")
 	ctx.Req.NotEmpty(terminator.id)
 

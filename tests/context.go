@@ -32,7 +32,9 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/router/enroll"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/xgress_edge"
+	"github.com/openziti/edge/router/xgress_edge_tunnel"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
@@ -71,9 +73,10 @@ import (
 )
 
 const (
-	ControllerConfFile    = "ats-ctrl.yml"
-	EdgeRouterConfFile    = "ats-edge.router.yml"
-	TransitRouterConfFile = "ats-transit.router.yml"
+	ControllerConfFile         = "ats-ctrl.yml"
+	EdgeRouterConfFile         = "ats-edge.router.yml"
+	TunnelerEdgeRouterConfFile = "ats-edge-tunneler.router.yml"
+	TransitRouterConfFile      = "ats-transit.router.yml"
 )
 
 func init() {
@@ -257,11 +260,11 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 		err = ctx.fabricController.Run()
 		ctx.Req.NoError(err)
 	}()
-	err = ctx.waitForPort(time.Minute * 5)
+	err = ctx.waitForCtrlPort(time.Minute * 5)
 	ctx.Req.NoError(err)
 }
 
-func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edgeRouter {
+func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
 	// If an edge router has already been created, delete it and create a new one
 	if ctx.edgeRouterEntity != nil {
 		ctx.AdminSession.requireDeleteEntity(ctx.edgeRouterEntity)
@@ -270,10 +273,18 @@ func (ctx *TestContext) createAndEnrollEdgeRouter(roleAttributes ...string) *edg
 
 	_ = os.MkdirAll("testdata/edge-router", os.FileMode(0755))
 
-	ctx.edgeRouterEntity = ctx.AdminSession.requireNewEdgeRouter(roleAttributes...)
+	if tunneler {
+		ctx.edgeRouterEntity = ctx.AdminSession.requireNewTunnelerEnabledEdgeRouter(roleAttributes...)
+	} else {
+		ctx.edgeRouterEntity = ctx.AdminSession.requireNewEdgeRouter(roleAttributes...)
+	}
 	jwt := ctx.AdminSession.getEdgeRouterJwt(ctx.edgeRouterEntity.id)
 
-	cfgmap, err := router.LoadConfigMap(EdgeRouterConfFile)
+	configFile := EdgeRouterConfFile
+	if tunneler {
+		configFile = TunnelerEdgeRouterConfFile
+	}
+	cfgmap, err := router.LoadConfigMap(configFile)
 	ctx.Req.NoError(err)
 
 	enroller := enroll.NewRestEnroller()
@@ -322,9 +333,15 @@ func (ctx *TestContext) startTransitRouter() {
 	ctx.Req.NoError(ctx.router.Start())
 }
 
+func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ...string) {
+	ctx.shutdownRouter()
+	ctx.createAndEnrollEdgeRouter(true, roleAttributes...)
+	ctx.startEdgeRouter()
+}
+
 func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) {
 	ctx.shutdownRouter()
-	ctx.createAndEnrollEdgeRouter(roleAttributes...)
+	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
 	ctx.startEdgeRouter()
 }
 
@@ -336,13 +353,23 @@ func (ctx *TestContext) shutdownRouter() {
 }
 
 func (ctx *TestContext) startEdgeRouter() {
-	config, err := router.LoadConfig(EdgeRouterConfFile)
+	configFile := EdgeRouterConfFile
+	if ctx.edgeRouterEntity.isTunnelerEnabled {
+		configFile = TunnelerEdgeRouterConfFile
+	}
+	config, err := router.LoadConfig(configFile)
 	ctx.Req.NoError(err)
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
-	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest())
-	xgress.GlobalRegistry().Register(edge_common.Binding, xgressEdgeFactory)
+	stateManager := fabric.NewStateManager()
+	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager)
+	xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
+
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
+	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
+
 	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
+	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeTunnelFactory))
 	ctx.Req.NoError(ctx.router.Start())
 }
 
@@ -360,12 +387,16 @@ func (ctx *TestContext) EnrollIdentity(identityId string) *sdkconfig.Config {
 	return conf
 }
 
-func (ctx *TestContext) waitForPort(duration time.Duration) error {
+func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
+	return ctx.waitForPort(ctx.ApiHost, duration)
+}
+
+func (ctx *TestContext) waitForPort(address string, duration time.Duration) error {
 	now := time.Now()
 	endTime := now.Add(duration)
 	maxWait := duration
 	for {
-		conn, err := net.DialTimeout("tcp", ctx.ApiHost, maxWait)
+		conn, err := net.DialTimeout("tcp", address, maxWait)
 		if err == nil {
 			_ = conn.Close()
 			return nil

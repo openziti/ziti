@@ -129,6 +129,8 @@ func (store *edgeRouterPolicyStoreImpl) initializeLocal() {
 	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
+
+	store.AddConstraint(boltz.NewSystemEntityEnforcementConstraint(store))
 }
 
 func (store *edgeRouterPolicyStoreImpl) initializeLinked() {
@@ -188,11 +190,13 @@ func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id s
 	if err != nil {
 		return err
 	}
-	policy.EdgeRouterRoles = nil
-	policy.IdentityRoles = nil
-	err = store.Update(ctx, policy, nil)
-	if err != nil {
-		return fmt.Errorf("failure while clearing policy before delete: %w", err)
+	if !policy.IsSystem || ctx.IsSystemContext() {
+		policy.EdgeRouterRoles = nil
+		policy.IdentityRoles = nil
+		err = store.Update(ctx, policy, nil)
+		if err != nil {
+			return fmt.Errorf("failure while clearing policy before delete: %w", err)
+		}
 	}
 	return store.BaseStore.DeleteById(ctx, id)
 }

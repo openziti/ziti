@@ -74,7 +74,7 @@ func run(dbFile string) {
 			identity = &persistence.Identity{
 				BaseExtEntity:  boltz.BaseExtEntity{Id: id},
 				Name:           "DebugAdmin",
-				IdentityTypeId: "577104f2-1e3a-4947-a927-7383baefbc9a",
+				IdentityTypeId: "User",
 				IsDefaultAdmin: false,
 				IsAdmin:        true,
 			}

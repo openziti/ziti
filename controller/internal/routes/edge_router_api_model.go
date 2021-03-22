@@ -57,8 +57,9 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 		BaseEntity: models.BaseEntity{
 			Tags: router.Tags,
 		},
-		Name:           stringz.OrEmpty(router.Name),
-		RoleAttributes: router.RoleAttributes,
+		Name:              stringz.OrEmpty(router.Name),
+		RoleAttributes:    router.RoleAttributes,
+		IsTunnelerEnabled: router.IsTunnelerEnabled,
 	}
 
 	return ret
@@ -70,8 +71,9 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 			Tags: router.Tags,
 			Id:   id,
 		},
-		Name:           stringz.OrEmpty(router.Name),
-		RoleAttributes: router.RoleAttributes,
+		Name:              stringz.OrEmpty(router.Name),
+		RoleAttributes:    router.RoleAttributes,
+		IsTunnelerEnabled: router.IsTunnelerEnabled,
 	}
 
 	return ret
@@ -83,8 +85,9 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 			Tags: router.Tags,
 			Id:   id,
 		},
-		Name:           router.Name,
-		RoleAttributes: router.RoleAttributes,
+		Name:              router.Name,
+		RoleAttributes:    router.RoleAttributes,
+		IsTunnelerEnabled: router.IsTunnelerEnabled,
 	}
 
 	return ret
@@ -111,7 +114,7 @@ func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 	return restModel, nil
 }
 
-func MapVersionInfoToRestModel(versionInfo common.VersionInfo) (*rest_model.VersionInfo) {
+func MapVersionInfoToRestModel(versionInfo common.VersionInfo) *rest_model.VersionInfo {
 	ret := &rest_model.VersionInfo{
 		Arch:      &versionInfo.Arch,
 		BuildDate: &versionInfo.BuildDate,
@@ -144,6 +147,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		IsVerified:          &router.IsVerified,
 		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
 		VersionInfo:         MapVersionInfoToRestModel(routerState.VersionInfo),
+		IsTunnelerEnabled:   &router.IsTunnelerEnabled,
 	}
 
 	if !router.IsVerified {

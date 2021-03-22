@@ -7748,6 +7748,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -7778,7 +7781,8 @@ func init() {
             "version",
             "arch",
             "buildDate",
-            "revision"
+            "revision",
+            "isTunnelerEnabled"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -7801,6 +7805,9 @@ func init() {
             },
             "fingerprint": {
               "type": "string"
+            },
+            "isTunnelerEnabled": {
+              "type": "boolean"
             },
             "isVerified": {
               "type": "boolean"
@@ -7832,6 +7839,7 @@ func init() {
         "hostname": "",
         "id": "b0766b8d-bd1a-4d28-8415-639b29d3c83d",
         "isOnline": false,
+        "isTunnelerEnabled": false,
         "isVerified": false,
         "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
         "roleAttributes": [
@@ -7855,6 +7863,9 @@ func init() {
       "description": "An edge router patch object",
       "type": "object",
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -7981,6 +7992,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -8509,7 +8523,8 @@ func init() {
       "enum": [
         "User",
         "Device",
-        "Service"
+        "Service",
+        "Router"
       ]
     },
     "identityTypeDetail": {
@@ -11025,10 +11040,10 @@ func init() {
             "type": {
               "_links": {
                 "self": {
-                  "href": "./identity-types/577104f2-1e3a-4947-a927-7383baefbc9a"
+                  "href": "./identity-types/User"
                 }
               },
-              "id": "577104f2-1e3a-4947-a927-7383baefbc9a",
+              "id": "User",
               "name": "User",
               "urlName": "identity-types"
             },
@@ -14895,10 +14910,10 @@ func init() {
                   "type": {
                     "_links": {
                       "self": {
-                        "href": "./identity-types/577104f2-1e3a-4947-a927-7383baefbc9a"
+                        "href": "./identity-types/User"
                       }
                     },
-                    "id": "577104f2-1e3a-4947-a927-7383baefbc9a",
+                    "id": "User",
                     "name": "User",
                     "urlName": "identity-types"
                   },
@@ -27935,6 +27950,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -27965,7 +27983,8 @@ func init() {
             "version",
             "arch",
             "buildDate",
-            "revision"
+            "revision",
+            "isTunnelerEnabled"
           ],
           "properties": {
             "enrollmentCreatedAt": {
@@ -27988,6 +28007,9 @@ func init() {
             },
             "fingerprint": {
               "type": "string"
+            },
+            "isTunnelerEnabled": {
+              "type": "boolean"
             },
             "isVerified": {
               "type": "boolean"
@@ -28019,6 +28041,7 @@ func init() {
         "hostname": "",
         "id": "b0766b8d-bd1a-4d28-8415-639b29d3c83d",
         "isOnline": false,
+        "isTunnelerEnabled": false,
         "isVerified": false,
         "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
         "roleAttributes": [
@@ -28042,6 +28065,9 @@ func init() {
       "description": "An edge router patch object",
       "type": "object",
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -28168,6 +28194,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "isTunnelerEnabled": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -28696,7 +28725,8 @@ func init() {
       "enum": [
         "User",
         "Device",
-        "Service"
+        "Service",
+        "Router"
       ]
     },
     "identityTypeDetail": {
@@ -31213,10 +31243,10 @@ func init() {
             "type": {
               "_links": {
                 "self": {
-                  "href": "./identity-types/577104f2-1e3a-4947-a927-7383baefbc9a"
+                  "href": "./identity-types/User"
                 }
               },
-              "id": "577104f2-1e3a-4947-a927-7383baefbc9a",
+              "id": "User",
               "name": "User",
               "urlName": "identity-types"
             },

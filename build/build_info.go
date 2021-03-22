@@ -17,6 +17,7 @@ type Info interface {
 	Version() string
 	Revision() string
 	BuildDate() string
+	Branch() string
 }
 
 type defaultInfo struct{}
@@ -30,5 +31,9 @@ func (d defaultInfo) Revision() string {
 }
 
 func (d defaultInfo) BuildDate() string {
+	return "unknown"
+}
+
+func (d defaultInfo) Branch() string {
 	return "unknown"
 }

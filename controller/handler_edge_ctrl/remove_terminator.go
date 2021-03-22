@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
@@ -65,8 +66,8 @@ func (self *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch cha
 	}
 
 	ctx := &RemoveTerminatorRequestContext{
-		baseRequestContext: baseRequestContext{handler: self, msg: msg},
-		req:                req,
+		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
+		req:                       req,
 	}
 
 	go self.RemoveTerminator(ctx)
@@ -77,7 +78,7 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 		return
 	}
 
-	terminator := ctx.verifyTerminator(ctx.req.TerminatorId)
+	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.EdgeBinding)
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
 		return
@@ -118,7 +119,7 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 }
 
 type RemoveTerminatorRequestContext struct {
-	baseRequestContext
+	baseSessionRequestContext
 	req *edge_ctrl_pb.RemoveTerminatorRequest
 }
 

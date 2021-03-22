@@ -20,7 +20,11 @@ import (
 	"fmt"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/foundation/util/info"
+	"io"
 	"net"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
@@ -35,6 +39,23 @@ type Service struct {
 	Name     string
 	Port     int
 	Protocol intercept.Protocol
+	Closer   io.Closer
+	sync.Mutex
+}
+
+func (self *Service) setCloser(c io.Closer) {
+	self.Lock()
+	defer self.Unlock()
+	self.Closer = c
+}
+
+func (self *Service) Stop() error {
+	self.Lock()
+	defer self.Unlock()
+	if self.Closer != nil {
+		return self.Closer.Close()
+	}
+	return nil
 }
 
 type interceptor struct {
@@ -44,7 +65,37 @@ type interceptor struct {
 	provider    tunnel.FabricProvider
 }
 
-func New(ip net.IP, services map[string]*Service) (intercept.Interceptor, error) {
+func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
+	services := make(map[string]*Service, len(serviceList))
+
+	for _, arg := range serviceList {
+		parts := strings.Split(arg, ":")
+		if len(parts) < 2 || len(parts) > 3 {
+			return nil, errors.Errorf("invalid argument '%s'", arg)
+		}
+
+		port, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, errors.Errorf("invalid port specified in '%s'", arg)
+		}
+
+		service := &Service{
+			Name:     parts[0],
+			Port:     port,
+			Protocol: intercept.TCP,
+		}
+
+		if len(parts) == 3 {
+			protocol := parts[2]
+			if protocol == "udp" {
+				service.Protocol = intercept.UDP
+			} else if protocol != "tcp" {
+				return nil, errors.Errorf("invalid protocol specified in '%s', must be tcp or udp", arg)
+			}
+		}
+		services[parts[0]] = service
+	}
+
 	p := interceptor{
 		interceptIP: ip,
 		services:    services,
@@ -61,7 +112,7 @@ func (p *interceptor) Start(provider tunnel.FabricProvider) {
 	p.provider = provider
 }
 
-func (p interceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
+func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	proxiedService, ok := p.services[service.Name]
@@ -71,11 +122,7 @@ func (p interceptor) Intercept(service *entities.Service, resolver dns.Resolver)
 	}
 
 	// pre-fetch network session todo move this to service poller?
-	if err := p.provider.PrepForUse(service.Id); err != nil {
-		return fmt.Errorf("failed to acquire network session: %v", err)
-	} else {
-		log.Debug("acquired network session")
-	}
+	p.provider.PrepForUse(service.Id)
 
 	go p.runServiceListener(proxiedService)
 	return nil
@@ -99,6 +146,7 @@ func (p *interceptor) handleTCP(service *Service) {
 		p.closeCh <- err
 		return
 	}
+	service.setCloser(server)
 
 	log = log.WithField("addr", server.Addr().String())
 
@@ -130,6 +178,8 @@ func (p *interceptor) handleUDP(service *Service) {
 		return
 	}
 
+	service.setCloser(udpPacketConn)
+
 	log = log.WithField("addr", udpPacketConn.LocalAddr().String())
 
 	log.Infof("service %v is listening", service.Name)
@@ -144,10 +194,17 @@ func (p *interceptor) handleUDP(service *Service) {
 func (p *interceptor) Stop() {
 	log := pfxlog.Logger()
 	log.Info("stopping proxy interceptor")
+
+	for _, service := range p.services {
+		_ = service.Stop()
+	}
 }
 
-func (p *interceptor) StopIntercepting(serviceName string, removeRoute bool) error {
-	return errors.New("StopIntercepting not implemented by proxy interceptor")
+func (p *interceptor) StopIntercepting(serviceName string, _ bool) error {
+	if service, ok := p.services[serviceName]; ok {
+		return service.Stop()
+	}
+	return nil
 }
 
 type udpReader struct {

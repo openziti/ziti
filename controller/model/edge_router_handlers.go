@@ -32,9 +32,10 @@ func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 	handler := &EdgeRouterHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().EdgeRouter),
 		allowedFieldsChecker: boltz.MapFieldChecker{
-			persistence.FieldName:           struct{}{},
-			persistence.FieldRoleAttributes: struct{}{},
-			boltz.FieldTags:                 struct{}{},
+			persistence.FieldName:                        struct{}{},
+			persistence.FieldEdgeRouterIsTunnelerEnabled: struct{}{},
+			persistence.FieldRoleAttributes:              struct{}{},
+			boltz.FieldTags:                              struct{}{},
 		},
 	}
 	handler.impl = handler

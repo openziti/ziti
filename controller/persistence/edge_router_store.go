@@ -23,16 +23,18 @@ import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 )
 
 const (
-	FieldEdgeRouters           = "edgeRouters"
-	FieldEdgeRouterCertPEM     = "certPem"
-	FieldEdgeRouterIsVerified  = "isVerified"
-	FieldEdgeRouterHostname    = "hostname"
-	FieldEdgeRouterProtocols   = "protocols"
-	FieldEdgeRouterEnrollments = "enrollments"
+	FieldEdgeRouters                 = "edgeRouters"
+	FieldEdgeRouterCertPEM           = "certPem"
+	FieldEdgeRouterIsVerified        = "isVerified"
+	FieldEdgeRouterHostname          = "hostname"
+	FieldEdgeRouterProtocols         = "protocols"
+	FieldEdgeRouterEnrollments       = "enrollments"
+	FieldEdgeRouterIsTunnelerEnabled = "isTunnelerEnabled"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -53,6 +55,7 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 	RoleAttributes      []string
 	Enrollments         []string
+	IsTunnelerEnabled   bool
 }
 
 func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -61,7 +64,7 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 
 	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
-
+	entity.IsTunnelerEnabled = bucket.GetBoolWithDefault(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
 	//old v4, migrations only
 	entity.Enrollments = bucket.GetStringList(FieldEdgeRouterEnrollments)
 	entity.Hostname = bucket.GetString(FieldEdgeRouterHostname)
@@ -78,6 +81,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
@@ -98,9 +102,9 @@ type EdgeRouterStore interface {
 }
 
 func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
-	store := &edgeRouterStoreImpl{
-		baseStore: newChildBaseStore(stores, stores.Router),
-	}
+	store := &edgeRouterStoreImpl{}
+	stores.Router.AddDeleteHandler(store.cleanupEdgeRouter) // do cleanup first
+	store.baseStore = newChildBaseStore(stores, stores.Router)
 	store.InitImpl(store)
 	return store
 }
@@ -140,6 +144,8 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
 
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
+	store.AddSymbol(FieldEdgeRouterIsTunnelerEnabled, ast.NodeTypeBool)
+
 	store.symbolEnrollments = store.AddFkSetSymbol(FieldEdgeRouterEnrollments, store.stores.enrollment)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
@@ -156,6 +162,12 @@ func (store *edgeRouterStoreImpl) initializeLinked() {
 
 	store.identitiesCollection = store.AddRefCountedLinkCollection(store.symbolIdentities, store.stores.identity.symbolEdgeRouters)
 	store.servicesCollection = store.AddRefCountedLinkCollection(store.symbolServices, store.stores.edgeService.symbolEdgeRouters)
+
+	store.AddConstraint(&routerIdentityConstraint{
+		stores:                store.stores,
+		routerNameSymbol:      store.GetSymbol(FieldName),
+		tunnelerEnabledSymbol: store.GetSymbol(FieldEdgeRouterIsTunnelerEnabled),
+	})
 }
 
 func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
@@ -202,7 +214,7 @@ func (store *edgeRouterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Edg
 	return nil, nil
 }
 
-func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+func (store *edgeRouterStoreImpl) cleanupEdgeRouter(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from EdgeRouterRoles in edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
@@ -218,14 +230,122 @@ func (store *edgeRouterStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 			return err
 		}
 	}
-
-	if store.stores.Router.IsEntityPresent(ctx.Tx(), id) {
-		return store.stores.Router.DeleteById(ctx, id)
-	}
-
-	return store.baseStore.DeleteById(ctx, id)
+	return nil
 }
 
 func (store *edgeRouterStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
 	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
+}
+
+type routerIdentityConstraint struct {
+	stores                *stores
+	routerNameSymbol      boltz.EntitySymbol
+	tunnelerEnabledSymbol boltz.EntitySymbol
+}
+
+func (self *routerIdentityConstraint) ProcessBeforeUpdate(ctx *boltz.IndexingContext) {
+	if !ctx.IsCreate {
+		t, v := self.routerNameSymbol.Eval(ctx.Tx(), ctx.RowId)
+		ctx.PushState(self, t, v)
+
+		t, v = self.tunnelerEnabledSymbol.Eval(ctx.Tx(), ctx.RowId)
+		ctx.PushState(self, t, v)
+	}
+}
+
+func (self *routerIdentityConstraint) ProcessAfterUpdate(ctx *boltz.IndexingContext) {
+	oldName := ctx.PopStateString(self)
+	oldTunnelerEnabled := ctx.PopStateBool(self)
+	_, currentName := self.routerNameSymbol.Eval(ctx.Tx(), ctx.RowId)
+	currentTunnelerEnabledP := boltz.FieldToBool(self.tunnelerEnabledSymbol.Eval(ctx.Tx(), ctx.RowId))
+	currentTunnelerEnabled := currentTunnelerEnabledP != nil && *currentTunnelerEnabledP
+	name := string(currentName)
+
+	createEntities := !oldTunnelerEnabled && currentTunnelerEnabled
+
+	routerId := string(ctx.RowId)
+
+	if createEntities {
+		identity := &Identity{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id: string(ctx.RowId),
+			},
+			Name:           name,
+			IdentityTypeId: RouterIdentityType,
+			IsDefaultAdmin: false,
+			IsAdmin:        false,
+		}
+		ctx.ErrHolder.SetError(self.stores.identity.Create(ctx.Ctx, identity))
+
+		edgeRouterPolicy := &EdgeRouterPolicy{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id:       routerId,
+				IsSystem: true,
+			},
+			Name:            getSystemEdgeRouterPolicyName(string(ctx.RowId)),
+			Semantic:        "AnyOf",
+			IdentityRoles:   []string{"@" + identity.Id},
+			EdgeRouterRoles: []string{"@" + string(ctx.RowId)},
+		}
+
+		ctx.ErrHolder.SetError(self.stores.edgeRouterPolicy.Create(ctx.Ctx.GetSystemContext(), edgeRouterPolicy))
+	} else if oldTunnelerEnabled && !currentTunnelerEnabled {
+		self.deleteAssociatedEntities(ctx)
+	}
+
+	if !createEntities && currentTunnelerEnabled && oldName != name {
+		identity, err := self.stores.identity.LoadOneById(ctx.Tx(), routerId)
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				logrus.Errorf("identity for router with id %v not found", routerId)
+			} else {
+				ctx.ErrHolder.SetError(err)
+			}
+			return
+		}
+
+		if identity.IdentityTypeId != RouterIdentityType {
+			logrus.Errorf("identity matching router with name %v is not a router identity, not updating name", oldName)
+			return
+		}
+
+		identity.Name = name
+		err = self.stores.identity.Update(ctx.Ctx, identity, boltz.MapFieldChecker{
+			FieldName: struct{}{},
+		})
+		ctx.ErrHolder.SetError(err)
+	}
+}
+
+func (self *routerIdentityConstraint) ProcessBeforeDelete(ctx *boltz.IndexingContext) {
+	self.deleteAssociatedEntities(ctx)
+}
+
+func (self *routerIdentityConstraint) deleteAssociatedEntities(ctx *boltz.IndexingContext) {
+	routerId := string(ctx.RowId)
+
+	// cleanup associated auto-generated edge router policy
+	if self.stores.edgeRouterPolicy.IsEntityPresent(ctx.Tx(), routerId) {
+		ctx.ErrHolder.SetError(self.stores.edgeRouterPolicy.DeleteById(ctx.Ctx.GetSystemContext(), routerId))
+	}
+
+	if self.stores.identity.IsEntityPresent(ctx.Ctx.Tx(), routerId) {
+		_, identityType := self.stores.identity.symbolIdentityTypeId.Eval(ctx.Tx(), ctx.RowId)
+		if string(identityType) != RouterIdentityType {
+			logrus.Debugf("identity matching router with id %v is not a router identity, not deleting", routerId)
+			return
+		}
+
+		ctx.ErrHolder.SetError(self.stores.identity.DeleteById(ctx.Ctx.GetSystemContext(), routerId))
+	}
+}
+
+func (self *routerIdentityConstraint) Initialize(_ *bbolt.Tx, _ errorz.ErrorHolder) {}
+
+func (self *routerIdentityConstraint) CheckIntegrity(_ *bbolt.Tx, _ bool, _ func(err error, fixed bool)) error {
+	return nil
+}
+
+func getSystemEdgeRouterPolicyName(edgeRouterId string) string {
+	return "edge-router-" + edgeRouterId + "-system"
 }

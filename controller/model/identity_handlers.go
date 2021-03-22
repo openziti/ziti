@@ -77,6 +77,11 @@ func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) 
 		return "", apiErr
 	}
 
+	if identityType.Name == persistence.RouterIdentityType {
+		fieldErr := errorz.NewFieldError("may not create identities with given typeId", "typeId", identityModel.IdentityTypeId)
+		return "", errorz.NewFieldApiError(fieldErr)
+	}
+
 	identityModel.IdentityTypeId = identityType.Id
 
 	return handler.createEntity(identityModel)

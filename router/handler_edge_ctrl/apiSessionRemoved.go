@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/edge/router/internal/fabric"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/foundation/channel2"
 )
 
