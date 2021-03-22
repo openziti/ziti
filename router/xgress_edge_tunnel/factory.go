@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -116,6 +117,7 @@ type Options struct {
 	svcPollRate   time.Duration
 	resolver      string
 	dnsSvcIpRange string
+	lanIf         string
 	services      []string
 }
 
@@ -163,7 +165,7 @@ func (options *Options) load(data xgress.OptionsData) error {
 		}
 
 		if value, found := data["mode"]; found {
-			if strVal, ok := value.(string); ok {
+			if strVal, ok := value.(string); ok && stringz.Contains([]string{"tproxy", "host", "proxy"}, strVal) {
 				options.mode = strVal
 			} else {
 				return errors.Errorf(`invalid value '%v' for mode, must be one of ["tproxy", "host", "proxy"']`, value)
@@ -183,6 +185,15 @@ func (options *Options) load(data xgress.OptionsData) error {
 				return errors.New(`invalid value for services, must be list of strings']`)
 			}
 		}
+
+		if value, found := data["lanIf"]; found {
+			if strVal, ok := value.(string); ok {
+				options.lanIf = strVal
+			} else {
+				return errors.Errorf(`invalid value '%v' for lanIf, must be a string value`, value)
+			}
+		}
+
 	}
 
 	return nil
