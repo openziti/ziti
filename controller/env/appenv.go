@@ -473,5 +473,9 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 }
 
 func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
-	ae.IdentityRefreshMap.Set(event.IdentityId, time.Now())
+	ae.HandleServiceUpdatedEventForIdentityId(event.IdentityId)
+}
+
+func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
+	ae.IdentityRefreshMap.Set(identityId, time.Now())
 }

@@ -203,6 +203,8 @@ func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestCo
 		return
 	}
 
+	ae.Handlers.PostureResponse.SetMfaPostureForIdentity(rc.Identity.Id, false)
+
 	rc.RespondWithEmptyOk()
 }
 

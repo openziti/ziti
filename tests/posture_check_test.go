@@ -298,6 +298,7 @@ func Test_PostureChecks(t *testing.T) {
 			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
 		})
 
+
 		t.Run("service has the posture check in its queries", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			code, body := enrolledIdentitySession.query("/services/" + service.Id)
@@ -332,8 +333,18 @@ func Test_PostureChecks(t *testing.T) {
 		})
 
 		t.Run("providing valid posture data", func(t *testing.T) {
+
 			ctx.testContextChanged(t)
+
+			beforeLastChangedAt := enrolledIdentitySession.getServiceUpdateTime()
+
 			enrolledIdentitySession.requireNewPostureResponseDomain(postureCheck.id, domain)
+
+			afterLastChangedAt := enrolledIdentitySession.getServiceUpdateTime()
+
+			t.Run("service update changed with posture data change", func(t *testing.T) {
+				ctx.Req.True(afterLastChangedAt.After(beforeLastChangedAt), "expected last changed at to have been updated after posture submissions")
+			})
 
 			t.Run("allows posture checks to pass", func(t *testing.T) {
 				ctx.testContextChanged(t)
