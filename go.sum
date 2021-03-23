@@ -610,7 +610,6 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
-github.com/openziti/sdk-golang v0.15.24/go.mod h1:g+iKa5l2XJWJHYwkiBbkhA9NTyZc4M38YVchCxbC78k=
 github.com/openziti/sdk-golang v0.15.25 h1:BNIO/A2CTZVS8SzF8Qj206lFSoTZLXzvHCr9H+baf1s=
 github.com/openziti/sdk-golang v0.15.25/go.mod h1:xj9QMaqLyEyxFhB8m3ybLLwdUNkOTZevubvSJWPmB+s=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
