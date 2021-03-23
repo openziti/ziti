@@ -64,10 +64,6 @@ type createPostureCheckOsOptions struct {
 	createPostureCheckOptions
 	os []string
 }
-type createPostureCheckMfaOptions struct {
-	createPostureCheckOptions
-	os []string
-}
 
 type createPostureCheckProcessOptions struct {
 	createPostureCheckOptions
