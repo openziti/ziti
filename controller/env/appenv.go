@@ -295,7 +295,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
 		Api:                api,
 		IdentityRefreshMap: cmap.New(),
-		StartupTime:        time.Now(),
+		StartupTime:        time.Now().UTC(),
 	}
 
 	api.APIAuthorizer = authorizer{}
@@ -477,5 +477,5 @@ func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
 }
 
 func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
-	ae.IdentityRefreshMap.Set(identityId, time.Now())
+	ae.IdentityRefreshMap.Set(identityId, time.Now().UTC())
 }

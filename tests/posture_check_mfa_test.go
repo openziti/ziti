@@ -19,6 +19,7 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/eid"
 	"net/http"
@@ -108,7 +109,7 @@ func Test_MFA_PostureChecks(t *testing.T) {
 				ctx.Req.NoError(err)
 				standardJsonResponseTests(resp, http.StatusCreated, t)
 
-				t.Run(" does not allow service session creation", func(t *testing.T) {
+				t.Run("does not allow service session creation", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					resp, err := enrolledIdentitySession.createNewSession(service.Id)
 					ctx.Req.NoError(err)
@@ -174,6 +175,37 @@ func Test_MFA_PostureChecks(t *testing.T) {
 				resp, err = newSession.createNewSession(service.Id)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+				sessionConntainer, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				ctx.Req.True(sessionConntainer.ExistsP("data.id"))
+				sessionId, ok := sessionConntainer.Path("data.id").Data().(string)
+				ctx.Req.True(ok)
+				ctx.Req.NotEmpty(sessionId)
+
+				t.Run("removing MFA", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Delete("/current-identity/mfa")
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+					t.Run("removes existing session", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						resp, err := newSession.newAuthenticatedRequest().Get(fmt.Sprintf("/sessions/%s", sessionId))
+						ctx.Req.NoError(err)
+						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode())
+					})
+
+					t.Run("doesn't allow new sessions", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						resp, err := enrolledIdentitySession.createNewSession(service.Id)
+						ctx.Req.NoError(err)
+
+						ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+					})
+				})
 			})
 		})
 	})

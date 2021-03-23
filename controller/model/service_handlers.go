@@ -302,6 +302,9 @@ func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string
 			policyId := policyCursor.Current()
 			policyCursor.Next()
 
+			//required to provide an entry for policies w/ no checks
+			policyIdToChecks[string(policyId)] = nil
+
 			cursor := postureCheckLinks.IterateLinks(tx, policyId)
 			for cursor.IsValid() {
 				checkId := string(cursor.Current())
