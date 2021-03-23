@@ -123,7 +123,5 @@ func waitForShutdown(r *router.Router) {
 
 	if err := r.Shutdown(); err != nil {
 		pfxlog.Logger().Info("error encountered during shutdown: %v", err)
-		os.Exit(1)
 	}
-	os.Exit(0)
 }
