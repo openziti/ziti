@@ -90,7 +90,9 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 
 		} else {
 			log.Errorf("error accepting (%s)", err)
-			_ = ch.Close()
+			if err.Error() == "closed" {
+				return
+			}
 		}
 	}
 }
