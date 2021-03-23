@@ -19,13 +19,14 @@ type serviceEventHandler struct {
 
 func (self *serviceEventHandler) addServiceUpdatedEvent(store *baseStore, tx *bbolt.Tx, serviceId []byte) {
 	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId)
-	for cursor.IsValid() {
+
+	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
 	}
 
 	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId)
-	for cursor.IsValid() {
+	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
 	}
