@@ -12,7 +12,7 @@ ziti-tunnel gains new features, the combined ziti-router/tunnel should maintain 
 
 ## Transwarp beta_1
 
-See the Transwarp beta_1 guide [here][doc/transwarp_b1/transwarp_b1.md].
+See the Transwarp beta_1 guide [here](doc/transwarp_b1/transwarp_b1.md).
 
 ### Supported configurations
 
