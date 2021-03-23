@@ -1,3 +1,108 @@
+# Release 0.19.8
+
+## What's New
+
+* Converged Tunneler/Router
+
+## Converged Tunneler/Router
+
+ziti-router can now run with the tunneler embedded. It has the same capabilities as ziti-tunnel. As
+ziti-tunnel gains new features, the combined ziti-router/tunnel should maintain feature parity.
+
+### Supported configurations
+
+Current only `ziti-tunneler-server.v1` and `ziti-tunneler-client.v1` are supported. Support
+for `host.v1`, `intercept.v1` and the upcoming `host.v2` will be added in a follow-up release.
+
+### Router Identities
+
+When an edge router is marked as being tunneler enabled, a matching identity will be created, of
+type Router, as well as an edge router policy. The edge router policy ensures that the identity
+always has access to the edge router. The identity allows the router to be included in service
+policies, to configure which services will intercepted/hosted.
+
+1. The identity will have the same id and name as the edge router
+1. If an identity with the same name as the router already exists, the router create/update will
+   fail
+1. When the router name is changed, the identity name will be updated as well.
+1. The identity name and type cannot be changed directly. The type may not be changed at all and the
+   name may only be changed by changing the name of the router.
+1. The identity may not be deleted except by deleting the router or disabling tunneler support for
+   the identity.
+1. When the router is deleted, the accompanying identity and edge router policy will also be deleted
+1. If tunneler support is disabled in the router, the accompanying identity and edge router policy
+   will also be deleted.
+1. The edge router policy will have the same id as the router and have a name of the
+   form `edge-router-<edge-router-id>-system`, where `<edge-router-id>` is replaced by the id of the
+   edge router.
+1. The edge router policy is considered a `system` entity, and cannot be updated and cannot deleted
+   except by the system when the associated router is deleted.
+
+### Tunneler Prerequisites
+
+In order for a router instance to host a tunneler, it must meet the following criteria:
+
+1. It must be represented in the model by an edge router
+2. The edge router field `isTunnelerEnabled` must be set to true
+3. Edge functionality in the router must be enabled, which means the `edge:` config section must be
+   present. NOTE: The edge listener does **not** need to be enabled.
+4. The tunnel listener must be enabled.
+
+### Making an Edge Router Tunneler enabled
+
+The ziti CLI can be used to enable/disable tunneler support on edge routers. When creating an edge
+router, the `-t` flag can be passed in to enable running the tunneler.
+
+```shell
+ziti edge create edge-router myEdgeRouter --tunneler-enabled
+```
+
+or
+
+```shell
+ziti edge create edge-router myEdgeRouter -t
+```
+
+An existing edge router can be marked as tunneler enabled as follows:
+
+```shell
+ziti edge update edge-router myEdgeRouter --tunneler-enabled
+```
+
+or
+
+```shell
+ziti edge update edge-router myEdgeRouter -t
+```
+
+An existing edge router can be marked as not supporting the tunneler as follows:
+
+```shell
+ziti edge update edge-router myEdgeRouter -t=false
+```
+
+or
+
+```shell
+ziti edge update edge-router myEdgeRouter --tunneler-enabled=false
+```
+
+### Tunnel listener configuration
+
+```yaml
+
+listeners:
+  - binding: tunnel
+    options:
+      mode: tproxy # mode to run in. Valid values [tproxy, host, proxy]. Default: tproxy
+      svcPollRate: 15s # How often to poll for service changes. Default: 15s
+      resolver: udp://127.0.0.1:53 # DNS resolve. Default: udp://127.0.0.1:53 for tproxy, blank for others
+      dnsSvcIpRange: 100.64.0.1/10 # cidr to use when assigning IPs to unresolvable intercept hostnames (default "100.64.0.1/10")
+      services: # services to intercept in proxy mode. Default: none
+        - echo:1977
+      lanIf: tun1 # if specified, INPUT rules for intercepted service addresses are assigned to this interface. Defaults to unspecified.
+```
+
 # Release 0.19.7
 
 ## What's New
@@ -90,17 +195,19 @@ Example Output:
 
 ### Heartbeat Collection And Batching
 
-In previous versions heartbeats from REST API usage and discrete Edge Router connection would all cause writes
-for the same API Session as they were encountered. In situations where one or more REST API requests were issues and/or one or more
-Edge Router connections were held by a ZitI Application, multiple simultaneous heartbeats could occur for no apparent benefit
-and consume disk write I/O.
+In previous versions heartbeats from REST API usage and discrete Edge Router connection would all
+cause writes for the same API Session as they were encountered. In situations where one or more REST
+API requests were issues and/or one or more Edge Router connections were held by a ZitI Application,
+multiple simultaneous heartbeats could occur for no apparent benefit and consume disk write I/O.
 
-Heartbeats are now aggregated over a window of time in a cache and written to disk on an interval. The write interval defaults to 90s
-and the batch size (for write transactions) to 250. Additionally, all heartbeats are flush to disk when the controller is properly shut down.
+Heartbeats are now aggregated over a window of time in a cache and written to disk on an interval.
+The write interval defaults to 90s and the batch size (for write transactions) to 250. Additionally,
+all heartbeats are flush to disk when the controller is properly shut down.
 
 These settings can be defined in the `edge.api` section for the Ziti Controller configuration.
 
 Example:
+
 ```
 edge:
   api:
@@ -111,7 +218,6 @@ edge:
     activityUpdateBatchSize: 250
     ...
 ```
-
 
 ### Add Service Request Failures for Posture Checks
 

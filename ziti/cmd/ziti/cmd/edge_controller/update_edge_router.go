@@ -31,8 +31,9 @@ import (
 
 type updateEdgeRouterOptions struct {
 	edgeOptions
-	name           string
-	roleAttributes []string
+	name              string
+	isTunnelerEnabled bool
+	roleAttributes    []string
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -59,6 +60,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router")
+	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
 	options.AddCommonFlags(cmd)
@@ -77,6 +79,11 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("name") {
 		setJSONValue(entityData, o.name, "name")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tunneler-enabled") {
+		setJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
 		change = true
 	}
 

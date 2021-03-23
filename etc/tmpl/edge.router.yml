@@ -80,6 +80,7 @@ dialers:
   - binding: transport
 
 listeners:
+  - binding: tunnel
   - binding: edge
     address: tls:0.0.0.0:${ZITI_EDGE_PORT}
     options:
