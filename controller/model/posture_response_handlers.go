@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"go.etcd.io/bbolt"
 	"runtime/debug"
+	"time"
 )
 
 func NewPostureResponseHandler(env Env) *PostureResponseHandler {
@@ -42,7 +43,52 @@ func (handler *PostureResponseHandler) Create(identityId string, postureResponse
 	handler.postureCache.Add(identityId, postureResponses)
 }
 
-func (handler *PostureResponseHandler) AddPostureDataListener(cb func(identityId string)) {
+func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessionId string, isPassed bool) {
+	postureResponse := &PostureResponse{
+		PostureCheckId: MfaProviderZiti,
+		TypeId:         PostureCheckTypeMFA,
+		TimedOut:       false,
+		LastUpdatedAt:  time.Now(),
+	}
+
+	postureSubType := &PostureResponseMfa{
+		ApiSessionId: apiSessionId,
+		PassedMfa:    isPassed,
+	}
+
+	postureResponse.SubType = postureSubType
+	postureSubType.PostureResponse = postureResponse
+
+	handler.Create(identityId, []*PostureResponse{postureResponse})
+}
+
+func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId string, isPassed bool) {
+	postureResponse := &PostureResponse{
+		PostureCheckId: MfaProviderZiti,
+		TypeId:         PostureCheckTypeMFA,
+		TimedOut:       false,
+		LastUpdatedAt:  time.Now(),
+	}
+
+	pd := handler.postureCache.PostureData(identityId)
+
+	if pd != nil {
+		for apiSessionId, _ := range pd.ApiSessions {
+			postureSubType := &PostureResponseMfa{
+				ApiSessionId: apiSessionId,
+				PassedMfa:    isPassed,
+			}
+
+			postureResponse.SubType = postureSubType
+			postureSubType.PostureResponse = postureResponse
+
+			handler.Create(identityId, []*PostureResponse{postureResponse})
+		}
+	}
+}
+
+
+func (handler *PostureResponseHandler) AddPostureDataListener(cb func(env Env, identityId string)) {
 	handler.postureCache.AddListener(EventIdentityPostureDataAltered, func(i ...interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -51,15 +97,19 @@ func (handler *PostureResponseHandler) AddPostureDataListener(cb func(identityId
 			}
 		}()
 		if identityId, ok := i[0].(string); ok {
-			cb(identityId)
+			cb(handler.env, identityId)
 		}
 	})
 }
 
 // Kills active sessions that do not have passing posture checks. Run when posture data is updated
 // via posture response or posture data timeout.
-func (handler *PostureResponseHandler) postureDataUpdated(identityId string) {
+func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId string) {
 	var sessionIdsToDelete []string
+
+	//todo: Be smarter about this? Store a cache of service-> result on postureDataCach detect changes?
+	// Only an issue when timeouts are being used - which aren't right now.
+	env.HandleServiceUpdatedEventForIdentityId(identityId)
 
 	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		apiSessionIds, _, err := handler.env.GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%v"`, identityId))

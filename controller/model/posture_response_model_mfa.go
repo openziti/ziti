@@ -34,13 +34,10 @@ func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
 		postureData.ApiSessions = map[string]*ApiSessionPostureData{}
 	}
 
-	apiSessionPostureData := postureData.ApiSessions[pr.ApiSessionId]
-
-	if apiSessionPostureData == nil {
-		apiSessionPostureData = &ApiSessionPostureData{}
-		postureData.ApiSessions[pr.ApiSessionId] = apiSessionPostureData
+	if  postureData.ApiSessions[pr.ApiSessionId] == nil {
+		postureData.ApiSessions[pr.ApiSessionId] = &ApiSessionPostureData{}
 	}
 
-	apiSessionPostureData.Mfa = pr
-	apiSessionPostureData.Mfa.LastUpdatedAt = time.Now().UTC()
+	postureData.ApiSessions[pr.ApiSessionId].Mfa = pr
+	postureData.ApiSessions[pr.ApiSessionId].Mfa.LastUpdatedAt = time.Now().UTC()
 }

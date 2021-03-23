@@ -59,9 +59,8 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 
 func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 	authQueries := rest_model.AuthQueryList{}
-	isMfaEnabled := apiSession.MfaRequired && !apiSession.MfaComplete
 
-	if isMfaEnabled {
+	if apiSession.MfaRequired && !apiSession.MfaComplete {
 		authQueries = append(authQueries, newAuthCheckZitiMfa())
 	}
 
@@ -85,7 +84,8 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 			IPAddress:            &apiSession.IPAddress,
 			Token:                &apiSession.Token,
 			AuthQueries:          authQueries,
-			IsMfaEnabled:         &isMfaEnabled,
+			IsMfaComplete:        &apiSession.MfaComplete,
+			IsMfaRequired:        &apiSession.MfaRequired,
 			LastActivityAt:       strfmt.DateTime(lastActivityAt),
 			CachedLastActivityAt: strfmt.DateTime(cachedLastActivityAt),
 		},

@@ -4481,7 +4481,8 @@ definitions:
           - ipAddress
           - authQueries
           - cachedUpdatedAt
-          - isMfaEnabled
+          - isMfaRequired
+          - isMfaComplete
         properties:
           token:
             type: string
@@ -4497,7 +4498,9 @@ definitions:
               type: string
           authQueries:
             $ref: '#/definitions/authQueryList'
-          isMfaEnabled:
+          isMfaRequired:
+            type: boolean
+          isMfaComplete:
             type: boolean
           lastActivityAt:
             type: string
