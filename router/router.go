@@ -40,7 +40,6 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -147,10 +146,6 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		if self.metricsReporter != nil {
-			events.RemoveMetricsEventHandler(self.metricsReporter)
-		}
-
 		if err := self.ctrl.Close(); err != nil {
 			errors = append(errors, err)
 		}
