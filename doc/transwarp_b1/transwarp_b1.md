@@ -1,20 +1,22 @@
 # Transwarp beta_1
 
-_March 23rd, 2021_
-
-# Overview
-
 ## Goal: Long-haul, High-performance Data Plane for Ziti
 
-The primary goal of the Transwarp project is to create a long-haul, high-performance data plane for the Ziti fabric. Current production deployments of the Ziti fabric currently rely on TCP connections for the data plane links between routers. As has been previously discussed, TCP is designed with slightly different goals, which results in potentially less-than-optimal performance in a number of important conditions.
+The primary goal of the Transwarp project is to create a long-haul, high-performance data plane protocol for the Ziti fabric. Current production deployments of the Ziti fabric currently rely on TCP connections for the data plane links between routers. As has been previously discussed, TCP is designed with slightly different goals, which results in potentially less-than-optimal performance in a number of important conditions.
 
 TCP is designed to reduce its sending rate when confronted with packet loss in a way that creates "fairness" for multiple connections sharing an underlay link. Transwarp is not primarily concerned with this kind of fairness. In a typical Ziti deployment, Transwarp should be deployed when a network link can be mostly dedicated to the Ziti data plane.
 
+Transwarp is a combination of a high-performance data plane protocol, `westworld3` (implemented in the [dilithium][dilithium] project), and a set of framework integrations within Ziti. The bulk of the protocol design and implementation exists in the [dilithium][dilithium] project.
+
+See the `dilithium` [concepts guide][dilithium-concepts] for more details.
+
 ## Configurability, Extensibility, Modern Architecture
 
-Transwarp is designed to be highly configurable and extensible in ways that traditional kernel-space networking stacks are not.
+Transwarp is designed to be configurable and extensible in ways that traditional kernel-space networking stacks are not. This aligns with a number of other "programmable networking" concepts that are present in the Ziti fabric.
 
-Several of the core algorithms are designed to be "extensible" and tunable in ways that kernel-based stacks are not. Transwarp connections can be differently tuned per-connection. This means that Transwarp supports asymmetrical configuration profiles and can be tuned differently for both the "upstream" and "downstream" sides of a link.
+The `dilithium` components support programmatic extensibility that allows the core behavior to be directed differently by application-specific requirements. This is outside of the scope of Transwarp.
+
+The `westworld3` protocol supports a number of tunable parameters that deeply and directly affect its performance in different scenarios. See the [tuning guide][tuning-guide] for more details on these parameters. See the sections below on `westworld3` profiles for information on implementing those parameters in plain `dilithium` testing environments and also in the Ziti fabric.
 
 ## Head's Up Deployment
 
@@ -22,15 +24,25 @@ Transwarp does not provide a one-size-fits-all profile that works in any deploym
 
 Incorrect deployment of Transwarp should not result in non-functioning communication links, but incorrect profile selection could result in under-performance, possibly below the level of TCP.
 
-Future work on the Transwarp stack will continue to evolve the "self-tuning" abilities of Transwarp, making it much more "lights-off".
+Think of Transwarp and `westworld3` as being similar to a race car, in that operating it successfully and well requires more awareness of the application than the typical 2021 fully-automated passenger car. TCP is like the latter... you can expect it to behave well in most situations, but you're not likely to get optimal performance from it in the cases where it matters.
+
+Future work on the Transwarp stack will continue to evolve the "self-tuning" abilities of Transwarp, making it much more suitable for general deployment.
 
 # Isolated Protocol Testing
 
-The following sections describe a series of scenarios that are known to work to reproduce results like the ones shown during the development of the `transwarp` implementation.
+Before we start working with Transwarp in the Ziti fabric, let's start with the `westworld3` protocol and the `dilithium` framework.
+
+## Dilithium Tunnel & Dilithium Loop
+
+The `dilithium` project includes tooling for apples-to-apples protocol comparisons through an overlay proxy infrastructure, which is designed to operate like a simplified version of the Ziti fabric data plane. The proxy provides an _initiating_ side and a _terminating_ side, with local TCP loops on either side of the protocol under test. The `dilithium tunnel` allows for just the protocol between the terminator and the initiator to be swapped out for other protocols, minimizing variables.
+
+The `dilithium` project also includes tooling for generating consistent loading on both sides of a `dilithium tunnel`. The `dilithium loop` facility is able to saturate a `dilithium tunnel` up to the capacity of a link under test, while (optionally) checking the veracity of the data reception. `dilithium loop` supports both uni-directional and bi-directional testing.
+
+The `dilithium tunnel` supports any TCP protocol on the initiating or terminating sides. There is no requirement to work exclusively with `dilithium loop`.
 
 ## Host Requirements
 
-The current implementation of the `westworld3` protocol that underpins `transwarp` requires that the host operating system is tuned to support large socket buffer sizes. Development and testing environments include a set of `sysctl` configuration directives:
+The current implementation of the `westworld3` protocol requires that the host operating system is tuned to support large socket buffer sizes. Development and testing environments include a set of `sysctl` configuration directives:
 
 ```
 # adjust the socket buffer sizes
@@ -44,11 +56,7 @@ net.ipv4.tcp_mem = 8388608 8388608 16777216
 net.ipv4.udp_mem = 8388608 8388608 16777216
 ```
 
-## Dilithium Tunnel & Dilithium Loop
-
-The `dilithium` project includes tooling for apples-to-apples protocol comparisons through a proxy infrastructure, which operates in the same way as the data plane of the Ziti overlay. The proxy provides an initiating side and a terminating side, with local TCP loops on either side of the protocol under test. The `dilithium tunnel` allows for just the protocol between the terminator and the initiator to be swapped out for other protocols, minimizing variables.
-
-The `dilithium` project also includes tooling for generating consistent loading on both sides of a `dilithium tunnel`. The `dilithium loop` facility is able to saturate a `dilithium tunnel` up to the capacity of a link under test, while (optionally) checking the veracity of the data reception. `dilithium loop` supports both uni-directional and bi-directional testing.
+> Please Note! Failure to properly configure these kernel parameters will result in SIGNIFICANT under-performance of `westworld3`.
 
 ## Profiles
 
@@ -115,6 +123,12 @@ tx_portal_dupack_thresh:            192
 $ dilithium tunnel -w cable_upstream.yml
 ```
 
+See the [tuning guide][tuning-guide] for more details about all of the profile parameters and guidance about how to tune them.
+
+The out-of-the-box default profile should perform reasonably well for the average long-haul connection.
+
+See the sections below on the _Westworld Analyzer_ for details about analyzing the operation of `westworld3`. There is no substitute for iterative tuning with real-world workloads over real-world underlay.
+
 ## Metrics Instrument
 
 Westworld profiles include support for _instruments_. Instruments allow for development and operational analysis of different parts of the operation of the protocol stack. `westworld3` includes support for a `metrics` instrument. We can enable this instrument with a profile definition like this:
@@ -132,6 +146,10 @@ instrument:
 The `path` value controls the filesystem path where the metrics snapshots will be saved. The `snapshot_ms` value controls how frequently the metrics will be snapshotted.
 
 ## Westworld Analyzer
+
+The Westworld Analyzer is the primary tool for understanding what is happening with the `westworld3` protocol and the internals that manage its state. In any situation where we're trying to understand why `westworld3` is performing a certain way, we're going to want to grab the output from the metrics instrument as described above.
+
+This section describes how to configure and operate the Westworld Analyzer for local analysis.
 
 ### Run InfluxDB and Grafana with Docker
 
@@ -546,3 +564,7 @@ When we retrieve the analysis dataset from the routers, we can ingest them into 
 ![Transwarp Analyzer](analyzer-transwarp.png)
 
 When loading the dataset into the analyzer, you'll see that there is 1 `listener` peer, and 2 each of `listenerConn` and `dialerConn` for the above scenario. In situations where more links are being used, there will potentially be more peers and a larger dataset.
+
+[dilithium]: https://github.com/openziti/dilithium
+[dilithium-concepts]: https://github.com/openziti/dilithium/blob/main/docs/concepts.md
+[tuning-guide]: https://github.com/openziti/dilithium/blob/main/docs/tuning.md
