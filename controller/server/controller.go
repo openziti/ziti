@@ -30,11 +30,8 @@ import (
 	"github.com/openziti/edge/rest_server"
 	"github.com/openziti/fabric/controller/xtv"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/openziti/edge/controller/internal/policy"
@@ -351,45 +348,30 @@ func (c *Controller) Run() {
 	}()
 }
 
-// should be called as a go routine, blocks
-func (c *Controller) RunAndWait() {
-	c.Run()
-	c.waitForShutdown()
-}
-
-func (c *Controller) waitForShutdown() {
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-
-	<-ch
-	c.Shutdown()
-}
-
 func (c *Controller) Shutdown() {
-	log := pfxlog.Logger()
+	if c.config.Enabled {
+		log := pfxlog.Logger()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+		defer cancel()
 
-	pfxlog.Logger().Info("edge controller: shutting down...")
-	c.apiServer.Shutdown(ctx)
+		pfxlog.Logger().Info("edge controller: shutting down...")
+		c.apiServer.Shutdown(ctx)
 
-	c.AppEnv.Broker.Stop()
+		c.AppEnv.Broker.Stop()
 
-	c.AppEnv.GetHandlers().ApiSession.HeartbeatCollector.Stop()
+		c.AppEnv.GetHandlers().ApiSession.HeartbeatCollector.Stop()
 
-	pfxlog.Logger().Info("edge controller: stopped")
+		pfxlog.Logger().Info("edge controller: stopped")
 
-	pfxlog.Logger().Info("fabric controller: shutting down...")
+		pfxlog.Logger().Info("fabric controller: shutting down...")
 
-	c.AppEnv.GetHostController().Shutdown()
+		c.AppEnv.GetHostController().Shutdown()
 
-	pfxlog.Logger().Info("fabric controller: stopped")
+		pfxlog.Logger().Info("fabric controller: stopped")
 
-	log.Info("shutdown complete")
-
-	//if we reach here and the controller is still running, something hasn't been stopped
+		log.Info("shutdown complete")
+	}
 }
 
 type subctrl struct {
