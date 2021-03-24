@@ -31,6 +31,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func init() {
@@ -45,6 +48,7 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+
 	logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
@@ -89,6 +93,8 @@ func run(cmd *cobra.Command, args []string) {
 			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
 		}
 
+		go waitForShutdown(r)
+
 		if err := r.Run(); err != nil {
 			logrus.WithError(err).Fatal("error starting")
 		}
@@ -104,4 +110,18 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 		ret[f.Name] = f
 	})
 	return ret
+}
+
+func waitForShutdown(r *router.Router) {
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
+	<-ch
+
+	pfxlog.Logger().Info("shutting down ziti-router")
+
+	if err := r.Shutdown(); err != nil {
+		pfxlog.Logger().Info("error encountered during shutdown: %v", err)
+	}
 }
