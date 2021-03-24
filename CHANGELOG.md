@@ -5,6 +5,14 @@
 * Converged Tunneler/Router
 * Transwarp beta_1
 
+## Fixes
+* Service Policies with no Posture Checks properly grant access even if an identity has another Service Policies with posture checks
+* Removing entities with no referencing entities via attributes no longer panics
+* API Sessions and Current Api Session now share the same modeling logic
+* API Sessions now have lastActivityAt and cachedLastActivityAt
+* Enrolling and unenrolling in MFA sets MFA posture data
+
+
 ## Converged Tunneler/Router
 
 ziti-router can now run with the tunneler embedded. It has the same capabilities as ziti-tunnel. As

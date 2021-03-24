@@ -612,8 +612,9 @@ github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.19.48 h1:h29ReH6T35VxHslXnomjzT6zTvk4uAEq0JtjBDO8668=
-github.com/openziti/edge v0.19.48/go.mod h1:O5yRdOm3vuzfP7I10OXrUIvRn7r29SkcoSdI5AS8nFI=
+github.com/openziti/edge v0.19.51 h1:sNiBCiFjBBxwd2CS4LFINguiMRbvw5zydXsgGHW1XZg=
+github.com/openziti/edge v0.19.51/go.mod h1:e+Uw+CKyb0dIdHoAZkvZdET/VxZsq7uAv6ahybAy3F0=
+github.com/openziti/fabric v0.16.37/go.mod h1:zmJhY8Af3f38gNlMnwzjB+XvEci3cIYgdS1LNyxlNUo=
 github.com/openziti/fabric v0.16.38 h1:4pn4XHrGimGg/vyL4wYajIZTsawXqYPpMoJ3QmNmuMo=
 github.com/openziti/fabric v0.16.38/go.mod h1:MBhXLtc7cqkPI3TgIl2oWB4gxfZ9WNUFwtehE+J7VWs=
 github.com/openziti/foundation v0.15.40 h1:3xbBIARO16x5JgRHhzMMQQrkigWv7DpnuH5yP3railM=
