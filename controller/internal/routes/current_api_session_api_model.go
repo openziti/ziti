@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/stringz"
 	"time"
 )
 
@@ -58,37 +57,21 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 }
 
 func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
-	authQueries := rest_model.AuthQueryList{}
 
-	if apiSession.MfaRequired && !apiSession.MfaComplete {
-		authQueries = append(authQueries, newAuthCheckZitiMfa())
+	detail, err := MapApiSessionToRestModel(ae, apiSession)
+
+	if err != nil {
+		pfxlog.Logger().Errorf("error could not convert apiSession to rest model: %v", err)
 	}
 
-	lastActivityAt := apiSession.LastActivityAt
-	var cachedLastActivityAt time.Time
-	var ok bool
-
-	if cachedLastActivityAt, ok = ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
-		lastActivityAt = cachedLastActivityAt
+	if detail == nil {
+		detail = &rest_model.APISessionDetail{}
 	}
-
-	expiresAt := strfmt.DateTime(lastActivityAt.Add(sessionTimeout))
+	expiresAt := strfmt.DateTime(time.Time(detail.LastActivityAt).Add(sessionTimeout))
 	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
 
 	ret := &rest_model.CurrentAPISessionDetail{
-		APISessionDetail: rest_model.APISessionDetail{
-			BaseEntity:           BaseEntityToRestModel(apiSession, CurrentApiSessionLinkFactory),
-			ConfigTypes:          stringz.SetToSlice(apiSession.ConfigTypes),
-			Identity:             ToEntityRef(apiSession.Identity.Name, apiSession.Identity, IdentityLinkFactory),
-			IdentityID:           &apiSession.IdentityId,
-			IPAddress:            &apiSession.IPAddress,
-			Token:                &apiSession.Token,
-			AuthQueries:          authQueries,
-			IsMfaComplete:        &apiSession.MfaComplete,
-			IsMfaRequired:        &apiSession.MfaRequired,
-			LastActivityAt:       strfmt.DateTime(lastActivityAt),
-			CachedLastActivityAt: strfmt.DateTime(cachedLastActivityAt),
-		},
+		APISessionDetail:  *detail,
 		ExpiresAt:         &expiresAt,
 		ExpirationSeconds: &expirationSeconds,
 	}
