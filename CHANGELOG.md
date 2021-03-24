@@ -3,11 +3,16 @@
 ## What's New
 
 * Converged Tunneler/Router
+* Transwarp beta_1
 
 ## Converged Tunneler/Router
 
 ziti-router can now run with the tunneler embedded. It has the same capabilities as ziti-tunnel. As
 ziti-tunnel gains new features, the combined ziti-router/tunnel should maintain feature parity.
+
+## Transwarp beta_1
+
+See the Transwarp beta_1 guide [here](doc/transwarp_b1/transwarp_b1.md).
 
 ### Supported configurations
 
