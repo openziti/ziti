@@ -497,6 +497,7 @@ func Test_PostureChecks(t *testing.T) {
 		_ = ctx.AdminSession.requireNewPostureCheckMFA(s(postureCheckRole))
 
 		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), nil)
 
 		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
