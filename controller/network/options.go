@@ -37,7 +37,7 @@ func DefaultOptions() *Options {
 	options := &Options{
 		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
-		CreateSessionRetries:    3,
+		CreateSessionRetries:	 3,
 		CtrlChanLatencyInterval: 10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
