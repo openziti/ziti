@@ -438,4 +438,87 @@ func Test_PostureChecks(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("can create a domain posture check associated to a service policy and have service policy with no posture checks", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityRole := eid.New()
+		serviceRole := eid.New()
+		postureCheckRole := eid.New()
+
+		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+
+		ctx.Req.NoError(err)
+
+		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+
+		domain := "domain1"
+		_ = ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+
+		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), nil)
+
+		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+
+		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+
+		ctx.Req.NoError(err)
+
+		t.Run("identity can see service via policies", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
+		})
+
+
+		t.Run("can create session with failing queries via one service policy by having another service policy with no checks", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			resp, err := enrolledIdentitySession.createNewSession(service.Id)
+			ctx.Req.NoError(err)
+
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+		})
+	})
+
+	t.Run("can create an mfa posture check associated to a service policy", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityRole := eid.New()
+		serviceRole := eid.New()
+		postureCheckRole := eid.New()
+
+		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+
+		ctx.Req.NoError(err)
+
+		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+
+		_ = ctx.AdminSession.requireNewPostureCheckMFA(s(postureCheckRole))
+
+		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), nil)
+
+		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+
+		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+
+		ctx.Req.NoError(err)
+
+		t.Run("identity can see service via policies", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
+		})
+
+
+		t.Run("can create session with failing queries via one service policy by having another service policy with no checks", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			resp, err := enrolledIdentitySession.createNewSession(service.Id)
+			ctx.Req.NoError(err)
+
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+		})
+	})
+
+
 }

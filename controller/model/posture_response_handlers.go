@@ -48,7 +48,7 @@ func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessi
 		PostureCheckId: MfaProviderZiti,
 		TypeId:         PostureCheckTypeMFA,
 		TimedOut:       false,
-		LastUpdatedAt:  time.Now(),
+		LastUpdatedAt:  time.Now().UTC(),
 	}
 
 	postureSubType := &PostureResponseMfa{
@@ -67,7 +67,7 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		PostureCheckId: MfaProviderZiti,
 		TypeId:         PostureCheckTypeMFA,
 		TimedOut:       false,
-		LastUpdatedAt:  time.Now(),
+		LastUpdatedAt:  time.Now().UTC(),
 	}
 
 	pd := handler.postureCache.PostureData(identityId)
