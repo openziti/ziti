@@ -18,12 +18,17 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/rest_server/operations/current_identity"
+	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
 	"net/http"
 )
 
@@ -117,7 +122,21 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 
 	if ok {
 		mfa.IsVerified = true
-		ae.Handlers.Mfa.Update(mfa)
+		if err := ae.Handlers.Mfa.Update(mfa); err != nil {
+			pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
+			rc.RespondWithApiError(errorz.NewUnhandled(errors.New("could not update MFA status")))
+			return
+		}
+
+		rc.ApiSession.MfaComplete = true
+		rc.ApiSession.MfaRequired = true
+
+		if err := ae.Handlers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}); err != nil {
+			pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
+		}
+
+		ae.Handlers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
+
 		rc.RespondWithEmptyOk()
 		return
 
@@ -171,7 +190,7 @@ func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestCo
 func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, params current_identity.DeleteMfaParams) {
 	code := ""
 
-	if params.MfaValidation != nil && params.MfaValidation.Code != nil{
+	if params.MfaValidation != nil && params.MfaValidation.Code != nil {
 		code = *params.MfaValidation.Code
 	} else if params.MfaValidationCode != nil {
 		code = *params.MfaValidationCode
@@ -183,6 +202,8 @@ func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestCo
 		rc.RespondWithError(err)
 		return
 	}
+
+	ae.Handlers.PostureResponse.SetMfaPostureForIdentity(rc.Identity.Id, false)
 
 	rc.RespondWithEmptyOk()
 }
@@ -270,7 +291,7 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 
 	code := ""
 
-	if params.MfaValidation != nil && params.MfaValidation.Code != nil{
+	if params.MfaValidation != nil && params.MfaValidation.Code != nil {
 		code = *params.MfaValidation.Code
 	} else if params.MfaValidationCode != nil {
 		code = *params.MfaValidationCode

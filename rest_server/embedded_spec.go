@@ -6294,7 +6294,8 @@ func init() {
             "ipAddress",
             "authQueries",
             "cachedUpdatedAt",
-            "isMfaEnabled"
+            "isMfaRequired",
+            "isMfaComplete"
           ],
           "properties": {
             "authQueries": {
@@ -6319,7 +6320,10 @@ func init() {
             "ipAddress": {
               "type": "string"
             },
-            "isMfaEnabled": {
+            "isMfaComplete": {
+              "type": "boolean"
+            },
+            "isMfaRequired": {
               "type": "boolean"
             },
             "lastActivityAt": {
@@ -26496,7 +26500,8 @@ func init() {
             "ipAddress",
             "authQueries",
             "cachedUpdatedAt",
-            "isMfaEnabled"
+            "isMfaRequired",
+            "isMfaComplete"
           ],
           "properties": {
             "authQueries": {
@@ -26521,7 +26526,10 @@ func init() {
             "ipAddress": {
               "type": "string"
             },
-            "isMfaEnabled": {
+            "isMfaComplete": {
+              "type": "boolean"
+            },
+            "isMfaRequired": {
               "type": "boolean"
             },
             "lastActivityAt": {

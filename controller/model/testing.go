@@ -27,6 +27,7 @@ import (
 	"testing"
 )
 
+var _ Env = &TestContext{}
 
 type TestContext struct {
 	*persistence.TestContext
@@ -34,6 +35,8 @@ type TestContext struct {
 	config          *config.Config
 	metricsRegistry metrics.Registry
 }
+
+func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
 
 func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
 	return "I'm a very legitimate claim", nil

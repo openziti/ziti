@@ -88,6 +88,10 @@ func (handler *ApiSessionHandler) Update(apiSession *ApiSession) error {
 	return handler.updateEntity(apiSession, handler)
 }
 
+func (handler *ApiSessionHandler) UpdateWithFieldChecker(apiSession *ApiSession, fieldChecker boltz.FieldChecker) error {
+	return handler.updateEntity(apiSession, fieldChecker)
+}
+
 func (handler *ApiSessionHandler) MfaCompleted(apiSession *ApiSession) error {
 	apiSession.MfaComplete = true
 	return handler.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), handler})

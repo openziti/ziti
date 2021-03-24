@@ -60,6 +60,7 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 
 		return postureData
 	})
+
 	pc.Emit(EventIdentityPostureDataAltered, identityId)
 }
 
