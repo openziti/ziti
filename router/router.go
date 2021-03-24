@@ -67,6 +67,7 @@ type Router struct {
 	xgressListeners []xgress.Listener
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
+	shutdownDoneC   chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
 	eventDispatcher event.Dispatcher
 	metricsReporter metrics.Handler
@@ -107,6 +108,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		forwarder:       fwd,
 		metricsRegistry: metricsRegistry,
 		shutdownC:       closeNotify,
+		shutdownDoneC:   make(chan struct{}),
 		eventDispatcher: eventDispatcher,
 		versionProvider: versionProvider,
 	}
@@ -151,6 +153,7 @@ func (self *Router) Shutdown() error {
 		}
 
 		close(self.shutdownC)
+		close(self.xctrlDone)
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
@@ -163,6 +166,8 @@ func (self *Router) Shutdown() error {
 				errors = append(errors, err)
 			}
 		}
+
+		close(self.shutdownDoneC)
 	}
 	if len(errors) == 0 {
 		return nil
@@ -178,7 +183,10 @@ func (self *Router) Run() error {
 		return err
 	}
 	for {
-		time.Sleep(1 * time.Hour)
+		select {
+		case <-self.shutdownDoneC:
+			return nil
+		}
 	}
 }
 
