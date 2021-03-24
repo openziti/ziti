@@ -182,12 +182,9 @@ func (self *Router) Run() error {
 	if err := self.Start(); err != nil {
 		return err
 	}
-	for {
-		select {
-		case <-self.shutdownDoneC:
-			return nil
-		}
-	}
+
+	<-self.shutdownDoneC
+	return nil
 }
 
 func (self *Router) showOptions() {
