@@ -88,7 +88,7 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "postureChecks", o.edgeOptions)
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.edgeOptions)
 	if err != nil {
 		return err
 	}
