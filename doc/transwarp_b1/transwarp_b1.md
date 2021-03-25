@@ -1,12 +1,14 @@
 # Transwarp beta_1
 
+![transwarp](transwarp.png)
+
 `openziti/ziti@v0.19.8`
 
 ## Goal: Long-haul, High-performance Data Plane for Ziti
 
-The primary goal of the Transwarp project is to create a long-haul, high-performance data plane protocol for the Ziti fabric. Current production deployments of the Ziti fabric currently rely primarily on standard TCP connections for the data plane links between routers. As has been previously discussed, TCP is designed with more generalized objectives, resulting in potentially less-than-optimal performance in a number of important conditions.
+The primary goal of the Transwarp project is to create a long-haul, high-performance data plane protocol for the [Ziti fabric][fabric]. Current production deployments of the Ziti fabric currently rely primarily on standard TCP connections for the data plane links between routers. As has been previously discussed, TCP is designed with more generalized objectives, resulting in potentially less-than-optimal performance in a number of important conditions.
 
-TCP is designed to reduce its sending rate when confronted with packet loss in a way that creates "fairness" for multiple connections sharing an underlay link. Transwarp is not primarily concerned with this kind of fairness. In a typical Ziti deployment, Transwarp should be deployed when a network link can be mostly dedicated to the Ziti data plane.
+TCP is designed to reduce its sending rate when confronted with packet loss in a way that creates even, balanced utilization for multiple connections sharing an underlay link. Transwarp is not primarily concerned with this kind of balance. In a typical Ziti deployment, Transwarp should be deployed when a network link can be mostly dedicated to the Ziti data plane. The Transwarp-based underlay is responsible for completely utilizing the available underlay capacity, and the overlay is responsible for balancing session resources at a higher layer.
 
 Transwarp is a set of Ziti framework components that integrate the high-performance `westworld3` protocol implemented in the [Dilithium project][dilithium].
 
@@ -22,13 +24,13 @@ The `westworld3` protocol supports a number of tunable parameters that deeply an
 
 ## Head's Up Deployment
 
-Transwarp _does not_ provide a one-size-fits-all profile that works in any deployment situation as TCP does. Transwarp will need to be intelligently deployed using a reasonable profile selection, so that it provides the appropriate posture to work well in a specific deployment scenario. The default _baseline profile_ has proven to be reasonably performant and effective in long-haul geographically dispersed deployments between cloud regions. It _does not work well_ when deployed on any kind of loopback interface.
+Transwarp _does not_ provide a one-size-fits-all profile that works in any deployment situation as TCP does. Transwarp will need to be intelligently deployed using a reasonable profile selection, so that it provides the appropriate posture to work well in a specific deployment scenario. The default _baseline profile_ has proven to be reasonably performant and effective in long-haul geographically dispersed deployments between cloud regions (in testing environments). It _does not work well_ when deployed on any kind of loopback interface. You can think of the baseline profile as your _starting point_ for developing a profile specific to your deployment.
 
 Incorrect deployment of Transwarp should not result in non-functioning communication links, but incorrect profile selection could result in under-performance, possibly below the level of TCP. In the case of loopback links, current `westworld3` profiles will _significantly_ underperform versus TCP.
 
-Think of Transwarp and `westworld3` as being similar to a race car, in that operating it successfully and well requires more awareness of the application than the typical fully-automated passenger car. TCP is like the latter... you can expect it to behave well in most situations, but you're not likely to get optimal performance from it in the cases where it matters.
+Think of Transwarp and `westworld3` as being similar to a race car, in that operating it successfully and well requires more awareness of the application than the typical fully-automated passenger car. TCP is like the latter... you can expect it to behave well in most situations, but you're not likely to get optimal performance from it in the cases where it matters. There are very limited "guard rails" to keep you from misconfiguring `westworld3` and creating performance issues, rather than solving them.
 
-Future work on the Transwarp stack will continue to evolve the "self-tuning" abilities of Transwarp, making it much more suitable for lights-out deployment.
+Future work on the Transwarp stack will continue to evolve the "self-tuning" abilities of Transwarp, making it much more suitable for lights-out deployment. But like any powerful tool, when you get it properly dialed in for your deployment, it is possible to achieve throughputs that are _multiple times greater than TCP_.
 
 # Isolated Protocol Testing
 
@@ -36,7 +38,7 @@ Before we look at Transwarp in the Ziti fabric, let's start with the `westworld3
 
 ## Dilithium Tunnel & Dilithium Loop
 
-The Dilithium project includes tooling for apples-to-apples protocol comparisons through an overlay proxy infrastructure, which is designed to operate like a simplified version of the Ziti fabric data plane. The proxy provides an _initiating_ side and a _terminating_ side, with local TCP loops on either side of the protocol under test. The `dilithium tunnel` allows for just the protocol between the terminator and the initiator to be swapped out for other protocols, minimizing variables in the testing.
+The Dilithium project includes tooling for apples-to-apples protocol comparisons through an overlay proxy infrastructure, which is designed to operate like a simplified version of the Ziti fabric data plane. The proxy provides an _initiating_ side and a _terminating_ side, with local TCP loops on either side of the protocol under test. Using the `dilithium tunnel` as the basis of your testing environment allows for just the protocol between the terminator and the initiator to be swapped out for other protocols, minimizing variables in the testing.
 
 The Dilithium project also includes tooling for generating consistent loading on both sides of a `dilithium tunnel`. The `dilithium loop` facility is able to saturate a `dilithium tunnel` up to the capacity of a link under test, while (optionally) checking the veracity of the data reception. `dilithium loop` supports both uni-directional and bi-directional testing.
 
@@ -60,7 +62,7 @@ net.ipv4.udp_mem = 8388608 8388608 16777216
 
 > Please Note! Failure to properly configure these kernel parameters will result in SIGNIFICANT under-performance of `westworld3`.
 
-> Please Note! Transwarp is a UDP-based protocol. Any firewall rules that you create for Transwarp-enabled connections will require UDP permissions.
+> Please Note! `westworld3` is a UDP-based protocol. Any firewall rules that you create for Transwarp-enabled connections will require UDP permissions.
 
 ## Profiles
 
@@ -128,6 +130,8 @@ $ dilithium tunnel -w cable_upstream.yml
 ```
 
 See the [tuning guide][tuning-guide] for more details about all of the profile parameters and guidance about how to tune them.
+
+> Please Note! You _MUST_ include the `profile_version: 1` declaration in your profile YAML.
 
 The out-of-the-box default profile should perform reasonably well for the average long-haul connection.
 
@@ -588,3 +592,4 @@ Happy Transwarp-ing.
 [dilithium]: https://github.com/openziti/dilithium
 [dilithium-concepts]: https://github.com/openziti/dilithium/blob/main/docs/concepts.md
 [tuning-guide]: https://github.com/openziti/dilithium/blob/main/docs/tuning.md
+[fabric]: https://github.com/openziti/fabric
