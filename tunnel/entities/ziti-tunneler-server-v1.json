@@ -1,0 +1,161 @@
+{
+  "schema": {
+    "$id": "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
+    "additionalProperties": false,
+    "definitions": {
+      "action": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+)",
+            "type": "string"
+          },
+          "consecutiveEvents": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "duration": {
+            "$ref": "#/definitions/duration"
+          },
+          "trigger": {
+            "enum": [
+              "fail",
+              "pass"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger",
+          "action"
+        ],
+        "type": "object"
+      },
+      "actionList": {
+        "items": {
+          "$ref": "#/definitions/action"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "type": "array"
+      },
+      "duration": {
+        "pattern": "[0-9]+(h|m|s|ms)",
+        "type": "string"
+      },
+      "httpCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "$ref": "#/definitions/actionList"
+          },
+          "body": {
+            "type": "string"
+          },
+          "expectInBody": {
+            "type": "string"
+          },
+          "expectStatus": {
+            "maximum": 599,
+            "minimum": 100,
+            "type": "integer"
+          },
+          "interval": {
+            "$ref": "#/definitions/duration"
+          },
+          "method": {
+            "$ref": "#/definitions/method"
+          },
+          "timeout": {
+            "$ref": "#/definitions/duration"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interval",
+          "timeout",
+          "url"
+        ],
+        "type": "object"
+      },
+      "httpCheckList": {
+        "items": {
+          "$ref": "#/definitions/httpCheck"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH"
+        ],
+        "type": "string"
+      },
+      "portCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "$ref": "#/definitions/actionList"
+          },
+          "address": {
+            "type": "string"
+          },
+          "interval": {
+            "$ref": "#/definitions/duration"
+          },
+          "timeout": {
+            "$ref": "#/definitions/duration"
+          }
+        },
+        "required": [
+          "interval",
+          "timeout",
+          "address"
+        ],
+        "type": "object"
+      },
+      "portCheckList": {
+        "items": {
+          "$ref": "#/definitions/portCheck"
+        },
+        "type": "array"
+      }
+    },
+    "properties": {
+      "hostname": {
+        "type": "string"
+      },
+      "httpChecks": {
+        "$ref": "#/definitions/httpCheckList"
+      },
+      "port": {
+        "maximum": 65535,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "portChecks": {
+        "$ref": "#/definitions/portCheckList"
+      },
+      "protocol": {
+        "enum": [
+          "tcp",
+          "udp"
+        ],
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "hostname",
+      "port"
+    ],
+    "type": "object"
+  }
+}

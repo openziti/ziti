@@ -121,7 +121,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{
 		Session:      ctx.getCreateSessionResponse(),
-		TerminatorId: "",
+		TerminatorId: id,
 	}
 
 	if newApiSession {

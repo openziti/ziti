@@ -191,8 +191,8 @@ func (self *baseTunnelRequestContext) getCreateApiSessionResponse() *edge_ctrl_p
 
 func (self *baseTunnelRequestContext) getCreateSessionResponse() *edge_ctrl_pb.CreateSessionResponse {
 	return &edge_ctrl_pb.CreateSessionResponse{
-		SessionId: self.apiSession.Id,
-		Token:     self.apiSession.Token,
+		SessionId: self.session.Id,
+		Token:     self.session.Token,
 	}
 }
 

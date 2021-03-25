@@ -70,6 +70,11 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 		Handler: proxy.processUpdateBind,
 	})
 
+	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+		Type:    edge.ContentTypeHealthEvent,
+		Handler: proxy.processHealthEvent,
+	})
+
 	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
 		Type:    edge.ContentTypeStateClosed,
 		Handler: proxy.msgMux.HandleReceive,

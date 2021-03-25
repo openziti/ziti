@@ -140,12 +140,15 @@ func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHand
 		handler_edge_ctrl.NewUpdateTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewValidateSessionsHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewHealthEventHandler(c.AppEnv, ch),
+
 		handler_edge_ctrl.NewCreateApiSessionHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewCreateCircuitForTunnelHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewCreateTunnelTerminatorHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewUpdateTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewRemoveTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewListTunnelServicesHandler(c.AppEnv, ch, tunnelState),
+		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
 	}
 }
 

@@ -436,7 +436,7 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 				continue
 			}
 
-			apiSessionProto, err := apiSessionToProto(strategy.ae, apiSession.Token, apiSession.IdentityId, apiSession.Id)
+			apiSessionProto, err := apiSessionToProtoWithTx(tx, strategy.ae, apiSession.Token, apiSession.IdentityId, apiSession.Id)
 
 			if err != nil {
 				logger.WithError(err).WithField("apiSessionId", string(current)).Errorf("error turning apiSession [%s] into proto: %v", string(current), err)

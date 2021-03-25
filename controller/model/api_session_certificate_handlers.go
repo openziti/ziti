@@ -119,17 +119,17 @@ func (handler *ApiSessionCertificateHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-func (handler *ApiSessionCertificateHandler) Query(query string) (*ApiSessionCertificateListResult, error) {
+func (handler *ApiSessionCertificateHandler) Query(tx *bbolt.Tx, query string) (*ApiSessionCertificateListResult, error) {
 	result := &ApiSessionCertificateListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.ListWithTx(tx, query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *ApiSessionCertificateHandler) ReadByApiSessionId(apiSessionId string) ([]*ApiSessionCertificate, error) {
-	result, err := handler.Query(fmt.Sprintf(`apiSession = "%s"`, apiSessionId))
+func (handler *ApiSessionCertificateHandler) ReadByApiSessionId(tx *bbolt.Tx, apiSessionId string) ([]*ApiSessionCertificate, error) {
+	result, err := handler.Query(tx, fmt.Sprintf(`apiSession = "%s"`, apiSessionId))
 
 	if err != nil {
 		return nil, err

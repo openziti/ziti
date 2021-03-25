@@ -63,14 +63,20 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 		idMap[s.Id] = s
 	}
 
+	var toRemove []string
+
 	// process Deletes
 	self.services.IterCb(func(k string, value interface{}) {
 		svc := value.(*edge.Service)
 		if _, found := idMap[svc.Id]; !found {
-			self.services.Remove(k)
+			toRemove = append(toRemove, k)
 			self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, svc)
 		}
 	})
+
+	for _, key := range toRemove {
+		self.services.Remove(key)
+	}
 
 	// Adds and Updates
 	for _, s := range services {
@@ -82,6 +88,8 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 			if !reflect.DeepEqual(valueInMap, s) {
 				self.serviceListener.HandleServicesChange(ziti.ServiceChanged, s)
 				return s
+			} else {
+				logrus.WithField("service", s.Name).Debug("no change detected in service definition")
 			}
 			return valueInMap
 		})
@@ -91,7 +99,8 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 // TODO: just push updates down the control channel when necessary
 func (self *servicePoller) pollServices(pollInterval time.Duration) {
 	if err := self.fabricProvider.authenticate(); err != nil {
-		logrus.Panic(err)
+		logrus.WithError(err).Fatal("xgress_edge_tunnel unable to authenticate to controller. " +
+			"ensure tunneler mode is enabled for this router or disable tunnel listener. exiting ")
 	}
 
 	ticker := time.NewTicker(pollInterval)

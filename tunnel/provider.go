@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"encoding/json"
+	"github.com/openziti/edge/health"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
@@ -14,7 +15,10 @@ type HostingContext interface {
 	ListenOptions() *ziti.ListenOptions
 	Dial(options map[string]interface{}) (net.Conn, error)
 	SupportHalfClose() bool
+	GetHealthChecks() []health.CheckDefinition
+	GetInitialHealthState() (ziti.Precedence, uint16)
 	OnClose()
+	SetCloseCallback(func())
 }
 
 type HostControl interface {
@@ -22,6 +26,7 @@ type HostControl interface {
 	UpdateCost(cost uint16) error
 	UpdatePrecedence(precedence edge.Precedence) error
 	UpdateCostAndPrecedence(cost uint16, precedence edge.Precedence) error
+	SendHealthEvent(pass bool) error
 }
 
 type FabricProvider interface {

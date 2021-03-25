@@ -21,9 +21,23 @@ type svcChangeEvent struct {
 	precedence edge.Precedence
 }
 
+func newEventTracker(t *testing.T) *eventTracker {
+	return &eventTracker{
+		Assertions:  require.New(t),
+		events:      make(chan *svcChangeEvent, 16),
+		healthSends: make(chan bool, 16),
+	}
+}
+
 type eventTracker struct {
 	*require.Assertions
-	events chan *svcChangeEvent
+	events      chan *svcChangeEvent
+	healthSends chan bool
+}
+
+func (self *eventTracker) SendHealthEvent(pass bool) error {
+	self.healthSends <- pass
+	return nil
 }
 
 func (self *eventTracker) UpdateCostAndPrecedence(cost uint16, precedence edge.Precedence) error {
@@ -32,6 +46,7 @@ func (self *eventTracker) UpdateCostAndPrecedence(cost uint16, precedence edge.P
 		cost:       cost,
 		precedence: precedence,
 	}
+
 	return nil
 }
 
@@ -52,10 +67,32 @@ func (self *eventTracker) assertEvent(t time.Duration, cost uint16, p edge.Prece
 	self.Equal(int(p), int(evt.precedence))
 }
 
+func (self *eventTracker) assertHealthSend(t time.Duration, checkPassed bool) {
+	time.Sleep(t)
+
+	var send bool
+	select {
+	case send = <-self.healthSends:
+	case <-time.After(100 * time.Millisecond):
+		self.Fail("no event found")
+		return
+	}
+
+	self.Equal(checkPassed, send)
+}
+
 func (self *eventTracker) assertNoEvent(t time.Duration) {
 	select {
 	case <-self.events:
 		self.Fail("no events should be found")
+	case <-time.After(t):
+	}
+}
+
+func (self *eventTracker) assertNoSend(t time.Duration) {
+	select {
+	case <-self.healthSends:
+		self.Fail("no health send should be found")
 	case <-time.After(t):
 	}
 }
@@ -66,10 +103,7 @@ func Test_ManagerWithEventCounts(t *testing.T) {
 
 	req := require.New(t)
 
-	et := &eventTracker{
-		Assertions: req,
-		events:     make(chan *svcChangeEvent, 16),
-	}
+	et := newEventTracker(t)
 
 	state := NewServiceState("my-service", ziti.PrecedenceRequired, 100, et)
 
@@ -149,10 +183,7 @@ func Test_ManagerWithDurations(t *testing.T) {
 
 	req := require.New(t)
 
-	et := &eventTracker{
-		Assertions: req,
-		events:     make(chan *svcChangeEvent, 16),
-	}
+	et := newEventTracker(t)
 
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
@@ -280,7 +311,7 @@ func Test_ManagerWithSimpleHttp(t *testing.T) {
 	defer mgr.Shutdown()
 
 	req := require.New(t)
-	et := &eventTracker{Assertions: req, events: make(chan *svcChangeEvent, 16)}
+	et := newEventTracker(t)
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
 	healthCheckDef := newHttpCheck()
@@ -289,7 +320,7 @@ func Test_ManagerWithSimpleHttp(t *testing.T) {
 	req.NoError(err)
 	et.assertEvent(100*time.Millisecond, 0, edge.PrecedenceFailed)
 
-	mgr.UnregisterServiceChecks("my-server")
+	mgr.UnregisterServiceChecks("my-service")
 
 	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 	closeF := runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
@@ -307,7 +338,7 @@ func Test_ManagerWithHttpStatusCode(t *testing.T) {
 	defer mgr.Shutdown()
 
 	req := require.New(t)
-	et := &eventTracker{Assertions: req, events: make(chan *svcChangeEvent, 16)}
+	et := newEventTracker(t)
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
 	healthCheckDef := newHttpCheck()
@@ -324,7 +355,7 @@ func Test_ManagerWithHttpStatusCode(t *testing.T) {
 	et.assertEvent(100*time.Millisecond, 0, edge.PrecedenceFailed)
 
 	closeF()
-	mgr.UnregisterServiceChecks("my-server")
+	mgr.UnregisterServiceChecks("my-service")
 
 	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 	closeF = runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
@@ -343,7 +374,7 @@ func Test_ManagerWithHttpExpectBody(t *testing.T) {
 	defer mgr.Shutdown()
 
 	req := require.New(t)
-	et := &eventTracker{Assertions: req, events: make(chan *svcChangeEvent, 16)}
+	et := newEventTracker(t)
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
 	healthCheckDef := newHttpCheck()
@@ -361,7 +392,7 @@ func Test_ManagerWithHttpExpectBody(t *testing.T) {
 	et.assertEvent(100*time.Millisecond, 0, edge.PrecedenceFailed)
 
 	closeF()
-	mgr.UnregisterServiceChecks("my-server")
+	mgr.UnregisterServiceChecks("my-service")
 
 	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 	closeF = runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
@@ -381,7 +412,7 @@ func Test_ManagerWithHttpMethod(t *testing.T) {
 	defer mgr.Shutdown()
 
 	req := require.New(t)
-	et := &eventTracker{Assertions: req, events: make(chan *svcChangeEvent, 16)}
+	et := newEventTracker(t)
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
 	healthCheckDef := newHttpCheck()
@@ -405,7 +436,7 @@ func Test_ManagerWithHttpMethod(t *testing.T) {
 	et.assertEvent(100*time.Millisecond, 0, edge.PrecedenceFailed)
 
 	closeF()
-	mgr.UnregisterServiceChecks("my-server")
+	mgr.UnregisterServiceChecks("my-service")
 
 	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 	closeF = runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
@@ -429,7 +460,7 @@ func Test_ManagerWithHttpBody(t *testing.T) {
 	defer mgr.Shutdown()
 
 	req := require.New(t)
-	et := &eventTracker{Assertions: req, events: make(chan *svcChangeEvent, 16)}
+	et := newEventTracker(t)
 	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 
 	healthCheckDef := newHttpCheck()
@@ -459,7 +490,7 @@ func Test_ManagerWithHttpBody(t *testing.T) {
 	et.assertEvent(100*time.Millisecond, 0, edge.PrecedenceFailed)
 
 	closeF()
-	mgr.UnregisterServiceChecks("my-server")
+	mgr.UnregisterServiceChecks("my-service")
 
 	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
 	closeF = runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
@@ -486,4 +517,39 @@ func Test_ManagerWithHttpBody(t *testing.T) {
 	err = mgr.RegisterServiceChecks(state, []CheckDefinition{healthCheckDef})
 	req.NoError(err)
 	et.assertEvent(100*time.Millisecond, 10, edge.PrecedenceDefault)
+}
+
+func Test_ChangeAndHealthSend(t *testing.T) {
+	mgr := NewManager()
+	defer mgr.Shutdown()
+
+	req := require.New(t)
+	et := newEventTracker(t)
+	state := NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
+
+	healthCheckDef := &HttpCheckDefinition{
+		BaseCheckDefinition: BaseCheckDefinition{
+			Interval: 100 * time.Millisecond,
+			Actions: []*ActionDefinition{
+				{Trigger: "change", Action: "send event"},
+			},
+		},
+		Url:     "http://localhost:9876",
+		Timeout: 100 * time.Millisecond,
+	}
+
+	err := mgr.RegisterServiceChecks(state, []CheckDefinition{healthCheckDef})
+	req.NoError(err)
+	et.assertHealthSend(100*time.Millisecond, false)
+	et.assertNoSend(200 * time.Millisecond)
+
+	state = NewServiceState("my-service", ziti.PrecedenceDefault, 0, et)
+	closeF := runHttpCheck(req, func(resp http.ResponseWriter, req *http.Request) {
+		resp.WriteHeader(200)
+	})
+	defer closeF()
+
+	et.assertHealthSend(500*time.Millisecond, true)
+	et.assertNoSend(200 * time.Millisecond)
+
 }

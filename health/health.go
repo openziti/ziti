@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ const (
 
 type ServiceUpdater interface {
 	UpdateCostAndPrecedence(cost uint16, precedence edge.Precedence) error
+	SendHealthEvent(pass bool) error
 }
 
 type Check interface {
@@ -32,8 +34,13 @@ type Action interface {
 }
 
 func NewServiceState(service string, precedence ziti.Precedence, cost uint16, updater ServiceUpdater) *ServiceState {
+	return NewServiceStateWithContext("0", service, precedence, cost, updater)
+}
+
+func NewServiceStateWithContext(service, hostContext string, precedence ziti.Precedence, cost uint16, updater ServiceUpdater) *ServiceState {
 	return &ServiceState{
 		Service:            service,
+		HostContext:        hostContext,
 		BaselinePrecedence: edge.Precedence(precedence),
 		currentPrecedence:  edge.Precedence(precedence),
 		nextPrecedence:     edge.Precedence(precedence),
@@ -45,11 +52,13 @@ func NewServiceState(service string, precedence ziti.Precedence, cost uint16, up
 }
 
 type ServiceState struct {
-	Service string
+	Service     string
+	HostContext string
 
 	BaselinePrecedence edge.Precedence
 	currentPrecedence  edge.Precedence
 	nextPrecedence     edge.Precedence
+	sendEvent          bool
 
 	BaselineCost uint16
 	Updater      ServiceUpdater
@@ -61,16 +70,26 @@ func (self *ServiceState) IsChanged() bool {
 	return self.nextPrecedence != self.currentPrecedence || self.nextCost != self.currentCost
 }
 
-func (self *ServiceState) Update() {
+func (self *ServiceState) HandleActionResults(healthy bool) {
+	if self.sendEvent {
+		if err := self.Updater.SendHealthEvent(healthy); err != nil {
+			logrus.WithError(err).
+				WithField("service", self.Service).
+				WithField("hostContext", self.HostContext).
+				WithField("isHealth", healthy).
+				Error("error sending health event")
+		}
+		self.sendEvent = false
+	}
+
 	if !self.IsChanged() {
 		return
 	}
 
-	log := pfxlog.Logger()
-
 	if err := self.Updater.UpdateCostAndPrecedence(self.nextCost, self.nextPrecedence); err != nil {
-		log.WithError(err).
+		logrus.WithError(err).
 			WithField("service", self.Service).
+			WithField("hostContext", self.HostContext).
 			WithField("nextCost", self.nextCost).
 			WithField("nextPrecedence", self.nextPrecedence).
 			Error("error updating cost/precedence on service")
@@ -89,11 +108,10 @@ type checkContext struct {
 
 func NewManager() Manager {
 	result := &manager{
-		health:  health.New(),
 		results: make(chan *result, 16),
 	}
+	result.health = health.New(health.WithCheckListeners(result))
 
-	result.health.WithCheckListener(result)
 	go result.handleResults()
 
 	return result
@@ -102,6 +120,7 @@ func NewManager() Manager {
 type Manager interface {
 	RegisterServiceChecks(service *ServiceState, checkDefinitions []CheckDefinition) error
 	UnregisterServiceChecks(service string)
+	UnregisterServiceContextChecks(service, context string)
 	Shutdown()
 }
 
@@ -137,12 +156,12 @@ func (self *manager) handleResult(result *result) {
 					action.Invoke(check.serviceState)
 				}
 			}
-			check.serviceState.Update()
+			check.serviceState.HandleActionResults(result.IsHealthy())
 		} else {
-			pfxlog.Logger().Errorf("coding error, check was of incorrect type: %v", reflect.TypeOf(val))
+			logrus.Errorf("coding error, check was of incorrect type: %v", reflect.TypeOf(val))
 		}
 	} else {
-		pfxlog.Logger().Warnf("no health check context found for %v", result.name)
+		logrus.Warnf("no health check context found for %v", result.name)
 	}
 }
 
@@ -157,15 +176,30 @@ func (self *manager) UnregisterServiceChecks(service string) {
 	})
 }
 
+func (self *manager) UnregisterServiceContextChecks(service, hostContext string) {
+	log := logrus.WithField("service", service).WithField("hostContext", hostContext)
+	log.Debug("removing health checks")
+
+	self.checks.Range(func(key, val interface{}) bool {
+		check := val.(*checkContext)
+		if check.serviceState.Service == service && check.serviceState.HostContext == hostContext {
+			log.WithField("check", check.id).Debug("removing check")
+			self.checks.Delete(check.id)
+			self.health.Deregister(check.id)
+		}
+		return true
+	})
+}
+
 func (self *manager) RegisterServiceChecks(service *ServiceState, checkDefinitions []CheckDefinition) error {
 	logger := pfxlog.Logger()
 	for idx, checkDefinition := range checkDefinitions {
-		id := fmt.Sprintf("%v_%v", service.Service, idx)
+		id := fmt.Sprintf("%v_%v_%v", service.Service, service.HostContext, idx)
 		_, found := self.checks.Load(id)
 		counter := 0
 		for found {
 			counter++
-			id := fmt.Sprintf("%v_%v_%v", service.Service, idx, counter)
+			id := fmt.Sprintf("%v_%v_%v_%v", service.Service, service.HostContext, idx, counter)
 			_, found = self.checks.Load(id)
 		}
 
@@ -195,7 +229,9 @@ func (self *manager) RegisterServiceChecks(service *ServiceState, checkDefinitio
 			InitiallyPassing: true,
 		}
 
-		logger.WithField("service", service.Service).Debugf("adding check: %v", checkDefinition.String())
+		logger.WithField("service", service.Service).
+			WithField("hostContext", service.HostContext).
+			Debugf("adding check: %v", checkDefinition.String())
 		if err = self.health.RegisterCheck(checkConfig); err != nil {
 			return err
 		}
@@ -204,6 +240,10 @@ func (self *manager) RegisterServiceChecks(service *ServiceState, checkDefinitio
 }
 
 func (self *manager) OnCheckStarted(string) {
+	// does nothing
+}
+
+func (self *manager) OnCheckRegistered(string, health.Result) {
 	// does nothing
 }
 

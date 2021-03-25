@@ -318,24 +318,23 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 	})
 }
 
-func (handler *IdentityHandler) visitAuthenticators(id string, visitor func(entity *Authenticator) bool) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		_, err := handler.readInTx(tx, id)
-		if err != nil {
+func (handler *IdentityHandler) visitAuthenticators(tx *bbolt.Tx, id string, visitor func(entity *Authenticator) bool) error {
+	_, err := handler.readInTx(tx, id)
+	if err != nil {
+		return err
+	}
+	authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
+	for _, authenticatorId := range authenticatorIds {
+		authenticator := &Authenticator{}
+		if err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
 			return err
 		}
-		authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
-		for _, authenticatorId := range authenticatorIds {
-			authenticator := &Authenticator{}
-			if err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
-				return err
-			}
-			if visitor(authenticator) {
-				return nil
-			}
+		if visitor(authenticator) {
+			return nil
 		}
-		return nil
-	})
+	}
+	return nil
+
 }
 
 func (handler *IdentityHandler) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
@@ -496,9 +495,9 @@ func (handler *IdentityHandler) IsActive(id string) bool {
 	return handler.identityStatusMap.IsActive(id)
 }
 
-func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(identityId string, visitor func(string) bool) (bool, error) {
+func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(tx *bbolt.Tx, identityId string, visitor func(string) bool) (bool, error) {
 	stopVisit := false
-	err := handler.visitAuthenticators(identityId, func(authenticator *Authenticator) bool {
+	err := handler.visitAuthenticators(tx, identityId, func(authenticator *Authenticator) bool {
 		for _, authPrint := range authenticator.Fingerprints() {
 			if visitor(authPrint) {
 				stopVisit = true

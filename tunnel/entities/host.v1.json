@@ -1,0 +1,166 @@
+{
+  "schema": {
+    "$defs": {
+      "address": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ipAddress"
+          },
+          {
+            "$ref": "#/$defs/hostname"
+          }
+        ]
+      },
+      "hostname": {
+        "format": "hostname",
+        "not": {
+          "$ref": "#/$defs/ipAddressFormat"
+        },
+        "type": "string"
+      },
+      "ipAddress": {
+        "$ref": "#/$defs/ipAddressFormat",
+        "type": "string"
+      },
+      "ipAddressFormat": {
+        "oneOf": [
+          {
+            "format": "ipv4"
+          },
+          {
+            "format": "ipv6"
+          }
+        ]
+      }
+    },
+    "$id": "http://ziti-edge.netfoundry.io/schemas/host-v1.schema.json",
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "oneOf": [
+          {
+            "required": [
+              "protocol"
+            ]
+          },
+          {
+            "required": [
+              "dialInterceptedProtocol"
+            ]
+          }
+        ]
+      },
+      {
+        "oneOf": [
+          {
+            "required": [
+              "address"
+            ]
+          },
+          {
+            "required": [
+              "dialInterceptedAddress"
+            ]
+          }
+        ]
+      },
+      {
+        "oneOf": [
+          {
+            "required": [
+              "port"
+            ]
+          },
+          {
+            "required": [
+              "dialInterceptedPort"
+            ]
+          }
+        ]
+      }
+    ],
+    "properties": {
+      "address": {
+        "$ref": "#/$defs/address",
+        "description": "Dial the specified ip address or hostname when a ziti client connects to the service."
+      },
+      "dialInterceptedAddress": {
+        "description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'dialInterceptedAddress' are mutually exclusive.",
+        "enum": [
+          true
+        ],
+        "type": "boolean"
+      },
+      "dialInterceptedPort": {
+        "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'dialInterceptedPort' are mutually exclusive.",
+        "enum": [
+          true
+        ],
+        "type": "boolean"
+      },
+      "dialInterceptedProtocol": {
+        "description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'dialInterceptedProtocol' are mutually exclusive.",
+        "enum": [
+          true
+        ],
+        "type": "boolean"
+      },
+      "listenOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "bindUsingEdgeIdentity": {
+            "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+            "type": "boolean"
+          },
+          "connectTimeoutSeconds": {
+            "description": "defaults to 5",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cost": {
+            "description": "defaults to 0",
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "identity": {
+            "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+            "type": "string"
+          },
+          "maxConnections": {
+            "description": "defaults to 3",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "precedence": {
+            "description": "defaults to 'default'",
+            "enum": [
+              "default",
+              "required",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "port": {
+        "description": "Dial the specified port when a ziti client connects to the service.",
+        "maximum": 65535,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "protocol": {
+        "description": "Dial the specified protocol when a ziti client connects to the service.",
+        "enum": [
+          "tcp",
+          "udp",
+          "sctp"
+        ],
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+}

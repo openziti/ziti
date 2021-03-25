@@ -48,6 +48,10 @@ func (self *ActionDefinition) CreateAction() (Action, error) {
 		result.actionImpl = func(state *ServiceState) {
 			state.nextPrecedence = edge.PrecedenceFailed
 		}
+	} else if self.Action == "send event" {
+		result.actionImpl = func(state *ServiceState) {
+			state.sendEvent = true
+		}
 	} else {
 		increase := true
 		var costStr string
@@ -120,8 +124,10 @@ func (self *actionImpl) Matches(result *health.Result) bool {
 	if self.Trigger == "fail" && result.IsHealthy() {
 		return false
 	}
-
 	if self.Trigger == "pass" && !result.IsHealthy() {
+		return false
+	}
+	if self.Trigger == "change" && self.consectivePasses != 1 && result.ContiguousFailures != 1 {
 		return false
 	}
 

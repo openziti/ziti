@@ -36,6 +36,10 @@ func (request *ValidateSessionsRequest) GetContentType() int32 {
 	return int32(ContentType_ValidateSessionsRequestType)
 }
 
+func (request *HealthEventRequest) GetContentType() int32 {
+	return int32(ContentType_HealthEventType)
+}
+
 func (request *CreateApiSessionRequest) GetContentType() int32 {
 	return int32(ContentType_CreateApiSessionRequestType)
 }
