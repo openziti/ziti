@@ -195,7 +195,7 @@ func (self *fabricProvider) TunnelService(conn net.Conn, serviceName string, hal
 		}
 	}
 
-	cleanupCallback := self.tunneler.stateManager.AddSessionRemovedListener(response.Session.Token, func(token string) {
+	cleanupCallback := self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
 		if err = conn.Close(); err != nil {
 			logrus.WithError(err).WithField("service", serviceName).Error("failed to close external conn when session closed")
 		}
@@ -261,7 +261,7 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 		self.bindSessions.Set(hostCtx.ServiceName(), response.Session.SessionId)
 	}
 
-	terminator.closeCallback = self.tunneler.stateManager.AddSessionRemovedListener(response.Session.Token, func(token string) {
+	terminator.closeCallback = self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
 		if err = terminator.Close(); err != nil {
 			logrus.WithError(err).WithField("service", hostCtx.ServiceName()).Error("failed to cleanup terminator when session closed")
 		}

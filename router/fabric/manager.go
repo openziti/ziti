@@ -31,11 +31,11 @@ import (
 )
 
 const (
-	EventRemovedNetworkSession = "RemovedNetworkSession"
+	EventRemovedEdgeSession = "RemovedEdgeSession"
 
-	EventAddedSession   = "AddedSession"
-	EventUpdatedSession = "UpdatedSession"
-	EventRemovedSession = "RemovedSession"
+	EventAddedApiSession   = "AddedApiSession"
+	EventUpdatedApiSession = "UpdatedApiSession"
+	EventRemovedApiSession = "RemovedApiSession"
 )
 
 type RemoveListener func()
@@ -44,8 +44,8 @@ type DisconnectCB func(token string)
 
 type StateManager interface {
 	//"Network" Sessions
-	RemoveSession(token string)
-	AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+	RemoveEdgeSession(token string)
+	AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
 	//ApiSessions
 	GetApiSession(token string) *edge_ctrl_pb.ApiSession
@@ -65,10 +65,10 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	apiSessionsByToken      *sync.Map // token -> api session
-	activeApiSessions       cmap.ConcurrentMap
-	sessions                cmap.ConcurrentMap
-	recentlyRemovedSessions cmap.ConcurrentMap
+	apiSessionsByToken      *sync.Map // apiSesion token -> *edge_ctrl_pb.ApiSession
+	activeApiSessions       cmap.ConcurrentMap // apiSession token -> MapWithMutex[session token] -> func(){}
+	sessions                cmap.ConcurrentMap // session token -> uint32
+	recentlyRemovedSessions cmap.ConcurrentMap // session token -> time.Time (time added, time.Now())
 
 	Hostname       string
 	ControllerAddr string
@@ -96,7 +96,7 @@ func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
 		Debugf("adding apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
 	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
-	sm.Emit(EventAddedSession, apiSession)
+	sm.Emit(EventAddedApiSession, apiSession)
 }
 
 func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession) {
@@ -106,17 +106,17 @@ func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
 		Debugf("updating apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
 	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
-	sm.Emit(EventUpdatedSession, apiSession)
+	sm.Emit(EventUpdatedApiSession, apiSession)
 }
 
 func (sm *StateManagerImpl) RemoveApiSession(token string) {
 	if ns, ok := sm.apiSessionsByToken.Load(token); ok {
 		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("removing api session [token: %s]", token)
 		sm.apiSessionsByToken.Delete(token)
-		eventName := sm.getSessionRemovedEventName(token)
+		eventName := sm.getApiSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
-		sm.Emit(EventRemovedSession, ns)
+		sm.Emit(EventRemovedApiSession, ns)
 	} else {
 		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("could not remove api session [token: %s]; not found", token)
 	}
@@ -147,10 +147,11 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ct
 	}
 }
 
-func (sm *StateManagerImpl) RemoveSession(token string) {
+func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
 	pfxlog.Logger().Debugf("removing network session [%s]", token)
-	eventName := sm.getNetworkSessionRemovedEventName(token)
+	eventName := sm.getEdgeSessionRemovedEventName(token)
 	sm.Emit(eventName)
+
 	sm.RemoveAllListeners(eventName)
 	sm.sessions.RemoveCb(token, func(key string, v interface{}, exists bool) bool {
 		if exists {
@@ -191,7 +192,7 @@ func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession
 	return nil
 }
 
-func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
+func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	if sm.recentlyRemovedSessions.Has(token) {
 		callBack(token)
 		return func() {}
@@ -204,7 +205,8 @@ func (sm *StateManagerImpl) AddSessionRemovedListener(token string, callBack fun
 		return valueInMap.(uint32) + 1
 	})
 
-	eventName := sm.getNetworkSessionRemovedEventName(token)
+	eventName := sm.getEdgeSessionRemovedEventName(token)
+
 	listener := func(args ...interface{}) {
 		callBack(token)
 	}
@@ -242,7 +244,7 @@ func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
 }
 
 func (sm *StateManagerImpl) AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
-	eventName := sm.getSessionRemovedEventName(token)
+	eventName := sm.getApiSessionRemovedEventName(token)
 	listener := func(args ...interface{}) {
 		callBack(token)
 	}
@@ -253,13 +255,13 @@ func (sm *StateManagerImpl) AddApiSessionRemovedListener(token string, callBack 
 	}
 }
 
-func (sm *StateManagerImpl) getNetworkSessionRemovedEventName(token string) events.EventName {
-	eventName := EventRemovedNetworkSession + "-" + token
+func (sm *StateManagerImpl) getEdgeSessionRemovedEventName(token string) events.EventName {
+	eventName := EventRemovedEdgeSession + "-" + token
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) getSessionRemovedEventName(token string) events.EventName {
-	eventName := EventRemovedSession + "-" + token
+func (sm *StateManagerImpl) getApiSessionRemovedEventName(token string) events.EventName {
+	eventName := EventRemovedApiSession + "-" + token
 	return events.EventName(eventName)
 }
 

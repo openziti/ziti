@@ -122,7 +122,7 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 	}
 
 	// need to remove session remove listener on close
-	conn.onClose = self.listener.factory.stateManager.AddSessionRemovedListener(token, func(token string) {
+	conn.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
 		conn.close(true, "session closed")
 	})
 
@@ -216,7 +216,7 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 	}
 
 	// need to remove session remove listener on close
-	messageSink.onClose = self.listener.factory.stateManager.AddSessionRemovedListener(token, func(token string) {
+	messageSink.onClose = self.listener.factory.stateManager.AddEdgeSessionRemovedListener(token, func(token string) {
 		messageSink.close(true, "session ended")
 	})
 
