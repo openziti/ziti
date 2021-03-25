@@ -1,5 +1,7 @@
 # Transwarp beta_1
 
+![transwarp](transwarp.png)
+
 `openziti/ziti@v0.19.8`
 
 ## Goal: Long-haul, High-performance Data Plane for Ziti
@@ -60,7 +62,7 @@ net.ipv4.udp_mem = 8388608 8388608 16777216
 
 > Please Note! Failure to properly configure these kernel parameters will result in SIGNIFICANT under-performance of `westworld3`.
 
-> Please Note! Transwarp is a UDP-based protocol. Any firewall rules that you create for Transwarp-enabled connections will require UDP permissions.
+> Please Note! `westworld3` is a UDP-based protocol. Any firewall rules that you create for Transwarp-enabled connections will require UDP permissions.
 
 ## Profiles
 
