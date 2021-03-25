@@ -24,10 +24,15 @@ See the Transwarp beta_1 guide [here](doc/transwarp_b1/transwarp_b1.md).
 
 ziti-router can now run with the tunneler embedded. It has the same capabilities as ziti-tunnel. As ziti-tunnel gains new features, the combined ziti-router/tunnel should maintain feature parity.
 
-This is a beta release. It should be relatively feature complete and bug-free for hosting services but intercept support is still nascent. Some features are likely to be changed based on user
-feedback.
+### Beta Status
 
-NOTE: The converged tunneler/router does not support running in tun mode. This mode may be deprecated for ziti-tunnel as well at some point in the future if no advantages over tproxy mode are evident.
+This is a beta release. It should be relatively feature complete and bug-free for hosting services but intercept support is still nascent. Some features are likely to be changed based on user feedback.
+
+### Os Compatibilty
+
+Like ziti-tunnel, `tproxy` mode will only work on linux. `proxy` and `host` modes should work on all operating systems. 
+
+The converged tunneler/router does not support running in tun mode. This mode may be deprecated for ziti-tunnel as well at some point in the future if no advantages over tproxy mode are evident.
 
 ### Supported configurations
 
