@@ -104,9 +104,10 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 		}
 
 		apiSession := &model.ApiSession{
-			Token:       uuid.NewString(),
-			IdentityId:  self.identity.Id,
-			ConfigTypes: self.handler.getAppEnv().Handlers.ConfigType.MapConfigTypeNamesToIds(configTypes, self.identity.Id),
+			Token:          uuid.NewString(),
+			IdentityId:     self.identity.Id,
+			ConfigTypes:    self.handler.getAppEnv().Handlers.ConfigType.MapConfigTypeNamesToIds(configTypes, self.identity.Id),
+			LastActivityAt: time.Now(),
 		}
 
 		apiSession.Id, self.err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession)
