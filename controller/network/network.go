@@ -228,6 +228,10 @@ func (network *Network) GetMetricsRegistry() metrics.Registry {
 	return network.metricsRegistry
 }
 
+func (network *Network) GetServiceEventsMetricsRegistry() metrics.UsageRegistry {
+	return network.serviceEventMetrics
+}
+
 func (network *Network) RouterChanged(r *Router) {
 	network.routerChanged <- r
 }
