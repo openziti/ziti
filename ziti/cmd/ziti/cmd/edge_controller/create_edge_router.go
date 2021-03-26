@@ -30,8 +30,9 @@ import (
 
 type createEdgeRouterOptions struct {
 	edgeOptions
-	roleAttributes []string
-	jwtOutputFile  string
+	isTunnelerEnabled bool
+	roleAttributes    []string
+	jwtOutputFile     string
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -59,6 +60,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new edge router")
+	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
 	options.AddCommonFlags(cmd)
 
@@ -69,6 +71,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	routerData := gabs.New()
 	setJSONValue(routerData, o.Args[0], "name")
+	setJSONValue(routerData, o.isTunnelerEnabled, "isTunnelerEnabled")
 	setJSONValue(routerData, o.roleAttributes, "roleAttributes")
 
 	result, err := createEntityOfType("edge-routers", routerData.String(), &o.edgeOptions)

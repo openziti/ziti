@@ -38,6 +38,7 @@ func newCreatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 	cmd.AddCommand(newCreatePostureCheckDomainCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckProcessCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckOsCmd(f, out, errOut))
+	cmd.AddCommand(newCreatePostureCheckMfaCmd(f, out, errOut))
 
 	return cmd
 }
@@ -225,6 +226,7 @@ const (
 	PostureCheckTypeProcess = "PROCESS"
 	PostureCheckTypeMAC     = "MAC"
 	PostureCheckTypeOS      = "OS"
+	PostureCheckTypeMFA 	= "MFA"
 )
 
 // Returns the normalized Edge API value or empty string
@@ -537,4 +539,63 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 		Type:     osType,
 		Versions: cleanVersions,
 	}, nil
+}
+
+
+func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := createPostureCheckOptions{
+		edgeOptions: edgeOptions{
+			CommonOptions: common.CommonOptions{
+				Factory: f,
+				Out:     out,
+				Err:     errOut,
+			},
+		},
+		tags: make(map[string]string),
+	}
+
+	cmd := &cobra.Command{
+		Use:   "mfa <name>",
+		Short: "creates a posture check indicating client-side mfa is required",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+
+			err := runCreatePostureCheckMfa(&options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	options.AddCommonFlags(cmd)
+	options.addPostureFlags(cmd)
+
+	return cmd
+}
+func runCreatePostureCheckMfa(o *createPostureCheckOptions) error {
+	entityData := gabs.New()
+	setPostureCheckEntityValues(entityData, o, PostureCheckTypeMFA)
+
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+
+	if err != nil {
+		panic(err)
+	}
+
+	checkId := result.S("data", "id").Data()
+
+	if _, err = fmt.Fprintf(o.Out, "%v\n", checkId); err != nil {
+		panic(err)
+	}
+
+	return nil
 }
