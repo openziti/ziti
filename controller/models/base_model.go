@@ -48,6 +48,7 @@ type Entity interface {
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
 	GetTags() map[string]interface{}
+	IsSystemEntity() bool
 }
 
 type BaseEntity struct {
@@ -55,6 +56,7 @@ type BaseEntity struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Tags      map[string]interface{}
+	IsSystem  bool
 }
 
 func (entity *BaseEntity) GetId() string {
@@ -77,11 +79,16 @@ func (entity *BaseEntity) GetTags() map[string]interface{} {
 	return entity.Tags
 }
 
+func (entity *BaseEntity) IsSystemEntity() bool {
+	return entity.IsSystem
+}
+
 func (entity *BaseEntity) FillCommon(boltEntity boltz.ExtEntity) {
 	entity.Id = boltEntity.GetId()
 	entity.CreatedAt = boltEntity.GetCreatedAt()
 	entity.UpdatedAt = boltEntity.GetUpdatedAt()
 	entity.Tags = boltEntity.GetTags()
+	entity.IsSystem = boltEntity.IsSystemEntity()
 }
 
 type EntityListResult struct {
