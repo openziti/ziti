@@ -54,7 +54,7 @@ func (h *sessionRemovedHandler) HandleReceive(msg *channel2.Message, ch channel2
 					WithField("sessionToken", token).
 					WithField("sessionId", id).
 					Debugf("removing session [token: %s] [id: %s]", token, id)
-				h.sm.RemoveSession(token)
+				h.sm.RemoveEdgeSession(token)
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as network session removed")
