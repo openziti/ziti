@@ -18,6 +18,9 @@ func init() {
 
 func mapLinkIds(name string) (string, string, bool) {
 	if strings.HasPrefix(name, "link.") {
+		if strings.HasSuffix(name, "latency") {
+			return ExtractId(name, "link.", 1)
+		}
 		return ExtractId(name, "link.", 2)
 	}
 	return "", "", false
@@ -25,6 +28,9 @@ func mapLinkIds(name string) (string, string, bool) {
 
 func mapCtrlIds(name string) (string, string, bool) {
 	if strings.HasPrefix(name, "ctrl.") {
+		if strings.HasSuffix(name, "latency") {
+			return ExtractId(name, "ctrl.", 1)
+		}
 		return ExtractId(name, "ctrl.", 2)
 	}
 	return "", "", false
