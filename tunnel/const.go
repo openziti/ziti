@@ -1,8 +1,8 @@
 package tunnel
 
 const (
-	InterceptedProtocolKey = "intercepted_protocol"
-	InterceptedIpKey       = "intercepted_ip"
-	InterceptedPortKey     = "intercepted_port"
-	SourceIpKey            = "source_ip"
+	DestinationProtocolKey = "dst_protocol"
+	DestinationIpKey       = "dst_ip"
+	DestinationPortKey     = "dst_port"
+	SourceAddrKey          = "source_addr"
 )

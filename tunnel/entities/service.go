@@ -160,21 +160,21 @@ func (self *HostV2Terminator) getValue(options map[string]interface{}, key strin
 
 func (self *HostV2Terminator) GetProtocol(options map[string]interface{}) (string, error) {
 	if self.DialInterceptedProtocol {
-		return self.getValue(options, tunnel.InterceptedProtocolKey)
+		return self.getValue(options, tunnel.DestinationProtocolKey)
 	}
 	return self.Protocol, nil
 }
 
 func (self *HostV2Terminator) GetAddress(options map[string]interface{}) (string, error) {
 	if self.DialInterceptedAddress {
-		return self.getValue(options, tunnel.InterceptedIpKey)
+		return self.getValue(options, tunnel.DestinationIpKey)
 	}
 	return self.Address, nil
 }
 
 func (self *HostV2Terminator) GetPort(options map[string]interface{}) (string, error) {
 	if self.DialInterceptedPort {
-		return self.getValue(options, tunnel.InterceptedPortKey)
+		return self.getValue(options, tunnel.DestinationPortKey)
 	}
 	return strconv.Itoa(self.Port), nil
 }

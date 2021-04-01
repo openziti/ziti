@@ -1,6 +1,7 @@
 package intercept
 
 import (
+	"fmt"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
@@ -66,14 +67,25 @@ func (self *baseHostingContext) ListenOptions() *ziti.ListenOptions {
 }
 
 func (self *baseHostingContext) dialAddress(options map[string]interface{}, protocol string, address string) (net.Conn, error) {
-	var sourceIp string
-	if val, ok := options[tunnel.SourceIpKey]; ok {
-		sourceIp = val.(string)
+	var sourceAddr string
+	if val, ok := options[tunnel.SourceAddrKey]; ok {
+		sourceAddr = val.(string)
 	}
 
-	if sourceIp != "" {
+	if sourceAddr != "" {
+		sourceIp := sourceAddr
+		sourcePort := 0
+		s := strings.Split(sourceAddr, ":")
+		if len(s) == 2 {
+			var e error
+			sourceIp = s[0]
+			sourcePort, e = strconv.Atoi(s[1])
+			if e != nil {
+				return nil, fmt.Errorf("failed to parse port '%s': %v", s[1], e)
+			}
+		}
 		dialer := net.Dialer{
-			LocalAddr: &net.TCPAddr{IP: net.ParseIP(sourceIp)},
+			LocalAddr: &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort},
 			Timeout:   self.dialTimeout,
 		}
 		return dialer.Dial(protocol, address)
