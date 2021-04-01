@@ -309,7 +309,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	cfg.Metrics.ReportInterval = 15 * time.Second
+	cfg.Metrics.ReportInterval = time.Minute
 	cfg.Metrics.MessageQueueSize = 10
 	if value, found := cfgmap["metrics"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {

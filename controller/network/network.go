@@ -120,7 +120,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 }
 
 func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
-	reportInterval := time.Second * 15
+	reportInterval := time.Minute
 	if cfg != nil && cfg.ReportInterval != 0 {
 		reportInterval = cfg.ReportInterval
 	}
