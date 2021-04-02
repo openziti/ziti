@@ -114,6 +114,9 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	zitiCfg.ConfigTypes = []string{
 		entities.ClientConfigV1,
 		entities.ServerConfigV1,
+		entities.InterceptV1,
+		entities.HostConfigV1,
+		entities.HostConfigV2,
 	}
 
 	resolverConfig := cmd.Flag("resolver").Value.String()

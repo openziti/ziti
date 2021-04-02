@@ -40,7 +40,7 @@ func init() {
 func runTProxy(cmd *cobra.Command, args []string) error {
 	var err error
 	lanIf, err := cmd.Flags().GetString("lanIf")
-	interceptor, err = tproxy.NewWithLanIf(lanIf)
+	interceptor, err = tproxy.New(lanIf)
 	if err != nil {
 		return fmt.Errorf("failed to initialize tproxy interceptor: %v", err)
 	}
