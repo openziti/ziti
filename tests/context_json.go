@@ -65,9 +65,49 @@ func (ctx *TestContext) pathEquals(container *gabs.Container, val interface{}, p
 	pathValue := container.Search(path...)
 	if val == nil || (reflect.TypeOf(val).Kind() == reflect.Map && reflect.ValueOf(val).IsNil()) {
 		ctx.Req.True(pathValue == nil || pathValue.Data() == nil)
-	} else {
-		ctx.Req.Equal(val, pathValue.Data())
+		return
 	}
+
+	data := pathValue.Data()
+	if floatVal, isFloat := data.(float64); isFloat {
+		if cmpFloat, isCmp := ctx.toFloat(val); isCmp && isFloat {
+			ctx.Req.Equal(floatVal, cmpFloat)
+			return
+		}
+	}
+	ctx.Req.Equal(val, pathValue.Data())
+}
+
+func (ctx *TestContext) toFloat(val interface{}) (float64, bool) {
+	if v, ok := val.(int); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(int32); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(uint32); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(int64); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(uint64); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(int16); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(uint16); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(int8); ok {
+		return float64(v), true
+	}
+	if v, ok := val.(uint8); ok {
+		return float64(v), true
+	}
+
+	return 0, false
 }
 
 func (ctx *TestContext) requireString(container *gabs.Container, path ...string) string {

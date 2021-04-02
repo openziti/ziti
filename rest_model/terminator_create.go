@@ -50,7 +50,7 @@ type TerminatorCreate struct {
 	Binding *string `json:"binding"`
 
 	// cost
-	Cost *TerminatorCost `json:"cost,omitempty"`
+	Cost TerminatorCost `json:"cost,omitempty"`
 
 	// identity
 	Identity string `json:"identity,omitempty"`
@@ -136,13 +136,11 @@ func (m *TerminatorCreate) validateCost(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if m.Cost != nil {
-		if err := m.Cost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("cost")
-			}
-			return err
+	if err := m.Cost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("cost")
 		}
+		return err
 	}
 
 	return nil

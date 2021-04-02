@@ -45,6 +45,29 @@ func Test_Identity(t *testing.T) {
 		ctx.AdminSession.validateEntityWithLookup(identity)
 	})
 
+	t.Run("service hosting values should be set", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		svc1 := ctx.AdminSession.requireNewService(nil, nil)
+		svc2 := ctx.AdminSession.requireNewService(nil, nil)
+
+		identity := newTestIdentity(false)
+		identity.defaultHostingPrecedence = "required"
+		identity.defaultHostingCost = 150
+		identity.serviceHostingPrecedences = map[string]interface{}{
+			svc1.Id: "required",
+			svc2.Id: "failed",
+		}
+
+		identity.serviceHostingCosts = map[string]uint16{
+			svc1.Id: 200,
+			svc2.Id: 300,
+		}
+
+		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+		ctx.AdminSession.validateEntityWithQuery(identity)
+		ctx.AdminSession.validateEntityWithLookup(identity)
+	})
+
 	t.Run("role attributes should be updated", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()

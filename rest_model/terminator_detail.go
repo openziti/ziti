@@ -52,11 +52,11 @@ type TerminatorDetail struct {
 
 	// cost
 	// Required: true
-	Cost *TerminatorCost `json:"cost"`
+	Cost TerminatorCost `json:"cost"`
 
 	// dynamic cost
 	// Required: true
-	DynamicCost *TerminatorCost `json:"dynamicCost"`
+	DynamicCost TerminatorCost `json:"dynamicCost"`
 
 	// identity
 	// Required: true
@@ -98,9 +98,9 @@ func (m *TerminatorDetail) UnmarshalJSON(raw []byte) error {
 
 		Binding *string `json:"binding"`
 
-		Cost *TerminatorCost `json:"cost"`
+		Cost TerminatorCost `json:"cost"`
 
-		DynamicCost *TerminatorCost `json:"dynamicCost"`
+		DynamicCost TerminatorCost `json:"dynamicCost"`
 
 		Identity *string `json:"identity"`
 
@@ -155,9 +155,9 @@ func (m TerminatorDetail) MarshalJSON() ([]byte, error) {
 
 		Binding *string `json:"binding"`
 
-		Cost *TerminatorCost `json:"cost"`
+		Cost TerminatorCost `json:"cost"`
 
-		DynamicCost *TerminatorCost `json:"dynamicCost"`
+		DynamicCost TerminatorCost `json:"dynamicCost"`
 
 		Identity *string `json:"identity"`
 
@@ -275,17 +275,11 @@ func (m *TerminatorDetail) validateBinding(formats strfmt.Registry) error {
 
 func (m *TerminatorDetail) validateCost(formats strfmt.Registry) error {
 
-	if err := validate.Required("cost", "body", m.Cost); err != nil {
-		return err
-	}
-
-	if m.Cost != nil {
-		if err := m.Cost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("cost")
-			}
-			return err
+	if err := m.Cost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("cost")
 		}
+		return err
 	}
 
 	return nil
@@ -293,17 +287,11 @@ func (m *TerminatorDetail) validateCost(formats strfmt.Registry) error {
 
 func (m *TerminatorDetail) validateDynamicCost(formats strfmt.Registry) error {
 
-	if err := validate.Required("dynamicCost", "body", m.DynamicCost); err != nil {
-		return err
-	}
-
-	if m.DynamicCost != nil {
-		if err := m.DynamicCost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("dynamicCost")
-			}
-			return err
+	if err := m.DynamicCost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("dynamicCost")
 		}
+		return err
 	}
 
 	return nil

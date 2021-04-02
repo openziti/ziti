@@ -42,7 +42,7 @@ import (
 type IdentityUpdate struct {
 
 	// default hosting cost
-	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+	DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
 
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
@@ -57,6 +57,12 @@ type IdentityUpdate struct {
 
 	// role attributes
 	RoleAttributes Attributes `json:"roleAttributes"`
+
+	// service hosting costs
+	ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts,omitempty"`
+
+	// service hosting precedences
+	ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences,omitempty"`
 
 	// tags
 	Tags Tags `json:"tags"`
@@ -90,6 +96,14 @@ func (m *IdentityUpdate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateServiceHostingCosts(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateServiceHostingPrecedences(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
@@ -110,13 +124,11 @@ func (m *IdentityUpdate) validateDefaultHostingCost(formats strfmt.Registry) err
 		return nil
 	}
 
-	if m.DefaultHostingCost != nil {
-		if err := m.DefaultHostingCost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("defaultHostingCost")
-			}
-			return err
+	if err := m.DefaultHostingCost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingCost")
 		}
+		return err
 	}
 
 	return nil
@@ -165,6 +177,38 @@ func (m *IdentityUpdate) validateRoleAttributes(formats strfmt.Registry) error {
 	if err := m.RoleAttributes.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityUpdate) validateServiceHostingCosts(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ServiceHostingCosts) { // not required
+		return nil
+	}
+
+	if err := m.ServiceHostingCosts.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingCosts")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityUpdate) validateServiceHostingPrecedences(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ServiceHostingPrecedences) { // not required
+		return nil
+	}
+
+	if err := m.ServiceHostingPrecedences.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingPrecedences")
 		}
 		return err
 	}

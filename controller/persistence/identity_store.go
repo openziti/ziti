@@ -47,10 +47,12 @@ const (
 	FieldIdentitySdkInfoAppId      = "sdkInfoAppId"
 	FieldIdentitySdkInfoAppVersion = "sdkInfoAppVersion"
 
-	FieldIdentityBindServices             = "bindServices"
-	FieldIdentityDialServices             = "dialServices"
-	FieldIdentityDefaultHostingPrecedence = "hostingPrecedence"
-	FieldIdentityDefaultHostingCost       = "hostingCost"
+	FieldIdentityBindServices              = "bindServices"
+	FieldIdentityDialServices              = "dialServices"
+	FieldIdentityDefaultHostingPrecedence  = "hostingPrecedence"
+	FieldIdentityDefaultHostingCost        = "hostingCost"
+	FieldIdentityServiceHostingPrecedences = "serviceHostingPrecedences"
+	FieldIdentityServiceHostingCosts       = "serviceHostingCosts"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -80,17 +82,19 @@ type SdkInfo struct {
 
 type Identity struct {
 	boltz.BaseExtEntity
-	Name                     string
-	IdentityTypeId           string
-	IsDefaultAdmin           bool
-	IsAdmin                  bool
-	Enrollments              []string
-	Authenticators           []string
-	RoleAttributes           []string
-	SdkInfo                  *SdkInfo
-	EnvInfo                  *EnvInfo
-	DefaultHostingPrecedence ziti.Precedence
-	DefaultHostingCost       uint16
+	Name                      string
+	IdentityTypeId            string
+	IsDefaultAdmin            bool
+	IsAdmin                   bool
+	Enrollments               []string
+	Authenticators            []string
+	RoleAttributes            []string
+	SdkInfo                   *SdkInfo
+	EnvInfo                   *EnvInfo
+	DefaultHostingPrecedence  ziti.Precedence
+	DefaultHostingCost        uint16
+	ServiceHostingPrecedences map[string]ziti.Precedence
+	ServiceHostingCosts       map[string]uint16
 }
 
 type ServiceConfig struct {
@@ -127,6 +131,16 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 		OsRelease: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsRelease, ""),
 		OsVersion: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsVersion, ""),
 	}
+
+	entity.ServiceHostingPrecedences = map[string]ziti.Precedence{}
+	for k, v := range bucket.GetMap(FieldIdentityServiceHostingPrecedences) {
+		entity.ServiceHostingPrecedences[k] = ziti.Precedence(v.(int32))
+	}
+
+	entity.ServiceHostingCosts = map[string]uint16{}
+	for k, v := range bucket.GetMap(FieldIdentityServiceHostingCosts) {
+		entity.ServiceHostingCosts[k] = uint16(v.(int32))
+	}
 }
 
 func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
@@ -161,6 +175,37 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
 		ctx.SetString(FieldIdentitySdkInfoAppId, entity.SdkInfo.AppId)
 		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
+	}
+
+	serviceStore := ctx.Store.(*identityStoreImpl).stores.Service
+
+	if ctx.ProceedWithSet(FieldIdentityServiceHostingPrecedences) {
+		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingPrecedences)
+		if !ctx.Bucket.SetError(err) {
+			for k, v := range entity.ServiceHostingPrecedences {
+				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
+					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
+					return
+				}
+				mapBucket.SetInt32(k, int32(v), nil)
+			}
+			ctx.Bucket.SetError(mapBucket.Err)
+		}
+	}
+
+	if ctx.ProceedWithSet(FieldIdentityServiceHostingCosts) {
+		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingCosts)
+		if !ctx.Bucket.SetError(err) {
+			for k, v := range entity.ServiceHostingCosts {
+				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
+					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
+					return
+				}
+
+				mapBucket.SetInt32(k, int32(v), nil)
+			}
+			ctx.Bucket.SetError(mapBucket.Err)
+		}
 	}
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
