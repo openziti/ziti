@@ -18,21 +18,20 @@ package proxy
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/intercept"
+	"github.com/openziti/edge/tunnel/udp_vconn"
 	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/util/mempool"
+	"github.com/pkg/errors"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/tunnel"
-	"github.com/openziti/edge/tunnel/dns"
-	"github.com/openziti/edge/tunnel/intercept"
-	"github.com/openziti/edge/tunnel/udp_vconn"
-	"github.com/openziti/foundation/util/mempool"
-	"github.com/pkg/errors"
 )
 
 type Service struct {
@@ -41,6 +40,7 @@ type Service struct {
 	Protocol intercept.Protocol
 	Closer   io.Closer
 	sync.Mutex
+	TunnelService *entities.Service
 }
 
 func (self *Service) setCloser(c io.Closer) {
@@ -112,7 +112,7 @@ func (p *interceptor) Start(provider tunnel.FabricProvider) {
 	p.provider = provider
 }
 
-func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver) error {
+func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	proxiedService, ok := p.services[service.Name]
@@ -120,6 +120,8 @@ func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver) error 
 		log.Debugf("service %v was not specified at initialization. not intercepting", service.Name)
 		return nil
 	}
+
+	proxiedService.TunnelService = service
 
 	// pre-fetch network session todo move this to service poller?
 	p.provider.PrepForUse(service.Id)
@@ -163,7 +165,9 @@ func (p *interceptor) handleTCP(service *Service) {
 			p.closeCh <- err
 			return
 		}
-		go tunnel.DialAndRun(p.provider, service.Name, conn, true)
+		sourceAddr := service.TunnelService.GetSourceAddr(conn.RemoteAddr(), conn.LocalAddr())
+		appInfo := tunnel.GetAppInfo("tcp", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
+		go tunnel.DialAndRun(p.provider, service.TunnelService, conn, appInfo, true)
 	}
 }
 
@@ -184,7 +188,7 @@ func (p *interceptor) handleUDP(service *Service) {
 
 	log.Infof("service %v is listening", service.Name)
 	reader := &udpReader{
-		service: service.Name,
+		service: service.TunnelService,
 		conn:    udpPacketConn,
 	}
 	vconnManager := udp_vconn.NewManager(p.provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
@@ -200,7 +204,7 @@ func (p *interceptor) Stop() {
 	}
 }
 
-func (p *interceptor) StopIntercepting(serviceName string, _ bool) error {
+func (p *interceptor) StopIntercepting(serviceName string, _ intercept.AddressTracker) error {
 	if service, ok := p.services[serviceName]; ok {
 		return service.Stop()
 	}
@@ -208,12 +212,12 @@ func (p *interceptor) StopIntercepting(serviceName string, _ bool) error {
 }
 
 type udpReader struct {
-	service string
+	service *entities.Service
 	conn    *net.UDPConn
 }
 
 func (reader *udpReader) generateReadEvents(manager udp_vconn.Manager) {
-	log := pfxlog.Logger().WithField("service", reader.service)
+	log := pfxlog.Logger().WithField("service", reader.service.Name)
 	bufPool := mempool.NewPool(16, info.MaxUdpPacketSize)
 	for {
 		buf := bufPool.AcquireBuffer()
@@ -250,7 +254,7 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 		log.Infof("received connection for %v --> %v, which maps to intercepted service %v",
 			event.srcAddr, event.reader.conn.LocalAddr(), event.reader.service)
 		var err error
-		writeQueue, err = manager.CreateWriteQueue(event.srcAddr, event.reader.service, event.reader.conn)
+		writeQueue, err = manager.CreateWriteQueue(event.srcAddr.(*net.UDPAddr), event.srcAddr, event.reader.service, event.reader.conn)
 		if err != nil {
 			return err
 		}

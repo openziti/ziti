@@ -17,13 +17,11 @@
 package intercept
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/pkg/errors"
-	"math"
 	"net"
 )
 
@@ -37,8 +35,8 @@ const (
 type Interceptor interface {
 	Start(provider tunnel.FabricProvider)
 	Stop()
-	Intercept(service *entities.Service, resolver dns.Resolver) error
-	StopIntercepting(serviceName string, removeRoute bool) error
+	Intercept(service *entities.Service, resolver dns.Resolver, tracker AddressTracker) error
+	StopIntercepting(serviceName string, tracker AddressTracker) error
 }
 
 // Interceptors need to maintain state for services that are being intercepted.
@@ -46,33 +44,33 @@ type Interceptor interface {
 // - intercepted address - this is all an interceptor knows when an inbound connection is made
 // - service name - when a service is removed (e.g. from an appwan)
 
-type InterceptedService struct {
-	Name string
-	Addr interceptAddress
-	Data interface{} // interceptor-specific data attached to this intercept. intent is to provide context needed in Interceptor.StopIntercepting
+type InterceptAddress struct {
+	cidr       *net.IPNet
+	lowPort    uint16
+	highPort   uint16
+	protocol   string
+	TproxySpec []string
+	AcceptSpec []string
 }
 
-type interceptAddress struct {
-	cidr     string
-	port     int
-	protocol string
-}
-
-func (addr interceptAddress) Proto() string {
+func (addr *InterceptAddress) Proto() string {
 	return addr.protocol
 }
 
-func (addr interceptAddress) IpNet() net.IPNet {
-	_, ipNet, err := net.ParseCIDR(addr.cidr)
-	if err != nil {
-		pfxlog.Logger().Errorf("net.ParseCIDR(%s) failed: %v", addr.cidr, err)
-		// TODO return error? nil?
-	}
-	return *ipNet
+func (addr *InterceptAddress) IpNet() *net.IPNet {
+	return addr.cidr
 }
 
-func (addr interceptAddress) Port() int {
-	return addr.port
+func (addr *InterceptAddress) LowPort() uint16 {
+	return addr.lowPort
+}
+
+func (addr *InterceptAddress) HighPort() uint16 {
+	return addr.highPort
+}
+
+func (addr *InterceptAddress) Contains(ip net.IP, port uint16) bool {
+	return addr.cidr.Contains(ip) && port >= addr.lowPort && port <= addr.highPort
 }
 
 // Return the length of a full prefix (no subnetting) for the given IP address.
@@ -90,86 +88,21 @@ func addrBits(ip net.IP) int {
 	return 0
 }
 
-func NewInterceptAddress(service *entities.Service, protocol string, resolver dns.Resolver) (*interceptAddress, error) {
-	if service.ClientConfig == nil {
-		return nil, errors.Errorf("no client configuration for service %v", service.Name)
-	}
+func GetInterceptAddresses(service *entities.Service, protocol string, resolver dns.Resolver) ([]*InterceptAddress, error) {
+	var result []*InterceptAddress
+	for _, addr := range service.InterceptV1Config.Addresses {
+		_, cidr, err := getInterceptIP(addr, resolver)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get intercept IP address for %v", addr)
+		}
 
-	if service.ClientConfig.Hostname == "" {
-		return nil, errors.Errorf("client configuration missing hostname for service %v", service.Name)
-	}
-
-	if service.ClientConfig.Port < 1 || service.ClientConfig.Port > math.MaxUint16 {
-		return nil, errors.Errorf("client configuration has invalid port %v for service %v", service.ClientConfig.Port, service.Name)
-	}
-
-	ip, err := getInterceptIP(service.ClientConfig.Hostname, resolver)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get intercept IP address: %v", err)
-	}
-
-	prefixLen := addrBits(ip)
-	ipNet := net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
-	addr := interceptAddress{cidr: ipNet.String(), port: service.ClientConfig.Port, protocol: protocol}
-	return &addr, nil
-}
-
-type LUT map[interceptAddress]InterceptedService
-
-func NewLUT() LUT {
-	return make(map[interceptAddress]InterceptedService)
-}
-
-// Return the service that is being intercepted at the given address, if any.
-func (m LUT) GetByAddress(addr net.Addr) (*InterceptedService, error) {
-	//var proto string
-	var ip net.IP
-	var port int
-	var protocol string
-	switch addrType := addr.(type) {
-	case *net.TCPAddr:
-		ip = addrType.IP
-		port = addrType.Port
-		protocol = "tcp"
-	case *net.UDPAddr:
-		ip = addrType.IP
-		port = addrType.Port
-		protocol = "udp"
-	default:
-		return nil, fmt.Errorf("unsupported address type: %v", addrType)
-	}
-
-	prefixLen := addrBits(ip)
-	ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
-	cidr := ipNet.String()
-
-	s, ok := m[interceptAddress{cidr, port, protocol}]
-	if !ok {
-		return nil, fmt.Errorf("address %s is not being intercepted", addr.String())
-	}
-	return &s, nil
-}
-
-func (m LUT) GetByName(serviceName string) []InterceptedService {
-	var r []InterceptedService
-	for _, service := range m {
-		if serviceName == service.Name {
-			r = append(r, service)
+		for _, portRange := range service.InterceptV1Config.PortRanges {
+			result = append(result, &InterceptAddress{
+				cidr:     cidr,
+				lowPort:  portRange.Low,
+				highPort: portRange.High,
+				protocol: protocol})
 		}
 	}
-
-	return r
-}
-
-func (m LUT) Put(addr interceptAddress, serviceName string, data interface{}) error {
-	m[addr] = InterceptedService{
-		Name: serviceName,
-		Addr: addr,
-		Data: data,
-	}
-	return nil
-}
-
-func (m LUT) Remove(interceptAddr interceptAddress) {
-	delete(m, interceptAddr)
+	return result, nil
 }

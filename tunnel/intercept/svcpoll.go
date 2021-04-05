@@ -17,6 +17,7 @@
 package intercept
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
@@ -25,20 +26,32 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 	logrus "github.com/sirupsen/logrus"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
+
+var sourceIpTemplKey = "$" + tunnel.SourceIpKey
+var sourcePortTemplKey = "$" + tunnel.SourcePortKey
+var sourceAddrTemplKey = sourceIpTemplKey + ":" + sourcePortTemplKey
+
+var destIpTemplKey = "$" + tunnel.DestinationIpKey
+var destPortTemplKey = "$" + tunnel.DestinationPortKey
+var destAddrTemplKey = destIpTemplKey + ":" + destPortTemplKey
 
 func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
 	return &ServiceListener{
 		interceptor:    interceptor,
 		resolver:       resolver,
 		healthCheckMgr: health.NewManager(),
-		addresses:      map[string]int{},
+		addrTracker:    addrTracker{},
 		services:       map[string]*entities.Service{},
 	}
 }
@@ -48,8 +61,8 @@ type ServiceListener struct {
 	interceptor    Interceptor
 	resolver       dns.Resolver
 	healthCheckMgr health.Manager
-	addresses      map[string]int
 	services       map[string]*entities.Service
+	addrTracker    AddressTracker
 	sync.Mutex
 }
 
@@ -101,21 +114,42 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 func (self *ServiceListener) addService(svc *entities.Service) {
 	log := pfxlog.Logger()
 
-	if stringz.Contains(svc.Permissions, "Dial") {
-		clientConfig := &entities.ServiceConfig{}
-		found, err := svc.GetConfigOfType(entities.ClientConfigV1, clientConfig)
+	svc.DialTimeout = 5 * time.Second
 
-		if found && err == nil {
-			svc.ClientConfig = clientConfig
-		} else if !found {
-			pfxlog.Logger().Debugf("no service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
-		} else if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+	if stringz.Contains(svc.Permissions, "Dial") {
+		interceptV1Config := &entities.InterceptV1Config{}
+		found, err := svc.GetConfigOfType(entities.InterceptV1, interceptV1Config)
+		if found {
+			svc.InterceptV1Config = interceptV1Config
+			if interceptV1Config.DialOptions != nil && interceptV1Config.DialOptions.ConnectTimeoutSeconds != nil {
+				svc.DialTimeout = time.Duration(*interceptV1Config.DialOptions.ConnectTimeoutSeconds) * time.Second
+			}
+		}
+
+		if err != nil {
+			logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.InterceptV1, svc.Name)
+		}
+
+		if !found {
+			clientConfig := &entities.ServiceConfig{}
+			found, err = svc.GetConfigOfType(entities.ClientConfigV1, clientConfig)
+
+			if found {
+				svc.InterceptV1Config = clientConfig.ToInterceptV1Config()
+			}
+
+			if err != nil {
+				logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+			}
+		}
+
+		if err := self.configureSourceAddrProvider(svc); err != nil {
+			log.WithError(err).Error("failed intepreting source ip")
 		}
 
 		// not all interceptors need a config, specifically proxy doesn't need one
 		log.Infof("starting tunnel for newly available service %s", svc.Name)
-		if err := self.interceptor.Intercept(svc, self.resolver); err != nil {
+		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
 			log.Errorf("failed to intercept service: %v", err)
 		}
 	}
@@ -137,7 +171,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		if !found {
 			serverConfig := &entities.ServiceConfig{}
 			if found, err = svc.GetConfigOfType(entities.ServerConfigV1, serverConfig); found {
-				svc.ServerConfig = serverConfig
+				svc.HostV2Config = serverConfig.ToHostV2Config()
 			}
 		}
 
@@ -151,12 +185,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 	}
 
-	if svc.ClientConfig != nil {
-		addr := svc.ClientConfig.Hostname
-		self.addresses[addr] += 1
-	}
-
-	if svc.ClientConfig != nil || svc.ServerConfig != nil {
+	if svc.InterceptV1Config != nil || svc.HostV2Config != nil {
 		self.services[svc.Id] = svc
 	}
 }
@@ -166,17 +195,11 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 
 	previousService := self.services[svc.Id]
 	if previousService != nil {
-		if previousService.ClientConfig != nil {
+		if previousService.InterceptV1Config != nil {
 			log.Infof("stopping tunnel for unavailable service: %s", previousService.Name)
-			useCnt := self.addresses[previousService.ClientConfig.Hostname]
-			err := self.interceptor.StopIntercepting(previousService.Name, useCnt == 1)
+			err := self.interceptor.StopIntercepting(previousService.Name, self.addrTracker)
 			if err != nil {
-				log.Errorf("failed to stop intercepting: %v", err)
-			}
-			if useCnt == 1 {
-				delete(self.addresses, previousService.ClientConfig.Hostname)
-			} else {
-				self.addresses[previousService.ClientConfig.Hostname] -= 1
+				log.WithError(err).Errorf("failed to stop intercepting service: %v", previousService.Name)
 			}
 		}
 
@@ -233,4 +256,105 @@ func (self *ServiceListener) host(svc *entities.Service) {
 			return
 		}
 	}
+}
+
+func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) error {
+	if svc.InterceptV1Config == nil || svc.InterceptV1Config.SourceIp == nil || *svc.InterceptV1Config.SourceIp == "" {
+		return nil
+	}
+
+	sourceIp := *svc.InterceptV1Config.SourceIp
+
+	if sourceIp == sourceAddrTemplKey {
+		svc.SourceAddrProvider = func(sourceAddr, _ net.Addr) string {
+			return sourceAddr.String()
+		}
+		return nil
+	}
+
+	if sourceIp == destAddrTemplKey {
+		svc.SourceAddrProvider = func(_, destAddr net.Addr) string {
+			return destAddr.String()
+		}
+		return nil
+	}
+
+	currentIdentity, err := self.provider.GetCurrentIdentity()
+	if err != nil {
+		return err
+	}
+
+	sourceIp = strings.ReplaceAll(sourceIp, "$tunneler_id.name", currentIdentity.Name)
+	if sourceIp, err = self.replaceIdTags(sourceIp, currentIdentity); err != nil {
+		return err
+	}
+
+	if strings.IndexByte(sourceIp, '$') < 0 {
+		svc.SourceAddrProvider = func(_, _ net.Addr) string {
+			return sourceIp
+		}
+		return nil
+	}
+
+	svc.SourceAddrProvider = func(sourceAddr, destAddr net.Addr) string {
+		sourceAddrIp, sourceAddrPort := tunnel.GetIpAndPort(sourceAddr)
+		destAddrIp, destAddrPort := tunnel.GetIpAndPort(destAddr)
+		result := strings.ReplaceAll(sourceIp, sourceIpTemplKey, sourceAddrIp)
+		result = strings.ReplaceAll(result, sourcePortTemplKey, sourceAddrPort)
+		result = strings.ReplaceAll(result, destIpTemplKey, destAddrIp)
+		result = strings.ReplaceAll(result, destPortTemplKey, destAddrPort)
+		return result
+	}
+
+	return nil
+}
+
+func (self *ServiceListener) replaceIdTags(sourceIp string, currentIdentity *edge.CurrentIdentity) (string, error) {
+	start := "$tunneler_id.appData["
+	for {
+		index := strings.Index(sourceIp, start)
+		if index < 0 {
+			return sourceIp, nil
+		}
+		postStr := sourceIp[index+len(start):]
+		closeIdx := strings.IndexByte(postStr, ']')
+		if closeIdx == -1 {
+			return "", errors.New("sourceIp contains unclosed $tunneler_id.appData[")
+		}
+		tagName := postStr[0:closeIdx]
+
+		tagValue := ""
+		if currentIdentity.AppData != nil {
+			val, found := currentIdentity.AppData[tagName]
+			if found {
+				tagValue = fmt.Sprintf("%v", val)
+			}
+		}
+
+		fullTag := start + tagName + "]"
+		sourceIp = strings.ReplaceAll(sourceIp, fullTag, tagValue)
+	}
+}
+
+type AddressTracker interface {
+	AddAddress(addr string)
+	RemoveAddress(addr string) bool
+}
+
+type addrTracker map[string]int
+
+func (self addrTracker) AddAddress(addr string) {
+	useCnt := self[addr]
+	self[addr] = useCnt + 1
+}
+
+func (self addrTracker) RemoveAddress(addr string) bool {
+	useCnt := self[addr]
+	if useCnt <= 1 {
+		delete(self, addr)
+		return true
+	}
+
+	self[addr] = useCnt - 1
+	return false
 }

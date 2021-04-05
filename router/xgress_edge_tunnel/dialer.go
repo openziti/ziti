@@ -44,14 +44,14 @@ func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, addr
 		return nil, err
 	}
 
-	conn, err := terminator.context.Dial(options)
+	conn, halfClose, err := terminator.context.Dial(options)
 	if err != nil {
 		return nil, err
 	}
 
 	logrus.Infof("successful connection to %v from %v (s/%v)", destination, conn.LocalAddr(), sessionId.Token)
 
-	xgConn := xgress_common.NewXgressConn(conn, true)
+	xgConn := xgress_common.NewXgressConn(conn, halfClose)
 	peerData := make(xt.PeerData, 1)
 	if peerKey, ok := sessionId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {

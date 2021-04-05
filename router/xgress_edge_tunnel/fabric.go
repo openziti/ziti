@@ -132,8 +132,9 @@ func (self *fabricProvider) authenticate() error {
 		ConfigTypes: []string{
 			"f2dd2df0-9c04-4b84-a91e-71437ac229f1", // client v1
 			"cea49285-6c07-42cf-9f52-09a9b115c783", // server v1
-			// "g7cIWbcGg", // intercept.v1
-			// "NH5p4FpGR", // host.v1
+			"g7cIWbcGg",                            // intercept.v1
+			"NH5p4FpGR",                            // host.v1
+			"host.v2",                              // host.v2
 		},
 	}
 
@@ -155,27 +156,32 @@ func (self *fabricProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) 
 	return self.currentIdentity, nil
 }
 
-func (self *fabricProvider) TunnelService(conn net.Conn, serviceName string, halfClose bool) error {
+func (self *fabricProvider) TunnelService(service tunnel.Service, conn net.Conn, halfClose bool, appData []byte) error {
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
 		return err
 	}
 
+	log := logrus.WithField("service", service.GetName())
+
 	peerData := make(map[uint32][]byte)
 	peerData[edge.PublicKeyHeader] = keyPair.Public()
+	if len(appData) > 0 {
+		peerData[edge.AppDataHeader] = appData
+	}
 
-	sessionId := self.getDialSession(serviceName)
+	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{
 		SessionId:   sessionId,
-		ServiceName: serviceName,
+		ServiceName: service.GetName(),
 		PeerData:    peerData,
 	}
 
-	responseMsg, err := self.ctrlCh.Channel().SendForReply(request, self.tunneler.listenOptions.Options.GetSessionTimeout)
+	responseMsg, err := self.ctrlCh.Channel().SendForReply(request, service.GetDialTimeout())
 
 	response := &edge_ctrl_pb.CreateCircuitForServiceResponse{}
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
-		logrus.WithError(err).Warn("failed to dial fabric")
+		log.Warn("failed to dial fabric")
 		return err
 	}
 
@@ -184,7 +190,7 @@ func (self *fabricProvider) TunnelService(conn net.Conn, serviceName string, hal
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
-		self.dialSessions.Set(serviceName, response.Session.SessionId)
+		self.dialSessions.Set(service.GetName(), response.Session.SessionId)
 	}
 
 	xgConn := xgress_common.NewXgressConn(conn, halfClose)
@@ -197,7 +203,7 @@ func (self *fabricProvider) TunnelService(conn net.Conn, serviceName string, hal
 
 	cleanupCallback := self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
 		if err = conn.Close(); err != nil {
-			logrus.WithError(err).WithField("service", serviceName).Error("failed to close external conn when session closed")
+			log.WithError(err).Error("failed to close external conn when session closed")
 		}
 	})
 

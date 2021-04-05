@@ -13,8 +13,7 @@ import (
 type HostingContext interface {
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
-	Dial(options map[string]interface{}) (net.Conn, error)
-	SupportHalfClose() bool
+	Dial(options map[string]interface{}) (net.Conn, bool, error)
 	GetHealthChecks() []health.CheckDefinition
 	GetInitialHealthState() (ziti.Precedence, uint16)
 	OnClose()
@@ -32,7 +31,7 @@ type HostControl interface {
 type FabricProvider interface {
 	PrepForUse(serviceId string)
 	GetCurrentIdentity() (*edge.CurrentIdentity, error)
-	TunnelService(conn net.Conn, service string, halfClose bool) error
+	TunnelService(service Service, conn net.Conn, halfClose bool, appInfo []byte) error
 	HostService(hostCtx HostingContext) (HostControl, error)
 }
 
@@ -64,8 +63,13 @@ func (self *contextProvider) PrepForUse(serviceId string) {
 	}
 }
 
-func (self *contextProvider) TunnelService(conn net.Conn, service string, halfClose bool) error {
-	zitiConn, err := self.Context.Dial(service)
+func (self *contextProvider) TunnelService(service Service, conn net.Conn, halfClose bool, appData []byte) error {
+	options := &ziti.DialOptions{
+		ConnectTimeout: service.GetDialTimeout(),
+		AppData:        appData,
+	}
+
+	zitiConn, err := self.Context.DialWithOptions(service.GetName(), options)
 	if err != nil {
 		return err
 	}
@@ -109,7 +113,7 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 			continue
 		}
 
-		externalConn, err := hostCtx.Dial(options)
+		externalConn, halfClose, err := hostCtx.Dial(options)
 		if err != nil {
 			logger.Error("dial failed")
 			conn.CompleteAcceptFailed(err)
@@ -132,6 +136,6 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 			continue
 		}
 
-		go Run(conn, externalConn, hostCtx.SupportHalfClose())
+		go Run(conn, externalConn, halfClose)
 	}
 }

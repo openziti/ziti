@@ -20,10 +20,11 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/foundation/util/mempool"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -80,7 +81,7 @@ func (manager *manager) GetWriteQueue(srcAddr net.Addr) WriteQueue {
 	return result
 }
 
-func (manager *manager) CreateWriteQueue(srcAddr net.Addr, service string, writeConn UDPWriterTo) (WriteQueue, error) {
+func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Addr, service *entities.Service, writeConn UDPWriterTo) (WriteQueue, error) {
 	switch manager.newConnPolicy.NewConnection(uint32(len(manager.connMap))) {
 	case AllowDropLRU:
 		manager.dropLRU()
@@ -88,16 +89,20 @@ func (manager *manager) CreateWriteQueue(srcAddr net.Addr, service string, write
 		return nil, errors.New("max connections exceeded")
 	}
 	conn := &udpConn{
-		readC:     make(chan mempool.PooledBuffer),
-		service:   service,
-		srcAddr:   srcAddr,
-		manager:   manager,
-		writeConn: writeConn,
+		readC:       make(chan mempool.PooledBuffer),
+		closeNotify: make(chan struct{}),
+		service:     service.Name,
+		srcAddr:     srcAddr,
+		manager:     manager,
+		writeConn:   writeConn,
 	}
 	conn.markUsed()
 	manager.connMap[srcAddr.String()] = conn
 	pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("created new virtual UDP connection")
-	go tunnel.DialAndRun(manager.provider, service, conn, false)
+
+	sourceAddr := service.GetSourceAddr(srcAddr, targetAddr)
+	appInfo := tunnel.GetAppInfo("tcp", targetAddr.IP.String(), strconv.Itoa(targetAddr.Port), sourceAddr)
+	go tunnel.DialAndRun(manager.provider, service, conn, appInfo, false)
 	return conn, nil
 }
 
@@ -119,40 +124,20 @@ func (manager *manager) dropLRU() {
 func (manager *manager) dropExpired() {
 	log := pfxlog.Logger()
 	now := time.Now()
-	for key, value := range manager.connMap {
-		if manager.expirationPolicy.IsExpired(now, value.GetLastUsed()) {
+	for key, conn := range manager.connMap {
+		if conn.closed.Get() {
+			delete(manager.connMap, conn.srcAddr.String())
+		}
+		if manager.expirationPolicy.IsExpired(now, conn.GetLastUsed()) {
 			log.WithField("udpConnId", key).Debug("connection expired. removing from UDP vconn manager")
-			manager.close(value)
+			manager.close(conn)
 		}
 	}
-}
-
-func (manager *manager) queueClose(conn *udpConn) {
-	// this will likely get called from the event loop, so make sure we don't deadlock
-	go manager.QueueEvent(&closeEvent{manager, conn})
 }
 
 func (manager *manager) close(conn *udpConn) {
-	if !conn.closed {
-		conn.closed = true
-		delete(manager.connMap, conn.srcAddr.String())
-		close(conn.readC)
-		if err := conn.writeConn.Close(); err != nil {
-			logrus.WithField("service", conn.service).
-				WithField("src_addr", conn.srcAddr).
-				WithError(err).Error("error while closing udp connection")
-		}
-	}
-}
-
-type closeEvent struct {
-	manager *manager
-	conn    *udpConn
-}
-
-func (event *closeEvent) Handle(manager Manager) error {
-	event.manager.close(event.conn)
-	return nil
+	_ = conn.Close()
+	delete(manager.connMap, conn.srcAddr.String())
 }
 
 type errorEvent struct {

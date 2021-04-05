@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
+	"net"
 	"reflect"
 	"strconv"
 	"time"
@@ -17,6 +18,7 @@ const (
 	ServerConfigV1 = "ziti-tunneler-server.v1"
 	HostConfigV1   = "host.v1"
 	HostConfigV2   = "host.v2"
+	InterceptV1    = "intercept.v1"
 )
 
 type ServiceConfig struct {
@@ -37,6 +39,30 @@ func (self *ServiceConfig) GetHttpChecks() []*health.HttpCheckDefinition {
 
 func (s *ServiceConfig) String() string {
 	return fmt.Sprintf("%v:%v:%v", s.Protocol, s.Hostname, s.Port)
+}
+
+func (self *ServiceConfig) ToInterceptV1Config() *InterceptV1Config {
+	return &InterceptV1Config{
+		Protocols:  []string{"tcp", "udp"},
+		Addresses:  []string{self.Hostname},
+		PortRanges: []*PortRange{{Low: uint16(self.Port), High: uint16(self.Port)}},
+	}
+}
+
+func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
+	terminator := &HostV2Terminator{
+		Protocol:   self.Protocol,
+		Address:    self.Hostname,
+		Port:       self.Port,
+		PortChecks: self.PortChecks,
+		HttpChecks: self.HttpChecks,
+	}
+
+	return &HostV2Config{
+		Terminators: []*HostV2Terminator{
+			terminator,
+		},
+	}
 }
 
 type HostV1ListenOptions struct {
@@ -183,12 +209,45 @@ type HostV2Config struct {
 	Terminators []*HostV2Terminator
 }
 
+type DialOptions struct {
+	ConnectTimeoutSeconds *int
+	Identity              *string
+}
+
+type PortRange struct {
+	Low  uint16
+	High uint16
+}
+
+type InterceptV1Config struct {
+	Addresses   []string
+	PortRanges  []*PortRange
+	Protocols   []string
+	SourceIp    *string
+	DialOptions *DialOptions
+}
+
 type Service struct {
 	edge.Service
-	ClientConfig *ServiceConfig
+	InterceptV1Config *InterceptV1Config
+	DialTimeout       time.Duration
 
-	ServerConfig *ServiceConfig
-	HostV2Config *HostV2Config
+	HostV2Config       *HostV2Config
+	SourceAddrProvider func(sourceAddr net.Addr, destAddr net.Addr) string
+	StopHostHook       func()
+}
 
-	StopHostHook func()
+func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) string {
+	if self.SourceAddrProvider == nil {
+		return ""
+	}
+	return self.SourceAddrProvider(sourceAddr, destAddr)
+}
+
+func (self *Service) GetName() string {
+	return self.Name
+}
+
+func (self *Service) GetDialTimeout() time.Duration {
+	return self.DialTimeout
 }

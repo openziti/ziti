@@ -36,7 +36,7 @@ func (p *interceptor) Start(provider tunnel.FabricProvider) {
 	log.Info("starting host interceptor")
 }
 
-func (p interceptor) Intercept(*entities.Service, dns.Resolver) error {
+func (p interceptor) Intercept(*entities.Service, dns.Resolver, intercept.AddressTracker) error {
 	return errors.New("can not intercept services in host mode")
 }
 
@@ -45,6 +45,6 @@ func (p *interceptor) Stop() {
 	log.Info("stopping host interceptor")
 }
 
-func (p *interceptor) StopIntercepting(string, bool) error {
+func (p *interceptor) StopIntercepting(string, intercept.AddressTracker) error {
 	return errors.New("StopIntercepting not implemented by host interceptor")
 }

@@ -29,9 +29,12 @@ import (
 	"github.com/openziti/edge/tunnel/udp_vconn"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/mempool"
+	"github.com/openziti/foundation/util/stringz"
+	cmap "github.com/orcaman/concurrent-map"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"net"
-	"strconv"
 	"syscall"
 )
 
@@ -64,41 +67,137 @@ var listenConfig = net.ListenConfig{
 	},
 }
 
-type tProxyInterceptor struct {
-	interceptLUT intercept.LUT
-	ipt          *iptables.IPTables
-	tcpLn        net.Listener
-	udpLn        *net.UDPConn
-	lanIf        string
-}
-
-type interceptData struct {
-	tproxySpec []string
-	acceptSpec []string
-}
-
-const (
-	mangleTable = "mangle"
-	filterTable = "filter"
-	dstChain    = "NF-INTERCEPT"
-)
-
-func contains(arr []string, str string) bool {
-	for _, a := range arr {
-		if a == str {
-			return true
-		}
+func New(lanIf string) (intercept.Interceptor, error) {
+	ipt, err := iptables.New()
+	if err != nil {
+		return nil, errors.Wrap(err, "tproxy: failed to initialize iptables handle")
 	}
-	return false
+
+	return &interceptor{
+		lanIf:          lanIf,
+		serviceProxies: cmap.New(),
+		ipt:            ipt,
+	}, nil
 }
 
-func addIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
+type alwaysRemoveAddressTracker struct{}
+
+func (a alwaysRemoveAddressTracker) AddAddress(string) {}
+
+func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
+	return true
+}
+
+type interceptor struct {
+	lanIf          string
+	provider       tunnel.FabricProvider
+	serviceProxies cmap.ConcurrentMap
+	ipt            *iptables.IPTables
+}
+
+func (self *interceptor) Start(provider tunnel.FabricProvider) {
+	self.provider = provider
+}
+
+func (self *interceptor) Stop() {
+	self.serviceProxies.IterCb(func(key string, v interface{}) {
+		proxy := v.(*tProxy)
+		proxy.Stop(alwaysRemoveAddressTracker{})
+	})
+	self.serviceProxies.Clear()
+}
+
+func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
+	tproxy, err := self.newTproxy(service, resolver, tracker)
+	if err != nil {
+		return err
+	}
+	self.serviceProxies.Set(service.Name, tproxy)
+	return nil
+}
+
+func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.AddressTracker) error {
+	if val, found := self.serviceProxies.Get(serviceName); found {
+		proxy := val.(*tProxy)
+		proxy.Stop(tracker)
+		self.serviceProxies.Remove(serviceName)
+	}
+	return nil
+}
+
+func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) (*tProxy, error) {
+	t := &tProxy{
+		interceptor: self,
+		service:     service,
+	}
+
+	config := service.InterceptV1Config
+
+	if config == nil {
+		return nil, errors.Errorf("service %v has no intercept information", service.Name)
+	}
+
+	if stringz.Contains(config.Protocols, "tcp") {
+		tcpLn, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:")
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create TCP listener for service: %v", service.Name)
+		}
+		logrus.Infof("tproxy listening on tcp:%s", tcpLn.Addr().String())
+		t.tcpLn = tcpLn
+	}
+
+	if stringz.Contains(config.Protocols, "udp") {
+		packetLn, err := listenConfig.ListenPacket(context.Background(), "udp", "127.0.0.1:")
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create UDP listener for service: %v", service.Name)
+		}
+		udpLn, ok := packetLn.(*net.UDPConn)
+		if !ok {
+			return nil, errors.New("failed to create UDP listener. listener was not net.UDPConn")
+		}
+		logrus.Infof("tproxy listening on udp:%s, remoteAddr: %v", udpLn.LocalAddr(), udpLn.RemoteAddr())
+		t.udpLn = udpLn
+	}
+
+	if t.tcpLn == nil && t.udpLn == nil {
+		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", service.Name, config.Protocols)
+	}
+
+	if err := self.addIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain); err != nil {
+		return nil, err
+	}
+
+	if self.lanIf != "" {
+		_, err := net.InterfaceByName(self.lanIf)
+		if err != nil {
+			return nil, fmt.Errorf("invalid lanIf '%s'", self.lanIf)
+		}
+		err = self.addIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
+	}
+
+	if t.tcpLn != nil {
+		go t.acceptTCP(self.provider)
+	}
+
+	if t.udpLn != nil {
+		go t.acceptUDP(self.provider)
+	}
+
+	return t, t.Intercept(resolver, tracker)
+}
+
+func (self *interceptor) addIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
 	chains, err := ipt.ListChains(table)
 	if err != nil {
 		return fmt.Errorf("failed to list iptables %s chains: %v", table, err)
 	}
 
-	if !contains(chains, dstChain) {
+	if !stringz.Contains(chains, dstChain) {
 		err = ipt.NewChain(table, dstChain)
 		if err != nil {
 			return fmt.Errorf("failed to create iptables chain: %v", err)
@@ -113,70 +212,24 @@ func addIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) 
 	return nil
 }
 
-func New() (intercept.Interceptor, error) {
-	return NewWithLanIf("")
+type tProxy struct {
+	interceptor *interceptor
+	service     *entities.Service
+	addresses   []*intercept.InterceptAddress
+	tcpLn       net.Listener
+	udpLn       *net.UDPConn
 }
 
-func NewWithLanIf(lanIf string) (intercept.Interceptor, error) {
-	log := pfxlog.Logger()
-	tcpLn, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create TCP listener: %v", err)
-	}
-	log.Infof("tproxy listening on tcp:%s", tcpLn.Addr().String())
+const (
+	mangleTable = "mangle"
+	filterTable = "filter"
+	dstChain    = "NF-INTERCEPT"
+)
 
-	packetLn, err := listenConfig.ListenPacket(context.Background(), "udp", "127.0.0.1:")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create UDP listener: %v", err)
-	}
-	udpLn, ok := packetLn.(*net.UDPConn)
-	if !ok {
-		return nil, fmt.Errorf("failed to create UDP listener. listener was not net.UDPConn")
-	}
-	log.Infof("tproxy listening on udp:%s, remoteAddr: %v", udpLn.LocalAddr(), udpLn.RemoteAddr())
-
-	ipt, err := iptables.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize iptables handle: %v", err)
-	}
-
-	err = addIptablesChain(ipt, mangleTable, "PREROUTING", dstChain)
-	if err != nil {
-		return nil, err
-	}
-
-	if lanIf != "" {
-		_, err := net.InterfaceByName(lanIf)
-		if err != nil {
-			return nil, fmt.Errorf("invalid lanIf '%s'", lanIf)
-		}
-		err = addIptablesChain(ipt, filterTable, "INPUT", dstChain)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		log.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
-	}
-
-	t := tProxyInterceptor{
-		interceptLUT: intercept.NewLUT(),
-		ipt:          ipt,
-		tcpLn:        tcpLn,
-		udpLn:        udpLn,
-		lanIf:        lanIf,
-	}
-	return &t, nil
-}
-
-func (t *tProxyInterceptor) Start(provider tunnel.FabricProvider) {
-	go t.accept(provider)
-	go t.acceptUDP(provider)
-}
-
-func (t *tProxyInterceptor) accept(provider tunnel.FabricProvider) {
+func (self *tProxy) acceptTCP(provider tunnel.FabricProvider) {
 	log := pfxlog.Logger()
 	for {
-		client, err := t.tcpLn.Accept()
+		client, err := self.tcpLn.Accept()
 		if err != nil {
 			log.Errorf("error while accepting: %v", err)
 		}
@@ -185,22 +238,19 @@ func (t *tProxyInterceptor) accept(provider tunnel.FabricProvider) {
 			return
 		}
 		log.Infof("received connection: %s --> %s", client.LocalAddr().String(), client.RemoteAddr().String())
-		service, err := t.interceptLUT.GetByAddress(client.LocalAddr())
-		if service == nil {
-			log.Warnf("received connection for %s, which does not map to an intercepted service", client.LocalAddr().String())
-			client.Close()
-			continue
-		}
-		go tunnel.DialAndRun(provider, service.Name, client, true)
+		sourceIp, sourcePort := tunnel.GetIpAndPort(client.LocalAddr())
+		sourceAddr := self.service.GetSourceAddr(client.RemoteAddr(), client.LocalAddr())
+		appInfo := tunnel.GetAppInfo("tcp", sourceIp, sourcePort, sourceAddr)
+		go tunnel.DialAndRun(provider, self.service, client, appInfo, true)
 	}
 }
 
-func (t *tProxyInterceptor) acceptUDP(provider tunnel.FabricProvider) {
+func (self *tProxy) acceptUDP(provider tunnel.FabricProvider) {
 	vconnMgr := udp_vconn.NewManager(provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
-	t.generateReadEvents(vconnMgr)
+	self.generateReadEvents(vconnMgr)
 }
 
-func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
+func (self *tProxy) generateReadEvents(manager udp_vconn.Manager) {
 	oobSize := 1600
 	bufPool := mempool.NewPool(16, info.MaxUdpPacketSize+oobSize)
 	log := pfxlog.Logger()
@@ -210,7 +260,7 @@ func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
 		oob := pooled.Buf[info.MaxUdpPacketSize:]
 		pooled.Buf = pooled.Buf[:info.MaxUdpPacketSize]
 		log.Debugf("waiting for datagram")
-		n, oobn, _, srcAddr, err := t.udpLn.ReadMsgUDP(pooled.Buf, oob)
+		n, oobn, _, srcAddr, err := self.udpLn.ReadMsgUDP(pooled.Buf, oob)
 		if err != nil {
 			log.WithError(err).Error("failure while reading udp message. stopping UDP read loop")
 			manager.QueueError(err)
@@ -219,7 +269,7 @@ func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
 		log.Debugf("received %d bytes from %s", n, srcAddr.String())
 		pooled.Buf = pooled.Buf[:n]
 		event := &udpReadEvent{
-			interceptor: t,
+			interceptor: self,
 			buf:         pooled,
 			oob:         oob[:oobn],
 			srcAddr:     srcAddr,
@@ -229,7 +279,7 @@ func (t *tProxyInterceptor) generateReadEvents(manager udp_vconn.Manager) {
 }
 
 type udpReadEvent struct {
-	interceptor *tProxyInterceptor
+	interceptor *tProxy
 	buf         *mempool.DefaultPooledBuffer
 	oob         []byte
 	srcAddr     net.Addr
@@ -245,10 +295,6 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 		if err != nil {
 			return fmt.Errorf("error while getting original destination packet: %v", err)
 		}
-		service, err := event.interceptor.interceptLUT.GetByAddress(origDest)
-		if err != nil {
-			return err
-		}
 
 		pfxlog.Logger().Infof("Creating separate UDP socket with list addr: %v", origDest)
 		packetConn, err := listenConfig.ListenPacket(context.Background(), "udp", origDest.String())
@@ -256,7 +302,7 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 			return err
 		}
 		writeConn := packetConn.(*net.UDPConn)
-		writeQueue, err = manager.CreateWriteQueue(event.srcAddr, service.Name, writeConn)
+		writeQueue, err = manager.CreateWriteQueue(origDest, event.srcAddr, event.interceptor.service, writeConn)
 		if err != nil {
 			return err
 		}
@@ -283,7 +329,7 @@ func getOriginalDest(oob []byte) (*net.UDPAddr, error) {
 	return nil, fmt.Errorf("original destination not found in out of band data")
 }
 
-func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) error {
+func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) {
 	log := pfxlog.Logger()
 	err := ipt.Delete(table, srcChain, []string{"-j", dstChain}...)
 	if err != nil {
@@ -299,135 +345,139 @@ func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain strin
 	if err != nil {
 		log.Errorf("failed to delete chain %s: %v", dstChain, err)
 	}
+}
+
+func (self *tProxy) Stop(tracker intercept.AddressTracker) {
+	log := pfxlog.Logger()
+	if self.tcpLn != nil {
+		if err := self.tcpLn.Close(); err != nil {
+			log.Errorf("failed to close TCP listener: %v", err)
+		}
+	}
+
+	if self.udpLn != nil {
+		if err := self.udpLn.Close(); err != nil {
+			log.Errorf("failed to close UDP listener: %v", err)
+		}
+	}
+
+	err := self.StopIntercepting(tracker)
+	if err != nil {
+		log.Errorf("failed to clean up intercept configuration for %s: %v", self.service.Name, err)
+	}
+
+	deleteIptablesChain(self.interceptor.ipt, mangleTable, "PREROUTING", dstChain)
+	if self.interceptor.lanIf != "" {
+		deleteIptablesChain(self.interceptor.ipt, filterTable, "INPUT", dstChain)
+	}
+}
+
+func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker) error {
+	service := self.service
+	if service.InterceptV1Config == nil {
+		return errors.Errorf("no client configuration for service %v", service.Name)
+	}
+
+	config := service.InterceptV1Config
+	logrus.Debugf("service %v using intercept.v1", service.Name)
+	if stringz.Contains(config.Protocols, "tcp") {
+		logrus.Debugf("service %v intercepting tcp", service.Name)
+		if err := self.intercept(service, resolver, (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr)), tracker); err != nil {
+			return err
+		}
+	}
+
+	if stringz.ContainsAny(config.Protocols, "udp") {
+		logrus.Debugf("service %v intercepting udp", service.Name)
+		return self.intercept(service, resolver, (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr)), tracker)
+	}
 
 	return nil
 }
 
-func (t *tProxyInterceptor) Stop() {
-	log := pfxlog.Logger()
-	err := t.tcpLn.Close()
-	if err != nil {
-		log.Errorf("failed to close TCP listener: %v", err)
-	}
-
-	err = t.udpLn.Close()
-	if err != nil {
-		log.Errorf("failed to close UDP listener: %v", err)
-	}
-
-	var interceptedServices []string
-	for _, svc := range t.interceptLUT {
-		interceptedServices = append(interceptedServices, svc.Name)
-	}
-	for _, svcName := range interceptedServices {
-		err := t.StopIntercepting(svcName, true)
-		if err != nil {
-			log.Errorf("failed to clean up intercept configuration for %s: %v", svcName, err)
-		}
-	}
-
-	deleteIptablesChain(t.ipt, mangleTable, "PREROUTING", dstChain)
-	if t.lanIf != "" {
-		deleteIptablesChain(t.ipt, filterTable, "INPUT", dstChain)
-	}
-}
-
-func (t *tProxyInterceptor) Intercept(service *entities.Service, resolver dns.Resolver) error {
-	err := t.intercept(service, resolver, (*TCPIPPortAddr)(t.tcpLn.Addr().(*net.TCPAddr)))
+func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, port IPPortAddr, tracker intercept.AddressTracker) error {
+	addresses, err := intercept.GetInterceptAddresses(service, port.GetProtocol(), resolver)
 	if err != nil {
 		return err
 	}
-	return t.intercept(service, resolver, (*UDPIPPortAddr)(t.udpLn.LocalAddr().(*net.UDPAddr)))
-}
 
-func (t *tProxyInterceptor) intercept(service *entities.Service, resolver dns.Resolver, port IPPortAddr) error {
-	interceptAddr, err := intercept.NewInterceptAddress(service, port.GetProtocol(), resolver)
-	if err != nil {
-		return fmt.Errorf("unable to intercept %s: %v", service.Name, err)
-	}
+	logrus.Debugf("service %v intercepting %v addresses", service.Name, len(addresses))
 
-	ipNet := interceptAddr.IpNet()
-	err = router.AddLocalAddress(&ipNet, "lo")
-	if err != nil {
-		return fmt.Errorf("failed to add local route: %v", err)
-	}
-
-	spec := interceptData{
-		tproxySpec: []string{
-			"-m", "comment", "--comment", service.Name,
-			"-d", ipNet.String(),
-			"-p", interceptAddr.Proto(),
-			"--dport", strconv.Itoa(interceptAddr.Port()),
-			"-j", "TPROXY",
-			"--tproxy-mark", "0x1/0x1",
-			fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
-			fmt.Sprintf("--on-port=%d", port.GetPort()),
-		},
-	}
-
-	pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, spec.tproxySpec)
-	err = t.ipt.Insert(mangleTable, dstChain, 1, spec.tproxySpec...)
-	if err != nil {
-		return fmt.Errorf("failed to insert rule: %v", err)
-	}
-
-	if t.lanIf != "" {
-		spec.acceptSpec = []string{
-			"-i", t.lanIf,
-			"-m", "comment", "--comment", service.Name,
-			"-d", ipNet.String(),
-			"-p", interceptAddr.Proto(),
-			"--dport", strconv.Itoa(interceptAddr.Port()),
-			"-j", "ACCEPT",
+	for _, addr := range addresses {
+		logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", service.Name, addr.Proto(), addr.IpNet().String(), addr.LowPort(), addr.HighPort())
+		if err := self.addInterceptAddr(addr, service, port, tracker); err != nil {
+			// do we undo the previous succesful ones?
+			// only fail at end and return all that failed?
+			return err
 		}
-		pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, spec.acceptSpec)
-		err = t.ipt.Insert(filterTable, dstChain, 1, spec.acceptSpec...)
-		if err != nil {
-			return fmt.Errorf("failed to insert rule: %v", err)
-		}
-	}
-
-	err = t.interceptLUT.Put(*interceptAddr, service.Name, spec)
-	if err != nil {
-		_ = t.ipt.Delete(mangleTable, dstChain, spec.tproxySpec...)
-		if t.lanIf != "" {
-			_ = t.ipt.Delete(filterTable, dstChain, spec.acceptSpec...)
-		}
-		return fmt.Errorf("failed to add intercept record: %v", err)
 	}
 
 	return nil
 }
 
-func (t *tProxyInterceptor) StopIntercepting(serviceName string, removeRoute bool) error {
-	services := t.interceptLUT.GetByName(serviceName)
-	if len(services) == 0 {
-		return fmt.Errorf("service %s not found in intercept LUT", serviceName)
+func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, service *entities.Service, port IPPortAddr, tracker intercept.AddressTracker) error {
+	ipNet := interceptAddr.IpNet()
+	if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
+		return fmt.Errorf("failed to add local route: %v", err)
 	}
-	// keep track of routes used by all intercepts. use a map to avoid duplicates
-	routes := map[string]net.IPNet{}
-	for _, service := range services {
-		defer t.interceptLUT.Remove(service.Addr)
-		spec := service.Data.(interceptData)
-		err := t.ipt.Delete(mangleTable, dstChain, spec.tproxySpec...)
-		if err != nil {
-			return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
-		}
-		if t.lanIf != "" {
-			err = t.ipt.Delete(filterTable, dstChain, spec.acceptSpec...)
-			if err != nil {
-				return fmt.Errorf("failed to remove iptables rule for service %s: %v", serviceName, err)
-			}
-		}
-		ipn := service.Addr.IpNet()
-		routes[ipn.String()] = ipn
+	tracker.AddAddress(ipNet.String())
+
+	interceptAddr.TproxySpec = []string{
+		"-m", "comment", "--comment", service.Name,
+		"-d", ipNet.String(),
+		"-p", interceptAddr.Proto(),
+		"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
+		"-j", "TPROXY",
+		"--tproxy-mark", "0x1/0x1",
+		fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
+		fmt.Sprintf("--on-port=%d", port.GetPort()),
 	}
 
-	if removeRoute {
-		for _, ipNet := range routes {
-			err := router.RemoveLocalAddress(&ipNet, "lo")
+	pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, interceptAddr.TproxySpec)
+	if err := self.interceptor.ipt.Insert(mangleTable, dstChain, 1, interceptAddr.TproxySpec...); err != nil {
+		return errors.Wrap(err, "failed to insert rule")
+	}
+
+	if self.interceptor.lanIf != "" {
+		interceptAddr.AcceptSpec = []string{
+			"-i", self.interceptor.lanIf,
+			"-m", "comment", "--comment", service.Name,
+			"-d", ipNet.String(),
+			"-p", interceptAddr.Proto(),
+			"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
+			"-j", "ACCEPT",
+		}
+		pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, interceptAddr.AcceptSpec)
+		if err := self.interceptor.ipt.Insert(filterTable, dstChain, 1, interceptAddr.AcceptSpec...); err != nil {
+			return errors.Wrap(err, "failed to insert rule")
+		}
+	}
+
+	return nil
+}
+
+func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
+	// keep track of routes used by all intercepts. use a map to avoid duplicates
+	routes := map[string]*net.IPNet{}
+	for _, addr := range self.addresses {
+		err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
+		if err != nil {
+			return fmt.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+		}
+		if self.interceptor.lanIf != "" {
+			err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
 			if err != nil {
-				return fmt.Errorf("failed to remove route for service %s: %v", serviceName, err)
+				return fmt.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+			}
+		}
+		ipn := addr.IpNet()
+		routes[ipn.String()] = ipn
+	}
+	for _, ipNet := range routes {
+		if tracker.RemoveAddress(ipNet.String()) {
+			err := router.RemoveLocalAddress(ipNet, "lo")
+			if err != nil {
+				return fmt.Errorf("failed to remove route for service %s: %v", self.service.Name, err)
 			}
 		}
 	}

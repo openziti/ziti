@@ -61,7 +61,7 @@ func (self *tunneler) Start() error {
 	var err error
 
 	if self.listenOptions.mode == "tproxy" {
-		if self.interceptor, err = tproxy.NewWithLanIf(self.listenOptions.lanIf); err != nil {
+		if self.interceptor, err = tproxy.New(self.listenOptions.lanIf); err != nil {
 			return errors.Wrap(err, "failed to initialize tproxy interceptor")
 		}
 	} else if self.listenOptions.mode == "host" {

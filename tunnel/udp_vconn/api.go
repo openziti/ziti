@@ -18,6 +18,7 @@ package udp_vconn
 
 import (
 	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/foundation/util/mempool"
 	"io"
 	"net"
@@ -36,7 +37,7 @@ type Event interface {
 
 type Manager interface {
 	GetWriteQueue(clientAddr net.Addr) WriteQueue
-	CreateWriteQueue(clientAddr net.Addr, service string, conn UDPWriterTo) (WriteQueue, error)
+	CreateWriteQueue(targetAddr *net.UDPAddr, clientAddr net.Addr, service *entities.Service, conn UDPWriterTo) (WriteQueue, error)
 	QueueEvent(Event)
 	QueueError(error)
 }

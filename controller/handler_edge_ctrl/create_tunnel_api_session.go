@@ -57,7 +57,7 @@ func (self *createApiSessionHandler) createApiSession(ctx *createApiSessionReque
 	}
 
 	ctx.loadIdentity()
-	ctx.ensureApiSession(self.configTypes)
+	ctx.ensureApiSession(ctx.req.ConfigTypes)
 	ctx.updateIdentityInfo(ctx.req.EnvInfo, ctx.req.SdkInfo)
 
 	if ctx.err != nil {

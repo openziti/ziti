@@ -19,7 +19,9 @@ package udp_vconn
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/mempool"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"sync/atomic"
@@ -27,13 +29,14 @@ import (
 )
 
 type udpConn struct {
-	readC     chan mempool.PooledBuffer
-	service   string
-	srcAddr   net.Addr
-	manager   *manager
-	writeConn UDPWriterTo
-	lastUse   atomic.Value
-	closed    bool
+	readC       chan mempool.PooledBuffer
+	closeNotify chan struct{}
+	service     string
+	srcAddr     net.Addr
+	manager     *manager
+	writeConn   UDPWriterTo
+	lastUse     atomic.Value
+	closed      concurrenz.AtomicBoolean
 }
 
 func (conn *udpConn) Service() string {
@@ -41,8 +44,13 @@ func (conn *udpConn) Service() string {
 }
 
 func (conn *udpConn) Accept(buffer mempool.PooledBuffer) {
-	pfxlog.Logger().WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: queuing")
-	conn.readC <- buffer
+	logrus.WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: queuing")
+	select {
+	case conn.readC <- buffer:
+	case <-conn.closeNotify:
+		buffer.Release()
+		logrus.WithField("udpConnId", conn.srcAddr.String()).Debugf("udp->ziti: closed, cancelling accept")
+	}
 }
 
 func (conn *udpConn) Network() string {
@@ -65,7 +73,13 @@ func (conn *udpConn) GetLastUsed() time.Time {
 func (conn *udpConn) WriteTo(w io.Writer) (n int64, err error) {
 	var bytesWritten int64
 	for {
-		buf, ok := <-conn.readC
+		var buf mempool.PooledBuffer
+		var ok bool
+
+		select {
+		case buf, ok = <-conn.readC:
+		case <-conn.closeNotify:
+		}
 
 		if !ok {
 			return bytesWritten, io.EOF
@@ -96,7 +110,15 @@ func (conn *udpConn) Write(b []byte) (int, error) {
 }
 
 func (conn *udpConn) Close() error {
-	conn.manager.queueClose(conn)
+	if conn.closed.CompareAndSwap(false, true) {
+		close(conn.closeNotify)
+		if err := conn.writeConn.Close(); err != nil {
+			logrus.WithField("service", conn.service).
+				WithField("src_addr", conn.srcAddr).
+				WithError(err).Error("error while closing udp connection")
+		}
+	}
+
 	return nil
 }
 

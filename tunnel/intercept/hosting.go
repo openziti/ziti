@@ -32,45 +32,52 @@ type serviceConfiguration interface {
 }
 
 func createHostingContexts(service *entities.Service, identity *edge.CurrentIdentity) []tunnel.HostingContext {
-	if service.HostV2Config != nil {
-		var result []tunnel.HostingContext
-		for _, t := range service.HostV2Config.Terminators {
-			context := newDefaultHostingContext(identity, service, t)
-			result = append(result, context)
-		}
-		return result
+	var result []tunnel.HostingContext
+	for _, t := range service.HostV2Config.Terminators {
+		context := newDefaultHostingContext(identity, service, t)
+		result = append(result, context)
 	}
-
-	context := &legacyHostingContext{
-		baseHostingContext{
-			service:     service,
-			options:     getDefaultOptions(identity),
-			dialTimeout: defaultDialTimeout,
-		},
-	}
-	return []tunnel.HostingContext{context}
+	return result
 }
 
-type baseHostingContext struct {
+func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config serviceConfiguration) *hostingContext {
+	options := getDefaultOptions(identity)
+	config.SetListenOptions(options)
+
+	return &hostingContext{
+		service:     service,
+		options:     options,
+		dialTimeout: config.GetDialTimeout(5 * time.Second),
+		config:      config,
+	}
+
+}
+
+type hostingContext struct {
 	service     *entities.Service
 	options     *ziti.ListenOptions
+	config      serviceConfiguration
 	dialTimeout time.Duration
 	onClose     func()
 }
 
-func (self *baseHostingContext) ServiceName() string {
+func (self *hostingContext) ServiceName() string {
 	return self.service.Name
 }
 
-func (self *baseHostingContext) ListenOptions() *ziti.ListenOptions {
+func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
 	return self.options
 }
 
-func (self *baseHostingContext) dialAddress(options map[string]interface{}, protocol string, address string) (net.Conn, error) {
+func (self *hostingContext) dialAddress(options map[string]interface{}, protocol string, address string) (net.Conn, bool, error) {
 	var sourceAddr string
 	if val, ok := options[tunnel.SourceAddrKey]; ok {
 		sourceAddr = val.(string)
 	}
+
+	halfClose := protocol != "udp"
+	var conn net.Conn
+	var err error
 
 	if sourceAddr != "" {
 		sourceIp := sourceAddr
@@ -81,34 +88,34 @@ func (self *baseHostingContext) dialAddress(options map[string]interface{}, prot
 			sourceIp = s[0]
 			sourcePort, e = strconv.Atoi(s[1])
 			if e != nil {
-				return nil, fmt.Errorf("failed to parse port '%s': %v", s[1], e)
+				return nil, halfClose, fmt.Errorf("failed to parse port '%s': %v", s[1], e)
 			}
 		}
+
 		dialer := net.Dialer{
 			LocalAddr: &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort},
 			Timeout:   self.dialTimeout,
 		}
-		return dialer.Dial(protocol, address)
+
+		conn, err = dialer.Dial(protocol, address)
+	} else {
+		conn, err = net.DialTimeout(protocol, address, self.dialTimeout)
 	}
 
-	return net.DialTimeout(protocol, address, self.dialTimeout)
+	return conn, halfClose, err
 }
 
-func (self *baseHostingContext) SupportHalfClose() bool {
-	return !strings.Contains(self.service.ServerConfig.Protocol, "udp")
-}
-
-func (self *baseHostingContext) SetCloseCallback(f func()) {
+func (self *hostingContext) SetCloseCallback(f func()) {
 	self.onClose = f
 }
 
-func (self *baseHostingContext) OnClose() {
+func (self *hostingContext) OnClose() {
 	if self.onClose != nil {
 		self.onClose()
 	}
 }
 
-func (self *baseHostingContext) getHealthChecks(provider healthChecksProvider) []health.CheckDefinition {
+func (self *hostingContext) getHealthChecks(provider healthChecksProvider) []health.CheckDefinition {
 	var checkDefinitions []health.CheckDefinition
 
 	for _, checkDef := range provider.GetPortChecks() {
@@ -122,60 +129,28 @@ func (self *baseHostingContext) getHealthChecks(provider healthChecksProvider) [
 	return checkDefinitions
 }
 
-func (self *baseHostingContext) GetInitialHealthState() (ziti.Precedence, uint16) {
+func (self *hostingContext) GetInitialHealthState() (ziti.Precedence, uint16) {
 	return self.options.Precedence, self.options.Cost
 }
 
-type legacyHostingContext struct {
-	baseHostingContext
-}
-
-func (self *legacyHostingContext) GetHealthChecks() []health.CheckDefinition {
-	return self.getHealthChecks(self.service.ServerConfig)
-}
-
-func (self *legacyHostingContext) Dial(options map[string]interface{}) (net.Conn, error) {
-	config := self.service.ServerConfig
-	return self.dialAddress(options, config.Protocol, config.Hostname+":"+strconv.Itoa(config.Port))
-}
-
-func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config serviceConfiguration) *hostV2HostingContext {
-	options := getDefaultOptions(identity)
-	config.SetListenOptions(options)
-
-	return &hostV2HostingContext{
-		baseHostingContext: baseHostingContext{
-			service:     service,
-			options:     options,
-			dialTimeout: config.GetDialTimeout(5 * time.Second),
-		},
-		config: config,
-	}
-}
-
-type hostV2HostingContext struct {
-	baseHostingContext
-	config serviceConfiguration
-}
-
-func (self *hostV2HostingContext) GetHealthChecks() []health.CheckDefinition {
+func (self *hostingContext) GetHealthChecks() []health.CheckDefinition {
 	return self.getHealthChecks(self.config)
 }
 
-func (self *hostV2HostingContext) Dial(options map[string]interface{}) (net.Conn, error) {
+func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool, error) {
 	protocol, err := self.config.GetProtocol(options)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	address, err := self.config.GetAddress(options)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	port, err := self.config.GetPort(options)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	return self.dialAddress(options, protocol, address+":"+port)
