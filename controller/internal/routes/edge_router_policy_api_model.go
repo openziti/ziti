@@ -123,6 +123,7 @@ func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPoli
 		IdentityRolesDisplay:   GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
 		Name:                   &policy.Name,
 		Semantic:               rest_model.Semantic(policy.Semantic),
+		IsSystem:               &policy.IsSystem,
 	}
 
 	return ret, nil

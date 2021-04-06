@@ -41,6 +41,9 @@ import (
 // swagger:model edgeRouterCreate
 type EdgeRouterCreate struct {
 
+	// app data
+	AppData Tags `json:"appData"`
+
 	// is tunneler enabled
 	IsTunnelerEnabled bool `json:"isTunnelerEnabled,omitempty"`
 
@@ -59,6 +62,10 @@ type EdgeRouterCreate struct {
 func (m *EdgeRouterCreate) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateAppData(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -74,6 +81,22 @@ func (m *EdgeRouterCreate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *EdgeRouterCreate) validateAppData(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.AppData) { // not required
+		return nil
+	}
+
+	if err := m.AppData.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("appData")
+		}
+		return err
+	}
+
 	return nil
 }
 

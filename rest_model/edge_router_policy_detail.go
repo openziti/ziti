@@ -58,6 +58,10 @@ type EdgeRouterPolicyDetail struct {
 	// Required: true
 	IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
+	// is system
+	// Required: true
+	IsSystem *bool `json:"isSystem"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
@@ -86,6 +90,8 @@ func (m *EdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
+		IsSystem *bool `json:"isSystem"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
@@ -101,6 +107,8 @@ func (m *EdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 	m.IdentityRoles = dataAO1.IdentityRoles
 
 	m.IdentityRolesDisplay = dataAO1.IdentityRolesDisplay
+
+	m.IsSystem = dataAO1.IsSystem
 
 	m.Name = dataAO1.Name
 
@@ -127,6 +135,8 @@ func (m EdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 
 		IdentityRolesDisplay NamedRoles `json:"identityRolesDisplay"`
 
+		IsSystem *bool `json:"isSystem"`
+
 		Name *string `json:"name"`
 
 		Semantic Semantic `json:"semantic"`
@@ -139,6 +149,8 @@ func (m EdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IdentityRoles = m.IdentityRoles
 
 	dataAO1.IdentityRolesDisplay = m.IdentityRolesDisplay
+
+	dataAO1.IsSystem = m.IsSystem
 
 	dataAO1.Name = m.Name
 
@@ -174,6 +186,10 @@ func (m *EdgeRouterPolicyDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateIdentityRolesDisplay(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsSystem(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -249,6 +265,15 @@ func (m *EdgeRouterPolicyDetail) validateIdentityRolesDisplay(formats strfmt.Reg
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRolesDisplay")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) validateIsSystem(formats strfmt.Registry) error {
+
+	if err := validate.Required("isSystem", "body", m.IsSystem); err != nil {
 		return err
 	}
 

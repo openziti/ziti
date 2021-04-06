@@ -53,6 +53,7 @@ const (
 	FieldIdentityDefaultHostingCost        = "hostingCost"
 	FieldIdentityServiceHostingPrecedences = "serviceHostingPrecedences"
 	FieldIdentityServiceHostingCosts       = "serviceHostingCosts"
+	FieldIdentityAppData                   = "appData"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -95,6 +96,7 @@ type Identity struct {
 	DefaultHostingCost        uint16
 	ServiceHostingPrecedences map[string]ziti.Precedence
 	ServiceHostingCosts       map[string]uint16
+	AppData                   map[string]interface{}
 }
 
 type ServiceConfig struct {
@@ -115,6 +117,7 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
 	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
+	entity.AppData = bucket.GetMap(FieldIdentityAppData)
 
 	entity.SdkInfo = &SdkInfo{
 		Branch:     bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
@@ -160,6 +163,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
+	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, false)
 
 	if entity.EnvInfo != nil {
 		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)

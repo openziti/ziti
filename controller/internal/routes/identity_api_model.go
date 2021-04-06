@@ -113,6 +113,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
+		AppData:                   identity.AppData,
 	}
 
 	if identity.Enrollment != nil {
@@ -158,6 +159,7 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
+		AppData:                   identity.AppData,
 	}
 
 	return ret
@@ -175,6 +177,7 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 		RoleAttributes:           identity.RoleAttributes,
 		DefaultHostingPrecedence: ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
 		DefaultHostingCost:       getDefaultHostingCost(identity.DefaultHostingCost),
+		AppData:                  identity.AppData,
 	}
 
 	return ret
@@ -236,6 +239,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		ServiceHostingPrecedences: getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getRestServiceHostingCosts(identity.ServiceHostingCosts),
 		IsMfaEnabled:              &isMfaEnabled,
+		AppData:                   identity.AppData,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 
