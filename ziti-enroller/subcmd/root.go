@@ -53,9 +53,9 @@ func init() {
 	var keyDesc = ""
 	engines := certtools.ListEngines()
 	if len(engines) > 0 {
-		keyDesc = fmt.Sprintf("The key to use with the certifcate. Optionally specify the engine to use. supported engines: %v", engines)
+		keyDesc = fmt.Sprintf("The key to use with the certificate. Optionally specify the engine to use. supported engines: %v", engines)
 	} else {
-		keyDesc = fmt.Sprintf("The key to use with the certifcate.")
+		keyDesc = fmt.Sprintf("The key to use with the certificate.")
 	}
 
 	rootCmd.Flags().StringVarP(&keyPath, "key", "k", "", keyDesc)

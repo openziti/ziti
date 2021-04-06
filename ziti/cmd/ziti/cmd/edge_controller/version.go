@@ -28,13 +28,13 @@ import (
 
 // versionOptions are the flags for version commands
 type versionOptions struct {
-	commonOptions
+	edgeOptions
 }
 
 // newVersionCmd creates the command
 func newVersionCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &versionOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -59,7 +59,7 @@ func newVersionCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 
 // Run implements this command
 func (o *versionOptions) Run() error {
-	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out, o.commonOptions.Timeout, o.commonOptions.Verbose)
+	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 	if err != nil {
 		return err
 	}

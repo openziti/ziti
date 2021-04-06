@@ -20,6 +20,7 @@ func newDbCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 
 	cmd.AddCommand(newDbSnapshotCmd(f, out, errOut))
 	cmd.AddCommand(newDbCheckIntegrityCmd(f, out, errOut))
+	cmd.AddCommand(newDbCheckIntegrityStatusCmd(f, out, errOut))
 
 	return cmd
 }

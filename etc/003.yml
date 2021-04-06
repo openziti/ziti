@@ -36,3 +36,4 @@ dialers:
       retransmission:   true
       randomDrops:      false
       drop1InN:         5000
+      connectTimeout:   2s

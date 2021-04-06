@@ -31,7 +31,7 @@ import (
 )
 
 type updateTerminatorOptions struct {
-	commonOptions
+	edgeOptions
 	router     string
 	address    string
 	binding    string
@@ -41,7 +41,7 @@ type updateTerminatorOptions struct {
 
 func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateTerminatorOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -79,7 +79,7 @@ func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
 
-	router, err := mapNameToID("edge-routers", o.router, o.commonOptions)
+	router, err := mapNameToID("edge-routers", o.router, o.edgeOptions)
 	if err != nil {
 		router = o.router // might be a pure fabric router, id might not be UUID
 	}
@@ -121,6 +121,6 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("terminators/%v", o.Args[0]), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("terminators/%v", o.Args[0]), entityData.String(), &o.edgeOptions)
 	return err
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/signal"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -74,5 +73,5 @@ func (o *PsPprofHeapOptions) Run() error {
 		defer out.Close()
 	}
 
-	return agent.MakeRequest(addr, signal.HeapProfile, nil, out)
+	return agent.MakeRequest(addr, agent.HeapProfile, nil, out)
 }

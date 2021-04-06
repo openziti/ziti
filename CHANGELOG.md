@@ -1,3 +1,1428 @@
+# Release 0.19.9
+
+## What's New
+
+* Converged Tunneler/Router (Beta 2)
+    * intercept.v1 support (also in ziti-tunnel)
+    * support for setting per-service hosting cost/precedence on identity
+* Identites and edge routers now support appData, which is tag data consumable by sdks
+* Edge Router Policies now expose the `isSystem` flag for system managed policies
+* ziti-tunnel no longer supports tun mode. It has been superceded by tproxy mode
+
+## Fixes
+
+* Fix deadlock in ziti-router which would stop new connections from being established after an api session is removed
+* Fix id extraction for data plane link latency metrics
+* Fix id extraction for ctrl plane link latency metrics
+* ziti-tunnel wasn't asking for host.v1/host.v2 configs
+
+## Per-service Cost/Precedence
+
+Previously support was adding for setting the default cost and precedence that an identity would use when hosting services. Now, in addition to setting default values, costs and precedences can be set per-service. These are exposed as maps keyed by service. There is one map for costs and another for precedences. There is also CLI support for setting these values.
+
+Example creating an identity:
+
+```
+ziti edge create identity service test2 --default-hosting-cost 10 --default-hosting-precedence failed --service-costs loop=20,echo=30 --service-precedences loop=default,echo=required
+
+```
+
+When viewing the identity, these values can be seen:
+
+```
+    "id": "-qJRZFqV8t",
+    "tags": {},
+    "updatedAt": "2021-04-05T16:54:42.763Z",
+    "authenticators": {},
+    "defaultHostingCost": 10,
+    "defaultHostingPrecedence": "failed",
+    "envInfo": {},
+    "hasApiSession": false,
+    "hasEdgeRouterConnection": false,
+    "isAdmin": false,
+    "isDefaultAdmin": false,
+    "isMfaEnabled": false,
+    "name": "test2",
+    "roleAttributes": null,
+    "sdkInfo": {},
+    "serviceHostingCosts": {
+        "vH3QndzRYt": 20,
+        "wAnuyO3PmI": 30
+    },
+    "serviceHostingPrecedences": {
+        "vH3QndzRYt": "default",
+        "wAnuyO3PmI": "required"
+    },
+
+```
+
+Note that this mechanism replaces setting cost and precedence via the host.v1/host.v2 config types `listenOptions`. Those values will be ignored, and may in future be removed from the schemas.
+
+## Identity/Edge Router app data
+
+We have an existing tags mechanism, which can be used by system administrators to annotate ziti entities in whatever is useful to them. Tags are an administrator function and are not meant to be visible to SDKs and SDK applications. If an administrator wants to provide custom data for services to the SDK they can use config types and configs for that purpose. Up until now however, there hasn't been a means to annotate identities and edge routers, which are the other two entities visible to SDKs, with data that the SDKs can consume. 
+0.19.9 introduces `appData` on identities and edge-routers. `appData` has the same structure as `tags`, but is intended to allow administrators to push custom data on identities and edge routers to SDKs. An example use is for tunnelers. The `sourceIp` can contain template information, which can refer back to the `appData` for the tunneler's identity. 
+
+The CLI supports setting appData on identities and edge routers.
+
+```
+ziti edge create identity service myIdentity --tags office=Regional5,device=Laptop --app-data ip=1.1.1.1,QoS=voip
+
+```
+
+# Release 0.19.8
+
+## What's New
+
+* Transwarp beta_1
+* Converged Tunneler/Router (Beta)
+    * Updates to the host.v1 config type
+    * New host.v2 config type
+    * New health events
+
+## Fixes
+
+* Service Policies with no Posture Checks properly grant access even if an identity has another Service Policies with posture checks
+* Removing entities with no referencing entities via attributes no longer panics
+* API Sessions and Current Api Session now share the same modeling logic
+* API Sessions now have lastActivityAt and cachedLastActivityAt
+* Enrolling and unenrolling in MFA sets MFA posture data
+
+## Transwarp beta_1
+
+See the Transwarp beta_1 guide [here](doc/transwarp_b1/transwarp_b1.md).
+
+## Converged Tunneler/Router (Beta)
+
+ziti-router can now run with the tunneler embedded. It has the same capabilities as ziti-tunnel. As ziti-tunnel gains new features, the combined ziti-router/tunnel should maintain feature parity.
+
+### Beta Status
+
+This is a beta release. It should be relatively feature complete and bug-free for hosting services but intercept support is still nascent. Some features are likely to be changed based on user feedback.
+
+### Os Compatibilty
+
+Like ziti-tunnel, `tproxy` mode will only work on linux. `proxy` and `host` modes should work on all operating systems. 
+
+The converged tunneler/router does not support running in tun mode. This mode may be deprecated for ziti-tunnel as well at some point in the future if no advantages over tproxy mode are evident.
+
+### Supported configurations
+
+The following configurations are supported:
+
+* `ziti-tunneler-client.v1`
+* `ziti-tunneler-server.v1`
+* `host.v1` (updated)
+* `host.v2` (new)
+
+Support for `intercept.v1` will be added in a follow-up release.
+
+### Router Identities
+
+When an edge router is marked as being tunneler enabled, a matching identity will be created, of type Router, as well as an edge router policy. The edge router policy ensures that the identity always
+has access to the edge router. The identity allows the router to be included in service policies, to configure which services will intercepted/hosted.
+
+1. The identity will have the same id and name as the edge router
+1. If an identity with the same name as the router already exists, the router create/update will fail
+1. When the router name is changed, the identity name will be updated as well.
+1. The identity name and type cannot be changed directly. The type may not be changed at all and the name may only be changed by changing the name of the router.
+1. The identity may not be deleted except by deleting the router or disabling tunneler support for the identity.
+1. When the router is deleted, the accompanying identity and edge router policy will also be deleted
+1. If tunneler support is disabled in the router, the accompanying identity and edge router policy will also be deleted.
+1. The edge router policy will have the same id as the router and have a name of the form `edge-router-<edge-router-id>-system`, where `<edge-router-id>` is replaced by the id of the edge router.
+1. The edge router policy is considered a `system` entity, and cannot be updated and cannot deleted except by the system when the associated router is deleted.
+
+### Tunneler Prerequisites
+
+In order for a router instance to host a tunneler, it must meet the following criteria:
+
+1. It must be represented in the model by an edge router
+2. The edge router field `isTunnelerEnabled` must be set to true
+3. Edge functionality in the router must be enabled, which means the `edge:` config section must be present. NOTE: The edge listener does **not** need to be enabled.
+4. The tunnel listener must be enabled.
+
+### Making an Edge Router Tunneler enabled
+
+The ziti CLI can be used to enable/disable tunneler support on edge routers. When creating an edge router, the `-t` flag can be passed in to enable running the tunneler.
+
+```shell
+ziti edge create edge-router myEdgeRouter --tunneler-enabled
+```
+
+or
+
+```shell
+ziti edge create edge-router myEdgeRouter -t
+```
+
+An existing edge router can be marked as tunneler enabled as follows:
+
+```shell
+ziti edge update edge-router myEdgeRouter --tunneler-enabled
+```
+
+or
+
+```shell
+ziti edge update edge-router myEdgeRouter -t
+```
+
+An existing edge router can be marked as not supporting the tunneler as follows:
+
+```shell
+ziti edge update edge-router myEdgeRouter -t=false
+```
+
+or
+
+```shell
+ziti edge update edge-router myEdgeRouter --tunneler-enabled=false
+```
+
+### Tunnel listener configuration
+
+```yaml
+
+listeners:
+  - binding: tunnel
+    options:
+      mode: tproxy # mode to run in. Valid values [tproxy, host, proxy]. Default: tproxy
+      svcPollRate: 15s # How often to poll for service changes. Default: 15s
+      resolver: udp://127.0.0.1:53 # DNS resolve. Default: udp://127.0.0.1:53 for tproxy, blank for others
+      dnsSvcIpRange: 100.64.0.1/10 # cidr to use when assigning IPs to unresolvable intercept hostnames (default "100.64.0.1/10")
+      services: # services to intercept in proxy mode. Default: none
+        - echo:1977
+      lanIf: tun1 # if specified, INPUT rules for intercepted service addresses are assigned to this interface. Defaults to unspecified.
+```
+
+### Updates to health checks/health check events
+
+Health checks now have a new trigger option `change`. This will trigger the action whenever the health state changes from pass to fail or fail to pass.
+
+There's now a new action, `send event`, which will send a health event to the controller. This will be reported via the recently introduced service events.
+
+The `change` option is designed to be sued with `send event` as a way to send events only when the state changes, rather than sending every single pass/fail.
+
+An example configuration:
+
+```json
+
+{
+  "address": "localhost",
+  "port": 8171,
+  "protocol": "tcp",
+  "portChecks": [
+    {
+      "address": "localhost:8171",
+      "interval": "5s",
+      "timeout": "100ms",
+      "actions": [
+        {
+          "trigger": "change",
+          "action": "send event"
+        }
+      ]
+    }
+  ]
+}
+```
+
+What the service events look like:
+
+```json
+{
+  "namespace": "service.events",
+  "event_type": "service.health_check.failed",
+  "service_id": "vH3QndzRYt",
+  "count": 2,
+  "interval_start_utc": 1616703360,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.health_check.failed",
+  "service_id": "vH3QndzRYt",
+  "count": 1,
+  "interval_start_utc": 1616703720,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.health_check.passed",
+  "service_id": "vH3QndzRYt",
+  "count": 2,
+  "interval_start_utc": 1616703720,
+  "interval_length": 60
+}
+```
+
+### Changes to host.v1
+
+The host.v1 config type now support health checks. The configuration is the same for `ziti-tunneler-server-v1`.
+
+See here: https://github.com/openziti/edge/blob/v0.19.54/tunnel/entities/host.v1.json for the full schema
+
+### host.v2
+
+There is a new host configuration, `host.v2`, which should supercede `host.v1`. The primary difference from `host.v1` is that it supports multiple terminators. This means that when a service is hosted by a router, it can connect to multiple service instances if the service is horizontally scaled, or in a primary/failover setup.
+
+Each terminator definition is the same as a `host.v1` configuration, which one exception: `listOptions.connectTimeoutSeconds` is now `listenOptions.connectTimeout` and is specified as a duration (`5s`, `2500ms`, etc).
+
+Example:
+
+```json
+{
+  "terminators": [
+    {
+      "address": "localhost",
+      "port": 8171,
+      "protocol": "tcp",
+      "listenOptions": {
+        "cost": 50,
+        "precedence": "required"
+      },
+      "portChecks": [
+        {
+          "address": "localhost:8171",
+          "interval": "5s",
+          "timeout": "100ms",
+          "actions": [
+            {
+              "trigger": "change",
+              "action": "send event"
+            },
+            {
+              "trigger": "fail",
+              "action": "increase cost 25"
+            },
+            {
+              "trigger": "pass",
+              "action": "decrease cost 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "address": "localhost",
+      "port": 8172,
+      "protocol": "tcp",
+      "listenOptions": {
+        "cost": 51,
+        "precedence": "required"
+      },
+      "portChecks": [
+        {
+          "address": "localhost:8172",
+          "interval": "5s",
+          "timeout": "100ms",
+          "actions": [
+            {
+              "trigger": "change",
+              "action": "send event"
+            },
+            {
+              "trigger": "fail",
+              "action": "increase cost 25"
+            },
+            {
+              "trigger": "pass",
+              "action": "decrease cost 10"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+```
+
+# Release 0.19.7
+
+## What's New
+
+* Update to Golang 1.16
+* Idle route garbage collection: orphaned routing table entries will be garbage collected. New
+  infrastructure for session confirmation facilitating additional types of garbage collection
+* Configurable Xgress dial "dwell time"
+* Database tracing support
+* Immediately close router ctrl channel connection if fingerprint validation fails
+* Immediately close router ctrl channel if no version info is provided
+* Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and
+  Edge Sessions
+* Fixed posture check error responses to include only failed checks
+* Heartbeat Collection And Batching
+* Add Service Request Failures for Posture Checks
+* Remove database migration code for versions older than 0.17.1
+
+### Idle Route Garbage Collection
+
+The following router configuration stanza controls idle route garbage collection:
+
+```
+forwarder:
+  #
+  # After how many milliseconds of inactivity is a forwarding table entry considered idle?
+  #
+  idleSessionTimeout: 60000
+  #
+  # How frequently will we confirm idle sessions with the controller?
+  #
+  idleTxInterval: 60000
+```
+
+### Xgress Dial Dwell Time
+
+The following router configuration stanza controls Xgress dial "dwell time". You probably don't want
+to use this unless you're debugging a timing-related issue in the overlay:
+
+```
+forwarder:
+  #
+  # (Debugging) Xgress dial "dwell time". When dialing, the Xgress framework will wait this number of milliseconds
+  # before responding in the affirmative to the controller.
+  #
+  xgressDialDwellTime: 0
+```
+
+### Database Tracing
+
+Enable database tracing using the `dbTrace` controller configuration directive:
+
+```
+dbTrace: true
+```
+
+This will result in log output that describes the entrance into and exit from transactional
+functions operating against the underlying database:
+
+```
+[   0.003]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.003]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:18) [github.com/openziti/fabric/controller/db.createRoots]
+[   0.006]    INFO fabric/controller/db.traceUpdateEnter: Enter Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
+[   0.006]    INFO foundation/storage/boltz.(*migrationManager).Migrate.func1: fabric datastore is up to date at version 4
+[   0.006]    INFO fabric/controller/db.traceUpdateExit: Exit Update (tx:19) [github.com/openziti/foundation/storage/boltz.(*migrationManager).Migrate.func1]
+```
+
+### Ziti Controller Remove All Ziti Controller Remove API Sessions and Edge Sessions API Sessions and Edge Sessions
+
+With the Ziti Controller shutdown, it is now possible to clear out all API Sessions and Edge
+Sessions that were persisted prior to the controller being stopped. All connecting identities will
+need to re-authenticate when the controller is restarted.
+
+This command is useful in situations where the number of sessions is large and the database is being
+copied and/or used for debugging.
+
+Example Command:
+`ziti-controller delete-sessions`
+
+Example Output:
+
+```
+[   0.017]    INFO ziti/ziti-controller/subcmd.deleteSessions: {go-version=[go1.16] revision=[local] build-date=[2020-01-01 01:01:01] os=[windows] arch=[amd64] version=[v0.0.0]} removing API Sessions and Edge Sessions from ziti-controller
+[   9.469]    INFO ziti/ziti-controller/subcmd.deleteSessions.func2: existing api Sessions: 2785
+[  18.274]    INFO ziti/ziti-controller/subcmd.deleteSessions.func2: edge sessions bucket does not exist, skipping, count is: 4035
+[  47.104]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing api Sessions
+[  55.866]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing api session indexes
+[  58.325]    INFO ziti/ziti-controller/subcmd.deleteSessions.func3: done removing edge session indexes
+```
+
+### Heartbeat Collection And Batching
+
+In previous versions heartbeats from REST API usage and discrete Edge Router connection would all
+cause writes for the same API Session as they were encountered. In situations where one or more REST
+API requests were issues and/or one or more Edge Router connections were held by a ZitI Application,
+multiple simultaneous heartbeats could occur for no apparent benefit and consume disk write I/O.
+
+Heartbeats are now aggregated over a window of time in a cache and written to disk on an interval.
+The write interval defaults to 90s and the batch size (for write transactions) to 250. Additionally,
+all heartbeats are flush to disk when the controller is properly shut down.
+
+These settings can be defined in the `edge.api` section for the Ziti Controller configuration.
+
+Example:
+
+```
+edge:
+  api:
+    ...
+    #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
+    activityUpdateInterval: 90s
+    #(optional, default 250) The number of API Sessions updated for last activity per transaction
+    activityUpdateBatchSize: 250
+    ...
+```
+
+### Add Service Request Failures for Posture Checks
+
+When a Ziti Identity (endpoint) requests a service that is provided via a Service Policy with
+Posture Checks associated with it, failure to meet the Posture Check requirements results in an
+error message with a code of `INVALID_POSTURE` and data elaborating on what Service Policies ids and
+Posture Check ids failed. Additionally, now the controller will log the most recent requests and
+provide detailed error output for administrators.
+
+The output will show every Service Policy that was checked for access and every Posture Check that
+failed. The failed Posture Checks include the Posture Data that was available for the identity and
+the requirements defined in the Posture Check at the time of the Edge Session request.
+
+New Endpoint: `GET /identities/{id}/failed-service-requests`
+
+Example Output:
+
+```
+{
+    "data": [
+        {
+            "apiSessionId": "ckmgcom680002cc61hggmcy1n",
+            "policyFailures": [
+                {
+                    "policyId": "eqggCQlBm",
+                    "policyName": "alldial",
+                    "checks": [
+                        {
+                            "actualValue": {
+                                "hash": "123",
+                                "isRunning": true,
+                                "signerFingerprints": [
+                                    "834f29a60152ce36eb54af37ca5f8ec029eccf01",
+                                    "123248b9e8b0dd41938018a871a13dd92bed4456"
+                                ]
+                            },
+                            "expectedValue": {
+                                "hashes": [
+                                    "3af35956a71c2afefbfe356f86c9139725eeecb15f0de7d98557d4d696c434f51fbc2fa5f7543aef4f5f1afb83caa4a43619973bae52e1f4f92ec10c39b039e8"
+                                ],
+                                "osType": "Windows",
+                                "path": "C:\\Program Files\\TestApp\\test.exe",
+                                "signerFingerprint": "834f29a60152ce36eb54af37ca5f8ec029eccf01"
+                            },
+                            "postureCheckId": "UF9aOqlD3",
+                            "postureCheckName": "processCheck",
+                            "postureCheckType": "PROCESS"
+                        },
+                        {
+                            "actualValue": {
+                                "type": "Windows",
+                                "version": "6.0.18364"
+                            },
+                            "expectedValue": [
+                                {
+                                    "type": "Windows",
+                                    "versions": [
+                                        ">=10.0.18364 <=10.0.19041"
+                                    ]
+                                }
+                            ],
+                            "postureCheckId": "fK0aOQFD3",
+                            "postureCheckName": "osCheck",
+                            "postureCheckType": "OS"
+                        },
+                        {
+                            "actualValue": "wrong.com",
+                            "expectedValue": [
+                                "right.com"
+                            ],
+                            "postureCheckId": "i2wgOQlBm",
+                            "postureCheckName": "domainCheck",
+                            "postureCheckType": "DOMAIN"
+                        }
+                    ]
+                }
+            ],
+            "serviceId": "ll-aOqFDm",
+            "serviceName": "test-service",
+            "sessionType": "Dial",
+            "when": "2021-03-19T09:41:10.117-04:00"
+        }
+    ],
+    "meta": {}
+}
+```
+
+# Release 0.19.6
+
+## What's New
+
+* Service Event Counters
+* New log message which shows local (router side) address, including port, when router dials are
+  successful. This allows correlating server side access logs with ziti logs
+
+## Service Event Counters
+
+There are new events emitted for service, with statistics for how many dials are successful, failed,
+timed out, or fail for non-dial related reasons. Stats are aggregated per-minute, similar to usage
+statistics. They can be enabled in the controller config as follows:
+
+```yaml
+events:
+  jsonLogger:
+    subscriptions:
+      - type: services
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
+```
+
+Example of the events JSON output:
+
+```json
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.fail",
+  "service_id": "HSfgHzIom",
+  "count": 8,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+{
+  "namespace": "service.events",
+  "event_type": "service.dial.success",
+  "service_id": "HSfgHzIom",
+  "count": 29,
+  "interval_start_utc": 1615400160,
+  "interval_length": 60
+}
+```
+
+Event types:
+
+* `service.dial.success`
+* `service.dial.fail`
+* `service.dial.timeout`
+* `service.dial.error_other`
+
+# Release 0.19.5
+
+## What's New
+
+* [fabric#206](https://github.com/openziti/fabric/issues/206) Fix controller deadlock which can
+  happen when links go down
+* Use AtomicBitSet for xgress flags. Minimize memory use and contention
+* edge router status wasn't getting set online on connect
+* ziti-tunnel proxy wasn't working for services without a client config
+* Add queue for metrics messages. Add config setting for metrics report interval and message queue
+  size
+    * metrics.reportInterval - how often to report metrics to controller. Default: `15s`
+    * metrics.messageQueueSize - how many metrics message to allow to queue before blocking.
+      Default: 10
+
+Example stanza from router config file:
+
+```yaml
+metrics:
+  reportInterval: 15s
+  messageQueueSize: 10
+```
+
+# Release 0.19.4
+
+## What's New
+
+* Link latency probe timeout parameter in router configuration.
+* Support configurable timeout on Xgress dial operations. Router terminated services can now specify
+  a short timeout for dial operations.
+* Fix 0.19 regression: updating terminator cost/precedence from the sdk was broken
+* Fix 0.19 regression: fabric session client id was incorrectly set to edge session token instead of
+  id
+* Fix MFA secret length, lowered from 80 bytes to 80 bits
+* Ensure that negative lengths in message headers are properly handled
+* Fix panic when updating session activity for removed session
+* Fix panic when shared router state is used when a router disconnects or reconnects
+* Additional garbage collection for parallel route algorithm, removes successful routes created
+  during failed attempts, after final successful attempt.
+
+## Link Latency Probe Timeout
+
+Control the link latency probe timeout parameter with the following router configuration syntax:
+
+```
+forwarder:
+  #
+  # After how many milliseconds does the link latency probe timeout?
+  # (default 10000)
+  #
+  latencyProbeTimeout: 10000
+```
+
+## Xgress Dial Timeout
+
+Specify the dial timeout for Xgress dialers using the following syntax:
+
+```
+dialers:
+  - binding:            transport
+    options:
+      connectTimeout:   2s
+```
+
+You will need to specify Xgress options for each dialer binding that you want to use with your
+configuration.
+
+# Release 0.19.3
+
+## What's New
+
+* Metric events formatting has changed
+
+## Metric Events Changes
+
+Each now gets its own event. Here are two example events:
+
+```
+{
+  "metric": "xgress.tx_write_time",
+  "metrics": {
+    "xgress.tx_write_time.count": 0,
+    "xgress.tx_write_time.m1_rate": 0,
+    "xgress.tx_write_time.mean": 0,
+    "xgress.tx_write_time.p99": 0
+  },
+  "namespace": "metrics",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+
+{
+  "metric": "link.rx.msgsize",
+  "metrics": {
+    "link.rx.msgsize.count": 3,
+    "link.rx.msgsize.mean": 0,
+    "link.rx.msgsize.p99": 0
+  },
+  "namespace": "metrics",
+  "source_entity_id": "8VEJ",
+  "source_event_id": "62c31ab9-e0ed-48f5-9907-2d2e8c76f393",
+  "source_id": "pTF3hzUQI",
+  "timestamp": "2021-02-23T19:33:39.017329033Z"
+}
+```
+
+Changes of note:
+
+1. The metric name is now listed
+1. There's a new `source_event_id` which can be used to link together all the metrics that were
+   reported at a given time
+1. The timestamp format has been changed to match the other event times. Format is: RFC3339Nano
+1. Metrics which formerlly had an id in them, such as link and control channel metrics now have the
+   id extracted. The id is stored in the `source_entity_id` field.
+
+# Release 0.19.2
+
+## Bug fixes
+
+* Fix edge router synchronization from stopping after workers exit
+* Session validation intervals in the edge router were calculated incorrected
+* Notes on the configuration values related to session validation were missing from the 0.19 release
+  notes. They have been added in the section called `Edge Session Validation`
+
+# Release 0.19.1
+
+## Bug fixes
+
+* Fix v0.18.x - v0.19.x API Session id incompatibility, all API Session and Sessions are deleted
+  during this upgrade
+* Fix Edge Router double connect leading to panics during Edge Router REST API rendering
+
+## What's New
+
+* Ziti CLI now has 'Let's Encrypt' PKI support to facilitate TLS connections to Controller from
+  BrowZer-based apps that use the `ziti-sdk-js`.
+
+    * New command to Register a Let's Encrypt account, then create and install a certificate
+
+      Usage:
+
+      `ziti pki le create -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for create
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory to use for storing the data
+          -o, --port string                                   Port to listen on for HTTP based ACME challenges (default "80")
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+
+    * New command to Display Let's Encrypt certificates and accounts information
+
+      Usage:
+
+      `ziti pki le list -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --accounts      Display Account info
+          -h, --help          help for list
+          -n, --names         Display Names info
+          -p, --path string   Directory where data is stored
+
+    * New command to Renew a Let's Encrypt certificate
+
+      Usage:
+
+      `ziti pki le renew -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string                             ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+              --days int                                      The number of days left on a certificate to renew it (default 14)
+          -d, --domain string                                 Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string                                  Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                                          help for renew
+          -k, --keytype EC256|EC384|RSA2048|RSA4096|RSA8192   Key type to use for private keys (default RSA4096)
+          -p, --path string                                   Directory where data is stored
+          -r, --reuse-key                                     Used to indicate you want to reuse your current private key for the renewed certificate (default true)
+          -s, --staging                                       Enable creation of 'staging' Certs (instead of production Certs)
+
+    * New command to Revoke a Let's Encrypt certificate
+
+      Usage:
+
+      `ziti pki le revoke -d domain -p path-to-where-data-is-saved [flags]`
+
+      Flags:
+
+          -a, --acmeserver string   ACME CA hostname (default "https://acme-v02.api.letsencrypt.org/directory")
+          -d, --domain string       Domain for which Cert is being generated (e.g. me.example.com)
+          -e, --email string        Email used for registration and recovery contact (default "openziti@netfoundry.io")
+          -h, --help                help for revoke
+          -p, --path string         Directory where data is stored
+          -s, --staging             Enable creation of 'staging' Certs (instead of production Certs)
+
+# Release 0.19.0
+
+## Breaking Changes
+
+* Edge session validation is now handled at the controller, not the edge router
+* Routing across the overlay is now handled in parallel, rather than serially. This changes the
+  syntax and semantics of a couple of control plane messages between the controller and the
+  connected routers. See the section below on `Parallel Routing` for additional details.
+* API Session synchronization improvements and pluggability
+
+## Bug fixes
+
+* ziti ps now supports `router-disconnect` and `router-reconnect`, which disconnects/reconnects the
+  router from the controller. This allows easier testing of various failure states. Requires that
+  --debug-ops is passed to `ziti-router` on startup.
+* Golang SDK hosted service listeners are now properly closed when they receive close notifications
+* Golang SDK now recovers if the session is gone
+* Golang SDK now stops some go-routines that were previously left running after the SDK context was
+  closed
+* Fix session leak caused by using half close when tunneling UDP connections
+* Fix connection leak caused by not closing the UDP connection when it's activity timer expires
+
+## API Changes
+
+* Fabric Xctrl instances are now notified when the control channel reconnects
+* Fabric Xctrl instances may now provide message decoders for the trace infrastructure so that
+  custom messages will be properly displayed in trace logs
+
+## Edge Session Validation
+
+Before 0.19, edge sessions (note: network sessions, not API sessions) would be sent to edge routers
+after they were created. When the edge router received a dial or bind request it would verify that
+the session was valid, then request the controller to create a fabric session.
+
+This approach has two downsides.
+
+1. There is a race condition where the edge router may receive a dial/bind request before it has
+   received the session from the controller. It thus has to wait awhile before declaring the session
+   invalid.
+1. Sessions need to be managed across multiple edge routers, since we don't know where the client
+   will connect. This adds a lot of control channel traffic.
+
+Since the edge router makes a request to the controller anyway, we can pass the session token and
+fingerprints up to the controller and do the verification there. This allows us to minimize the
+amount of state the edge router needs to keep synchronized with the controller and removes the race
+condition.
+
+When an edge controller loses connection to the controller, it needs to verify that its sessions are
+still valid, in case it missed any session deletion notifications. There are three new settings
+which control this behavior.
+
+* `sessionValidateChunkSize` - how many sessions to validate in each request to the controller.
+  Default value: 1000
+* `sessionValidateMinInterval` - minimum time to wait between chuenks of sessions. Default
+  value: `250ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+* `sessionValidateMaxInterval` - maximum time to wait between chuenks of sessions. Default
+  value: `1500ms`. Format: duration - examples: `10s`, `1m`, `500ms`
+
+Intervals between sending session validation chunks is random, between min and max intervals. This
+is done to prevent the routers from flooding the controller after a controller restart.
+
+## Parallel Routing
+
+Prior to 0.19, the Ziti controller would send a `Route` message to the terminating router first, to
+establish terminator endpoint connectivity. If the destination endpoint was unreachable, the entire
+session setup would be abandoned. If the terminator responded successfully, the controller would
+then proceed to work through the chain of routers sending `Route` messages and creating the
+appropriate forwarding table entries. This all happened sequentially.
+
+In 0.19 route setup for session creation now happens in parallel. The controller sends `Route`
+commands to all of the routers in the chain (including the terminating router), and waits for
+responses and/or times out those responses. If all of the participating routers respond
+affirmatively within the timeout period, the entire session creation succeeds. If any participating
+router responds negatively, or the timeout period occurs, the session creation attempt fails,
+updating configured termination weights. Session creation will retry up to a configured number of
+attempts. Each attempt will perform a fresh path selection to ensure that failed terminators can be
+excluded from subsequent attempts.
+
+### Configuration of Parallel Routing
+
+The `terminationTimeoutSeconds` timeout parameter has been removed and will be ignored.
+The `routeTimeoutSeconds` controls the timeout for each route attempt.
+
+```
+#network:
+  #
+  # routeTimeoutSeconds controls the number of seconds the controller will wait for a route attempt to succeed.
+  #
+  #routeTimeoutSeconds:  10
+```
+
+You'll want to ensure that your participating routers' `getSessionTimeout` in the Xgress options is
+configured to a suitably large enough value to support the configured number of routing attempts, at
+the configured routing attempt timeout. In the router configuration, the `getSessionTimeout` value
+is configured for your Xgress listeners like this:
+
+```
+listeners:
+  # basic ssh proxy
+  - binding:            	proxy
+    address:            	tcp:0.0.0.0:1122
+    service:            	ssh
+    options:
+      getSessionTimeout:	120s
+```
+
+The new parallel routing implementation also supports a configurable number of session creation
+attempts. Prior to 0.19, the number of attempts was hard-coded at 3. In 0.19, the number of retries
+is controlled by the `createSessionRetries` parameter, which defaults to 3.
+
+```
+network:
+  #
+  # createSessionRetries controls the number of retries that will be attempted to create a circuit (and terminate it)
+  # for new sessions.
+  #
+  createSessionRetries: 5
+```
+
+## API Session Synchronization
+
+Prior to 0.19 API Sessions were only capable of being synchronized with connecting/reconnecting edge
+routers in a single manner. In 0.19 and forward improvements allow for multiple strategies to be
+defined within the same code base. Future releases will be able to introduce configurable and
+negotiable strategies.
+
+The default strategy from prior releases, now named 'instant', has been improved to fix issues that
+could arise during edge router reconnects where API Sessions would become invalid on the
+reconnecting edge router. In addition, the instant strategy now allows for invalid synchronization
+detection, resync requests, enhanced logging, and synchronization statuses for edge routers.
+
+### Edge Router Synchronization Status
+
+The `GET /edge-routers` list and `GET /edge-routers/<id>` detail responses now include
+a `syncStatus`
+field. This value is updated during the lifetime of the edge router's connection to the controller
+and will provide insight on its status.
+
+The possible `syncStatus` values are as follows:
+
+- "SYNC_NEW" - connection accepted but no strategy actions have been taken
+- "SYNC_QUEUED" - connection handed to a strategy and waiting for processing
+- "SYNC_HELLO_TIMEOUT" - sync failed due to a hello timeout, requeued for hello
+- "SYNC_HELLO" - controller edge hello being sent
+- "SYNC_HELLO_WAIT" - hello received from router and queued for processing
+- "SYNC_RESYNC_WAIT" - router requested a resync and queued for processing
+- "SYNC_IN_PROGRESS" - synchronization processing
+- "SYNC_DONE" - synchronization completed, router is now in maintenance updates
+- "SYNC_UNKNOWN" - state is unknown, edge router misbehaved, error state
+- "SYNC_DISCONNECTED" - strategy was disconnected before finishing, error state
+
+# Release 0.18.10
+
+# What's New
+
+* Close terminating xgress instances if no start is received with a configurable timeout
+    * Timeout is set in the router config under listener/dialer options: `sessionStartTimeout`
+      Default value: `3m`
+* Don't add a second shutdown timer if one is already set
+* Allow list/updating router forwarding tables if --debug-ops is passed
+    * new command `ziti ps route <optional target> <session> <src-address> <dest-address>`
+    * new command `ziti ps dump-routes <optional target>`
+* If an xgress session fails in retransmit, sends fault notification to controller so controller can
+  fix path or remove session, depending on session state
+
+# Release 0.18.9
+
+# What's New
+
+* Fix PATCH OS Posture Checks clearing data
+* Fix ziti-tunnel panic when removing
+  services. [edge#517](https://github.com/openziti/edge/issues/517)
+* ziti-tunnel tproxy now supports `--lanIf` option to automatically add rules to accept incoming
+  connections for service connections. [edge#519](https://github.com/openziti/edge/issues/519)
+* Fix orphaned ottca enrollments after `DELETE /cas/<id>'
+* Add build info output when starting router/controller
+* Remove histograms from xgress dataflow path as they were causing bottlenecks
+
+# Release 0.18.8
+
+## What's New
+
+* Websocket binding in Edge Router to support connections from BrowZer-based apps that use
+  the `ziti-sdk-js`. Edge Routers support various configurations including a single `tls` binding, a
+  single `ws` binding, or having both `tls` and `ws` bindings simultaneously. If both binding types
+  are used, they must be specified with different ports.
+* Edge Router list for current identity
+* Fix terminator PATCH, don't update/clear peer data unless requested
+* Fix concurrency related crash in router
+* Fix resource leak in fabric: forwarder tables weren't always updated after unroute
+* Fix issue that prevented ziti-tunnel from cleaning up on shutdown in some cases.
+  [edge#506](https://github.com/openziti/edge/issues/506)
+
+## Websocket Binding
+
+```
+#   Example Edge Router config snippet (note new `ws` address type):
+
+listeners:
+  - binding: edge
+    address: ws:0.0.0.0:3021
+    options:
+      advertise: curt-edge-ws-router:3021
+  - binding: edge
+    address: tls:0.0.0.0:3022
+    options:
+      advertise: curt-edge-ws-router:3022
+```
+
+* Fix router memory leak: purge session from forwardTable during unroutTimeout
+
+## Edge Router List For Current Identity
+
+A new endpoint has been added which will display the list of Edge Routers an authenticated session
+has access to via any policy. The records will indicate whether the router is online, its hostname,
+and its supported protocols. This endpoint will not return Edge Routers that have not completed
+enrollment. Edge Routers that are offline will not have hostname and supported protocol information.
+
+Endpoint: `GET /current-identity/edge-routers`
+
+Example Output:
+
+```
+{
+    "data": [
+        {
+            "createdAt": "2021-01-27T20:13:18.599Z",
+            "id": "LolSlAQMq",
+            "tags": {},
+            "updatedAt": "2021-01-27T20:13:19.762Z",
+            "hostname": "",
+            "isOnline": false,
+            "name": "er1",
+            "supportedProtocols": {}
+        },
+        {
+            "createdAt": "2021-01-27T20:13:19.308Z",
+            "id": "oVzRl6kCq",
+            "tags": {},
+            "updatedAt": "2021-01-27T20:13:19.901Z",
+            "hostname": "127.0.0.1:5002",
+            "isOnline": true,
+            "name": "er2",
+            "supportedProtocols": {
+                "tls": "tls://127.0.0.1:5002",
+                "wss": "wss://127.0.0.1:5002"
+            }
+        }
+    ],
+    "meta": {
+        "filterableFields": [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "name",
+        ],
+        "pagination": {
+            "limit": 10,
+            "offset": 0,
+            "totalCount": 2
+        }
+    }
+}
+```
+
+# Release 0.18.7
+
+## What's New
+
+* Update ziti-tunnel service polling
+    * Now uses new api (when available) to skip refreshing services if no services have been changed
+    * Polling rate is passed through to sdk, so actual poll rate is now controlled
+* Don't panic on router startup, just show error message and exit
+* Fix resource leak: go-routine on terminators using the edge_transport binding
+* Fix resource leak: retransmission timers for xgress instances not being shutdown when xgress
+  closed
+* Control channel metrics now available
+* Fix potential deadlock on xgress close
+* When closing due to fault notification, wait for data coming from remote to stop, not data from
+  both local and remote, since local writes may never stop, due to retransmission attempts
+* Add new config option to router `xgressCloseCheckInterval`, which dictates for how long data flow
+  from the remote should have stopped before closing xgress after receiving fault
+* `limit none` for Edge API Rest requests is now properly limited to 500 elements on list endpoints
+* The HTTP header `server` is now populated on all responses with `ziti-controller/vX.Y.Z`
+
+## Control Channel Metrics
+
+**Note:** This feature is only available if both controller and router are on 0.18.7 or higher.
+
+The control channels between the controller and routers now generate metrics, including:
+
+* `ctrl.<router id>.latency`
+* `ctrl.<router id>.tx.bytesrate`
+* `ctrl.<router id>.tx.msgrate`
+* `ctrl.<router id>.tx.msgsize`
+* `ctrl.<router id>.rx.bytesrate`
+* `ctrl.<router id>.rx.msgrate`
+* `ctrl.<router id>.rx.msgsize`
+
+There is a new controller config file setting:
+
+* `ctrlChanLatencyIntervalSeconds` which controls how often the latency probe is sent. Default
+  value: 10
+
+# Release 0.18.6
+
+## What's New
+
+* Fix `ziti install terraform-provider-edgecontroller`
+
+# Release 0.18.5
+
+## What's New
+
+* Update go-openapi libraries
+* xgress_edge refactor, should fix 'failed to dipsatch to fabric' errors
+* Update `ziti use` command to work with main branch
+* MFA Support
+* Fix deadlock on session close in router when connection is at capacity
+* Fix issue where end of session didn't get sent in some scenarios
+
+## MFA Support
+
+Endpoint MFA is available that is based on RFC 4226 (HOTP: An HMAC-Based One-Time Password
+Algorithm) and RFC 6238 (TOTP: Time-Based One-Time Password Algorithm). These standards are
+compatible with standard "Authenticator" apps such as Google Authenticator and Authy. MFA is
+suggested to be used in situations where human operators are involved and additional security is
+desired.
+
+### Restricting Service Access
+
+Services can now have a Posture Check of type MFA that can be created and associated with a Service
+Policy. Service Policies that are associated with an MFA Posture Check will restrict access to
+services if a client has not enrolled in MFA and passed an MFA check on each login.
+
+MFA Posture Checks support only the basic Posture Check fields:
+
+- name - a name for the posture check
+- typeId - should be "MFA"
+- tags - any tags desired for this object
+- roleAttributes - role attributes used to select this object from Service Policies
+
+Example:
+
+```
+POST /posture-checks
+{
+    "name": "Any MFA",
+    "typeId": "MFA",
+    "roleAttributes": ["mfa"]
+}
+```
+
+### Admin MFA Management
+
+Admins of the Ziti Edge API can remove MFA from any user. However, they cannot enroll on behalf of
+the client. The client will have to initiate MFA enrollment via their client.
+
+Endpoints:
+
+- `DELETE /identities/<id>/mfa` - remove MFA from an identity
+- `GET /identities` - has a new field `isMfaEnabled` that is true/false based on the identity's MFA
+  enrollment
+- `GET /identities/<id>/posture-data` - now includes a `sessionPostureData` field which is a map of
+  sessionId -> session posture data (including MFA status)
+
+Example Posture Data:
+
+```
+{
+  "mac": ["03092ac3bc69", "2b6df1dc52d9"],
+  "domain": "mycorp.com",
+  "os": {
+    ...
+  },
+  processes: [
+    ...
+  ],
+  sessionPostureData: {
+     "xV1442s": {
+        "mfa": {
+          "passedMfa": true
+        }
+     }
+  }
+}
+
+```
+
+### Client MFA Enrollment
+
+Clients must individually enroll in MFA as the enrollment process includes exchanging a symmetric
+key. During MFA enrollment the related MFA endpoints will return different data and HTTP status
+codes based upon the state of MFA enrollment (enrollment not started, enrollment started, enrolled).
+
+The general MFA enrollment flow is:
+
+1. Authenticate as the identity via `POST /authenticate`
+2. Start MFA enrollment via `POST /current-identity/mfa`
+3. Retrieve the MFA provisioning URL or QR code
+    - `GET /current-identity/mfa`
+    - `GET /current-identity/mfa/qr-code`
+4. Use the provisioning URL or QR code with an authentication app such as Google Authenticator,
+   Authy, etc.
+5. Use a current code from the authenticator to `POST /current-identity/mfa/verify` with the code in
+   the `code` field `{"code": "someCode"}`
+
+#### MFA Endpoints Overview:
+
+This section is an overview for the endpoints. Each endpoint may return errors depending on in input
+and MFA status.
+
+- `GET /current-identity/mfa` - returns the current state of MFA enrollment or 404 Not Found
+- `POST /current-identity/mfa` - initiates MFA enrollment or 409 Conflict
+- `DELETE /current-identity/mfa` - remove MFA enrollment, requires a valid TOTP or recovery code
+- `GET /current-identity/mfa/recovery-codes` - returns the current recovery codes, requires a valid
+  TOTP Code
+- `POST /current-identity/mfa/recovery-codes` - regenerates recovery codes, requires a valid TOTP
+  code
+- `POST /current-identity/mfa/verify` - allows MFA enrollment to be completed, requires a valid TOTP
+  code
+- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner, MFA
+  enrollment must be started
+- `POST /authenticate/mfa` - allows MFA authentication checks to be completed, requires a valid TOTP
+  or recovery code
+
+MFA Enrollment Not Started:
+
+- `GET /current-identity/mfa` - returns HTTP status 404
+- `POST /current-identity/mfa` - start MFA enrollment, 200 Ok
+- `DELETE /current-identity/mfa` - returns 404 Not Found
+- `GET /current-identity/mfa/recovery-codes` - returns 404 Not Found
+- `POST /current-identity/mfa` - returns 404 Not Found
+- `POST /current-identity/mfa/verify` - returns 404 Not Found
+- `GET /current-identity/mfa/qr-code` - returns 404 Not Found
+
+MFA Enrollment Started:
+
+- `GET /current-identity/mfa` - returns the current MFA enrollment and recovery codes
+- `POST /current-identity/mfa` - returns 409 Conflict
+- `DELETE /current-identity/mfa` - aborts the current enrollment, a blank `code` may be supplied
+- `GET /current-identity/mfa/recovery-codes` - returns 404 Not Found
+- `POST /current-identity/mfa` - returns HTTP status 409 Conflict
+- `POST /current-identity/mfa/verify` - validates the supplied `code`
+- `GET /current-identity/mfa/qr-code` - returns a QR code for use with QR code scanner in PNG format
+
+MFA Completed:
+
+- `GET /current-identity/mfa` - returns the current MFA enrollment, but not recovery codes
+- `POST /current-identity/mfa` - returns 409 Conflict
+- `DELETE /current-identity/mfa` - removes MFA, a valid TOTP or recovery code must be supplied
+- `GET /current-identity/mfa/recovery-codes` - shows the current recovery codes, a valid TOTP code
+  must be supplied
+- `POST /current-identity/mfa` - returns HTTP status 409 Conflict
+- `POST /current-identity/mfa/verify` - returns HTTP status 409 Conflict
+- `GET /current-identity/mfa/qr-code` - returns 404 Not Found
+
+### Client MFA Recovery Codes
+
+Client MFA recovery codes are generated during enrollment and can be regenerated at any time with a
+valid TOTP code. Twenty codes are generated and are one time use only. Generating new codes replaces
+all existing recovery codes.
+
+To view:
+
+```
+GET /current-identity/mfa/recovery-codes
+{
+  "code": "123456"
+}
+```
+
+To Generate new codes:
+
+```
+POST /current-identity/mfa/recovery-codes
+{
+  "code": "123456"
+}
+```
+
+### Authentication
+
+During API Session authentication a new `authQuery` field is returned. This field will indicate if
+there are any outstanding authentication Posture Queries that need to be fulfilled before
+authentication is considered complete.
+
+When MFA authentication is required a field will now appear as an
+`authQuery` with the following format:
+
+```
+{
+  ...
+  "token": "c68a187a-f4af-490c-a9dd-a09076511419",
+  "authQueries": [
+    ...,
+    {
+      "typeId": "MFA",
+      "provider": "ZITI",
+      "httpMethod": "POST",
+      "httpUrl": "./authenticate/mfa",
+      "minLength": 4,
+      "maxLength": 6,
+      "format": "alphaNumeric"
+    },
+    ...
+  ]       
+}
+```
+
+# Release 0.18.4
+
+## What's New
+
+* New ziti CLI command `ziti ps set-log-level`, allows you to set the application wide log level at
+  runtime
+* Allow invalid event types in controller config event subscriptions. Instead of failing to start,
+  the controller will emit a warning. This allows us to use uniform configs across controllers which
+  may not all support the same event types.
+* Edge routers now have configurable timeouts when looking up API sessions and sessions
+
+## Edge Router: Configurable Session Lookup Times
+
+An Edge SDK client will create and api session and session with the controller first, then attempt
+to use those sessions at an edge router. The controller will push session information to routers as
+quickly as it can, but clients may still connect to the edge router before the client can. We
+previously would wait up to 5 seconds for session to arrive before declaring a session invalid, but
+would not wait for api-sessions.
+
+We can now wait for both api-sessions and sessions. Both timeouts are configurable. They are
+configured in the router config file under listeners options.
+
+* `lookupApiSessionTimeout`
+    * How long to wait before timing out when looking up api-sessions after client connect. Default
+      5 seconds.
+* `lookupSessionTimeout`
+    * How long to wait before timing out when looking up sessions after client dial/bind. Default 5
+      seconds.
+
+Example router config file stanza:
+
+```
+listeners:
+  - binding: edge
+    address: tls:0.0.0.0:6342
+    options: 
+      advertise: 127.0.0.1:6432
+      lookupApiSessionTimeout: 5s
+      lookupSessionTimeout: 5s
+```
+
+# Release 0.18.3
+
+## What's New
+
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
+* Authentication mechanisms now allow `appId` and `appVersion` in `sdkInfo`
+* Ziti executables that use JSON logging now emit timestamps that include fractional seconds.
+  Timestamps remain in the RFC3339 format.
+* Improved query performance by caching antlr lexers and parsers. Testing showed 2x-10x performance
+  improvement
+* Improve service list time by using indexes get related posture data
+* Improved service polling
+* Improved service policy enforcement - instead of polling this is now event based, which should
+  result in slower cpu utlization on the controller
+* Fixed a bug in service policy PATCH which would trigger when the policy type wasn't sent
+* Support agent utilitiles (`ziti ps`) in ziti-tunnel
+* Cleanup ack handler goroutines when links shut down
+* Remove the following fabric metrics timers, as they degraded performance while being of low value
+    * xgress.ack.handle_time
+    * xgress.payload.handle_time
+    * xgress.ack_write_time
+    * xgress.payload_buffer_time
+    * xgress.payload_relay_time
+* The check-data-integrity operation may now only run a single instance at a time
+    * To start the check, `ziti edge db start-check-integrity`
+    * To check the status of a run `ziti edge db check-integrity-status`
+* The build date in version info spelling has been fixed from builDate to buildDate
+* A new metric has been added for timing service list requests `services.list`
+* A bug was fixed in the tunneler which may have lead to leaked connections
+* Ziti Edge API configurable HTTP Timeouts
+* Add `ziti log-format` or `ziti lf` for short, for formating JSON log output as something more
+  human readable
+* [fabric#151](https://github.com/openziti/fabric/issues/151) Add two timeout settings to the
+  controller to configure how long route and dial should wait before timeout
+    * terminationTimeoutSeconds - how long the router has to dial the service
+    * routeTimeoutSeconds - how long a router has to respond to a route create/update message
+* [fabric#158](https://github.com/openziti/fabric/issues/158) Add a session creation timeout to the
+  router. This controls how long the router will wait for fabric sessions to be created. This
+  includes creating the router and dialing the end service, so the timeout should be at least as
+  long as the controller `terminationTimeoutSeconds`and `routeTimeoutSeconds` added together
+    * `getSessionTimeout` is specified in the router config under `listeners: options:`
+
+## Improved Service Polling
+
+There's a new REST endpoint /current-api-session/service-updates, which will return the last time
+services were changed. If there have been no service updates since the api session was established,
+the api session create date/time will be returned. This endpoint can be polled to see if services
+need to be refreshed. This will save network and cpu utilization on the client and controller.
+
+## Ziti Edge API configurable HTTP Timeouts
+
+The controller configuration file now supports a `httpTimeouts` section under
+`edge.api`. The section and all of its fields are optional and default to the values of previous
+versions.
+
+For production environments these values should be tuned for the networks intended userbase. The
+quality and latency of the underlay between the networks endpoints/routers and controller should be
+taken into account.
+
+```
+edge:
+  ...
+  api:
+    ...
+    httpTimeouts:
+      # (optional, default 5s) readTimeoutMs is the maximum duration for reading the entire request, including the body.
+      readTimeoutMs: 5000
+      # (optional, default 0) readHeaderTimeoutMs is the amount of time allowed to read request headers.
+      # The connection's read deadline is reset after reading the headers. If readHeaderTimeoutMs is zero, the value of
+      # readTimeoutMs is used. If both are zero, there is no timeout.
+      readHeaderTimeoutMs: 0
+      # (optional, default 10000) writeTimeoutMs is the maximum duration before timing out writes of the response.
+      writeTimeoutMs: 100000
+      # (optional, default 5000) idleTimeoutMs is the maximum amount of time to wait for the next request when keep-alives are enabled
+      idleTimeoutMs: 5000
+```
+
 # Release 0.18.2
 
 ## What's New

@@ -211,7 +211,7 @@ func (o *CommonOptions) getCurrentZitiSnapshotList() ([]string, error) {
 	children, err := util.GetCurrentSnapshotListFromArtifactory(o.Verbose)
 
 	list := make([]string, 0)
-	list = append(list, "master")
+	list = append(list, "main")
 
 	for _, v := range children {
 		str := strings.Replace(v.URI, "/", "", -1)

@@ -19,6 +19,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/openziti/foundation/agent"
 	"io"
 	"io/ioutil"
 	"net"
@@ -27,13 +28,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openziti/ziti/ziti/signal"
 	"github.com/openziti/ziti/ziti/util"
 )
 
 func trace(addr net.TCPAddr, _ []string) error {
 	fmt.Println("Tracing now, will take 5 secs...")
-	out, err := cmd(addr, signal.Trace)
+	out, err := cmd(addr, agent.Trace)
 	if err != nil {
 		return err
 	}

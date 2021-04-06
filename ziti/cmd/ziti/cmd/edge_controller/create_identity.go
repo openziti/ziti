@@ -18,8 +18,10 @@ package edge_controller
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
+	"math"
 	"reflect"
 	"strings"
 
@@ -31,20 +33,24 @@ import (
 )
 
 type createIdentityOptions struct {
-	commonOptions
+	edgeOptions
 	isAdmin                  bool
 	roleAttributes           []string
 	jwtOutputFile            string
 	username                 string
 	defaultHostingPrecedence string
 	defaultHostingCost       uint16
+	serviceCosts             map[string]int
+	servicePrecedences       map[string]string
+	tags                     map[string]string
+	appData                  map[string]string
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
 func newCreateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *createIdentityOptions {
 		return &createIdentityOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		}
@@ -86,6 +92,10 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
+	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
+	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 
 	options.AddCommonFlags(cmd)
 
@@ -105,13 +115,50 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 	setJSONValue(entityData, o.isAdmin, "isAdmin")
 	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	setJSONValue(entityData, o.tags, "tags")
+	setJSONValue(entityData, o.appData, "appData")
 
 	if o.defaultHostingPrecedence != "" {
-		setJSONValue(entityData, o.defaultHostingPrecedence, "defaultHostingPrecedence")
+		prec, err := normalizeAndValidatePrecedence(o.defaultHostingPrecedence)
+		if err != nil {
+			return err
+		}
+
+		setJSONValue(entityData, prec, "defaultHostingPrecedence")
 	}
+
 	setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 
-	result, err := createEntityOfType("identities", entityData.String(), &o.commonOptions)
+	for k, v := range o.serviceCosts {
+		if v < 0 || v > math.MaxUint16 {
+			return errors.Errorf("hosting costs must be in the range %v-%v", 0, math.MaxUint16)
+		}
+		id, err := mapNameToID("services", k, o.edgeOptions)
+		if err != nil {
+			return err
+		}
+		delete(o.serviceCosts, k)
+		o.serviceCosts[id] = v
+	}
+	setJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
+
+	for k, v := range o.servicePrecedences {
+		id, err := mapNameToID("services", k, o.edgeOptions)
+		if err != nil {
+			return err
+		}
+
+		prec, err := normalizeAndValidatePrecedence(v)
+		if err != nil {
+			return err
+		}
+
+		delete(o.servicePrecedences, k)
+		o.servicePrecedences[id] = prec
+	}
+	setJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
+
+	result, err := createEntityOfType("identities", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -124,7 +171,7 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 
 	if o.jwtOutputFile != "" {
-		if err := getIdentityJwt(o, id, o.commonOptions.Timeout, o.commonOptions.Verbose); err != nil {
+		if err := getIdentityJwt(o, id, o.edgeOptions.Timeout, o.edgeOptions.Verbose); err != nil {
 			return err
 		}
 	}

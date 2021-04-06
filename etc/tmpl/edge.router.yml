@@ -23,6 +23,10 @@ identity:
 #trace:
 # path:                 001.trace
 
+metrics:
+  reportInterval: 20s
+  messageQueueSize: 20
+
 #profile:
 #  memory:
 #    path:               001.memprof
@@ -76,6 +80,9 @@ dialers:
   - binding: transport
 
 listeners:
+  - binding: tunnel
+    options:
+      mode: host
   - binding: edge
     address: tls:0.0.0.0:${ZITI_EDGE_PORT}
     options:
@@ -88,6 +95,10 @@ listeners:
       #maxOutstandingConnects: 100
       # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
       #connectTimeoutMs:       3000
-  - binding: proxy
-    address: tcp:0.0.0.0:7001
-    service: loop
+      # how long to wait before timing out when looking up api-sessions after client connect
+      lookupApiSessionTimeout: 5s
+      # how long to wait before timing out when looking up sessions after client dial/bind
+      lookupSessionTimeout: 5s
+#  - binding: proxy
+#    address: tcp:0.0.0.0:7001
+#    service: loop

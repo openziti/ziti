@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -67,7 +68,8 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 
 	var err error
-	if err = agent.Listen(agent.Options{}); err != nil {
+	shutdownClean := false
+	if err = agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 	}
 
@@ -173,7 +175,9 @@ func (cmd *listenerCmd) handle(conn net.Conn, context string) {
 			test = cmd.test
 		} else {
 			if test, err = proto.rxTest(); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("failure receiving test parameters, closing")
+				_ = conn.Close()
+				return
 			}
 		}
 

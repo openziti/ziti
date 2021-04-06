@@ -28,6 +28,7 @@ func init() {
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	root.PersistentFlags().BoolVar(&debugOpsEnabled, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
 }
 
 var root = &cobra.Command{
@@ -42,7 +43,7 @@ var root = &cobra.Command{
 		case "pfxlog":
 			logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{})
+			logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
 		case "text":
 			logrus.SetFormatter(&logrus.TextFormatter{})
 		default:
@@ -55,6 +56,7 @@ var root = &cobra.Command{
 var verbose bool
 var logFormatter string
 var cliAgentEnabled bool
+var debugOpsEnabled bool
 var cliAgentAddr string
 
 func Execute() {

@@ -143,7 +143,7 @@ func GetLatestVersionFromArtifactory(verbose bool, staging bool, branch string, 
 		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s' on branch '%s'; %s", appName, branch, resp.Status())
 	}
 
-	result := (*resp.Result().(*ArtifactoryVersionsData))
+	result := *resp.Result().(*ArtifactoryVersionsData)
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
 }
@@ -174,7 +174,7 @@ func GetLatestGitHubReleaseVersion(verbose bool, appName string) (semver.Version
 		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
 	}
 
-	result := (*resp.Result().(*GitHubReleasesData))
+	result := *resp.Result().(*GitHubReleasesData)
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
 }
@@ -377,13 +377,13 @@ func GetArtifactoryPath(staging bool, appName string, branch string) string {
 	var path string
 	if staging {
 		path = "ziti-staging/"
-	} else if branch == "master" {
+	} else if branch == "main" {
 		path = "ziti-release/"
 	} else {
 		path = "ziti-snapshot/" + branch + "/"
 	}
 	// Special-case the source-repo when dealing with ziti-prox-c
-	if branch == "master" && appName == c.ZITI_PROX_C {
+	if branch == "main" && appName == c.ZITI_PROX_C {
 		path = "ziti-staging/"
 	}
 
@@ -792,7 +792,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 	}
 
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
@@ -804,7 +804,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
 			entityType, session.Host, resp.Status(), resp.String())
 	}

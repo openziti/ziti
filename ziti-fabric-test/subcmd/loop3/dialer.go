@@ -70,7 +70,8 @@ func newDialerCmd() *dialerCmd {
 func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 
-	if err := agent.Listen(agent.Options{}); err != nil {
+	shutdownClean := false
+	if err := agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 	}
 
@@ -202,7 +203,7 @@ func (cmd *dialerCmd) connect() net.Conn {
 }
 
 func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, error) {
-	peer, err := endpoint.Dial("loop", id, nil)
+	peer, err := endpoint.Dial("loop", id, 0, nil)
 	if err != nil {
 		return nil, err
 	}

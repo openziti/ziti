@@ -12,22 +12,49 @@ forwarder:
   # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
   # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
   # probes, control plane utilization, and CPU utilization processing the results.
+  # (default 10000)
   #
-  latencyProbeInterval: 1000
+  latencyProbeInterval: 10000
+  #
+  # After how many milliseconds does the link latency probe timeout?
+  # (default 10000)
+  #
+  latencyProbeTimeout: 10000
+  #
+  # After how many milliseconds of inactivity is a forwarding table entry considered idle?
+  #
+  idleSessionTimeout: 60000
+  #
+  # How frequently will we confirm idle sessions with the controller?
+  #
+  idleTxInterval: 60000
+  #
   # How many xgress dials can be queued for processing by the xgress dial workers. An xgress dial occurs
   # for services that have a terminator egress specified with an xgress binding (e.g. transport)
   # (minimum 1, max 10000, default 1000)
+  #
   xgressDialQueueLength: 1000
+  #
   # The number of xgress dial workers used to process the xgress dial queue.
   # (minimum 1, max 10000, default 10)
+  #
   xgressDialWorkerCount: 10
+  #
   # How many link dials can be queued for processing by the link dial workers. An link dial occurs
   # when a router is notified of a new router by the controller.
   # (minimum 1, max 10000, default 1000)
+  #
   linkDialQueueLength: 1000
+  #
   # The number of link dial workers used to process the link dial queue.
   # (minimum 1, max 10000, default 10)
+  #
   linkDialWorkerCount: 10
+  #
+  # (Debugging) Xgress dial "dwell time". When dialing, the Xgress framework will wait this number of milliseconds
+  # before responding in the affirmative to the controller.
+  #
+  xgressDialDwellTime: 0
 
 #trace:
 #  path:                 001.trace
@@ -44,8 +71,6 @@ ctrl:
 link:
   dialers:
     - binding:          transport
-
-
 
 listeners:
   # basic ssh proxy
@@ -90,26 +115,3 @@ dialers:
 #
 #example:
 #  delay:                1
-
-transport:
-  # Mumbai_2
-  westworld2:
-    tx_portal_start_sz:           131072
-    tx_portal_min_sz:             16384
-    tx_portal_max_sz:             1073741824
-    tx_portal_increase_ct:        2
-    tx_portal_increase_frac:      1.5
-    tx_portal_dup_ack_ct:         256
-    tx_portal_dup_ack_frac:       0.9995
-    tx_portal_retx_ct:            128
-    tx_portal_retx_frac:          0.9995
-    retx_start_ms:                200
-    retx_add_ms:                  25
-    rtt_probe_ms:                 50
-    rtt_probe_avg_ct:             8
-    max_segment_sz:               1450
-    rx_buffer_sz:                 4194304
-    tx_buffer_sz:                 4194304
-    #instrument:
-      #name:                       metrics
-      #prefix:                     /tmp/logs

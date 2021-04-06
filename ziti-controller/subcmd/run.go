@@ -23,7 +23,11 @@ import (
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/ziti/common/version"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func init() {
@@ -38,6 +42,14 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+	logrus.WithField("version", version.GetVersion()).
+		WithField("go-version", version.GetGoVersion()).
+		WithField("os", version.GetOS()).
+		WithField("arch", version.GetArchitecture()).
+		WithField("build-date", version.GetBuildDate()).
+		WithField("revision", version.GetRevision()).
+		Info("starting ziti-controller")
+
 	if config, err := controller.LoadConfig(args[0]); err == nil {
 		if cliAgentEnabled {
 			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
@@ -45,28 +57,39 @@ func run(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		var c *controller.Controller
-		if c, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
+		var fabricController *controller.Controller
+		if fabricController, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
 			fmt.Printf("unable to create fabric controller %+v\n", err)
 			panic(err)
 		}
 
-		ec, err := server.NewController(config)
+		edgeController, err := server.NewController(config)
 
 		if err != nil {
 			panic(err)
 		}
 
-		ec.SetHostController(c)
-		ec.Initialize()
-
-		go ec.RunAndWait()
-
-		if err = c.Run(); err != nil {
+		edgeController.SetHostController(fabricController)
+		edgeController.Initialize()
+		go waitForShutdown(fabricController, edgeController)
+		go edgeController.Run()
+		if err := fabricController.Run(); err != nil {
 			panic(err)
 		}
+
 
 	} else {
 		panic(err)
 	}
+}
+
+func waitForShutdown(fabricController *controller.Controller, edgeController *server.Controller) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
+	<-ch
+
+	pfxlog.Logger().Info("shutting down ziti-controller")
+	edgeController.Shutdown()
+	fabricController.Shutdown()
 }
