@@ -42,6 +42,9 @@ import (
 type IdentityDetail struct {
 	BaseEntity
 
+	// app data
+	AppData Tags `json:"appData"`
+
 	// authenticators
 	// Required: true
 	Authenticators *IdentityAuthenticators `json:"authenticators"`
@@ -120,6 +123,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		AppData Tags `json:"appData"`
+
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
@@ -157,6 +162,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.AppData = dataAO1.AppData
 
 	m.Authenticators = dataAO1.Authenticators
 
@@ -205,6 +212,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		AppData Tags `json:"appData"`
+
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
@@ -239,6 +248,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		TypeID *string `json:"typeId"`
 	}
+
+	dataAO1.AppData = m.AppData
 
 	dataAO1.Authenticators = m.Authenticators
 
@@ -288,6 +299,10 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 
 	// validation for a type composition with BaseEntity
 	if err := m.BaseEntity.Validate(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateAppData(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -362,6 +377,22 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *IdentityDetail) validateAppData(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.AppData) { // not required
+		return nil
+	}
+
+	if err := m.AppData.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("appData")
+		}
+		return err
+	}
+
 	return nil
 }
 

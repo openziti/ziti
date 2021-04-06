@@ -35,6 +35,7 @@ const (
 	FieldEdgeRouterProtocols         = "protocols"
 	FieldEdgeRouterEnrollments       = "enrollments"
 	FieldEdgeRouterIsTunnelerEnabled = "isTunnelerEnabled"
+	FieldEdgeRouterAppData           = "appData"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -56,6 +57,7 @@ type EdgeRouter struct {
 	RoleAttributes      []string
 	Enrollments         []string
 	IsTunnelerEnabled   bool
+	AppData             map[string]interface{}
 }
 
 func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -70,6 +72,7 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 	entity.Hostname = bucket.GetString(FieldEdgeRouterHostname)
 	entity.EdgeRouterProtocols = toStringStringMap(bucket.GetMap(FieldEdgeRouterProtocols))
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.AppData = bucket.GetMap(FieldIdentityAppData)
 }
 
 func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
@@ -82,6 +85,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
+	ctx.Bucket.PutMap(FieldEdgeRouterAppData, entity.AppData, ctx.FieldChecker, false)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {

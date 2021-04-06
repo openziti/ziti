@@ -6798,6 +6798,9 @@ func init() {
         "isOnline"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "hostname": {
           "type": "string"
         },
@@ -7752,6 +7755,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -7867,6 +7873,9 @@ func init() {
       "description": "An edge router patch object",
       "type": "object",
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -7917,7 +7926,8 @@ func init() {
             "edgeRouterRoles",
             "edgeRouterRolesDisplay",
             "identityRoles",
-            "identityRolesDisplay"
+            "identityRolesDisplay",
+            "isSystem"
           ],
           "properties": {
             "edgeRouterRoles": {
@@ -7931,6 +7941,9 @@ func init() {
             },
             "identityRolesDisplay": {
               "$ref": "#/definitions/namedRoles"
+            },
+            "isSystem": {
+              "type": "boolean"
             },
             "name": {
               "type": "string"
@@ -7996,6 +8009,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -8313,6 +8329,9 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -8383,6 +8402,9 @@ func init() {
             "serviceHostingCosts"
           ],
           "properties": {
+            "appData": {
+              "$ref": "#/definitions/tags"
+            },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
             },
@@ -8513,6 +8535,9 @@ func init() {
     "identityPatch": {
       "type": "object",
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -8581,6 +8606,9 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -27041,6 +27069,9 @@ func init() {
         "isOnline"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "hostname": {
           "type": "string"
         },
@@ -27995,6 +28026,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -28110,6 +28144,9 @@ func init() {
       "description": "An edge router patch object",
       "type": "object",
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -28160,7 +28197,8 @@ func init() {
             "edgeRouterRoles",
             "edgeRouterRolesDisplay",
             "identityRoles",
-            "identityRolesDisplay"
+            "identityRolesDisplay",
+            "isSystem"
           ],
           "properties": {
             "edgeRouterRoles": {
@@ -28174,6 +28212,9 @@ func init() {
             },
             "identityRolesDisplay": {
               "$ref": "#/definitions/namedRoles"
+            },
+            "isSystem": {
+              "type": "boolean"
             },
             "name": {
               "type": "string"
@@ -28239,6 +28280,9 @@ func init() {
         "name"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -28556,6 +28600,9 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -28626,6 +28673,9 @@ func init() {
             "serviceHostingCosts"
           ],
           "properties": {
+            "appData": {
+              "$ref": "#/definitions/tags"
+            },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
             },
@@ -28756,6 +28806,9 @@ func init() {
     "identityPatch": {
       "type": "object",
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -28824,6 +28877,9 @@ func init() {
         "isAdmin"
       ],
       "properties": {
+        "appData": {
+          "$ref": "#/definitions/tags"
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },

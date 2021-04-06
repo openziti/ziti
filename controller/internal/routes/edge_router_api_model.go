@@ -60,6 +60,7 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 		Name:              stringz.OrEmpty(router.Name),
 		RoleAttributes:    router.RoleAttributes,
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
+		AppData:           router.AppData,
 	}
 
 	return ret
@@ -74,6 +75,7 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 		Name:              stringz.OrEmpty(router.Name),
 		RoleAttributes:    router.RoleAttributes,
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
+		AppData:           router.AppData,
 	}
 
 	return ret
@@ -88,6 +90,7 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 		Name:              router.Name,
 		RoleAttributes:    router.RoleAttributes,
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
+		AppData:           router.AppData,
 	}
 
 	return ret
@@ -138,6 +141,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			Hostname:           &routerState.Hostname,
 			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatusStr,
+			AppData:            router.AppData,
 		},
 		RoleAttributes:      router.RoleAttributes,
 		EnrollmentToken:     nil,

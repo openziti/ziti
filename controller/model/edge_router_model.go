@@ -38,6 +38,7 @@ type EdgeRouter struct {
 	EdgeRouterProtocols map[string]string
 	VersionInfo         *common.VersionInfo
 	IsTunnelerEnabled   bool
+	AppData             map[string]interface{}
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
@@ -49,6 +50,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entit
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
 		IsTunnelerEnabled: entity.IsTunnelerEnabled,
+		AppData:           entity.AppData,
 	}
 
 	return boltEntity, nil
@@ -67,6 +69,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 		Hostname:            entity.Hostname,
 		EdgeRouterProtocols: entity.EdgeRouterProtocols,
 		IsTunnelerEnabled:   entity.IsTunnelerEnabled,
+		AppData:             entity.AppData,
 	}, nil
 }
 
@@ -89,6 +92,7 @@ func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	entity.Hostname = boltEdgeRouter.Hostname
 	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 	entity.IsTunnelerEnabled = boltEdgeRouter.IsTunnelerEnabled
+	entity.AppData = boltEdgeRouter.AppData
 
 	return nil
 }

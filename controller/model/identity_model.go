@@ -57,6 +57,7 @@ type Identity struct {
 	DefaultHostingCost        uint16
 	ServiceHostingPrecedences map[string]ziti.Precedence
 	ServiceHostingCosts       map[string]uint16
+	AppData                   map[string]interface{}
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -71,6 +72,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 		DefaultHostingCost:        entity.DefaultHostingCost,
 		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
+		AppData:                   entity.AppData,
 	}
 
 	if entity.EnvInfo != nil {
@@ -159,6 +161,7 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 		DefaultHostingCost:        entity.DefaultHostingCost,
 		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
+		AppData:                   entity.AppData,
 	}
 
 	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
@@ -199,7 +202,7 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences
 	entity.ServiceHostingCosts = boltIdentity.ServiceHostingCosts
-
+	entity.AppData = boltIdentity.AppData
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil
