@@ -447,8 +447,8 @@ func Test_MFA(t *testing.T) {
 
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
-			
-			
+
+
 			t.Run("current api session should be", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				respContainer := mfaValidatedSession.requireQuery("/current-api-session")
@@ -576,7 +576,7 @@ func Test_MFA(t *testing.T) {
 				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
 			})
 
-			t.Run("newly authenticated sessions", func(t *testing.T) {
+			t.Run("newly authenticated sessions can use TOTP codes for authentication", func(t *testing.T) {
 				var newValidatedSession *session
 
 				t.Run("by first authenticating", func(t *testing.T) {
@@ -658,6 +658,119 @@ func Test_MFA(t *testing.T) {
 					ctx.testContextChanged(t)
 
 					code := computeMFACode(mfaValidatedSecret)
+
+					resp, err := newValidatedSession.newAuthenticatedRequest().
+						SetBody(newMfaCodeBody(code)).
+						Post("/authenticate/mfa")
+
+					ctx.Req.NoError(err)
+
+					standardJsonResponseTests(resp, http.StatusOK, t)
+
+					t.Run("and should have access to the API", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
+						ctx.Req.NoError(err)
+
+						standardJsonResponseTests(resp, http.StatusOK, t)
+					})
+
+					t.Run("current api session should be", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						respContainer := newValidatedSession.requireQuery("/current-api-session")
+
+						t.Run("marked as mfa required", func(t *testing.T) {
+							ctx.testContextChanged(t)
+							ctx.Req.True(respContainer.ExistsP("data.isMfaRequired"), "could not find isMfaRequired by path")
+							isMfaRequired, ok := respContainer.Path("data.isMfaRequired").Data().(bool)
+							ctx.Req.True(ok, "should be a bool")
+							ctx.Req.True(isMfaRequired)
+						})
+
+						t.Run("marked as mfa complete", func(t *testing.T) {
+							ctx.testContextChanged(t)
+							ctx.Req.True(respContainer.ExistsP("data.isMfaComplete"), "could not find isMfaComplete by path")
+							isMfaComplete, ok := respContainer.Path("data.isMfaComplete").Data().(bool)
+							ctx.Req.True(ok, "should be a bool")
+							ctx.Req.True(isMfaComplete)
+						})
+					})
+
+					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",newValidatedSession.identityId))
+						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
+						postureDataContainer.ExistsP(mfaPath)
+						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
+						ctx.Req.True(ok, "should be a bool")
+						ctx.Req.True(isMfaPassed)
+					})
+				})
+
+			})
+
+			t.Run("newly authenticated sessions can use recovery codes for authentication", func(t *testing.T) {
+				var newValidatedSession *session
+
+				t.Run("by first authenticating", func(t *testing.T) {
+					var err error
+					newValidatedSession, err = mfaValidatedIdentity.Authenticate(ctx)
+					ctx.Req.NoError(err)
+				})
+
+				t.Run("should have one authentication query", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/current-api-session")
+
+					ctx.Req.NoError(err)
+					standardJsonResponseTests(resp, http.StatusOK, t)
+
+					currentApiSession, err := gabs.ParseJSON(resp.Body())
+					ctx.Req.NoError(err)
+
+					ctx.Req.True(currentApiSession.ExistsP("data.authQueries"), "authQueries exists on current api session")
+
+					authQueriesVal := currentApiSession.Path("data.authQueries").Data()
+					ctx.Req.NotNil(authQueriesVal, "authQueries should not be nil")
+
+					authQueries := authQueriesVal.([]interface{})
+					ctx.Req.NotNil(authQueries, "authQueries is an array")
+					ctx.Req.Len(authQueries, 1, "authQueries has a length of 1")
+
+					t.Run("should be a Ziti MFA authentication query", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						authQuery, ok := authQueries[0].(map[string]interface{})
+
+						ctx.Req.True(ok)
+						ctx.Req.NotEmpty(authQuery)
+
+						ctx.Req.Equal("alphaNumeric", authQuery["format"].(string))
+						ctx.Req.Equal("POST", authQuery["httpMethod"].(string))
+						ctx.Req.Equal("./authenticate/mfa", authQuery["httpUrl"].(string))
+						ctx.Req.Equal(float64(4), authQuery["minLength"].(float64))
+						ctx.Req.Equal(float64(6), authQuery["maxLength"].(float64))
+						ctx.Req.Equal("ziti", authQuery["provider"].(string))
+					})
+				})
+
+				t.Run("should not have access to the API with outstanding authQuery", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
+					ctx.Req.NoError(err)
+
+					standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+				})
+
+				t.Run("validating MFA with an valid recovery code should succeed", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					code := mfaValidatedRecoveryCodes[0]
+
+					//remove code to be used
+					mfaValidatedRecoveryCodes = mfaValidatedRecoveryCodes[1:]
 
 					resp, err := newValidatedSession.newAuthenticatedRequest().
 						SetBody(newMfaCodeBody(code)).
