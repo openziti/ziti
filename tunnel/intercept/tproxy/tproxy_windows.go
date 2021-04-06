@@ -21,10 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func New() (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on windows")
-}
-
-func NewWithLanIf(lanIf string) (intercept.Interceptor, error) {
+func New(lanIf string) (intercept.Interceptor, error) {
 	return nil, errors.New("tproxy not supported on windows")
 }
