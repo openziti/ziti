@@ -65,7 +65,7 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	apiSessionsByToken      *sync.Map // apiSesion token -> *edge_ctrl_pb.ApiSession
+	apiSessionsByToken      *sync.Map          // apiSesion token -> *edge_ctrl_pb.ApiSession
 	activeApiSessions       cmap.ConcurrentMap // apiSession token -> MapWithMutex[session token] -> func(){}
 	sessions                cmap.ConcurrentMap // session token -> uint32
 	recentlyRemovedSessions cmap.ConcurrentMap // session token -> time.Time (time added, time.Now())
@@ -348,6 +348,7 @@ func (sm *StateManagerImpl) ActiveApiSessionTokens() []string {
 
 func (sm *StateManagerImpl) flushRecentlyRemoved() {
 	now := time.Now()
+	var toRemove []string
 	sm.recentlyRemovedSessions.IterCb(func(key string, v interface{}) {
 		remove := false
 		if t, ok := v.(time.Time); ok {
@@ -359,9 +360,14 @@ func (sm *StateManagerImpl) flushRecentlyRemoved() {
 		}
 
 		if remove {
-			sm.recentlyRemovedSessions.Remove(key)
+			toRemove = append(toRemove, key)
+
 		}
 	})
+
+	for _, key := range toRemove {
+		sm.recentlyRemovedSessions.Remove(key)
+	}
 }
 
 func newMapWithMutex() *MapWithMutex {
