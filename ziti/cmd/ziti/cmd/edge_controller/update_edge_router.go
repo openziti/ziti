@@ -34,6 +34,8 @@ type updateEdgeRouterOptions struct {
 	name              string
 	isTunnelerEnabled bool
 	roleAttributes    []string
+	tags              map[string]string
+	appData           map[string]string
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -63,6 +65,9 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -89,6 +94,16 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("role-attributes") {
 		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		setJSONValue(entityData, o.tags, "tags")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("app-data") {
+		setJSONValue(entityData, o.appData, "appData")
 		change = true
 	}
 
