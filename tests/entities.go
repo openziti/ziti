@@ -225,14 +225,18 @@ func newTestIdentity(isAdmin bool, roleAttributes ...string) *identity {
 }
 
 type identity struct {
-	Id             string
-	name           string
-	identityType   string
-	isAdmin        bool
-	enrollment     map[string]interface{}
-	roleAttributes []string
-	tags           map[string]interface{}
-	config         *config.Config
+	Id                        string
+	name                      string
+	identityType              string
+	isAdmin                   bool
+	enrollment                map[string]interface{}
+	roleAttributes            []string
+	tags                      map[string]interface{}
+	defaultHostingPrecedence  string
+	defaultHostingCost        int
+	serviceHostingPrecedences map[string]interface{}
+	serviceHostingCosts       map[string]uint16
+	config                    *config.Config
 }
 
 func (entity *identity) getId() string {
@@ -254,6 +258,14 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 	ctx.setJsonValue(entityData, entity.isAdmin, "isAdmin")
 	ctx.setJsonValue(entityData, entity.enrollment, "enrollment")
 	ctx.setJsonValue(entityData, entity.roleAttributes, "roleAttributes")
+	if entity.defaultHostingPrecedence != "" {
+		ctx.setJsonValue(entityData, entity.defaultHostingPrecedence, "defaultHostingPrecedence")
+	}
+	if entity.defaultHostingCost != 0 {
+		ctx.setJsonValue(entityData, entity.defaultHostingCost, "defaultHostingCost")
+	}
+	ctx.setJsonValue(entityData, entity.serviceHostingPrecedences, "serviceHostingPrecedences")
+	ctx.setJsonValue(entityData, entity.serviceHostingCosts, "serviceHostingCosts")
 
 	if isCreate {
 		if entity.enrollment == nil {
@@ -269,14 +281,43 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 	return entityData.String()
 }
 
+func (entity *identity) getCompareServiceHostingsCosts() map[string]interface{} {
+	if entity.serviceHostingCosts == nil {
+		return nil
+	}
+	result := map[string]interface{}{}
+	for k, v := range entity.serviceHostingCosts {
+		result[k] = float64(v)
+	}
+	return result
+}
+
 func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
+	if entity.serviceHostingCosts == nil {
+		entity.serviceHostingCosts = map[string]uint16{}
+	}
+	if entity.serviceHostingPrecedences == nil {
+		entity.serviceHostingPrecedences = map[string]interface{}{}
+	}
 	ctx.pathEquals(c, entity.name, path("name"))
+	if entity.defaultHostingPrecedence != "" {
+		ctx.pathEquals(c, entity.defaultHostingPrecedence, path("defaultHostingPrecedence"))
+	} else {
+		ctx.pathEquals(c, "default", path("defaultHostingPrecedence"))
+	}
+	if entity.defaultHostingCost == 0 {
+		ctx.pathEquals(c, nil, path("defaultHostingCost"))
+	} else {
+		ctx.pathEquals(c, entity.defaultHostingCost, path("defaultHostingCost"))
+	}
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 	ctx.pathEquals(c, entity.tags, path("tags"))
+	ctx.pathEquals(c, entity.serviceHostingPrecedences, path("serviceHostingPrecedences"))
+	ctx.pathEquals(c, entity.getCompareServiceHostingsCosts(), path("serviceHostingCosts"))
 }
 
 func (entity *identity) fromJson(ctx *TestContext, c *gabs.Container) {

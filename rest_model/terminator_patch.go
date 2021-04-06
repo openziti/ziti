@@ -47,7 +47,7 @@ type TerminatorPatch struct {
 	Binding string `json:"binding,omitempty"`
 
 	// cost
-	Cost *TerminatorCost `json:"cost,omitempty"`
+	Cost TerminatorCost `json:"cost,omitempty"`
 
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`
@@ -90,13 +90,11 @@ func (m *TerminatorPatch) validateCost(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if m.Cost != nil {
-		if err := m.Cost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("cost")
-			}
-			return err
+	if err := m.Cost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("cost")
 		}
+		return err
 	}
 
 	return nil

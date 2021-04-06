@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
@@ -68,10 +67,8 @@ func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
 type HostV1ListenOptions struct {
 	BindUsingEdgeIdentity bool
 	ConnectTimeoutSeconds *int
-	Cost                  *int
 	Identity              string
 	MaxConnections        int
-	Precedence            *string
 }
 
 type HostV1Config struct {
@@ -109,10 +106,8 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 		terminator.ListenOptions = &HostV2ListenOptions{
 			BindUsingEdgeIdentity: self.ListenOptions.BindUsingEdgeIdentity,
 			ConnectTimeout:        timeout,
-			Cost:                  self.ListenOptions.Cost,
 			Identity:              self.ListenOptions.Identity,
 			MaxConnections:        self.ListenOptions.MaxConnections,
-			Precedence:            self.ListenOptions.Precedence,
 		}
 	}
 
@@ -126,10 +121,8 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 type HostV2ListenOptions struct {
 	BindUsingEdgeIdentity bool
 	ConnectTimeout        *time.Duration
-	Cost                  *int
 	Identity              string
 	MaxConnections        int
-	Precedence            *string
 }
 
 type HostV2Terminator struct {
@@ -144,17 +137,6 @@ type HostV2Terminator struct {
 	HttpChecks []*health.HttpCheckDefinition
 
 	ListenOptions *HostV2ListenOptions
-}
-
-func (self *HostV2Terminator) SetListenOptions(options *ziti.ListenOptions) {
-	if self.ListenOptions != nil {
-		if self.ListenOptions.Cost != nil {
-			options.Cost = uint16(*self.ListenOptions.Cost)
-		}
-		if self.ListenOptions.Precedence != nil {
-			options.Precedence = ziti.GetPrecedenceForLabel(*self.ListenOptions.Precedence)
-		}
-	}
 }
 
 func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.Duration {

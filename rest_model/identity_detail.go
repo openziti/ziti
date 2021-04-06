@@ -47,7 +47,7 @@ type IdentityDetail struct {
 	Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 	// default hosting cost
-	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+	DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
 
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
@@ -92,6 +92,14 @@ type IdentityDetail struct {
 	// Required: true
 	SdkInfo *SdkInfo `json:"sdkInfo"`
 
+	// service hosting costs
+	// Required: true
+	ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts"`
+
+	// service hosting precedences
+	// Required: true
+	ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences"`
+
 	// type
 	// Required: true
 	Type *EntityRef `json:"type"`
@@ -114,7 +122,7 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
-		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
@@ -137,6 +145,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		SdkInfo *SdkInfo `json:"sdkInfo"`
+
+		ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts"`
+
+		ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences"`
 
 		Type *EntityRef `json:"type"`
 
@@ -172,6 +184,10 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 	m.SdkInfo = dataAO1.SdkInfo
 
+	m.ServiceHostingCosts = dataAO1.ServiceHostingCosts
+
+	m.ServiceHostingPrecedences = dataAO1.ServiceHostingPrecedences
+
 	m.Type = dataAO1.Type
 
 	m.TypeID = dataAO1.TypeID
@@ -191,7 +207,7 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
-		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
+		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
@@ -214,6 +230,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		SdkInfo *SdkInfo `json:"sdkInfo"`
+
+		ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts"`
+
+		ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences"`
 
 		Type *EntityRef `json:"type"`
 
@@ -245,6 +265,10 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.RoleAttributes = m.RoleAttributes
 
 	dataAO1.SdkInfo = m.SdkInfo
+
+	dataAO1.ServiceHostingCosts = m.ServiceHostingCosts
+
+	dataAO1.ServiceHostingPrecedences = m.ServiceHostingPrecedences
 
 	dataAO1.Type = m.Type
 
@@ -319,6 +343,14 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateServiceHostingCosts(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateServiceHostingPrecedences(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
@@ -357,13 +389,11 @@ func (m *IdentityDetail) validateDefaultHostingCost(formats strfmt.Registry) err
 		return nil
 	}
 
-	if m.DefaultHostingCost != nil {
-		if err := m.DefaultHostingCost.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("defaultHostingCost")
-			}
-			return err
+	if err := m.DefaultHostingCost.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingCost")
 		}
+		return err
 	}
 
 	return nil
@@ -504,6 +534,30 @@ func (m *IdentityDetail) validateSdkInfo(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateServiceHostingCosts(formats strfmt.Registry) error {
+
+	if err := m.ServiceHostingCosts.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingCosts")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateServiceHostingPrecedences(formats strfmt.Registry) error {
+
+	if err := m.ServiceHostingPrecedences.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingPrecedences")
+		}
+		return err
 	}
 
 	return nil

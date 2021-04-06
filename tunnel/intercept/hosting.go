@@ -24,7 +24,6 @@ type healthChecksProvider interface {
 
 type serviceConfiguration interface {
 	healthChecksProvider
-	SetListenOptions(options *ziti.ListenOptions)
 	GetDialTimeout(defaultTimeout time.Duration) time.Duration
 	GetProtocol(options map[string]interface{}) (string, error)
 	GetAddress(options map[string]interface{}) (string, error)
@@ -41,12 +40,9 @@ func createHostingContexts(service *entities.Service, identity *edge.CurrentIden
 }
 
 func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config serviceConfiguration) *hostingContext {
-	options := getDefaultOptions(identity)
-	config.SetListenOptions(options)
-
 	return &hostingContext{
 		service:     service,
-		options:     options,
+		options:     getDefaultOptions(service, identity),
 		dialTimeout: config.GetDialTimeout(5 * time.Second),
 		config:      config,
 	}
@@ -156,10 +152,23 @@ func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool
 	return self.dialAddress(options, protocol, address+":"+port)
 }
 
-func getDefaultOptions(identity *edge.CurrentIdentity) *ziti.ListenOptions {
+func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity) *ziti.ListenOptions {
 	options := ziti.DefaultListenOptions()
 	options.ManualStart = true
 	options.Precedence = ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
 	options.Cost = identity.DefaultHostingCost
+
+	if val, ok := identity.ServiceHostingPrecedences[service.Id]; ok {
+		if strVal, ok := val.(string); ok {
+			options.Precedence = ziti.GetPrecedenceForLabel(strVal)
+		}
+	}
+
+	if val, ok := identity.ServiceHostingCosts[service.Id]; ok {
+		if floatVal, ok := val.(float64); ok {
+			options.Cost = uint16(floatVal)
+		}
+	}
+
 	return options
 }

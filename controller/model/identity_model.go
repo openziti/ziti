@@ -45,28 +45,32 @@ type SdkInfo struct {
 
 type Identity struct {
 	models.BaseEntity
-	Name                     string
-	IdentityTypeId           string
-	IsDefaultAdmin           bool
-	IsAdmin                  bool
-	RoleAttributes           []string
-	EnvInfo                  *EnvInfo
-	SdkInfo                  *SdkInfo
-	HasHeartbeat             bool
-	DefaultHostingPrecedence ziti.Precedence
-	DefaultHostingCost       uint16
+	Name                      string
+	IdentityTypeId            string
+	IsDefaultAdmin            bool
+	IsAdmin                   bool
+	RoleAttributes            []string
+	EnvInfo                   *EnvInfo
+	SdkInfo                   *SdkInfo
+	HasHeartbeat              bool
+	DefaultHostingPrecedence  ziti.Precedence
+	DefaultHostingCost        uint16
+	ServiceHostingPrecedences map[string]ziti.Precedence
+	ServiceHostingCosts       map[string]uint16
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
-		BaseExtEntity:            *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:                     entity.Name,
-		IdentityTypeId:           entity.IdentityTypeId,
-		IsDefaultAdmin:           entity.IsDefaultAdmin,
-		IsAdmin:                  entity.IsAdmin,
-		RoleAttributes:           entity.RoleAttributes,
-		DefaultHostingPrecedence: entity.DefaultHostingPrecedence,
-		DefaultHostingCost:       entity.DefaultHostingCost,
+		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:                      entity.Name,
+		IdentityTypeId:            entity.IdentityTypeId,
+		IsDefaultAdmin:            entity.IsDefaultAdmin,
+		IsAdmin:                   entity.IsAdmin,
+		RoleAttributes:            entity.RoleAttributes,
+		DefaultHostingPrecedence:  entity.DefaultHostingPrecedence,
+		DefaultHostingCost:        entity.DefaultHostingCost,
+		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
+		ServiceHostingCosts:       entity.ServiceHostingCosts,
 	}
 
 	if entity.EnvInfo != nil {
@@ -147,12 +151,14 @@ func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, chec
 
 func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
-		Name:                     entity.Name,
-		IdentityTypeId:           entity.IdentityTypeId,
-		BaseExtEntity:            *boltz.NewExtEntity(entity.Id, entity.Tags),
-		RoleAttributes:           entity.RoleAttributes,
-		DefaultHostingPrecedence: entity.DefaultHostingPrecedence,
-		DefaultHostingCost:       entity.DefaultHostingCost,
+		Name:                      entity.Name,
+		IdentityTypeId:            entity.IdentityTypeId,
+		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
+		RoleAttributes:            entity.RoleAttributes,
+		DefaultHostingPrecedence:  entity.DefaultHostingPrecedence,
+		DefaultHostingCost:        entity.DefaultHostingCost,
+		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
+		ServiceHostingCosts:       entity.ServiceHostingCosts,
 	}
 
 	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
@@ -191,6 +197,8 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.HasHeartbeat = handler.GetEnv().GetHandlers().Identity.IsActive(entity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
+	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences
+	entity.ServiceHostingCosts = boltIdentity.ServiceHostingCosts
 
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 

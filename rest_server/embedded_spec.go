@@ -8342,6 +8342,12 @@ func init() {
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -8372,7 +8378,9 @@ func init() {
             "roleAttributes",
             "hasEdgeRouterConnection",
             "hasApiSession",
-            "isMfaEnabled"
+            "isMfaEnabled",
+            "serviceHostingPrecedences",
+            "serviceHostingCosts"
           ],
           "properties": {
             "authenticators": {
@@ -8413,6 +8421,12 @@ func init() {
             },
             "sdkInfo": {
               "$ref": "#/definitions/sdkInfo"
+            },
+            "serviceHostingCosts": {
+              "$ref": "#/definitions/terminatorCostMap"
+            },
+            "serviceHostingPrecedences": {
+              "$ref": "#/definitions/terminatorPrecedenceMap"
             },
             "type": {
               "$ref": "#/definitions/entityRef"
@@ -8514,6 +8528,12 @@ func init() {
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -8575,6 +8595,12 @@ func init() {
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
+        },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -10389,8 +10415,13 @@ func init() {
     },
     "terminatorCost": {
       "type": "integer",
-      "maximum": 65535,
-      "x-nullable": true
+      "maximum": 65535
+    },
+    "terminatorCostMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/terminatorCost"
+      }
     },
     "terminatorCreate": {
       "type": "object",
@@ -10556,6 +10587,12 @@ func init() {
         "required",
         "failed"
       ]
+    },
+    "terminatorPrecedenceMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/terminatorPrecedence"
+      }
     },
     "terminatorUpdate": {
       "type": "object",
@@ -28548,6 +28585,12 @@ func init() {
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -28578,7 +28621,9 @@ func init() {
             "roleAttributes",
             "hasEdgeRouterConnection",
             "hasApiSession",
-            "isMfaEnabled"
+            "isMfaEnabled",
+            "serviceHostingPrecedences",
+            "serviceHostingCosts"
           ],
           "properties": {
             "authenticators": {
@@ -28619,6 +28664,12 @@ func init() {
             },
             "sdkInfo": {
               "$ref": "#/definitions/sdkInfo"
+            },
+            "serviceHostingCosts": {
+              "$ref": "#/definitions/terminatorCostMap"
+            },
+            "serviceHostingPrecedences": {
+              "$ref": "#/definitions/terminatorPrecedenceMap"
             },
             "type": {
               "$ref": "#/definitions/entityRef"
@@ -28720,6 +28771,12 @@ func init() {
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         },
@@ -28781,6 +28838,12 @@ func init() {
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
+        },
+        "serviceHostingCosts": {
+          "$ref": "#/definitions/terminatorCostMap"
+        },
+        "serviceHostingPrecedences": {
+          "$ref": "#/definitions/terminatorPrecedenceMap"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -30596,8 +30659,13 @@ func init() {
     "terminatorCost": {
       "type": "integer",
       "maximum": 65535,
-      "minimum": 0,
-      "x-nullable": true
+      "minimum": 0
+    },
+    "terminatorCostMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/terminatorCost"
+      }
     },
     "terminatorCreate": {
       "type": "object",
@@ -30763,6 +30831,12 @@ func init() {
         "required",
         "failed"
       ]
+    },
+    "terminatorPrecedenceMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/terminatorPrecedence"
+      }
     },
     "terminatorUpdate": {
       "type": "object",

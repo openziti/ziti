@@ -44,10 +44,9 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		Identity:       terminator.Identity,
 		IdentitySecret: terminator.IdentitySecret,
 		Precedence:     xt.GetPrecedenceForName(string(terminator.Precedence)),
+		Cost:           uint16(terminator.Cost),
 	}
-	if terminator.Cost != nil {
-		ret.Cost = uint16(*terminator.Cost)
-	}
+
 	return ret
 }
 
@@ -62,9 +61,7 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 		Binding:    stringz.OrEmpty(terminator.Binding),
 		Address:    stringz.OrEmpty(terminator.Address),
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
-	}
-	if terminator.Cost != nil {
-		ret.Cost = uint16(*terminator.Cost)
+		Cost:       uint16(terminator.Cost),
 	}
 	return ret
 }
@@ -80,9 +77,7 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 		Binding:    terminator.Binding,
 		Address:    terminator.Address,
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
-	}
-	if terminator.Cost != nil {
-		ret.Cost = uint16(*terminator.Cost)
+		Cost:       uint16(terminator.Cost),
 	}
 	return ret
 }
@@ -121,21 +116,17 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 	}
 
 	ret := &rest_model.TerminatorDetail{
-		BaseEntity: BaseEntityToRestModel(terminator, TerminatorLinkFactory),
-		ServiceID:  &terminator.Service,
-		Service:    ToEntityRef(service.Name, service, ServiceLinkFactory),
-		RouterID:   &terminator.Router,
-		Router:     ToEntityRef(router.Name, router, TransitRouterLinkFactory),
-		Binding:    &terminator.Binding,
-		Address:    &terminator.Address,
-		Identity:   &terminator.Identity,
+		BaseEntity:  BaseEntityToRestModel(terminator, TerminatorLinkFactory),
+		ServiceID:   &terminator.Service,
+		Service:     ToEntityRef(service.Name, service, ServiceLinkFactory),
+		RouterID:    &terminator.Router,
+		Router:      ToEntityRef(router.Name, router, TransitRouterLinkFactory),
+		Binding:     &terminator.Binding,
+		Address:     &terminator.Address,
+		Identity:    &terminator.Identity,
+		Cost:        rest_model.TerminatorCost(int64(terminator.Cost)),
+		DynamicCost: rest_model.TerminatorCost(xt.GlobalCosts().GetDynamicCost(terminator.Id)),
 	}
-
-	cost := rest_model.TerminatorCost(int64(terminator.Cost))
-	ret.Cost = &cost
-
-	dynamicCost := rest_model.TerminatorCost(xt.GlobalCosts().GetDynamicCost(terminator.Id))
-	ret.DynamicCost = &dynamicCost
 
 	precedence := terminator.Precedence
 	if precedence.IsRequired() {
