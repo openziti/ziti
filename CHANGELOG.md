@@ -1,3 +1,75 @@
+# Release 0.19.9
+
+## What's New
+
+* Converged Tunneler/Router (Beta 2)
+    * intercept.v1 support (also in ziti-tunnel)
+    * support for setting per-service hosting cost/precedence on identity
+* Identites and edge routers now support appData, which is tag data consumable by sdks
+* Edge Router Policies now expose the `isSystem` flag for system managed policies
+* ziti-tunnel no longer supports tun mode. It has been superceded by tproxy mode
+
+## Fixes
+
+* Fix deadlock in ziti-router which would stop new connections from being established after an api session is removed
+* Fix id extraction for data plane link latency metrics
+* Fix id extraction for ctrl plane link latency metrics
+* ziti-tunnel wasn't asking for host.v1/host.v2 configs
+
+## Per-service Cost/Precedence
+
+Previously support was adding for setting the default cost and precedence that an identity would use when hosting services. Now, in addition to setting default values, costs and precedences can be set per-service. These are exposed as maps keyed by service. There is one map for costs and another for precedences. There is also CLI support for setting these values.
+
+Example creating an identity:
+
+```
+ziti edge create identity service test2 --default-hosting-cost 10 --default-hosting-precedence failed --service-costs loop=20,echo=30 --service-precedences loop=default,echo=required
+
+```
+
+When viewing the identity, these values can be seen:
+
+```
+    "id": "-qJRZFqV8t",
+    "tags": {},
+    "updatedAt": "2021-04-05T16:54:42.763Z",
+    "authenticators": {},
+    "defaultHostingCost": 10,
+    "defaultHostingPrecedence": "failed",
+    "envInfo": {},
+    "hasApiSession": false,
+    "hasEdgeRouterConnection": false,
+    "isAdmin": false,
+    "isDefaultAdmin": false,
+    "isMfaEnabled": false,
+    "name": "test2",
+    "roleAttributes": null,
+    "sdkInfo": {},
+    "serviceHostingCosts": {
+        "vH3QndzRYt": 20,
+        "wAnuyO3PmI": 30
+    },
+    "serviceHostingPrecedences": {
+        "vH3QndzRYt": "default",
+        "wAnuyO3PmI": "required"
+    },
+
+```
+
+Note that this mechanism replaces setting cost and precedence via the host.v1/host.v2 config types `listenOptions`. Those values will be ignored, and may in future be removed from the schemas.
+
+## Identity/Edge Router app data
+
+We have an existing tags mechanism, which can be used by system administrators to annotate ziti entities in whatever is useful to them. Tags are an administrator function and are not meant to be visible to SDKs and SDK applications. If an administrator wants to provide custom data for services to the SDK they can use config types and configs for that purpose. Up until now however, there hasn't been a means to annotate identities and edge routers, which are the other two entities visible to SDKs, with data that the SDKs can consume. 
+0.19.9 introduces `appData` on identities and edge-routers. `appData` has the same structure as `tags`, but is intended to allow administrators to push custom data on identities and edge routers to SDKs. An example use is for tunnelers. The `sourceIp` can contain template information, which can refer back to the `appData` for the tunneler's identity. 
+
+The CLI supports setting appData on identities and edge routers.
+
+```
+ziti edge create identity service myIdentity --tags office=Regional5,device=Laptop --app-data ip=1.1.1.1,QoS=voip
+
+```
+
 # Release 0.19.8
 
 ## What's New
