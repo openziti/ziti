@@ -168,3 +168,7 @@ func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error)
 	ctrl.cache.Set(id, entity)
 	return entity, nil
 }
+
+func(ctrl *RouterController) ClearCache(id string) {
+	ctrl.cache.Remove(id)
+}
