@@ -41,6 +41,8 @@ func (provider *dbProvider) GetServiceCache() network.Cache {
 	panic("implement me")
 }
 
+func (provider *dbProvider) NotifyRouterRenamed(_, _ string) {}
+
 func (provider *dbProvider) GetStores() *db.Stores {
 	return provider.stores
 }

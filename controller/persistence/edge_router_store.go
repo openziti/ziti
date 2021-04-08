@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
@@ -25,6 +26,7 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
 const (
@@ -171,6 +173,19 @@ func (store *edgeRouterStoreImpl) initializeLinked() {
 		stores:                store.stores,
 		routerNameSymbol:      store.GetSymbol(FieldName),
 		tunnelerEnabledSymbol: store.GetSymbol(FieldEdgeRouterIsTunnelerEnabled),
+	})
+
+	store.EventEmmiter.AddListener(boltz.EventUpdate, func(i ...interface{}) {
+		if len(i) != 1 {
+			return
+		}
+		router, ok := i[0].(*EdgeRouter)
+		if !ok {
+			pfxlog.Logger().Warnf("unexpected type in edge router event: %v", reflect.TypeOf(i[0]))
+			return
+		}
+		store.stores.DbProvider.NotifyRouterRenamed(router.Id, router.Name)
+		pfxlog.Logger().WithField("id", router).Debugf("notified fabric of router updated")
 	})
 }
 
