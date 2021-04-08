@@ -896,6 +896,20 @@ func (network *Network) GetServiceCache() Cache {
 	return network.Services
 }
 
+func (network *Network) NotifyRouterRenamed(id, name string) {
+	if cached, _ := network.Routers.cache.Get(id); cached != nil {
+		if cachedRouter, ok := cached.(*db.Router); ok {
+			cachedRouter.Name = name
+		}
+	}
+
+	if cached, _ := network.Routers.connected.Get(id); cached != nil {
+		if cachedRouter, ok := cached.(*db.Router); ok {
+			cachedRouter.Name = name
+		}
+	}
+}
+
 var DbSnapshotTooFrequentError = dbSnapshotTooFrequentError{}
 
 type dbSnapshotTooFrequentError struct{}
