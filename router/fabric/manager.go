@@ -224,7 +224,7 @@ func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack
 func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
 	sm.sessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		if !exist {
-			return 0
+			return uint32(0)
 		}
 		return valueInMap.(uint32) + 1
 	})
@@ -361,7 +361,6 @@ func (sm *StateManagerImpl) flushRecentlyRemoved() {
 
 		if remove {
 			toRemove = append(toRemove, key)
-
 		}
 	})
 

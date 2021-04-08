@@ -29,6 +29,7 @@ import (
 type DbProvider interface {
 	GetDb() boltz.Db
 	GetServiceCache() network.Cache
+	NotifyRouterRenamed(id, name string)
 	GetStores() *db.Stores
 	GetControllers() *network.Controllers
 }

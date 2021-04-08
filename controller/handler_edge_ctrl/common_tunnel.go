@@ -53,7 +53,7 @@ func (self *baseTunnelRequestContext) getTunnelState() *TunnelState {
 
 func (self *baseTunnelRequestContext) loadIdentity() {
 	if self.err == nil {
-		self.identity, self.err = self.handler.getAppEnv().GetHandlers().Identity.ReadByName(self.sourceRouter.Name)
+		self.identity, self.err = self.handler.getAppEnv().GetHandlers().Identity.Read(self.sourceRouter.Id)
 		if self.err != nil {
 			return
 		}

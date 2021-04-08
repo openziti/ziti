@@ -45,6 +45,8 @@ func (p *testDbProvider) GetServiceCache() network.Cache {
 	return p
 }
 
+func (p *testDbProvider) NotifyRouterRenamed(_, _ string) {}
+
 func (p *testDbProvider) RemoveFromCache(_ string) {
 }
 
