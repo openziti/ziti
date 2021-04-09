@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/channel2"
@@ -167,4 +168,14 @@ func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error)
 
 	ctrl.cache.Set(id, entity)
 	return entity, nil
+}
+
+func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
+	if val, ok := ctrl.cache.Get(id); ok {
+		if router, ok := val.(*Router); ok {
+			router.Fingerprint = &fingerprint
+		} else {
+			pfxlog.Logger().Errorf("encountered %t in router cache, expected *Router", val)
+		}
+	}
 }
