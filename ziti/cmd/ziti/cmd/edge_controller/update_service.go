@@ -35,6 +35,7 @@ type updateServiceOptions struct {
 	terminatorStrategy string
 	roleAttributes     []string
 	encryption         encryptionVar
+	configs            []string
 }
 
 func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -66,6 +67,7 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 		"Set role attributes of the service. Use --role-attributes '' to set an empty list")
 	options.encryption.Set("ON")
 	cmd.Flags().VarP(&options.encryption, "encryption", "e", "Controls end-to-end encryption for the service")
+	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -97,6 +99,15 @@ func runUpdateService(o *updateServiceOptions) error {
 
 	if o.Cmd.Flags().Changed("encryption") {
 		setJSONValue(entityData, o.encryption.Get(), "encryptionRequired")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("configs") {
+		configs, err := mapNamesToIDs("configs", o.edgeOptions, o.configs...)
+		if err != nil {
+			return err
+		}
+		setJSONValue(entityData, configs, "configs")
 		change = true
 	}
 

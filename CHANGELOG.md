@@ -1,3 +1,12 @@
+# Release 0.19.10
+
+## What's New
+
+* Fixed issue where edge router renames didn't propagate to fabric
+* Fixed issue where gateway couldn't dial after router rename
+* Allowed parsing identities where values were not URIs
+* Allow updating which configs are used by services
+
 # Release 0.19.9
 
 ## What's New
