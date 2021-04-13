@@ -53,15 +53,10 @@ func SetDnsInterceptIpRange(cidr string) error {
 
 func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet, error) {
 	log := pfxlog.Logger()
-	// hostname is an ip address, return it
-	if parsedIP := net.ParseIP(hostname); parsedIP != nil {
-		prefixLen := addrBits(parsedIP)
-		ipNet := &net.IPNet{IP: parsedIP, Mask: net.CIDRMask(prefixLen, prefixLen)}
-		return parsedIP, ipNet, nil
-	}
 
-	if parsedIP, cidr, err := net.ParseCIDR(hostname); err == nil {
-		return parsedIP, cidr, nil
+	ip, ipNet, err := utils.GetDialIP(hostname)
+	if err == nil {
+		return ip, ipNet, err
 	}
 
 	// - apparently not an IP address, assume hostname and attempt lookup:
@@ -72,7 +67,7 @@ func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet,
 		if len(addrs) > 0 {
 			ip := addrs[0].To4()
 			_ = resolver.AddHostname(hostname, ip)
-			prefixLen := addrBits(ip)
+			prefixLen := utils.AddrBits(ip)
 			ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
 			return addrs[0], ipNet, nil
 		}
@@ -80,12 +75,12 @@ func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet,
 		log.Debugf("net.LookupIp(%s) failed: %s", hostname, err)
 	}
 
-	ip, _ := utils.NextIP(dnsIpLow, dnsIpHigh)
+	ip, _ = utils.NextIP(dnsIpLow, dnsIpHigh)
 	if ip == nil {
 		return nil, nil, fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
 	_ = resolver.AddHostname(hostname, ip)
-	prefixLen := addrBits(ip)
-	ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
+	prefixLen := utils.AddrBits(ip)
+	ipNet = &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
 	return ip, ipNet, nil
 }

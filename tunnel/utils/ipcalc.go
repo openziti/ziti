@@ -17,6 +17,8 @@
 package utils
 
 import (
+	"github.com/michaelquigley/pfxlog"
+	"github.com/pkg/errors"
 	"net"
 )
 
@@ -51,4 +53,34 @@ func IncIP(ip net.IP) {
 			break
 		}
 	}
+}
+
+// Return the length of a full prefix (no subnetting) for the given IP address.
+// Returns 32 for ipv4 addresses, and 128 for ipv6 addresses.
+func AddrBits(ip net.IP) int {
+	if ip == nil {
+		return 0
+	} else if ip.To4() != nil {
+		return net.IPv4len * 8
+	} else if ip.To16() != nil {
+		return net.IPv6len * 8
+	}
+
+	pfxlog.Logger().Infof("invalid IP address %s", ip.String())
+	return 0
+}
+
+func GetDialIP(addr string) (net.IP, *net.IPNet, error) {
+	// hostname is an ip address, return it
+	if parsedIP := net.ParseIP(addr); parsedIP != nil {
+		prefixLen := AddrBits(parsedIP)
+		ipNet := &net.IPNet{IP: parsedIP, Mask: net.CIDRMask(prefixLen, prefixLen)}
+		return parsedIP, ipNet, nil
+	}
+
+	if parsedIP, cidr, err := net.ParseCIDR(addr); err == nil {
+		return parsedIP, cidr, nil
+	}
+
+	return nil, nil, errors.Errorf("could not parse '%s' as IP or CIDR", addr)
 }

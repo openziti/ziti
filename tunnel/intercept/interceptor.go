@@ -17,7 +17,6 @@
 package intercept
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
@@ -71,21 +70,6 @@ func (addr *InterceptAddress) HighPort() uint16 {
 
 func (addr *InterceptAddress) Contains(ip net.IP, port uint16) bool {
 	return addr.cidr.Contains(ip) && port >= addr.lowPort && port <= addr.highPort
-}
-
-// Return the length of a full prefix (no subnetting) for the given IP address.
-// Returns 32 for ipv4 addresses, and 128 for ipv6 addresses.
-func addrBits(ip net.IP) int {
-	if ip == nil {
-		return 0
-	} else if ip.To4() != nil {
-		return net.IPv4len * 8
-	} else if ip.To16() != nil {
-		return net.IPv6len * 8
-	}
-
-	pfxlog.Logger().Infof("invalid IP address %s", ip.String())
-	return 0
 }
 
 func GetInterceptAddresses(service *entities.Service, protocol string, resolver dns.Resolver) ([]*InterceptAddress, error) {

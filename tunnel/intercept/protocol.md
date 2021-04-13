@@ -10,19 +10,19 @@ The JSON map may contain the following fields:
 ### dst_protocol
 
 The protocol (tcp/udp) of the intercepted traffic. Used by the hosting tunneler if the configuration
-has `dialInterceptedProtocol`. When the service is dialed, it will forward using the same protocol
+has `forwardProtocol`. When the service is dialed, it will forward using the same protocol
 that was intercepted.
 
 ### dst_ip
 
 The destination IP address of the intercepted traffic. Used by the hosting tunneler if the
-configuration has `dialInterceptedAddress`. When the service is dialed, it will forward to the same
+configuration has `forwardAddress`. When the service is dialed, it will forward to the same
 IP address that was intercepted.
 
 ### dst_port
 
 The destination port of the intercepted traffic. Used by the hosting tunneler if the configuration
-has `dialInterceptedPort`. When the service is dialed, it will forward to the same port that was
+has `forwardPort`. When the service is dialed, it will forward to the same port that was
 intercepted.
 
 ### src_ip

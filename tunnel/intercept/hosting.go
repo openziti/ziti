@@ -2,9 +2,12 @@ package intercept
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
+	"github.com/openziti/edge/tunnel/router"
+	"github.com/openziti/edge/tunnel/utils"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"net"
@@ -22,29 +25,60 @@ type healthChecksProvider interface {
 	GetHttpChecks() []*health.HttpCheckDefinition
 }
 
-type serviceConfiguration interface {
-	healthChecksProvider
-	GetDialTimeout(defaultTimeout time.Duration) time.Duration
-	GetProtocol(options map[string]interface{}) (string, error)
-	GetAddress(options map[string]interface{}) (string, error)
-	GetPort(options map[string]interface{}) (string, error)
-}
-
-func createHostingContexts(service *entities.Service, identity *edge.CurrentIdentity) []tunnel.HostingContext {
+func createHostingContexts(service *entities.Service, identity *edge.CurrentIdentity, tracker AddressTracker) []tunnel.HostingContext {
 	var result []tunnel.HostingContext
 	for _, t := range service.HostV2Config.Terminators {
-		context := newDefaultHostingContext(identity, service, t)
+		context := newDefaultHostingContext(identity, service, t, tracker)
+		if context == nil {
+			for _, c := range result {
+				c.OnClose()
+			}
+			return nil
+		}
 		result = append(result, context)
 	}
 	return result
 }
 
-func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config serviceConfiguration) *hostingContext {
+func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config *entities.HostV2Terminator, tracker AddressTracker) *hostingContext {
+	log := pfxlog.Logger().WithField("service", service.Name)
+
+	if config.ForwardProtocol && len(config.AllowedProtocols) < 1 {
+		log.Error("configuration specifies 'ForwardProtocol` with zero-lengh 'AllowedProtocols'")
+		return nil
+	}
+	if config.ForwardAddress && len(config.AllowedAddresses) < 1 {
+		log.Error("configuration specifies 'ForwardAddress` with zero-lengh 'AllowedAddresses'")
+		return nil
+	}
+	if config.ForwardPort && len(config.AllowedPortRanges) < 1 {
+		log.Error("configuration specifies 'ForwardPort` with zero-lengh 'AllowedPortRanges'")
+		return nil
+	}
+
+	// establish routes for allowedSourceAddresses
+	routes, err := config.GetAllowedSourceAddressRoutes()
+	if err != nil {
+		log.Errorf("failed adding routes for allowed source addresses: %v", err)
+		return nil
+	}
+
+	for _, ipNet := range routes {
+		log.Infof("adding local route for allowed source address '%s'", ipNet.String())
+		err = router.AddLocalAddress(ipNet, "lo")
+		if err != nil {
+			log.Errorf("failed to add local route for allowed source address '%s': %v", ipNet.String(), err)
+			return nil
+		}
+		tracker.AddAddress(ipNet.String())
+	}
+
 	return &hostingContext{
 		service:     service,
 		options:     getDefaultOptions(service, identity),
 		dialTimeout: config.GetDialTimeout(5 * time.Second),
 		config:      config,
+		addrTracker: tracker,
 	}
 
 }
@@ -52,9 +86,10 @@ func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.
 type hostingContext struct {
 	service     *entities.Service
 	options     *ziti.ListenOptions
-	config      serviceConfiguration
+	config      *entities.HostV2Terminator
 	dialTimeout time.Duration
 	onClose     func()
+	addrTracker AddressTracker
 }
 
 func (self *hostingContext) ServiceName() string {
@@ -106,6 +141,17 @@ func (self *hostingContext) SetCloseCallback(f func()) {
 }
 
 func (self *hostingContext) OnClose() {
+	log := pfxlog.Logger().WithField("service", self.service.Name)
+	for _, addr := range self.config.AllowedSourceAddresses {
+		_, ipNet, err := utils.GetDialIP(addr)
+		if err != nil {
+			log.Errorf("failed to")
+		}
+		if self.addrTracker.RemoveAddress(ipNet.String()) {
+			err = router.RemoveLocalAddress(ipNet, "lo")
+		}
+	}
+
 	if self.onClose != nil {
 		self.onClose()
 	}

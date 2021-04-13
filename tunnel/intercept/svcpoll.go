@@ -38,13 +38,11 @@ import (
 	"time"
 )
 
-var sourceIpTemplKey = "$" + tunnel.SourceIpKey
-var sourcePortTemplKey = "$" + tunnel.SourcePortKey
-var sourceAddrTemplKey = sourceIpTemplKey + ":" + sourcePortTemplKey
-
-var destIpTemplKey = "$" + tunnel.DestinationIpKey
-var destPortTemplKey = "$" + tunnel.DestinationPortKey
-var destAddrTemplKey = destIpTemplKey + ":" + destPortTemplKey
+// variables for substitutions in intercept.v1 sourceIp property
+var sourceIpVar = "$" + tunnel.SourceIpKey
+var sourcePortVar = "$" + tunnel.SourcePortKey
+var dstIpVar = "$" + tunnel.DestinationIpKey
+var destPortVar = "$" + tunnel.DestinationPortKey
 
 func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
 	return &ServiceListener{
@@ -177,7 +175,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 
 		if found && err == nil {
 			log.Infof("Hosting newly available service %s", svc.Name)
-			go self.host(svc)
+			go self.host(svc, self.addrTracker)
 		} else if !found {
 			log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
 		} else if err != nil {
@@ -211,7 +209,7 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 	}
 }
 
-func (self *ServiceListener) host(svc *entities.Service) {
+func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker) {
 	logger := pfxlog.Logger().WithField("service", svc.Name)
 
 	currentIdentity, err := self.provider.GetCurrentIdentity()
@@ -220,7 +218,7 @@ func (self *ServiceListener) host(svc *entities.Service) {
 		return
 	}
 
-	hostContexts := createHostingContexts(svc, currentIdentity)
+	hostContexts := createHostingContexts(svc, currentIdentity, tracker)
 
 	var hostControls []tunnel.HostControl
 
@@ -265,16 +263,9 @@ func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) 
 
 	sourceIp := *svc.InterceptV1Config.SourceIp
 
-	if sourceIp == sourceAddrTemplKey {
+	if sourceIp == sourceIpVar+":"+sourcePortVar {
 		svc.SourceAddrProvider = func(sourceAddr, _ net.Addr) string {
 			return sourceAddr.String()
-		}
-		return nil
-	}
-
-	if sourceIp == destAddrTemplKey {
-		svc.SourceAddrProvider = func(_, destAddr net.Addr) string {
-			return destAddr.String()
 		}
 		return nil
 	}
@@ -299,10 +290,10 @@ func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) 
 	svc.SourceAddrProvider = func(sourceAddr, destAddr net.Addr) string {
 		sourceAddrIp, sourceAddrPort := tunnel.GetIpAndPort(sourceAddr)
 		destAddrIp, destAddrPort := tunnel.GetIpAndPort(destAddr)
-		result := strings.ReplaceAll(sourceIp, sourceIpTemplKey, sourceAddrIp)
-		result = strings.ReplaceAll(result, sourcePortTemplKey, sourceAddrPort)
-		result = strings.ReplaceAll(result, destIpTemplKey, destAddrIp)
-		result = strings.ReplaceAll(result, destPortTemplKey, destAddrPort)
+		result := strings.ReplaceAll(sourceIp, sourceIpVar, sourceAddrIp)
+		result = strings.ReplaceAll(result, sourcePortVar, sourceAddrPort)
+		result = strings.ReplaceAll(result, dstIpVar, destAddrIp)
+		result = strings.ReplaceAll(result, destPortVar, destAddrPort)
 		return result
 	}
 

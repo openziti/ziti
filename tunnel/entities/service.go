@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
+	"github.com/openziti/edge/tunnel/utils"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
@@ -72,12 +74,16 @@ type HostV1ListenOptions struct {
 }
 
 type HostV1Config struct {
-	Protocol                string
-	DialInterceptedProtocol bool
-	Address                 string
-	DialInterceptedAddress  bool
-	Port                    int
-	DialInterceptedPort     bool
+	Protocol               string
+	ForwardProtocol        bool
+	AllowedProtocols       []string
+	Address                string
+	ForwardAddress         bool
+	AllowedAddresses       []string
+	Port                   int
+	ForwardPort            bool
+	AllowedPortRanges      []*PortRange
+	AllowedSourceAddresses []string
 
 	PortChecks []*health.PortCheckDefinition
 	HttpChecks []*health.HttpCheckDefinition
@@ -87,14 +93,18 @@ type HostV1Config struct {
 
 func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 	terminator := &HostV2Terminator{
-		Protocol:                self.Protocol,
-		DialInterceptedProtocol: self.DialInterceptedProtocol,
-		Address:                 self.Address,
-		DialInterceptedAddress:  self.DialInterceptedAddress,
-		Port:                    self.Port,
-		DialInterceptedPort:     self.DialInterceptedPort,
-		PortChecks:              self.PortChecks,
-		HttpChecks:              self.HttpChecks,
+		Protocol:               self.Protocol,
+		ForwardProtocol:        self.ForwardProtocol,
+		AllowedProtocols:       self.AllowedProtocols,
+		Address:                self.Address,
+		ForwardAddress:         self.ForwardAddress,
+		AllowedAddresses:       self.AllowedAddresses,
+		Port:                   self.Port,
+		ForwardPort:            self.ForwardPort,
+		AllowedPortRanges:      self.AllowedPortRanges,
+		AllowedSourceAddresses: self.AllowedSourceAddresses,
+		PortChecks:             self.PortChecks,
+		HttpChecks:             self.HttpChecks,
 	}
 
 	if self.ListenOptions != nil {
@@ -126,12 +136,16 @@ type HostV2ListenOptions struct {
 }
 
 type HostV2Terminator struct {
-	Protocol                string
-	DialInterceptedProtocol bool
-	Address                 string
-	DialInterceptedAddress  bool
-	Port                    int
-	DialInterceptedPort     bool
+	Protocol               string
+	ForwardProtocol        bool
+	AllowedProtocols       []string
+	Address                string
+	ForwardAddress         bool
+	AllowedAddresses       []string
+	Port                   int
+	ForwardPort            bool
+	AllowedPortRanges      []*PortRange
+	AllowedSourceAddresses []string
 
 	PortChecks []*health.PortCheckDefinition
 	HttpChecks []*health.HttpCheckDefinition
@@ -167,24 +181,68 @@ func (self *HostV2Terminator) getValue(options map[string]interface{}, key strin
 }
 
 func (self *HostV2Terminator) GetProtocol(options map[string]interface{}) (string, error) {
-	if self.DialInterceptedProtocol {
-		return self.getValue(options, tunnel.DestinationProtocolKey)
+	if self.ForwardProtocol {
+		protocol, err := self.getValue(options, tunnel.DestinationProtocolKey)
+		if err != nil {
+			return protocol, err
+		}
+		if stringz.Contains(self.AllowedProtocols, protocol) {
+			return protocol, nil
+		}
+		return "", errors.Errorf("protocol '%s' is not in allowed protocols", protocol)
 	}
 	return self.Protocol, nil
 }
 
 func (self *HostV2Terminator) GetAddress(options map[string]interface{}) (string, error) {
-	if self.DialInterceptedAddress {
-		return self.getValue(options, tunnel.DestinationIpKey)
+	if self.ForwardAddress {
+		address, err := self.getValue(options, tunnel.DestinationIpKey)
+		if err != nil {
+			return address, err
+		}
+		ip := net.ParseIP(address)
+		for _, allowed := range self.AllowedAddresses {
+			_, route, err := utils.GetDialIP(allowed)
+			if err != nil {
+				return "", errors.Errorf("failed to parse allowed address '%s': %v", allowed, err)
+			}
+			if route.Contains(ip) {
+				return address, nil
+			}
+		}
+		return "", errors.Errorf("address '%s' is not in allowed addresses", address)
 	}
 	return self.Address, nil
 }
 
 func (self *HostV2Terminator) GetPort(options map[string]interface{}) (string, error) {
-	if self.DialInterceptedPort {
-		return self.getValue(options, tunnel.DestinationPortKey)
+	if self.ForwardPort {
+		portStr, err := self.getValue(options, tunnel.DestinationPortKey)
+		if err != nil {
+			return portStr, err
+		}
+		port, err := strconv.Atoi(portStr)
+		for _, portRange := range self.AllowedPortRanges {
+			if uint16(port) >= portRange.Low && uint16(port) <= portRange.High {
+				return portStr, nil
+			}
+		}
+		return "", errors.Errorf("port %d is not in allowed port ranges", port)
 	}
 	return strconv.Itoa(self.Port), nil
+}
+
+func (self *HostV2Terminator) GetAllowedSourceAddressRoutes() ([]*net.IPNet, error) {
+	var routes []*net.IPNet
+	for _, addr := range self.AllowedSourceAddresses {
+		// need to get CIDR from address - iputils.getInterceptIp?
+		_, ipNet, err := utils.GetDialIP(addr)
+		if err != nil {
+			return nil, errors.Errorf("failed to parse allowed source address '%s': %v", addr, err)
+		}
+		routes = append(routes, ipNet)
+	}
+	return routes, nil
 }
 
 type HostV2Config struct {
