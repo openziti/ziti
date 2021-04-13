@@ -51,6 +51,9 @@ type PostureQueries struct {
 	// Required: true
 	PolicyID *string `json:"policyId"`
 
+	// policy type
+	PolicyType DialBind `json:"policyType,omitempty"`
+
 	// posture queries
 	// Required: true
 	PostureQueries []*PostureQuery `json:"postureQueries"`
@@ -65,6 +68,10 @@ func (m *PostureQueries) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePolicyID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePolicyType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -90,6 +97,22 @@ func (m *PostureQueries) validateIsPassing(formats strfmt.Registry) error {
 func (m *PostureQueries) validatePolicyID(formats strfmt.Registry) error {
 
 	if err := validate.Required("policyId", "body", m.PolicyID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureQueries) validatePolicyType(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.PolicyType) { // not required
+		return nil
+	}
+
+	if err := m.PolicyType.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("policyType")
+		}
 		return err
 	}
 

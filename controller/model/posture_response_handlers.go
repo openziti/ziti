@@ -134,18 +134,18 @@ func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId st
 				//if we have evaluated positive access before, don't do it again
 				if !isEvaluatedService {
 					validServices[session.ServiceId] = false
-					checkMap := handler.env.GetHandlers().EdgeService.GetPostureChecks(identityId, session.ServiceId)
+					policyPostureChecks := handler.env.GetHandlers().EdgeService.GetPolicyPostureChecks(identityId, session.ServiceId)
 
-					if len(checkMap) == 0 {
+					if len(policyPostureChecks) == 0 {
 						isValidService = true
 					} else {
-						for policyId, checks := range checkMap {
+						for policyId, checks := range policyPostureChecks {
 							isValidPolicy, isEvaluatedPolicy := validPolicies[policyId]
 
 							if !isEvaluatedPolicy { //not checked yet
 								validPolicies[policyId] = false
 								isValidPolicy = false
-								if ok, _ := handler.postureCache.Evaluate(identityId, apiSessionId, checks); ok {
+								if ok, _ := handler.postureCache.Evaluate(identityId, apiSessionId, checks.PostureChecks); ok {
 									isValidService = true
 									isValidPolicy = true
 								}

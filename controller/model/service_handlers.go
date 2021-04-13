@@ -284,8 +284,13 @@ func (handler *EdgeServiceHandler) Stream(query string, collect func(*ServiceDet
 	})
 }
 
-func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string) map[string][]*PostureCheck {
-	policyIdToChecks := map[string][]*PostureCheck{}
+type PolicyPostureChecks struct {
+	PostureChecks []*PostureCheck
+	PolicyType    persistence.PolicyType
+}
+
+func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
+	policyIdToChecks := map[string]*PolicyPostureChecks{}
 	postureCheckCache := map[string]*PostureCheck{}
 
 	servicePolicyStore := handler.env.GetStores().ServicePolicy
@@ -299,21 +304,32 @@ func (handler *EdgeServiceHandler) GetPostureChecks(identityId, serviceId string
 		})
 
 		for policyCursor.IsValid() {
-			policyId := policyCursor.Current()
+			policyIdBytes := policyCursor.Current()
+			policyIdStr := string(policyIdBytes)
 			policyCursor.Next()
 
-			//required to provide an entry for policies w/ no checks
-			policyIdToChecks[string(policyId)] = nil
+			policy, err := handler.env.GetStores().ServicePolicy.LoadOneById(tx, policyIdStr)
 
-			cursor := postureCheckLinks.IterateLinks(tx, policyId)
+			if err != nil {
+				pfxlog.Logger().Errorf("could not retrieve policy by id [%s] to create posture queries for service id [%s]", policyIdStr, serviceId)
+				continue
+			}
+
+			//required to provide an entry for policies w/ no checks
+			policyIdToChecks[policyIdStr] = &PolicyPostureChecks{
+				PostureChecks: []*PostureCheck{},
+				PolicyType:    policy.PolicyType,
+			}
+
+			cursor := postureCheckLinks.IterateLinks(tx, policyIdBytes)
 			for cursor.IsValid() {
 				checkId := string(cursor.Current())
 				if postureCheck, found := postureCheckCache[checkId]; !found {
 					postureCheck, _ := handler.env.GetHandlers().PostureCheck.Read(checkId)
 					postureCheckCache[checkId] = postureCheck
-					policyIdToChecks[string(policyId)] = append(policyIdToChecks[string(policyId)], postureCheck)
+					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
 				} else {
-					policyIdToChecks[string(policyId)] = append(policyIdToChecks[string(policyId)], postureCheck)
+					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
 				}
 				cursor.Next()
 			}

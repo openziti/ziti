@@ -285,7 +285,8 @@ func Test_PostureChecks(t *testing.T) {
 		domain := "domain1"
 		postureCheck := ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		dialPolicy := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		bindPolicy := ctx.AdminSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
 		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
@@ -308,18 +309,32 @@ func Test_PostureChecks(t *testing.T) {
 
 			querySet, err := entityService.Path("data.postureQueries").Children()
 			ctx.Req.NoError(err)
-			ctx.Req.Len(querySet, 1)
+			ctx.Req.Len(querySet, 2)
 
-			postureQueries, err := querySet[0].Path("postureQueries").Children()
+			var dialSet *gabs.Container
+			var bindSet *gabs.Container
+			if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
+				dialSet = querySet[0]
+				bindSet = querySet[1]
+			}  else {
+				dialSet = querySet[1]
+				bindSet = querySet[0]
+			}
+
+			ctx.Req.Equal(dialPolicy.policyType, dialSet.Path("policyType").Data().(string))
+			ctx.Req.Equal(bindPolicy.policyType, bindSet.Path("policyType").Data().(string))
+
+			postureQueries, err := dialSet.Path("postureQueries").Children()
 			ctx.Req.NoError(err)
 			ctx.Req.Len(postureQueries, 1)
 
 			ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
 			ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
 
+
 			t.Run("query is currently failing", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
+				ctx.Req.False(dialSet.Path("isPassing").Data().(bool))
 				ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
 			})
 		})
@@ -355,17 +370,44 @@ func Test_PostureChecks(t *testing.T) {
 
 				querySet, err := entityService.Path("data.postureQueries").Children()
 				ctx.Req.NoError(err)
-				ctx.Req.Len(querySet, 1)
+				ctx.Req.Len(querySet, 2)
 
-				postureQueries, err := querySet[0].Path("postureQueries").Children()
-				ctx.Req.NoError(err)
-				ctx.Req.Len(postureQueries, 1)
+				var dialSet *gabs.Container
+				var bindSet *gabs.Container
+				if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
+					dialSet = querySet[0]
+					bindSet = querySet[1]
+				}  else {
+					dialSet = querySet[1]
+					bindSet = querySet[0]
+				}
 
-				ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
-				ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+				t.Run("dial policy passes", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					postureQueries, err := dialSet.Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
 
-				ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
-				ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+					ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+					ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+					ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+				})
+
+				t.Run("bind policy passes", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					postureQueries, err := bindSet.Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+					ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+					ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+				})
+
 			})
 		})
 
@@ -387,17 +429,44 @@ func Test_PostureChecks(t *testing.T) {
 
 					querySet, err := entityService.Path("data.postureQueries").Children()
 					ctx.Req.NoError(err)
-					ctx.Req.Len(querySet, 1)
+					ctx.Req.Len(querySet, 2)
 
-					postureQueries, err := querySet[0].Path("postureQueries").Children()
-					ctx.Req.NoError(err)
-					ctx.Req.Len(postureQueries, 1)
+					var dialSet *gabs.Container
+					var bindSet *gabs.Container
+					if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
+						dialSet = querySet[0]
+						bindSet = querySet[1]
+					}  else {
+						dialSet = querySet[1]
+						bindSet = querySet[0]
+					}
 
-					ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
-					ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+					t.Run("dial passes", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						postureQueries, err := dialSet.Path("postureQueries").Children()
+						ctx.Req.NoError(err)
+						ctx.Req.Len(postureQueries, 1)
 
-					ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
-					ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+						ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+						ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+						ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
+						ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+					})
+
+					t.Run("bind passes", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						postureQueries, err := bindSet.Path("postureQueries").Children()
+						ctx.Req.NoError(err)
+						ctx.Req.Len(postureQueries, 1)
+
+						ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+						ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+						ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
+						ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+					})
+
 				})
 			})
 
@@ -424,17 +493,45 @@ func Test_PostureChecks(t *testing.T) {
 
 				querySet, err := entityService.Path("data.postureQueries").Children()
 				ctx.Req.NoError(err)
-				ctx.Req.Len(querySet, 1)
+				ctx.Req.Len(querySet, 2)
 
-				postureQueries, err := querySet[0].Path("postureQueries").Children()
-				ctx.Req.NoError(err)
-				ctx.Req.Len(postureQueries, 1)
+				var dialSet *gabs.Container
+				var bindSet *gabs.Container
+				if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
+					dialSet = querySet[0]
+					bindSet = querySet[1]
+				}  else {
+					dialSet = querySet[1]
+					bindSet = querySet[0]
+				}
 
-				ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
-				ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+				t.Run("dial passes", func(t *testing.T) {
+					ctx.testContextChanged(t)
 
-				ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
-				ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+					postureQueries, err := dialSet.Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+					ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+					ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+				})
+
+				t.Run("bind passes", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					postureQueries, err := bindSet.Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+
+					ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+					ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+				})
 			})
 		})
 	})

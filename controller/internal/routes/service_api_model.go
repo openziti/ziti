@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
@@ -157,15 +158,31 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 	noTimeout := int64(-1)
 
-	for policyId, postureChecks := range ae.GetHandlers().EdgeService.GetPostureChecks(rc.Identity.Id, *ret.ID) {
+	policyPostureCheckMap := ae.GetHandlers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
+
+	for policyId, policyPostureChecks := range policyPostureCheckMap {
 
 		isPolicyPassing := true
+		policyIdCopy := policyId
 		querySet := &rest_model.PostureQueries{
-			PolicyID:       &policyId,
+			PolicyID:       &policyIdCopy,
 			PostureQueries: []*rest_model.PostureQuery{},
 		}
 
-		for _, postureCheck := range postureChecks {
+		if policyPostureChecks.PolicyType == persistence.PolicyTypeBind {
+			querySet.PolicyType = rest_model.DialBindBind
+		} else if policyPostureChecks.PolicyType == persistence.PolicyTypeDial {
+			querySet.PolicyType = rest_model.DialBindDial
+		} else {
+			pfxlog.Logger().Errorf("attempting to render API response for policy type [%s] for policy id [%s], unknown type expected dial/bind", policyPostureChecks.PolicyType, policyId)
+		}
+
+		if policyPostureChecks == nil {
+			pfxlog.Logger().Errorf("unexpected nil policyPostureCheck attempting to render posture queries for service [%s]", service.Id)
+			continue
+		}
+
+		for _, postureCheck := range policyPostureChecks.PostureChecks {
 			query := PostureCheckToQuery(postureCheck)
 
 			isCheckPassing := false
