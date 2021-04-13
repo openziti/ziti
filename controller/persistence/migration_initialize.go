@@ -343,7 +343,10 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 				"description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'forwardProtocol' are mutually exclusive.",
 			},
 			"allowedProtocols": map[string]interface{}{
-				"$ref":        "#/definitions/allowedProtocols",
+				"allOf": []interface{}{
+					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
+					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/protocolName"}},
+				},
 				"description": "Only allow protocols from this set to be dialed",
 			},
 			"address": map[string]interface{}{
@@ -358,7 +361,7 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 			"allowedAddresses": map[string]interface{}{
 				"allOf": []interface{}{
 					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
-					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/dialAddress"}},
+					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/listenAddress"}},
 				},
 				"description": "Only allow addresses from this set to be dialed",
 			},
