@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"sort"
 	"strings"
@@ -22,6 +23,7 @@ func Test_EdgeRouterPolicyStore(t *testing.T) {
 	t.Run("test create/update edge router policies with invalid entity refs", ctx.testEdgeRouterPolicyInvalidValues)
 	t.Run("test edge router policy evaluation", ctx.testEdgeRouterPolicyRoleEvaluation)
 	t.Run("test update/delete referenced entities", ctx.testEdgeRouterPolicyUpdateDeleteRefs)
+	t.Run("test edge router tunneler disabling", ctx.testRouterIdentityDeleteTest)
 }
 
 func (ctx *TestContext) testCreateEdgeRouterPolicy(t *testing.T) {
@@ -166,6 +168,88 @@ func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(t *testing.T) {
 	ctx.RequireDelete(edgeRouter)
 	ctx.RequireReload(policy)
 	ctx.Equal(0, len(policy.EdgeRouterRoles), "edgeRouter name should have been removed from edgeRouter roles")
+}
+
+func (ctx *TestContext) testRouterIdentityDeleteTest(t *testing.T) {
+	ctx.NextTest(t)
+	ctx.cleanupAll()
+
+	policy := newEdgeRouterPolicy(eid.New())
+	policy.IdentityRoles = []string{"#all"}
+	policy.EdgeRouterRoles = []string{"#all"}
+	ctx.RequireCreate(policy)
+
+	edgeRouterOther := newEdgeRouter(eid.New())
+	ctx.RequireCreate(edgeRouterOther)
+	logrus.Infof("router 1 id: %v", edgeRouterOther.Id)
+
+	edgeRouter := newEdgeRouter(eid.New())
+	edgeRouter.IsTunnelerEnabled = true
+	ctx.RequireCreate(edgeRouter)
+	logrus.Infof("router 2 id: %v", edgeRouter.Id)
+
+	addErrors := func(err error, fixed bool) {
+		ctx.NoError(err)
+	}
+
+	err := ctx.db.View(func(tx *bbolt.Tx) error {
+		if err := ctx.stores.EdgeRouter.CheckIntegrity(tx, false, addErrors); err != nil {
+			return nil
+		}
+
+		if err := ctx.stores.EdgeRouterPolicy.CheckIntegrity(tx, false, addErrors); err != nil {
+			return nil
+		}
+
+		c := ctx.stores.Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
+		count := c.GetLinkCount(tx, []byte(edgeRouter.Id), []byte(edgeRouter.Id))
+		ctx.NotNil(count)
+		ctx.Equal(int32(2), *count)
+
+		count = c.GetLinkCount(tx, []byte(edgeRouter.Id), []byte(edgeRouterOther.Id))
+		ctx.NotNil(count)
+		ctx.Equal(int32(1), *count)
+
+		c = ctx.stores.EdgeRouter.GetRefCountedLinkCollection(EntityTypeIdentities)
+		count = c.GetLinkCount(tx, []byte(edgeRouter.Id), []byte(edgeRouter.Id))
+		ctx.NotNil(count)
+		ctx.Equal(int32(2), *count)
+
+		count = c.GetLinkCount(tx, []byte(edgeRouterOther.Id), []byte(edgeRouter.Id))
+		ctx.NotNil(count)
+		ctx.Equal(int32(1), *count)
+
+		return nil
+	})
+	ctx.NoError(err)
+
+	edgeRouter.IsTunnelerEnabled = false
+	edgeRouter.Name = eid.New()
+	ctx.RequireUpdate(edgeRouter)
+
+	err = ctx.db.View(func(tx *bbolt.Tx) error {
+		if err := ctx.stores.EdgeRouter.CheckIntegrity(tx, false, addErrors); err != nil {
+			return nil
+		}
+
+		if err := ctx.stores.EdgeRouterPolicy.CheckIntegrity(tx, false, addErrors); err != nil {
+			return nil
+		}
+
+		c := ctx.stores.EdgeRouter.GetRefCountedLinkCollection(EntityTypeIdentities)
+		count := c.GetLinkCount(tx, []byte(edgeRouter.Id), []byte(edgeRouter.Id))
+		ctx.Nil(count)
+
+		c = ctx.stores.EdgeRouter.GetRefCountedLinkCollection(EntityTypeIdentities)
+		count = c.GetLinkCount(tx, []byte(edgeRouterOther.Id), []byte(edgeRouter.Id))
+		ctx.Nil(count)
+
+		return nil
+	})
+	ctx.NoError(err)
+
+	edgeRouter.IsTunnelerEnabled = true
+	ctx.RequireUpdate(edgeRouter)
 }
 
 func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
