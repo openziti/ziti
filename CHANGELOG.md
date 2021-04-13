@@ -1,3 +1,16 @@
+# Release 0.19.11
+
+## What's New
+
+* The host.v1 service configuration type has been changed as follows:
+    * Rename `dialIntercepted*` properties to `forwardProtocol`, `forwardAddress`, `forwardPort` for better consistency with non-tunneler client applications.
+    * Add `allowedProtocols`, `allowedAddresses`, and `allowedPortRanges` properties to whitelist destinations that are dialed via `forward*`. The `allowed*` properties are required for any corresponding `forward*` property that is `true`.
+    * Add `allowedSourceAddresses`, which serves as a whitelist for source IPs/CIDRs and informs the hosting tunneler of the local routes to establish when hosting a service.
+
+  Caveats:
+    * Any existing host.v1 configurations that use will become invalid.
+    * ziti-tunnel and the converged router/tunneler creates local routes that are establised for `allowedSourceAddresses`, but the routes are not consistently cleaned up when `ziti-tunnel` exits. This issue will be addressed in a future release.
+
 # Release 0.19.10
 
 ## What's New
