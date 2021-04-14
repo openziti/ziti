@@ -297,6 +297,7 @@ github.com/googleapis/gax-go/v2 v2.0.3/go.mod h1:LLvjysVCY1JZeum8Z6l8qUty8fiNwE0
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
+github.com/gorilla/handlers v1.5.0/go.mod h1:t8XrUpc4KVXb7HGyJ4/cEnwQiaxrX/hz1Zv/4g96P1Q=
 github.com/gorilla/handlers v1.5.1 h1:9lRY6j8DEeeBT10CvO9hGW0gmky0BprnvDI5vfhUHH4=
 github.com/gorilla/handlers v1.5.1/go.mod h1:t8XrUpc4KVXb7HGyJ4/cEnwQiaxrX/hz1Zv/4g96P1Q=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
@@ -486,8 +487,8 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.16.53 h1:euH/rzJ7yTpUIFF5gRECVoPrUWGyoQYf2frdotcQBjk=
-github.com/openziti/fabric v0.16.53/go.mod h1:bmbQB2A2ZgGbSxUT5dXYhgvD/hfpQQfrEq9ibj6x4LI=
+github.com/openziti/fabric v0.16.54 h1:jfuAv5p73Uu7E2L26TBFoO+ZF5mzeAHgA9CSU8d+rfE=
+github.com/openziti/fabric v0.16.54/go.mod h1:fb5zFkB3YQxusAmsQLKKzEk7MmPodqDkqmOVTB+J3eE=
 github.com/openziti/foundation v0.15.47/go.mod h1:NnSBTp9ZkcYsv6nYxZR0/NzoHfkIo6tjpBHDvBsPFqw=
 github.com/openziti/foundation v0.15.48 h1:NnL/xY684XeFiLBi5z0+uKf2tpPhlClbMeVmUQPF8Jo=
 github.com/openziti/foundation v0.15.48/go.mod h1:NnSBTp9ZkcYsv6nYxZR0/NzoHfkIo6tjpBHDvBsPFqw=
