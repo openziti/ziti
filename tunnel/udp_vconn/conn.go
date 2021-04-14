@@ -17,7 +17,6 @@
 package udp_vconn
 
 import (
-	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/mempool"
@@ -37,6 +36,8 @@ type udpConn struct {
 	writeConn   UDPWriterTo
 	lastUse     atomic.Value
 	closed      concurrenz.AtomicBoolean
+	leftOver    []byte
+	leftOverBuf mempool.PooledBuffer
 }
 
 func (conn *udpConn) Service() string {
@@ -98,7 +99,51 @@ func (conn *udpConn) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (conn *udpConn) Read(b []byte) (n int, err error) {
-	return 0, errors.New("read not implemented, assuming we always want WriteTo used instead")
+	leftOverLen := len(conn.leftOver)
+	if leftOverLen > 0 {
+		copy(b, conn.leftOver)
+		if leftOverLen > len(b) {
+			conn.leftOver = conn.leftOver[len(b):]
+			conn.markUsed()
+			return len(b), nil
+		}
+
+		conn.leftOver = nil
+		conn.leftOverBuf.Release()
+		conn.leftOverBuf = nil
+
+		conn.markUsed()
+		return leftOverLen, nil
+	}
+
+	var bytesWritten int
+
+	var buf mempool.PooledBuffer
+
+	select {
+	case buf = <-conn.readC:
+	case <-conn.closeNotify:
+	}
+
+	if buf == nil {
+		conn.markUsed()
+		return bytesWritten, io.EOF
+	}
+
+	data := buf.GetPayload()
+	dataLen := len(data)
+	copy(b, data)
+	if dataLen <= len(b) {
+		buf.Release()
+		conn.markUsed()
+		return dataLen, nil
+	}
+
+	conn.leftOver = data[len(b):]
+	conn.leftOverBuf = buf
+	conn.markUsed()
+
+	return len(b), nil
 }
 
 func (conn *udpConn) Write(b []byte) (int, error) {

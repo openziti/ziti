@@ -1,5 +1,3 @@
-// +build apitests
-
 /*
 	Copyright NetFoundry, Inc.
 
@@ -494,8 +492,6 @@ func (ctx *TestContext) newRequestWithClientCert(cert *x509.Certificate, private
 	return client.R().
 		SetHeader("content-type", "application/json")
 }
-
-
 
 func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
 	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))

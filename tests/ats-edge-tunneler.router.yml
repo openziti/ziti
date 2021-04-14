@@ -69,7 +69,8 @@ listeners:
     options:
       mode: proxy
       services:
-        - "tunnel-test:8686"
+        - "tunnel-test-tcp:8686"
+        - "tunnel-test-udp:8688:udp"
   - binding: edge
     address: tls:0.0.0.0:3022
     options:

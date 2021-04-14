@@ -1,4 +1,4 @@
-// +build apitests
+// +build dataflow
 
 /*
 	Copyright NetFoundry, Inc.
@@ -51,7 +51,6 @@ func Test_ManualStart(t *testing.T) {
 
 		t.Run("listen and send data", func(t *testing.T) {
 			ctx.testContextChanged(t)
-
 
 			log.Info("starting listener1")
 			host1 := &host{}

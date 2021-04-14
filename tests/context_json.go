@@ -1,5 +1,3 @@
-// +build apitests
-
 /*
 	Copyright NetFoundry, Inc.
 

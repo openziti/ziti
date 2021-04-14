@@ -1,4 +1,4 @@
-// +build apitests,perftests
+// +build perftests
 
 package tests
 
