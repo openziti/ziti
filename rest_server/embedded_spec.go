@@ -2575,6 +2575,35 @@ func init() {
         }
       ]
     },
+    "/enroll/extend/router": {
+      "post": {
+        "description": "Allows a router to extend its certificates' expiration date by\nusing its current and valid client certificate to submit a CSR. This CSR may\nbe pased in using a new private key, thus allowing private key rotation or swapping.\n\nAfter completion any new connections must be made with certificates returned from a 200 OK\nresponse. Previous client certificate is rendered invalid for use with the controller even if it\nhas not expired.\n\nThis request must be made using the existing, valid, client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Extend the life of a currently enrolled router's certificates",
+        "operationId": "extendRouterEnrollment",
+        "parameters": [
+          {
+            "name": "routerExtendEnrollmentRequest",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/routerExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/routerExtendEnrollmentResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
     "/enroll/ott": {
       "post": {
         "description": "Enroll an identity via a one-time-token which is supplied via a query string parameter. This enrollment method\nexpects a PEM encoded CSRs to be provided for fulfillment. It is up to the enrolling identity to manage the\nprivate key backing the CSR request.\n",
@@ -9782,6 +9811,21 @@ func init() {
         }
       ]
     },
+    "routerExtendEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "serverCertCsr",
+        "certCsr"
+      ],
+      "properties": {
+        "certCsr": {
+          "type": "string"
+        },
+        "serverCertCsr": {
+          "type": "string"
+        }
+      }
+    },
     "sdkInfo": {
       "description": "SDK information an authenticating client may provide",
       "type": "object",
@@ -11522,6 +11566,12 @@ func init() {
         }
       }
     },
+    "routerExtendEnrollmentResponse": {
+      "description": "A response containg the edge routers new signed certificates (server chain, server cert, CAs).",
+      "schema": {
+        "$ref": "#/definitions/enrollmentCertsEnvelope"
+      }
+    },
     "sessionCreateResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -11570,6 +11620,7 @@ func init() {
   },
   "securityDefinitions": {
     "ztSession": {
+      "description": "An API Key that is provided post authentication",
       "type": "apiKey",
       "name": "zt-session",
       "in": "header"
@@ -18095,6 +18146,59 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/enroll/extend/router": {
+      "post": {
+        "description": "Allows a router to extend its certificates' expiration date by\nusing its current and valid client certificate to submit a CSR. This CSR may\nbe pased in using a new private key, thus allowing private key rotation or swapping.\n\nAfter completion any new connections must be made with certificates returned from a 200 OK\nresponse. Previous client certificate is rendered invalid for use with the controller even if it\nhas not expired.\n\nThis request must be made using the existing, valid, client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Extend the life of a currently enrolled router's certificates",
+        "operationId": "extendRouterEnrollment",
+        "parameters": [
+          {
+            "name": "routerExtendEnrollmentRequest",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/routerExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A response containg the edge routers new signed certificates (server chain, server cert, CAs).",
+            "schema": {
+              "$ref": "#/definitions/enrollmentCertsEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/enroll/ott": {
       "post": {
@@ -30056,6 +30160,21 @@ func init() {
         }
       ]
     },
+    "routerExtendEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "serverCertCsr",
+        "certCsr"
+      ],
+      "properties": {
+        "certCsr": {
+          "type": "string"
+        },
+        "serverCertCsr": {
+          "type": "string"
+        }
+      }
+    },
     "sdkInfo": {
       "description": "SDK information an authenticating client may provide",
       "type": "object",
@@ -31797,6 +31916,12 @@ func init() {
         }
       }
     },
+    "routerExtendEnrollmentResponse": {
+      "description": "A response containg the edge routers new signed certificates (server chain, server cert, CAs).",
+      "schema": {
+        "$ref": "#/definitions/enrollmentCertsEnvelope"
+      }
+    },
     "sessionCreateResponse": {
       "description": "The create request was successful and the resource has been added at the following location",
       "schema": {
@@ -31845,6 +31970,7 @@ func init() {
   },
   "securityDefinitions": {
     "ztSession": {
+      "description": "An API Key that is provided post authentication",
       "type": "apiKey",
       "name": "zt-session",
       "in": "header"

@@ -54,6 +54,7 @@ func NewInvalidAuth() *errorz.ApiError {
 		Status:  InvalidAuthStatus,
 	}
 }
+
 func NewInvalidAuthMethod() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    InvalidAuthMethodCode,
@@ -61,6 +62,7 @@ func NewInvalidAuthMethod() *errorz.ApiError {
 		Status:  InvalidAuthMethodStatus,
 	}
 }
+
 func NewEnrollmentExpired() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    EnrollmentExpiredCode,
@@ -68,6 +70,7 @@ func NewEnrollmentExpired() *errorz.ApiError {
 		Status:  EnrollmentExpiredStatus,
 	}
 }
+
 func NewCouldNotProcessCsr() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CouldNotProcessCsrCode,
@@ -75,6 +78,7 @@ func NewCouldNotProcessCsr() *errorz.ApiError {
 		Status:  CouldNotProcessCsrStatus,
 	}
 }
+
 func NewEnrollmentCaNoLongValid() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    EnrollmentCaNoLongValidCode,
@@ -82,6 +86,7 @@ func NewEnrollmentCaNoLongValid() *errorz.ApiError {
 		Status:  EnrollmentCaNoLongValidStatus,
 	}
 }
+
 func NewEnrollmentNoValidCas() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    EnrollmentNoValidCasCode,
@@ -89,6 +94,7 @@ func NewEnrollmentNoValidCas() *errorz.ApiError {
 		Status:  EnrollmentNoValidCasStatus,
 	}
 }
+
 func NewInvalidEnrollmentToken() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    InvalidEnrollmentTokenCode,
@@ -96,6 +102,7 @@ func NewInvalidEnrollmentToken() *errorz.ApiError {
 		Status:  InvalidEnrollmentTokenStatus,
 	}
 }
+
 func NewInvalidEnrollMethod() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    InvalidEnrollMethodCode,
@@ -103,6 +110,7 @@ func NewInvalidEnrollMethod() *errorz.ApiError {
 		Status:  InvalidEnrollMethodStatus,
 	}
 }
+
 func NewNoEdgeRoutersAvailable() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    NoEdgeRoutersAvailableCode,
@@ -110,6 +118,7 @@ func NewNoEdgeRoutersAvailable() *errorz.ApiError {
 		Status:  NoEdgeRoutersAvailableStatus,
 	}
 }
+
 func NewCouldNotParseX509FromDer() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CouldNotParseX509FromDerCode,
@@ -117,6 +126,7 @@ func NewCouldNotParseX509FromDer() *errorz.ApiError {
 		Status:  CouldNotParseX509FromDerStatus,
 	}
 }
+
 func NewCertFailedValidation() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CertFailedValidationCode,
@@ -124,6 +134,7 @@ func NewCertFailedValidation() *errorz.ApiError {
 		Status:  CertFailedValidationStatus,
 	}
 }
+
 func NewCertInUse() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CertInUseCode,
@@ -131,6 +142,7 @@ func NewCertInUse() *errorz.ApiError {
 		Status:  CertInUseStatus,
 	}
 }
+
 func NewCaAlreadyVerified() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CaAlreadyVerifiedCode,
@@ -138,6 +150,7 @@ func NewCaAlreadyVerified() *errorz.ApiError {
 		Status:  CaAlreadyVerifiedStatus,
 	}
 }
+
 func NewExpectedPemBlockCertificate() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    ExpectedPemBlockCertificateCode,
@@ -145,6 +158,7 @@ func NewExpectedPemBlockCertificate() *errorz.ApiError {
 		Status:  ExpectedPemBlockCertificateStatus,
 	}
 }
+
 func NewCouldNotParseDerBlock() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CouldNotParseDerBlockCode,
@@ -152,6 +166,7 @@ func NewCouldNotParseDerBlock() *errorz.ApiError {
 		Status:  CouldNotParseDerBlockStatus,
 	}
 }
+
 func NewCouldNotParsePem() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CouldNotParsePemCode,
@@ -159,6 +174,7 @@ func NewCouldNotParsePem() *errorz.ApiError {
 		Status:  CouldNotParsePemStatus,
 	}
 }
+
 func NewInvalidCommonName() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    InvalidCommonNameCode,
@@ -166,6 +182,7 @@ func NewInvalidCommonName() *errorz.ApiError {
 		Status:  InvalidCommonNameStatus,
 	}
 }
+
 func NewFailedCertificateValidation() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    FailedCertificateValidationCode,
@@ -173,6 +190,16 @@ func NewFailedCertificateValidation() *errorz.ApiError {
 		Status:  FailedCertificateValidationStatus,
 	}
 }
+
+func NewInvalidEnrollmentMissingCsr(cause error) *errorz.ApiError {
+	return &errorz.ApiError{
+		Cause:   cause,
+		Code:    InvalidEnrollmentMissingCsrCode,
+		Message: InvalidEnrollmentMissingCsrMessage,
+		Status:  InvalidEnrollmentMissingCsrStatus,
+	}
+}
+
 func NewCertificateIsNotCa() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CertificateIsNotCaCode,

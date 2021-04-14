@@ -36,7 +36,7 @@ import (
 	"time"
 )
 
-func Test_enrollment(t *testing.T) {
+func Test_IdentityEnrollment(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -57,7 +57,7 @@ func Test_enrollment(t *testing.T) {
 			token := caContainer.Path("data.verificationToken").Data().(string)
 			ctx.Req.NotEmpty(token)
 
-			verifyCert, _, err := generateCert(testCa.publicCert, testCa.privateKey, token)
+			verifyCert, _, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, token)
 			ctx.Req.NoError(err)
 
 			verificationBlock := &pem.Block{
@@ -72,7 +72,7 @@ func Test_enrollment(t *testing.T) {
 
 			t.Run("can enroll without a name and a 0 length body", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
+				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.Req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
@@ -100,7 +100,7 @@ func Test_enrollment(t *testing.T) {
 
 			t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
+				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.Req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents()
@@ -130,7 +130,7 @@ func Test_enrollment(t *testing.T) {
 			t.Run("can enroll with a name", func(t *testing.T) {
 				t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					cert, key, err := generateCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
+					cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 					ctx.Req.NoError(err)
 
 					restClient, _, transport := ctx.NewClientComponents()
@@ -156,7 +156,7 @@ func Test_enrollment(t *testing.T) {
 	})
 }
 
-func generateCert(caCert *x509.Certificate, caKey crypto.Signer, commonName string) (*x509.Certificate, crypto.Signer, error) {
+func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer, commonName string) (*x509.Certificate, crypto.Signer, error) {
 	id, _ := rand.Int(rand.Reader, big.NewInt(100000000000000000))
 	verificationCert := &x509.Certificate{
 		SerialNumber: id,
@@ -178,7 +178,7 @@ func generateCert(caCert *x509.Certificate, caKey crypto.Signer, commonName stri
 		return nil, nil, fmt.Errorf("could not generate private key for verification certificate (%v)", err)
 	}
 
-	signedCertBytes, err := x509.CreateCertificate(rand.Reader, verificationCert, caCert, verificationKey.Public(), caKey)
+	signedCertBytes, err := x509.CreateCertificate(rand.Reader, verificationCert, caCert, verificationKey.Public(), caSigner)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not sign verification certificate with CA (%v)", err)

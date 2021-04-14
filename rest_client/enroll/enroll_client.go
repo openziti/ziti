@@ -63,6 +63,8 @@ type ClientService interface {
 
 	ErnollUpdb(params *ErnollUpdbParams) (*ErnollUpdbOK, error)
 
+	ExtendRouterEnrollment(params *ExtendRouterEnrollmentParams) (*ExtendRouterEnrollmentOK, error)
+
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -295,6 +297,51 @@ func (a *Client) ErnollUpdb(params *ErnollUpdbParams) (*ErnollUpdbOK, error) {
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ernollUpdb: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ExtendRouterEnrollment extends the life of a currently enrolled router s certificates
+
+  Allows a router to extend its certificates' expiration date by
+using its current and valid client certificate to submit a CSR. This CSR may
+be pased in using a new private key, thus allowing private key rotation or swapping.
+
+After completion any new connections must be made with certificates returned from a 200 OK
+response. Previous client certificate is rendered invalid for use with the controller even if it
+has not expired.
+
+This request must be made using the existing, valid, client certificate.
+
+*/
+func (a *Client) ExtendRouterEnrollment(params *ExtendRouterEnrollmentParams) (*ExtendRouterEnrollmentOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewExtendRouterEnrollmentParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "extendRouterEnrollment",
+		Method:             "POST",
+		PathPattern:        "/enroll/extend/router",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ExtendRouterEnrollmentReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ExtendRouterEnrollmentOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for extendRouterEnrollment: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

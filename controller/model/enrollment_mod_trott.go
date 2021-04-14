@@ -70,7 +70,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	}
 	enrollData := context.GetDataAsMap()
 
-	sr, err := cert.ParseCsr([]byte(enrollData["serverCertCsr"].(string)))
+	serverCsr, err := cert.ParseCsrPem([]byte(enrollData["serverCertCsr"].(string)))
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
@@ -79,49 +79,47 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apiErr
 	}
 
-	so := &cert.SigningOpts{
-		DNSNames:       sr.DNSNames,
-		EmailAddresses: sr.EmailAddresses,
-		IPAddresses:    sr.IPAddresses,
-		URIs:           sr.URIs,
+	signingOpts := &cert.SigningOpts{
+		DNSNames:       serverCsr.DNSNames,
+		EmailAddresses: serverCsr.EmailAddresses,
+		IPAddresses:    serverCsr.IPAddresses,
+		URIs:           serverCsr.URIs,
 	}
 
-	srvCert, err := module.env.GetApiServerCsrSigner().Sign([]byte(enrollData["serverCertCsr"].(string)), so)
+	srvCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, signingOpts)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	srvPem, err := module.env.GetApiServerCsrSigner().ToPem(srvCert)
-
-	srvChain := string(srvPem) + module.env.GetApiServerCsrSigner().SigningCertPEM()
+	srvPem, err := cert.RawToPem(srvCert)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	cr, err := cert.ParseCsr([]byte(enrollData["certCsr"].(string)))
+	clientCsr, err := cert.ParseCsrPem([]byte(enrollData["certCsr"].(string)))
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	so = &cert.SigningOpts{
-		DNSNames:       cr.DNSNames,
-		EmailAddresses: cr.EmailAddresses,
-		IPAddresses:    cr.IPAddresses,
-		URIs:           cr.URIs,
+	signingOpts = &cert.SigningOpts{
+		DNSNames:       clientCsr.DNSNames,
+		EmailAddresses: clientCsr.EmailAddresses,
+		IPAddresses:    clientCsr.IPAddresses,
+		URIs:           clientCsr.URIs,
 	}
 
-	cr.Subject.CommonName = txRouter.Id
+	clientCsr.Subject.CommonName = txRouter.Id
 
-	cltCert, err := module.env.GetControlClientCsrSigner().Sign([]byte(enrollData["certCsr"].(string)), so)
+	cltCert, err := module.env.GetControlClientCsrSigner().SignCsr(clientCsr, signingOpts)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	cltPem, err := module.env.GetControlClientCsrSigner().ToPem(cltCert)
+	cltPem, err := cert.RawToPem(cltCert)
 
 	if err != nil {
 		return nil, apierror.NewCouldNotProcessCsr()
@@ -143,7 +141,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().CaPems()),
 		Cert:       string(cltPem),
-		ServerCert: srvChain,
+		ServerCert: string(srvPem),
 	}
 
 	return &EnrollmentResult{

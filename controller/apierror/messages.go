@@ -74,6 +74,10 @@ const (
 	InvalidEnrollMethodMessage string = "The supplied enrollment method is not valid"
 	InvalidEnrollMethodStatus  int    = http.StatusBadRequest
 
+	InvalidEnrollmentMissingCsrCode    string = "MISSING_OR_INVALID_CSR"
+	InvalidEnrollmentMissingCsrMessage string = "The supplied enrollment request is missing or contains an invalid CSR"
+	InvalidEnrollmentMissingCsrStatus  int    = http.StatusBadRequest
+
 	NoEdgeRoutersAvailableCode    string = "NO_EDGE_ROUTERS_AVAILABLE"
 	NoEdgeRoutersAvailableMessage string = "No edge routers are assigned and online to handle the requested connection"
 	NoEdgeRoutersAvailableStatus  int    = http.StatusBadRequest

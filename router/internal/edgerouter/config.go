@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 	"net"
 	"net/url"
 	"strconv"
@@ -38,6 +39,8 @@ const (
 	DefaultSessionValidateChunkSize   = 1000
 	DefaultSessionValidateMinInterval = "250ms"
 	DefaultSessionValidateMaxInterval = "1500ms"
+
+	FlagsCfgMapKey = "@flags"
 )
 
 type Config struct {
@@ -52,6 +55,7 @@ type Config struct {
 	SessionValidateMinInterval time.Duration
 	SessionValidateMaxInterval time.Duration
 	Tcfg                       transport.Configuration
+	ExtendEnrollment           bool
 }
 
 type Csr struct {
@@ -102,6 +106,14 @@ func (config *Config) LoadConfigFromMapForEnrollment(configMap map[interface{}]i
 func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
 	var err error
 	config.Enabled = false
+
+	if val, ok := configMap[FlagsCfgMapKey]; ok {
+		if flags, ok := val.(map[string]*pflag.Flag); ok {
+			if flag, ok := flags["extend"]; ok {
+				config.ExtendEnrollment = flag.Value.String() == "true"
+			}
+		}
+	}
 
 	var edgeConfigMap map[interface{}]interface{} = nil
 

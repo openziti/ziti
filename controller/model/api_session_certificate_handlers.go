@@ -18,7 +18,6 @@ package model
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
@@ -48,11 +47,20 @@ func (handler *ApiSessionCertificateHandler) Create(entity *ApiSessionCertificat
 	return handler.createEntity(entity)
 }
 
-func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, lifespan time.Duration, csr []byte) (string, error) {
+func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte) (string, error) {
 	notBefore := time.Now()
 	notAfter := time.Now().Add(lifespan)
 
-	certRaw, err := handler.env.GetApiClientCsrSigner().Sign(csr, &cert.SigningOpts{
+	csr, err := cert.ParseCsrPem(csrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return "", apiErr
+	}
+
+	certRaw, err := handler.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
 		NotAfter:  &notAfter,
 		NotBefore: &notBefore,
 	})
@@ -66,10 +74,7 @@ func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, 
 
 	fp := handler.env.GetFingerprintGenerator().FromRaw(certRaw)
 
-	certPem := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certRaw,
-	})
+	certPem, _ := cert.RawToPem(certRaw)
 
 	cert, _ := x509.ParseCertificate(certRaw)
 

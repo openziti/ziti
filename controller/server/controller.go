@@ -149,6 +149,7 @@ func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHand
 		handler_edge_ctrl.NewRemoveTunnelTerminatorHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewListTunnelServicesHandler(c.AppEnv, ch, tunnelState),
 		handler_edge_ctrl.NewTunnelHealthEventHandler(c.AppEnv, ch),
+		handler_edge_ctrl.NewextendEnrollmentHandler(c.AppEnv),
 	}
 }
 

@@ -17,11 +17,14 @@
 package model
 
 import (
+	"crypto/x509"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -74,76 +77,63 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	enrollData := context.GetDataAsMap()
 
-	sr, err := cert.ParseCsr([]byte(enrollData["serverCertCsr"].(string)))
+	serverCertCsrPem, ok := enrollData["serverCertCsr"]
+
+	if !ok || serverCertCsrPem == nil {
+		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid server CSR"))
+	}
+
+	clientCertCsrPem, ok := enrollData["certCsr"]
+
+	if !ok || clientCertCsrPem == nil {
+		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid client CSR"))
+	}
+
+	serverCertRaw, err := module.ProcessServerCsrPem([]byte(serverCertCsrPem.(string)))
 
 	if err != nil {
-		apiErr := apierror.NewCouldNotProcessCsr()
-		apiErr.Cause = err
-		apiErr.AppendCause = true
-		return nil, apiErr
+		apiError := apierror.NewCouldNotProcessCsr()
+		apiError.Cause = errors.New("invalid server CSR")
+		return nil, apiError
 	}
 
-	so := &cert.SigningOpts{
-		DNSNames:       sr.DNSNames,
-		EmailAddresses: sr.EmailAddresses,
-		IPAddresses:    sr.IPAddresses,
-		URIs:           sr.URIs,
-	}
-
-	srvCert, err := module.env.GetApiServerCsrSigner().Sign([]byte(enrollData["serverCertCsr"].(string)), so)
+	clientCertRaw, err := module.ProcessClientCsrPem([]byte(clientCertCsrPem.(string)), edgeRouter.Id)
 
 	if err != nil {
-		return nil, apierror.NewCouldNotProcessCsr()
+		apiError := apierror.NewCouldNotProcessCsr()
+		apiError.Cause = errors.New("invalid client CSR")
+		return nil, apiError
 	}
 
-	srvPem, err := module.env.GetApiServerCsrSigner().ToPem(srvCert)
-
-	srvChain := string(srvPem) + module.env.GetApiServerCsrSigner().SigningCertPEM()
+	serverCertPem, err := cert.RawToPem(serverCertRaw)
 
 	if err != nil {
-		return nil, apierror.NewCouldNotProcessCsr()
+		return nil, err
 	}
 
-	cr, err := cert.ParseCsr([]byte(enrollData["certCsr"].(string)))
+	clientCertPem, err := cert.RawToPem(clientCertRaw)
 
 	if err != nil {
-		return nil, apierror.NewCouldNotProcessCsr()
+		return nil, err
 	}
 
-	so = &cert.SigningOpts{
-		DNSNames:       cr.DNSNames,
-		EmailAddresses: cr.EmailAddresses,
-		IPAddresses:    cr.IPAddresses,
-		URIs:           cr.URIs,
-	}
+	clientCertPemStr := string(clientCertPem)
 
-	if cr.Subject.CommonName != edgeRouter.Id {
+	clientCertFingerprint := module.fingerprintGenerator.FromRaw(clientCertRaw)
 
-		return nil, &errorz.ApiError{
-			Code:        EdgeRouterEnrollmentCommonNameInvalidCode,
-			Message:     EdgeRouterEnrollmentCommonNameInvalidMessage,
-			Status:      400,
-			Cause:       nil,
-			AppendCause: false,
-		}
-
-	}
-
-	cltCert, err := module.env.GetControlClientCsrSigner().Sign([]byte(enrollData["certCsr"].(string)), so)
+	clientCert, err := x509.ParseCertificate(clientCertRaw)
 
 	if err != nil {
-		return nil, apierror.NewCouldNotProcessCsr()
+		pfxlog.Logger().Infof("error parsing client cert raw during enrollment: %v", err)
+	} else {
+		fp := module.fingerprintGenerator.FromCert(clientCert)
+
+		pfxlog.Logger().Debugf("client cert fp: %s - %v", fp, clientCert)
 	}
 
-	cltPem, err := module.env.GetControlClientCsrSigner().ToPem(cltCert)
-
-	if err != nil {
-		return nil, apierror.NewCouldNotProcessCsr()
-	}
-
-	cltFp := module.fingerprintGenerator.FromPem(cltPem)
+	edgeRouter.CertPem = &clientCertPemStr
 	edgeRouter.IsVerified = true
-	edgeRouter.Fingerprint = &cltFp
+	edgeRouter.Fingerprint = &clientCertFingerprint
 	if err := module.env.GetHandlers().EdgeRouter.Update(edgeRouter, false); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
@@ -154,8 +144,8 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().CaPems()),
-		Cert:       string(cltPem),
-		ServerCert: srvChain,
+		Cert:       string(clientCertPem),
+		ServerCert: string(serverCertPem),
 	}
 
 	return &EnrollmentResult{
@@ -164,4 +154,71 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		Content:       content,
 		Status:        200,
 	}, nil
+}
+
+func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]byte, error) {
+	if len(serverCertCsrPem) == 0 {
+		return nil, errors.New("empty server cert csr")
+	}
+
+	serverCsr, err := cert.ParseCsrPem(serverCertCsrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	so := &cert.SigningOpts{
+		DNSNames:       serverCsr.DNSNames,
+		EmailAddresses: serverCsr.EmailAddresses,
+		IPAddresses:    serverCsr.IPAddresses,
+		URIs:           serverCsr.URIs,
+	}
+
+	serverCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, so)
+
+	if err != nil {
+		return nil, apierror.NewCouldNotProcessCsr()
+	}
+
+	return serverCert, nil
+}
+
+func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeRouterId string) ([]byte, error) {
+	if len(clientCertCsrPem) == 0 {
+		return nil, errors.New("empty client cert csr")
+	}
+
+	clientCsr, err := cert.ParseCsrPem(clientCertCsrPem)
+
+	if err != nil {
+		return nil, apierror.NewCouldNotProcessCsr()
+	}
+
+	so := &cert.SigningOpts{
+		DNSNames:       clientCsr.DNSNames,
+		EmailAddresses: clientCsr.EmailAddresses,
+		IPAddresses:    clientCsr.IPAddresses,
+		URIs:           clientCsr.URIs,
+	}
+
+	if clientCsr.Subject.CommonName != edgeRouterId {
+		return nil, &errorz.ApiError{
+			Code:        EdgeRouterEnrollmentCommonNameInvalidCode,
+			Message:     EdgeRouterEnrollmentCommonNameInvalidMessage,
+			Status:      400,
+			Cause:       nil,
+			AppendCause: false,
+		}
+	}
+
+	cltCert, err := module.env.GetControlClientCsrSigner().SignCsr(clientCsr, so)
+
+	if err != nil {
+		return nil, apierror.NewCouldNotProcessCsr()
+	}
+
+	return cltCert, nil
 }

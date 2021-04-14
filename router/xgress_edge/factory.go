@@ -43,6 +43,7 @@ type Factory struct {
 	hostedServices   *hostedServiceRegistry
 	stateManager     fabric.StateManager
 	versionProvider  common.VersionProvider
+	certChecker      *CertExpirationChecker
 }
 
 func (factory *Factory) Channel() channel2.Channel {
@@ -92,6 +93,9 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, ch))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
+	ch.AddReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func(){
+		factory.certChecker.CertsUpdated()
+	}))
 
 	return nil
 }
@@ -107,6 +111,10 @@ func (factory *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
 func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, closeNotify chan struct{}) error {
 	factory.ctrl = ctrl
 	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
+	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, ctrl, closeNotify)
+
+	go factory.certChecker.Run()
+
 	return nil
 }
 

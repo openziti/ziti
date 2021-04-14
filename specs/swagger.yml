@@ -17,6 +17,7 @@ securityDefinitions:
     type: apiKey
     in: header
     name: zt-session
+    description: An API Key that is provided post authentication
 
 #######################################################################################################################
 #
@@ -1780,6 +1781,34 @@ paths:
         '200':
           $ref: '#/responses/erottResponse'
 
+  '/enroll/extend/router':
+    post:
+      summary: Extend the life of a currently enrolled router's certificates
+      description: |
+        Allows a router to extend its certificates' expiration date by
+        using its current and valid client certificate to submit a CSR. This CSR may
+        be pased in using a new private key, thus allowing private key rotation or swapping.
+
+        After completion any new connections must be made with certificates returned from a 200 OK
+        response. Previous client certificate is rendered invalid for use with the controller even if it
+        has not expired.
+
+        This request must be made using the existing, valid, client certificate.
+      operationId: extendRouterEnrollment
+      parameters:
+        - name: routerExtendEnrollmentRequest
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/routerExtendEnrollmentRequest'
+      tags:
+        - Enroll
+        - Extend Enrollment
+      responses:
+        '200':
+          $ref: '#/responses/routerExtendEnrollmentResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
 
   ###################################################################
   # Enrollments
@@ -4033,6 +4062,10 @@ responses:
         -----END CERTIFICATE-----
   erottResponse:
     description: A response containing the edge routers signed certificates (server chain, server cert, CAs).
+    schema:
+      $ref: '#/definitions/enrollmentCertsEnvelope'
+  routerExtendEnrollmentResponse:
+    description: A response containg the edge routers new signed certificates (server chain, server cert, CAs).
     schema:
       $ref: '#/definitions/enrollmentCertsEnvelope'
   ###################################################################
@@ -7886,3 +7919,16 @@ definitions:
         type: string
         format: 'date-time'
 
+  ###################################################################
+  # Enrollment/Reenrollment
+  ##################################################################
+  routerExtendEnrollmentRequest:
+    type: object
+    required:
+      - serverCertCsr
+      - certCsr
+    properties:
+      serverCertCsr:
+        type: string
+      certCsr:
+        type: string

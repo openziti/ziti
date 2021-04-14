@@ -349,6 +349,9 @@ func NewZitiEdgeAPI(spec *loads.Document) *ZitiEdgeAPI {
 		EnrollErnollUpdbHandler: enroll.ErnollUpdbHandlerFunc(func(params enroll.ErnollUpdbParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ErnollUpdb has not yet been implemented")
 		}),
+		EnrollExtendRouterEnrollmentHandler: enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
+			return middleware.NotImplemented("operation enroll.ExtendRouterEnrollment has not yet been implemented")
+		}),
 		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		}),
@@ -859,6 +862,8 @@ type ZitiEdgeAPI struct {
 	EnrollEnrollOttCaHandler enroll.EnrollOttCaHandler
 	// EnrollErnollUpdbHandler sets the operation handler for the ernoll updb operation
 	EnrollErnollUpdbHandler enroll.ErnollUpdbHandler
+	// EnrollExtendRouterEnrollmentHandler sets the operation handler for the extend router enrollment operation
+	EnrollExtendRouterEnrollmentHandler enroll.ExtendRouterEnrollmentHandler
 	// DatabaseFixDataIntegrityHandler sets the operation handler for the fix data integrity operation
 	DatabaseFixDataIntegrityHandler database.FixDataIntegrityHandler
 	// CertificateAuthorityGetCaJwtHandler sets the operation handler for the get ca jwt operation
@@ -1385,6 +1390,9 @@ func (o *ZitiEdgeAPI) Validate() error {
 	}
 	if o.EnrollErnollUpdbHandler == nil {
 		unregistered = append(unregistered, "enroll.ErnollUpdbHandler")
+	}
+	if o.EnrollExtendRouterEnrollmentHandler == nil {
+		unregistered = append(unregistered, "enroll.ExtendRouterEnrollmentHandler")
 	}
 	if o.DatabaseFixDataIntegrityHandler == nil {
 		unregistered = append(unregistered, "database.FixDataIntegrityHandler")
@@ -2092,6 +2100,10 @@ func (o *ZitiEdgeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/enroll/updb"] = enroll.NewErnollUpdb(o.context, o.EnrollErnollUpdbHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/enroll/extend/router"] = enroll.NewExtendRouterEnrollment(o.context, o.EnrollExtendRouterEnrollmentHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

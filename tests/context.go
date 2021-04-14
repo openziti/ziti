@@ -106,6 +106,7 @@ type TestContext struct {
 	router              *router.Router
 	testing             *testing.T
 	LogLevel            string
+	ControllerConfig    *controller.Config
 }
 
 var defaultTestContext = &TestContext{
@@ -144,6 +145,20 @@ func (ctx *TestContext) T() *testing.T {
 }
 
 func (ctx *TestContext) Transport() *http.Transport {
+	return ctx.TransportWithClientCert(nil, nil)
+}
+
+func (ctx *TestContext) TransportWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
+	tlsClientConfig := &cryptoTls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	if cert != nil && privateKey != nil {
+		tlsClientConfig.Certificates = []cryptoTls.Certificate{
+			{Certificate: [][]byte{cert.Raw}, PrivateKey: privateKey, Leaf: cert},
+		}
+	}
+
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -155,9 +170,7 @@ func (ctx *TestContext) Transport() *http.Transport {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig: &cryptoTls.Config{
-			InsecureSkipVerify: true,
-		},
+		TLSClientConfig:       tlsClientConfig,
 	}
 }
 
@@ -192,6 +205,16 @@ func (ctx *TestContext) DefaultClient() *resty.Client {
 
 func (ctx *TestContext) NewClientComponents() (*resty.Client, *http.Client, *http.Transport) {
 	clientTransport := ctx.Transport()
+	httpClient := ctx.HttpClient(clientTransport)
+	client := ctx.Client(httpClient)
+
+	client.SetHostURL("https://" + ctx.ApiHost)
+
+	return client, httpClient, clientTransport
+}
+
+func (ctx *TestContext) NewClientComponentsWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) (*resty.Client, *http.Client, *http.Transport) {
+	clientTransport := ctx.TransportWithClientCert(cert, privateKey)
 	httpClient := ctx.HttpClient(clientTransport)
 	client := ctx.Client(httpClient)
 
@@ -233,6 +256,8 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	log.Info("loading config")
 	config, err := controller.LoadConfig(ControllerConfFile)
 	ctx.Req.NoError(err)
+
+	ctx.ControllerConfig = config
 
 	log.Info("creating fabric controller")
 	ctx.fabricController, err = controller.NewController(config, NewVersionProviderTest())
@@ -462,6 +487,15 @@ func (ctx *TestContext) newRequest() *resty.Request {
 	return ctx.DefaultClient().R().
 		SetHeader("content-type", "application/json")
 }
+
+func (ctx *TestContext) newRequestWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *resty.Request {
+	client, _, _ := ctx.NewClientComponentsWithClientCert(cert, privateKey)
+
+	return client.R().
+		SetHeader("content-type", "application/json")
+}
+
+
 
 func (ctx *TestContext) completeUpdbEnrollment(identityId string, password string) {
 	result := ctx.AdminSession.requireQuery(fmt.Sprintf("identities/%v", identityId))
