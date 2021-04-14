@@ -9,6 +9,11 @@
     * Rename `dialIntercepted*` properties to `forwardProtocol`, `forwardAddress`, `forwardPort` for better consistency with non-tunneler client applications.
     * Add `allowedProtocols`, `allowedAddresses`, and `allowedPortRanges` properties to whitelist destinations that are dialed via `forward*`. The `allowed*` properties are required for any corresponding `forward*` property that is `true`.
     * Add `allowedSourceAddresses`, which serves as a whitelist for source IPs/CIDRs and informs the hosting tunneler of the local routes to establish when hosting a service.
+* Ziti Controller will now report service posture query policy types (Dial/Bind)
+* Ziti Controller now supports enrollment extension for routers
+* Ziti Router now support forcing enrollment extension via `run -e`
+* Ziti Routers will now automatically extend their enrollment before their certificates expire
+* `ziti edge enroll` with a UPDB JWT now confirms and properly sets the password supplied
 
   Caveats:
     * Any existing host.v1 configurations that use will become invalid.
