@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
+	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/channel2"
@@ -49,6 +50,9 @@ type Controller struct {
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
 
+	xwebs               []xweb.Xweb
+	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
+
 	ctrlListener channel2.UnderlayListener
 	mgmtListener channel2.UnderlayListener
 
@@ -58,8 +62,9 @@ type Controller struct {
 
 func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
 	c := &Controller{
-		config:    cfg,
-		shutdownC: make(chan struct{}),
+		config:              cfg,
+		shutdownC:           make(chan struct{}),
+		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
 	}
 
 	c.registerXts()
@@ -122,8 +127,14 @@ func (c *Controller) Run() error {
 	}
 	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
-	/* */
 
+	/*
+	 * start xweb for http/web API listening
+	 */
+	for _, web := range c.xwebs {
+		go web.Run()
+	}
+	
 	// event handlers
 	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
 		panic(err)
@@ -158,6 +169,10 @@ func (c *Controller) Shutdown() {
 			if err := c.config.Db.Close(); err != nil {
 				pfxlog.Logger().WithError(err).Error("failed to close db")
 			}
+		}
+
+		for _, web := range c.xwebs {
+			go web.Shutdown()
 		}
 	}
 }
@@ -242,6 +257,11 @@ func (c *Controller) registerComponents() error {
 		return err
 	}
 
+	//add default REST XWeb
+	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -268,6 +288,20 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 		c.xmgmts = append(c.xmgmts, x)
 	}
 	return nil
+}
+
+func (c *Controller) RegisterXweb(x xweb.Xweb) error {
+	if err := c.config.Configure(x); err != nil {
+		return err
+	}
+	if x.Enabled() {
+		c.xwebs = append(c.xwebs, x)
+	}
+	return nil
+}
+
+func (c *Controller) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error {
+	return c.xwebFactoryRegistry.Add(x)
 }
 
 func (c *Controller) GetNetwork() *network.Network {
