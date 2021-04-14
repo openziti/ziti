@@ -9662,6 +9662,9 @@ func init() {
         "policyId": {
           "type": "string"
         },
+        "policyType": {
+          "$ref": "#/definitions/dialBind"
+        },
         "postureQueries": {
           "type": "array",
           "items": {
@@ -29932,6 +29935,9 @@ func init() {
         },
         "policyId": {
           "type": "string"
+        },
+        "policyType": {
+          "$ref": "#/definitions/dialBind"
         },
         "postureQueries": {
           "type": "array",

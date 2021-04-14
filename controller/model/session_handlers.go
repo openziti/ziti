@@ -78,14 +78,14 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 	validPosture := false
 	hasMatchingPolicies := false
 
-	postureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPostureChecks(apiSession.IdentityId, entity.ServiceId)
+	policyPostureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPolicyPostureChecks(apiSession.IdentityId, entity.ServiceId)
 
 	failedPolicies := map[string][]*PostureCheckFailure{}
 	failedPoliciesIdToName := map[string]string{}
 
 	var failedPolicyIds []string
 
-	for policyId, postureChecks := range postureCheckMap {
+	for policyId, policyPostureCheck := range policyPostureCheckMap {
 		policy, err := handler.GetEnv().GetHandlers().ServicePolicy.Read(policyId)
 
 		if err != nil {
@@ -98,7 +98,7 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 		hasMatchingPolicies = true
 		var failedChecks []*PostureCheckFailure
 
-		for _, postureCheck := range postureChecks {
+		for _, postureCheck := range policyPostureCheck.PostureChecks {
 
 			found := false
 
