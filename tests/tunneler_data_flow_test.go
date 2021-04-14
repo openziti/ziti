@@ -1,4 +1,4 @@
-// +build apitests
+// +build dataflow
 
 /*
 	Copyright NetFoundry, Inc.
