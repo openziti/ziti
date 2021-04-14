@@ -18,8 +18,11 @@ package subcmd
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/edge/router/xgress_edge_transport"
+	"github.com/openziti/edge/router/xgress_edge_tunnel"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/agent"
@@ -28,6 +31,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func init() {
@@ -42,6 +48,7 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+
 	logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
@@ -69,14 +76,24 @@ func run(cmd *cobra.Command, args []string) {
 
 		config.SetFlags(getFlags(cmd))
 
-		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo())
-		xgress.GlobalRegistry().Register("edge", xgressEdgeFactory)
+		stateManager := fabric.NewStateManager()
+
+		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager)
+		xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)
 		}
 
-		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(config.Id, r)
+		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(r)
 		xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+
+		xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
+		xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
+		if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
+			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
+		}
+
+		go waitForShutdown(r)
 
 		if err := r.Run(); err != nil {
 			logrus.WithError(err).Fatal("error starting")
@@ -93,4 +110,18 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 		ret[f.Name] = f
 	})
 	return ret
+}
+
+func waitForShutdown(r *router.Router) {
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
+	<-ch
+
+	pfxlog.Logger().Info("shutting down ziti-router")
+
+	if err := r.Shutdown(); err != nil {
+		pfxlog.Logger().Info("error encountered during shutdown: %v", err)
+	}
 }

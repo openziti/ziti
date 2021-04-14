@@ -68,7 +68,8 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 
 	var err error
-	if err = agent.Listen(agent.Options{}); err != nil {
+	shutdownClean := false
+	if err = agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 	}
 

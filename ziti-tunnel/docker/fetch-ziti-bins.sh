@@ -1,15 +1,22 @@
-#!/bin/bash -eu
-set -o pipefail
+#!/bin/bash
 
-echo "Fetching from Artifactory."
-if [ -z "${ARTIFACTORY_BASE_URL}" ]; then ARTIFACTORY_BASE_URL="https://netfoundry.jfrog.io/netfoundry"; fi
-if [ -z "${ARTIFACTORY_REPO}" ]; then  ARTIFACTORY_REPO="ziti-release"; fi
+set -euo pipefail
+
+[[ $# -eq 0 ]] && {
+    echo "ERROR: need the base name(s) of the executable(s) to fetch e.g. \"ziti-tunnel ...\"." >&2
+    exit 1
+}
+
+: ${ARTIFACTORY_BASE_URL:="https://netfoundry.jfrog.io/netfoundry"}
+: ${ARTIFACTORY_REPO:="ziti-release"}
 for var in ARTIFACTORY_BASE_URL ARTIFACTORY_REPO ZITI_VERSION; do
-    if [ -z "${!var}" ]; then
+    if [ -z "${!var:-}" ]; then
         echo "ERROR: ${var} must be set when fetching binaries from Artifactory." >&2
         exit 1
     fi
 done
+
+echo "Fetching from Artifactory."
 
 # map host architecture/os to directories that we use in netfoundry.jfrog.io.
 # (our artifact directories seem to align with Docker's TARGETARCH and TARGETOS

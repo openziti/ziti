@@ -22,7 +22,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/edge/tunnel/intercept/tproxy"
-	"github.com/openziti/edge/tunnel/intercept/tun"
 	"github.com/spf13/cobra"
 )
 
@@ -42,27 +41,18 @@ func init() {
 func run(cmd *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 	var err error
-	var tProxyInterceptor, tunInterceptor intercept.Interceptor
+	var tProxyInterceptor intercept.Interceptor
 
 	if len(args) != 0 {
 		_ = cmd.Flag("identity").Value.Set(args[0])
 	}
 
-	tProxyInterceptor, err = tproxy.New()
+	tProxyInterceptor, err = tproxy.New("")
 	if err != nil {
 		log.Infof("tproxy initialization failed: %v", err)
 	} else {
 		log.Info("using tproxy interceptor")
 		interceptor = tProxyInterceptor
-		return
-	}
-
-	tunInterceptor, err = tun.New("", tunMtuDefault)
-	if err != nil {
-		log.Infof("tun initialization failed: %v", err)
-	} else {
-		log.Info("using tun interceptor")
-		interceptor = tunInterceptor
 		return
 	}
 

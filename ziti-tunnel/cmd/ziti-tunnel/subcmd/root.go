@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
+	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -103,6 +104,8 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	ziti.SetApplication("ziti-tunnel", version.GetVersion())
+
 	identityJson := cmd.Flag("identity").Value.String()
 	zitiCfg, err := config.NewFromFile(identityJson)
 	if err != nil {
@@ -111,6 +114,9 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	zitiCfg.ConfigTypes = []string{
 		entities.ClientConfigV1,
 		entities.ServerConfigV1,
+		entities.InterceptV1,
+		entities.HostConfigV1,
+		entities.HostConfigV2,
 	}
 
 	resolverConfig := cmd.Flag("resolver").Value.String()

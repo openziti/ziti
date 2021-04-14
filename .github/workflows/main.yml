@@ -83,6 +83,11 @@ jobs:
         with:
           go-version: '^1.16.1'
 
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
 
@@ -91,7 +96,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-          pip install --upgrade --user pip
+          python -m pip install --upgrade pip
           pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
