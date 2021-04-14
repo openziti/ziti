@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"strconv"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -48,6 +50,9 @@ type PostureQuery struct {
 
 	// process
 	Process *PostureQueryProcess `json:"process,omitempty"`
+
+	// processes
+	Processes []*PostureQueryProcess `json:"processes"`
 
 	// query type
 	// Required: true
@@ -73,6 +78,8 @@ func (m *PostureQuery) UnmarshalJSON(raw []byte) error {
 
 		Process *PostureQueryProcess `json:"process,omitempty"`
 
+		Processes []*PostureQueryProcess `json:"processes"`
+
 		QueryType PostureCheckType `json:"queryType"`
 
 		Timeout *int64 `json:"timeout"`
@@ -84,6 +91,8 @@ func (m *PostureQuery) UnmarshalJSON(raw []byte) error {
 	m.IsPassing = dataAO1.IsPassing
 
 	m.Process = dataAO1.Process
+
+	m.Processes = dataAO1.Processes
 
 	m.QueryType = dataAO1.QueryType
 
@@ -106,6 +115,8 @@ func (m PostureQuery) MarshalJSON() ([]byte, error) {
 
 		Process *PostureQueryProcess `json:"process,omitempty"`
 
+		Processes []*PostureQueryProcess `json:"processes"`
+
 		QueryType PostureCheckType `json:"queryType"`
 
 		Timeout *int64 `json:"timeout"`
@@ -114,6 +125,8 @@ func (m PostureQuery) MarshalJSON() ([]byte, error) {
 	dataAO1.IsPassing = m.IsPassing
 
 	dataAO1.Process = m.Process
+
+	dataAO1.Processes = m.Processes
 
 	dataAO1.QueryType = m.QueryType
 
@@ -141,6 +154,10 @@ func (m *PostureQuery) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateProcess(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateProcesses(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -180,6 +197,31 @@ func (m *PostureQuery) validateProcess(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *PostureQuery) validateProcesses(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Processes) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Processes); i++ {
+		if swag.IsZero(m.Processes[i]) { // not required
+			continue
+		}
+
+		if m.Processes[i] != nil {
+			if err := m.Processes[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

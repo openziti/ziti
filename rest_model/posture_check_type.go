@@ -50,6 +50,9 @@ const (
 	// PostureCheckTypePROCESS captures enum value "PROCESS"
 	PostureCheckTypePROCESS PostureCheckType = "PROCESS"
 
+	// PostureCheckTypePROCESSMULTI captures enum value "PROCESS_MULTI"
+	PostureCheckTypePROCESSMULTI PostureCheckType = "PROCESS_MULTI"
+
 	// PostureCheckTypeDOMAIN captures enum value "DOMAIN"
 	PostureCheckTypeDOMAIN PostureCheckType = "DOMAIN"
 
@@ -65,7 +68,7 @@ var postureCheckTypeEnum []interface{}
 
 func init() {
 	var res []PostureCheckType
-	if err := json.Unmarshal([]byte(`["OS","PROCESS","DOMAIN","MAC","MFA"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["OS","PROCESS","PROCESS_MULTI","DOMAIN","MAC","MFA"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

@@ -120,8 +120,9 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		}
 
 		subType := &model.PostureResponseProcess{
-			IsRunning:          apiPostureResponse.IsRunning,
-			BinaryHash:         apiPostureResponse.Hash,
+			Path:               *apiPostureResponse.Path,
+			IsRunning:          *apiPostureResponse.IsRunning,
+			BinaryHash:         *apiPostureResponse.Hash,
 			SignerFingerprints: apiPostureResponse.SignerFingerprints,
 		}
 

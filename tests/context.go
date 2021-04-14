@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
@@ -613,15 +614,29 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	return createdAt
 }
 
-func (ctx *TestContext) newPostureCheckMFA(roleAttributes []string) *postureCheckDomain {
-	return &postureCheckDomain{
-		postureCheck: postureCheck{
-			name:           eid.New(),
-			typeId:         "MFA",
-			roleAttributes: roleAttributes,
-			tags:           nil,
-		},
+func (ctx *TestContext) newPostureCheckMFA(roleAttributes []string) *postureCheck {
+	return &postureCheck{
+		name:           eid.New(),
+		typeId:         "MFA",
+		roleAttributes: roleAttributes,
+		tags:           nil,
 	}
+}
+
+func (ctx *TestContext) newPostureCheckProcessMulti(semantic rest_model.Semantic, processes []*rest_model.ProcessMulti, roleAttributes []string) *rest_model.PostureCheckProcessMultiCreate {
+	check := &rest_model.PostureCheckProcessMultiCreate{
+		Processes: processes,
+		Semantic:  semantic,
+	}
+
+	check.SetRoleAttributes(roleAttributes)
+
+	name := uuid.New().String()
+	check.SetName(&name)
+
+	check.SetTypeID(rest_model.PostureCheckTypePROCESSMULTI)
+
+	return check
 }
 
 func (ctx *TestContext) newPostureCheckDomain(domains []string, roleAttributes []string) *postureCheckDomain {

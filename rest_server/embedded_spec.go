@@ -6027,6 +6027,110 @@ func init() {
       ],
       "x-class": "PROCESS"
     },
+    "PostureCheckProcessMultiCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckDetail"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiPatch": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckPatch"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiUpdate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckUpdate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
     "PostureCheckProcessPatch": {
       "allOf": [
         {
@@ -6209,7 +6313,10 @@ func init() {
         {
           "type": "object",
           "required": [
-            "process"
+            "path",
+            "isRunning",
+            "hash",
+            "signerFingerprints"
           ],
           "properties": {
             "hash": {
@@ -6217,6 +6324,9 @@ func init() {
             },
             "isRunning": {
               "type": "boolean"
+            },
+            "path": {
+              "type": "string"
             },
             "signerFingerprints": {
               "type": "array",
@@ -9498,6 +9608,9 @@ func init() {
         "osType": {
           "$ref": "#/definitions/osType"
         },
+        "path": {
+          "type": "string"
+        },
         "signerFingerprints": {
           "type": "array",
           "items": {
@@ -9506,11 +9619,45 @@ func init() {
         }
       }
     },
+    "postureCheckFailureProcessMulti": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/postureCheckFailure"
+        },
+        {
+          "type": "object",
+          "required": [
+            "actualValue",
+            "expectedValue",
+            "semantic"
+          ],
+          "properties": {
+            "actualValue": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureCheckFailureProcessActual"
+              }
+            },
+            "expectedValue": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
     "postureCheckType": {
       "type": "string",
       "enum": [
         "OS",
         "PROCESS",
+        "PROCESS_MULTI",
         "DOMAIN",
         "MAC",
         "MFA"
@@ -9722,6 +9869,12 @@ func init() {
             "process": {
               "$ref": "#/definitions/postureQueryProcess"
             },
+            "processes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureQueryProcess"
+              }
+            },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
             },
@@ -9764,6 +9917,33 @@ func init() {
         },
         "signerFingerprint": {
           "type": "string"
+        }
+      }
+    },
+    "processMulti": {
+      "type": "object",
+      "required": [
+        "osType",
+        "path"
+      ],
+      "properties": {
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "osType": {
+          "$ref": "#/definitions/osType"
+        },
+        "path": {
+          "type": "string"
+        },
+        "signerFingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -26376,6 +26556,110 @@ func init() {
       ],
       "x-class": "PROCESS"
     },
+    "PostureCheckProcessMultiCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckDetail"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiPatch": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckPatch"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
+    "PostureCheckProcessMultiUpdate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/PostureCheckUpdate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "semantic",
+            "processes"
+          ],
+          "properties": {
+            "processes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
     "PostureCheckProcessPatch": {
       "allOf": [
         {
@@ -26558,7 +26842,10 @@ func init() {
         {
           "type": "object",
           "required": [
-            "process"
+            "path",
+            "isRunning",
+            "hash",
+            "signerFingerprints"
           ],
           "properties": {
             "hash": {
@@ -26566,6 +26853,9 @@ func init() {
             },
             "isRunning": {
               "type": "boolean"
+            },
+            "path": {
+              "type": "string"
             },
             "signerFingerprints": {
               "type": "array",
@@ -29847,6 +30137,9 @@ func init() {
         "osType": {
           "$ref": "#/definitions/osType"
         },
+        "path": {
+          "type": "string"
+        },
         "signerFingerprints": {
           "type": "array",
           "items": {
@@ -29855,11 +30148,45 @@ func init() {
         }
       }
     },
+    "postureCheckFailureProcessMulti": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/postureCheckFailure"
+        },
+        {
+          "type": "object",
+          "required": [
+            "actualValue",
+            "expectedValue",
+            "semantic"
+          ],
+          "properties": {
+            "actualValue": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureCheckFailureProcessActual"
+              }
+            },
+            "expectedValue": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/processMulti"
+              }
+            },
+            "semantic": {
+              "$ref": "#/definitions/semantic"
+            }
+          }
+        }
+      ],
+      "x-class": "PROCESS_MULTI"
+    },
     "postureCheckType": {
       "type": "string",
       "enum": [
         "OS",
         "PROCESS",
+        "PROCESS_MULTI",
         "DOMAIN",
         "MAC",
         "MFA"
@@ -30071,6 +30398,12 @@ func init() {
             "process": {
               "$ref": "#/definitions/postureQueryProcess"
             },
+            "processes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postureQueryProcess"
+              }
+            },
             "queryType": {
               "$ref": "#/definitions/postureCheckType"
             },
@@ -30113,6 +30446,33 @@ func init() {
         },
         "signerFingerprint": {
           "type": "string"
+        }
+      }
+    },
+    "processMulti": {
+      "type": "object",
+      "required": [
+        "osType",
+        "path"
+      ],
+      "properties": {
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "osType": {
+          "$ref": "#/definitions/osType"
+        },
+        "path": {
+          "type": "string"
+        },
+        "signerFingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

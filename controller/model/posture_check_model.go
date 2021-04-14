@@ -52,19 +52,21 @@ type PostureCheckFailureValues interface {
 type newPostureCheckSubType func() PostureCheckSubType
 
 const (
-	PostureCheckTypeOs      = "OS"
-	PostureCheckTypeDomain  = "DOMAIN"
-	PostureCheckTypeProcess = "PROCESS"
-	PostureCheckTypeMAC     = "MAC"
-	PostureCheckTypeMFA     = "MFA"
+	PostureCheckTypeOs           = "OS"
+	PostureCheckTypeDomain       = "DOMAIN"
+	PostureCheckTypeProcess      = "PROCESS"
+	PostureCheckTypeProcessMulti = "PROCESS_MULTI"
+	PostureCheckTypeMAC          = "MAC"
+	PostureCheckTypeMFA          = "MFA"
 )
 
 var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
-	PostureCheckTypeOs:      newPostureCheckOperatingSystem,
-	PostureCheckTypeDomain:  newPostureCheckWindowsDomains,
-	PostureCheckTypeProcess: newPostureCheckProcess,
-	PostureCheckTypeMAC:     newPostureCheckMacAddresses,
-	PostureCheckTypeMFA:     newPostureCheckMfa,
+	PostureCheckTypeOs:           newPostureCheckOperatingSystem,
+	PostureCheckTypeDomain:       newPostureCheckWindowsDomains,
+	PostureCheckTypeProcess:      newPostureCheckProcess,
+	PostureCheckTypeProcessMulti: newPostureCheckProcessMulti,
+	PostureCheckTypeMAC:          newPostureCheckMacAddresses,
+	PostureCheckTypeMFA:          newPostureCheckMfa,
 }
 
 func newSubType(typeId string) PostureCheckSubType {
@@ -128,9 +130,9 @@ func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, 
 func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool, *PostureCheckFailure) {
 	if !entity.SubType.Evaluate(apiSessionId, pd) {
 		return false, &PostureCheckFailure{
-			PostureCheckId:   entity.Id,
-			PostureCheckName: entity.Name,
-			PostureCheckType: entity.TypeId,
+			PostureCheckId:            entity.Id,
+			PostureCheckName:          entity.Name,
+			PostureCheckType:          entity.TypeId,
 			PostureCheckFailureValues: entity.SubType.FailureValues(apiSessionId, pd),
 		}
 	}

@@ -55,6 +55,33 @@ type postureCheck struct {
 	tags           map[string]interface{}
 }
 
+func (p postureCheck) getId() string {
+	return p.id
+}
+
+func (p postureCheck) setId(id string) {
+	p.id = id
+}
+
+func (p postureCheck) getEntityType() string {
+	return "posture-checks"
+}
+
+func (p postureCheck) toJson(create bool, ctx *TestContext, fields ...string) string {
+	entityData := gabs.New()
+	ctx.setJsonValue(entityData, p.name, "name")
+	ctx.setJsonValue(entityData, p.roleAttributes, "roleAttributes")
+	ctx.setJsonValue(entityData, p.typeId, "typeId")
+
+	if len(p.tags) > 0 {
+		ctx.setJsonValue(entityData, p.tags, "tags")
+	}
+
+	return entityData.String()
+}
+
+func (p postureCheck) validate(ctx *TestContext, c *gabs.Container) {}
+
 type postureCheckDomain struct {
 	postureCheck
 	domains []string

@@ -27,11 +27,11 @@ import (
 
 func MapPostureDataToRestModel(ae *env.AppEnv, postureData *model.PostureData) *rest_model.PostureData {
 	ret := &rest_model.PostureData{
-		Domain:                 MapPostureDataDomainToRestModel(&postureData.Domain),
-		Mac:                    MapPostureDataMacToRestModel(&postureData.Mac),
-		Os:                     MapPostureDataOsToRestModel(&postureData.Os),
-		APISessionPostureData:  MapPostureDataApiSessionDataToRestModel(postureData.ApiSessions),
-		Processes:              MapPostureDataProcessesToRestModel(postureData),
+		Domain:                MapPostureDataDomainToRestModel(&postureData.Domain),
+		Mac:                   MapPostureDataMacToRestModel(&postureData.Mac),
+		Os:                    MapPostureDataOsToRestModel(&postureData.Os),
+		APISessionPostureData: MapPostureDataApiSessionDataToRestModel(postureData.ApiSessions),
+		Processes:             MapPostureDataProcessesToRestModel(postureData),
 	}
 
 	return ret
@@ -149,13 +149,54 @@ func MapPostureCheckFailureProcessToRestModel(failure *model.PostureCheckFailure
 
 		ret.ExpectedValue.Hashes = val.ExpectedValue.Hashes
 		ret.ExpectedValue.Path = &val.ExpectedValue.Path
-		ret.ExpectedValue.OsType = rest_model.OsType(val.ExpectedValue.OperatingSystem)
+		ret.ExpectedValue.OsType = rest_model.OsType(val.ExpectedValue.OsType)
 		ret.ExpectedValue.SignerFingerprint = val.ExpectedValue.Fingerprint
 	} else {
 		pfxlog.Logger().Errorf("could not convert failure values of %T for posture check %s, expected process", failure.PostureCheckFailureValues, failure.PostureCheckId)
 	}
 
 	return ret
+}
+
+func MapPostureCheckFailureProcessMultiToRestModel(failure *model.PostureCheckFailure) *rest_model.PostureCheckFailureProcessMulti {
+	restResult := &rest_model.PostureCheckFailureProcessMulti{
+		ActualValue:   []*rest_model.PostureCheckFailureProcessActual{},
+		ExpectedValue: []*rest_model.ProcessMulti{},
+	}
+
+	restResult.SetPostureCheckID(&failure.PostureCheckId)
+	restResult.SetPostureCheckType(failure.PostureCheckType)
+	restResult.SetPostureCheckName(&failure.PostureCheckName)
+
+	if val, ok := failure.PostureCheckFailureValues.(*model.PostureCheckFailureValuesProcessMulti); ok {
+		restResult.Semantic = rest_model.Semantic(val.ExpectedValue.Semantic)
+
+		for _, valActual := range val.ActualValue {
+			restActual := &rest_model.PostureCheckFailureProcessActual{
+				Hash:               &valActual.BinaryHash,
+				IsRunning:          &valActual.IsRunning,
+				SignerFingerprints: valActual.SignerFingerprints,
+				Path:               valActual.Path,
+			}
+
+			restResult.ActualValue = append(restResult.ActualValue, restActual)
+		}
+
+		for _, valExpected := range val.ExpectedValue.Processes {
+			restExpected := &rest_model.ProcessMulti{
+				Hashes:             valExpected.Hashes,
+				OsType:             rest_model.OsType(valExpected.OsType),
+				Path:               &valExpected.Path,
+				SignerFingerprints: valExpected.SignerFingerprints,
+			}
+
+			restResult.ExpectedValue = append(restResult.ExpectedValue, restExpected)
+		}
+	} else {
+		pfxlog.Logger().Errorf("could not convert failure values of %T for posture check %s, expected process multi", failure.PostureCheckFailureValues, failure.PostureCheckId)
+	}
+
+	return restResult
 }
 
 func MapPostureCheckFailureDomainToRestModel(failure *model.PostureCheckFailure) *rest_model.PostureCheckFailureDomain {
@@ -269,6 +310,8 @@ func MapPostureDataFailedSessionRequestToRestModel(modelFailedSessionRequests []
 				switch pdCheck.PostureCheckType {
 				case string(rest_model.PostureCheckTypePROCESS):
 					checks = append(checks, MapPostureCheckFailureProcessToRestModel(pdCheck))
+				case string(rest_model.PostureCheckTypePROCESSMULTI):
+					checks = append(checks, MapPostureCheckFailureProcessMultiToRestModel(pdCheck))
 				case string(rest_model.PostureCheckTypeDOMAIN):
 					checks = append(checks, MapPostureCheckFailureDomainToRestModel(pdCheck))
 				case string(rest_model.PostureCheckTypeMAC):

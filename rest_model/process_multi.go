@@ -36,47 +36,35 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// PostureCheckFailureProcessActual posture check failure process actual
+// ProcessMulti process multi
 //
-// swagger:model postureCheckFailureProcessActual
-type PostureCheckFailureProcessActual struct {
+// swagger:model processMulti
+type ProcessMulti struct {
 
-	// hash
-	// Required: true
-	Hash *string `json:"hash"`
-
-	// is running
-	// Required: true
-	IsRunning *bool `json:"isRunning"`
+	// hashes
+	Hashes []string `json:"hashes"`
 
 	// os type
-	OsType OsType `json:"osType,omitempty"`
+	// Required: true
+	OsType OsType `json:"osType"`
 
 	// path
-	Path string `json:"path,omitempty"`
+	// Required: true
+	Path *string `json:"path"`
 
 	// signer fingerprints
-	// Required: true
 	SignerFingerprints []string `json:"signerFingerprints"`
 }
 
-// Validate validates this posture check failure process actual
-func (m *PostureCheckFailureProcessActual) Validate(formats strfmt.Registry) error {
+// Validate validates this process multi
+func (m *ProcessMulti) Validate(formats strfmt.Registry) error {
 	var res []error
-
-	if err := m.validateHash(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateIsRunning(formats); err != nil {
-		res = append(res, err)
-	}
 
 	if err := m.validateOsType(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateSignerFingerprints(formats); err != nil {
+	if err := m.validatePath(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -86,29 +74,7 @@ func (m *PostureCheckFailureProcessActual) Validate(formats strfmt.Registry) err
 	return nil
 }
 
-func (m *PostureCheckFailureProcessActual) validateHash(formats strfmt.Registry) error {
-
-	if err := validate.Required("hash", "body", m.Hash); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureCheckFailureProcessActual) validateIsRunning(formats strfmt.Registry) error {
-
-	if err := validate.Required("isRunning", "body", m.IsRunning); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureCheckFailureProcessActual) validateOsType(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.OsType) { // not required
-		return nil
-	}
+func (m *ProcessMulti) validateOsType(formats strfmt.Registry) error {
 
 	if err := m.OsType.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
@@ -120,9 +86,9 @@ func (m *PostureCheckFailureProcessActual) validateOsType(formats strfmt.Registr
 	return nil
 }
 
-func (m *PostureCheckFailureProcessActual) validateSignerFingerprints(formats strfmt.Registry) error {
+func (m *ProcessMulti) validatePath(formats strfmt.Registry) error {
 
-	if err := validate.Required("signerFingerprints", "body", m.SignerFingerprints); err != nil {
+	if err := validate.Required("path", "body", m.Path); err != nil {
 		return err
 	}
 
@@ -130,7 +96,7 @@ func (m *PostureCheckFailureProcessActual) validateSignerFingerprints(formats st
 }
 
 // MarshalBinary interface implementation
-func (m *PostureCheckFailureProcessActual) MarshalBinary() ([]byte, error) {
+func (m *ProcessMulti) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -138,8 +104,8 @@ func (m *PostureCheckFailureProcessActual) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *PostureCheckFailureProcessActual) UnmarshalBinary(b []byte) error {
-	var res PostureCheckFailureProcessActual
+func (m *ProcessMulti) UnmarshalBinary(b []byte) error {
+	var res ProcessMulti
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti"
@@ -399,10 +400,27 @@ func (request *authenticatedRequests) requireNewPostureCheckDomain(domains []str
 	return postureCheck
 }
 
-func (request *authenticatedRequests) requireNewPostureCheckMFA(roleAttributes []string) *postureCheckDomain {
+func (request *authenticatedRequests) requireNewPostureCheckMFA(roleAttributes []string) *postureCheck {
 	postureCheck := request.testContext.newPostureCheckMFA(roleAttributes)
 	request.requireCreateEntity(postureCheck)
 	return postureCheck
+}
+
+func (request *authenticatedRequests) requireNewPostureCheckProcessMulti(semantic rest_model.Semantic, processes []*rest_model.ProcessMulti, roleAttributes []string) *rest_model.PostureCheckProcessMultiDetail {
+	postureCheck := request.testContext.newPostureCheckProcessMulti(semantic, processes, roleAttributes)
+	id := request.requireCreateRestModelEntity("posture-checks", postureCheck)
+
+	ret := &rest_model.PostureCheckProcessMultiDetail{
+		Processes: postureCheck.Processes,
+		Semantic:  postureCheck.Semantic,
+	}
+
+	ret.SetName(postureCheck.Name())
+	ret.SetTypeID(string(postureCheck.TypeID()))
+	ret.SetID(&id)
+	ret.SetRoleAttributes(postureCheck.RoleAttributes())
+
+	return ret
 }
 
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
@@ -518,6 +536,35 @@ func (request *authenticatedRequests) requireCreateEntity(entity entity) string 
 	entity.setId(id)
 	return id
 }
+
+type JsonMarshallable interface {
+	MarshalJSON() ([]byte, error)
+}
+
+func (request *authenticatedRequests) requireCreateRestModelEntity(path string, entity JsonMarshallable) string {
+	body, err := entity.MarshalJSON()
+	request.testContext.Req.NoError(err)
+
+	resp, err := request.newAuthenticatedRequest().SetBody(body).Post(path)
+	request.testContext.Req.NoError(err)
+
+	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+
+	id := request.testContext.getEntityId(resp.Body())
+
+	return id
+}
+
+func (request *authenticatedRequests) requireCreateRestModelPostureResponse(entity JsonMarshallable) {
+	body, err := entity.MarshalJSON()
+	request.testContext.Req.NoError(err)
+
+	resp, err := request.newAuthenticatedRequest().SetBody(body).Post("/posture-response")
+	request.testContext.Req.NoError(err)
+
+	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+}
+
 
 func (request *authenticatedRequests) createEntityBulk(entity entity) string {
 	resp := request.createEntity(entity)

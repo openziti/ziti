@@ -46,12 +46,19 @@ type PostureResponseProcessCreate struct {
 	idField *string
 
 	// hash
-	Hash string `json:"hash,omitempty"`
+	// Required: true
+	Hash *string `json:"hash"`
 
 	// is running
-	IsRunning bool `json:"isRunning,omitempty"`
+	// Required: true
+	IsRunning *bool `json:"isRunning"`
+
+	// path
+	// Required: true
+	Path *string `json:"path"`
 
 	// signer fingerprints
+	// Required: true
 	SignerFingerprints []string `json:"signerFingerprints"`
 }
 
@@ -79,12 +86,19 @@ func (m *PostureResponseProcessCreate) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// hash
-		Hash string `json:"hash,omitempty"`
+		// Required: true
+		Hash *string `json:"hash"`
 
 		// is running
-		IsRunning bool `json:"isRunning,omitempty"`
+		// Required: true
+		IsRunning *bool `json:"isRunning"`
+
+		// path
+		// Required: true
+		Path *string `json:"path"`
 
 		// signer fingerprints
+		// Required: true
 		SignerFingerprints []string `json:"signerFingerprints"`
 	}
 	buf := bytes.NewBuffer(raw)
@@ -121,6 +135,7 @@ func (m *PostureResponseProcessCreate) UnmarshalJSON(raw []byte) error {
 
 	result.Hash = data.Hash
 	result.IsRunning = data.IsRunning
+	result.Path = data.Path
 	result.SignerFingerprints = data.SignerFingerprints
 
 	*m = result
@@ -135,18 +150,27 @@ func (m PostureResponseProcessCreate) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// hash
-		Hash string `json:"hash,omitempty"`
+		// Required: true
+		Hash *string `json:"hash"`
 
 		// is running
-		IsRunning bool `json:"isRunning,omitempty"`
+		// Required: true
+		IsRunning *bool `json:"isRunning"`
+
+		// path
+		// Required: true
+		Path *string `json:"path"`
 
 		// signer fingerprints
+		// Required: true
 		SignerFingerprints []string `json:"signerFingerprints"`
 	}{
 
 		Hash: m.Hash,
 
 		IsRunning: m.IsRunning,
+
+		Path: m.Path,
 
 		SignerFingerprints: m.SignerFingerprints,
 	})
@@ -178,6 +202,22 @@ func (m *PostureResponseProcessCreate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateHash(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsRunning(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePath(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateSignerFingerprints(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -187,6 +227,42 @@ func (m *PostureResponseProcessCreate) Validate(formats strfmt.Registry) error {
 func (m *PostureResponseProcessCreate) validateID(formats strfmt.Registry) error {
 
 	if err := validate.Required("id", "body", m.ID()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureResponseProcessCreate) validateHash(formats strfmt.Registry) error {
+
+	if err := validate.Required("hash", "body", m.Hash); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureResponseProcessCreate) validateIsRunning(formats strfmt.Registry) error {
+
+	if err := validate.Required("isRunning", "body", m.IsRunning); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureResponseProcessCreate) validatePath(formats strfmt.Registry) error {
+
+	if err := validate.Required("path", "body", m.Path); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureResponseProcessCreate) validateSignerFingerprints(formats strfmt.Registry) error {
+
+	if err := validate.Required("signerFingerprints", "body", m.SignerFingerprints); err != nil {
 		return err
 	}
 
