@@ -4,7 +4,7 @@ export PFXLOG_NO_JSON=true
 
 
 # make the quickstart home folder where all the config files, logs, etc will go
-export ZITI_HOME=~/.ziti/quickstart/${network_name}
+export ZITI_HOME=${HOME}/.ziti/quickstart/${network_name}
 export ZITI_POSTGRES_HOST="localhost"
 export ZITI_NETWORK=${network_name}
 export ZITI_USER="admin"
