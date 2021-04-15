@@ -53,7 +53,7 @@ the image to a public registry.
 
 Run `docker buildx` like this:
 
-    $ ziti_version="0.15.3"
+    $ ziti_version="0.19.11"
     $ docker buildx build \
         --platform linux/amd64,linux/arm/v7,linux/aarch64 \
         --build-arg ZITI_VERSION="${ziti_version}" \
@@ -88,8 +88,8 @@ This build method produces an image for the CPU that is running the build host
 cache.
 
     $ git fetch --tags && git tag -l | sort -Vr | head -1
-    v0.19.10
-    $ ziti_version="0.19.10" \
+    v0.19.11
+    $ ziti_version="0.19.11" \
     $ docker build \
         --build-arg ZITI_VERSION="${ziti_version}" \
         -t "netfoundry/ziti-tunnel:${ziti_version}" .
@@ -109,4 +109,4 @@ cache.
             -c                don't check out v${ZITI_VERSION} (use Git working copy)
 
         EXAMPLES
-            ZITI_VERSION=0.16.1 ./buildx.sh -r netfoundry/ziti-tunnel
+            ZITI_VERSION=0.19.11 ./buildx.sh -r netfoundry/ziti-tunnel

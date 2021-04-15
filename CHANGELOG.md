@@ -1,3 +1,33 @@
+# Release 0.19.11
+
+## What's New
+
+* Add workaround for bbolt bug which caused some data to get left behind when deleting identities, seen when turning off tunneler capability on edge routers
+* Remove deprecated ziti-enroller command. Enrollement can be done using the ziti-tunnel, ziti-router and ziti commands
+* Fix UDP intercept handling
+* The host.v1 service configuration type has been changed as follows:
+    * Rename `dialIntercepted*` properties to `forwardProtocol`, `forwardAddress`, `forwardPort` for better consistency with non-tunneler client applications.
+    * Add `allowedProtocols`, `allowedAddresses`, and `allowedPortRanges` properties to whitelist destinations that are dialed via `forward*`. The `allowed*` properties are required for any corresponding `forward*` property that is `true`.
+    * Add `allowedSourceAddresses`, which serves as a whitelist for source IPs/CIDRs and informs the hosting tunneler of the local routes to establish when hosting a service.
+* Ziti Controller will now report service posture query policy types (Dial/Bind)
+* Ziti Controller now supports enrollment extension for routers
+* Ziti Router now support forcing enrollment extension via `run -e`
+* Ziti Routers will now automatically extend their enrollment before their certificates expire
+* `ziti edge enroll` with a UPDB JWT now confirms and properly sets the password supplied
+
+  Caveats:
+    * Any existing host.v1 configurations that use will become invalid.
+    * ziti-tunnel and the converged router/tunneler creates local routes that are establised for `allowedSourceAddresses`, but the routes are not consistently cleaned up when `ziti-tunnel` exits. This issue will be addressed in a future release.
+
+# Release 0.19.10
+
+## What's New
+
+* Fixed issue where edge router renames didn't propagate to fabric
+* Fixed issue where gateway couldn't dial after router rename
+* Allowed parsing identities where values were not URIs
+* Allow updating which configs are used by services
+
 # Release 0.19.9
 
 ## What's New
