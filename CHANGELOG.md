@@ -2,6 +2,9 @@
 
 ## What's New
 
+* Add workaround for bbolt bug which caused some data to get left behind when deleting identities, seen when turning off tunneler capability on edge routers
+* Remove deprecated ziti-enroller command. Enrollement can be done using the ziti-tunnel, ziti-router and ziti commands
+* Fix UDP intercept handling
 * The host.v1 service configuration type has been changed as follows:
     * Rename `dialIntercepted*` properties to `forwardProtocol`, `forwardAddress`, `forwardPort` for better consistency with non-tunneler client applications.
     * Add `allowedProtocols`, `allowedAddresses`, and `allowedPortRanges` properties to whitelist destinations that are dialed via `forward*`. The `allowed*` properties are required for any corresponding `forward*` property that is `true`.
