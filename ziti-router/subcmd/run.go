@@ -36,7 +36,11 @@ import (
 	"syscall"
 )
 
+var forceEnrollmentExtension *bool
+
 func init() {
+	//flags are added to an internal map and read later on, see getFlags()
+	runCmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
 	root.AddCommand(runCmd)
 }
 

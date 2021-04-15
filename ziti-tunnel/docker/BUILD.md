@@ -81,7 +81,6 @@ Notes:
 - <https://community.arm.com/developer/tools-software/tools/b/tools-software-ides-blog/posts/getting-started-with-docker-for-arm-on-linux>
 - <https://medium.com/@drpdishant/installing-docker-on-fedora-31-a073db823bb8>
 
-
 # Building for Development
 
 This build method produces an image for the CPU that is running the build host
