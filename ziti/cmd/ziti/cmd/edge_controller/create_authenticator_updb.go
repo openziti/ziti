@@ -20,20 +20,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 type createAuthenticatorUpdb struct {
-	commonOptions
+	edgeOptions
 	idOrName string
 	password string
 	username string
 }
 
-func newCreateAuthenticatorUpdb(idType string, options commonOptions) *cobra.Command {
-	updbOptions := &createAuthenticatorUpdb{commonOptions: options}
+func newCreateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Command {
+	updbOptions := &createAuthenticatorUpdb{edgeOptions: options}
 
 	cmd := &cobra.Command{
 		Use:     idType + " <identityIdOrName> <username> [<password>]",
@@ -78,7 +78,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 		return errors.New("an identity must be specified")
 	}
 
-	id, err := mapIdentityNameToID(options.idOrName)
+	id, err := mapIdentityNameToID(options.idOrName, options.edgeOptions)
 
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 	setJSONValue(passwordData, options.password, "password")
 	setJSONValue(passwordData, options.username, "username")
 
-	if _, err = createEntityOfType(fmt.Sprintf("identities/%s/updb", id), passwordData.String(), &options.commonOptions); err != nil {
+	if _, err = createEntityOfType(fmt.Sprintf("identities/%s/updb", id), passwordData.String(), &options.edgeOptions); err != nil {
 		return err
 	}
 	return nil

@@ -17,6 +17,7 @@
 package loop3
 
 import (
+	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"time"
@@ -36,13 +37,48 @@ type Workload struct {
 }
 
 type Test struct {
-	TxRequests       int32 `yaml:"txRequests"`
-	TxPacing         int32 `yaml:"txPacing"`
-	TxMaxJitter      int32 `yaml:"txMaxJitter"`
-	RxTimeout        int32 `yaml:"rxTimeout"`
-	PayloadMinBytes  int32 `yaml:"payloadMinBytes"`
-	PayloadMaxBytes  int32 `yaml:"payloadMaxBytes"`
-	LatencyFrequency int32 `yaml:"latencyFrequency"`
+	TxRequests       int32  `yaml:"txRequests"`
+	TxPacing         int32  `yaml:"txPacing"`
+	TxMaxJitter      int32  `yaml:"txMaxJitter"`
+	RxTimeout        int32  `yaml:"rxTimeout"`
+	PayloadMinBytes  int32  `yaml:"payloadMinBytes"`
+	PayloadMaxBytes  int32  `yaml:"payloadMaxBytes"`
+	LatencyFrequency int32  `yaml:"latencyFrequency"`
+	BlockType        string `yaml:"blockType"`
+}
+
+func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
+	local := &loop3_pb.Test{
+		Name:             workload.Name,
+		TxRequests:       workload.Dialer.TxRequests,
+		TxPacing:         workload.Dialer.TxPacing,
+		TxMaxJitter:      workload.Dialer.TxMaxJitter,
+		RxRequests:       workload.Listener.TxRequests,
+		RxTimeout:        workload.Dialer.RxTimeout,
+		RxSeqBlockSize:   workload.Listener.PayloadMinBytes,
+		PayloadMinBytes:  workload.Dialer.PayloadMinBytes,
+		PayloadMaxBytes:  workload.Dialer.PayloadMaxBytes,
+		LatencyFrequency: workload.Dialer.LatencyFrequency,
+		TxBlockType:      workload.Dialer.BlockType,
+		RxBlockType:      workload.Listener.BlockType,
+	}
+
+	remote := &loop3_pb.Test{
+		Name:             workload.Name,
+		TxRequests:       workload.Listener.TxRequests,
+		TxPacing:         workload.Listener.TxPacing,
+		TxMaxJitter:      workload.Listener.TxMaxJitter,
+		RxRequests:       workload.Dialer.TxRequests,
+		RxTimeout:        workload.Listener.RxTimeout,
+		RxSeqBlockSize:   workload.Dialer.PayloadMinBytes,
+		PayloadMinBytes:  workload.Listener.PayloadMinBytes,
+		PayloadMaxBytes:  workload.Listener.PayloadMaxBytes,
+		LatencyFrequency: workload.Listener.LatencyFrequency,
+		TxBlockType:      workload.Listener.BlockType,
+		RxBlockType:      workload.Dialer.BlockType,
+	}
+
+	return local, remote
 }
 
 type Metrics struct {

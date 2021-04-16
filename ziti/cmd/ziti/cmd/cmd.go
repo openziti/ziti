@@ -131,6 +131,7 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	psCommands := NewCmdPs(f, out, err)
 	pkiCommands := NewCmdPKI(f, out, err)
 	edgeCommand := edge_controller.NewCmdEdge(f, out, err)
+	logFilter := NewCmdLogFormat(f, out, err)
 
 	installCommands := []*cobra.Command{
 		NewCmdInstall(f, out, err),
@@ -159,10 +160,17 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 				psCommands,
 				pkiCommands,
 			},
-		}, {
+		},
+		{
 			Message: "Interacting with Ziti edge components",
 			Commands: []*cobra.Command{
 				edgeCommand,
+			},
+		},
+		{
+			Message: "Utilities",
+			Commands: []*cobra.Command{
+				logFilter,
 			},
 		},
 	}

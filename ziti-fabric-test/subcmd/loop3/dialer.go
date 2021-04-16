@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress_transport"
+	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -70,6 +70,11 @@ func newDialerCmd() *dialerCmd {
 func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 	log := pfxlog.Logger()
 
+	shutdownClean := false
+	if err := agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+	}
+
 	scenario, err := LoadScenario(args[0])
 	if err != nil {
 		panic(err)
@@ -99,38 +104,18 @@ func (cmd *dialerCmd) run(_ *cobra.Command, args []string) {
 			resultChs[name] = resultCh
 
 			go func() {
-				workload := scenario.Workloads[0]
-				local := &loop3_pb.Test{
-					Name:             name,
-					TxRequests:       workload.Dialer.TxRequests,
-					TxPacing:         workload.Dialer.TxPacing,
-					TxMaxJitter:      workload.Dialer.TxMaxJitter,
-					RxRequests:       workload.Listener.TxRequests,
-					RxTimeout:        workload.Dialer.RxTimeout,
-					PayloadMinBytes:  workload.Dialer.PayloadMinBytes,
-					PayloadMaxBytes:  workload.Dialer.PayloadMaxBytes,
-					LatencyFrequency: workload.Dialer.LatencyFrequency,
-				}
-				remote := &loop3_pb.Test{
-					Name:             name,
-					TxRequests:       workload.Listener.TxRequests,
-					TxPacing:         workload.Listener.TxPacing,
-					TxMaxJitter:      workload.Listener.TxMaxJitter,
-					RxRequests:       workload.Dialer.TxRequests,
-					RxTimeout:        workload.Listener.RxTimeout,
-					PayloadMinBytes:  workload.Listener.PayloadMinBytes,
-					PayloadMaxBytes:  workload.Listener.PayloadMaxBytes,
-					LatencyFrequency: workload.Listener.LatencyFrequency,
-				}
+				local, remote := workload.GetTests()
 
 				if proto, err := newProtocol(conn); err == nil {
-					if err := proto.txTest(remote); err == nil {
-						if err := proto.run(local); err == nil {
-							if result, err := proto.rxResult(); err == nil {
-								resultCh <- result
-							} else {
-								panic(err)
-							}
+					if local.IsTxRandomHashed() {
+						if err := proto.txTest(remote); err != nil {
+							panic(err)
+						}
+					}
+
+					if err := proto.run(local); err == nil {
+						if result, err := proto.rxResult(); err == nil {
+							resultCh <- result
 						} else {
 							panic(err)
 						}
@@ -218,7 +203,7 @@ func (cmd *dialerCmd) connect() net.Conn {
 }
 
 func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, error) {
-	peer, err := endpoint.Dial("loop", id, nil)
+	peer, err := endpoint.Dial("loop", id, 0, nil)
 	if err != nil {
 		return nil, err
 	}

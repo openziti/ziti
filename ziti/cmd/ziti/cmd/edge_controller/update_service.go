@@ -30,16 +30,17 @@ import (
 )
 
 type updateServiceOptions struct {
-	commonOptions
+	edgeOptions
 	name               string
 	terminatorStrategy string
 	roleAttributes     []string
 	encryption         encryptionVar
+	configs            []string
 }
 
 func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServiceOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -66,6 +67,7 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 		"Set role attributes of the service. Use --role-attributes '' to set an empty list")
 	options.encryption.Set("ON")
 	cmd.Flags().VarP(&options.encryption, "encryption", "e", "Controls end-to-end encryption for the service")
+	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -73,7 +75,7 @@ func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runUpdateService update a new service on the Ziti Edge Controller
 func runUpdateService(o *updateServiceOptions) error {
-	id, err := mapNameToID("services", o.Args[0])
+	id, err := mapNameToID("services", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -100,10 +102,19 @@ func runUpdateService(o *updateServiceOptions) error {
 		change = true
 	}
 
+	if o.Cmd.Flags().Changed("configs") {
+		configs, err := mapNamesToIDs("configs", o.edgeOptions, o.configs...)
+		if err != nil {
+			return err
+		}
+		setJSONValue(entityData, configs, "configs")
+		change = true
+	}
+
 	if !change {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("services/%v", id), entityData.String(), &o.commonOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("services/%v", id), entityData.String(), &o.edgeOptions)
 	return err
 }

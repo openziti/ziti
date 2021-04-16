@@ -17,37 +17,25 @@
 package cmd
 
 import (
-	"io"
-
+	"github.com/openziti/fabric/router"
+	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
-	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/spf13/cobra"
+	"io"
+	"os"
 )
 
-var (
-	uninstallZitiProxyLong = templates.LongDesc(`
-		UnInstalls the Ziti Proxy app if it has previously been installed
-`)
-
-	uninstallZitiProxyExample = templates.Examples(`
-		# UnInstall the Ziti Proxy app 
-		ziti uninstall ziti-proxy
-	`)
-)
-
-// UnInstallZitiProxyOptions the options for the upgrade ziti-proxy command
-type UnInstallZitiProxyOptions struct {
-	UnInstallOptions
-
-	Version string
+// PsRouteOptions the options for the create spring command
+type PsDumpRoutesOptions struct {
+	PsOptions
+	CtrlListener string
 }
 
-// NewCmdUnInstallZitiProxy defines the command
-func NewCmdUnInstallZitiProxy(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &UnInstallZitiProxyOptions{
-		UnInstallOptions: UnInstallOptions{
+// NewCmdPsDumpRoutes creates a command object for the "dump-routes" command
+func NewCmdPsDumpRoutes(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &PsDumpRoutesOptions{
+		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -57,11 +45,8 @@ func NewCmdUnInstallZitiProxy(f cmdutil.Factory, out io.Writer, errOut io.Writer
 	}
 
 	cmd := &cobra.Command{
-		Use:     "ziti-proxy",
-		Short:   "UnInstalls the Ziti Proxy app - if it has previously been installed",
-		Aliases: []string{"proxy"},
-		Long:    uninstallZitiProxyLong,
-		Example: uninstallZitiProxyExample,
+		Args: cobra.MaximumNArgs(1),
+		Use:  "dump-routes <optional-target> ",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -69,11 +54,20 @@ func NewCmdUnInstallZitiProxy(f cmdutil.Factory, out io.Writer, errOut io.Writer
 			cmdhelper.CheckErr(err)
 		},
 	}
+
+	options.addCommonFlags(cmd)
+
 	return cmd
 }
 
 // Run implements the command
-func (o *UnInstallZitiProxyOptions) Run() error {
-	o.deleteInstalledBinary(c.ZITI_PROXY)
-	return nil
+func (o *PsDumpRoutesOptions) Run() error {
+	addr, err := agent.ParseGopsAddress(o.Args)
+	if err != nil {
+		return err
+	}
+
+	buf := []byte{router.DumpForwarderTables}
+
+	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
 }

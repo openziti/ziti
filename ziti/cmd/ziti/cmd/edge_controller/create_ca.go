@@ -28,7 +28,7 @@ import (
 )
 
 type createCaOptions struct {
-	commonOptions
+	edgeOptions
 	tags             map[string]string
 	name             string
 	caPath           string
@@ -42,7 +42,7 @@ type createCaOptions struct {
 // newCreateCaCmd creates the 'edge controller create ca local' command for the given entity type
 func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createCaOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -104,7 +104,7 @@ func runCreateCa(options *createCaOptions) (err error) {
 	setJSONValue(data, string(options.caPemBytes), "certPem")
 	setJSONValue(data, options.identityRoles, "identityRoles")
 
-	result, err := createEntityOfType("cas", data.String(), &options.commonOptions)
+	result, err := createEntityOfType("cas", data.String(), &options.edgeOptions)
 
 	if err != nil {
 		panic(err)

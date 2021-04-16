@@ -1,0 +1,126 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+      - release-v*
+  pull_request:
+
+env:
+  GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+
+jobs:
+  mac-os-build:
+    name: Build Mac OS binaries
+    runs-on: macos-10.15
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.1'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Build and Test
+        run: |
+          pip install --upgrade pip
+          pip install awscli
+          go get github.com/mitchellh/gox
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+
+  windows-build:
+    name: Build Windows binaries
+    runs-on: windows-2019
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.1'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          choco install python --version 3.6.8
+          python -m pip install --upgrade pip
+          pip install awscli
+          go get github.com/mitchellh/gox
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
+          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+
+  tag-and-publish:
+    name: Build Linux Binaries, Tag and Publish
+    runs-on: ubuntu-18.04
+    needs: [ mac-os-build, windows-build ]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.1'
+
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          python -m pip install --upgrade pip
+          pip install awscli
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          go get github.com/mitchellh/gox
+          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
+          aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
+
+      - name: Publish
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci tag -v -f version
+          $(go env GOPATH)/bin/ziti-ci publish-to-github
+
+      - name: Trigger Smoketest
+        env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
+          jenkins_user: ${{ secrets.JENKINS_USER }}
+          jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
+          jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
+          $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build

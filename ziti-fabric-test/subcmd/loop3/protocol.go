@@ -18,29 +18,30 @@ package loop3
 
 import (
 	"bytes"
-	"crypto/sha512"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/pkg/errors"
 	"io"
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
 type protocol struct {
-	test        *loop3_pb.Test
-	txGenerator *generator
-	rxSequence  uint32
-	peer        io.ReadWriteCloser
-	rxBlocks    chan *Block
-	txCount     int32
-	rxCount     int32
-	latencies   chan *time.Time
-	errors      chan error
+	test       *loop3_pb.Test
+	blocks     chan Block
+	rxSequence uint64
+	peer       io.ReadWriteCloser
+	rxBlocks   chan Block
+	txCount    int32
+	rxCount    int32
+	lastRx     int64
+	latencies  chan *time.Time
+	errors     chan error
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
@@ -49,7 +50,7 @@ func newProtocol(peer io.ReadWriteCloser) (*protocol, error) {
 	p := &protocol{
 		rxSequence: 0,
 		peer:       peer,
-		rxBlocks:   make(chan *Block),
+		rxBlocks:   make(chan Block),
 		txCount:    0,
 		rxCount:    0,
 		latencies:  make(chan *time.Time, 1024),
@@ -60,11 +61,31 @@ func newProtocol(peer io.ReadWriteCloser) (*protocol, error) {
 
 func (p *protocol) run(test *loop3_pb.Test) error {
 	p.test = test
-	p.txGenerator = newGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency))
-	go p.txGenerator.run()
+
+	var rxBlock func() (Block, error)
+
+	if test.IsTxRandomHashed() {
+		txGenerator := newRandomHashedBlockGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes), int(test.LatencyFrequency))
+		p.blocks = txGenerator.blocks
+		go txGenerator.run()
+	} else if test.IsTxSequential() {
+		txGenerator := newSeqGenerator(int(test.TxRequests), int(test.PayloadMinBytes), int(test.PayloadMaxBytes))
+		p.blocks = txGenerator.blocks
+		go txGenerator.run()
+	} else {
+		panic(errors.Errorf("unknown tx block type %v", test.TxBlockType))
+	}
+
+	if test.IsRxRandomHashed() {
+		rxBlock = p.rxRandomHashedBlock
+	} else if test.IsRxSequential() {
+		rxBlock = p.rxSeqBlock
+	} else {
+		panic(errors.Errorf("unknown rx block type %v", test.RxBlockType))
+	}
 
 	rxerDone := make(chan bool)
-	go p.rxer(rxerDone)
+	go p.rxer(rxerDone, rxBlock)
 	if p.test.RxRequests > 0 {
 		go p.verifier()
 	}
@@ -89,36 +110,30 @@ func (p *protocol) txer(done chan bool) {
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
-	var latency *time.Time
-
+	var lastSend time.Time
 	for p.txCount < p.test.TxRequests {
 		select {
-		case block := <-p.txGenerator.blocks:
+		case block := <-p.blocks:
 			if block != nil {
-
-				if block.Type == BlockTypePlain {
-					select {
-					case latency = <-p.latencies:
-					default:
-						latency = nil
+				if p.test.TxPacing > 0 {
+					jitter := 0
+					if p.test.TxMaxJitter > 0 {
+						jitter = rand.Intn(int(p.test.TxMaxJitter))
 					}
 
-					if latency != nil {
-						block.Type = BlockTypeLatencyResponse
-						block.Timestamp = *latency
+					nextSend := lastSend.Add(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
+					now := time.Now()
+					if nextSend.After(now) {
+						time.Sleep(nextSend.Sub(now))
+						lastSend = nextSend
+					} else {
+						lastSend = now
 					}
 				}
 
+				block.PrepForSend(p)
 				if err := block.Tx(p); err == nil {
-					p.txCount++
-					if p.test.TxPacing > 0 {
-						jitter := 0
-						if p.test.TxMaxJitter > 0 {
-							jitter = rand.Intn(int(p.test.TxMaxJitter))
-						}
-						time.Sleep(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
-					}
-
+					atomic.AddInt32(&p.txCount, 1)
 				} else {
 					log.Errorf("error sending block (%s)", err)
 					p.errors <- err
@@ -134,30 +149,23 @@ func (p *protocol) txer(done chan bool) {
 	log.Info("tx count reached")
 }
 
-func (p *protocol) rxer(done chan bool) {
+func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 	log := pfxlog.ContextLogger(p.test.Name)
 	log.Debug("started")
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
 	for p.rxCount < p.test.RxRequests {
-		block, err := p.rxBlock()
+		block, err := rxBlock()
 		if err != nil {
 			p.errors <- err
 			log.Error(err)
 			return
 		}
 
-		if block.Type == BlockTypeLatencyRequest {
-			select {
-			case p.latencies <- &block.Timestamp:
-			default:
-				log.Warn("latency channel out of room")
-			}
-		}
-
+		atomic.AddInt32(&p.rxCount, 1)
+		atomic.StoreInt64(&p.lastRx, info.NowInMilliseconds())
 		p.rxBlocks <- block
-		p.rxCount++
 	}
 
 	close(p.rxBlocks)
@@ -173,21 +181,7 @@ func (p *protocol) verifier() {
 		select {
 		case block := <-p.rxBlocks:
 			if block != nil {
-				if block.Sequence == p.rxSequence {
-					hash := sha512.Sum512(block.Data)
-					if hex.EncodeToString(hash[:]) != hex.EncodeToString(block.Hash) {
-						err := errors.New("mismatched hashes")
-						p.errors <- err
-						if closeErr := p.peer.Close(); closeErr != nil {
-							log.Error(closeErr)
-						}
-						log.Error(err)
-						return
-					}
-					p.rxSequence++
-
-				} else {
-					err := fmt.Errorf("expected sequence [%d] got sequence [%d]", p.rxSequence, block.Sequence)
+				if err := block.Verify(p); err != nil {
 					p.errors <- err
 					if closeErr := p.peer.Close(); closeErr != nil {
 						log.Error(closeErr)
@@ -195,18 +189,20 @@ func (p *protocol) verifier() {
 					log.Error(err)
 					return
 				}
-
 			} else {
 				return
 			}
 
 		case <-time.After(time.Duration(p.test.RxTimeout) * time.Millisecond):
-			err := fmt.Errorf("rx timeout exceeded (%d ms.)", p.test.RxTimeout)
-			p.errors <- err
-			if closeErr := p.peer.Close(); closeErr != nil {
-				log.Error(closeErr)
-			}
-			log.Error(err)
+			timeSinceLastRx := info.NowInMilliseconds() - atomic.LoadInt64(&p.lastRx)
+			errStr := fmt.Sprintf("rx timeout exceeded (%d ms.). Last rx: %v. tx count: %v, rx count: %v",
+				p.test.RxTimeout, timeSinceLastRx, atomic.LoadInt32(&p.txCount), atomic.LoadInt32(&p.rxCount))
+			// err := errors.New(errStr)
+			log.Errorf(errStr)
+			// p.errors <- err
+			//if closeErr := p.peer.Close(); closeErr != nil {
+			//	log.Error(closeErr)
+			//}
 			return
 		}
 	}
@@ -229,12 +225,33 @@ func (p *protocol) rxTest() (*loop3_pb.Test, error) {
 	return test, nil
 }
 
-func (p *protocol) rxBlock() (*Block, error) {
-	block := &Block{}
+func (p *protocol) rxRandomHashedBlock() (Block, error) {
+	block := &RandHashedBlock{}
 	if err := block.Rx(p); err != nil {
 		return nil, err
 	}
+
+	if block.Type == BlockTypeLatencyRequest {
+		select {
+		case p.latencies <- &block.Timestamp:
+		default:
+			pfxlog.Logger().Warn("latency channel out of room")
+		}
+	}
+
 	return block, nil
+}
+
+func (p *protocol) rxSeqBlock() (Block, error) {
+	block := make([]byte, p.test.RxSeqBlockSize)
+	_, err := io.ReadFull(p.peer, block)
+	if err != nil {
+		return nil, err
+	}
+
+	pfxlog.ContextLogger(p.test.Name).Infof("<- #%d (%s)", p.rxSequence, info.ByteCount(int64(len(block))))
+
+	return SeqBlock(block), nil
 }
 
 func (p *protocol) rxResult() (*Result, error) {
@@ -251,10 +268,10 @@ func (p *protocol) txPb(pb proto.Message) error {
 	if err != nil {
 		return err
 	}
-	if err = p.txMagicHeader(); err != nil {
+	if err = p.txMagicHeader(p.peer); err != nil {
 		return err
 	}
-	if err := p.txLength(len(data)); err != nil {
+	if err := p.txLength(p.peer, len(data)); err != nil {
 		return err
 	}
 	n, err := p.peer.Write(data)
@@ -297,8 +314,8 @@ func (p *protocol) rxPb(pb proto.Message) error {
 	return nil
 }
 
-func (p *protocol) txMagicHeader() error {
-	n, err := p.peer.Write(MagicHeader)
+func (p *protocol) txMagicHeader(w io.Writer) error {
+	n, err := w.Write(MagicHeader)
 	if err != nil {
 		return err
 	}
@@ -308,10 +325,10 @@ func (p *protocol) txMagicHeader() error {
 	return nil
 }
 
-func (p *protocol) txLength(length int) error {
+func (p *protocol) txLength(w io.Writer, length int) error {
 	out := make([]byte, 4)
 	binary.LittleEndian.PutUint32(out, uint32(length))
-	n, err := p.peer.Write(out)
+	n, err := w.Write(out)
 	if err != nil {
 		return err
 	}
@@ -321,12 +338,12 @@ func (p *protocol) txLength(length int) error {
 	return nil
 }
 
-func (p *protocol) txHeader(msgLen int) error {
-	if err := p.txMagicHeader(); err != nil {
+func (p *protocol) txHeader(w io.Writer, msgLen int) error {
+	if err := p.txMagicHeader(w); err != nil {
 		return err
 	}
 
-	if err := p.txLength(msgLen); err != nil {
+	if err := p.txLength(w, msgLen); err != nil {
 		return err
 	}
 	return nil

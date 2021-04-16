@@ -36,6 +36,7 @@ import (
 func init() {
 	pfxlog.Global(logrus.InfoLevel)
 	pfxlog.SetPrefix("github.com/openziti/")
+	pfxlog.SetDefaultNoColor()
 }
 
 func init() {
@@ -57,7 +58,7 @@ var root = &cobra.Command{
 		case "pfxlog":
 			logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
 		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{})
+			logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
 		case "text":
 			logrus.SetFormatter(&logrus.TextFormatter{})
 		default:

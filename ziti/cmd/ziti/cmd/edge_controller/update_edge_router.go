@@ -30,14 +30,18 @@ import (
 )
 
 type updateEdgeRouterOptions struct {
-	commonOptions
-	name           string
-	roleAttributes []string
+	edgeOptions
+	name              string
+	isTunnelerEnabled bool
+	roleAttributes    []string
+	tags              map[string]string
+	appData           map[string]string
+	usePut            bool
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -59,8 +63,13 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router")
+	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -68,7 +77,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // runUpdateEdgeRouter update a new edgeRouter on the Ziti Edge Controller
 func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
-	id, err := mapNameToID("edge-routers", o.Args[0])
+	id, err := mapNameToID("edge-routers", o.Args[0], o.edgeOptions)
 	if err != nil {
 		return err
 	}
@@ -80,8 +89,23 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		change = true
 	}
 
+	if o.Cmd.Flags().Changed("tunneler-enabled") {
+		setJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
+		change = true
+	}
+
 	if o.Cmd.Flags().Changed("role-attributes") {
 		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		setJSONValue(entityData, o.tags, "tags")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("app-data") {
+		setJSONValue(entityData, o.appData, "appData")
 		change = true
 	}
 
@@ -89,6 +113,10 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.commonOptions)
+	if o.usePut {
+		_, err = putEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+	} else {
+		_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+	}
 	return err
 }

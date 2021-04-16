@@ -87,7 +87,6 @@ func (o *VersionOptions) Run() error {
 	o.versionPrintZitiApp(c.ZITI_FABRIC, &table)
 	o.versionPrintZitiApp(c.ZITI_FABRIC_GW, &table)
 	o.versionPrintZitiApp(c.ZITI_FABRIC_TEST, &table)
-	o.versionPrintZitiApp(c.ZITI_PROXY, &table)
 	o.versionPrintZitiApp(c.ZITI_PROX_C, &table)
 	o.versionPrintZitiApp(c.ZITI_ROUTER, &table)
 	o.versionPrintZitiApp(c.ZITI_TUNNEL, &table)
@@ -136,7 +135,6 @@ func (o *VersionOptions) versionCheck() error {
 	o.versionCheckZitiApp(c.ZITI_FABRIC)
 	o.versionCheckZitiApp(c.ZITI_FABRIC_TEST)
 	o.versionCheckZitiApp(c.ZITI_FABRIC_GW)
-	o.versionCheckZitiApp(c.ZITI_PROXY)
 	o.versionCheckZitiApp(c.ZITI_PROX_C)
 	o.versionCheckZitiApp(c.ZITI_ROUTER)
 	o.versionCheckZitiApp(c.ZITI_TUNNEL)
@@ -164,16 +162,14 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC_TEST)
 	case c.ZITI_FABRIC_GW:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC_GW)
-	case c.ZITI_PROXY:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_PROXY)
 	case c.ZITI_PROX_C:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_PROX_C)
+		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
 	case c.ZITI_ROUTER:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_ROUTER)
 	case c.ZITI_TUNNEL:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_TUNNEL)
 	case c.ZITI_EDGE_TUNNEL:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL)
+		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL_GITHUB)
 	default:
 		return nil
 	}
@@ -210,8 +206,6 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 						err = o.upgradeZitiFabricTest()
 					case c.ZITI_FABRIC_GW:
 						err = o.upgradeZitiMgmtGw()
-					case c.ZITI_PROXY:
-						err = o.upgradeZitiProxy()
 					case c.ZITI_PROX_C:
 						err = o.upgradeZitiProxC()
 					case c.ZITI_ROUTER:
@@ -271,15 +265,6 @@ func (o *VersionOptions) upgradeZitiFabricTest() error {
 
 func (o *VersionOptions) upgradeZitiMgmtGw() error {
 	options := &UpgradeZitiMgmtGwOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
-	}
-	return options.Run()
-}
-
-func (o *VersionOptions) upgradeZitiProxy() error {
-	options := &UpgradeZitiProxyOptions{
 		CreateOptions: CreateOptions{
 			CommonOptions: o.CommonOptions,
 		},

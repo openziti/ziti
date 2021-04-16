@@ -29,14 +29,17 @@ import (
 )
 
 type createEdgeRouterOptions struct {
-	commonOptions
-	roleAttributes []string
-	jwtOutputFile  string
+	edgeOptions
+	isTunnelerEnabled bool
+	roleAttributes    []string
+	jwtOutputFile     string
+	tags              map[string]string
+	appData           map[string]string
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterOptions{
-		commonOptions: commonOptions{
+		edgeOptions: edgeOptions{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -59,7 +62,11 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new edge router")
+	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+	cmd.Flags().StringToStringVar(&options.appData, "app-Data", nil, "Custom application data")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -67,11 +74,14 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // runCreateEdgeRouter implements the command to create a gateway on the edge controller
 func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
-	routerData := gabs.New()
-	setJSONValue(routerData, o.Args[0], "name")
-	setJSONValue(routerData, o.roleAttributes, "roleAttributes")
+	entityData := gabs.New()
+	setJSONValue(entityData, o.Args[0], "name")
+	setJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
+	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	setJSONValue(entityData, o.tags, "tags")
+	setJSONValue(entityData, o.appData, "appData")
 
-	result, err := createEntityOfType("edge-routers", routerData.String(), &o.commonOptions)
+	result, err := createEntityOfType("edge-routers", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		return err
@@ -96,7 +106,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
 	if err != nil {
 		return err
 	}

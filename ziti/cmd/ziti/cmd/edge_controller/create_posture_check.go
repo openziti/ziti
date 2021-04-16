@@ -38,12 +38,13 @@ func newCreatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 	cmd.AddCommand(newCreatePostureCheckDomainCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckProcessCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckOsCmd(f, out, errOut))
+	cmd.AddCommand(newCreatePostureCheckMfaCmd(f, out, errOut))
 
 	return cmd
 }
 
 type createPostureCheckOptions struct {
-	commonOptions
+	edgeOptions
 	name           string
 	tags           map[string]string
 	roleAttributes []string
@@ -82,7 +83,7 @@ func (options *createPostureCheckOptions) addPostureFlags(cmd *cobra.Command) {
 func newCreatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckMacOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -122,7 +123,7 @@ func newCreatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 func newCreatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckDomainOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -162,7 +163,7 @@ func newCreatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.
 func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckProcessOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -176,7 +177,7 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 	}
 
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("process <name> <os=%s|%s|%s> <absolutePath>", OsLinux, OsMacOs, OsWindows),
+		Use:   fmt.Sprintf("process <name> <os=%s|%s|%s|%s> <absolutePath>", OsLinux, OsMacOs, OsWindows, OsWindowsServer),
 		Short: "creates a posture check for an OS specific process",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if err := cobra.ExactArgs(3)(cmd, args); err != nil {
@@ -184,7 +185,7 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 			}
 			os := normalizeOsType(args[1])
 			if os == "" || os == OsAndroid || os == OsIOS {
-				return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s", args[1], OsLinux, OsMacOs, OsWindows)
+				return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s|%s", args[1], OsLinux, OsMacOs, OsWindows, OsWindowsServer)
 			}
 
 			options.normalizedOs = os
@@ -214,16 +215,18 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 }
 
 const (
-	OsAndroid = "Android"
-	OsWindows = "Windows"
-	OsMacOs   = "macOS"
-	OsIOS     = "iOS"
-	OsLinux   = "Linux"
+	OsAndroid       = "Android"
+	OsWindows       = "Windows"
+	OsWindowsServer = "WindowsServer"
+	OsMacOs         = "macOS"
+	OsIOS           = "iOS"
+	OsLinux         = "Linux"
 
 	PostureCheckTypeDomain  = "DOMAIN"
 	PostureCheckTypeProcess = "PROCESS"
 	PostureCheckTypeMAC     = "MAC"
 	PostureCheckTypeOS      = "OS"
+	PostureCheckTypeMFA 	= "MFA"
 )
 
 // Returns the normalized Edge API value or empty string
@@ -240,6 +243,8 @@ func normalizeOsType(os string) string {
 		return OsIOS
 	case "linux":
 		return OsLinux
+	case "windowsserver":
+		return OsWindowsServer
 	}
 
 	return ""
@@ -308,7 +313,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 		setJSONValue(entityData, cleanSigner, "process", "signerFingerprint")
 	}
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -369,7 +374,7 @@ func runCreatePostureCheckMac(o *createPostureCheckMacOptions) (err error) {
 
 	setJSONValue(entityData, addresses, "macAddresses")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -415,7 +420,7 @@ func runCreatePostureCheckDomain(o *createPostureCheckDomainOptions) (err error)
 
 	setJSONValue(entityData, domains, "domains")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -434,7 +439,7 @@ func newCreatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writ
 
 	options := &createPostureCheckOsOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			commonOptions: commonOptions{
+			edgeOptions: edgeOptions{
 				CommonOptions: common.CommonOptions{
 					Factory: f,
 					Out:     out,
@@ -490,7 +495,7 @@ func runCreatePostureCheckOs(o *createPostureCheckOsOptions) error {
 	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeOS)
 	setJSONValue(entityData, osSpecs, "operatingSystems")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.commonOptions)
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
 		panic(err)
@@ -534,4 +539,63 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 		Type:     osType,
 		Versions: cleanVersions,
 	}, nil
+}
+
+
+func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := createPostureCheckOptions{
+		edgeOptions: edgeOptions{
+			CommonOptions: common.CommonOptions{
+				Factory: f,
+				Out:     out,
+				Err:     errOut,
+			},
+		},
+		tags: make(map[string]string),
+	}
+
+	cmd := &cobra.Command{
+		Use:   "mfa <name>",
+		Short: "creates a posture check indicating client-side mfa is required",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+
+			err := runCreatePostureCheckMfa(&options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	options.AddCommonFlags(cmd)
+	options.addPostureFlags(cmd)
+
+	return cmd
+}
+func runCreatePostureCheckMfa(o *createPostureCheckOptions) error {
+	entityData := gabs.New()
+	setPostureCheckEntityValues(entityData, o, PostureCheckTypeMFA)
+
+	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+
+	if err != nil {
+		panic(err)
+	}
+
+	checkId := result.S("data", "id").Data()
+
+	if _, err = fmt.Fprintf(o.Out, "%v\n", checkId); err != nil {
+		panic(err)
+	}
+
+	return nil
 }

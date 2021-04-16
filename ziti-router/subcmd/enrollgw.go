@@ -20,16 +20,20 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 )
 
 var jwtPath *string
 var engine *string
+var keyAlg config.KeyAlgVar
 
 func init() {
 	jwtPath = enrollEdgeRouterCmd.Flags().StringP("jwt", "j", "", "The path to a JWT file")
 	engine = enrollEdgeRouterCmd.Flags().StringP("engine", "e", "", "An engine")
+	keyAlg.Set("RSA") // set default
+	enrollEdgeRouterCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 	root.AddCommand(enrollEdgeRouterCmd)
 }
 
@@ -57,7 +61,7 @@ func enrollGw(cmd *cobra.Command, args []string) {
 			log.Panicf("could not load JWT file from path [%s]", *jwtPath)
 		}
 
-		if err := enroller.Enroll(jwtBuf, true, *engine); err != nil {
+		if err := enroller.Enroll(jwtBuf, true, *engine, keyAlg); err != nil {
 			log.Fatalf("enrollment failure: (%v)", err)
 		}
 	} else {
