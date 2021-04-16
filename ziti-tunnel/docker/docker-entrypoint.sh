@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 function alldone() {
     # send SIGINT to ziti-tunnel to trigger a cleanup of iptables mangle rules
@@ -49,21 +51,22 @@ if [ ! -f "${json}" ]; then
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
-# use iptables-legacy if nftables fails to accept iptables translations
-iptables-nft -t mangle -S --wait &>/dev/null || {
+# use legacy if nftables fails to accept iptables translations
+echo "INFO: probing iptables"
+if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present"; then
     for LEGACY in {ip{,6},eb,arp}tables; do
-        [[ -x /usr/sbin/${LEGACY}-legacy ]] && update-alternatives --set $LEGACY /usr/sbin/${LEGACY}-legacy
+        if which ${LEGACY}-legacy &>/dev/null; then
+            echo "INFO: updating $LEGACY alternative to ${LEGACY}-legacy"
+            update-alternatives --set $LEGACY $(which ${LEGACY}-legacy)
+        else
+            echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy"
+        fi
     done
-}
+fi
 
 # optionally run an alternative shell CMD
-[[ $# -ne 0 && $1 =~ .*sh ]] && {
-    echo "running $@"
-    exec "$@"
-} || {
-    echo "running ziti-tunnel"
-    set -x
-    ziti-tunnel -i "${json}" "${@}" &
-    ZITI_TUNNEL_PID=$!
-    wait $ZITI_TUNNEL_PID
-}
+echo "running ziti-tunnel"
+set -x
+ziti-tunnel -i "${json}" "${@}" &
+ZITI_TUNNEL_PID=$!
+wait $ZITI_TUNNEL_PID
