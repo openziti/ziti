@@ -7,7 +7,6 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
@@ -53,13 +52,19 @@ func (self *baseTunnelRequestContext) getTunnelState() *TunnelState {
 
 func (self *baseTunnelRequestContext) loadIdentity() {
 	if self.err == nil {
-		self.identity, self.err = self.handler.getAppEnv().GetHandlers().Identity.Read(self.sourceRouter.Id)
-		if self.err != nil {
+		var err error
+		self.identity, err = self.handler.getAppEnv().GetHandlers().Identity.Read(self.sourceRouter.Id)
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				self.err = TunnelingNotEnabledError{}
+			} else {
+				self.err = internalError(err)
+			}
 			return
 		}
 
 		if self.identity.IdentityTypeId != persistence.RouterIdentityType {
-			self.err = errors.New("router does not have an associated router identity")
+			self.err = TunnelingNotEnabledError{}
 		}
 	}
 }
@@ -84,7 +89,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 			}
 
 			if !boltz.IsErrNotFoundErr(err) {
-				self.err = err
+				self.err = internalError(err)
 				return false
 			}
 			logger.WithField("api-session-id", apiSessionId).Info("api session not found, creating new api session")
@@ -110,13 +115,16 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 			LastActivityAt: time.Now(),
 		}
 
-		apiSession.Id, self.err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession)
-		if self.err != nil {
+		var err error
+		apiSession.Id, err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession)
+		if err != nil {
+			self.err = internalError(err)
 			return false
 		}
 
-		apiSession, self.err = self.handler.getAppEnv().GetHandlers().ApiSession.Read(apiSession.Id)
-		if self.err != nil {
+		apiSession, err = self.handler.getAppEnv().GetHandlers().ApiSession.Read(apiSession.Id)
+		if err != nil {
+			self.err = internalError(err)
 			return false
 		}
 
@@ -138,7 +146,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			session, err := self.handler.getAppEnv().Handlers.Session.Read(sessionId)
 			if err != nil {
 				if !boltz.IsErrNotFoundErr(err) {
-					self.err = err
+					self.err = internalError(err)
 					return
 				}
 			}
@@ -163,11 +171,14 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 
 		id, err := self.handler.getAppEnv().Handlers.Session.Create(session)
 		if err != nil {
-			self.err = err
+			self.err = internalError(err)
 			return
 		}
 
-		self.session, self.err = self.handler.getAppEnv().Handlers.Session.Read(id)
+		self.session, err = self.handler.getAppEnv().Handlers.Session.Read(id)
+		if err != nil {
+			err = internalError(err)
+		}
 	}
 }
 
@@ -218,7 +229,7 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 		}
 
 		if envInfo != nil || sdkInfo != nil {
-			self.err = self.handler.getAppEnv().GetHandlers().Identity.PatchInfo(self.identity)
+			self.err = internalError(self.handler.getAppEnv().GetHandlers().Identity.PatchInfo(self.identity))
 		}
 	}
 }

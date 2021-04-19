@@ -389,6 +389,10 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.M
 	msg := edge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
 
+	if errorCode, found := req.GetUint32Header(edge.ErrorCodeHeader); found {
+		msg.PutUint32Header(edge.ErrorCodeHeader, errorCode)
+	}
+
 	syncC, err := self.ch.SendAndSyncWithPriority(msg, channel2.High)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")

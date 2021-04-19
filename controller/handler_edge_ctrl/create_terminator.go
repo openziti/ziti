@@ -17,6 +17,7 @@
 package handler_edge_ctrl
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -25,7 +26,6 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
-	"github.com/pkg/errors"
 	"math"
 )
 
@@ -85,7 +85,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	log = log.WithField("service", ctx.service.Name)
 
 	if ctx.req.Cost > math.MaxUint16 {
-		self.returnError(ctx, errors.Errorf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16))
+		self.returnError(ctx, invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)))
 		return
 	}
 
@@ -104,7 +104,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	n := self.appEnv.GetHostController().GetNetwork()
 	id, err := n.Terminators.Create(terminator)
 	if err != nil {
-		self.returnError(ctx, err)
+		self.returnError(ctx, internalError(err))
 		return
 	}
 

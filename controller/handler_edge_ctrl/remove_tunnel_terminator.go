@@ -45,7 +45,7 @@ func (self *removeTunnelTerminatorHandler) Label() string {
 	return "tunnel.remove.terminator"
 }
 
-func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	ctx := &RemoveTunnelTerminatorRequestContext{
 		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
 		terminatorId:              string(msg.Body),
@@ -69,7 +69,7 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 
 	err := self.getNetwork().Terminators.Delete(ctx.terminatorId)
 	if err != nil {
-		self.returnError(ctx, err)
+		self.returnError(ctx, internalError(err))
 		return
 	}
 
