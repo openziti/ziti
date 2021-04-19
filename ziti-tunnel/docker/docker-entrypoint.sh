@@ -59,7 +59,7 @@ if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present";
             echo "INFO: updating $LEGACY alternative to ${LEGACY}-legacy"
             update-alternatives --set $LEGACY $(which ${LEGACY}-legacy)
         else
-            echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy"
+            echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy" >&2
         fi
     done
 fi
