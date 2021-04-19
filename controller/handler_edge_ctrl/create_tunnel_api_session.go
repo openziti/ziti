@@ -69,7 +69,7 @@ func (self *createApiSessionHandler) createApiSession(ctx *createApiSessionReque
 
 	body, err := proto.Marshal(result)
 	if err != nil {
-		self.returnError(ctx, err)
+		self.returnError(ctx, internalError(err))
 		return
 	}
 
