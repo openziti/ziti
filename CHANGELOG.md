@@ -1,3 +1,9 @@
+# Release 0.19.12
+
+## What's New
+
+* Revert dial error messages to what sdks are expecting. Add error codes so future sdks don't have to parse error text
+
 # Release 0.19.11
 
 ## What's New
