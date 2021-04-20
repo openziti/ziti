@@ -55,19 +55,19 @@ type postureCheck struct {
 	tags           map[string]interface{}
 }
 
-func (p postureCheck) getId() string {
+func (p *postureCheck) getId() string {
 	return p.id
 }
 
-func (p postureCheck) setId(id string) {
+func (p *postureCheck) setId(id string) {
 	p.id = id
 }
 
-func (p postureCheck) getEntityType() string {
+func (p *postureCheck) getEntityType() string {
 	return "posture-checks"
 }
 
-func (p postureCheck) toJson(create bool, ctx *TestContext, fields ...string) string {
+func (p *postureCheck) toJson(create bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, p.name, "name")
 	ctx.setJsonValue(entityData, p.roleAttributes, "roleAttributes")
