@@ -34,12 +34,6 @@ function BLUE {
   echo "${ASCI_BLUE}$1${ASCI_RESTORE}"
 }
 
-# Test
-#echo -e $(WHITE "AAAA") is nice
-#echo -e $(GREEN "is cool too")
-#echo -e $(YELLOW "yellow a lot")
-#echo -e $(RED "rrreeeeed")
-#echo -e $(BLUE "blue is swell")
 ZITI_QUICKSTART_ROOT="${HOME}/.ziti/quickstart"
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
