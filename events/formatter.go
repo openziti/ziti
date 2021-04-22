@@ -118,6 +118,17 @@ func (event *JsonTerminatorEvent) WriteTo(output io.WriteCloser) error {
 	return err
 }
 
+type JsonRouterEvent RouterEvent
+
+func (event *JsonRouterEvent) WriteTo(output io.WriteCloser) error {
+	buf, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(buf)
+	return err
+}
+
 func NewJsonFormatter(queueDepth int, output io.WriteCloser) *JsonFormatter {
 	return &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -149,6 +160,10 @@ func (formatter *JsonFormatter) AcceptServiceEvent(event *ServiceEvent) {
 
 func (formatter *JsonFormatter) AcceptTerminatorEvent(event *TerminatorEvent) {
 	formatter.AcceptLoggingEvent((*JsonTerminatorEvent)(event))
+}
+
+func (formatter *JsonFormatter) AcceptRouterEvent(event *RouterEvent) {
+	formatter.AcceptLoggingEvent((*JsonRouterEvent)(event))
 }
 
 type PlainTextFabricSessionEvent SessionEvent
@@ -194,6 +209,13 @@ func (event *PlainTextTerminatorEvent) WriteTo(output io.WriteCloser) error {
 	return err
 }
 
+type PlainTextRouterEvent RouterEvent
+
+func (event *PlainTextRouterEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*RouterEvent)(event).String()))
+	return err
+}
+
 func NewPlainTextFormatter(queueDepth int, output io.WriteCloser) *PlainTextFormatter {
 	return &PlainTextFormatter{
 		BaseFormatter: BaseFormatter{
@@ -225,4 +247,8 @@ func (formatter *PlainTextFormatter) AcceptServiceEvent(event *ServiceEvent) {
 
 func (formatter *PlainTextFormatter) AcceptTerminatorEvent(event *TerminatorEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextTerminatorEvent)(event))
+}
+
+func (formatter *PlainTextFormatter) AcceptRouterEvent(event *RouterEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextRouterEvent)(event))
 }

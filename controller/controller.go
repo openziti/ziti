@@ -31,8 +31,8 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
-	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/fabric/controller/xtv"
+	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
@@ -81,6 +81,7 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 	}
 
 	events.InitTerminatorEventRouter(c.network)
+	events.InitRouterEventRouter(c.network)
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -134,7 +135,7 @@ func (c *Controller) Run() error {
 	for _, web := range c.xwebs {
 		go web.Run()
 	}
-	
+
 	// event handlers
 	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
 		panic(err)
