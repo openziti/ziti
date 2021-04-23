@@ -1,15 +1,14 @@
 #!/bin/bash
 . ${HOME}/ziti.env
 
-until $(curl --output /dev/null --silent --head --fail "${ZITI_EDGE_API_HOSTNAME}"); do
-    printf '.'
-    sleep 5
+#until $(curl --output /dev/null --silent --head --fail "${ZITI_EDGE_CONTROLLER_API}"); do
+#until $(curl -s -o /dev/null -w "%{http_code}" -k --fail "https://${ZITI_EDGE_CONTROLLER_API}"); do
+until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
+    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+    sleep 2
 done
 
-sleep 2
-echo ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
-ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
-sleep 2
+ziti edge controller login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 # create a new gateway
 ziti edge controller create edge-router "${ZITI_EDGE_CONTROLLER_NAME}" "${ZITI_CLUSTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_CONTROLLER_NAME}.jwt"
