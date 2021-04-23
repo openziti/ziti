@@ -18,10 +18,10 @@ identity:
   ca:                   "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
 
 ctrl:
-  listener:             tls:${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
+  listener:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
   
 mgmt:
-  listener:             tls:${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_FAB_MGMT_PORT}
+  listener:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_MGMT_PORT}
 
 #metrics:
 #  influxdb:

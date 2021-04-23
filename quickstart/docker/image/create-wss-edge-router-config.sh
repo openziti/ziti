@@ -26,9 +26,9 @@ listeners:
     options:
       mode: host #tproxy|tun|host
   - binding: edge
-    address: tls:0.0.0.0:3022
+    address: wss:0.0.0.0:3023
     options:
-      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3022
+      advertise: ${ZITI_EDGE_WSS_ROUTER_HOSTNAME}:3023
 
 edge:         
   csr:

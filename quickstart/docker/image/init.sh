@@ -29,7 +29,7 @@ mkdir -p $ZITI_HOME
 cd $ZITI_HOME
 
 # create the $ZITI_HOME/identites.json file - currently REQUIRED for the fabric
-cat > ${ZITI_HOME}/identities.json <<IdentitiesJsonHereDoc
+cat > ${ZITI_HOME}/identities.yml <<IdentitiesJsonHereDoc
 ---
 default:
   caCert:   ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem

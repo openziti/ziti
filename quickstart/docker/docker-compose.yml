@@ -2,6 +2,8 @@ version: '2.4'
 services:
   ziti-controller:
     image: openziti/ziti-quickstart
+    env_file:
+      - ./default.env
     build: ./image
     ports:
       - 1280:1280
@@ -17,6 +19,8 @@ services:
 
   ziti-edge-router:
     image: openziti/ziti-quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     depends_on:
       ziti-controller:
         condition: service_started
@@ -30,8 +34,24 @@ services:
       - ziti-fs:/openziti
     entrypoint:
       - /openziti/run-edge-router.sh
-    #command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
 
+  ziti-edge-router-wss:
+    image: openziti/ziti-quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
+    depends_on:
+      ziti-controller:
+        condition: service_started
+    ports:
+      - 3023:3022
+    networks:
+      ziticontrol:
+        aliases:
+          - ziti-edge-router
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh wss"
 networks:
   ziticontrol:
   zitired:
@@ -39,5 +59,4 @@ networks:
 
 volumes:
   ziti-fs:
-
 
