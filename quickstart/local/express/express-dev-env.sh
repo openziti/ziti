@@ -172,9 +172,9 @@ function generateEnvFile {
   export ZITI_ROUTER_BLUE_RAWNAME="${ZITI_NETWORK}"
   export ZITI_ROUTER_RED_RAWNAME="${ZITI_NETWORK}"
 
-  "${ZITI_SCRIPT_DIR}/../env.sh"
-  ZITI_HOME=${HOME}/.ziti/quickstart/${ZITI_NETWORK}
-  ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
+  export ZITI_HOME=${HOME}/.ziti/quickstart/${ZITI_NETWORK}
+  export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
+  "${ZITI_SCRIPT_DIR}/../../docker/image/env.sh"
   echo -e "environment file created and source from: $(BLUE ${ENV_FILE})"
   source "${ENV_FILE}"
 }
@@ -198,7 +198,7 @@ function expressConfiguration {
   fi
   generateEnvFile "${nw}"
   #checkHostsFile
-  #getLatestZiti
+  getLatestZiti
   generatePki
   generateControllerConfig
   generateEdgeRouterConfig

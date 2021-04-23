@@ -1,4 +1,8 @@
 #!/bin/bash
+if [[ "${ENV_FILE}" == "" ]]; then
+  echo "ERROR: ENV_FILE HAS NOT BEEN DECLARED!"
+  exit 1
+fi
 if [[ "${network_name}" != "" ]]; then
   export ZITI_NETWORK=${network_name}
 fi
@@ -59,7 +63,6 @@ mkdir -p ${ZITI_BIN_DIR}
 mkdir -p ${ZITI_HOME}/db
 mkdir -p ${ZITI_PKI}
 
-ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
 echo "" > "${ENV_FILE}"
 for zEnvVar in $(set -o posix ; set | grep ZITI_ | sort); do echo "export ${zEnvVar}" >> "${ENV_FILE}"; done
 
