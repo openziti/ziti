@@ -36,14 +36,14 @@ echo
 echo "==============================================================="
 echo "=== creating edge related  CA chain                         ==="
 echo "==============================================================="
-echo "Creating EDGE CA: ${ZITI_EDGE_ROOTCA_NAME}"
-ziti pki create ca --pki-root="${ZITI_PKI}" --ca-file="${ZITI_EDGE_ROOTCA_NAME}" --ca-name="${ZITI_EDGE_ROOTCA_NAME} Root CA"
+echo "Creating EDGE CA: ${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"
+ziti pki create ca --pki-root="${ZITI_PKI}" --ca-file="${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}" --ca-name="${ZITI_EDGE_CONTROLLER_ROOTCA_NAME} Root CA"
 echo ""
 
-echo "Creating edge intermediate: ${ZITI_EDGE_INTERMEDIATE_NAME}"
-ziti pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${ZITI_EDGE_ROOTCA_NAME}" \
-    --intermediate-name "${ZITI_EDGE_INTERMEDIATE_NAME}" \
-    --intermediate-file "${ZITI_EDGE_INTERMEDIATE_NAME}" --max-path-len 1
+echo "Creating edge intermediate: ${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
+ziti pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}" \
+    --intermediate-name "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" \
+    --intermediate-file "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" --max-path-len 1
 echo ""
 
 echo "==============================================================="
@@ -66,10 +66,10 @@ ziti pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${ZITI_SIGNING_
 echo ""
 
 pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-pki_client_server "${ZITI_EDGE_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
-pki_client_server "${ZITI_ZAC_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_EDGE_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_EDGE_WSS_ROUTER_NAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
+pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
+pki_client_server "${ZITI_ZAC_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
+#pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
+#pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
+#pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
+#pki_client_server "${ZITI_EDGE_WSS_ROUTER_NAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
 

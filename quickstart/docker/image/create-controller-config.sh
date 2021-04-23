@@ -12,10 +12,10 @@ v: 3
 db:                     "${ZITI_HOME}/db/ctrl.db"
 
 identity:
-  cert:                 ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-client.cert
-  server_cert:          ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.cert
-  key:                  ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key
-  ca:                   ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem
+  cert:                 "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-client.cert"
+  server_cert:          "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.cert"
+  key:                  "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key"
+  ca:                   "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem"
 
 ctrl:
   listener:             tls:${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
@@ -42,7 +42,7 @@ edge:
     # (required) The interface and port that the Edge API should be served on.
     listener:  0.0.0.0:${ZITI_EDGE_CONTROLLER_PORT}
     # (required) The host/port combination that is reported as publicly accessible for the Edge API
-    advertise: ${ZITI_EDGE_API_HOSTNAME}
+    advertise: ${ZITI_EDGE_CONTROLLER_API}
     # (optional, defaults to 10) The number of minutes before an Edge API session will timeout. Timeouts are reset by
     # API requests and connections that are maintained to Edge Routers
     sessionTimeoutMinutes: 30

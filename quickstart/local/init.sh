@@ -52,7 +52,7 @@ echo "This script relies on the following hosts being active on your network and
 echo "installation it expects them all to be at localhost/127.0.0.1. Please make sure the following"
 echo "entries are in your hosts file before continuing:"
 echo "  - ${ZITI_CONTROLLER_HOSTNAME}"
-echo "  - ${ZITI_EDGE_HOSTNAME}"
+echo "  - ${ZITI_EDGE_CONTROLLER_HOSTNAME}"
 echo "  - ${ZITI_ZAC_HOSTNAME}"
 echo "  - ${ZITI_EDGE_ROUTER_HOSTNAME}"
 echo "  - ${ZITI_EDGE_WSS_ROUTER_HOSTNAME}"
@@ -61,7 +61,7 @@ echo "  - ${ZITI_ROUTER_BLUE_HOSTNAME}"
 echo "  - ${ZITI_ROUTER_RED_HOSTNAME}"
 echo ""
 echo "   example:"
-echo "   127.0.0.1 ${ZITI_CONTROLLER_HOSTNAME} ${ZITI_EDGE_HOSTNAME} ${ZITI_ZAC_HOSTNAME} ${ZITI_EDGE_ROUTER_HOSTNAME} ${ZITI_EDGE_WSS_ROUTER_HOSTNAME} ${ZITI_ROUTER_BR_HOSTNAME} ${ZITI_ROUTER_BLUE_HOSTNAME} ${ZITI_ROUTER_RED_HOSTNAME}"
+echo "   127.0.0.1 ${ZITI_CONTROLLER_HOSTNAME} ${ZITI_EDGE_CONTROLLER_HOSTNAME} ${ZITI_ZAC_HOSTNAME} ${ZITI_EDGE_ROUTER_HOSTNAME} ${ZITI_EDGE_WSS_ROUTER_HOSTNAME} ${ZITI_ROUTER_BR_HOSTNAME} ${ZITI_ROUTER_BLUE_HOSTNAME} ${ZITI_ROUTER_RED_HOSTNAME}"
 echo ""
 
 DIRNAME=$(dirname $0)
@@ -106,7 +106,7 @@ echo "adding pki-functions to bash shell"
 . ${curdir}/pki-functions.sh
 
 alias zec='ziti edge'
-alias zlogin='ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"'
+alias zlogin='ziti edge controller login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"'
 alias psz='ps -ef | grep ziti'
 
 echo "generating env file"
