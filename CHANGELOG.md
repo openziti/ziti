@@ -1,3 +1,43 @@
+# Release 0.19.12
+
+## What's New
+
+* Revert dial error messages to what sdks are expecting. Add error codes so future sdks don't have to parse error text
+* Add router events
+* Allow filters with no predicate if sort or paging clauses are provided
+   * Ex: instead of `true limit 5` you could have just `limit 5`. Or instead of `true sort by name` you could have `sort by name`
+* Corrected host.v1 configuration type schema to prevent empty port range objects
+
+## Router events
+
+To enable:
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.routers
+```
+
+Example JSON output:
+
+```
+{
+  "namespace": "fabric.routers",
+  "event_type": "router-online",
+  "timestamp": "2021-04-22T11:26:31.99299884-04:00",
+  "router_id": "JAoyjafljO",
+  "router_online": true
+}
+{
+  "namespace": "fabric.routers",
+  "event_type": "router-offline",
+  "timestamp": "2021-04-22T11:26:41.335114358-04:00",
+  "router_id": "JAoyjafljO",
+  "router_online": false
+}
+```
+
 # Release 0.19.11
 
 ## What's New

@@ -1,4 +1,4 @@
-The Dockerfile and scripts in this directory build a ziti-tunnel Docker image.
+The Dockerfile and scripts in this directory build a `ziti-tunnel` (Go tunneler) Docker image. This procedure is highly similar to that of the `ziti-edge-tunnel` (C tunneler) Docker image [documented here](https://github.com/openziti/ziti-tunnel-sdk-c/blob/main/docker/BUILD.md).
 
 Ziti binaries are downloaded from https://netfoundry.artifactory.io/netfoundry/ziti-release
 by default. The following build arguments are supported:
@@ -47,13 +47,13 @@ the image to a public registry.
 
 3. Create a Builder Instance
 
-       $ docker buildx create --use
+        $ docker buildx create --use --name=ziti-builder
 
 ## Building
 
 Run `docker buildx` like this:
 
-    $ ziti_version="0.15.3"
+    $ ziti_version="0.19.11"
     $ docker buildx build \
         --platform linux/amd64,linux/arm/v7,linux/aarch64 \
         --build-arg ZITI_VERSION="${ziti_version}" \
@@ -66,10 +66,10 @@ Notes:
 
   Unfortunately `buildx` doesn't currently support building images directly into
   the local docker cache. Although the `--load` and `--output=type=docker` options
-  exist, the underlying capability will be implemented in a future docker release
-  (see https://github.com/docker/buildx/issues/59). In the meantime, you'll need
-  to push your image builds (with the `--push` build option) and then pull them to
-  run the image locally when building with `buildx`.
+  exist, the underlying capability to load a multi-platform image (OCI) will be
+  implemented in a future Docker release (see https://github.com/docker/buildx/issues/59).
+  In the meantime, you'll need to push your image builds (with the `--push` build option)
+  and then pull them to run the image locally when building with `buildx`.
 
 - The armv8 image uses armv7 (32-bit) ziti executables. The 32-bit compatibility
   libraries are installed in the image, but your Arm CPU must support 32-bit emulation.
@@ -87,7 +87,26 @@ This build method produces an image for the CPU that is running the build host
 (typically amd64), and places the resulting image into your local Docker image
 cache.
 
-    $ ziti_version="0.15.3" \
+    $ git fetch --tags && git tag -l | sort -Vr | head -1
+    v0.19.11
+    $ ziti_version="0.19.11" \
     $ docker build \
         --build-arg ZITI_VERSION="${ziti_version}" \
         -t "netfoundry/ziti-tunnel:${ziti_version}" .
+
+## Shell Script for Linux
+
+        $ ./buildx.sh -h
+        Usage: VARIABLES ./buildx.sh [OPTION]...
+
+        Build multi-platform Docker container image on Linux.
+
+        VARIABLES
+            ZITI_VERSION      e.g. "0.16.1" corresponding to Git tag "v0.16.1"
+
+        OPTIONS
+            -r REPO           container image repository e.g. netfoundry/ziti-edge-tunnel
+            -c                don't check out v${ZITI_VERSION} (use Git working copy)
+
+        EXAMPLES
+            ZITI_VERSION=0.19.11 ./buildx.sh -r netfoundry/ziti-tunnel
