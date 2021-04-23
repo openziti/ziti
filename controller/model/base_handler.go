@@ -142,6 +142,23 @@ func (handler *baseHandler) createEntity(modelEntity boltEntitySource) (string, 
 	return id, nil
 }
 
+func (handler *baseHandler) validateNameOnCreate(ctx boltz.MutateContext, boltEntity boltz.Entity) error {
+	// validate name for named entities
+	if namedEntity, ok := boltEntity.(boltz.NamedExtEntity); ok {
+		if namedEntity.GetName() == "" {
+			return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
+		}
+		if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
+			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
+				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+			}
+		} else {
+			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
+		}
+	}
+	return nil
+}
+
 func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntity boltEntitySource) (string, error) {
 	if modelEntity == nil {
 		return "", errors.Errorf("can't create %v with nil value", handler.Store.GetEntityType())
@@ -154,23 +171,12 @@ func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntit
 	if err != nil {
 		return "", err
 	}
-	store := handler.GetStore()
 
-	// validate name for named entities
-	if namedEntity, ok := boltEntity.(boltz.NamedExtEntity); ok {
-		if namedEntity.GetName() == "" {
-			return "", errorz.NewFieldError("name is required", "name", namedEntity.GetName())
-		}
-		if nameIndexStore, ok := store.(persistence.NameIndexedStore); ok {
-			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-				return "", errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
-			}
-		} else {
-			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
-		}
+	if err = handler.validateNameOnCreate(ctx, boltEntity); err != nil {
+		return "", err
 	}
 
-	if err := store.Create(ctx, boltEntity); err != nil {
+	if err := handler.GetStore().Create(ctx, boltEntity); err != nil {
 		pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.GetStore().GetSingularEntityType())
 		return "", err
 	}

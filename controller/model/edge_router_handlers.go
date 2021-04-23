@@ -199,6 +199,11 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 		if err != nil {
 			return err
 		}
+
+		if err = handler.validateNameOnCreate(ctx, boltEdgeRouter); err != nil {
+			return err
+		}
+
 		if err := handler.GetStore().Create(ctx, boltEdgeRouter); err != nil {
 			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.GetStore().GetSingularEntityType())
 			return err
