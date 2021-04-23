@@ -40,7 +40,7 @@ edge:
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
     # (required) The interface and port that the Edge API should be served on.
-    listener:  0.0.0.0:${ZITI_EDGE_PORT}
+    listener:  0.0.0.0:${ZITI_EDGE_ROUTER_PORT}
     # (required) The host/port combination that is reported as publicly accessible for the Edge API
     advertise: ${ZITI_EDGE_API_HOSTNAME}
     # (optional, defaults to 10) The number of minutes before an Edge API session will timeout. Timeouts are reset by

@@ -1,23 +1,8 @@
 version: '2.4'
 services:
-  ziti-postgres:
-    image: postgres
-    networks:
-      - ziticontrol
-    environment:
-      POSTGRES_PASSWORD: ztpassword
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 1s
-      timeout: 1s
-      retries: 30
-
   ziti-controller:
     image: netfoundry/ziti-quickstart
     build: ./image
-    depends_on:
-      ziti-postgres:
-        condition: service_healthy
     ports:
       - 1280:1280
     networks:
@@ -25,9 +10,10 @@ services:
         aliases:
           - ziti-controller
           - ziti-fabric-controller
-    command: ["wait-for-it", "ziti-postgres:5432", "-t", "15", "--", "./run-controller.sh"] 
     volumes:
       - ziti-fs:/netfoundry
+    entrypoint:
+      - /home/ziti/run-controller.sh
 
   ziti-edge-router:
     image: netfoundry/ziti-quickstart
@@ -40,11 +26,13 @@ services:
       ziticontrol:
         aliases:
           - ziti-edge-router
+    entrypoint:
+      - /home/ziti/run-edge-router.sh
 
     command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
     volumes:
       - ziti-fs:/netfoundry
-      
+
 
 networks:
   ziticontrol:

@@ -1,12 +1,9 @@
 #!/bin/bash
 . ${HOME}/ziti.env
-sleep 10
+sleep 2
 echo ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
 ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
-sleep 10
-
-# need a cluster as of sep-18-2019
-ziti edge controller create cluster "${ZITI_CLUSTER_NAME}"
+sleep 2
 
 # create a new gateway
 ziti edge controller create edge-router "${ZITI_EDGE_CONTROLLER_NAME}" "${ZITI_CLUSTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_CONTROLLER_NAME}.jwt"
