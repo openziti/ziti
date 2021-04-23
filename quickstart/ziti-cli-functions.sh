@@ -104,6 +104,12 @@ function getLatestZiti {
     echo "ERROR: ZITI_HOME is not set!"
     exit 1
   fi
+  if [[ "${ZITI_BIN_DIR}" == "" ]]; then
+    ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
+  fi
+  if [[ "${ZITI_BIN}" == "" ]]; then
+    ZITI_BIN="${ZITI_BIN_DIR}/ziti"
+  fi
 
   zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
   zitiversion=$(echo ${zitilatest} | jq -r '.tag_name')
@@ -121,14 +127,15 @@ function getLatestZiti {
   echo -e 'UNZIPPING '"$(BLUE "${ZITI_HOME}/${zititgz}")"' into: '"$(GREEN ${ZITI_BIN_DIR})"
   tar -xf "${ZITI_HOME}/${zititgz}" --directory "${ZITI_BIN_DIR}"
 
-  echo "Adding ${ZITI_BIN} to the path if necessary:"
-  if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
-    echo -e "$(GREEN "${ZITI_BIN}") is already on the path"
-  else
-    echo -e "adding $(RED "${ZITI_BIN}") to the path"
-    export PATH=$PATH:"${ZITI_BIN}"
+  if [[ "$1" == "yes" ]]; then
+    echo "Adding ${ZITI_BIN} to the path if necessary:"
+    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
+      echo -e "$(GREEN "${ZITI_BIN}") is already on the path"
+    else
+      echo -e "adding $(RED "${ZITI_BIN}") to the path"
+      export PATH=$PATH:"${ZITI_BIN}"
+    fi
   fi
-
 }
 
 function generatePki {

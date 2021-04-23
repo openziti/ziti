@@ -15,6 +15,7 @@ COPY --chown=ziti ziti.ignore /usr/local/bin/
 COPY --chown=ziti *.sh ./
 
 RUN export ZITI_HOME=/openziti && \
+    export ENV_FILE=/openziti/ziti.env && \
     export ZITI_NETWORK=ziti && \
     export ZITI_CONTROLLER_RAWNAME=ziti-controller && \
     export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller && \
@@ -27,3 +28,4 @@ RUN export ZITI_HOME=/openziti && \
     /openziti/env.sh && \
     echo "source /openziti/ziti.env" >> ~/.bashrc && \
     echo "alias ziti-fabric='ziti-fabric -e \${fabric_controller_uri}'" >> ~/.bashrc
+
