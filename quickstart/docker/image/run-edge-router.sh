@@ -1,5 +1,11 @@
 #!/bin/bash
 . ${HOME}/ziti.env
+
+until $(curl --output /dev/null --silent --head --fail "${ZITI_EDGE_API_HOSTNAME}"); do
+    printf '.'
+    sleep 5
+done
+
 sleep 2
 echo ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
 ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"

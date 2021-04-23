@@ -15,6 +15,7 @@ COPY --chown=ziti ziti.ignore /usr/local/bin/
 COPY --chown=ziti *.sh ./
 
 RUN echo "touched"
-RUN /home/ziti/env.sh && \
+RUN export ENV_FILE=/home/ziti/ziti.env && \
+    /home/ziti/env.sh && \
     echo "source ~/ziti.env" >> ~/.bashrc && \
     echo "alias ziti-fabric='ziti-fabric -e \${fabric_controller_uri}'" >> ~/.bashrc

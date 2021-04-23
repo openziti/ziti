@@ -91,13 +91,13 @@ function getLatestZiti {
 
 function generatePki {
   PKI_DIR="${ZITI_PKI}/${ZITI_CONTROLLER_ROOTCA_NAME}"
-  if [ -d "${PKI_DIR}" ]
-  then
-      echo -e "Reusing existing PKI from: $(BLUE ${PKI_DIR})"
-  else
+  #if [ -d "${PKI_DIR}" ]
+  #then
+  #    echo -e "Reusing existing PKI from: $(BLUE ${PKI_DIR})"
+  #else
       echo "Generating PKI"
-      . "${ZITI_SCRIPT_DIR}/express-create-pki.sh"
-  fi
+      . "${ZITI_SCRIPT_DIR}/../create-pki.sh"
+  #fi
 }
 
 function checkPrereqs {
