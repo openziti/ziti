@@ -127,7 +127,7 @@ function getLatestZiti {
   echo -e 'UNZIPPING '"$(BLUE "${ZITI_HOME}/${zititgz}")"' into: '"$(GREEN ${ZITI_BIN_DIR})"
   tar -xf "${ZITI_HOME}/${zititgz}" --directory "${ZITI_BIN_DIR}"
 
-  if [[ "$2" == "yes" ]]; then
+  if [[ "$1" == "yes" ]]; then
     echo "Adding ${ZITI_BIN} to the path if necessary:"
     if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
       echo -e "$(GREEN "${ZITI_BIN}") is already on the path"
