@@ -7,7 +7,7 @@ function pki_client_server {
 
     ziti pki create server --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
     --server-file "${name_local}-server" \
-    --dns "${name_local}" --ip 127.0.0.1 \
+    --dns "${name_local},localhost" --ip 127.0.0.1 \
     --server-name "${name_local} server certificate"
 
     ziti pki create client --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
@@ -62,7 +62,7 @@ echo ""
 pki_client_server "${ZITI_EDGE_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
 pki_client_server "${ZITI_ZAC_HOSTNAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
 pki_client_server "${ZITI_EDGE_WSS_ROUTER_NAME}" "${ZITI_EDGE_INTERMEDIATE_NAME}"
-pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
+pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
 pki_client_server "${ZITI_ROUTER_BR_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
 pki_client_server "${ZITI_ROUTER_BLUE_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
 pki_client_server "${ZITI_ROUTER_RED_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"

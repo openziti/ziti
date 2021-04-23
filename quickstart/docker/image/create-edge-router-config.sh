@@ -9,7 +9,7 @@ identity:
   ca:                   ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.chain.pem
 
 ctrl:
-  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
+  endpoint:             tls:${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
 
 listeners:
   - binding: edge
@@ -27,6 +27,7 @@ edge:
     sans:
       dns:
         - ${ZITI_EDGE_ROUTER_HOSTNAME}
+        - localhost
       ip:
         - "127.0.0.1"
 
