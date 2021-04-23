@@ -1,14 +1,7 @@
 #!/bin/bash
-. ${HOME}/ziti.env
+. /openziti/ziti.env
 
-if [ -d "${ZITI_PKI}/${ZITI_CONTROLLER_ROOTCA_NAME}" ]
-then
-    echo "Reusing existing PKI...."
-else
-    echo "Generating PKI"
-    "${HOME}/create-pki.sh"
-fi
-
+"${HOME}/create-pki.sh"
 
 # create pki
 

@@ -8,13 +8,14 @@ RUN useradd -ms /bin/bash ziti && \
     chown ziti:ziti /openziti
 
 USER ziti
-WORKDIR /home/ziti
+WORKDIR /openziti
 
 # copy the ziti binaries to a directory already on the path
 COPY --chown=ziti ziti.ignore /usr/local/bin/
 COPY --chown=ziti *.sh ./
 
 RUN export ZITI_HOME=/openziti && \
+    export ZITI_NETWORK=ziti && \
     export ZITI_CONTROLLER_RAWNAME=ziti-controller && \
     export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller && \
     export ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router && \
@@ -23,7 +24,7 @@ RUN export ZITI_HOME=/openziti && \
     export ZITI_ROUTER_BLUE_RAWNAME=ziti-edge-router-blue && \
     export ZITI_ROUTER_RED_RAWNAME=ziti-edge-router-red && \
     export ZITI_ZAC_RAWNAME=ziti-zac && \
-    /home/ziti/env.sh && \
+    /openziti/env.sh && \
     echo "source ~/ziti.env" >> ~/.bashrc && \
     echo "alias ziti-fabric='ziti-fabric -e \${fabric_controller_uri}'" >> ~/.bashrc
 

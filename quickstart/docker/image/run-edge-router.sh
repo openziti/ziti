@@ -1,5 +1,5 @@
 #!/bin/bash
-. ${HOME}/ziti.env
+. /openziti/ziti.env
 
 #until $(curl --output /dev/null --silent --head --fail "${ZITI_EDGE_CONTROLLER_API}"); do
 #until $(curl -s -o /dev/null -w "%{http_code}" -k --fail "https://${ZITI_EDGE_CONTROLLER_API}"); do
