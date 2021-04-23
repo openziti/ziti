@@ -26,13 +26,12 @@ services:
       ziticontrol:
         aliases:
           - ziti-edge-router
-            #entrypoint:
-            #  - /home/ziti/run-edge-router.sh
+    entrypoint:
+      - /home/ziti/run-edge-router.sh
 
-    command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
+    #command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
     volumes:
       - ziti-fs:/netfoundry
-
 
 networks:
   ziticontrol:
