@@ -9,9 +9,12 @@ identity:
   ca:                   ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.chain.pem
 
 ctrl:
-  endpoint:             tls:${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
+  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
 
 listeners:
+  - binding: tunnel
+    options:
+      mode: host #tproxy|tun|host
   - binding: edge
     address: tls:0.0.0.0:3022
     options:

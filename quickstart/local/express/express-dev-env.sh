@@ -208,13 +208,13 @@ function expressConfiguration {
   zitiLogin
 
   echo -e "----------  Creating an edge router policy allowing all identities to connect to routers with a $(GREEN "#public") attribute"
-  unused=$(ziti edge controller create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' )
+  unused=$(ziti edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' )
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  unused=$(ziti edge controller create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
+  unused=$(ziti edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
 
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-  unused=$(ziti edge controller create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
+  unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
   unused=$(ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" &> "${ZITI_EDGE_ROUTER_HOSTNAME}.enrollment.log")
@@ -224,7 +224,7 @@ function expressConfiguration {
 
 }
 function zitiLogin {
-  unused=$(ziti edge controller login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
+  unused=$(ziti edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
 }
 function reinitializeZitiController {
   cleanZitiController

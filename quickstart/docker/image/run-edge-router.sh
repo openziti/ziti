@@ -13,7 +13,8 @@ echo "CREATING CONFIG"
 "/openziti/create-edge-router-config.sh"
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-ziti edge controller create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t
+ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}"
+ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t
 sleep 1
 echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
 ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
