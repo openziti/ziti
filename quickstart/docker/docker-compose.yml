@@ -13,7 +13,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - /home/ziti/run-controller.sh
+      - /openziti/run-controller.sh
 
   ziti-edge-router:
     image: openziti/ziti-quickstart
@@ -29,7 +29,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - /home/ziti/run-edge-router.sh
+      - /openziti/run-edge-router.sh
     #command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
 
 networks:
@@ -39,4 +39,5 @@ networks:
 
 volumes:
   ziti-fs:
+
 

@@ -13,7 +13,7 @@ ziti edge controller login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "$
 # create a new gateway
 ziti edge controller create edge-router "${ZITI_EDGE_CONTROLLER_NAME}" "${ZITI_CLUSTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_CONTROLLER_NAME}.jwt"
 
-"${HOME}/create-edge-router-config.sh"
+"/openziti/create-edge-router-config.sh"
 
 # race condition?
 sleep 2
@@ -27,3 +27,4 @@ sleep 2
 
 # start the gateway
 ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml"
+

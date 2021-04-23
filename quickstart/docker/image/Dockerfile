@@ -25,6 +25,5 @@ RUN export ZITI_HOME=/openziti && \
     export ZITI_ROUTER_RED_RAWNAME=ziti-edge-router-red && \
     export ZITI_ZAC_RAWNAME=ziti-zac && \
     /openziti/env.sh && \
-    echo "source ~/ziti.env" >> ~/.bashrc && \
+    echo "source /openziti/ziti.env" >> ~/.bashrc && \
     echo "alias ziti-fabric='ziti-fabric -e \${fabric_controller_uri}'" >> ~/.bashrc
-
