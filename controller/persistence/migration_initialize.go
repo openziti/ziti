@@ -316,6 +316,7 @@ var tunnelDefinitions = map[string]interface{}{
 			"low":  map[string]interface{}{"$ref": "#/definitions/portNumber"},
 			"high": map[string]interface{}{"$ref": "#/definitions/portNumber"},
 		},
+		"required": []interface{}{"low", "high"},
 	},
 	"protocolName": map[string]interface{}{
 		"type": "string",
