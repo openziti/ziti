@@ -87,7 +87,7 @@ function expressConfiguration {
   fi
   generateEnvFile "${nw}"
   #checkHostsFile
-  getLatestZiti
+  getLatestZiti "yes"
   generatePki
   generateControllerConfig
   generateEdgeRouterConfig
