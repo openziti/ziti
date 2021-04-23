@@ -1,5 +1,5 @@
 #!/bin/bash
-cat > ${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml <<HereDocForEdgeRouter
+cat > ${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml <<HereDocForEdgeRouter
 v: 3
 
 identity:

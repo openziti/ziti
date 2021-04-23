@@ -101,7 +101,7 @@ function generatePki {
 }
 
 function checkPrereqs {
-  commands_to_test=(ziti ziti-router ziti-controller bash cat)
+  commands_to_test=(curl jq wget)
 
   # verify all the commands required in the automation exist before trying to run the full suite
   for cmd in "${commands_to_test[@]}"
@@ -394,7 +394,7 @@ function decideOperation {
 issueGreeting
 
 #make sure the user has all the necessary commands to be successful
-#checkPrereqs
+checkPrereqs
 
 #prompt the user for input and do what they want/need
 decideOperation 1 "$1"
