@@ -55,7 +55,7 @@ mgmt:
 #events:
 #  jsonLogger:
 #    subscriptions:
-#       - type: fabric.routers
+#      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*

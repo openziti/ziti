@@ -6,6 +6,7 @@
 * Add router events
 * Allow filters with no predicate if sort or paging clauses are provided
    * Ex: instead of `true limit 5` you could have just `limit 5`. Or instead of `true sort by name` you could have `sort by name`
+* Corrected host.v1 configuration type schema to prevent empty port range objects
 
 ## Router events
 
@@ -15,7 +16,7 @@ To enable:
 events:
   jsonLogger:
     subscriptions:
-       - type: fabric.routers
+      - type: fabric.routers
 ```
 
 Example JSON output:
