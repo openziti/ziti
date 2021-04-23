@@ -3,6 +3,10 @@ if [[ "${ZITI_HOME}" == "" ]]; then
   echo "ERROR: ZITI_HOME HAS NOT BEEN DECLARED!"
   exit 1
 fi
+if [[ "${ENV_FILE}" == "" ]]; then
+  echo "ERROR: ENV_FILE HAS NOT BEEN DECLARED!"
+  exit 1
+fi
 if [[ "${network_name}" != "" ]]; then
   export ZITI_NETWORK=${network_name}
 fi
@@ -13,7 +17,6 @@ if [[ "${ZITI_NETWORK}" = "" ]]; then
   export ZITI_NETWORK=$(hostname)
 fi
 
-export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
 export ZITI_USER="admin"
 export ZITI_PWD="admin"
 export ZITI_DOMAIN_SUFFIX=".openziti.org"
