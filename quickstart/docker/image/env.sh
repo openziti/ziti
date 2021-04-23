@@ -1,6 +1,6 @@
 #!/bin/bash
-if [[ "${ENV_FILE}" == "" ]]; then
-  echo "ERROR: ENV_FILE HAS NOT BEEN DECLARED!"
+if [[ "${ZITI_HOME}" == "" ]]; then
+  echo "ERROR: ZITI_HOME HAS NOT BEEN DECLARED!"
   exit 1
 fi
 if [[ "${network_name}" != "" ]]; then
@@ -12,11 +12,11 @@ fi
 if [[ "${ZITI_NETWORK}" = "" ]]; then
   export ZITI_NETWORK=$(hostname)
 fi
-# make the quickstart home folder where all the config files, logs, etc will go
-export ZITI_HOME=${HOME}/.ziti/quickstart/${ZITI_NETWORK}
+
+export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
 export ZITI_USER="admin"
 export ZITI_PWD="admin"
-export ZITI_DOMAIN_SUFFIX=".ziti.netfoundry.io"
+export ZITI_DOMAIN_SUFFIX=".openziti.org"
 export ZITI_DOMAIN_SUFFIX=""
 export ZITI_ID="${ZITI_HOME}/identities.yml"
 export ZITI_FAB_MGMT_PORT="10000"

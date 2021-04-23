@@ -4,8 +4,8 @@ RUN apt update && \
     apt install jq dos2unix curl netcat-openbsd wait-for-it vim inetutils-ping net-tools -y
 
 RUN useradd -ms /bin/bash ziti && \
-    mkdir /netfoundry && \
-    chown ziti:ziti /netfoundry
+    mkdir /openziti && \
+    chown ziti:ziti /openziti
 
 USER ziti
 WORKDIR /home/ziti
@@ -14,7 +14,7 @@ WORKDIR /home/ziti
 COPY --chown=ziti ziti.ignore /usr/local/bin/
 COPY --chown=ziti *.sh ./
 
-RUN export ENV_FILE=/home/ziti/ziti.env && \
+RUN export ZITI_HOME=/openziti && \
     export ZITI_CONTROLLER_RAWNAME=ziti-controller && \
     export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller && \
     export ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router && \
