@@ -217,6 +217,16 @@ function generateEnvFile {
   echo "alias zlogin='ziti edge controller login \"${ZITI_EDGE_API_HOSTNAME}\" -u \"${ZITI_USER}\" -p \"${ZITI_PWD}\" -c \"${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
+#when sourcing the emitted file add the bin folder to the path
+tee -a "${ENV_FILE}" > /dev/null <<'heredoc'
+if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
+  echo "${ZITI_BIN} is already on the path"
+else
+  echo "adding ${ZITI_BIN} to the path"
+  export PATH=$PATH:"${ZITI_BIN}"
+fi
+heredoc
+
   echo -e "environment file created and source from: $(BLUE ${ENV_FILE})"
   source "${ENV_FILE}"
 }
