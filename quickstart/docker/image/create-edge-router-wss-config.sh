@@ -29,6 +29,8 @@ listeners:
     address: wss:0.0.0.0:3023
     options:
       advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3023
+      connectTimeoutMs: 5000
+      getSessionTimeout: 60s
 
 edge:
   csr:
@@ -39,18 +41,10 @@ edge:
     organizationalUnit: Ziti
     sans:
       dns:
-        - ${ZITI_EDGE_WSS_ROUTER_HOSTNAME}
+        - ${ZITI_EDGE_ROUTER_HOSTNAME}
         - localhost
       ip:
         - "127.0.0.1"
-
-listeners:
-- binding: edge
-  address: tls:0.0.0.0:443
-  options:
-    advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:443
-    connectTimeoutMs: 5000
-    getSessionTimeout: 60s
 
 transport:
   wss:
@@ -63,8 +57,8 @@ transport:
     readBufferSize:    4096
     writeBufferSize:   4096
     enableCompression: true
-    server_cert:       ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.cert
-    key:               ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.key
+    server_cert:       ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.cert
+    key:               ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.key
 
 forwarder:
   latencyProbeInterval: 1000

@@ -27,28 +27,4 @@ function pki_client_server {
   echo " "
 }
 
-function pki_create_ca {
-  if ! test -f "${ZITI_PKI}/${1}/keys/${1}.key"; then
-    echo "Creating CA: ${1}"
-    ziti pki create ca --pki-root="${ZITI_PKI}" --ca-file="${1}" --ca-name="${1} Root CA"
-  else
-    echo "Creating CA: ${1}"
-    echo "key exists"
-  fi
-  echo " "
-}
-
-function pki_create_intermediate {
-  if ! test -f "${ZITI_PKI}/${2}/keys/${2}.key"; then
-    echo "Creating intermediate: ${1} ${2} ${3}"
-    ziti pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${1}" \
-          --intermediate-name "${2}" \
-          --intermediate-file "${2}" --max-path-len ${3}
-  else
-    echo "Creating intermediate: ${1} ${2} ${3}"
-    echo "key exists"
-  fi
-  echo " "
-}
-
 pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"

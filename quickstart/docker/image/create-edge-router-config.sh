@@ -29,8 +29,10 @@ listeners:
     address: tls:0.0.0.0:3022
     options:
       advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3022
+      connectTimeoutMs: 5000
+      getSessionTimeout: 60s
 
-edge:         
+edge:
   csr:
     country: US
     province: NC
@@ -44,27 +46,19 @@ edge:
       ip:
         - "127.0.0.1"
 
-listeners:
-- binding: edge
-  address: tls:0.0.0.0:443
-  options:
-    advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:443
-    connectTimeoutMs: 5000
-    getSessionTimeout: 60s
-
-transport:
-  wss:
-    writeTimeout:      10
-    readTimeout:       5
-    idleTimeout:       5
-    pongTimeout:       60
-    pingInterval:      54
-    handshakeTimeout:  10
-    readBufferSize:    4096
-    writeBufferSize:   4096
-    enableCompression: true
-    server_cert:       ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.cert
-    key:               ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.key
+#transport:
+#  wss:
+#    writeTimeout:      10
+#    readTimeout:       5
+#    idleTimeout:       5
+#    pongTimeout:       60
+#    pingInterval:      54
+#    handshakeTimeout:  10
+#    readBufferSize:    4096
+#    writeBufferSize:   4096
+#    enableCompression: true
+#    server_cert:       ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.cert
+#    key:               ${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}-router-server.key
 
 forwarder:
   latencyProbeInterval: 1000
