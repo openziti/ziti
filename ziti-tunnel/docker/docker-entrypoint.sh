@@ -51,7 +51,6 @@ if [ ! -f "${json}" ]; then
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
-# use legacy if nftables fails to accept iptables translations
 echo "INFO: probing iptables"
 if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present"; then
     for LEGACY in {ip{,6},eb,arp}tables; do
