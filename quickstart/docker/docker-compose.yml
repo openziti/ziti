@@ -46,8 +46,8 @@ services:
     image: openziti/ziti-quickstart
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
-    ports:
-      - 3024:3022
+    #ports:
+    #  - 3024:3024
     networks:
       - ziticontrol
       - zitiblue
@@ -56,6 +56,34 @@ services:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
     command: "/openziti/run-edge-router.sh fabric"
+
+  ziti-private-red:
+    image: openziti/ziti-quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
+    #ports:
+    #  - 3025:3025
+    networks:
+      - ziticontrol
+      - zitired
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh private"
+
+  ziti-private-blue:
+    image: openziti/ziti-quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
+    #ports:
+    #  - 3026:3026
+    networks:
+      - ziticontrol
+      - zitiblue
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh private"
 
 networks:
   ziticontrol:

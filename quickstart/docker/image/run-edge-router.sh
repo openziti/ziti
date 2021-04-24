@@ -31,7 +31,7 @@ if [[ "$1" == "fabric" ]]; then
 fi
 if [[ "$1" == "private" ]]; then
   echo "CREATING PRIVATE ROUTER CONFIG"
-  "/openziti/create-fabric-router-config.sh"
+  "/openziti/create-private-router-config.sh"
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
