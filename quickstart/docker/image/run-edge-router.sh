@@ -1,5 +1,6 @@
 #!/bin/bash
 
+. ${ZITI_SCRIPTS}/env.sh
 . ${ZITI_HOME}/ziti.env
 
 until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do

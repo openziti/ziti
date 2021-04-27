@@ -1,5 +1,6 @@
 #!/bin/bash
 
+. ${ZITI_SCRIPTS}/env.sh
 . ${ZITI_HOME}/ziti.env
 
 "${ZITI_SCRIPTS}/create-pki.sh"
