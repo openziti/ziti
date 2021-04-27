@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /openziti/ziti.env
+. ${ZITI_HOME}/ziti.env
 
 until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
     echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
@@ -12,26 +12,26 @@ export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFI
 #echo 'export ZITI_EDGE_ROUTER_RAWNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}"'"' > "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
 #echo 'export ZITI_EDGE_ROUTER_HOSTNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"'"' >> "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
 
-"/openziti/create-router-pki.sh"
+"${ZITI_SCRIPTS}/create-router-pki.sh"
 
 echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
 ziti edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
-  "/openziti/create-edge-router-config.sh"
+  "${ZITI_SCRIPTS}/create-edge-router-config.sh"
 fi
 if [[ "$1" == "wss" ]]; then
   echo "CREATING EDGE ROUTER WSS CONFIG"
-  "/openziti/create-edge-router-wss-config.sh"
+  "${ZITI_SCRIPTS}/create-edge-router-wss-config.sh"
 fi
 if [[ "$1" == "fabric" ]]; then
   echo "CREATING FABRIC ROUTER CONFIG"
-  "/openziti/create-fabric-router-config.sh"
+  "${ZITI_SCRIPTS}/create-fabric-router-config.sh"
 fi
 if [[ "$1" == "private" ]]; then
   echo "CREATING PRIVATE ROUTER CONFIG"
-  "/openziti/create-private-router-config.sh"
+  "${ZITI_SCRIPTS}/create-private-router-config.sh"
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."

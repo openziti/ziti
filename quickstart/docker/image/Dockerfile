@@ -1,23 +1,25 @@
 FROM ubuntu:latest
 
 RUN apt update && \
-    apt install jq dos2unix curl netcat-openbsd wait-for-it vim inetutils-ping net-tools -y
+    apt install jq curl netcat-openbsd vim inetutils-ping net-tools -y
 
 RUN useradd -ms /bin/bash ziti && \
-    mkdir /openziti && \
-    chown ziti:ziti /openziti
+    mkdir /openziti && chown ziti:ziti /openziti && \
+    mkdir /openziti/scripts && chown ziti:ziti /openziti/scripts && \
+    mkdir /openziti/shared && chown ziti:ziti /openziti/shared
 
 USER ziti
 WORKDIR /openziti
 
 # copy the ziti binaries to a directory already on the path
 COPY --chown=ziti ziti.ignore /usr/local/bin/
-COPY --chown=ziti *.sh ./
+COPY --chown=ziti *.sh ./scripts/
 
-ENV ZITI_HOME=/openziti
-ENV ENV_FILE=/openziti/ziti.env
+ENV ZITI_HOME=/openziti/shared
+ENV ZITI_SCRIPTS=/openziti/scripts
+ENV ENV_FILE=/openziti/shared/ziti.env
 ENV ZITI_NETWORK=ziti
 
-RUN /openziti/env.sh && \
-    echo "source /openziti/ziti.env" >> ~/.bashrc
+RUN ${ZITI_SCRIPTS}/env.sh && \
+    echo "source ${ZITI_HOME}/ziti.env" >> ~/.bashrc
 

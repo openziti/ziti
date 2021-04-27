@@ -105,7 +105,7 @@ function getLatestZiti {
     exit 1
   fi
   if [[ "${ZITI_BIN_DIR}" == "" ]]; then
-    ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
+    ZITI_BIN_DIR="${ZITI_SCRIPTS}/ziti-bin"
   fi
   if [[ "${ZITI_BIN}" == "" ]]; then
     ZITI_BIN="${ZITI_BIN_DIR}/ziti"
