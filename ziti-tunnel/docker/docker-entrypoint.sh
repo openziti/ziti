@@ -38,7 +38,7 @@ if [ ! -f "${json}" ]; then
                 "${persisted_dir}";
         do
             [[ -d ${dir} ]] || {
-                echo "WARN: ${dir} is not a directory" >&2
+                echo "INFO: ${dir} is not a directory"
                 continue
             }
             _jwt="${dir}/${NF_REG_NAME}.jwt"
