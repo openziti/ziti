@@ -99,11 +99,11 @@ is expected to be set. See the Prerequisite section above:
 
 Ziti Controller:
     
-    docker run --name "${zitinw}-controller" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --network-alias=ziti-controller --network-alias=ziti-edge-controller --rm openziti/quickstart:0.19.2 /openziti/scripts/run-controller.sh
+    docker run --name "${zitinw}-controller" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --network-alias=ziti-controller --network-alias=ziti-edge-controller --rm openziti/quickstart /openziti/scripts/run-controller.sh
 
 Ziti Edge Router:
    
-    routerName=ziti-edge; docker run --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart:0.19.2 /openziti/scripts/run-edge-router.sh edge
+    routerName=ziti-edge; docker run --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-edge-router.sh edge
 
 
 
