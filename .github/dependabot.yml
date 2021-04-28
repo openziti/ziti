@@ -1,0 +1,93 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: github.com/openziti/sdk-golang
+    versions:
+    - 0.15.12
+    - 0.15.28
+    - 0.15.31
+    - 0.15.35
+    - 0.15.40
+  - dependency-name: github.com/openziti/fabric
+    versions:
+    - 0.15.19
+    - 0.16.28
+    - 0.16.29
+    - 0.16.38
+    - 0.16.39
+    - 0.16.48
+    - 0.16.49
+    - 0.16.52
+    - 0.16.6
+    - 0.16.7
+    - 0.16.8
+  - dependency-name: google.golang.org/protobuf
+    versions:
+    - 1.26.0
+  - dependency-name: github.com/golang/protobuf
+    versions:
+    - 1.5.1
+    - 1.5.2
+  - dependency-name: github.com/go-openapi/swag
+    versions:
+    - 0.19.14
+    - 0.19.15
+  - dependency-name: github.com/go-openapi/strfmt
+    versions:
+    - 0.20.1
+  - dependency-name: github.com/jessevdk/go-flags
+    versions:
+    - 1.5.0
+  - dependency-name: github.com/miekg/dns
+    versions:
+    - 1.1.37
+    - 1.1.41
+  - dependency-name: github.com/openziti/foundation
+    versions:
+    - 0.15.11
+    - 0.15.13
+    - 0.15.15
+    - 0.15.21
+    - 0.15.27
+    - 0.15.28
+    - 0.15.41
+  - dependency-name: github.com/go-openapi/runtime
+    versions:
+    - 0.19.27
+  - dependency-name: github.com/AppsFlyer/go-sundheit
+    versions:
+    - 0.3.0
+    - 0.3.1
+  - dependency-name: github.com/sirupsen/logrus
+    versions:
+    - 1.8.0
+    - 1.8.1
+  - dependency-name: github.com/google/go-cmp
+    versions:
+    - 0.5.5
+  - dependency-name: github.com/spf13/cobra
+    versions:
+    - 1.1.2
+    - 1.1.3
+  - dependency-name: github.com/mdlayher/netlink
+    versions:
+    - 1.3.0
+    - 1.3.1
+    - 1.3.2
+  - dependency-name: github.com/go-openapi/errors
+    versions:
+    - 0.20.0
+  - dependency-name: github.com/go-openapi/spec
+    versions:
+    - 0.20.3
+  - dependency-name: github.com/go-openapi/validate
+    versions:
+    - 0.20.2
+  - dependency-name: github.com/go-openapi/loads
+    versions:
+    - 0.20.2
