@@ -47,7 +47,7 @@ csr:
       - "127.0.0.1"
 
 #transport:
-#  wss:
+#  ws:
 #    writeTimeout:      10
 #    readTimeout:       5
 #    idleTimeout:       5

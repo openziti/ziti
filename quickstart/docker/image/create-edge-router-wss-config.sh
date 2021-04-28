@@ -26,7 +26,7 @@ listeners:
     options:
       mode: host #tproxy|tun|host
   - binding: edge
-    address: wss:0.0.0.0:3023
+    address: ws:0.0.0.0:3023
     options:
       advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3023
       connectTimeoutMs: 5000
@@ -47,7 +47,7 @@ edge:
         - "127.0.0.1"
 
 transport:
-  wss:
+  ws:
     writeTimeout:      10
     readTimeout:       5
     idleTimeout:       5
