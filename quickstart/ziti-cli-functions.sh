@@ -95,17 +95,17 @@ function checkHostsFile {
     echo "  echo \"127.0.0.1 ${ZITI_CONTROLLER_HOSTNAME} ${ZITI_EDGE_CONTROLLER_HOSTNAME} ${ZITI_EDGE_ROUTER_HOSTNAME}\" | sudo tee -a /etc/hosts"
     echo " "
     echo "add these entries to your hosts file, and rerun the script when ready"
-    exit 1
+    return
   fi
 }
 
 function getLatestZiti {
   if [[ "${ZITI_HOME}" == "" ]]; then
     echo "ERROR: ZITI_HOME is not set!"
-    exit 1
+    return
   fi
   if [[ "${ZITI_BIN_DIR}" == "" ]]; then
-    ZITI_BIN_DIR="${ZITI_SCRIPTS}/ziti-bin"
+    ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
   fi
   if [[ "${ZITI_BIN}" == "" ]]; then
     ZITI_BIN="${ZITI_BIN_DIR}/ziti"
@@ -162,7 +162,7 @@ function checkPrereqs {
       printf "\n${missing_requirements}"
       echo " "
       echo " "
-      exit 1
+      return
   fi
   echo "Let's get stated creating your local development network!"
   echo ""

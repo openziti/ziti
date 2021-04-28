@@ -57,7 +57,7 @@ function generateEnvFile {
   export ZITI_ZAC_RAWNAME="${ZITI_NETWORK}"
   export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}"
 
-  export ZITI_HOME=${HOME}/.ziti/quickstart/${ZITI_NETWORK}
+  export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK}"
   export ZITI_SCRIPTS="${ZITI_SCRIPT_DIR}/.."
   export ZITI_SHARED=${ZITI_HOME}
   export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
@@ -84,10 +84,6 @@ function expressConfiguration {
     nw="$1"
   fi
   generateEnvFile "${nw}"
-
-  echo "SOURCING: . ${ZITI_HOME}/${nw}.env"
-  . ${ZITI_HOME}/${nw}.env
-
   #checkHostsFile
   getLatestZiti "yes"
   generatePki
