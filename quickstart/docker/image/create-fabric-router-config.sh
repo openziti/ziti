@@ -14,8 +14,8 @@ ctrl:
 link:
   listeners:
     - binding:          transport
-      bind:             tls:0.0.0.0:80
-      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:80
+      bind:             tls:0.0.0.0:10080
+      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:10080
       options:
         outQueueSize:   16
   dialers:
