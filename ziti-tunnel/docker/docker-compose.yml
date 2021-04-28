@@ -15,6 +15,7 @@ services:
         - .:/netfoundry
         environment:
         - NF_REG_NAME
+        - PFXLOG_NO_JSON=true
         command: tproxy
 #        command: tproxy --resolver udp://127.0.0.123:53
     ziti-iproxy:
@@ -26,6 +27,7 @@ services:
         - NET_ADMIN
         environment:
         - NF_REG_NAME
+        - PFXLOG_NO_JSON=true
         command: tproxy --resolver none
     ziti-proxy:
         image: netfoundry/ziti-tunnel:latest
@@ -33,6 +35,7 @@ services:
         - .:/netfoundry
         environment:
         - NF_REG_NAME
+        - PFXLOG_NO_JSON=true
         ports:
         - "8888:8888"
         - "9999:9999"

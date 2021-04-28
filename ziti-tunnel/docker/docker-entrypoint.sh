@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 function alldone() {
     # send SIGINT to ziti-tunnel to trigger a cleanup of iptables mangle rules
@@ -58,6 +60,19 @@ if [ ! -f "${json}" ]; then
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
+echo "INFO: probing iptables"
+if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present"; then
+    for LEGACY in {ip{,6},eb,arp}tables; do
+        if which ${LEGACY}-legacy &>/dev/null; then
+            echo "INFO: updating $LEGACY alternative to ${LEGACY}-legacy"
+            update-alternatives --set $LEGACY $(which ${LEGACY}-legacy)
+        else
+            echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy" >&2
+        fi
+    done
+fi
+
+# optionally run an alternative shell CMD
 echo "running ziti-tunnel"
 set -x
 ziti-tunnel -i "${json}" "${@}" &
