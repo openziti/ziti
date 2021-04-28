@@ -1,7 +1,6 @@
 package intercept
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
@@ -10,14 +9,11 @@ import (
 	"github.com/openziti/edge/tunnel/utils"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 	"net"
 	"strconv"
 	"strings"
 	"time"
-)
-
-const (
-	defaultDialTimeout = 5 * time.Second
 )
 
 type healthChecksProvider interface {
@@ -106,7 +102,9 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 		sourceAddr = val.(string)
 	}
 
-	halfClose := protocol != "udp"
+	isUdp := protocol == "udp"
+	isTcp := protocol == "tcp"
+	enableHalfClose := isTcp
 	var conn net.Conn
 	var err error
 
@@ -119,21 +117,27 @@ func (self *hostingContext) dialAddress(options map[string]interface{}, protocol
 			sourceIp = s[0]
 			sourcePort, e = strconv.Atoi(s[1])
 			if e != nil {
-				return nil, halfClose, fmt.Errorf("failed to parse port '%s': %v", s[1], e)
+				return nil, false, errors.Wrapf(err, "failed to parse port '%v'", s[1])
 			}
 		}
 
-		dialer := net.Dialer{
-			LocalAddr: &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort},
-			Timeout:   self.dialTimeout,
+		var localAddr net.Addr
+
+		if isUdp {
+			localAddr = &net.UDPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+		} else if isTcp {
+			localAddr = &net.TCPAddr{IP: net.ParseIP(sourceIp), Port: sourcePort}
+		} else {
+			return nil, false, errors.Errorf("unsupported protocol for source address '%v'", protocol)
 		}
 
+		dialer := net.Dialer{LocalAddr: localAddr, Timeout: self.dialTimeout}
 		conn, err = dialer.Dial(protocol, address)
 	} else {
 		conn, err = net.DialTimeout(protocol, address, self.dialTimeout)
 	}
 
-	return conn, halfClose, err
+	return conn, enableHalfClose, err
 }
 
 func (self *hostingContext) SetCloseCallback(f func()) {
