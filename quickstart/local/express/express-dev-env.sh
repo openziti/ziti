@@ -84,6 +84,10 @@ function expressConfiguration {
     nw="$1"
   fi
   generateEnvFile "${nw}"
+
+  echo "SOURCING: . ${ZITI_HOME}/${nw}.env"
+  . ${ZITI_HOME}/${nw}.env
+
   #checkHostsFile
   getLatestZiti "yes"
   generatePki
@@ -96,11 +100,15 @@ function expressConfiguration {
   zitiLogin
 
   echo -e "----------  Creating an edge router policy allowing all identities to connect to routers with a $(GREEN "#public") attribute"
+  unused=$(ziti edge delete edge-router-policy allEdgeRouters)
   unused=$(ziti edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' )
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
+  unused=$(ziti edge delete service-edge-router-policy allSvcPublicRouters)
   unused=$(ziti edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
 
+  export ZITI_EDGE_ROUTER_RAWNAME="public-edge-router"
+  export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
   unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
   sleep 1

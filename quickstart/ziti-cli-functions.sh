@@ -49,7 +49,7 @@ function generateControllerConfig {
   "${ZITI_SCRIPT_DIR}/../create-controller-config.sh"
 }
 function generateEdgeRouterConfig {
-  "${ZITI_SCRIPT_DIR}/../create-edge-router-config.sh"
+  "${ZITI_SCRIPT_DIR}/../create-edge-router-config.sh edge"
 }
 function initializeController {
   ziti-controller edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}" &> "${ZITI_HOME}/controller-init.log"
