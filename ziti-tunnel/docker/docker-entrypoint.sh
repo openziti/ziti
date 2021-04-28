@@ -32,20 +32,29 @@ fi
 
 json="${persisted_dir}/${NF_REG_NAME}.json"
 if [ ! -f "${json}" ]; then
-    echo "identity configuration ${json} does not exist"
-    for dir in "/var/run/secrets/netfoundry.io/enrollment-token" "${persisted_dir}"; do
-        _jwt="${dir}/${NF_REG_NAME}.jwt"
-        echo "looking for ${_jwt}"
-        if [ -f "${_jwt}" ]; then
-            jwt="${_jwt}"
-            break
-        fi
+    echo "WARN: identity configuration ${json} does not exist" >&2
+    for dir in  "/var/run/secrets/kubernetes.io/enrollment-token" \
+                "/enrollment-token" \
+                "${persisted_dir}";
+        do
+            [[ -d ${dir} ]] || {
+                echo "INFO: ${dir} is not a directory"
+                continue
+            }
+            _jwt="${dir}/${NF_REG_NAME}.jwt"
+            echo "INFO: looking for ${_jwt}"
+            if [ -f "${_jwt}" ]; then
+                jwt="${_jwt}"
+                break
+            else
+                echo "WARN: failed to find ${_jwt} in ${dir}" >&2
+            fi
     done
-    if [ -z "${jwt}" ]; then
-        echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations"
+    if [ -z "${jwt:-}" ]; then
+        echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations" >&2
         exit 1
     fi
-    echo "enrolling ${jwt}"
+    echo "INFO: enrolling ${jwt}"
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
