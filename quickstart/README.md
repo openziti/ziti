@@ -59,4 +59,51 @@ The express install script will do quite a few things to get you bootstrapped.  
 ## Docker - Compose
 
 The [docker-compose](https://docs.docker.com/compose/) based example will create numerous `ziti-router`s 
-as well as spooling up a `ziti-controller` and expose the controller on port 1280.
+as well as spooling up a `ziti-controller` and expose the controller on port 1280. This configuration is intended to
+look and feel like the following image:
+![image info](./docker-compose-nw.svg)
+
+Here, a simple Ziti Network is shown which contains two public Ziti Edge Routers, one router without the "edge" enabled
+and usable only for transit, and two private edge routers: one blue, one red. The goal with this setup is to attempt to
+have a single isolated service that is not accessible from outside of the blue network (as best as possible with 
+only docker).
+
+## Docker - No Compose
+
+You can still startup a dev environment easily with [docker](https://docs.docker.com/get-started/) only. In this example
+you will start a Ziti Controller as well as a single Ziti Edge Router.
+
+### Prerequisite
+
+Since the openziti project is all about creating overlay networks - it's important for the docker containers to be
+able to communicate to one another. This is accomplished using a docker network and setting the alias of the container 
+on that docker network.
+
+Before running the commands below please do the following:
+  
+      #declare a variable that defines the 'network'
+      zitinw="myZitiNetwork"
+      
+      #declare a fully qualified path to the location you want your shared files to go and create it
+      zitinw_shared="${HOME}/.ziti/dockerenvs/${zitinw}"
+      mkdir -p "${zitinw_shared}"
+
+      #make a docker network for isolation while allowing the parts to be able to interact
+      docker network create "$zitinw"
+
+### Staring the Containers
+
+To start the containers you can simply run these two commands in two different shells. (or choose to daemonize them
+once you're ready to do so). Take special note of the initial variables used in these commands. The ${zitinw} variable
+is expected to be set. See the Prerequisite section above:
+
+Ziti Controller:
+    
+    docker run --name "${zitinw}-controller" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --network-alias=ziti-controller --network-alias=ziti-edge-controller --rm openziti/quickstart:0.19.2 /openziti/scripts/run-controller.sh
+
+Ziti Edge Router:
+   
+    routerName=ziti-edge; docker run --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart:0.19.2 /openziti/scripts/run-edge-router.sh edge
+
+
+
