@@ -2,7 +2,8 @@
 
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
-. "${ZITI_SCRIPT_DIR}/../../ziti-cli-functions.sh"
+ZITI_QUICKSTART_SCRIPT_ROOT="$(realpath "${ZITI_SCRIPT_DIR}/../../")"
+. "${ZITI_QUICKSTART_SCRIPT_ROOT}/ziti-cli-functions.sh"
 
 function issueGreeting {
   #echo "-------------------------------------------------------------"
@@ -58,10 +59,10 @@ function generateEnvFile {
   export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}"
 
   export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK}"
-  export ZITI_SCRIPTS="${ZITI_SCRIPT_DIR}/.."
+  export ZITI_SCRIPTS="$(realpath "${ZITI_SCRIPT_DIR}/..")"
   export ZITI_SHARED=${ZITI_HOME}
   export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"
-  "${ZITI_SCRIPT_DIR}/../../docker/image/env.sh"
+  "${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/env.sh"
   echo -e "environment file created and source from: $(BLUE ${ENV_FILE})"
   source "${ENV_FILE}"
 }
@@ -83,6 +84,8 @@ function expressConfiguration {
   else
     nw="$1"
   fi
+  export ZITI_EDGE_ROUTER_RAWNAME="public-edge-router"
+  export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
   generateEnvFile "${nw}"
   #checkHostsFile
   getLatestZiti "yes"
@@ -103,17 +106,15 @@ function expressConfiguration {
   unused=$(ziti edge delete service-edge-router-policy allSvcPublicRouters)
   unused=$(ziti edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
 
-  export ZITI_EDGE_ROUTER_RAWNAME="public-edge-router"
-  export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
+  unused=$(ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}")
   unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
   unused=$(ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" &> "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.enrollment.log")
   echo ""
   sleep 1
-  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &)
-
+  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &)
 }
 
 function decideOperation {

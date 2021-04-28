@@ -46,10 +46,11 @@ function cleanZitiController {
   initializeController
 }
 function generateControllerConfig {
-  "${ZITI_SCRIPT_DIR}/../create-controller-config.sh"
+  "${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/create-controller-config.sh"
 }
 function generateEdgeRouterConfig {
-  "${ZITI_SCRIPT_DIR}/../create-edge-router-config.sh edge"
+  echo "RUNNING: ${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/create-edge-router-config.sh"
+  "${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/create-edge-router-config.sh"
 }
 function initializeController {
   ziti-controller edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}" &> "${ZITI_HOME}/controller-init.log"
@@ -140,7 +141,7 @@ function getLatestZiti {
 
 function generatePki {
   echo "Generating PKI"
-  . "${ZITI_SCRIPT_DIR}/../create-pki.sh"
+  "${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/create-pki.sh"
 }
 
 function checkPrereqs {
