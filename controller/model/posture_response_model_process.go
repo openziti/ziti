@@ -17,14 +17,16 @@
 package model
 
 import (
+	"strings"
 	"time"
 )
 
 type PostureResponseProcess struct {
 	*PostureResponse
-	IsRunning          bool     `json:"isRunning"`
-	BinaryHash         string   `json:"binaryHash"`
-	SignerFingerprints []string `json:"signerFingerprints"`
+	Path               string
+	IsRunning          bool
+	BinaryHash         string
+	SignerFingerprints []string
 }
 
 func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
@@ -49,4 +51,61 @@ func (pr *PostureResponseProcess) Apply(postureData *PostureData) {
 		pr.LastUpdatedAt = time.Now().UTC()
 		postureData.Processes = append(postureData.Processes, pr)
 	}
+
+	if pr.Path != "" {
+		postureData.ProcessPathMap[pr.Path] = pr
+	}
+}
+
+func (pr *PostureResponseProcess) VerifyMultiCriteria(process *ProcessMulti) bool {
+	if !pr.IsRunning {
+		return false
+	}
+
+	if pr.TimedOut {
+		return false
+	}
+
+	foundValidHash := false
+
+	if len(process.Hashes) == 0 {
+		foundValidHash = true //no hash to check for
+	} else {
+		for _, validHash := range process.Hashes {
+			if strings.ToLower(validHash) == strings.ToLower(pr.BinaryHash) {
+				foundValidHash = true
+				break
+			}
+		}
+	}
+
+	if !foundValidHash {
+		return false
+	}
+
+	foundValidSigner := false
+
+	if len(process.SignerFingerprints) == 0 {
+		foundValidSigner = true //no signers to check for
+	} else {
+		for _, validSigner := range process.SignerFingerprints {
+			validSigner := strings.ToLower(validSigner)
+			for _, signer := range pr.SignerFingerprints {
+				if strings.ToLower(signer) == validSigner {
+					foundValidSigner = true
+					break
+				}
+			}
+
+			if foundValidSigner {
+				break
+			}
+		}
+	}
+
+	if !foundValidSigner {
+		return false
+	}
+
+	return true
 }

@@ -195,6 +195,12 @@ func unmarshalPostureCheckCreate(data []byte, consumer runtime.Consumer) (Postur
 			return nil, err
 		}
 		return &result, nil
+	case "PROCESS_MULTI":
+		var result PostureCheckProcessMultiCreate
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "PostureCheckCreate":
 		var result postureCheckCreate
 		if err := consumer.Consume(buf2, &result); err != nil {

@@ -157,6 +157,7 @@ type PostureData struct {
 	Domain                 PostureResponseDomain
 	Os                     PostureResponseOs
 	Processes              []*PostureResponseProcess
+	ProcessPathMap         map[string]*PostureResponseProcess
 	ApiSessions            map[string]*ApiSessionPostureData
 	SessionRequestFailures []*PostureSessionRequestFailure
 }
@@ -190,6 +191,7 @@ func newPostureData() *PostureData {
 			Build:           "",
 		},
 		Processes:              []*PostureResponseProcess{},
+		ProcessPathMap:         map[string]*PostureResponseProcess{},
 		ApiSessions:            map[string]*ApiSessionPostureData{},
 		SessionRequestFailures: []*PostureSessionRequestFailure{},
 	}

@@ -27,7 +27,7 @@ import (
 	"testing"
 )
 
-func Test_MFA_PostureChecks(t *testing.T) {
+func Test_PostureChecks_MFA(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()

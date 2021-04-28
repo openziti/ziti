@@ -183,7 +183,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 		}
 
 		for _, postureCheck := range policyPostureChecks.PostureChecks {
-			query := PostureCheckToQuery(postureCheck)
+			query := PostureCheckToQueries(postureCheck)
 
 			isCheckPassing := false
 			found := false
@@ -207,7 +207,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 	return ret, nil
 }
 
-func PostureCheckToQuery(check *model.PostureCheck) *rest_model.PostureQuery {
+func PostureCheckToQueries(check *model.PostureCheck) *rest_model.PostureQuery {
 	isPassing := false
 	ret := &rest_model.PostureQuery{
 		BaseEntity: BaseEntityToRestModel(check, PostureCheckLinkFactory),
@@ -215,11 +215,20 @@ func PostureCheckToQuery(check *model.PostureCheck) *rest_model.PostureQuery {
 		QueryType:  rest_model.PostureCheckType(check.TypeId),
 	}
 
-	if ret.QueryType == rest_model.PostureCheckTypePROCESS {
+	switch ret.QueryType {
+	case rest_model.PostureCheckTypePROCESS:
 		processCheck := check.SubType.(*model.PostureCheckProcess)
 		ret.Process = &rest_model.PostureQueryProcess{
-			OsType: rest_model.OsType(processCheck.OperatingSystem),
+			OsType: rest_model.OsType(processCheck.OsType),
 			Path:   processCheck.Path,
+		}
+	case rest_model.PostureCheckTypePROCESSMULTI:
+		processCheck := check.SubType.(*model.PostureCheckProcessMulti)
+		for _, process := range processCheck.Processes {
+			ret.Processes = append(ret.Processes, &rest_model.PostureQueryProcess{
+				OsType: rest_model.OsType(process.OsType),
+				Path:   process.Path,
+			})
 		}
 	}
 

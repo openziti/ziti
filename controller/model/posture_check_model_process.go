@@ -26,11 +26,11 @@ import (
 var _ PostureCheckSubType = &PostureCheckProcess{}
 
 type PostureCheckProcess struct {
-	PostureCheckId  string
-	OperatingSystem string
-	Path            string
-	Hashes          []string
-	Fingerprint     string
+	PostureCheckId string
+	OsType         string
+	Path           string
+	Hashes         []string
+	Fingerprint    string
 }
 
 func (p *PostureCheckProcess) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
@@ -106,7 +106,7 @@ func (p *PostureCheckProcess) fillFrom(handler Handler, tx *bbolt.Tx, check *per
 	}
 
 	p.PostureCheckId = check.Id
-	p.OperatingSystem = subCheck.OperatingSystem
+	p.OsType = subCheck.OperatingSystem
 	p.Path = subCheck.Path
 	p.Hashes = subCheck.Hashes
 	p.Fingerprint = subCheck.Fingerprint
@@ -115,7 +115,7 @@ func (p *PostureCheckProcess) fillFrom(handler Handler, tx *bbolt.Tx, check *per
 
 func (p *PostureCheckProcess) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
-		OperatingSystem: p.OperatingSystem,
+		OperatingSystem: p.OsType,
 		Path:            p.Path,
 		Hashes:          p.Hashes,
 		Fingerprint:     p.Fingerprint,
@@ -124,7 +124,7 @@ func (p *PostureCheckProcess) toBoltEntityForCreate(tx *bbolt.Tx, handler Handle
 
 func (p *PostureCheckProcess) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
-		OperatingSystem: p.OperatingSystem,
+		OperatingSystem: p.OsType,
 		Path:            p.Path,
 		Hashes:          p.Hashes,
 		Fingerprint:     p.Fingerprint,
@@ -133,7 +133,7 @@ func (p *PostureCheckProcess) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handle
 
 func (p *PostureCheckProcess) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
-		OperatingSystem: p.OperatingSystem,
+		OperatingSystem: p.OsType,
 		Path:            p.Path,
 		Hashes:          p.Hashes,
 		Fingerprint:     p.Fingerprint,

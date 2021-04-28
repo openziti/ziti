@@ -4450,11 +4450,30 @@ definitions:
           type: string
       signerFingerprint:
         type: string
+  processMulti:
+    type: object
+    required:
+      - osType
+      - path
+    properties:
+      osType:
+        $ref: '#/definitions/osType'
+      path:
+        type: string
+      hashes:
+        type: array
+        items:
+          type: string
+      signerFingerprints:
+        type: array
+        items:
+          type: string
   postureCheckType:
     type: string
     enum:
       - OS
       - PROCESS
+      - PROCESS_MULTI
       - DOMAIN
       - MAC
       - MFA
@@ -7142,6 +7161,8 @@ definitions:
       - hash
       - signerFingerprints
     properties:
+      path:
+        type: string
       isRunning:
         type: boolean
       hash:
@@ -7166,6 +7187,27 @@ definitions:
             $ref: '#/definitions/postureCheckFailureProcessActual'
           expectedValue:
             $ref: '#/definitions/process'
+
+  postureCheckFailureProcessMulti:
+    x-class: PROCESS_MULTI
+    allOf:
+      - $ref: '#/definitions/postureCheckFailure'
+      - type: object
+        required:
+          - actualValue
+          - expectedValue
+          - semantic
+        properties:
+          semantic:
+            $ref: '#/definitions/semantic'
+          actualValue:
+            type: array
+            items:
+              $ref: '#/definitions/postureCheckFailureProcessActual'
+          expectedValue:
+            type: array
+            items:
+              $ref: '#/definitions/processMulti'
 
   postureCheckFailureMfa:
     x-class: MFA
@@ -7279,6 +7321,10 @@ definitions:
             $ref: '#/definitions/postureCheckType'
           process:
             $ref: '#/definitions/postureQueryProcess'
+          processes:
+            type: array
+            items:
+              $ref: '#/definitions/postureQueryProcess'
   postureQueryProcess:
     type: object
     properties:
@@ -7648,6 +7694,74 @@ definitions:
     x-class: "PROCESS"
 
   ###################################################################
+  # Posture Check Process Multi
+  ###################################################################
+  PostureCheckProcessMultiDetail:
+    allOf:
+      - $ref: '#/definitions/PostureCheckDetail'
+      - type: object
+        required:
+          - semantic
+          - processes
+        properties:
+          semantic:
+            $ref: '#/definitions/semantic'
+          processes:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/processMulti'
+    x-class: "PROCESS_MULTI"
+
+  PostureCheckProcessMultiCreate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckCreate'
+      - type: object
+        required:
+          - semantic
+          - processes
+        properties:
+          semantic:
+            $ref: '#/definitions/semantic'
+          processes:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/processMulti'
+    x-class: "PROCESS_MULTI"
+
+  PostureCheckProcessMultiUpdate:
+    allOf:
+      - $ref: '#/definitions/PostureCheckUpdate'
+      - type: object
+        required:
+          - semantic
+          - processes
+        properties:
+          semantic:
+            $ref: '#/definitions/semantic'
+          processes:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/processMulti'
+    x-class: "PROCESS_MULTI"
+
+  PostureCheckProcessMultiPatch:
+    allOf:
+      - $ref: '#/definitions/PostureCheckPatch'
+      - type: object
+        properties:
+          semantic:
+            $ref: '#/definitions/semantic'
+          processes:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/definitions/processMulti'
+    x-class: "PROCESS_MULTI"
+
+  ###################################################################
   # Posture Check MFA
   ###################################################################
   PostureCheckMfaDetail:
@@ -7730,8 +7844,13 @@ definitions:
       - $ref: '#/definitions/PostureResponseCreate'
       - type: object
         required:
-          - process
+          - path
+          - isRunning
+          - hash
+          - signerFingerprints
         properties:
+          path:
+            type: string
           isRunning:
             type: boolean
           hash:
