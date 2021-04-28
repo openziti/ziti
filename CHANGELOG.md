@@ -1,3 +1,9 @@
+# Release 0.19.13
+
+## What's New
+
+* Fix bug in tunneler source transparency when using UDP
+
 # Release 0.19.12
 
 ## What's New
