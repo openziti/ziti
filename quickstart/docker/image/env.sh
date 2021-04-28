@@ -10,13 +10,16 @@ fi
 if [[ "${network_name}" != "" ]]; then
   export ZITI_NETWORK=${network_name}
 fi
-if [[ "${1}" != "" ]]; then
-  export ZITI_NETWORK=${1}
+if [[ "${ZITI_NETWORK}" == "" ]]; then
+  if [[ "${1}" != "" ]]; then
+    export ZITI_NETWORK=${1}
+  fi
+  if [[ "${ZITI_NETWORK}" = "" ]]; then
+    echo "ERROR: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)"
+    export ZITI_NETWORK=$(hostname)
+  fi
 fi
-if [[ "${ZITI_NETWORK}" = "" ]]; then
-  echo "ERROR: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)"
-  export ZITI_NETWORK=$(hostname)
-fi
+echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
 
 export ZITI_USER="admin"
 export ZITI_PWD="admin"
@@ -29,7 +32,7 @@ export ZITI_FAB_CTRL_PORT="6262"
 if [[ "${ZITI_CONTROLLER_RAWNAME}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK}-controller"; fi
 if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME}" == "" ]]; then export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK}-edge-controller"; fi
 
-export ZITI_PKI="${ZITI_HOME}/pki"
+export ZITI_PKI="${ZITI_SHARED}/pki"
 export ZITI_EDGE_CONTROLLER_PORT="1280"
 
 export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"

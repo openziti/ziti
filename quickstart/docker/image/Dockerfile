@@ -15,9 +15,10 @@ WORKDIR /openziti
 COPY --chown=ziti ziti.ignore /usr/local/bin/
 COPY --chown=ziti *.sh ./scripts/
 
-ENV ZITI_HOME=/openziti/shared
-ENV ZITI_SCRIPTS=/openziti/scripts
-ENV ENV_FILE=/openziti/shared/ziti.env
+ENV ZITI_HOME=/openziti
+ENV ZITI_SHARED=${ZITI_HOME}/shared
+ENV ZITI_SCRIPTS=${ZITI_HOME}/scripts
+ENV ENV_FILE=${ZITI_HOME}/ziti.env
 ENV ZITI_NETWORK=ziti
 
 RUN ${ZITI_SCRIPTS}/env.sh && \
