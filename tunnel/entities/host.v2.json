@@ -156,7 +156,11 @@
         "high": {
           "$ref": "#/definitions/portNumber"
         }
-      }
+      },
+      "required": [
+        "low",
+        "high"
+      ]
     },
     "protocolName": {
       "type": "string",
@@ -258,7 +262,7 @@
         {
           "if": {
             "properties": {
-              "forwardProtocol": {
+              "forwardPort": {
                 "const": true
               }
             },
@@ -295,7 +299,7 @@
             },
             {
               "items": {
-                "$ref": "#/definitions/dialAddress"
+                "$ref": "#/definitions/listenAddress"
               }
             }
           ]

@@ -71,7 +71,11 @@
           "high": {
             "$ref": "#/$defs/portNumber"
           }
-        }
+        },
+        "required": [
+          "low",
+          "high"
+        ]
       },
       "protocolName": {
         "type": "string",
@@ -136,7 +140,7 @@
       {
         "if": {
           "properties": {
-            "forwardProtocol": {
+            "forwardPort": {
               "const": true
             }
           },
@@ -173,7 +177,7 @@
           },
           {
             "items": {
-              "$ref": "#/$defs/dialAddress"
+              "$ref": "#/$defs/listenAddress"
             }
           }
         ]
