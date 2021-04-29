@@ -112,7 +112,7 @@ func (ctrl *ServiceController) Create(s *Service) error {
 		}
 		for _, terminator := range s.Terminators {
 			terminator.Service = s.Id
-			if _, err := ctrl.Terminators.createInTx(ctx, terminator); err != nil {
+			if _, err := ctrl.Terminators.CreateInTx(ctx, terminator); err != nil {
 				return err
 			}
 		}
