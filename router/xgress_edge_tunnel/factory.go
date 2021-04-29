@@ -65,10 +65,10 @@ func (self *Factory) BindChannel(ch channel2.Channel) error {
 	return nil
 }
 
-func (self *Factory) Run(ctrl channel2.Channel, _ boltz.Db, _ chan struct{}) error {
+func (self *Factory) Run(ctrl channel2.Channel, _ boltz.Db, notifyClose chan struct{}) error {
 	self.ctrl = ctrl
 	if self.tunneler.listenOptions != nil {
-		return self.tunneler.Start()
+		return self.tunneler.Start(notifyClose)
 	}
 	return nil
 }

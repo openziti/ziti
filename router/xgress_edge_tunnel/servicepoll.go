@@ -97,7 +97,7 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 }
 
 // TODO: just push updates down the control channel when necessary
-func (self *servicePoller) pollServices(pollInterval time.Duration) {
+func (self *servicePoller) pollServices(pollInterval time.Duration, notifyClose <-chan struct{}, closeHandler func()) {
 	if err := self.fabricProvider.authenticate(); err != nil {
 		logrus.WithError(err).Fatal("xgress_edge_tunnel unable to authenticate to controller. " +
 			"ensure tunneler mode is enabled for this router or disable tunnel listener. exiting ")
@@ -112,6 +112,9 @@ func (self *servicePoller) pollServices(pollInterval time.Duration) {
 		select {
 		case <-ticker.C:
 			self.requestServiceListUpdate()
+		case <-notifyClose:
+			closeHandler()
+			return
 		}
 	}
 }
