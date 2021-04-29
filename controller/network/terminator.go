@@ -144,7 +144,7 @@ func (ctrl *TerminatorController) Create(s *Terminator) (string, error) {
 	var id string
 	var err error
 	err = ctrl.db.Update(func(tx *bbolt.Tx) error {
-		id, err = ctrl.createInTx(boltz.NewMutateContext(tx), s)
+		id, err = ctrl.CreateInTx(boltz.NewMutateContext(tx), s)
 		return err
 	})
 	return id, err
@@ -160,7 +160,7 @@ func (ctrl *TerminatorController) checkBinding(terminator *Terminator) {
 	}
 }
 
-func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, terminator *Terminator) (string, error) {
+func (ctrl *TerminatorController) CreateInTx(ctx boltz.MutateContext, terminator *Terminator) (string, error) {
 	ctrl.checkBinding(terminator)
 	boltTerminator := terminator.toBolt()
 	if err := ctrl.GetStore().Create(ctx, boltTerminator); err != nil {

@@ -31,14 +31,12 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
-	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,10 +66,6 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 	}
 
 	c.registerXts()
-	if err := c.loadXtvMappings(); err != nil {
-		return nil, err
-	}
-
 	c.loadEventHandlers()
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
@@ -203,29 +197,6 @@ func (c *Controller) startProfiling() {
 			logrus.Errorf("unexpected error launching cpu profiling (%v)", err)
 		}
 	}
-}
-
-func (c *Controller) loadXtvMappings() error {
-	if t, ok := c.config.src["terminator"]; ok {
-		if tm, ok := t.(map[interface{}]interface{}); ok {
-			if vals, ok := tm["validators"]; ok {
-				if valMap, ok := vals.(map[interface{}]interface{}); ok {
-					for k, v := range valMap {
-						binding, ok := k.(string)
-						if !ok {
-							return errors.Errorf("invalid binding in terminator.validators configuration: %v", binding)
-						}
-						validatorId, ok := v.(string)
-						if !ok {
-							return errors.Errorf("invalid validator id in terminator.validators configuration: %v", binding)
-						}
-						xtv.GetRegistry().RegisterBinding(binding, validatorId)
-					}
-				}
-			}
-		}
-	}
-	return nil
 }
 
 func (c *Controller) loadEventHandlers() {

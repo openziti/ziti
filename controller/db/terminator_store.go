@@ -20,7 +20,6 @@ import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xtv"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/sequence"
@@ -181,7 +180,7 @@ func (entity *Terminator) GetEntityType() string {
 type TerminatorStore interface {
 	boltz.CrudStore
 	LoadOneById(tx *bbolt.Tx, id string) (*Terminator, error)
-	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminator xtv.Terminator, create bool) ([]*Terminator, error)
+	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error)
 }
 
 func newTerminatorStore(stores *stores) *terminatorStoreImpl {
@@ -244,24 +243,7 @@ func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 		}
 		entity.SetId(id)
 	}
-	if err := store.baseStore.Create(ctx, entity); err != nil {
-		return err
-	}
-	return xtv.Validate(ctx.Tx(), entity.(*Terminator), true)
-}
-
-func (store *terminatorStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
-	if err := store.baseStore.Update(ctx, entity, checker); err != nil {
-		return err
-	}
-
-	// load from database, as entity used to persist may be incomplete or have out of sync data, for example when patching
-	// or when fields become immutable after create
-	terminator, err := store.LoadOneById(ctx.Tx(), entity.GetId())
-	if err != nil {
-		return err
-	}
-	return xtv.Validate(ctx.Tx(), terminator, false)
+	return store.baseStore.Create(ctx, entity)
 }
 
 func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -291,25 +273,20 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	return store.baseStore.DeleteById(ctx, id)
 }
 
-func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, entity xtv.Terminator, create bool) ([]*Terminator, error) {
-	serviceId := ""
-	if create { // don't allow service to be changed
-		serviceId = entity.GetServiceId()
-	} else {
-		terminator, err := store.LoadOneById(tx, entity.GetId())
-		if err != nil {
-			return nil, err
-		}
-		serviceId = terminator.GetServiceId()
+func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, termnatorId string) ([]*Terminator, error) {
+	terminator, err := store.LoadOneById(tx, termnatorId)
+	if err != nil {
+		return nil, err
 	}
+	serviceId := terminator.GetServiceId()
 
-	identity := entity.GetIdentity()
+	identity := terminator.GetIdentity()
 
 	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators)
 	var identityTerminators []*Terminator
-	for _, terminatorId := range terminatorIds {
-		if terminatorId != entity.GetId() {
-			if terminator, _ := store.LoadOneById(tx, terminatorId); terminator != nil {
+	for _, siblingId := range terminatorIds {
+		if siblingId != termnatorId {
+			if terminator, _ := store.LoadOneById(tx, siblingId); terminator != nil {
 				if identity == terminator.Identity {
 					identityTerminators = append(identityTerminators, terminator)
 				}
