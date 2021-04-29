@@ -73,10 +73,6 @@ mgmt:
 #      format: json
 #      path: /tmp/ziti-events.log
 
-terminator:
-  validators:
-    edge: edge
-
 # xctrl_example
 #
 #example:
