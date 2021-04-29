@@ -25,10 +25,8 @@ import (
 	"github.com/openziti/edge/controller/response"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/controller/timeout"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/rest_server"
-	"github.com/openziti/fabric/controller/xtv"
 	"net/http"
 	"strings"
 	"sync"
@@ -233,11 +231,6 @@ func (c *Controller) Initialize() {
 			WithField("enforcerId", sessionEnforcer.GetId()).
 			Errorf("could not add session enforcer")
 
-	}
-
-	xtv.RegisterValidator(edge_common.EdgeBinding, env.NewEdgeTerminatorValidator(c.AppEnv))
-	if err := xtv.InitializeMappings(); err != nil {
-		log.Fatalf("error initializing xtv: %+v", err)
 	}
 
 	c.initialized = true

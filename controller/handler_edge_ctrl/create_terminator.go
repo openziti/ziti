@@ -26,6 +26,8 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/storage/boltz"
+	"go.etcd.io/bbolt"
 	"math"
 )
 
@@ -102,7 +104,17 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	}
 
 	n := self.appEnv.GetHostController().GetNetwork()
-	id, err := n.Terminators.Create(terminator)
+	var id string
+	err := n.GetDb().Update(func(tx *bbolt.Tx) error {
+		var err error
+		mutateCtx := boltz.NewMutateContext(tx)
+		id, err = n.Terminators.CreateInTx(mutateCtx, terminator)
+		if err != nil {
+			return err
+		}
+		return ctx.validateTerminatorIdentity(tx, terminator)
+	})
+
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return
