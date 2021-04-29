@@ -273,19 +273,22 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	return store.baseStore.DeleteById(ctx, id)
 }
 
-func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, termnatorId string) ([]*Terminator, error) {
-	terminator, err := store.LoadOneById(tx, termnatorId)
+func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error) {
+	terminator, err := store.LoadOneById(tx, terminatorId)
 	if err != nil {
 		return nil, err
 	}
-	serviceId := terminator.GetServiceId()
+	if terminator == nil {
+		return nil, boltz.NewNotFoundError("terminator", "id", terminatorId)
+	}
 
+	serviceId := terminator.GetServiceId()
 	identity := terminator.GetIdentity()
 
 	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators)
 	var identityTerminators []*Terminator
 	for _, siblingId := range terminatorIds {
-		if siblingId != termnatorId {
+		if siblingId != terminatorId {
 			if terminator, _ := store.LoadOneById(tx, siblingId); terminator != nil {
 				if identity == terminator.Identity {
 					identityTerminators = append(identityTerminators, terminator)
