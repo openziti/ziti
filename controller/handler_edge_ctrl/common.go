@@ -5,6 +5,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
@@ -14,8 +16,11 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.etcd.io/bbolt"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -267,6 +272,71 @@ func (self *baseSessionRequestContext) loadServiceForName(name string) {
 				Error("service not found")
 		}
 	}
+}
+
+func (self *baseSessionRequestContext) validateTerminatorIdentity(tx *bbolt.Tx, terminator terminator) error {
+	session, err := self.getTerminatorSession(tx, terminator, "")
+	if err != nil {
+		return err
+	}
+
+	if terminator.GetIdentity() == "" {
+		return nil
+	}
+
+	identityTerminators, err := self.GetHandler().getAppEnv().BoltStores.Terminator.GetTerminatorsInIdentityGroup(tx, terminator.GetId())
+	for _, otherTerminator := range identityTerminators {
+		otherSession, err := self.getTerminatorSession(tx, otherTerminator, "sibling ")
+		if err != nil {
+			return err
+		}
+		if otherSession != nil {
+			if otherSession.ApiSession.IdentityId != session.ApiSession.IdentityId {
+				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", terminator.GetId(), terminator.GetIdentity())
+			}
+		}
+	}
+
+	return nil
+}
+
+type terminator interface {
+	GetId() string
+	GetIdentity() string
+	GetBinding() string
+	GetAddress() string
+}
+
+func (self *baseSessionRequestContext) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*persistence.Session, error) {
+	if terminator.GetBinding() != edge_common.EdgeBinding {
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+	}
+
+	addressParts := strings.Split(terminator.GetAddress(), ":")
+	if len(addressParts) != 2 {
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+	}
+
+	if addressParts[0] != "hosted" {
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+	}
+
+	sessionToken := addressParts[1]
+	session, err := self.GetHandler().getAppEnv().BoltStores.Session.LoadOneByToken(tx, sessionToken)
+	if err != nil {
+		pfxlog.Logger().Warnf("sibling terminator %v with shared identity %v has invalid session token %v", terminator.GetId(), terminator.GetIdentity(), sessionToken)
+		return nil, nil
+	}
+
+	if session.ApiSession == nil {
+		apiSession, err := self.GetHandler().getAppEnv().BoltStores.ApiSession.LoadOneById(tx, session.ApiSessionId)
+		if err != nil {
+			return nil, err
+		}
+		session.ApiSession = apiSession
+	}
+
+	return session, nil
 }
 
 func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, binding string) *network.Terminator {
