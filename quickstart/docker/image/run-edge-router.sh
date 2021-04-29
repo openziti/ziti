@@ -1,27 +1,47 @@
 #!/bin/bash
-. ${HOME}/ziti.env
-sleep 10
-echo ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
-ziti edge controller login "${ZITI_EDGE_API_HOSTNAME}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_ROOTCA_NAME}/certs/${ZITI_EDGE_INTERMEDIATE_NAME}.cert"
-sleep 10
 
-# need a cluster as of sep-18-2019
-ziti edge controller create cluster "${ZITI_CLUSTER_NAME}"
+. ${ZITI_SCRIPTS}/env.sh
+. ${ZITI_HOME}/ziti.env
 
-# create a new gateway
-ziti edge controller create edge-router "${ZITI_EDGE_CONTROLLER_NAME}" "${ZITI_CLUSTER_NAME}" -o "${ZITI_HOME}/${ZITI_EDGE_CONTROLLER_NAME}.jwt"
+until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
+    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+    sleep 2
+done
 
-"${HOME}/create-edge-router-config.sh"
+export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
 
-# race condition? 
-sleep 2
+#echo 'export ZITI_EDGE_ROUTER_RAWNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}"'"' > "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
+#echo 'export ZITI_EDGE_ROUTER_HOSTNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"'"' >> "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
 
-# enroll the gateway
-ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_CONTROLLER_NAME}.jwt"
+"${ZITI_SCRIPTS}/create-router-pki.sh"
 
-# give the register process a moment to breath. it's hypthesized that there's a race condition
-# between register and running so let it sit for a moment...
-sleep 2
+echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
+ziti edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
-# start the gateway
-ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_NAME}.yaml"
+if [[ "$1" == "edge" ]]; then
+  echo "CREATING EDGE ROUTER CONFIG"
+  "${ZITI_SCRIPTS}/create-edge-router-config.sh"
+fi
+if [[ "$1" == "wss" ]]; then
+  echo "CREATING EDGE ROUTER WSS CONFIG"
+  "${ZITI_SCRIPTS}/create-edge-router-wss-config.sh"
+fi
+if [[ "$1" == "fabric" ]]; then
+  echo "CREATING FABRIC ROUTER CONFIG"
+  "${ZITI_SCRIPTS}/create-fabric-router-config.sh"
+fi
+if [[ "$1" == "private" ]]; then
+  echo "CREATING PRIVATE ROUTER CONFIG"
+  "${ZITI_SCRIPTS}/create-private-router-config.sh"
+fi
+
+echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
+ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}"
+ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t
+sleep 1
+echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
+ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
+echo ""
+#sleep 100000
+ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
+

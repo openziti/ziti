@@ -4,6 +4,10 @@
 
 * Fix bug in tunneler source transparency when using UDP
 
+* Added guidance under /quickstart for quickly launching a simplified, local environment suitable for local dev testing and learning
+
+
+
 # Release 0.19.12
 
 ## What's New

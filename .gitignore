@@ -22,3 +22,6 @@ db/
 github_deploy_key
 .vscode/
 Pipfile
+ziti.ignore
+linux-build
+*.log

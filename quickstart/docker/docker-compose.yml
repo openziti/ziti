@@ -1,50 +1,96 @@
 version: '2.4'
 services:
-  ziti-postgres:
-    image: postgres
-    networks:
-      - ziticontrol
-    environment:
-      POSTGRES_PASSWORD: ztpassword
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 1s
-      timeout: 1s
-      retries: 30
-
   ziti-controller:
-    image: netfoundry/ziti-quickstart
+    image: openziti/quickstart
+    env_file:
+      - ./default.env
     build: ./image
-    depends_on:
-      ziti-postgres:
-        condition: service_healthy
     ports:
       - 1280:1280
     networks:
       ziticontrol:
         aliases:
-          - ziti-controller
-          - ziti-fabric-controller
-    command: ["wait-for-it", "ziti-postgres:5432", "-t", "15", "--", "./run-controller.sh"] 
+          - ziti-edge-controller
     volumes:
-      - ziti-fs:/netfoundry
+      - ziti-fs:/openziti
+    entrypoint:
+      - /openziti/run-controller.sh
 
   ziti-edge-router:
-    image: netfoundry/ziti-quickstart
-    depends_on:
-      ziti-controller:
-        condition: service_started
+    image: openziti/quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
       - 3022:3022
     networks:
-      ziticontrol:
-        aliases:
-          - ziti-edge-router
-
-    command: ["wait-for-it", "ziti-controller:1280", "-t", "120", "--", "./run-edge-router.sh"]
+      - ziticontrol
     volumes:
-      - ziti-fs:/netfoundry
-      
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh edge"
+
+  ziti-edge-router-wss:
+    image: openziti/quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
+    ports:
+      - 3023:3023
+    networks:
+      - ziticontrol
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh wss"
+
+  ziti-fabric-router-br:
+    image: openziti/quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
+    #ports:
+    #  - 3024:3024
+    networks:
+      - ziticontrol
+      - zitiblue
+      - zitired
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh fabric"
+
+  ziti-private-red:
+    image: openziti/quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
+    #ports:
+    #  - 3025:3025
+    networks:
+      - ziticontrol
+      - zitired
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh private"
+
+  ziti-private-blue:
+    image: openziti/quickstart
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
+    #ports:
+    #  - 3026:3026
+    networks:
+      - ziticontrol
+      - zitiblue
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/run-edge-router.sh private"
+
+  web-test-blue:
+    image: crccheck/hello-world
+    ports:
+      - 80:8000
+    networks:
+      - zitiblue
 
 networks:
   ziticontrol:
