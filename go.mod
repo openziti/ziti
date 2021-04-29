@@ -16,7 +16,7 @@ require (
 	github.com/AppsFlyer/go-sundheit v0.3.1
 	github.com/Jeffail/gabs v1.4.0
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/coreos/go-iptables v0.5.0
+	github.com/coreos/go-iptables v0.6.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
