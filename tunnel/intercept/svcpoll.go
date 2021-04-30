@@ -275,8 +275,7 @@ func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) 
 		return err
 	}
 
-	sourceIp = strings.ReplaceAll(sourceIp, "$tunneler_id.name", currentIdentity.Name)
-	if sourceIp, err = self.replaceIdTags(sourceIp, currentIdentity); err != nil {
+	if sourceIp, err = replaceTemplatized(sourceIp, currentIdentity); err != nil {
 		return err
 	}
 
@@ -300,17 +299,18 @@ func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) 
 	return nil
 }
 
-func (self *ServiceListener) replaceIdTags(sourceIp string, currentIdentity *edge.CurrentIdentity) (string, error) {
+func replaceTemplatized(input string, currentIdentity *edge.CurrentIdentity) (string, error) {
+	input = strings.ReplaceAll(input, "$tunneler_id.name", currentIdentity.Name)
 	start := "$tunneler_id.appData["
 	for {
-		index := strings.Index(sourceIp, start)
+		index := strings.Index(input, start)
 		if index < 0 {
-			return sourceIp, nil
+			return input, nil
 		}
-		postStr := sourceIp[index+len(start):]
+		postStr := input[index+len(start):]
 		closeIdx := strings.IndexByte(postStr, ']')
 		if closeIdx == -1 {
-			return "", errors.New("sourceIp contains unclosed $tunneler_id.appData[")
+			return "", errors.New("input contains unclosed $tunneler_id.appData[")
 		}
 		tagName := postStr[0:closeIdx]
 
@@ -323,7 +323,7 @@ func (self *ServiceListener) replaceIdTags(sourceIp string, currentIdentity *edg
 		}
 
 		fullTag := start + tagName + "]"
-		sourceIp = strings.ReplaceAll(sourceIp, fullTag, tagValue)
+		input = strings.ReplaceAll(input, fullTag, tagValue)
 	}
 }
 
