@@ -112,6 +112,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		if err != nil {
 			return err
 		}
+		terminator.Id = id
 		return ctx.validateTerminatorIdentity(tx, terminator)
 	})
 
