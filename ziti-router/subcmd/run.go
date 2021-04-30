@@ -52,7 +52,6 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
-
 	logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
@@ -117,9 +116,8 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 }
 
 func waitForShutdown(r *router.Router) {
-
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(ch, os.Interrupt, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
 	<-ch
 
