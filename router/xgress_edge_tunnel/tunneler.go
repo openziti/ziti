@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"net"
 )
 
@@ -87,11 +86,7 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	self.servicePoller.serviceListener.HandleProviderReady(self.fabricProvider)
 	self.interceptor.Start(self.fabricProvider)
 
-	go self.servicePoller.pollServices(self.listenOptions.svcPollRate, notifyClose, func() {
-		logrus.Info("stopping xgress_edge_tunnel.interceptor")
-		self.interceptor.Stop()
-		logrus.Info("stopped xgress_edge_tunnel.interceptor")
-	})
+	go self.servicePoller.pollServices(self.listenOptions.svcPollRate, notifyClose)
 
 	return nil
 }
