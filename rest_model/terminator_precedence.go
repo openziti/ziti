@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,6 +42,11 @@ import (
 //
 // swagger:model terminatorPrecedence
 type TerminatorPrecedence string
+
+func NewTerminatorPrecedence(value TerminatorPrecedence) *TerminatorPrecedence {
+	v := value
+	return &v
+}
 
 const (
 
@@ -86,5 +92,10 @@ func (m TerminatorPrecedence) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// ContextValidate validates this terminator precedence based on context it is used
+func (m TerminatorPrecedence) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

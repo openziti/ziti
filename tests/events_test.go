@@ -96,13 +96,17 @@ func Test_EventsTest(t *testing.T) {
 	defer unregisterUsageEventsHandler()
 
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+
+	ctx.RequireAdminManagementApiLogin()
+	ctx.RequireAdminClientApiLogin()
+
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
-	hostIdentity, hostContext := ctx.AdminSession.RequireCreateSdkContext()
+
+	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext.Close()
 
 	listener, err := hostContext.Listen(service.Name)
@@ -115,7 +119,7 @@ func Test_EventsTest(t *testing.T) {
 	})
 	testServer.start()
 
-	clientIdentity, clientContext := ctx.AdminSession.RequireCreateSdkContext()
+	clientIdentity, clientContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer clientContext.Close()
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))

@@ -21,8 +21,10 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_client_api_server/operations/session"
+	clientSession "github.com/openziti/edge/rest_client_api_server/operations/session"
+	managementSession "github.com/openziti/edge/rest_management_api_server/operations/session"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/session"
 	"github.com/openziti/foundation/metrics"
 	"time"
 )
@@ -46,25 +48,41 @@ func NewSessionRouter() *SessionRouter {
 
 func (r *SessionRouter) Register(ae *env.AppEnv) {
 	r.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("session.create")
-	ae.Api.SessionDeleteSessionHandler = session.DeleteSessionHandlerFunc(func(params session.DeleteSessionParams, _ interface{}) middleware.Responder {
+
+	//Management
+	ae.ManagementApi.SessionDeleteSessionHandler = managementSession.DeleteSessionHandlerFunc(func(params managementSession.DeleteSessionParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.SessionDetailSessionHandler = session.DetailSessionHandlerFunc(func(params session.DetailSessionParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.SessionDetailSessionHandler = managementSession.DetailSessionHandlerFunc(func(params managementSession.DetailSessionParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.SessionListSessionsHandler = session.ListSessionsHandlerFunc(func(params session.ListSessionsParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.SessionListSessionsHandler = managementSession.ListSessionsHandlerFunc(func(params managementSession.ListSessionsParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.SessionCreateSessionHandler = session.CreateSessionHandlerFunc(func(params session.CreateSessionParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.SessionDetailSessionRoutePathHandler = managementSession.DetailSessionRoutePathHandlerFunc(func(params managementSession.DetailSessionRoutePathParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.DetailRoutePath(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	//Client
+	ae.ClientApi.SessionDeleteSessionHandler = clientSession.DeleteSessionHandlerFunc(func(params clientSession.DeleteSessionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.ClientApi.SessionDetailSessionHandler = clientSession.DetailSessionHandlerFunc(func(params clientSession.DetailSessionParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.ClientApi.SessionListSessionsHandler = clientSession.ListSessionsHandlerFunc(func(params clientSession.ListSessionsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ClientApi.SessionCreateSessionHandler = clientSession.CreateSessionHandlerFunc(func(params clientSession.CreateSessionParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.SessionDetailSessionRoutePathHandler = session.DetailSessionRoutePathHandlerFunc(func(params session.DetailSessionRoutePathParams, _ interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.DetailRoutePath(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
-	})
 }
 
 func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -113,7 +131,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 	r.createTimer.UpdateSince(start)
 }
 
-func (r *SessionRouter) DetailRoutePath(ae *env.AppEnv, rc *response.RequestContext, params session.DetailSessionRoutePathParams) {
+func (r *SessionRouter) DetailRoutePath(ae *env.AppEnv, rc *response.RequestContext, params managementSession.DetailSessionRoutePathParams) {
 	path := []string{} //must be non null
 
 	for _, fabricSession := range ae.HostController.GetNetwork().GetAllSessions() {

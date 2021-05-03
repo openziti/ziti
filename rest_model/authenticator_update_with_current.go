@@ -30,9 +30,12 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // AuthenticatorUpdateWithCurrent All of the fields on an authenticator that will be updated
@@ -43,7 +46,7 @@ type AuthenticatorUpdateWithCurrent struct {
 
 	// current password
 	// Required: true
-	CurrentPassword Password `json:"currentPassword"`
+	CurrentPassword *Password `json:"currentPassword"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -57,7 +60,7 @@ func (m *AuthenticatorUpdateWithCurrent) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		CurrentPassword Password `json:"currentPassword"`
+		CurrentPassword *Password `json:"currentPassword"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -78,7 +81,7 @@ func (m AuthenticatorUpdateWithCurrent) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		CurrentPassword Password `json:"currentPassword"`
+		CurrentPassword *Password `json:"currentPassword"`
 	}
 
 	dataAO1.CurrentPassword = m.CurrentPassword
@@ -112,11 +115,54 @@ func (m *AuthenticatorUpdateWithCurrent) Validate(formats strfmt.Registry) error
 
 func (m *AuthenticatorUpdateWithCurrent) validateCurrentPassword(formats strfmt.Registry) error {
 
-	if err := m.CurrentPassword.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("currentPassword")
-		}
+	if err := validate.Required("currentPassword", "body", m.CurrentPassword); err != nil {
 		return err
+	}
+
+	if err := validate.Required("currentPassword", "body", m.CurrentPassword); err != nil {
+		return err
+	}
+
+	if m.CurrentPassword != nil {
+		if err := m.CurrentPassword.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("currentPassword")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this authenticator update with current based on the context it is used
+func (m *AuthenticatorUpdateWithCurrent) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with AuthenticatorUpdate
+	if err := m.AuthenticatorUpdate.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateCurrentPassword(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AuthenticatorUpdateWithCurrent) contextValidateCurrentPassword(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.CurrentPassword != nil {
+		if err := m.CurrentPassword.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("currentPassword")
+			}
+			return err
+		}
 	}
 
 	return nil

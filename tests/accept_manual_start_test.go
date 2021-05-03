@@ -35,9 +35,9 @@ func Test_ManualStart(t *testing.T) {
 
 	t.Run("creating service and edge router", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.RequireAdminLogin()
+		ctx.RequireAdminManagementApiLogin()
 
-		service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_ha.NewFactory().GetStrategyName())
+		service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_ha.NewFactory().GetStrategyName())
 
 		ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -54,7 +54,7 @@ func Test_ManualStart(t *testing.T) {
 
 			log.Info("starting listener1")
 			host1 := &host{}
-			host1.id, host1.context = ctx.AdminSession.RequireCreateSdkContext()
+			host1.id, host1.context = ctx.AdminManagementSession.RequireCreateSdkContext()
 			defer host1.context.Close()
 
 			listener, err := host1.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
@@ -70,7 +70,7 @@ func Test_ManualStart(t *testing.T) {
 
 			log.Info("starting listener2")
 			host2 := &host{}
-			host2.id, host2.context = ctx.AdminSession.RequireCreateSdkContext()
+			host2.id, host2.context = ctx.AdminManagementSession.RequireCreateSdkContext()
 			defer host2.context.Close()
 
 			listener, err = host2.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
@@ -125,7 +125,7 @@ func Test_ManualStart(t *testing.T) {
 				}
 			}()
 
-			_, context := ctx.AdminSession.RequireCreateSdkContext()
+			_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 			defer context.Close()
 
 			for i := 0; i < 10; i++ {

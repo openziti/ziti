@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_client_api_server/operations/posture_checks"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/posture_checks"
 	"time"
 )
 
@@ -43,11 +43,11 @@ func NewPostureResponseRouter() *PostureResponseRouter {
 }
 
 func (r *PostureResponseRouter) Register(ae *env.AppEnv) {
-	ae.Api.PostureChecksCreatePostureResponseHandler = posture_checks.CreatePostureResponseHandlerFunc(func(params posture_checks.CreatePostureResponseParams, _ interface{}) middleware.Responder {
+	ae.ClientApi.PostureChecksCreatePostureResponseHandler = posture_checks.CreatePostureResponseHandlerFunc(func(params posture_checks.CreatePostureResponseParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.PostureChecksCreatePostureResponseBulkHandler = posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, _ interface{}) middleware.Responder {
+	ae.ClientApi.PostureChecksCreatePostureResponseBulkHandler = posture_checks.CreatePostureResponseBulkHandlerFunc(func(params posture_checks.CreatePostureResponseBulkParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateBulk(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
@@ -120,9 +120,9 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		}
 
 		subType := &model.PostureResponseProcess{
-			Path:               *apiPostureResponse.Path,
-			IsRunning:          *apiPostureResponse.IsRunning,
-			BinaryHash:         *apiPostureResponse.Hash,
+			Path:               apiPostureResponse.Path,
+			IsRunning:          apiPostureResponse.IsRunning,
+			BinaryHash:         apiPostureResponse.Hash,
 			SignerFingerprints: apiPostureResponse.SignerFingerprints,
 		}
 

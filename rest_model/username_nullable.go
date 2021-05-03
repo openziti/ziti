@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
@@ -37,7 +39,7 @@ import (
 
 // UsernameNullable username nullable
 //
-// swagger:model username-nullable
+// swagger:model usernameNullable
 type UsernameNullable string
 
 // Validate validates this username nullable
@@ -55,5 +57,10 @@ func (m UsernameNullable) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// ContextValidate validates this username nullable based on context it is used
+func (m UsernameNullable) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

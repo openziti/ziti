@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/strfmt"
 )
 
@@ -40,5 +42,10 @@ type Roles []string
 
 // Validate validates this roles
 func (m Roles) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this roles based on context it is used
+func (m Roles) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

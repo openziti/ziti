@@ -22,8 +22,9 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	clientCurrentApiSession "github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
+	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/current_api_session"
 	"net/http"
 	"time"
 )
@@ -41,35 +42,45 @@ func NewCurrentSessionRouter() *CurrentSessionRouter {
 }
 
 func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
-	ae.Api.CurrentAPISessionGetCurrentAPISessionHandler = current_api_session.GetCurrentAPISessionHandlerFunc(func(params current_api_session.GetCurrentAPISessionParams, i interface{}) middleware.Responder {
+	//Client
+	ae.ClientApi.CurrentAPISessionGetCurrentAPISessionHandler = clientCurrentApiSession.GetCurrentAPISessionHandlerFunc(func(params clientCurrentApiSession.GetCurrentAPISessionParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.Detail, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 
-	ae.Api.CurrentAPISessionDeleteCurrentAPISessionHandler = current_api_session.DeleteCurrentAPISessionHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionDeleteCurrentAPISessionHandler = clientCurrentApiSession.DeleteCurrentAPISessionHandlerFunc(func(params clientCurrentApiSession.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 
-	ae.Api.CurrentAPISessionListCurrentAPISessionCertificatesHandler = current_api_session.ListCurrentAPISessionCertificatesHandlerFunc(func(params current_api_session.ListCurrentAPISessionCertificatesParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionListCurrentAPISessionCertificatesHandler = clientCurrentApiSession.ListCurrentAPISessionCertificatesHandlerFunc(func(params clientCurrentApiSession.ListCurrentAPISessionCertificatesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.ListCertificates, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentAPISessionCreateCurrentAPISessionCertificateHandler = current_api_session.CreateCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.CreateCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionCreateCurrentAPISessionCertificateHandler = clientCurrentApiSession.CreateCurrentAPISessionCertificateHandlerFunc(func(params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			router.CreateCertificate(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentAPISessionDetailCurrentAPISessionCertificateHandler = current_api_session.DetailCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DetailCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionDetailCurrentAPISessionCertificateHandler = clientCurrentApiSession.DetailCurrentAPISessionCertificateHandlerFunc(func(params clientCurrentApiSession.DetailCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.DetailCertificate, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler = current_api_session.DeleteCurrentAPISessionCertificateHandlerFunc(func(params current_api_session.DeleteCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionDeleteCurrentAPISessionCertificateHandler = clientCurrentApiSession.DeleteCurrentAPISessionCertificateHandlerFunc(func(params clientCurrentApiSession.DeleteCurrentAPISessionCertificateParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.DeleteCertificate, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
 	// Session Updates
-	ae.Api.CurrentAPISessionListServiceUpdatesHandler = current_api_session.ListServiceUpdatesHandlerFunc(func(params current_api_session.ListServiceUpdatesParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentAPISessionListServiceUpdatesHandler = clientCurrentApiSession.ListServiceUpdatesHandlerFunc(func(params clientCurrentApiSession.ListServiceUpdatesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(router.ListServiceUpdates, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	//Management
+	ae.ManagementApi.CurrentAPISessionGetCurrentAPISessionHandler = managementCurrentApiSession.GetCurrentAPISessionHandlerFunc(func(params managementCurrentApiSession.GetCurrentAPISessionParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(router.Detail, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
+	})
+
+	ae.ManagementApi.CurrentAPISessionDeleteCurrentAPISessionHandler = managementCurrentApiSession.DeleteCurrentAPISessionHandlerFunc(func(params managementCurrentApiSession.DeleteCurrentAPISessionParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(router.Delete, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 }
 
@@ -110,7 +121,7 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 	})
 }
 
-func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params current_api_session.CreateCurrentAPISessionCertificateParams) {
+func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
 		return ae.GetHandlers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr))
@@ -182,9 +193,9 @@ type ApiSessionCertificateCreateResponder struct {
 	ae *env.AppEnv
 }
 
-func (nsr *ApiSessionCertificateCreateResponder) RespondWithCreatedId(id string, link rest_model.Link) {
+func (nsr *ApiSessionCertificateCreateResponder) RespondWithCreatedId(id string, _ rest_model.Link) {
 	sessionCert, _ := nsr.ae.GetHandlers().ApiSessionCertificate.Read(id)
-	certString := string(sessionCert.PEM)
+	certString := sessionCert.PEM
 
 	newSessionEnvelope := &rest_model.CreateCurrentAPISessionCertificateEnvelope{
 		Data: &rest_model.CurrentAPISessionCertificateCreateResponse{

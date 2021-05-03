@@ -30,7 +30,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	hashes := []string{
@@ -54,6 +54,8 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		"753DBE7F20E91437C33E89E2950BE47F3D0CE8C9",
 	}
 
+	osTypeWindows := rest_model.OsTypeWindows
+
 	//Has hashes, has signers
 	process01Path := `\path\to\some\binary01`
 	process01 := &rest_model.ProcessMulti{
@@ -61,7 +63,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			hashes[0],
 			hashes[1],
 		},
-		OsType: rest_model.OsTypeWindows,
+		OsType: &osTypeWindows,
 		Path:   &process01Path,
 		SignerFingerprints: []string{
 			signerFingerprints[0],
@@ -73,7 +75,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 	process02Path := `\path\to\some\binary02`
 	process02 := &rest_model.ProcessMulti{
 		Hashes: []string{},
-		OsType: rest_model.OsTypeWindows,
+		OsType: &osTypeWindows,
 		Path:   &process02Path,
 		SignerFingerprints: []string{
 			signerFingerprints[2],
@@ -88,7 +90,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			hashes[4],
 			hashes[5],
 		},
-		OsType:             rest_model.OsTypeWindows,
+		OsType:             &osTypeWindows,
 		Path:               &process03Path,
 		SignerFingerprints: []string{},
 	}
@@ -97,7 +99,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 	process04Path := `\path\to\some\binary04`
 	process04 := &rest_model.ProcessMulti{
 		Hashes:             []string{},
-		OsType:             rest_model.OsTypeWindows,
+		OsType:             &osTypeWindows,
 		Path:               &process04Path,
 		SignerFingerprints: []string{},
 	}
@@ -109,24 +111,24 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		processes := []*rest_model.ProcessMulti{
 			process01,
 		}
 
-		postureCheck := ctx.AdminSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAllOf, processes, s(postureCheckRole))
+		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAllOf, processes, s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -173,12 +175,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 			t.Run("by submitting it", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				isRunning := true
+
 				hash := process01.Hashes[0]
 				postureResponse := &rest_model.PostureResponseProcessCreate{
-					Hash:      &hash,
-					IsRunning: &isRunning,
-					Path:      &process01Path,
+					Hash:      hash,
+					IsRunning: true,
+					Path:      process01Path,
 					SignerFingerprints: []string{
 						process01.SignerFingerprints[0],
 					},
@@ -206,24 +208,24 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		processes := []*rest_model.ProcessMulti{
 			process02,
 		}
 
-		postureCheck := ctx.AdminSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAnyOf, processes, s(postureCheckRole))
+		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAnyOf, processes, s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -270,12 +272,11 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 			t.Run("by submitting it", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				isRunning := true
 				hash := hashes[1] //02 doesn't check hashes
 				postureResponse := &rest_model.PostureResponseProcessCreate{
-					Hash:      &hash,
-					IsRunning: &isRunning,
-					Path:      &process02Path,
+					Hash:      hash,
+					IsRunning: true,
+					Path:      process02Path,
 					SignerFingerprints: []string{
 						process02.SignerFingerprints[1],
 					},
@@ -303,12 +304,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		enrolledIdentityId, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		enrolledIdentityId, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		processes := []*rest_model.ProcessMulti{
 			process01,
@@ -317,13 +318,13 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			process04,
 		}
 
-		processPostureCheck := ctx.AdminSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAllOf, processes, s(postureCheckRole))
+		processPostureCheck := ctx.AdminManagementSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAllOf, processes, s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -373,12 +374,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 01", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+
 					hash := process01.Hashes[0]
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process01Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process01Path,
 						SignerFingerprints: []string{
 							process01.SignerFingerprints[1],
 						},
@@ -400,12 +401,11 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 02", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
 					hash := hashes[3] //no hashes on 02's check shouldn't matter
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process02Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process02Path,
 						SignerFingerprints: []string{
 							process02.SignerFingerprints[0],
 						},
@@ -427,12 +427,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 03", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+					
 					hash := process03.Hashes[1]
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process03Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process03Path,
 						SignerFingerprints: []string{
 							signerFingerprints[3], //no signers on 03's check shoudln't matter
 						},
@@ -455,12 +455,11 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 04", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
 					hash := hashes[5] //no hashes on 04's check shouldn't matter
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process04Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process04Path,
 						SignerFingerprints: []string{
 							signerFingerprints[2], //no signers on 04's check shouldn't matter
 						},
@@ -485,12 +484,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 03 not running", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := false
+
 					hash := process03.Hashes[1]
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process03Path,
+						Hash:      hash,
+						IsRunning: false,
+						Path:      process03Path,
 						SignerFingerprints: []string{
 							signerFingerprints[3], //no signers on 03's check shouldn't matter
 						},
@@ -513,7 +512,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			})
 		})
 
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentityId + "/failed-service-requests")
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentityId + "/failed-service-requests")
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(resp)
 	})
@@ -525,12 +524,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		processes := []*rest_model.ProcessMulti{
 			process01,
@@ -539,13 +538,13 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			process04,
 		}
 
-		processPostureCheck := ctx.AdminSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAnyOf, processes, s(postureCheckRole))
+		processPostureCheck := ctx.AdminManagementSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAnyOf, processes, s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -595,12 +594,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 01", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+
 					hash := "aaaaaaaaaaaaaaaaaaaa"
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process01Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process01Path,
 						SignerFingerprints: []string{
 							"aaaaaaaaaaaaaaaaaaaaaa",
 						},
@@ -614,12 +613,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 02", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+
 					hash := hashes[3] //no hashes on 02's check shouldn't matter
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process02Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process02Path,
 						SignerFingerprints: []string{
 							"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 						},
@@ -633,12 +632,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 03", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+
 					hash := "aaaaaaaaaaaa"
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process03Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process03Path,
 						SignerFingerprints: []string{
 							signerFingerprints[3], //no signers on 03's check shoudln't matter
 						},
@@ -652,12 +651,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 04", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := false
+
 					hash := hashes[5] //no hashes on 04's check shouldn't matter
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process04Path,
+						Hash:      hash,
+						IsRunning: false,
+						Path:      process04Path,
 						SignerFingerprints: []string{
 							signerFingerprints[2], //no signers on 04's check shouldn't matter
 						},
@@ -683,12 +682,12 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 04", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					isRunning := true
+
 					hash := hashes[5] //no hashes on 04's check shouldn't matter
 					postureResponse := &rest_model.PostureResponseProcessCreate{
-						Hash:      &hash,
-						IsRunning: &isRunning,
-						Path:      &process04Path,
+						Hash:      hash,
+						IsRunning: true,
+						Path:      process04Path,
 						SignerFingerprints: []string{
 							signerFingerprints[2], //no signers on 04's check shouldn't matter
 						},

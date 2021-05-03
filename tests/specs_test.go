@@ -37,7 +37,7 @@ func Test_Specs(t *testing.T) {
 	t.Run("specs can be listed", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		var err error
-		resp, err = ctx.unauthenticatedSession().newRequest(ctx).Get("edge/v1/specs")
+		resp, err = ctx.newAnonymousClientApiRequest().Get("specs")
 		ctx.Req.NoError(err)
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
@@ -54,14 +54,14 @@ func Test_Specs(t *testing.T) {
 
 			id := children[0].Path("id").Data().(string)
 
-			ctx.Req.Equal("swagger", id)
+			ctx.Req.Equal("edge-client", id)
 		})
 	})
 
 	t.Run("swagger spec can be detailed", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		resp, err := ctx.unauthenticatedSession().newRequest(ctx).Get("edge/v1/specs/swagger")
+		resp, err := ctx.newAnonymousClientApiRequest().Get("specs/edge-client")
 		ctx.Req.NoError(err)
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
@@ -74,16 +74,16 @@ func Test_Specs(t *testing.T) {
 
 			data := parsed.Path("data")
 			id := data.Path("id").Data().(string)
-			ctx.Req.Equal("swagger", id)
+			ctx.Req.Equal("edge-client", id)
 		})
 	})
 
 	t.Run("swagger spec body can be retrieved as text/yaml", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		resp, err := ctx.unauthenticatedSession().newRequest(ctx).
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "text/yaml").
-			Get("edge/v1/specs/swagger/spec")
+			Get("specs/edge-client/spec")
 		ctx.Req.NoError(err)
 
 		t.Run("has a 200 ok status", func(t *testing.T) {
@@ -113,9 +113,9 @@ func Test_Specs(t *testing.T) {
 	t.Run("swagger spec body can be retrieved as application/json", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		resp, err := ctx.unauthenticatedSession().newRequest(ctx).
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "application/json").
-			Get("edge/v1/specs/swagger/spec")
+			Get("specs/edge-client/spec")
 		ctx.Req.NoError(err)
 
 		t.Run("has a 200 ok status", func(t *testing.T) {

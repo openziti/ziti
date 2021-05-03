@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -38,7 +40,7 @@ import (
 
 // CurrentAPISessionServiceUpdateList current Api session service update list
 //
-// swagger:model CurrentApiSessionServiceUpdateList
+// swagger:model currentApiSessionServiceUpdateList
 type CurrentAPISessionServiceUpdateList struct {
 
 	// last change at
@@ -71,6 +73,11 @@ func (m *CurrentAPISessionServiceUpdateList) validateLastChangeAt(formats strfmt
 		return err
 	}
 
+	return nil
+}
+
+// ContextValidate validates this current Api session service update list based on context it is used
+func (m *CurrentAPISessionServiceUpdateList) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 

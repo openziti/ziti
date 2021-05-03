@@ -112,6 +112,7 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 }
 
 func newAuthCheckZitiMfa() *rest_model.AuthQueryDetail {
+	provider := rest_model.MfaProvidersZiti
 	return &rest_model.AuthQueryDetail{
 		TypeID:     "MFA",
 		Format:     rest_model.MfaFormatsAlphaNumeric,
@@ -119,6 +120,6 @@ func newAuthCheckZitiMfa() *rest_model.AuthQueryDetail {
 		HTTPURL:    "./authenticate/mfa",
 		MaxLength:  model.TotpMaxLength,
 		MinLength:  model.TotpMinLength,
-		Provider:   rest_model.MfaProvidersZiti,
+		Provider:   &provider,
 	}
 }

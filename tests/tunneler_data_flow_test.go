@@ -37,12 +37,12 @@ func Test_TunnelerDataflowTcp(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
 	hostConfig := ctx.newConfig("NH5p4FpGR", map[string]interface{}{
 		"address":          "localhost",
@@ -51,15 +51,15 @@ func Test_TunnelerDataflowTcp(t *testing.T) {
 		"allowedProtocols": []string{"tcp", "udp"},
 	})
 	hostConfig.Name = "tunnel-host"
-	ctx.AdminSession.requireCreateEntity(hostConfig)
+	ctx.AdminManagementSession.requireCreateEntity(hostConfig)
 
-	service := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service.Name = "tunnel-test-tcp"
-	ctx.AdminSession.requireCreateEntity(service)
+	ctx.AdminManagementSession.requireCreateEntity(service)
 
-	service2 := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service2 := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service2.Name = "tunnel-test-udp"
-	ctx.AdminSession.requireCreateEntity(service2)
+	ctx.AdminManagementSession.requireCreateEntity(service2)
 
 	ctx.CreateEnrollAndStartTunnelerEdgeRouter()
 	l, err := net.Listen("tcp", "localhost:8687")
@@ -166,12 +166,12 @@ func Test_TunnelerDataflowHalfClose(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
 	hostConfig := ctx.newConfig("NH5p4FpGR", map[string]interface{}{
 		"address":          "localhost",
@@ -180,15 +180,15 @@ func Test_TunnelerDataflowHalfClose(t *testing.T) {
 		"allowedProtocols": []string{"tcp", "udp"},
 	})
 	hostConfig.Name = "tunnel-host"
-	ctx.AdminSession.requireCreateEntity(hostConfig)
+	ctx.AdminManagementSession.requireCreateEntity(hostConfig)
 
-	service := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service.Name = "tunnel-test-tcp"
-	ctx.AdminSession.requireCreateEntity(service)
+	ctx.AdminManagementSession.requireCreateEntity(service)
 
-	service2 := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service2 := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service2.Name = "tunnel-test-udp"
-	ctx.AdminSession.requireCreateEntity(service2)
+	ctx.AdminManagementSession.requireCreateEntity(service2)
 
 	ctx.CreateEnrollAndStartTunnelerEdgeRouter()
 	l, err := net.Listen("tcp", "localhost:8689")
@@ -305,12 +305,12 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	ctx.AdminSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServicePolicy("Dial", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#all"), s("#all"), nil)
+	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
 	hostConfig := ctx.newConfig("NH5p4FpGR", map[string]interface{}{
 		"address":          "localhost",
@@ -319,15 +319,15 @@ func Test_TunnelerDataflowUdp(t *testing.T) {
 		"allowedProtocols": []string{"tcp", "udp"},
 	})
 	hostConfig.Name = "tunnel-host"
-	ctx.AdminSession.requireCreateEntity(hostConfig)
+	ctx.AdminManagementSession.requireCreateEntity(hostConfig)
 
-	service := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service.Name = "tunnel-test-tcp"
-	ctx.AdminSession.requireCreateEntity(service)
+	ctx.AdminManagementSession.requireCreateEntity(service)
 
-	service2 := ctx.AdminSession.testContext.newService(nil, s(hostConfig.Id))
+	service2 := ctx.AdminManagementSession.testContext.newService(nil, s(hostConfig.Id))
 	service2.Name = "tunnel-test-udp"
-	ctx.AdminSession.requireCreateEntity(service2)
+	ctx.AdminManagementSession.requireCreateEntity(service2)
 
 	ctx.CreateEnrollAndStartTunnelerEdgeRouter()
 	l, err := net.ListenPacket("udp", "localhost:8690")

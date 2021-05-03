@@ -30,7 +30,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	t.Run("can CRUD domain posture checks", func(t *testing.T) {
@@ -40,7 +40,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 
 		t.Run("can create a posture check", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			postureCheck := ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+			postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
 			t.Run("created posture check can have name patched", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -49,11 +49,11 @@ func Test_PostureChecks_Domain(t *testing.T) {
 				_, _ = putContainer.Set(newName, "name")
 				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
 
-				resp := ctx.AdminSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+				resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
 				ctx.Req.NotNil(resp)
 				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-				updatedContainer := ctx.AdminSession.requireQuery("/posture-checks/" + postureCheck.id)
+				updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
 
 				ctx.Req.Equal(newName, updatedContainer.Path("data.name").Data().(string), "name is patched")
 				domains, err := updatedContainer.Path("data.domains").Children()
@@ -73,11 +73,11 @@ func Test_PostureChecks_Domain(t *testing.T) {
 				_, _ = putContainer.Set(tags, "tags")
 				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
 
-				resp := ctx.AdminSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+				resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
 				ctx.Req.NotNil(resp)
 				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-				updatedContainer := ctx.AdminSession.requireQuery("/posture-checks/" + postureCheck.id)
+				updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
 
 				updatedDomains, err := updatedContainer.Path("data.domains").Children()
 				ctx.Req.NoError(err)
@@ -91,7 +91,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 
 			t.Run("created posture check can be deleted", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.AdminSession.requireDeleteEntity(postureCheck)
+				ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 			})
 		})
 	})
@@ -103,22 +103,22 @@ func Test_PostureChecks_Domain(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		domain := "domain1"
-		postureCheck := ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
-		dialPolicy := ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		bindPolicy := ctx.AdminSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		dialPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		bindPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -307,7 +307,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 
 		t.Run("providing valid posture data via bulk endpoint", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			newSession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+			newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 
 			newSession.requireNewPostureResponseBulkDomain(postureCheck.id, domain)
@@ -371,22 +371,22 @@ func Test_PostureChecks_Domain(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
 		domain := "domain1"
-		_ = ctx.AdminSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+		_ = ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), nil)
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), nil)
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 

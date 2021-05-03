@@ -23,18 +23,18 @@ func Test_CurrentIdentity(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("edge routers endpoint", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		er1 := ctx.createAndEnrollEdgeRouter(false, "test1")
 
-		_ = ctx.AdminSession.requireNewEdgeRouter("test1")
+		_ = ctx.AdminManagementSession.requireNewEdgeRouter("test1")
 
-		_, identityAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment("testErAccess", false, "test1")
+		_, identityAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("testErAccess", false, "test1")
 
-		identitySession, err := identityAuth.Authenticate(ctx)
+		identitySession, err := identityAuth.AuthenticateClientApi(ctx)
 		ctx.Req.NoError(err)
 
 		t.Run("returns empty list with no edge router policies", func(t *testing.T) {
@@ -51,7 +51,7 @@ func Test_CurrentIdentity(t *testing.T) {
 
 		t.Run("returns a list of one with an er policy", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			_ = ctx.AdminSession.requireNewEdgeRouterPolicy([]string{"#test1"}, []string{"#test1"})
+			_ = ctx.AdminManagementSession.requireNewEdgeRouterPolicy([]string{"#test1"}, []string{"#test1"})
 
 			erContainer := identitySession.requireQuery("/current-identity/edge-routers")
 
@@ -67,7 +67,7 @@ func Test_CurrentIdentity(t *testing.T) {
 		t.Run("returns empty list with if edge router is deleted", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			ctx.AdminSession.requireDeleteEntity(er1)
+			ctx.AdminManagementSession.requireDeleteEntity(er1)
 
 			erContainer := identitySession.requireQuery("/current-identity/edge-routers")
 

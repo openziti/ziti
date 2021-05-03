@@ -115,6 +115,7 @@ func MapEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext,
 }
 
 func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPolicy) (*rest_model.EdgeRouterPolicyDetail, error) {
+	semantic := rest_model.Semantic(policy.Semantic)
 	ret := &rest_model.EdgeRouterPolicyDetail{
 		BaseEntity:             BaseEntityToRestModel(policy, EdgeRouterPolicyLinkFactory),
 		EdgeRouterRoles:        policy.EdgeRouterRoles,
@@ -122,7 +123,7 @@ func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPoli
 		IdentityRoles:          policy.IdentityRoles,
 		IdentityRolesDisplay:   GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
 		Name:                   &policy.Name,
-		Semantic:               rest_model.Semantic(policy.Semantic),
+		Semantic:               &semantic,
 		IsSystem:               &policy.IsSystem,
 	}
 

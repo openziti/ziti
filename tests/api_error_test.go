@@ -33,7 +33,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
-		resp, err := ctx.newRequest().
+		resp, err := ctx.newAnonymousClientApiRequest().
 			//no accept header set
 			Post("enroll?token=" + madeUpToken)
 
@@ -51,7 +51,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
-		resp, err := ctx.newRequest().
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "*/*").
 			Post("enroll?token=" + madeUpToken)
 
@@ -69,7 +69,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
-		resp, err := ctx.newRequest().
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "application/json").
 			Post("enroll?token=" + madeUpToken)
 
@@ -87,7 +87,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
-		resp, err := ctx.newRequest().
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "appliaction/x-pem-file, application/json").
 
 			Post("enroll?token=" + madeUpToken)
@@ -106,7 +106,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.testContextChanged(t)
 		madeUpToken := uuid.New().String()
 
-		resp, err := ctx.newRequest().
+		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "application/x-pem-file").
 			Post("enroll?token=" + madeUpToken)
 

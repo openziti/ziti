@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -64,7 +66,7 @@ type ServicePolicyDetail struct {
 
 	// semantic
 	// Required: true
-	Semantic Semantic `json:"semantic"`
+	Semantic *Semantic `json:"semantic"`
 
 	// service roles
 	// Required: true
@@ -76,7 +78,7 @@ type ServicePolicyDetail struct {
 
 	// type
 	// Required: true
-	Type DialBind `json:"type"`
+	Type *DialBind `json:"type"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -100,13 +102,13 @@ func (m *ServicePolicyDetail) UnmarshalJSON(raw []byte) error {
 
 		PostureCheckRolesDisplay NamedRoles `json:"postureCheckRolesDisplay"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
 
 		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 
-		Type DialBind `json:"type"`
+		Type *DialBind `json:"type"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -153,13 +155,13 @@ func (m ServicePolicyDetail) MarshalJSON() ([]byte, error) {
 
 		PostureCheckRolesDisplay NamedRoles `json:"postureCheckRolesDisplay"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
 
 		ServiceRolesDisplay NamedRoles `json:"serviceRolesDisplay"`
 
-		Type DialBind `json:"type"`
+		Type *DialBind `json:"type"`
 	}
 
 	dataAO1.IdentityRoles = m.IdentityRoles
@@ -314,11 +316,21 @@ func (m *ServicePolicyDetail) validatePostureCheckRolesDisplay(formats strfmt.Re
 
 func (m *ServicePolicyDetail) validateSemantic(formats strfmt.Registry) error {
 
-	if err := m.Semantic.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
-		}
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
 		return err
+	}
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -358,11 +370,168 @@ func (m *ServicePolicyDetail) validateServiceRolesDisplay(formats strfmt.Registr
 
 func (m *ServicePolicyDetail) validateType(formats strfmt.Registry) error {
 
-	if err := m.Type.Validate(formats); err != nil {
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this service policy detail based on the context it is used
+func (m *ServicePolicyDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentityRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePostureCheckRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePostureCheckRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateIdentityRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("type")
+			return ve.ValidateName("identityRoles")
 		}
 		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateIdentityRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidatePostureCheckRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.PostureCheckRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidatePostureCheckRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.PostureCheckRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateServiceRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateServiceRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyDetail) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
 	}
 
 	return nil

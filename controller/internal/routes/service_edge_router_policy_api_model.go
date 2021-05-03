@@ -114,14 +114,16 @@ func MapServiceEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestC
 }
 
 func MapServiceEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.ServiceEdgeRouterPolicy) (*rest_model.ServiceEdgeRouterPolicyDetail, error) {
+	semantic := rest_model.Semantic(policy.Semantic)
+
 	ret := &rest_model.ServiceEdgeRouterPolicyDetail{
-		BaseEntity:          BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
-		EdgeRouterRoles:     policy.EdgeRouterRoles,
+		BaseEntity:             BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
+		EdgeRouterRoles:        policy.EdgeRouterRoles,
 		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetHandlers().EdgeRouter, policy.EdgeRouterRoles),
-		Name:                &policy.Name,
-		Semantic:            rest_model.Semantic(policy.Semantic),
-		ServiceRoles:        policy.ServiceRoles,
-		ServiceRolesDisplay: GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
+		Name:                   &policy.Name,
+		Semantic:               &semantic,
+		ServiceRoles:           policy.ServiceRoles,
+		ServiceRolesDisplay:    GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
 	}
 
 	return ret, nil

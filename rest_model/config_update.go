@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -37,6 +39,7 @@ import (
 )
 
 // ConfigUpdate A config update object
+// Example: {"data":{"hostname":"example.com","port":80},"name":"example-config-name"}
 //
 // swagger:model configUpdate
 type ConfigUpdate struct {
@@ -46,6 +49,7 @@ type ConfigUpdate struct {
 	Data interface{} `json:"data"`
 
 	// name
+	// Example: default.ziti-tunneler-server.v1
 	// Required: true
 	Name *string `json:"name"`
 
@@ -77,6 +81,10 @@ func (m *ConfigUpdate) Validate(formats strfmt.Registry) error {
 
 func (m *ConfigUpdate) validateData(formats strfmt.Registry) error {
 
+	if m.Data == nil {
+		return errors.Required("data", "body", nil)
+	}
+
 	return nil
 }
 
@@ -90,12 +98,39 @@ func (m *ConfigUpdate) validateName(formats strfmt.Registry) error {
 }
 
 func (m *ConfigUpdate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this config update based on the context it is used
+func (m *ConfigUpdate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ConfigUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

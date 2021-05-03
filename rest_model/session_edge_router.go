@@ -30,9 +30,12 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // SessionEdgeRouter session edge router
@@ -112,6 +115,25 @@ func (m *SessionEdgeRouter) Validate(formats strfmt.Registry) error {
 
 func (m *SessionEdgeRouter) validateUrls(formats strfmt.Registry) error {
 
+	if err := validate.Required("urls", "body", m.Urls); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this session edge router based on the context it is used
+func (m *SessionEdgeRouter) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with CommonEdgeRouterProperties
+	if err := m.CommonEdgeRouterProperties.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

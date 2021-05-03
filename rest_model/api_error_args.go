@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 )
@@ -45,6 +47,11 @@ type APIErrorArgs struct {
 
 // Validate validates this api error args
 func (m *APIErrorArgs) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this api error args based on context it is used
+func (m *APIErrorArgs) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 

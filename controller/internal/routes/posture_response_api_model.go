@@ -16,12 +16,6 @@
 
 package routes
 
-import (
-	"github.com/openziti/edge/controller/env"
-	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_model"
-)
-
 const (
 	EntityNamePostureResponse      = "posture-response"
 	EntityNamePostureData          = "posture-data"
@@ -30,6 +24,3 @@ const (
 
 var PostureResponseLinkFactory = NewBasicLinkFactory(EntityNamePostureResponse)
 
-func MapCreatePostureResponseToModel(ae *env.AppEnv, rc *response.RequestContext, postureResponse rest_model.PostureResponseCreate) {
-
-}

@@ -33,9 +33,9 @@ func Test_AddressableTerminators(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -52,7 +52,7 @@ func Test_AddressableTerminators(t *testing.T) {
 		host := &host{}
 		hosts = append(hosts, host)
 
-		host.id, host.context = ctx.AdminSession.RequireCreateSdkContext()
+		host.id, host.context = ctx.AdminManagementSession.RequireCreateSdkContext()
 		defer host.context.Close()
 
 		host.listener, err = host.context.ListenWithOptions(service.Name, &ziti.ListenOptions{
@@ -72,7 +72,7 @@ func Test_AddressableTerminators(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		client := &client{}
 		clients = append(clients, client)
-		client.id, client.context = ctx.AdminSession.RequireCreateSdkContext()
+		client.id, client.context = ctx.AdminManagementSession.RequireCreateSdkContext()
 		defer client.context.Close()
 	}
 
@@ -117,9 +117,9 @@ func Test_AddressableTerminatorSameIdentity(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -131,7 +131,7 @@ func Test_AddressableTerminatorSameIdentity(t *testing.T) {
 		}
 	}
 
-	identity, context := ctx.AdminSession.RequireCreateSdkContext()
+	identity, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
@@ -163,9 +163,9 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -177,7 +177,7 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 		}
 	}
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.ListenWithOptions(service.Name, &ziti.ListenOptions{
@@ -188,7 +188,7 @@ func Test_AddressableTerminatorDifferentIdentity(t *testing.T) {
 	ctx.Req.NoError(err)
 	defer func() { _ = listener.Close() }()
 
-	_, context2 := ctx.AdminSession.RequireCreateSdkContext()
+	_, context2 := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context2.Close()
 
 	listener2, err := context2.ListenWithOptions(service.Name, &ziti.ListenOptions{

@@ -209,13 +209,14 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 func PostureCheckToQueries(check *model.PostureCheck) *rest_model.PostureQuery {
 	isPassing := false
+	queryType := rest_model.PostureCheckType(check.TypeId)
 	ret := &rest_model.PostureQuery{
 		BaseEntity: BaseEntityToRestModel(check, PostureCheckLinkFactory),
 		IsPassing:  &isPassing,
-		QueryType:  rest_model.PostureCheckType(check.TypeId),
+		QueryType:  &queryType,
 	}
 
-	switch ret.QueryType {
+	switch *ret.QueryType {
 	case rest_model.PostureCheckTypePROCESS:
 		processCheck := check.SubType.(*model.PostureCheckProcess)
 		ret.Process = &rest_model.PostureQueryProcess{

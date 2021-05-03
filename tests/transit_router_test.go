@@ -29,7 +29,7 @@ func Test_TransitRouters(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("transit routers can be created and enrolled", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -43,15 +43,15 @@ func Test_TransitRouters(t *testing.T) {
 
 	t.Run("transit routers can be created, enrolled, and listed", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.AdminSession.requireQuery("transit-routers")
+		ctx.AdminManagementSession.requireQuery("transit-routers")
 	})
 
 	t.Run("transit routers can be listed with enrolled and un-enrolled states", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.createAndEnrollTransitRouter()
-		_ = ctx.AdminSession.requireNewTransitRouter()
+		_ = ctx.AdminManagementSession.requireNewTransitRouter()
 
-		body := ctx.AdminSession.requireQuery("transit-routers")
+		body := ctx.AdminManagementSession.requireQuery("transit-routers")
 		ctx.logJson(body.Bytes())
 
 		t.Run("enrolled router is verified and has a fingerprint, un-enrolled router does not", func(t *testing.T) {
@@ -88,14 +88,14 @@ func Test_TransitRouters(t *testing.T) {
 
 	t.Run("create transit router, then delete", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		router := ctx.AdminSession.requireNewTransitRouter()
-		ctx.AdminSession.requireDeleteEntity(router)
+		router := ctx.AdminManagementSession.requireNewTransitRouter()
+		ctx.AdminManagementSession.requireDeleteEntity(router)
 	})
 
 	t.Run("create & enroll transit router, then delete", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		router := ctx.createAndEnrollTransitRouter()
-		ctx.AdminSession.requireDeleteEntity(router)
+		ctx.AdminManagementSession.requireDeleteEntity(router)
 	})
 
 	t.Run("can list transit routers created in fabric", func(t *testing.T) {
@@ -116,7 +116,7 @@ func Test_TransitRouters(t *testing.T) {
 		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)
 		ctx.Req.NoError(err, "could not create router at fabric level")
 
-		body := ctx.AdminSession.requireQuery("transit-routers")
+		body := ctx.AdminManagementSession.requireQuery("transit-routers")
 		ctx.logJson(body.Bytes())
 	})
 }

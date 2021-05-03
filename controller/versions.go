@@ -17,10 +17,20 @@
 package controller
 
 const (
-	RestApiBase = "/edge/"
+	RestApiV1 = "/v1"
 
-	RestApiV1            = "v1"
-	RestApiBaseUrlV1     = "/edge/" + RestApiV1
-	RestApiBaseUrlLatest = RestApiBaseUrlV1
-	RestApiSpecUrl       = RestApiBaseUrlLatest + "/swagger.json"
+	RestApiRootPath       = "/edge"
+	ClientRestApiBase     = "/edge/client"
+	ManagementRestApiBase = "/edge/management"
+
+	LegacyClientRestApiBaseUrlV1 = RestApiRootPath + RestApiV1
+	ClientRestApiBaseUrlV1       = ClientRestApiBase + RestApiV1
+	ManagementRestApiBaseUrlV1   = ManagementRestApiBase + RestApiV1
+
+	ClientRestApiBaseUrlLatest       = ClientRestApiBaseUrlV1
+	ManagementRestApiBaseUrlLatest   = ManagementRestApiBaseUrlV1
+
+	ClientRestApiSpecUrl       = ClientRestApiBaseUrlLatest + "/swagger.json"
+	ManagementRestApiSpecUrl       = ManagementRestApiBaseUrlLatest + "/swagger.json"
+
 )

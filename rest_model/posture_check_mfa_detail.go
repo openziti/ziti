@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckMfaDetail posture check mfa detail
 //
-// swagger:model PostureCheckMfaDetail
+// swagger:model postureCheckMfaDetail
 type PostureCheckMfaDetail struct {
 	linksField Links
 
@@ -319,11 +320,13 @@ func (m *PostureCheckMfaDetail) validateLinks(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := m.Links().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("_links")
+	if m.Links() != nil {
+		if err := m.Links().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("_links")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -382,11 +385,13 @@ func (m *PostureCheckMfaDetail) validateTags(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -408,6 +413,64 @@ func (m *PostureCheckMfaDetail) validateUpdatedAt(formats strfmt.Registry) error
 func (m *PostureCheckMfaDetail) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check mfa detail based on the context it is used
+func (m *PostureCheckMfaDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateLinks(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckMfaDetail) contextValidateLinks(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Links().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("_links")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMfaDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMfaDetail) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
 		return err
 	}
 

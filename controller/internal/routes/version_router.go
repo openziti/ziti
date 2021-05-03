@@ -23,8 +23,9 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	clientInformational "github.com/openziti/edge/rest_client_api_server/operations/informational"
+	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/informational"
 	"runtime"
 )
 
@@ -44,11 +45,19 @@ func NewVersionRouter() *VersionRouter {
 }
 
 func (ir *VersionRouter) Register(ae *env.AppEnv) {
-	ae.Api.InformationalListVersionHandler = informational.ListVersionHandlerFunc(func(params informational.ListVersionParams) middleware.Responder {
+	ae.ClientApi.InformationalListVersionHandler = clientInformational.ListVersionHandlerFunc(func(params clientInformational.ListVersionParams) middleware.Responder {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.InformationalListRootHandler = informational.ListRootHandlerFunc(func(params informational.ListRootParams) middleware.Responder {
+	ae.ClientApi.InformationalListRootHandler = clientInformational.ListRootHandlerFunc(func(params clientInformational.ListRootParams) middleware.Responder {
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.InformationalListVersionHandler = managementInformational.ListVersionHandlerFunc(func(params managementInformational.ListVersionParams) middleware.Responder {
+		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.InformationalListRootHandler = managementInformational.ListRootHandlerFunc(func(params managementInformational.ListRootParams) middleware.Responder {
 		return ae.IsAllowed(ir.List, params.HTTPRequest, "", "", permissions.Always())
 	})
 }
@@ -61,7 +70,7 @@ func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 		RuntimeVersion: runtime.Version(),
 		Version:        buildInfo.Version(),
 		APIVersions: map[string]map[string]rest_model.APIVersion{
-			"edge": {controller.RestApiV1: mapApiVersionToRestModel(controller.RestApiBaseUrlV1)},
+			"edge": {controller.RestApiV1: mapApiVersionToRestModel(controller.LegacyClientRestApiBaseUrlV1)},
 		},
 	}
 	rc.RespondWithOk(data, &rest_model.Meta{})

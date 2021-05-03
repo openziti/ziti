@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -81,7 +83,6 @@ func (m *APIError) Validate(formats strfmt.Registry) error {
 }
 
 func (m *APIError) validateArgs(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Args) { // not required
 		return nil
 	}
@@ -99,13 +100,58 @@ func (m *APIError) validateArgs(formats strfmt.Registry) error {
 }
 
 func (m *APIError) validateCause(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Cause) { // not required
 		return nil
 	}
 
 	if m.Cause != nil {
 		if err := m.Cause.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cause")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this api error based on the context it is used
+func (m *APIError) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateArgs(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateCause(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *APIError) contextValidateArgs(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Args != nil {
+		if err := m.Args.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("args")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *APIError) contextValidateCause(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Cause != nil {
+		if err := m.Cause.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cause")
 			}

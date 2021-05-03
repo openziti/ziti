@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -89,7 +91,6 @@ func (m *ServiceEdgeRouterPolicyUpdate) Validate(formats strfmt.Registry) error 
 }
 
 func (m *ServiceEdgeRouterPolicyUpdate) validateEdgeRouterRoles(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.EdgeRouterRoles) { // not required
 		return nil
 	}
@@ -114,7 +115,6 @@ func (m *ServiceEdgeRouterPolicyUpdate) validateName(formats strfmt.Registry) er
 }
 
 func (m *ServiceEdgeRouterPolicyUpdate) validateSemantic(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Semantic) { // not required
 		return nil
 	}
@@ -130,7 +130,6 @@ func (m *ServiceEdgeRouterPolicyUpdate) validateSemantic(formats strfmt.Registry
 }
 
 func (m *ServiceEdgeRouterPolicyUpdate) validateServiceRoles(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ServiceRoles) { // not required
 		return nil
 	}
@@ -146,12 +145,87 @@ func (m *ServiceEdgeRouterPolicyUpdate) validateServiceRoles(formats strfmt.Regi
 }
 
 func (m *ServiceEdgeRouterPolicyUpdate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this service edge router policy update based on the context it is used
+func (m *ServiceEdgeRouterPolicyUpdate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateEdgeRouterRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyUpdate) contextValidateEdgeRouterRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.EdgeRouterRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyUpdate) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("semantic")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyUpdate) contextValidateServiceRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

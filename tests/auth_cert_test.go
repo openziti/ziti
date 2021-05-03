@@ -25,7 +25,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/foundation/common/constants"
-	nfpem "github.com/openziti/foundation/util/pem"
+	nfPem "github.com/openziti/foundation/util/pem"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"reflect"
@@ -37,9 +37,9 @@ func Test_Authenticate_Cert(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	_, certAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment("test", false)
+	_, certAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("test", false)
 
 	var tests = &authCertTests{
 		ctx:               ctx,
@@ -99,7 +99,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		r.Empty(certAuth.Pem, "cert authenticator pem was not set to empty/blank")
 
-		testClient, _, transport := test.ctx.NewClientComponents()
+		testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 		transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 		resp, err := testClient.NewRequest().
@@ -121,7 +121,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 }
 
 func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
-	testClient, _, transport := test.ctx.NewClientComponents()
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 	resp, err := testClient.NewRequest().
@@ -173,7 +173,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 }
 
 func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testing.T) {
-	testClient, _, transport := test.ctx.NewClientComponents()
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 
@@ -249,7 +249,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		token := data.Path("data.token").Data().(string)
 		r.NotEmpty(token)
 
-		resp, err := test.ctx.AdminSession.newRequest(test.ctx).Get("identities/" + identityId)
+		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
 		r.Equal(http.StatusOK, resp.StatusCode())
@@ -290,7 +290,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 
 		identityId := authData.Path("data.identity.id").Data().(string)
 
-		resp, err := test.ctx.AdminSession.newRequest(test.ctx).Get("identities/" + identityId)
+		resp, err := test.ctx.AdminManagementSession.NewRequest().Get("identities/" + identityId)
 		r.NoError(err)
 
 		r.Equal(http.StatusOK, resp.StatusCode())
@@ -313,7 +313,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 }
 
 func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {
-	testClient, _, transport := test.ctx.NewClientComponents()
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 
@@ -335,7 +335,7 @@ func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {
 }
 
 func (test *authCertTests) testAuthenticateValidCertValidClientInfoWithExtraProperties(t *testing.T) {
-	testClient, _, transport := test.ctx.NewClientComponents()
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 	transport.TLSClientConfig.Certificates = test.certAuthenticator.TLSCertificates()
 
@@ -357,7 +357,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoWithExtraProp
 func (test *authCertTests) testAuthenticateInvalidCert(t *testing.T) {
 	r := require.New(t)
 
-	testClient, _, transport := test.ctx.NewClientComponents()
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
 
 	certAndKeyPem := `-----BEGIN CERTIFICATE-----
 MIICyjCCAlCgAwIBAgIRAMbo6szcFH+1lrByi/UvSiMwCgYIKoZIzj0EAwIwZDEL
@@ -386,7 +386,7 @@ cX4Z8geM01kbXIDHiPhb6hQXpBSPYooYDUFTENRHSFs/U4c3xCyltrZw4bPn2GOx
 rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 -----END EC PRIVATE KEY-----`
 
-	blocks := nfpem.DecodeAll([]byte(certAndKeyPem))
+	blocks := nfPem.DecodeAll([]byte(certAndKeyPem))
 	r.Len(blocks, 3, "cert & key pair pem blocks did not parse, expected 2 blocks, got: %d", len(blocks))
 
 	cert, err := x509.ParseCertificate(blocks[0].Bytes)

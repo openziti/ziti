@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -43,6 +45,7 @@ type ConfigTypeDetail struct {
 	BaseEntity
 
 	// name
+	// Example: ziti-tunneler-server.v1
 	// Required: true
 	Name *string `json:"name"`
 
@@ -138,6 +141,25 @@ func (m *ConfigTypeDetail) validateName(formats strfmt.Registry) error {
 
 func (m *ConfigTypeDetail) validateSchema(formats strfmt.Registry) error {
 
+	if m.Schema == nil {
+		return errors.Required("schema", "body", nil)
+	}
+
+	return nil
+}
+
+// ContextValidate validate this config type detail based on the context it is used
+func (m *ConfigTypeDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

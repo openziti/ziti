@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -73,7 +75,6 @@ func (m *AuthenticatorPatch) Validate(formats strfmt.Registry) error {
 }
 
 func (m *AuthenticatorPatch) validatePassword(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Password) { // not required
 		return nil
 	}
@@ -91,12 +92,78 @@ func (m *AuthenticatorPatch) validatePassword(formats strfmt.Registry) error {
 }
 
 func (m *AuthenticatorPatch) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *AuthenticatorPatch) validateUsername(formats strfmt.Registry) error {
+	if swag.IsZero(m.Username) { // not required
+		return nil
+	}
+
+	if m.Username != nil {
+		if err := m.Username.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("username")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this authenticator patch based on the context it is used
+func (m *AuthenticatorPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidatePassword(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUsername(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AuthenticatorPatch) contextValidatePassword(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Password != nil {
+		if err := m.Password.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("password")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *AuthenticatorPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
@@ -106,14 +173,10 @@ func (m *AuthenticatorPatch) validateTags(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *AuthenticatorPatch) validateUsername(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.Username) { // not required
-		return nil
-	}
+func (m *AuthenticatorPatch) contextValidateUsername(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Username != nil {
-		if err := m.Username.Validate(formats); err != nil {
+		if err := m.Username.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("username")
 			}

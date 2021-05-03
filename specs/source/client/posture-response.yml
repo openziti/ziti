@@ -1,0 +1,124 @@
+---
+paths:
+  posture-response:
+    post:
+      summary: Submit a posture response to a posture query
+      description: Submits posture responses
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: createPostureResponse
+      parameters:
+        - name: postureResponse
+          in: body
+          required: true
+          description: A Posture Response
+          schema:
+            $ref: '#/definitions/postureResponseCreate'
+      responses:
+        '201':
+          $ref: '../shared/standard-responses.yml#/responses/createResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  posture-response-bulk:
+    post:
+      summary: Submit multiple posture responses
+      description: Submits posture responses
+      security:
+        - ztSession: [ ]
+      tags:
+        - Posture Checks
+      operationId: createPostureResponseBulk
+      parameters:
+        - name: postureResponse
+          in: body
+          required: true
+          description: A Posture Response
+          schema:
+            # using a named array definition causes issues w/ code gen
+            type: array
+            items:
+              $ref: "#/definitions/postureResponseCreate"
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+responses:
+
+definitions:
+  postureResponseCreate:
+    type: object
+    discriminator: typeId
+    required:
+      - id
+      - typeId
+    properties:
+      id:
+        type: string
+      typeId:
+        $ref: '../shared/posture-checks.yml#/definitions/postureCheckType'
+
+  postureResponseOperatingSystemCreate:
+    allOf:
+      - $ref: '#/definitions/postureResponseCreate'
+      - type: object
+        required:
+          - type
+          - version
+        properties:
+          type:
+            type: string
+          version:
+            type: string
+          build:
+            type: string
+    x-class: "OS"
+
+  postureResponseDomainCreate:
+    allOf:
+      - $ref: '#/definitions/postureResponseCreate'
+      - type: object
+        required:
+          - domain
+        properties:
+          domain:
+            type: string
+    x-class: "DOMAIN"
+
+  postureResponseMacAddressCreate:
+    allOf:
+      - $ref: '#/definitions/postureResponseCreate'
+      - type: object
+        required:
+          - macAddresses
+        properties:
+          macAddresses:
+            type: array
+            items:
+              type: string
+    x-class: "MAC"
+
+  postureResponseProcessCreate:
+    allOf:
+      - $ref: '#/definitions/postureResponseCreate'
+      - type: object
+        required:
+          - process
+        properties:
+          path:
+            type: string
+          isRunning:
+            type: boolean
+          hash:
+            type: string
+          signerFingerprints:
+            type: array
+            items:
+              type: string
+    x-class: "PROCESS"

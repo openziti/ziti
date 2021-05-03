@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -43,9 +44,10 @@ import (
 
 // PostureResponseCreate posture response create
 //
-// swagger:discriminator PostureResponseCreate typeId
+// swagger:discriminator postureResponseCreate typeId
 type PostureResponseCreate interface {
 	runtime.Validatable
+	runtime.ContextValidatable
 
 	// id
 	// Required: true
@@ -79,7 +81,7 @@ func (m *postureResponseCreate) SetID(val *string) {
 
 // TypeID gets the type Id of this polymorphic type
 func (m *postureResponseCreate) TypeID() PostureCheckType {
-	return "PostureResponseCreate"
+	return "postureResponseCreate"
 }
 
 // SetTypeID sets the type Id of this polymorphic type
@@ -156,7 +158,7 @@ func unmarshalPostureResponseCreate(data []byte, consumer runtime.Consumer) (Pos
 			return nil, err
 		}
 		return &result, nil
-	case "PostureResponseCreate":
+	case "postureResponseCreate":
 		var result postureResponseCreate
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
@@ -183,6 +185,32 @@ func (m *postureResponseCreate) Validate(formats strfmt.Registry) error {
 func (m *postureResponseCreate) validateID(formats strfmt.Registry) error {
 
 	if err := validate.Required("id", "body", m.ID()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture response create based on the context it is used
+func (m *postureResponseCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateTypeID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *postureResponseCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
 		return err
 	}
 

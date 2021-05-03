@@ -26,7 +26,8 @@ import (
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/edge/rest_server"
+	"github.com/openziti/edge/rest_client_api_server"
+	"github.com/openziti/edge/rest_management_api_server"
 	"net/http"
 	"strings"
 	"sync"
@@ -270,8 +271,29 @@ func (c *Controller) Run() {
 			http.MethodDelete}),
 		handlers.AllowCredentials(),
 	}
-	c.AppEnv.Api.Context()
-	apiHandler := c.AppEnv.Api.Serve(func(handler http.Handler) http.Handler {
+	c.AppEnv.ManagementApi.Context()
+	c.AppEnv.ClientApi.Context()
+
+	clientApiHandler := c.AppEnv.ClientApi.Serve(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			rc := c.AppEnv.CreateRequestContext(rw, r)
+
+			env.AddRequestContextToHttpContext(r, rc)
+
+			err := c.AppEnv.FillRequestContext(rc)
+			if err != nil {
+				rc.RespondWithError(err)
+				return
+			}
+
+			//after request context is filled so that api session is present for session expiration headers
+			response.AddHeaders(rc)
+
+			handler.ServeHTTP(rw, r)
+		})
+	})
+
+	managementApiHandler := c.AppEnv.ManagementApi.Serve(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rc := c.AppEnv.CreateRequestContext(rw, r)
 
@@ -292,19 +314,40 @@ func (c *Controller) Run() {
 
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set(ZitiInstanceId, c.AppEnv.InstanceId)
-		//if not edge prefix, translate to "/edge/v<latest>"
-		if !strings.HasPrefix(request.URL.Path, controller.RestApiBase) {
-			request.URL.Path = controller.RestApiBaseUrlLatest + request.URL.Path
+
+		//if not /edge prefix, translate to "/edge/client/v<latest>"
+		if !strings.HasPrefix(request.URL.Path, controller.RestApiRootPath) {
+			request.URL.Path = controller.ClientRestApiBaseUrlLatest + request.URL.Path
 		}
 
-		if request.URL.Path == controller.RestApiSpecUrl {
+		//translate /edge/v1 to /edge/client/v1
+		request.URL.Path = strings.Replace(request.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
+
+		if request.URL.Path == controller.ClientRestApiSpecUrl {
 			writer.Header().Set("content-type", "application/json")
 			writer.WriteHeader(http.StatusOK)
-			_, _ = writer.Write(rest_server.SwaggerJSON)
+			_, _ = writer.Write(rest_client_api_server.SwaggerJSON)
 			return
 		}
-		//let the OpenApi http router take over
-		apiHandler.ServeHTTP(writer, request)
+
+		if request.URL.Path == controller.ManagementRestApiSpecUrl {
+			writer.Header().Set("content-type", "application/json")
+			writer.WriteHeader(http.StatusOK)
+			_, _ = writer.Write(rest_management_api_server.SwaggerJSON)
+			return
+		}
+
+		if strings.HasPrefix(request.URL.Path, controller.ManagementRestApiBaseUrlLatest) {
+			managementApiHandler.ServeHTTP(writer, request)
+			return
+		}
+
+		if strings.HasPrefix(request.URL.Path, controller.ClientRestApiBase) {
+			clientApiHandler.ServeHTTP(writer, request)
+			return
+		}
+
+		pfxlog.Logger().Debugf("unhandled request URL: %s", request.URL.Path)
 	})
 
 	timeoutHandler := timeout.TimeoutHandler(handler, 10*time.Second, apierror.NewTimeoutError())

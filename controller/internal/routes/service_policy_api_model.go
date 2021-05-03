@@ -56,7 +56,7 @@ func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *mode
 			Tags: policy.Tags,
 		},
 		Name:              stringz.OrEmpty(policy.Name),
-		PolicyType:        string(policy.Type),
+		PolicyType:        string(*policy.Type),
 		Semantic:          string(policy.Semantic),
 		ServiceRoles:      policy.ServiceRoles,
 		IdentityRoles:     policy.IdentityRoles,
@@ -73,7 +73,7 @@ func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUp
 			Id:   id,
 		},
 		Name:              stringz.OrEmpty(policy.Name),
-		PolicyType:        string(policy.Type),
+		PolicyType:        string(*policy.Type),
 		Semantic:          string(policy.Semantic),
 		ServiceRoles:      policy.ServiceRoles,
 		IdentityRoles:     policy.IdentityRoles,
@@ -122,15 +122,18 @@ func MapServicePolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 }
 
 func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
+	semantic := rest_model.Semantic(policy.Semantic)
+	dialBindType := rest_model.DialBind(policy.PolicyType)
+
 	ret := &rest_model.ServicePolicyDetail{
 		BaseEntity:               BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
 		IdentityRoles:            policy.IdentityRoles,
 		IdentityRolesDisplay:     GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
 		Name:                     &policy.Name,
-		Semantic:                 rest_model.Semantic(policy.Semantic),
+		Semantic:                 &semantic,
 		ServiceRoles:             policy.ServiceRoles,
 		ServiceRolesDisplay:      GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
-		Type:                     rest_model.DialBind(policy.PolicyType),
+		Type:                     &dialBindType,
 		PostureCheckRoles:        policy.PostureCheckRoles,
 		PostureCheckRolesDisplay: GetNamedPostureCheckRoles(ae.GetHandlers().PostureCheck, policy.PostureCheckRoles),
 	}

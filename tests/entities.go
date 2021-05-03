@@ -333,11 +333,9 @@ func (entity *identity) validate(ctx *TestContext, c *gabs.Container) {
 	} else {
 		ctx.pathEquals(c, "default", path("defaultHostingPrecedence"))
 	}
-	if entity.defaultHostingCost == 0 {
-		ctx.pathEquals(c, nil, path("defaultHostingCost"))
-	} else {
-		ctx.pathEquals(c, entity.defaultHostingCost, path("defaultHostingCost"))
-	}
+
+	ctx.pathEquals(c, entity.defaultHostingCost, path("defaultHostingCost"))
+
 	sort.Strings(entity.roleAttributes)
 	ctx.pathEqualsStringSlice(c, entity.roleAttributes, path("roleAttributes"))
 	ctx.pathEquals(c, entity.tags, path("tags"))

@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -44,9 +45,10 @@ import (
 
 // PostureCheckCreate posture check create
 //
-// swagger:discriminator PostureCheckCreate typeId
+// swagger:discriminator postureCheckCreate typeId
 type PostureCheckCreate interface {
 	runtime.Validatable
+	runtime.ContextValidatable
 
 	// name
 	// Required: true
@@ -112,7 +114,7 @@ func (m *postureCheckCreate) SetTags(val Tags) {
 
 // TypeID gets the type Id of this polymorphic type
 func (m *postureCheckCreate) TypeID() PostureCheckType {
-	return "PostureCheckCreate"
+	return "postureCheckCreate"
 }
 
 // SetTypeID sets the type Id of this polymorphic type
@@ -201,7 +203,7 @@ func unmarshalPostureCheckCreate(data []byte, consumer runtime.Consumer) (Postur
 			return nil, err
 		}
 		return &result, nil
-	case "PostureCheckCreate":
+	case "postureCheckCreate":
 		var result postureCheckCreate
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
@@ -243,7 +245,6 @@ func (m *postureCheckCreate) validateName(formats strfmt.Registry) error {
 }
 
 func (m *postureCheckCreate) validateRoleAttributes(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.RoleAttributes()) { // not required
 		return nil
 	}
@@ -259,14 +260,73 @@ func (m *postureCheckCreate) validateRoleAttributes(formats strfmt.Registry) err
 }
 
 func (m *postureCheckCreate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags()) { // not required
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check create based on the context it is used
+func (m *postureCheckCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTypeID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *postureCheckCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
 		}
 		return err
 	}

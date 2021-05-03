@@ -32,13 +32,13 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
@@ -66,7 +66,7 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 		conn.RequireClose()
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -94,13 +94,13 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
@@ -131,7 +131,7 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 		context.Close()
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -160,13 +160,13 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
@@ -199,7 +199,7 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 		conn.WriteString("hello, "+name, time.Second)
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -218,20 +218,20 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
 	defer listener.Close()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -280,20 +280,20 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
 	defer listener.Close()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -343,20 +343,20 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
 	ctx.Req.NoError(err)
 	defer listener.Close()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -411,13 +411,13 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
@@ -450,7 +450,7 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 		conn.RequireClose()
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 

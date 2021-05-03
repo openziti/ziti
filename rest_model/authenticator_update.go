@@ -30,9 +30,12 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // AuthenticatorUpdate All of the fields on an authenticator that will be updated
@@ -42,14 +45,14 @@ type AuthenticatorUpdate struct {
 
 	// password
 	// Required: true
-	Password Password `json:"password"`
+	Password *Password `json:"password"`
 
 	// tags
 	Tags Tags `json:"tags"`
 
 	// username
 	// Required: true
-	Username Username `json:"username"`
+	Username *Username `json:"username"`
 }
 
 // Validate validates this authenticator update
@@ -76,23 +79,104 @@ func (m *AuthenticatorUpdate) Validate(formats strfmt.Registry) error {
 
 func (m *AuthenticatorUpdate) validatePassword(formats strfmt.Registry) error {
 
-	if err := m.Password.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("password")
-		}
+	if err := validate.Required("password", "body", m.Password); err != nil {
 		return err
+	}
+
+	if err := validate.Required("password", "body", m.Password); err != nil {
+		return err
+	}
+
+	if m.Password != nil {
+		if err := m.Password.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("password")
+			}
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (m *AuthenticatorUpdate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *AuthenticatorUpdate) validateUsername(formats strfmt.Registry) error {
+
+	if err := validate.Required("username", "body", m.Username); err != nil {
+		return err
+	}
+
+	if err := validate.Required("username", "body", m.Username); err != nil {
+		return err
+	}
+
+	if m.Username != nil {
+		if err := m.Username.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("username")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this authenticator update based on the context it is used
+func (m *AuthenticatorUpdate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidatePassword(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUsername(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AuthenticatorUpdate) contextValidatePassword(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Password != nil {
+		if err := m.Password.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("password")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *AuthenticatorUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
@@ -102,13 +186,15 @@ func (m *AuthenticatorUpdate) validateTags(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *AuthenticatorUpdate) validateUsername(formats strfmt.Registry) error {
+func (m *AuthenticatorUpdate) contextValidateUsername(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Username.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("username")
+	if m.Username != nil {
+		if err := m.Username.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("username")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

@@ -33,22 +33,22 @@ func Test_Identity(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
-		ctx.AdminSession.validateEntityWithQuery(identity)
-		ctx.AdminSession.validateEntityWithLookup(identity)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
+		ctx.AdminManagementSession.validateEntityWithQuery(identity)
+		ctx.AdminManagementSession.validateEntityWithLookup(identity)
 	})
 
 	t.Run("service hosting values should be set", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		svc1 := ctx.AdminSession.requireNewService(nil, nil)
-		svc2 := ctx.AdminSession.requireNewService(nil, nil)
+		svc1 := ctx.AdminManagementSession.requireNewService(nil, nil)
+		svc2 := ctx.AdminManagementSession.requireNewService(nil, nil)
 
 		identity := newTestIdentity(false)
 		identity.defaultHostingPrecedence = "required"
@@ -63,9 +63,9 @@ func Test_Identity(t *testing.T) {
 			svc2.Id: 300,
 		}
 
-		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
-		ctx.AdminSession.validateEntityWithQuery(identity)
-		ctx.AdminSession.validateEntityWithLookup(identity)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
+		ctx.AdminManagementSession.validateEntityWithQuery(identity)
+		ctx.AdminManagementSession.validateEntityWithLookup(identity)
 	})
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
@@ -73,12 +73,12 @@ func Test_Identity(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
 
 		role3 := eid.New()
 		identity.roleAttributes = []string{role2, role3}
-		ctx.AdminSession.requireUpdateEntity(identity)
-		ctx.AdminSession.validateEntityWithLookup(identity)
+		ctx.AdminManagementSession.requireUpdateEntity(identity)
+		ctx.AdminManagementSession.validateEntityWithLookup(identity)
 	})
 
 	t.Run("role attributes should not be changed on PATCH if not sent", func(t *testing.T) {
@@ -86,19 +86,19 @@ func Test_Identity(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
 
 		patchContainer := gabs.New()
 		newName := uuid.New().String()
 		_, _ = patchContainer.Set(newName, "name")
 		identity.name = newName
 
-		resp := ctx.AdminSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
+		resp := ctx.AdminManagementSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
 
 		ctx.Req.NotNil(resp)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identity.Id)
+		updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + identity.Id)
 
 		ctx.Req.Equal(newName, updatedIdentity.Path("data.name").Data().(string), "name should be updated")
 
@@ -120,19 +120,19 @@ func Test_Identity(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		identity := newTestIdentity(false, role1, role2)
-		identity.Id = ctx.AdminSession.requireCreateEntity(identity)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
 
 		patchContainer := gabs.New()
 
 		role3 := eid.New()
 		_, _ = patchContainer.Set([]string{role1, role2, role3}, "roleAttributes")
 
-		resp := ctx.AdminSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
+		resp := ctx.AdminManagementSession.updateEntityOfType(identity.Id, identity.getEntityType(), patchContainer.String(), true)
 
 		ctx.Req.NotNil(resp)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identity.Id)
+		updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + identity.Id)
 
 		updateAttributes, err := updatedIdentity.Path("data.roleAttributes").Children()
 		ctx.Req.NoError(err)
@@ -156,18 +156,18 @@ func Test_Identity(t *testing.T) {
 		role4 := prefix + "field-ops"
 		role5 := prefix + "executive"
 
-		ctx.AdminSession.requireNewIdentity(false, role1, role2)
-		ctx.AdminSession.requireNewIdentity(false, role2, role3)
-		ctx.AdminSession.requireNewIdentity(false, role3, role4)
-		identity := ctx.AdminSession.requireNewIdentity(false, role5)
-		ctx.AdminSession.requireNewIdentity(false)
+		ctx.AdminManagementSession.requireNewIdentity(false, role1, role2)
+		ctx.AdminManagementSession.requireNewIdentity(false, role2, role3)
+		ctx.AdminManagementSession.requireNewIdentity(false, role3, role4)
+		identity := ctx.AdminManagementSession.requireNewIdentity(false, role5)
+		ctx.AdminManagementSession.requireNewIdentity(false)
 
-		list := ctx.AdminSession.requireList("identity-role-attributes")
+		list := ctx.AdminManagementSession.requireList("identity-role-attributes")
 		ctx.Req.True(len(list) >= 5)
 		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
 
 		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
-		list = ctx.AdminSession.requireList("identity-role-attributes?filter=" + filter)
+		list = ctx.AdminManagementSession.requireList("identity-role-attributes?filter=" + filter)
 		ctx.Req.Equal(4, len(list))
 
 		expected := []string{role1, role3, role4, role5}
@@ -175,8 +175,8 @@ func Test_Identity(t *testing.T) {
 		ctx.Req.Equal(expected, list)
 
 		identity.roleAttributes = nil
-		ctx.AdminSession.requireUpdateEntity(identity)
-		list = ctx.AdminSession.requireList("identity-role-attributes")
+		ctx.AdminManagementSession.requireUpdateEntity(identity)
+		list = ctx.AdminManagementSession.requireList("identity-role-attributes")
 		ctx.Req.True(len(list) >= 4)
 		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
 		ctx.Req.False(stringz.Contains(list, role5))
@@ -184,11 +184,11 @@ func Test_Identity(t *testing.T) {
 
 	t.Run("update (PUT) an identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		enrolledId, _ := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false)
-		enrolledIdentity := ctx.AdminSession.requireQuery("identities/" + enrolledId)
+		enrolledId, _ := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
+		enrolledIdentity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledId)
 
-		unenrolledId := ctx.AdminSession.requireCreateIdentityOttEnrollmentUnfinished(eid.New(), false)
-		unenrolledIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
+		unenrolledId := ctx.AdminManagementSession.requireCreateIdentityOttEnrollmentUnfinished(eid.New(), false)
+		unenrolledIdentity := ctx.AdminManagementSession.requireQuery("identities/" + unenrolledId)
 
 		t.Run("should not alter authenticators", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -198,10 +198,10 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 
-			resp := ctx.AdminSession.updateEntityOfType(enrolledId, "identities", updateContent.String(), false)
+			resp := ctx.AdminManagementSession.updateEntityOfType(enrolledId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + enrolledId)
+			updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledId)
 
 			data := enrolledIdentity.Path("data.authenticators").Data()
 			expectedAuths := data.(map[string]interface{})
@@ -220,10 +220,10 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 
-			resp := ctx.AdminSession.updateEntityOfType(unenrolledId, "identities", updateContent.String(), false)
+			resp := ctx.AdminManagementSession.updateEntityOfType(unenrolledId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
+			updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + unenrolledId)
 
 			expectedEnrollments := unenrolledIdentity.Path("data.enrollment").Data().(map[string]interface{})
 			ctx.Req.NotEmpty(expectedEnrollments)
@@ -236,7 +236,7 @@ func Test_Identity(t *testing.T) {
 
 		t.Run("should not allow isDefaultAdmin to be altered", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId := ctx.AdminSession.requireCreateIdentity(eid.New(), true)
+			identityId := ctx.AdminManagementSession.requireCreateIdentity(eid.New(), true)
 
 			updateContent := gabs.New()
 			_, _ = updateContent.SetP(eid.New(), "name")
@@ -245,10 +245,10 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(true, "isAdmin")
 			_, _ = updateContent.SetP(true, "isDefaultAdmin")
 
-			resp := ctx.AdminSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
+			resp := ctx.AdminManagementSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + unenrolledId)
+			updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + unenrolledId)
 
 			ctx.Req.Equal(true, updatedIdentity.ExistsP("data.isDefaultAdmin"))
 			isDefaultAdmin := updatedIdentity.Path("data.isDefaultAdmin").Data().(bool)
@@ -257,7 +257,7 @@ func Test_Identity(t *testing.T) {
 
 		t.Run("can update", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityId := ctx.AdminSession.requireCreateIdentity(eid.New(), true)
+			identityId := ctx.AdminManagementSession.requireCreateIdentity(eid.New(), true)
 
 			newName := eid.New()
 			updateContent := gabs.New()
@@ -266,10 +266,10 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 
-			resp := ctx.AdminSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
+			resp := ctx.AdminManagementSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			updatedIdentity := ctx.AdminSession.requireQuery("identities/" + identityId)
+			updatedIdentity := ctx.AdminManagementSession.requireQuery("identities/" + identityId)
 
 			t.Run("name", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -291,11 +291,11 @@ func Test_Identity(t *testing.T) {
 	t.Run("hasApiSessions", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		identityId, identityAuth := ctx.AdminSession.requireCreateIdentityOttEnrollment("identityHasApiSessionTest", false)
+		identityId, identityAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("identityHasApiSessionTest", false)
 
 		t.Run("should be false if there are no API Sessions", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+			identityContainer := ctx.AdminManagementSession.requireQuery("/identities/" + identityId)
 
 			ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
 			ctx.Req.False(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be false")
@@ -304,32 +304,32 @@ func Test_Identity(t *testing.T) {
 		t.Run("should be true if there is 1 API Session", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			session1, err := identityAuth.Authenticate(ctx)
+			session1, err := identityAuth.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(session1)
 
-			identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+			identityContainer := ctx.AdminManagementSession.requireQuery("/identities/" + identityId)
 			ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
 			ctx.Req.True(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be true")
 
 			t.Run("should be true if there is 1+ API Session", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				session2, err := identityAuth.Authenticate(ctx)
+				session2, err := identityAuth.AuthenticateClientApi(ctx)
 				ctx.Req.NoError(err)
 				ctx.Req.NotNil(session2)
 
-				identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+				identityContainer := ctx.AdminManagementSession.requireQuery("/identities/" + identityId)
 				ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
 				ctx.Req.True(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be true")
 
 				t.Run("should return to false after logouts", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					session1.logout()
-					session2.logout()
+					_ = session1.logout()
+					_ = session2.logout()
 
-					identityContainer := ctx.AdminSession.requireQuery("/identities/" + identityId)
+					identityContainer := ctx.AdminManagementSession.requireQuery("/identities/" + identityId)
 
 					ctx.Req.True(identityContainer.ExistsP("data.hasApiSession"), "expected field hasApiSession to exist")
 					ctx.Req.False(identityContainer.Path("data.hasApiSession").Data().(bool), "expected hasApiSession to be false")

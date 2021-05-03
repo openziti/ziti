@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -87,7 +89,6 @@ func (m *Authenticate) Validate(formats strfmt.Registry) error {
 }
 
 func (m *Authenticate) validateConfigTypes(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ConfigTypes) { // not required
 		return nil
 	}
@@ -103,7 +104,6 @@ func (m *Authenticate) validateConfigTypes(formats strfmt.Registry) error {
 }
 
 func (m *Authenticate) validateEnvInfo(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.EnvInfo) { // not required
 		return nil
 	}
@@ -121,7 +121,6 @@ func (m *Authenticate) validateEnvInfo(formats strfmt.Registry) error {
 }
 
 func (m *Authenticate) validatePassword(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Password) { // not required
 		return nil
 	}
@@ -137,7 +136,6 @@ func (m *Authenticate) validatePassword(formats strfmt.Registry) error {
 }
 
 func (m *Authenticate) validateSdkInfo(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.SdkInfo) { // not required
 		return nil
 	}
@@ -155,12 +153,105 @@ func (m *Authenticate) validateSdkInfo(formats strfmt.Registry) error {
 }
 
 func (m *Authenticate) validateUsername(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Username) { // not required
 		return nil
 	}
 
 	if err := m.Username.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("username")
+		}
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this authenticate based on the context it is used
+func (m *Authenticate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateConfigTypes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEnvInfo(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePassword(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSdkInfo(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUsername(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Authenticate) contextValidateConfigTypes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ConfigTypes.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("configTypes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *Authenticate) contextValidateEnvInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.EnvInfo != nil {
+		if err := m.EnvInfo.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("envInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Authenticate) contextValidatePassword(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Password.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("password")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *Authenticate) contextValidateSdkInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.SdkInfo != nil {
+		if err := m.SdkInfo.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("sdkInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Authenticate) contextValidateUsername(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Username.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("username")
 		}

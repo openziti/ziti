@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureResponseOperatingSystemCreate posture response operating system create
 //
-// swagger:model PostureResponseOperatingSystemCreate
+// swagger:model postureResponseOperatingSystemCreate
 type PostureResponseOperatingSystemCreate struct {
 	idField *string
 
@@ -219,6 +220,28 @@ func (m *PostureResponseOperatingSystemCreate) validateType(formats strfmt.Regis
 func (m *PostureResponseOperatingSystemCreate) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture response operating system create based on the context it is used
+func (m *PostureResponseOperatingSystemCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureResponseOperatingSystemCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
 		return err
 	}
 

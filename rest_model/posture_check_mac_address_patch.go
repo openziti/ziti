@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckMacAddressPatch posture check mac address patch
 //
-// swagger:model PostureCheckMacAddressPatch
+// swagger:model postureCheckMacAddressPatch
 type PostureCheckMacAddressPatch struct {
 	nameField string
 
@@ -213,11 +214,13 @@ func (m *PostureCheckMacAddressPatch) validateTags(formats strfmt.Registry) erro
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -232,6 +235,48 @@ func (m *PostureCheckMacAddressPatch) validateMacAddresses(formats strfmt.Regist
 	iMacAddressesSize := int64(len(m.MacAddresses))
 
 	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check mac address patch based on the context it is used
+func (m *PostureCheckMacAddressPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckMacAddressPatch) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
 		return err
 	}
 

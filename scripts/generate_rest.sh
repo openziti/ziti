@@ -9,36 +9,83 @@ scriptPath=$(realpath $0)
 scriptDir=$(dirname "$scriptPath")
 
 zitiEdgeDir=$(realpath "$scriptDir/..")
-swagSpec=$(realpath "$zitiEdgeDir/specs/swagger.yml")
+
+clientSourceSpec=$(realpath "$zitiEdgeDir/specs/source/client.yml")
+clientSwagSpec=$(realpath "$zitiEdgeDir/specs/client.yml")
+
+managementSourceSpec=$(realpath "$zitiEdgeDir/specs/management.yml")
+managementSwagSpec=$(realpath "$zitiEdgeDir/specs/management.yml")
+
 copyrightFile=$(realpath "$scriptDir/template.copyright.txt")
 
-serverPath=$(realpath "$zitiEdgeDir/rest_server")
-echo "...removing any existing server from $serverPath"
-rm -rf "$serverPath"
-mkdir -p "$serverPath"
+echo "...flattening client spec"
+swagger flatten "$clientSourceSpec" -o "$clientSwagSpec" --format yaml
+echo "...flattening management spec"
+swagger flatten "$managementSourceSpec" -o "$managementSwagSpec" --format yaml
 
-clientPath=$(realpath "$zitiEdgeDir/rest_client")
-echo "...removing any existing client from $clientPath"
-rm -rf "$clientPath"
-mkdir -p "$clientPath"
+
+oldServerPath=$(realpath "$zitiEdgeDir/rest_server")
+echo "...removing any existing server from $oldServerPath"
+rm -rf "$oldServerPath"
+
+oldClientPath=$(realpath "$zitiEdgeDir/rest_client")
+echo "...removing any existing client from $oldClientPath"
+rm -rf "$oldClientPath"
+
+clientServerPath=$(realpath "$zitiEdgeDir/rest_client_api_server")
+echo "...removing any existing server from $clientServerPath"
+rm -rf "$clientServerPath"
+mkdir -p "$clientServerPath"
+
+clientClientPath=$(realpath "$zitiEdgeDir/rest_client_api_client")
+echo "...removing any existing client from $clientClientPath"
+rm -rf "$clientClientPath"
+mkdir -p "$clientClientPath"
+
+managementServerPath=$(realpath "$zitiEdgeDir/rest_management_api_server")
+echo "...removing any existing server from $managementServerPath"
+rm -rf "$managementServerPath"
+mkdir -p "$managementServerPath"
+
+managementClientPath=$(realpath "$zitiEdgeDir/rest_management_api_client")
+echo "...removing any existing client from $managementClientPath"
+rm -rf "$managementClientPath"
+mkdir -p "$managementClientPath"
 
 modelPath=$(realpath "$zitiEdgeDir/rest_model")
 echo "...removing any existing model from $modelPath"
 rm -rf "$modelPath"
 mkdir -p "$modelPath"
 
-echo "...generating server"
-swagger generate server --exclude-main -f "$swagSpec" -s rest_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+
+echo "...generating client api server"
+swagger generate server --exclude-main -f "$clientSwagSpec" -s rest_client_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
-  echo "Failed to generate server. See above."
+  echo "Failed to generate client api server. See above."
   exit "${exit_status}"
 fi
 
-echo "...generating client"
-swagger generate client -f "$swagSpec" -c rest_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+echo "...generating client api client"
+swagger generate client -f "$clientSwagSpec" -c rest_client_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
-  echo "Failed to generate client. See above."
+  echo "Failed to generate client api client. See above."
+  exit "${exit_status}"
+fi
+
+echo "...generating management api server"
+swagger generate server --exclude-main -f "$managementSwagSpec" -s rest_management_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+exit_status=$?
+if [ ${exit_status} -ne 0 ]; then
+  echo "Failed to generate management api server. See above."
+  exit "${exit_status}"
+fi
+
+echo "...generating management api management"
+swagger generate client -f "$managementSwagSpec" -c rest_management_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+exit_status=$?
+if [ ${exit_status} -ne 0 ]; then
+  echo "Failed to generate management api client. See above."
   exit "${exit_status}"
 fi

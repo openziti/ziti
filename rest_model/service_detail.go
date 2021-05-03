@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -227,17 +228,21 @@ func (m *ServiceDetail) Validate(formats strfmt.Registry) error {
 
 func (m *ServiceDetail) validateConfig(formats strfmt.Registry) error {
 
+	if err := validate.Required("config", "body", m.Config); err != nil {
+		return err
+	}
+
 	for k := range m.Config {
 
 		if err := validate.Required("config"+"."+k, "body", m.Config[k]); err != nil {
 			return err
 		}
 
-		for kk := range m.Config[k] {
+		if err := validate.Required("config"+"."+k, "body", m.Config); err != nil {
+			return err
+		}
 
-			if err := validate.Required("config"+"."+k+"."+kk, "body", m.Config[k][kk]); err != nil {
-				return err
-			}
+		for kk := range m.Config[k] {
 
 			if err := validate.Required("config"+"."+k+"."+kk, "body", m.Config[k][kk]); err != nil {
 				return err
@@ -337,6 +342,75 @@ func (m *ServiceDetail) validateRoleAttributes(formats strfmt.Registry) error {
 func (m *ServiceDetail) validateTerminatorStrategy(formats strfmt.Registry) error {
 
 	if err := validate.Required("terminatorStrategy", "body", m.TerminatorStrategy); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this service detail based on the context it is used
+func (m *ServiceDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePermissions(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePostureQueries(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ServiceDetail) contextValidatePermissions(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Permissions.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("permissions")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceDetail) contextValidatePostureQueries(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.PostureQueries); i++ {
+
+		if m.PostureQueries[i] != nil {
+			if err := m.PostureQueries[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("postureQueries" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ServiceDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
 		return err
 	}
 

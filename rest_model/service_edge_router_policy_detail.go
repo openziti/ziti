@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -56,7 +58,7 @@ type ServiceEdgeRouterPolicyDetail struct {
 
 	// semantic
 	// Required: true
-	Semantic Semantic `json:"semantic"`
+	Semantic *Semantic `json:"semantic"`
 
 	// service roles
 	// Required: true
@@ -84,7 +86,7 @@ func (m *ServiceEdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
 
@@ -125,7 +127,7 @@ func (m ServiceEdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 
 		ServiceRoles Roles `json:"serviceRoles"`
 
@@ -234,11 +236,21 @@ func (m *ServiceEdgeRouterPolicyDetail) validateName(formats strfmt.Registry) er
 
 func (m *ServiceEdgeRouterPolicyDetail) validateSemantic(formats strfmt.Registry) error {
 
-	if err := m.Semantic.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
-		}
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
 		return err
+	}
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -267,6 +279,103 @@ func (m *ServiceEdgeRouterPolicyDetail) validateServiceRolesDisplay(formats strf
 	}
 
 	if err := m.ServiceRolesDisplay.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this service edge router policy detail based on the context it is used
+func (m *ServiceEdgeRouterPolicyDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouterRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouterRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) contextValidateEdgeRouterRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.EdgeRouterRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) contextValidateEdgeRouterRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.EdgeRouterRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) contextValidateServiceRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServiceEdgeRouterPolicyDetail) contextValidateServiceRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRolesDisplay.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRolesDisplay")
 		}

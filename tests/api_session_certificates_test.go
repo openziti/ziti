@@ -44,21 +44,22 @@ func Test_Api_Session_Certs(t *testing.T) {
 
 		t.Run("can be created", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.RequireAdminLogin()
+			ctx.RequireAdminManagementApiLogin()
+			ctx.RequireAdminClientApiLogin()
 			csr, _, err := generateCsr()
 			ctx.Req.NoError(err)
 
 			csrPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
 			ctx.Req.NotEmpty(csrPem)
 
-			request := ctx.AdminSession.newAuthenticatedRequest()
+			request := ctx.AdminClientSession.newAuthenticatedRequest()
 
 			body := gabs.New()
 			body.Set(string(csrPem), "csr")
 			bodyStr := body.String()
 			request.SetBody(bodyStr)
 
-			resp, err := request.Post("/current-api-session/certificates")
+			resp, err := request.Post("current-api-session/certificates")
 
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusCreated, t)
@@ -83,7 +84,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 		t.Run("can be listed", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/current-api-session/certificates")
+			resp, err := ctx.AdminClientSession.newAuthenticatedRequest().Get("current-api-session/certificates")
 			ctx.Req.NoError(err)
 
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -127,7 +128,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 		t.Run("can be detailed", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/current-api-session/certificates/" + createdId)
+			resp, err := ctx.AdminClientSession.newAuthenticatedRequest().Get("current-api-session/certificates/" + createdId)
 			ctx.Req.NoError(err)
 
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -166,7 +167,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 		t.Run("can be deleted", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete("/current-api-session/certificates/" + createdId)
+			resp, err := ctx.AdminClientSession.newAuthenticatedRequest().Delete("current-api-session/certificates/" + createdId)
 			ctx.Req.NoError(err)
 
 			standardJsonResponseTests(resp, http.StatusOK, t)

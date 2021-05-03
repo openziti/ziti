@@ -39,8 +39,22 @@ import (
 )
 
 type authenticator interface {
-	Authenticate(ctx *TestContext) (*session, error)
+	Authenticate(ctx *TestContext, apiPath string) (*session, error)
+	RequireAuthenticate(ctx *TestContext, apiPath string) *session
+
+	AuthenticateManagementApi(ctx *TestContext) (*session, error)
+	RequireAuthenticateManagementApi(ctx *TestContext) *session
+
+	AuthenticateClientApi(ctx *TestContext) (*session, error)
+	RequireAuthenticateClientApi(ctx *TestContext) *session
 }
+
+const (
+	EdgeClientApiPath     = "/edge/client/v1"
+	EdgeManagementApiPath = "/edge/management/v1"
+)
+
+var _ authenticator = &certAuthenticator{}
 
 type certAuthenticator struct {
 	cert    *x509.Certificate
@@ -48,10 +62,37 @@ type certAuthenticator struct {
 	certPem string
 }
 
-func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session, error) {
+func (authenticator *certAuthenticator) RequireAuthenticateManagementApi(ctx *TestContext) *session {
+	session, err := authenticator.AuthenticateManagementApi(ctx)
+	ctx.Req.NoError(err)
+	return session
+}
+
+func (authenticator *certAuthenticator) AuthenticateManagementApi(ctx *TestContext) (*session, error) {
+	return authenticator.Authenticate(ctx, EdgeManagementApiPath)
+}
+
+func (authenticator *certAuthenticator) RequireAuthenticateClientApi(ctx *TestContext) *session {
+	session, err := authenticator.AuthenticateClientApi(ctx)
+	ctx.Req.NoError(err)
+	return session
+}
+
+func (authenticator *certAuthenticator) AuthenticateClientApi(ctx *TestContext) (*session, error) {
+	return authenticator.Authenticate(ctx, EdgeClientApiPath)
+}
+
+func (authenticator *certAuthenticator) RequireAuthenticate(ctx *TestContext, apiPath string) *session {
+	session, err := authenticator.Authenticate(ctx, apiPath)
+	ctx.Req.NoError(err)
+	return session
+}
+
+func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath string) (*session, error) {
 	sess := &session{
 		authenticator: authenticator,
 		testContext:   ctx,
+		apiPath:       apiPath,
 	}
 
 	sess.authenticatedRequests = authenticatedRequests{
@@ -59,19 +100,25 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext) (*session
 		session:     sess,
 	}
 
-	transport := ctx.Transport()
+	transport := ctx.NewTransport()
 	transport.TLSClientConfig.Certificates = []tls.Certificate{
 		{
 			Certificate: [][]byte{authenticator.cert.Raw},
 			PrivateKey:  authenticator.key,
 		},
 	}
-	client := ctx.Client(ctx.HttpClient(transport))
-	client.SetHostURL("https://" + ctx.ApiHost)
+	sess.client = resty.NewWithClient(ctx.NewHttpClient(transport))
 
-	resp, err := client.R().
+	resolvedUrl, err := sess.resolveApiUrl(ctx.ApiHost, apiPath)
+	if err != nil {
+		return nil, err
+	}
+
+	sess.client.SetHostURL(resolvedUrl)
+
+	resp, err := sess.client.R().
 		SetHeader("content-type", "application/json").
-		Post("/authenticate?method=cert")
+		Post("authenticate?method=cert")
 
 	if err != nil {
 		return nil, errors.Errorf("failed to authenticate via CERT: %s", err)
@@ -101,22 +148,62 @@ func (authenticator *certAuthenticator) Fingerprint() string {
 	return cert.NewFingerprintGenerator().FromRaw(authenticator.cert.Raw)
 }
 
+var _ authenticator = &updbAuthenticator{}
+
 type updbAuthenticator struct {
 	Username    string
 	Password    string
 	ConfigTypes []string
 }
 
-func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session, error) {
+func (authenticator *updbAuthenticator) RequireAuthenticateManagementApi(ctx *TestContext) *session {
+	session, err := authenticator.AuthenticateManagementApi(ctx)
+	ctx.Req.NoError(err)
+
+	return session
+}
+
+func (authenticator *updbAuthenticator) AuthenticateManagementApi(ctx *TestContext) (*session, error) {
+	return authenticator.Authenticate(ctx, EdgeManagementApiPath)
+}
+
+func (authenticator *updbAuthenticator) RequireAuthenticateClientApi(ctx *TestContext) *session {
+	session, err := authenticator.AuthenticateClientApi(ctx)
+	ctx.Req.NoError(err)
+
+	return session
+}
+
+func (authenticator *updbAuthenticator) AuthenticateClientApi(ctx *TestContext) (*session, error) {
+	return authenticator.Authenticate(ctx, EdgeClientApiPath)
+}
+
+func (authenticator *updbAuthenticator) RequireAuthenticate(ctx *TestContext, apiPath string) *session {
+	session, err := authenticator.Authenticate(ctx, apiPath)
+	ctx.Req.NoError(err)
+
+	return session
+}
+
+func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext, apiPath string) (*session, error) {
 	sess := &session{
 		authenticator: authenticator,
 		testContext:   ctx,
+		apiPath:       apiPath,
+		client:        ctx.NewRestClientWithDefaults(),
 	}
 
 	sess.authenticatedRequests = authenticatedRequests{
 		testContext: ctx,
 		session:     sess,
 	}
+
+	resolvedUrl, err := sess.resolveApiUrl(ctx.ApiHost, apiPath)
+	if err != nil {
+		return nil, err
+	}
+
+	sess.client.SetHostURL(resolvedUrl)
 
 	body := gabs.New()
 	_, _ = body.SetP(authenticator.Username, "username")
@@ -125,10 +212,10 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext) (*session
 		_, _ = body.SetP(authenticator.ConfigTypes, "configTypes")
 	}
 
-	resp, err := ctx.DefaultClient().R().
+	resp, err := sess.client.R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	if err != nil {
 		return nil, errors.Errorf("failed to authenticate via UPDB as %v: %s", authenticator, err)
@@ -154,15 +241,81 @@ type session struct {
 	lastServiceUpdate time.Time
 	configTypes       []string
 	testContext       *TestContext
+	baseUrl           string
 	authenticatedRequests
+	apiPath string
+	client  *resty.Client
 }
 
-func (sess *session) newRequest(ctx *TestContext) *resty.Request {
-	req := ctx.newRequest()
-	if sess.token != "" {
-		req.SetHeader(constants.ZitiSession, sess.token)
+// Clone allows a session to be cloned with a new internal Resty Client that targets another API. Useful for
+// cross API security testing. Clone does not authenticate. It attempts to use the token in the source
+// session. If the session is not authenticated, then the cloned result is not authenticated as well.
+func (sess *session) Clone(ctx *TestContext, apiPath string) (*session, error) {
+	clone := &session{
+		authenticator:     sess.authenticator,
+		id:                sess.id,
+		token:             sess.token,
+		identityId:        sess.identityId,
+		createdAt:         sess.createdAt,
+		lastServiceUpdate: sess.lastServiceUpdate,
+		configTypes:       sess.configTypes,
+		testContext:       sess.testContext,
+		baseUrl:           sess.baseUrl,
+		apiPath:           apiPath,
+		client:            resty.NewWithClient(sess.client.GetClient()),
 	}
-	return req
+
+	clone.authenticatedRequests = authenticatedRequests{
+		testContext: ctx,
+		session:     clone,
+	}
+
+	resolvedUrl, err := sess.resolveApiUrl(ctx.ApiHost, apiPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	clone.client.SetHostURL(resolvedUrl)
+
+	return clone, nil
+}
+
+// CloneToClientApi is a helper function to clone a session (most likely from the Management API) to the Client API.
+// See Clone for details.
+func (sess *session) CloneToClientApi(ctx *TestContext) (*session, error) {
+	return sess.Clone(ctx, EdgeClientApiPath)
+}
+
+// CloneToManagementApi is a helper function to clone a session (most likely from the Client API) to the Management API.
+// See Clone for details.
+func (sess *session) CloneToManagementApi(ctx *TestContext) (*session, error) {
+	return sess.Clone(ctx, EdgeManagementApiPath)
+}
+
+func (sess *session) NewRequest() *resty.Request {
+	sess.client.R()
+	return sess.client.R().SetHeader(constants.ZitiSession, sess.token)
+}
+
+// resolveApiUrl takes a URL prefix, apiHost, in the format of "https://domain:port" and joins
+// it with apiPath. apiPath may be a relative path.
+func (sess *session) resolveApiUrl(apiHost string, apiPath string) (string, error) {
+	hostUrl, err := url.Parse("https://" + apiHost)
+
+	if err != nil {
+		return "", err
+	}
+
+	pathUrl, err := url.Parse(apiPath)
+
+	if err != nil {
+		return "", err
+	}
+
+	resolvedUrl := hostUrl.ResolveReference(pathUrl)
+
+	return resolvedUrl.String(), nil
 }
 
 func (sess *session) parseSessionInfoFromResponse(ctx *TestContext, response *resty.Response) error {
@@ -210,7 +363,7 @@ func (sess *session) parseSessionInfoFromResponse(ctx *TestContext, response *re
 }
 
 func (sess *session) logout() error {
-	resp, err := sess.newRequest(sess.testContext).Delete("/current-api-session")
+	resp, err := sess.NewRequest().Delete("current-api-session")
 
 	if err != nil {
 		return err
@@ -229,11 +382,11 @@ type authenticatedRequests struct {
 }
 
 func (request *authenticatedRequests) newAuthenticatedRequest() *resty.Request {
-	return request.session.newRequest(request.testContext)
+	return request.session.NewRequest().SetHeader("content-type", "application/json")
 }
 
-func (request *authenticatedRequests) newAuthenticatedJsonRequest(body interface{}) *resty.Request {
-	return request.session.newRequest(request.testContext).
+func (request *authenticatedRequests) newAuthenticatedRequestWithBody(body interface{}) *resty.Request {
+	return request.session.NewRequest().
 		SetHeader("content-type", "application/json").
 		SetBody(body)
 }
@@ -280,7 +433,7 @@ func (request *authenticatedRequests) requireNewPostureResponseDomain(postureChe
 
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(entityJson).
-		Post("/posture-response")
+		Post("posture-response")
 
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -300,7 +453,7 @@ func (request *authenticatedRequests) requireNewPostureResponseBulkDomain(postur
 
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(entityJson).
-		Post("/posture-response-bulk")
+		Post("posture-response-bulk")
 
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -331,7 +484,7 @@ func (request *authenticatedRequests) createNewSession(serviceId string) (*resty
 
 	return request.newAuthenticatedRequest().
 		SetBody(entityJson).
-		Post("/sessions")
+		Post("sessions")
 }
 
 func (request *authenticatedRequests) requireCreateIdentityWithUpdbEnrollment(name string, password string, isAdmin bool, rolesAttributes ...string) (*identity, *updbAuthenticator) {
@@ -559,7 +712,7 @@ func (request *authenticatedRequests) requireCreateRestModelPostureResponse(enti
 	body, err := entity.MarshalJSON()
 	request.testContext.Req.NoError(err)
 
-	resp, err := request.newAuthenticatedRequest().SetBody(body).Post("/posture-response")
+	resp, err := request.newAuthenticatedRequest().SetBody(body).Post("posture-response")
 	request.testContext.Req.NoError(err)
 
 	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
@@ -624,7 +777,7 @@ func (request *authenticatedRequests) requireRemoveAssociation(url string, ids .
 func (request *authenticatedRequests) createEntityOfType(entityType string, body interface{}) *resty.Response {
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(body).
-		Post("/" + entityType)
+		Post(entityType)
 
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -695,7 +848,7 @@ func (request *authenticatedRequests) updateIdentityServiceConfigs(method string
 		req.SetBody(body)
 	}
 
-	resp, err := req.Execute(method, "/identities/"+identityId+"/service-configs")
+	resp, err := req.Execute(method, "identities/"+identityId+"/service-configs")
 
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -707,7 +860,7 @@ func (request *authenticatedRequests) createEntity(entity entity) *resty.Respons
 }
 
 func (request *authenticatedRequests) deleteEntityOfType(entityType string, id string) *resty.Response {
-	resp, err := request.newAuthenticatedRequest().Delete("/" + entityType + "/" + id)
+	resp, err := request.newAuthenticatedRequest().Delete(entityType + "/" + id)
 
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
@@ -724,7 +877,7 @@ func (request *authenticatedRequests) updateEntityOfType(id string, entityType s
 		pfxlog.Logger().Tracef("update body:\n%v\n", body)
 	}
 
-	urlPath := fmt.Sprintf("/%v/%v", entityType, id)
+	urlPath := fmt.Sprintf("%v/%v", entityType, id)
 	pfxlog.Logger().Infof("url path: %v", urlPath)
 
 	updateRequest := request.newAuthenticatedRequest().SetBody(body)
@@ -744,7 +897,7 @@ func (request *authenticatedRequests) updateEntityOfType(id string, entityType s
 }
 
 func (request *authenticatedRequests) query(url string) (int, []byte) {
-	resp, err := request.newAuthenticatedRequest().Get("/" + url)
+	resp, err := request.newAuthenticatedRequest().Get(url)
 	request.testContext.Req.NoError(err)
 	return resp.StatusCode(), resp.Body()
 }
@@ -809,7 +962,7 @@ func (request *authenticatedRequests) updateAssociation(method, url string, ids 
 
 	resp, err := request.newAuthenticatedRequest().
 		SetBody(request.testContext.idsJson(ids...).String()).
-		Execute(method, "/"+url)
+		Execute(method, url)
 	request.testContext.Req.NoError(err)
 	request.testContext.logJson(resp.Body())
 	return resp.StatusCode(), resp.Body()
@@ -822,11 +975,20 @@ func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) b
 	return nil != request.testContext.childWith(data, "id", serviceId)
 }
 
-func (request *authenticatedRequests) createUserAndLogin(isAdmin bool, roleAttributes, configTypes []string) *session {
+func (request *authenticatedRequests) createUserAndLoginClientApi(isAdmin bool, roleAttributes, configTypes []string) *session {
 	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), isAdmin, roleAttributes...)
 	userAuth.ConfigTypes = configTypes
 
-	session, _ := userAuth.Authenticate(request.testContext)
+	session, _ := userAuth.AuthenticateClientApi(request.testContext)
+
+	return session
+}
+
+func (request *authenticatedRequests) createUserAndLoginManagementApi(isAdmin bool, roleAttributes, configTypes []string) *session {
+	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), isAdmin, roleAttributes...)
+	userAuth.ConfigTypes = configTypes
+
+	session, _ := userAuth.AuthenticateManagementApi(request.testContext)
 
 	return session
 }
@@ -852,8 +1014,8 @@ func (request *authenticatedRequests) requireServiceUpdateTimeAdvanced() {
 }
 
 func (request *authenticatedRequests) getServiceUpdateTime() time.Time {
-	json := request.requireQuery("current-api-session/service-updates")
-	lastChanged := request.testContext.requireString(json, "data", "lastChangeAt")
+	respBody := request.requireQuery("current-api-session/service-updates")
+	lastChanged := request.testContext.requireString(respBody, "data", "lastChangeAt")
 	t, err := time.Parse(time.RFC3339, lastChanged)
 	request.testContext.Req.NoError(err)
 	return t

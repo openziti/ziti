@@ -26,8 +26,9 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
+	clientApiAuthentication "github.com/openziti/edge/rest_client_api_server/operations/authentication"
+	managementApiAuthentication "github.com/openziti/edge/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/authentication"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/errorz"
@@ -51,19 +52,27 @@ func NewAuthRouter() *AuthRouter {
 
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
 	ro.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("api-session.create")
-	ae.Api.AuthenticationAuthenticateHandler = authentication.AuthenticateHandlerFunc(func(params authentication.AuthenticateParams) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params) }, params.HTTPRequest, "", "", permissions.Always())
+	ae.ClientApi.AuthenticationAuthenticateHandler = clientApiAuthentication.AuthenticateHandlerFunc(func(params clientApiAuthentication.AuthenticateParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth) }, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.AuthenticationAuthenticateMfaHandler = authentication.AuthenticateMfaHandlerFunc(func(params authentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
+	ae.ClientApi.AuthenticationAuthenticateMfaHandler = clientApiAuthentication.AuthenticateMfaHandlerFunc(func(params clientApiAuthentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
+	})
+
+	ae.ManagementApi.AuthenticationAuthenticateHandler = managementApiAuthentication.AuthenticateHandlerFunc(func(params managementApiAuthentication.AuthenticateParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth) }, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.AuthenticationAuthenticateMfaHandler = managementApiAuthentication.AuthenticateMfaHandlerFunc(func(params managementApiAuthentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
 	})
 }
 
-func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateParams) {
+func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, httpRequest *http.Request, method string, auth *rest_model.Authenticate) {
 	start := time.Now()
 	logger := pfxlog.Logger()
-	authContext := model.NewAuthContextHttp(params.HTTPRequest, params.Method, params.Auth)
+	authContext := model.NewAuthContextHttp(httpRequest, method, auth)
 
 	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
 
@@ -116,8 +125,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	token := uuid.New().String()
 	configTypes := map[string]struct{}{}
 
-	if params.Auth != nil {
-		configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(params.Auth.ConfigTypes, identity.Id)
+	if auth != nil {
+		configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(auth.ConfigTypes, identity.Id)
 	}
 	remoteIpStr := ""
 	if remoteIp, _, err := net.SplitHostPort(rc.Request.RemoteAddr); err == nil {
@@ -162,7 +171,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession
 
-	//re-calc session headers as they were not set wwhen ApiSession == NIL
+	//re-calc session headers as they were not set when ApiSession == NIL
 	response.AddSessionHeaders(rc)
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
@@ -174,7 +183,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, p
 	rc.Respond(envelope, http.StatusOK)
 }
 
-func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, params authentication.AuthenticateMfaParams) {
+func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {
 	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
@@ -187,7 +196,7 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.Verify(mfa, *params.MfaAuth.Code)
+	ok, _ := ae.Handlers.Mfa.Verify(mfa, *mfaCode.Code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())

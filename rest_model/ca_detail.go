@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -59,18 +61,22 @@ type CaDetail struct {
 	IdentityRoles Roles `json:"identityRoles"`
 
 	// is auth enabled
+	// Example: true
 	// Required: true
 	IsAuthEnabled *bool `json:"isAuthEnabled"`
 
 	// is auto ca enrollment enabled
+	// Example: true
 	// Required: true
 	IsAutoCaEnrollmentEnabled *bool `json:"isAutoCaEnrollmentEnabled"`
 
 	// is ott ca enrollment enabled
+	// Example: true
 	// Required: true
 	IsOttCaEnrollmentEnabled *bool `json:"isOttCaEnrollmentEnabled"`
 
 	// is verified
+	// Example: false
 	// Required: true
 	IsVerified *bool `json:"isVerified"`
 
@@ -350,6 +356,37 @@ func (m *CaDetail) validateVerificationToken(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("verificationToken", "body", "uuid", m.VerificationToken.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this ca detail based on the context it is used
+func (m *CaDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *CaDetail) contextValidateIdentityRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRoles")
+		}
 		return err
 	}
 

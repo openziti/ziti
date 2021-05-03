@@ -29,7 +29,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("a updb enrolling identity can be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -48,7 +48,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 		}, "enrollment")
 		updbCreate.Set(false, "isAdmin")
 		
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(updbCreate.String()).Post("/identities")
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(updbCreate.String()).Post("identities")
 		ctx.Req.NoError(err)
 
 		standardJsonResponseTests(resp, http.StatusCreated, t)
@@ -65,7 +65,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 		t.Run("created updb identity has a UPDB JWT", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/identities/" + updbId)
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("identities/" + updbId)
 			ctx.Req.NoError(err)
 
 			standardJsonResponseTests(resp, http.StatusOK, t)
@@ -94,7 +94,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 
 				enrollmentBody.Set(updbPassword, "password")
 
-				resp, err := ctx.newRequest().SetBody(enrollmentBody.String()).Post("/enroll?method=updb&token=" + updbEnrollmentToken)
+				resp, err := ctx.newAnonymousClientApiRequest().SetBody(enrollmentBody.String()).Post("enroll?method=updb&token=" + updbEnrollmentToken)
 				ctx.Req.NoError(err)
 
 				standardJsonResponseTests(resp, http.StatusOK, t)
@@ -108,7 +108,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 						ConfigTypes: nil,
 					}
 
-					updbApiSession, err := updbAuth.Authenticate(ctx)
+					updbApiSession, err := updbAuth.AuthenticateClientApi(ctx)
 					ctx.Req.NoError(err)
 					ctx.Req.NotEmpty(updbApiSession)
 					ctx.Req.NotEmpty(updbApiSession.token)
@@ -116,7 +116,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 					t.Run("authenticated updb api session can query current api session", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
-						resp, err := updbApiSession.newAuthenticatedRequest().Get("/current-api-session")
+						resp, err := updbApiSession.newAuthenticatedRequest().Get("current-api-session")
 						ctx.Req.NoError(err)
 
 						standardJsonResponseTests(resp, http.StatusOK, t)

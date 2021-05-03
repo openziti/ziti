@@ -62,17 +62,17 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(strategy)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)
 	var serverContexts []ziti.Context
 	for i := 0; i < 3; i++ {
-		_, context := ctx.AdminSession.RequireCreateSdkContext()
+		_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 		defer context.Close()
 
 		serverContexts = append(serverContexts, context)
@@ -120,7 +120,7 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 		}
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 
@@ -206,11 +206,11 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(strategy)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(strategy)
 
 	serverContextC := make(chan ziti.Context, 3)
 	doneC := make(chan struct{}, 1)
@@ -221,7 +221,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 	dials := make(chan struct{}, 1000)
 
 	for i := 0; i < 3; i++ {
-		_, context := ctx.AdminSession.RequireCreateSdkContext()
+		_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 		defer context.Close()
 
 		serverContexts = append(serverContexts, context)
@@ -263,7 +263,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 		}
 	}()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 

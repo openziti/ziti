@@ -30,16 +30,16 @@ func Test_EdgeRouter(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()
 		role2 := eid.New()
 		edgeRouter := newTestEdgeRouter(role1, role2)
-		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
-		ctx.AdminSession.validateEntityWithQuery(edgeRouter)
-		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
+		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithQuery(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
 	})
 
 	t.Run("role attributes should be updated", func(t *testing.T) {
@@ -47,12 +47,12 @@ func Test_EdgeRouter(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		edgeRouter := newTestEdgeRouter(role1, role2)
-		edgeRouter.id = ctx.AdminSession.requireCreateEntity(edgeRouter)
+		edgeRouter.id = ctx.AdminManagementSession.requireCreateEntity(edgeRouter)
 
 		role3 := eid.New()
 		edgeRouter.roleAttributes = []string{role2, role3}
-		ctx.AdminSession.requireUpdateEntity(edgeRouter)
-		ctx.AdminSession.validateEntityWithLookup(edgeRouter)
+		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
+		ctx.AdminManagementSession.validateEntityWithLookup(edgeRouter)
 	})
 
 	t.Run("role attributes should be queryable", func(t *testing.T) {
@@ -64,18 +64,18 @@ func Test_EdgeRouter(t *testing.T) {
 		role4 := prefix + "field-ops"
 		role5 := prefix + "executive"
 
-		ctx.AdminSession.requireNewEdgeRouter(role1, role2)
-		ctx.AdminSession.requireNewEdgeRouter(role2, role3)
-		ctx.AdminSession.requireNewEdgeRouter(role3, role4)
-		edgeRouter := ctx.AdminSession.requireNewEdgeRouter(role5)
-		ctx.AdminSession.requireNewEdgeRouter()
+		ctx.AdminManagementSession.requireNewEdgeRouter(role1, role2)
+		ctx.AdminManagementSession.requireNewEdgeRouter(role2, role3)
+		ctx.AdminManagementSession.requireNewEdgeRouter(role3, role4)
+		edgeRouter := ctx.AdminManagementSession.requireNewEdgeRouter(role5)
+		ctx.AdminManagementSession.requireNewEdgeRouter()
 
-		list := ctx.AdminSession.requireList("edge-router-role-attributes")
+		list := ctx.AdminManagementSession.requireList("edge-router-role-attributes")
 		ctx.Req.True(len(list) >= 5)
 		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4, role5))
 
 		filter := url.QueryEscape(`id contains "e" and id contains "` + prefix + `" sort by id`)
-		list = ctx.AdminSession.requireList("edge-router-role-attributes?filter=" + filter)
+		list = ctx.AdminManagementSession.requireList("edge-router-role-attributes?filter=" + filter)
 		ctx.Req.Equal(4, len(list))
 
 		expected := []string{role1, role3, role4, role5}
@@ -83,8 +83,8 @@ func Test_EdgeRouter(t *testing.T) {
 		ctx.Req.Equal(expected, list)
 
 		edgeRouter.roleAttributes = nil
-		ctx.AdminSession.requireUpdateEntity(edgeRouter)
-		list = ctx.AdminSession.requireList("edge-router-role-attributes")
+		ctx.AdminManagementSession.requireUpdateEntity(edgeRouter)
+		list = ctx.AdminManagementSession.requireList("edge-router-role-attributes")
 		ctx.Req.True(len(list) >= 4)
 		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
 		ctx.Req.False(stringz.Contains(list, role5))
@@ -93,8 +93,8 @@ func Test_EdgeRouter(t *testing.T) {
 	t.Run("newly created edge routers that is deleted", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		edgeRouter := ctx.AdminSession.requireNewEdgeRouter()
+		edgeRouter := ctx.AdminManagementSession.requireNewEdgeRouter()
 
-		ctx.AdminSession.requireDeleteEntity(edgeRouter)
+		ctx.AdminManagementSession.requireDeleteEntity(edgeRouter)
 	})
 }

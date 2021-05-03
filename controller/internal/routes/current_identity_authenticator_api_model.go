@@ -51,7 +51,7 @@ func (factory *CurrentIdentityAuthenticatorLinkFactoryImpl) SelfLink(entity mode
 
 func (factory *CurrentIdentityAuthenticatorLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 	return rest_model.Links{
-		EntityNameSelf:          factory.SelfLink(entity),
+		EntityNameSelf: factory.SelfLink(entity),
 	}
 }
 
@@ -61,10 +61,10 @@ func MapUpdateAuthenticatorWithCurrentToModel(id, identityId string, authenticat
 			Tags: authenticator.Tags,
 			Id:   id,
 		},
-		CurrentPassword: string(authenticator.CurrentPassword),
-		NewPassword:     string(authenticator.Password),
+		CurrentPassword: string(*authenticator.CurrentPassword),
+		NewPassword:     string(*authenticator.Password),
 		IdentityId:      identityId,
-		Username:        string(authenticator.Username),
+		Username:        string(*authenticator.Username),
 	}
 
 	return ret
@@ -76,7 +76,7 @@ func MapPatchAuthenticatorWithCurrentToModel(id, identityId string, authenticato
 			Tags: authenticator.Tags,
 			Id:   id,
 		},
-		CurrentPassword: string(authenticator.CurrentPassword),
+		CurrentPassword: string(*authenticator.CurrentPassword),
 		IdentityId:      identityId,
 	}
 

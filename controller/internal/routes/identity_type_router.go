@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_server/operations/identity"
+	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 )
 
 func init() {
@@ -41,11 +41,11 @@ func NewIdentityTypeRouter() *IdentityTypeRouter {
 
 func (r *IdentityTypeRouter) Register(ae *env.AppEnv) {
 
-	ae.Api.IdentityDetailIdentityTypeHandler = identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.IdentityDetailIdentityTypeHandler = identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.IdentityListIdentityTypesHandler = identity.ListIdentityTypesHandlerFunc(func(params identity.ListIdentityTypesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.IdentityListIdentityTypesHandler = identity.ListIdentityTypesHandlerFunc(func(params identity.ListIdentityTypesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 

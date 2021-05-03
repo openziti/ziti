@@ -28,13 +28,13 @@ func Test_UpdateTerminators(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
-	_, context := ctx.AdminSession.RequireCreateSdkContext()
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer context.Close()
 
 	listener, err := context.Listen(service.Name)
@@ -42,7 +42,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	ctx.requireNListener(1, listener, time.Second)
 	defer func() { _ = listener.Close() }()
 
-	terminators := ctx.AdminSession.listTerminators(`binding="edge"`)
+	terminators := ctx.AdminManagementSession.listTerminators(`binding="edge"`)
 	ctx.Req.Equal(1, len(terminators))
 	term := terminators[0]
 	ctx.Req.Equal(0, term.cost)
@@ -54,7 +54,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	time.Sleep(25 * time.Millisecond) // update is async, so need to give a little time to process
 
 	term.cost = 999
-	ctx.AdminSession.validateEntityWithLookup(term)
+	ctx.AdminManagementSession.validateEntityWithLookup(term)
 
 	err = listener.UpdatePrecedence(edge.PrecedenceRequired)
 	ctx.Req.NoError(err)
@@ -62,7 +62,7 @@ func Test_UpdateTerminators(t *testing.T) {
 	time.Sleep(25 * time.Millisecond) // update is async, so need to give a little time to process
 
 	term.precedence = "required"
-	ctx.AdminSession.validateEntityWithLookup(term)
+	ctx.AdminManagementSession.validateEntityWithLookup(term)
 
 	err = listener.UpdateCostAndPrecedence(585, edge.PrecedenceFailed)
 	ctx.Req.NoError(err)
@@ -71,6 +71,6 @@ func Test_UpdateTerminators(t *testing.T) {
 
 	term.cost = 585
 	term.precedence = "failed"
-	ctx.AdminSession.validateEntityWithLookup(term)
+	ctx.AdminManagementSession.validateEntityWithLookup(term)
 
 }

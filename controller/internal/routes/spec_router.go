@@ -25,9 +25,11 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_client_api_server"
+	clientInformational "github.com/openziti/edge/rest_client_api_server/operations/informational"
+	"github.com/openziti/edge/rest_management_api_server"
+	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server"
-	"github.com/openziti/edge/rest_server/operations/informational"
 	"github.com/openziti/fabric/controller/models"
 	"time"
 )
@@ -59,7 +61,8 @@ type Spec struct {
 	body map[string]interface{}
 }
 
-var swaggerSpec *Spec
+var clientSpec *Spec
+var managementSpec *Spec
 var specs []*Spec
 
 func init() {
@@ -72,22 +75,38 @@ func init() {
 			pfxlog.Logger().WithError(err).Warn("could not parse build info date for swagger spec")
 		}
 	}
-	swaggerSpec = &Spec{
+
+	clientSpec = &Spec{
 		BaseEntity: models.BaseEntity{
-			Id:        "swagger",
+			Id:        "edge-client",
 			CreatedAt: date,
 			UpdatedAt: date,
 			Tags:      map[string]interface{}{},
 		},
-		name: "swagger",
+		name: "edge-client",
 	}
 
-	err := json.Unmarshal(rest_server.SwaggerJSON, &swaggerSpec.body)
+	managementSpec = &Spec{
+		BaseEntity: models.BaseEntity{
+			Id:        "edge-management",
+			CreatedAt: date,
+			UpdatedAt: date,
+			Tags:      map[string]interface{}{},
+		},
+		name: "edge-management",
+	}
+
+	err := json.Unmarshal(rest_client_api_server.SwaggerJSON, &clientSpec.body)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Panic("could not parse rest server JSON spec")
+		pfxlog.Logger().WithError(err).Panic("could not parse edge client server JSON spec")
 	}
 
-	specs = append(specs, swaggerSpec)
+	err = json.Unmarshal(rest_management_api_server.SwaggerJSON, &managementSpec.body)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Panic("could not parse edge management server JSON spec")
+	}
+
+	specs = append(specs, clientSpec, managementSpec)
 
 	r := NewSpecRouter()
 	env.AddRouter(r)
@@ -104,24 +123,38 @@ func NewSpecRouter() *SpecRouter {
 }
 
 func (r *SpecRouter) Register(ae *env.AppEnv) {
-	ae.Api.InformationalListSpecsHandler = informational.ListSpecsHandlerFunc(func(params informational.ListSpecsParams) middleware.Responder {
+	//Client
+	ae.ClientApi.InformationalListSpecsHandler = clientInformational.ListSpecsHandlerFunc(func(params clientInformational.ListSpecsParams) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.InformationalDetailSpecHandler = informational.DetailSpecHandlerFunc(func(params informational.DetailSpecParams) middleware.Responder {
+	ae.ClientApi.InformationalDetailSpecHandler = clientInformational.DetailSpecHandlerFunc(func(params clientInformational.DetailSpecParams) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.Always())
 	})
 
-	ae.Api.InformationalDetailSpecBodyHandler = informational.DetailSpecBodyHandlerFunc(func(params informational.DetailSpecBodyParams) middleware.Responder {
+	ae.ClientApi.InformationalDetailSpecBodyHandler = clientInformational.DetailSpecBodyHandlerFunc(func(params clientInformational.DetailSpecBodyParams) middleware.Responder {
+		return ae.IsAllowed(r.DetailBody, params.HTTPRequest, params.ID, "", permissions.Always())
+	})
+
+	//Management
+	ae.ManagementApi.InformationalListSpecsHandler = managementInformational.ListSpecsHandlerFunc(func(params managementInformational.ListSpecsParams) middleware.Responder {
+		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ManagementApi.InformationalDetailSpecHandler = managementInformational.DetailSpecHandlerFunc(func(params managementInformational.DetailSpecParams) middleware.Responder {
+		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.Always())
+	})
+
+	ae.ManagementApi.InformationalDetailSpecBodyHandler = managementInformational.DetailSpecBodyHandlerFunc(func(params managementInformational.DetailSpecBodyParams) middleware.Responder {
 		return ae.IsAllowed(r.DetailBody, params.HTTPRequest, params.ID, "", permissions.Always())
 	})
 }
 
 func (r *SpecRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 	data := rest_model.SpecList{
-		mapSpecToRestModel(swaggerSpec),
+		mapSpecToRestModel(clientSpec),
 	}
-	
+
 	rc.RespondWithOk(data, &rest_model.Meta{})
 }
 

@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -254,6 +255,52 @@ func (m *PostureCheckFailureProcess) validateExpectedValue(formats strfmt.Regist
 
 	if m.ExpectedValue != nil {
 		if err := m.ExpectedValue.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("expectedValue")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check failure process based on the context it is used
+func (m *PostureCheckFailureProcess) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateActualValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateExpectedValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckFailureProcess) contextValidateActualValue(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ActualValue != nil {
+		if err := m.ActualValue.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("actualValue")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *PostureCheckFailureProcess) contextValidateExpectedValue(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ExpectedValue != nil {
+		if err := m.ExpectedValue.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("expectedValue")
 			}

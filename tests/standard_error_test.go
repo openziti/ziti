@@ -29,17 +29,17 @@ func Test_StandardErrorMessages(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("405 method not allowed returns a standard error", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := ctx.AdminSession.newAuthenticatedJsonRequest(`{}`).Post("/version")
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(`{}`).Post("/version")
 		req.NoError(err)
 		standardErrorJsonResponseTests(resp, apierror.MethodNotAllowedCode, apierror.MethodNotAllowedStatus, t)
 	})
 	t.Run("404 not found returns a standard error", func(t *testing.T) {
 		req := require.New(t)
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/i-do-not-exist")
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/i-do-not-exist")
 		req.NoError(err)
 		standardErrorJsonResponseTests(resp, errorz.NotFoundCode, errorz.NotFoundStatus, t)
 	})

@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -44,9 +45,10 @@ import (
 
 // PostureCheckPatch posture check patch
 //
-// swagger:discriminator PostureCheckPatch typeId
+// swagger:discriminator postureCheckPatch typeId
 type PostureCheckPatch interface {
 	runtime.Validatable
+	runtime.ContextValidatable
 
 	// name
 	Name() string
@@ -184,7 +186,7 @@ func unmarshalPostureCheckPatch(data []byte, consumer runtime.Consumer) (Posture
 			return nil, err
 		}
 		return &result, nil
-	case "PostureCheckPatch":
+	case "postureCheckPatch":
 		var result postureCheckPatch
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
@@ -213,7 +215,6 @@ func (m *postureCheckPatch) Validate(formats strfmt.Registry) error {
 }
 
 func (m *postureCheckPatch) validateRoleAttributes(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.RoleAttributes()) { // not required
 		return nil
 	}
@@ -229,12 +230,55 @@ func (m *postureCheckPatch) validateRoleAttributes(formats strfmt.Registry) erro
 }
 
 func (m *postureCheckPatch) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags()) { // not required
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check patch based on the context it is used
+func (m *postureCheckPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *postureCheckPatch) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

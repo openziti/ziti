@@ -85,8 +85,8 @@ func MapUpdateAuthenticatorToModel(id string, in *rest_model.AuthenticatorUpdate
 
 	result.SubType = &model.AuthenticatorUpdb{
 		Authenticator: result,
-		Username:      string(in.Username),
-		Password:      string(in.Password),
+		Username:      string(*in.Username),
+		Password:      string(*in.Password),
 		Salt:          "",
 	}
 

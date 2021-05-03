@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -70,7 +71,7 @@ type SessionDetail struct {
 
 	// type
 	// Required: true
-	Type DialBind `json:"type"`
+	Type *DialBind `json:"type"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -96,7 +97,7 @@ func (m *SessionDetail) UnmarshalJSON(raw []byte) error {
 
 		Token *string `json:"token"`
 
-		Type DialBind `json:"type"`
+		Type *DialBind `json:"type"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -141,7 +142,7 @@ func (m SessionDetail) MarshalJSON() ([]byte, error) {
 
 		Token *string `json:"token"`
 
-		Type DialBind `json:"type"`
+		Type *DialBind `json:"type"`
 	}
 
 	dataAO1.APISession = m.APISession
@@ -299,11 +300,112 @@ func (m *SessionDetail) validateToken(formats strfmt.Registry) error {
 
 func (m *SessionDetail) validateType(formats strfmt.Registry) error {
 
-	if err := m.Type.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("type")
-		}
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
+	}
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this session detail based on the context it is used
+func (m *SessionDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateAPISession(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouters(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateService(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *SessionDetail) contextValidateAPISession(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.APISession != nil {
+		if err := m.APISession.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("apiSession")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *SessionDetail) contextValidateEdgeRouters(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.EdgeRouters); i++ {
+
+		if m.EdgeRouters[i] != nil {
+			if err := m.EdgeRouters[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("edgeRouters" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *SessionDetail) contextValidateService(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Service != nil {
+		if err := m.Service.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("service")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *SessionDetail) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
 	}
 
 	return nil

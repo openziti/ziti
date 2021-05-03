@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -105,7 +107,6 @@ func (m *PostureCheckFailureProcessActual) validateIsRunning(formats strfmt.Regi
 }
 
 func (m *PostureCheckFailureProcessActual) validateOsType(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.OsType) { // not required
 		return nil
 	}
@@ -123,6 +124,32 @@ func (m *PostureCheckFailureProcessActual) validateOsType(formats strfmt.Registr
 func (m *PostureCheckFailureProcessActual) validateSignerFingerprints(formats strfmt.Registry) error {
 
 	if err := validate.Required("signerFingerprints", "body", m.SignerFingerprints); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check failure process actual based on the context it is used
+func (m *PostureCheckFailureProcessActual) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateOsType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckFailureProcessActual) contextValidateOsType(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.OsType.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("osType")
+		}
 		return err
 	}
 

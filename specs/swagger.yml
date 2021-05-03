@@ -1008,6 +1008,8 @@ paths:
           $ref: '#/responses/listCurrentApiSessionServiceUpdates'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+
+
   '/current-identity':
     get:
       summary: Return the current identity

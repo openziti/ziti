@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/strfmt"
 )
 
@@ -40,5 +42,10 @@ type ListSummaryCounts map[string]int64
 
 // Validate validates this list summary counts
 func (m ListSummaryCounts) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this list summary counts based on context it is used
+func (m ListSummaryCounts) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

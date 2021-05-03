@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_server/operations/config"
+	"github.com/openziti/edge/rest_management_api_server/operations/config"
 )
 
 func init() {
@@ -41,31 +41,31 @@ func NewConfigTypeRouter() *ConfigTypeRouter {
 }
 
 func (r *ConfigTypeRouter) Register(ae *env.AppEnv) {
-	ae.Api.ConfigDeleteConfigTypeHandler = config.DeleteConfigTypeHandlerFunc(func(params config.DeleteConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigDeleteConfigTypeHandler = config.DeleteConfigTypeHandlerFunc(func(params config.DeleteConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigDetailConfigTypeHandler = config.DetailConfigTypeHandlerFunc(func(params config.DetailConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigDetailConfigTypeHandler = config.DetailConfigTypeHandlerFunc(func(params config.DetailConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigListConfigTypesHandler = config.ListConfigTypesHandlerFunc(func(params config.ListConfigTypesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigListConfigTypesHandler = config.ListConfigTypesHandlerFunc(func(params config.ListConfigTypesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigUpdateConfigTypeHandler = config.UpdateConfigTypeHandlerFunc(func(params config.UpdateConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigUpdateConfigTypeHandler = config.UpdateConfigTypeHandlerFunc(func(params config.UpdateConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Update(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigCreateConfigTypeHandler = config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigCreateConfigTypeHandler = config.CreateConfigTypeHandlerFunc(func(params config.CreateConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Create(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigPatchConfigTypeHandler = config.PatchConfigTypeHandlerFunc(func(params config.PatchConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigPatchConfigTypeHandler = config.PatchConfigTypeHandlerFunc(func(params config.PatchConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.ConfigListConfigsForConfigTypeHandler = config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.ConfigListConfigsForConfigTypeHandler = config.ListConfigsForConfigTypeHandlerFunc(func(params config.ListConfigsForConfigTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ListConfigs(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }
@@ -82,7 +82,7 @@ func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, p
 	if params.ConfigType.Schema != nil {
 		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+			ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
@@ -100,7 +100,7 @@ func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 	if params.ConfigType.Schema != nil {
 		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+			ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
@@ -114,12 +114,12 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 
 	if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 		return
 	}
 	if params.ConfigType.Schema == nil {
 		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.Api.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
+		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
 		return
 	}
 
