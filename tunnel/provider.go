@@ -31,7 +31,7 @@ type HostControl interface {
 type FabricProvider interface {
 	PrepForUse(serviceId string)
 	GetCurrentIdentity() (*edge.CurrentIdentity, error)
-	TunnelService(service Service, conn net.Conn, halfClose bool, appInfo []byte) error
+	TunnelService(service Service, identity string, conn net.Conn, halfClose bool, appInfo []byte) error
 	HostService(hostCtx HostingContext) (HostControl, error)
 }
 
@@ -63,10 +63,11 @@ func (self *contextProvider) PrepForUse(serviceId string) {
 	}
 }
 
-func (self *contextProvider) TunnelService(service Service, conn net.Conn, halfClose bool, appData []byte) error {
+func (self *contextProvider) TunnelService(service Service, identity string, conn net.Conn, halfClose bool, appData []byte) error {
 	options := &ziti.DialOptions{
 		ConnectTimeout: service.GetDialTimeout(),
 		AppData:        appData,
+		Identity:       identity,
 	}
 
 	zitiConn, err := self.Context.DialWithOptions(service.GetName(), options)

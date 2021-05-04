@@ -144,6 +144,9 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		if err := self.configureSourceAddrProvider(svc); err != nil {
 			log.WithError(err).Error("failed intepreting source ip")
 		}
+		if err := self.configureDialIdentityProvider(svc); err != nil {
+			log.WithError(err).Error("error interpreting dialOptions.identity")
+		}
 
 		// not all interceptors need a config, specifically proxy doesn't need one
 		log.Infof("starting tunnel for newly available service %s", svc.Name)
@@ -257,46 +260,52 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 }
 
 func (self *ServiceListener) configureSourceAddrProvider(svc *entities.Service) error {
-	if svc.InterceptV1Config == nil || svc.InterceptV1Config.SourceIp == nil || *svc.InterceptV1Config.SourceIp == "" {
-		return nil
+	var err error
+	if template := svc.GetSourceIpTemplate(); template != "" {
+		svc.SourceAddrProvider, err = self.getTemplatingProvider(template)
 	}
+	return err
+}
 
-	sourceIp := *svc.InterceptV1Config.SourceIp
+func (self *ServiceListener) configureDialIdentityProvider(svc *entities.Service) error {
+	var err error
+	if template := svc.GetDialIdentityTemplate(); template != "" {
+		svc.DialIdentityProvider, err = self.getTemplatingProvider(template)
+	}
+	return err
+}
 
-	if sourceIp == sourceIpVar+":"+sourcePortVar {
-		svc.SourceAddrProvider = func(sourceAddr, _ net.Addr) string {
+func (self *ServiceListener) getTemplatingProvider(template string) (entities.TemplateFunc, error) {
+	if template == sourceIpVar+":"+sourcePortVar {
+		return func(sourceAddr, _ net.Addr) string {
 			return sourceAddr.String()
-		}
-		return nil
+		}, nil
 	}
 
 	currentIdentity, err := self.provider.GetCurrentIdentity()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if sourceIp, err = replaceTemplatized(sourceIp, currentIdentity); err != nil {
-		return err
+	if template, err = replaceTemplatized(template, currentIdentity); err != nil {
+		return nil, err
 	}
 
-	if strings.IndexByte(sourceIp, '$') < 0 {
-		svc.SourceAddrProvider = func(_, _ net.Addr) string {
-			return sourceIp
-		}
-		return nil
+	if strings.IndexByte(template, '$') < 0 {
+		return func(_, _ net.Addr) string {
+			return template
+		}, nil
 	}
 
-	svc.SourceAddrProvider = func(sourceAddr, destAddr net.Addr) string {
+	return func(sourceAddr, destAddr net.Addr) string {
 		sourceAddrIp, sourceAddrPort := tunnel.GetIpAndPort(sourceAddr)
 		destAddrIp, destAddrPort := tunnel.GetIpAndPort(destAddr)
-		result := strings.ReplaceAll(sourceIp, sourceIpVar, sourceAddrIp)
+		result := strings.ReplaceAll(template, sourceIpVar, sourceAddrIp)
 		result = strings.ReplaceAll(result, sourcePortVar, sourceAddrPort)
 		result = strings.ReplaceAll(result, dstIpVar, destAddrIp)
 		result = strings.ReplaceAll(result, destPortVar, destAddrPort)
 		return result
-	}
-
-	return nil
+	}, nil
 }
 
 func replaceTemplatized(input string, currentIdentity *edge.CurrentIdentity) (string, error) {
