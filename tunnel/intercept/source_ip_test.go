@@ -26,7 +26,7 @@ func (self *testProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) {
 	}, nil
 }
 
-func (self *testProvider) TunnelService(service tunnel.Service, conn net.Conn, halfClose bool, appInfo []byte) error {
+func (self *testProvider) TunnelService(service tunnel.Service, identity string, conn net.Conn, halfClose bool, appInfo []byte) error {
 	panic("implement me")
 }
 

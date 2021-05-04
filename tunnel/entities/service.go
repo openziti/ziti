@@ -267,14 +267,17 @@ type InterceptV1Config struct {
 	DialOptions *DialOptions
 }
 
+type TemplateFunc func(sourceAddr net.Addr, destAddr net.Addr) string
+
 type Service struct {
 	edge.Service
 	InterceptV1Config *InterceptV1Config
 	DialTimeout       time.Duration
 
-	HostV2Config       *HostV2Config
-	SourceAddrProvider func(sourceAddr net.Addr, destAddr net.Addr) string
-	StopHostHook       func()
+	HostV2Config         *HostV2Config
+	DialIdentityProvider TemplateFunc
+	SourceAddrProvider   TemplateFunc
+	StopHostHook         func()
 }
 
 func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) string {
@@ -290,4 +293,34 @@ func (self *Service) GetName() string {
 
 func (self *Service) GetDialTimeout() time.Duration {
 	return self.DialTimeout
+}
+
+func (self *Service) GetDialIdentity(sourceAddr net.Addr, destAddr net.Addr) string {
+	if self.DialIdentityProvider == nil {
+		return ""
+	}
+	return self.DialIdentityProvider(sourceAddr, destAddr)
+}
+
+func (self *Service) GetSourceIpTemplate() string {
+	if self.InterceptV1Config == nil {
+		return ""
+	}
+	if self.InterceptV1Config.SourceIp == nil {
+		return ""
+	}
+	return *self.InterceptV1Config.SourceIp
+}
+
+func (self *Service) GetDialIdentityTemplate() string {
+	if self.InterceptV1Config == nil {
+		return ""
+	}
+	if self.InterceptV1Config.DialOptions == nil {
+		return ""
+	}
+	if self.InterceptV1Config.DialOptions.Identity == nil {
+		return ""
+	}
+	return *self.InterceptV1Config.DialOptions.Identity
 }

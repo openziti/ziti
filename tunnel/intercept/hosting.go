@@ -69,9 +69,15 @@ func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.
 		tracker.AddAddress(ipNet.String())
 	}
 
+	listenOptions, err := getDefaultOptions(service, identity, config)
+	if err != nil {
+		log.WithError(err).Error("failed to setup options")
+		return nil
+	}
+
 	return &hostingContext{
 		service:     service,
-		options:     getDefaultOptions(service, identity),
+		options:     listenOptions,
 		dialTimeout: config.GetDialTimeout(5 * time.Second),
 		config:      config,
 		addrTracker: tracker,
@@ -149,9 +155,8 @@ func (self *hostingContext) OnClose() {
 	for _, addr := range self.config.AllowedSourceAddresses {
 		_, ipNet, err := utils.GetDialIP(addr)
 		if err != nil {
-			log.Errorf("failed to")
-		}
-		if self.addrTracker.RemoveAddress(ipNet.String()) {
+			log.WithError(err).Error("failed to get dial IP")
+		} else if self.addrTracker.RemoveAddress(ipNet.String()) {
 			err = router.RemoveLocalAddress(ipNet, "lo")
 		}
 	}
@@ -202,7 +207,7 @@ func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool
 	return self.dialAddress(options, protocol, address+":"+port)
 }
 
-func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity) *ziti.ListenOptions {
+func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity, config *entities.HostV2Terminator) (*ziti.ListenOptions, error) {
 	options := ziti.DefaultListenOptions()
 	options.ManualStart = true
 	options.Precedence = ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
@@ -220,5 +225,17 @@ func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity
 		}
 	}
 
-	return options
+	if config.ListenOptions != nil {
+		if config.ListenOptions.BindUsingEdgeIdentity {
+			options.Identity = identity.Name
+		} else if config.ListenOptions.Identity != "" {
+			result, err := replaceTemplatized(config.ListenOptions.Identity, identity)
+			if err != nil {
+				return nil, err
+			}
+			options.Identity = result
+		}
+	}
+
+	return options, nil
 }

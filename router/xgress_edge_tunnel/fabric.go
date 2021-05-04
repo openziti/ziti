@@ -156,7 +156,7 @@ func (self *fabricProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) 
 	return self.currentIdentity, nil
 }
 
-func (self *fabricProvider) TunnelService(service tunnel.Service, conn net.Conn, halfClose bool, appData []byte) error {
+func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorIdentity string, conn net.Conn, halfClose bool, appData []byte) error {
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
 		return err
@@ -172,9 +172,10 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, conn net.Conn,
 
 	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{
-		SessionId:   sessionId,
-		ServiceName: service.GetName(),
-		PeerData:    peerData,
+		SessionId:          sessionId,
+		ServiceName:        service.GetName(),
+		TerminatorIdentity: terminatorIdentity,
+		PeerData:           peerData,
 	}
 
 	responseMsg, err := self.ctrlCh.Channel().SendForReply(request, service.GetDialTimeout())
