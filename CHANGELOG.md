@@ -3,10 +3,10 @@
 ## What's New
 
 * Fix bug in tunneler source transparency when using UDP
-
 * Added guidance under /quickstart for quickly launching a simplified, local environment suitable for local dev testing and learning
-
-
+* Removed xtv framework from fabric and moved edge terminator identity validation to control channel handler. The `terminator:` section may be removed from the controller configuration file.
+* Listen for SIGINT for router shutdown
+* Implement dial and listen identity options in go tunneler
 
 # Release 0.19.12
 
