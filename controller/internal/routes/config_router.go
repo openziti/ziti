@@ -76,8 +76,7 @@ func (r *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigParams) {
 	if params.Config.Data == nil {
-		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 
@@ -92,8 +91,7 @@ func (r *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigParams) {
 	if params.Config.Data == nil {
-		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.Required("data", "body", nil))
 		return
 	}
 

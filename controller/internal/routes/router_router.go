@@ -66,7 +66,6 @@ func (r *TransitRouterRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params.ID, params.Router) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-
 	//Transit Router (deprecated)
 	ae.ManagementApi.RouterDeleteTransitRouterHandler = router.DeleteTransitRouterHandlerFunc(func(params router.DeleteTransitRouterParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())

@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/foundation/metrics"
 	"testing"
 )
@@ -50,7 +50,7 @@ func (ctx *TestContext) GetConfig() *config.Config {
 	return ctx.config
 }
 
-func (ctx *TestContext) GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator {
+func (ctx *TestContext) GetJwtSigner() jwtsigner.Signer {
 	return ctx
 }
 

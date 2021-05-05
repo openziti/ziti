@@ -81,8 +81,7 @@ func (r *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigTypeParams) {
 	if params.ConfigType.Schema != nil {
 		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
-			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+			ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
@@ -99,8 +98,7 @@ func (r *ConfigTypeRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigTypeParams) {
 	if params.ConfigType.Schema != nil {
 		if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
-			ctx := middleware.MatchedRouteFrom(rc.Request)
-			ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+			ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 			return
 		}
 	}
@@ -113,13 +111,11 @@ func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigTypeParams) {
 
 	if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
-		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 		return
 	}
 	if params.ConfigType.Schema == nil {
-		ctx := middleware.MatchedRouteFrom(rc.Request)
-		ae.ManagementApi.ServeErrorFor(ctx.Operation.ID)(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
+		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.Required("schema", "body", nil))
 		return
 	}
 

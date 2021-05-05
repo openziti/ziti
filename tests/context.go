@@ -301,7 +301,6 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	logrus.Infof("username: %v", ctx.AdminAuthenticator.Username)
 	logrus.Infof("password: %v", ctx.AdminAuthenticator.Password)
 
-	// Note we're not starting the fabric controller. Shouldn't need any of it for testing the edge API
 	ctx.EdgeController.Run()
 	go func() {
 		err = ctx.fabricController.Run()

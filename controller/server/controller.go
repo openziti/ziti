@@ -18,24 +18,14 @@ package server
 
 import "C"
 import (
-	"context"
 	"fmt"
-	"github.com/openziti/edge/controller"
-	"github.com/openziti/edge/controller/apierror"
-	"github.com/openziti/edge/controller/response"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
-	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/edge/rest_client_api_server"
-	"github.com/openziti/edge/rest_management_api_server"
-	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/openziti/edge/controller/internal/policy"
 
-	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
 	edgeconfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/env"
@@ -44,14 +34,12 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/storage/boltz"
 )
 
 type Controller struct {
 	config          *edgeconfig.Config
-	apiServer       *apiServer
 	AppEnv          *env.AppEnv
 	xmgmt           *submgmt
 	xctrl           *subctrl
@@ -254,109 +242,6 @@ func (c *Controller) Run() {
 		rf(c.AppEnv)
 	}
 
-	corsOpts := []handlers.CORSOption{
-		handlers.AllowedOrigins([]string{"*"}),
-		handlers.OptionStatusCode(200),
-		handlers.AllowedHeaders([]string{
-			"content-type",
-			"Accept",
-			constants.ZitiSession,
-		}),
-		handlers.AllowedMethods([]string{
-			http.MethodGet,
-			http.MethodHead,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete}),
-		handlers.AllowCredentials(),
-	}
-	c.AppEnv.ManagementApi.Context()
-	c.AppEnv.ClientApi.Context()
-
-	clientApiHandler := c.AppEnv.ClientApi.Serve(func(handler http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			rc := c.AppEnv.CreateRequestContext(rw, r)
-
-			env.AddRequestContextToHttpContext(r, rc)
-
-			err := c.AppEnv.FillRequestContext(rc)
-			if err != nil {
-				rc.RespondWithError(err)
-				return
-			}
-
-			//after request context is filled so that api session is present for session expiration headers
-			response.AddHeaders(rc)
-
-			handler.ServeHTTP(rw, r)
-		})
-	})
-
-	managementApiHandler := c.AppEnv.ManagementApi.Serve(func(handler http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			rc := c.AppEnv.CreateRequestContext(rw, r)
-
-			env.AddRequestContextToHttpContext(r, rc)
-
-			err := c.AppEnv.FillRequestContext(rc)
-			if err != nil {
-				rc.RespondWithError(err)
-				return
-			}
-
-			//after request context is filled so that api session is present for session expiration headers
-			response.AddHeaders(rc)
-
-			handler.ServeHTTP(rw, r)
-		})
-	})
-
-	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set(ZitiInstanceId, c.AppEnv.InstanceId)
-
-		//if not /edge prefix, translate to "/edge/client/v<latest>"
-		if !strings.HasPrefix(request.URL.Path, controller.RestApiRootPath) {
-			request.URL.Path = controller.ClientRestApiBaseUrlLatest + request.URL.Path
-		}
-
-		//translate /edge/v1 to /edge/client/v1
-		request.URL.Path = strings.Replace(request.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
-
-		if request.URL.Path == controller.ClientRestApiSpecUrl {
-			writer.Header().Set("content-type", "application/json")
-			writer.WriteHeader(http.StatusOK)
-			_, _ = writer.Write(rest_client_api_server.SwaggerJSON)
-			return
-		}
-
-		if request.URL.Path == controller.ManagementRestApiSpecUrl {
-			writer.Header().Set("content-type", "application/json")
-			writer.WriteHeader(http.StatusOK)
-			_, _ = writer.Write(rest_management_api_server.SwaggerJSON)
-			return
-		}
-
-		if strings.HasPrefix(request.URL.Path, controller.ManagementRestApiBaseUrlLatest) {
-			managementApiHandler.ServeHTTP(writer, request)
-			return
-		}
-
-		if strings.HasPrefix(request.URL.Path, controller.ClientRestApiBase) {
-			clientApiHandler.ServeHTTP(writer, request)
-			return
-		}
-
-		pfxlog.Logger().Debugf("unhandled request URL: %s", request.URL.Path)
-	})
-
-	timeoutHandler := timeout.TimeoutHandler(handler, 10*time.Second, apierror.NewTimeoutError())
-
-	as := newApiServer(c.config, timeoutHandler)
-
-	as.corsOptions = corsOpts
-	c.apiServer = as
-
 	admin, err := c.AppEnv.Handlers.Identity.ReadDefaultAdmin()
 
 	if err != nil {
@@ -367,36 +252,23 @@ func (c *Controller) Run() {
 		pfxlog.Logger().Fatal("the Ziti Edge has not been initialized via 'ziti-controller edge init', no default admin exists")
 	}
 
-	go func() {
-		err := c.apiServer.Start()
+	managementApiFactory := NewManagementApiFactory(c.AppEnv)
+	clientApiFactory := NewClientApiFactory(c.AppEnv)
 
-		if err != nil {
-			log.
-				WithField("cause", err).
-				Fatal("error starting API server", err)
-		}
-	}()
+	if err := c.AppEnv.HostController.RegisterXWebHandlerFactory(managementApiFactory); err != nil {
+		pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
+	}
 
-	go func() {
-		err := c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel())
-
-		if err != nil {
-			log.
-				WithField("cause", err).
-				Fatalf("error starting policy engine")
-		}
-	}()
+	if err := c.AppEnv.HostController.RegisterXWebHandlerFactory(clientApiFactory); err != nil {
+		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
+	}
 }
 
 func (c *Controller) Shutdown() {
 	if c.config.Enabled {
 		log := pfxlog.Logger()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-		defer cancel()
-
 		pfxlog.Logger().Info("edge controller: shutting down...")
-		c.apiServer.Shutdown(ctx)
 
 		c.AppEnv.Broker.Stop()
 
