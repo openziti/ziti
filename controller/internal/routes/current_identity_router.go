@@ -24,8 +24,9 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	clientCurrentIdentity "github.com/openziti/edge/rest_client_api_server/operations/current_identity"
+	managementCurrentIdentity "github.com/openziti/edge/rest_management_api_server/operations/current_identity"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/current_identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
@@ -48,49 +49,91 @@ func NewCurrentIdentityRouter() *CurrentIdentityRouter {
 }
 
 func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
-	ae.Api.CurrentIdentityGetCurrentIdentityHandler = current_identity.GetCurrentIdentityHandlerFunc(func(params current_identity.GetCurrentIdentityParams, _ interface{}) middleware.Responder {
+	//Client
+	ae.ClientApi.CurrentIdentityGetCurrentIdentityHandler = clientCurrentIdentity.GetCurrentIdentityHandlerFunc(func(params clientCurrentIdentity.GetCurrentIdentityParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(detailCurrentUser, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityDeleteMfaHandler = current_identity.DeleteMfaHandlerFunc(func(params current_identity.DeleteMfaParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityDeleteMfaHandler = clientCurrentIdentity.DeleteMfaHandlerFunc(func(params clientCurrentIdentity.DeleteMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.removeMfa(ae, rc, params)
+			r.removeMfa(ae, rc, params.MfaValidation, params.MfaValidationCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityDetailMfaHandler = current_identity.DetailMfaHandlerFunc(func(params current_identity.DetailMfaParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityDetailMfaHandler = clientCurrentIdentity.DetailMfaHandlerFunc(func(params clientCurrentIdentity.DetailMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityEnrollMfaHandler = current_identity.EnrollMfaHandlerFunc(func(params current_identity.EnrollMfaParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityEnrollMfaHandler = clientCurrentIdentity.EnrollMfaHandlerFunc(func(params clientCurrentIdentity.EnrollMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityVerifyMfaHandler = current_identity.VerifyMfaHandlerFunc(func(params current_identity.VerifyMfaParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityVerifyMfaHandler = clientCurrentIdentity.VerifyMfaHandlerFunc(func(params clientCurrentIdentity.VerifyMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.verifyMfa(ae, rc, params.MfaValidation)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityDetailMfaQrCodeHandler = current_identity.DetailMfaQrCodeHandlerFunc(func(params current_identity.DetailMfaQrCodeParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityDetailMfaQrCodeHandler = clientCurrentIdentity.DetailMfaQrCodeHandlerFunc(func(params clientCurrentIdentity.DetailMfaQrCodeParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityCreateMfaRecoveryCodesHandler = current_identity.CreateMfaRecoveryCodesHandlerFunc(func(params current_identity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityCreateMfaRecoveryCodesHandler = clientCurrentIdentity.CreateMfaRecoveryCodesHandlerFunc(func(params clientCurrentIdentity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.createMfaRecoveryCodes(ae, rc, params.MfaValidation)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityDetailMfaRecoveryCodesHandler = current_identity.DetailMfaRecoveryCodesHandlerFunc(func(params current_identity.DetailMfaRecoveryCodesParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityDetailMfaRecoveryCodesHandler = clientCurrentIdentity.DetailMfaRecoveryCodesHandlerFunc(func(params clientCurrentIdentity.DetailMfaRecoveryCodesParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.detailMfaRecoveryCodes(ae, rc, params)
+			r.detailMfaRecoveryCodes(ae, rc, params.MfaValidation, params.MfaValidationCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
-	ae.Api.CurrentIdentityGetCurrentIdentityEdgeRoutersHandler = current_identity.GetCurrentIdentityEdgeRoutersHandlerFunc(func(params current_identity.GetCurrentIdentityEdgeRoutersParams, i interface{}) middleware.Responder {
+	ae.ClientApi.CurrentIdentityGetCurrentIdentityEdgeRoutersHandler = clientCurrentIdentity.GetCurrentIdentityEdgeRoutersHandlerFunc(func(params clientCurrentIdentity.GetCurrentIdentityEdgeRoutersParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.listEdgeRouters(ae, rc)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	//Management
+	ae.ManagementApi.CurrentIdentityGetCurrentIdentityHandler = managementCurrentIdentity.GetCurrentIdentityHandlerFunc(func(params managementCurrentIdentity.GetCurrentIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(detailCurrentUser, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityDeleteMfaHandler = managementCurrentIdentity.DeleteMfaHandlerFunc(func(params managementCurrentIdentity.DeleteMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.removeMfa(ae, rc, params.MfaValidation, params.MfaValidationCode)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityDetailMfaHandler = managementCurrentIdentity.DetailMfaHandlerFunc(func(params managementCurrentIdentity.DetailMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityEnrollMfaHandler = managementCurrentIdentity.EnrollMfaHandlerFunc(func(params managementCurrentIdentity.EnrollMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityVerifyMfaHandler = managementCurrentIdentity.VerifyMfaHandlerFunc(func(params managementCurrentIdentity.VerifyMfaParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.verifyMfa(ae, rc, params.MfaValidation)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityDetailMfaQrCodeHandler = managementCurrentIdentity.DetailMfaQrCodeHandlerFunc(func(params managementCurrentIdentity.DetailMfaQrCodeParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityCreateMfaRecoveryCodesHandler = managementCurrentIdentity.CreateMfaRecoveryCodesHandlerFunc(func(params managementCurrentIdentity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.createMfaRecoveryCodes(ae, rc, params.MfaValidation)
+		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentIdentityDetailMfaRecoveryCodesHandler = managementCurrentIdentity.DetailMfaRecoveryCodesHandlerFunc(func(params managementCurrentIdentity.DetailMfaRecoveryCodesParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.detailMfaRecoveryCodes(ae, rc, params.MfaValidation, params.MfaValidationCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 }
@@ -187,13 +230,13 @@ func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestCo
 	})
 }
 
-func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, params current_identity.DeleteMfaParams) {
+func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
 	code := ""
 
-	if params.MfaValidation != nil && params.MfaValidation.Code != nil {
-		code = *params.MfaValidation.Code
-	} else if params.MfaValidationCode != nil {
-		code = *params.MfaValidationCode
+	if mfaValidationBody != nil && mfaValidationBody.Code != nil {
+		code = *mfaValidationBody.Code
+	} else if mfaCodeHeader != nil {
+		code = *mfaCodeHeader
 	}
 
 	err := ae.Handlers.Mfa.DeleteForIdentity(rc.Identity, code)
@@ -235,7 +278,7 @@ func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.Req
 
 	rc.ResponseWriter.Header().Set("content-type", "image/png")
 	rc.ResponseWriter.WriteHeader(http.StatusOK)
-	rc.ResponseWriter.Write(png)
+	_, _ = rc.ResponseWriter.Write(png)
 }
 
 func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
@@ -271,7 +314,7 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 	rc.RespondWithEmptyOk()
 }
 
-func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, params current_identity.DetailMfaRecoveryCodesParams) {
+func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
 	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
@@ -291,10 +334,10 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 
 	code := ""
 
-	if params.MfaValidation != nil && params.MfaValidation.Code != nil {
-		code = *params.MfaValidation.Code
-	} else if params.MfaValidationCode != nil {
-		code = *params.MfaValidationCode
+	if mfaValidationBody != nil && mfaValidationBody.Code != nil {
+		code = *mfaValidationBody.Code
+	} else if mfaCodeHeader != nil {
+		code = *mfaCodeHeader
 	}
 
 	if code == "" {

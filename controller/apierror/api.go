@@ -34,6 +34,14 @@ func ToRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
 	}
 
 	if e.Cause != nil {
+
+		//unwrap first error in composite error
+		compositeErr, ok := e.Cause.(*errors.CompositeError)
+		for ok {
+			e.Cause = compositeErr.Errors[0]
+			compositeErr, ok = e.Cause.(*errors.CompositeError)
+		}
+
 		if causeApiError, ok := e.Cause.(*errorz.ApiError); ok {
 			//standard apierror
 			ret.Cause = &rest_model.APIErrorCause{
@@ -72,6 +80,9 @@ func ToRestModel(e *errorz.ApiError, requestId string) *rest_model.APIError {
 					Value:  fmt.Sprintf("%v", causeFieldErr.Value),
 				},
 			}
+			ret.Code = errorz.CouldNotValidateCode
+			ret.Message = errorz.CouldNotValidateMessage
+
 		} else if genericErr, ok := e.Cause.(GenericCauseError); ok {
 			ret.Cause = &rest_model.APIErrorCause{
 				APIError: rest_model.APIError{

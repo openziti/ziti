@@ -25,8 +25,8 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_management_api_server/operations/database"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/database"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/util/concurrenz"
 	"net/http"
@@ -59,19 +59,19 @@ func NewDatabaseRouter() *DatabaseRouter {
 }
 
 func (r *DatabaseRouter) Register(ae *env.AppEnv) {
-	ae.Api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateSnapshot(ae, rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, false) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CheckDatastoreIntegrity(ae, rc, true) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.DatabaseDataIntegrityResultsHandler = database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.DatabaseDataIntegrityResultsHandler = database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.GetCheckProgress(rc) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }

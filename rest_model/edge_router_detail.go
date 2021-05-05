@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -37,6 +39,7 @@ import (
 )
 
 // EdgeRouterDetail A detail edge router resource
+// Example: {"_links":{"edge-router-policies":{"href":"./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d/edge-routers"},"self":{"href":"./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"}},"createdAt":"2020-03-16T17:13:31.5807454Z","enrollmentCreatedAt":"2020-03-16T17:13:31.5777637Z","enrollmentExpiresAt":"2020-03-16T17:18:31.5777637Z","enrollmentJwt":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbSI6ImVyb3R0IiwiZXhwIjoxNTg0Mzc5MTExLCJpc3MiOiJodHRwczovL 2xvY2FsaG9zdDoxMjgwIiwianRpIjoiMzBhMWYwZWEtZDM5Yi00YWFlLWI4NTItMzA0Y2YxYzMwZDFmIiwic3ViIjoiYjA3NjZiOGQtYmQxYS00ZDI 4LTg0MTUtNjM5YjI5ZDNjODNkIn0.UsyQhCPORQ5tQnYWY7S88LNvV9iFS5Hy-P4aJaClZzEICobKgnQoyQblJcdMvk3cGKwyFqAnQtt0tDZkb8tHz Vqyv6bilHcAFuMRrdwXRqdXquabSN5geu2qBUnyzL7Mf2X85if8sbMida6snB4oLZsVRF3CRn4ODBJdeiVJ_Z4rgD-zW2IwtXPApT7ALyiiw2cN4EH 8pqQ7tpZKqztE0PGEbBQFPGKUFnm7oXyvSUo17EsFJUv5gUlBzfKKGolh5io4ptp22HZrqsqSnqDSOnYEZHonr5Yljuwiktrlh-JKiK6GGns5OAJMP dO9lgM4yHSpF2ILbqhWMV93Y3zMOg","enrollmentToken":"30a1f0ea-d39b-4aae-b852-304cf1c30d1f","fingerprint":null,"hostname":"","id":"b0766b8d-bd1a-4d28-8415-639b29d3c83d","isOnline":false,"isTunnelerEnabled":false,"isVerified":false,"name":"TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e","roleAttributes":["eastCoast","sales","test"],"supportedProtocols":{},"tags":{},"updatedAt":"2020-03-16T17:13:31.5807454Z"}
 //
 // swagger:model edgeRouterDetail
 type EdgeRouterDetail struct {
@@ -310,6 +313,59 @@ func (m *EdgeRouterDetail) validateVersionInfo(formats strfmt.Registry) error {
 
 	if m.VersionInfo != nil {
 		if err := m.VersionInfo.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("versionInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this edge router detail based on the context it is used
+func (m *EdgeRouterDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+	// validation for a type composition with CommonEdgeRouterProperties
+	if err := m.CommonEdgeRouterProperties.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateVersionInfo(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *EdgeRouterDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterDetail) contextValidateVersionInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.VersionInfo != nil {
+		if err := m.VersionInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("versionInfo")
 			}

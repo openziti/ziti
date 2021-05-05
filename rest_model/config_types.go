@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/strfmt"
 )
 
@@ -40,5 +42,10 @@ type ConfigTypes []string
 
 // Validate validates this config types
 func (m ConfigTypes) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this config types based on context it is used
+func (m ConfigTypes) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

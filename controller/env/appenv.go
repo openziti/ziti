@@ -39,8 +39,10 @@ import (
 	"github.com/openziti/edge/events"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwt"
-	"github.com/openziti/edge/rest_server"
-	"github.com/openziti/edge/rest_server/operations"
+	clientServer "github.com/openziti/edge/rest_client_api_server"
+	clientOperations "github.com/openziti/edge/rest_client_api_server/operations"
+	managementServer "github.com/openziti/edge/rest_management_api_server"
+	managementOperations "github.com/openziti/edge/rest_management_api_server/operations"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
@@ -73,7 +75,8 @@ type AppEnv struct {
 	EnrollRegistry         model.EnrollmentRegistry
 	Broker                 *Broker
 	HostController         HostController
-	Api                    *operations.ZitiEdgeAPI
+	ManagementApi          *managementOperations.ZitiEdgeManagementAPI
+	ClientApi              *clientOperations.ZitiEdgeClientAPI
 	IdentityRefreshMap     cmap.ConcurrentMap
 	StartupTime            time.Time
 	InstanceId             string
@@ -276,13 +279,21 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 }
 
 func NewAppEnv(c *edgeConfig.Config) *AppEnv {
-	swaggerSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
+	clientSpec, err := loads.Embedded(clientServer.SwaggerJSON, clientServer.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
 	}
 
-	api := operations.NewZitiEdgeAPI(swaggerSpec)
-	api.ServeError = ServeError
+	managementSpec, err := loads.Embedded(managementServer.SwaggerJSON, managementServer.FlatSwaggerJSON)
+	if err != nil {
+		pfxlog.Logger().Fatalln(err)
+	}
+
+	clientApi := clientOperations.NewZitiEdgeClientAPI(clientSpec)
+	clientApi.ServeError = ServeError
+
+	managementApi := managementOperations.NewZitiEdgeManagementAPI(managementSpec)
+	managementApi.ServeError = ServeError
 
 	ae := &AppEnv{
 		Config: c,
@@ -293,23 +304,25 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 		InstanceId:         cuid.New(),
 		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
-		Api:                api,
+		ManagementApi:      managementApi,
+		ClientApi:          clientApi,
 		IdentityRefreshMap: cmap.New(),
 		StartupTime:        time.Now().UTC(),
 	}
 
-	api.APIAuthorizer = authorizer{}
+	clientApi.APIAuthorizer = authorizer{}
+	managementApi.APIAuthorizer = authorizer{}
 
 	noOpConsumer := runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
 		return nil //do nothing
 	})
 
 	//enrollment consumer, leave content unread, allow modules to read
-	api.ApplicationXPemFileConsumer = noOpConsumer
-	api.ApplicationPkcs10Consumer = noOpConsumer
-	api.ApplicationXPemFileProducer = &PemProducer{}
-	api.TextYamlProducer = &YamlProducer{}
-	api.ZtSessionAuth = func(token string) (principal interface{}, err error) {
+	clientApi.ApplicationXPemFileConsumer = noOpConsumer
+	clientApi.ApplicationPkcs10Consumer = noOpConsumer
+	clientApi.ApplicationXPemFileProducer = &PemProducer{}
+	clientApi.TextYamlProducer = &YamlProducer{}
+	clientApi.ZtSessionAuth = func(token string) (principal interface{}, err error) {
 		principal, err = ae.GetHandlers().ApiSession.ReadByToken(token)
 
 		if err != nil {
@@ -322,6 +335,9 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 
 		return principal, nil
 	}
+
+	managementApi.TextYamlProducer = &YamlProducer{}
+	managementApi.ZtSessionAuth = clientApi.ZtSessionAuth
 
 	sm := getJwtSigningMethod(c.Api.Identity.ServerCert())
 	key := c.Api.Identity.ServerCert().PrivateKey
@@ -421,7 +437,7 @@ func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) 
 	return requestContext
 }
 
-//use own type to avoid collisions
+// ContextKey is used a custom type to avoid accidental context key collisions
 type ContextKey string
 
 const EdgeContextKey = ContextKey("edgeContext")

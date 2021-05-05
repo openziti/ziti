@@ -38,14 +38,14 @@ func Test_MFA(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	t.Run("if mfa is not enrolled", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		noMfaIdentityId, noMfaIdentity := ctx.AdminSession.requireCreateIdentityOttEnrollment("mfa_ziti_test_no_mfa", false)
-		noMfaSession, err := noMfaIdentity.Authenticate(ctx)
+		noMfaIdentityId, noMfaIdentity := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment("mfa_ziti_test_no_mfa", false)
+		noMfaSession, err := noMfaIdentity.AuthenticateClientApi(ctx)
 		ctx.Req.NoError(err)
 
 		t.Run("current identity", func(t *testing.T) {
@@ -126,7 +126,7 @@ func Test_MFA(t *testing.T) {
 		t.Run("admin identity endpoint", func(t *testing.T) {
 			t.Run("get MFA should have isMfaEnabled flag set to false", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", noMfaIdentityId))
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", noMfaIdentityId))
 
 				ctx.Req.NoError(err)
 
@@ -147,7 +147,7 @@ func Test_MFA(t *testing.T) {
 
 			t.Run("delete MFA should 404", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", noMfaIdentityId))
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", noMfaIdentityId))
 
 				ctx.Req.NoError(err)
 				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
@@ -165,8 +165,8 @@ func Test_MFA(t *testing.T) {
 
 		t.Run("by first authenticating", func(t *testing.T) {
 			var err error
-			mfaStartedIdentityId, noMfaIdentity = ctx.AdminSession.requireCreateIdentityOttEnrollment(mfaStartedIdentityName, false)
-			mfaStartedSession, err = noMfaIdentity.Authenticate(ctx)
+			mfaStartedIdentityId, noMfaIdentity = ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(mfaStartedIdentityName, false)
+			mfaStartedSession, err = noMfaIdentity.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 		})
 
@@ -216,18 +216,18 @@ func Test_MFA(t *testing.T) {
 				provisionString := ctx.RequireGetNonNilPathValue(mfa, "data.provisioningUrl").Data().(string)
 				ctx.Req.NotEmpty(provisionString)
 
-				url, err := url.Parse(provisionString)
+				mfaUrl, err := url.Parse(provisionString)
 				ctx.Req.NoError(err)
-				ctx.Req.Equal(url.Host, "totp")
-				ctx.Req.Equal(url.Path, "/ziti.dev:"+mfaStartedIdentityName)
-				ctx.Req.Equal(url.Scheme, "otpauth")
+				ctx.Req.Equal(mfaUrl.Host, "totp")
+				ctx.Req.Equal(mfaUrl.Path, "/ziti.dev:"+mfaStartedIdentityName)
+				ctx.Req.Equal(mfaUrl.Scheme, "otpauth")
 			})
 		})
 
 		t.Run("and for the admin identity endpoint", func(t *testing.T) {
 			t.Run("get MFA should have isMfaEnabled flag set to false", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfaStartedIdentityId))
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfaStartedIdentityId))
 
 				ctx.Req.NoError(err)
 
@@ -248,7 +248,7 @@ func Test_MFA(t *testing.T) {
 
 			t.Run("delete MFA should fail with 404", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", mfaStartedIdentityId))
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", mfaStartedIdentityId))
 
 				ctx.Req.NoError(err)
 				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
@@ -287,12 +287,15 @@ func Test_MFA(t *testing.T) {
 		t.Run("authentication with partially enrolled MFA should fully authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			secondMfaStartedSession, err := noMfaIdentity.Authenticate(ctx)
+			secondMfaStartedSession, err := noMfaIdentity.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(secondMfaStartedSession)
 
 			resp, err := secondMfaStartedSession.newAuthenticatedRequest().Get("/current-api-session/")
 			standardJsonResponseTests(resp, http.StatusOK, t)
+
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
 
 			currentSession, err := gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -344,8 +347,8 @@ func Test_MFA(t *testing.T) {
 		t.Run("setup", func(t *testing.T) {
 			t.Run("by first authenticating", func(t *testing.T) {
 				var err error
-				mfaValidatedIdentityId, mfaValidatedIdentity = ctx.AdminSession.requireCreateIdentityOttEnrollment(mfaStartedIdentityName, false)
-				mfaValidatedSession, err = mfaValidatedIdentity.Authenticate(ctx)
+				mfaValidatedIdentityId, mfaValidatedIdentity = ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(mfaStartedIdentityName, false)
+				mfaValidatedSession, err = mfaValidatedIdentity.AuthenticateClientApi(ctx)
 				ctx.Req.NotEmpty(mfaValidatedIdentityId)
 				ctx.Req.NoError(err)
 			})
@@ -408,7 +411,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(`{}`).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.CouldNotParseBodyCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
 		})
 
 		t.Run("with an empty code it should error with invalid token/bad request", func(t *testing.T) {
@@ -448,7 +451,6 @@ func Test_MFA(t *testing.T) {
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
 
-
 			t.Run("current api session should be", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				respContainer := mfaValidatedSession.requireQuery("/current-api-session")
@@ -472,7 +474,7 @@ func Test_MFA(t *testing.T) {
 
 			t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",mfaValidatedIdentityId))
+				postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", mfaValidatedIdentityId))
 				mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", mfaValidatedSession.id)
 				postureDataContainer.ExistsP(mfaPath)
 				isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
@@ -581,7 +583,7 @@ func Test_MFA(t *testing.T) {
 
 				t.Run("by first authenticating", func(t *testing.T) {
 					var err error
-					newValidatedSession, err = mfaValidatedIdentity.Authenticate(ctx)
+					newValidatedSession, err = mfaValidatedIdentity.AuthenticateClientApi(ctx)
 					ctx.Req.NoError(err)
 				})
 
@@ -699,7 +701,7 @@ func Test_MFA(t *testing.T) {
 
 					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 						ctx.testContextChanged(t)
-						postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",newValidatedSession.identityId))
+						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", newValidatedSession.identityId))
 						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
 						postureDataContainer.ExistsP(mfaPath)
 						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
@@ -715,7 +717,7 @@ func Test_MFA(t *testing.T) {
 
 				t.Run("by first authenticating", func(t *testing.T) {
 					var err error
-					newValidatedSession, err = mfaValidatedIdentity.Authenticate(ctx)
+					newValidatedSession, err = mfaValidatedIdentity.AuthenticateClientApi(ctx)
 					ctx.Req.NoError(err)
 				})
 
@@ -812,7 +814,7 @@ func Test_MFA(t *testing.T) {
 
 					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 						ctx.testContextChanged(t)
-						postureDataContainer := ctx.AdminSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data",newValidatedSession.identityId))
+						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", newValidatedSession.identityId))
 						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
 						postureDataContainer.ExistsP(mfaPath)
 						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
@@ -826,7 +828,7 @@ func Test_MFA(t *testing.T) {
 			t.Run("admin identity endpoint", func(t *testing.T) {
 				t.Run("get MFA should have isMfaEnabled flag set to true", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					resp, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfaValidatedIdentityId))
+					resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfaValidatedIdentityId))
 
 					ctx.Req.NoError(err)
 
@@ -862,8 +864,8 @@ func Test_MFA(t *testing.T) {
 		t.Run("setup", func(t *testing.T) {
 			t.Run("by first authenticating", func(t *testing.T) {
 				var err error
-				mfa01DeleteIdentityId, mfa01Delete = ctx.AdminSession.requireCreateIdentityOttEnrollment(mfa01DeleteName, false)
-				mfa01DeleteSession, err = mfa01Delete.Authenticate(ctx)
+				mfa01DeleteIdentityId, mfa01Delete = ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(mfa01DeleteName, false)
+				mfa01DeleteSession, err = mfa01Delete.AuthenticateClientApi(ctx)
 				ctx.Req.NotEmpty(mfa01DeleteIdentityId)
 				ctx.Req.NoError(err)
 			})
@@ -935,8 +937,8 @@ func Test_MFA(t *testing.T) {
 		t.Run("by a non-admin it should fail", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			_, nonAdmin := ctx.AdminSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
-			nonAdminSession, err := nonAdmin.Authenticate(ctx)
+			_, nonAdmin := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(uuid.New().String(), false)
+			nonAdminSession, err := nonAdmin.AuthenticateManagementApi(ctx)
 
 			ctx.Req.NoError(err)
 
@@ -949,14 +951,14 @@ func Test_MFA(t *testing.T) {
 		t.Run("by an admin it should succeed", func(t *testing.T) {
 			ctx.testContextChanged(t)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().Delete("/identities/" + mfa01DeleteIdentityId + "/mfa")
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/identities/" + mfa01DeleteIdentityId + "/mfa")
 			ctx.Req.NoError(err)
 
 			standardJsonResponseTests(resp, http.StatusOK, t)
 
 			t.Run("mfaEnabled flag should be false", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfa01DeleteIdentityId))
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get(fmt.Sprintf("/identities/%s", mfa01DeleteIdentityId))
 
 				ctx.Req.NoError(err)
 
@@ -988,8 +990,8 @@ func Test_MFA(t *testing.T) {
 		t.Run("setup", func(t *testing.T) {
 			t.Run("by first authenticating", func(t *testing.T) {
 				var err error
-				mfa02DeleteIdentityId, mfa02Delete = ctx.AdminSession.requireCreateIdentityOttEnrollment(mfa02DeleteName, false)
-				mfa02DeleteSession, err = mfa02Delete.Authenticate(ctx)
+				mfa02DeleteIdentityId, mfa02Delete = ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(mfa02DeleteName, false)
+				mfa02DeleteSession, err = mfa02Delete.AuthenticateClientApi(ctx)
 				ctx.Req.NotEmpty(mfa02DeleteIdentityId)
 				ctx.Req.NoError(err)
 			})
@@ -1096,7 +1098,7 @@ func computeMFACode(secret string) string {
 }
 
 type mfaCode struct {
-	Code string `json: "code"`
+	Code string `json:"code"`
 }
 
 func newMfaCodeBody(code string) []byte {

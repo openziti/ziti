@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckDomainCreate posture check domain create
 //
-// swagger:model PostureCheckDomainCreate
+// swagger:model postureCheckDomainCreate
 type PostureCheckDomainCreate struct {
 	nameField *string
 
@@ -249,11 +250,13 @@ func (m *PostureCheckDomainCreate) validateTags(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -268,6 +271,60 @@ func (m *PostureCheckDomainCreate) validateDomains(formats strfmt.Registry) erro
 	iDomainsSize := int64(len(m.Domains))
 
 	if err := validate.MinItems("domains", "body", iDomainsSize, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check domain create based on the context it is used
+func (m *PostureCheckDomainCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckDomainCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
 		return err
 	}
 

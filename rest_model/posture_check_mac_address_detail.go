@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckMacAddressDetail posture check mac address detail
 //
-// swagger:model PostureCheckMacAddressDetail
+// swagger:model postureCheckMacAddressDetail
 type PostureCheckMacAddressDetail struct {
 	linksField Links
 
@@ -343,11 +344,13 @@ func (m *PostureCheckMacAddressDetail) validateLinks(formats strfmt.Registry) er
 		return err
 	}
 
-	if err := m.Links().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("_links")
+	if m.Links() != nil {
+		if err := m.Links().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("_links")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -406,11 +409,13 @@ func (m *PostureCheckMacAddressDetail) validateTags(formats strfmt.Registry) err
 		return err
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -447,6 +452,64 @@ func (m *PostureCheckMacAddressDetail) validateMacAddresses(formats strfmt.Regis
 	iMacAddressesSize := int64(len(m.MacAddresses))
 
 	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check mac address detail based on the context it is used
+func (m *PostureCheckMacAddressDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateLinks(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckMacAddressDetail) contextValidateLinks(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Links().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("_links")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressDetail) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
 		return err
 	}
 

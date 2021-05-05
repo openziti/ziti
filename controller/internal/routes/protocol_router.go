@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_client_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/informational"
 )
 
 func init() {
@@ -41,7 +41,7 @@ func NewProtocolRouter() *ProtocolRouter {
 }
 
 func (router *ProtocolRouter) Register(ae *env.AppEnv) {
-	ae.Api.InformationalListProtocolsHandler = informational.ListProtocolsHandlerFunc(func(params informational.ListProtocolsParams) middleware.Responder {
+	ae.ClientApi.InformationalListProtocolsHandler = informational.ListProtocolsHandlerFunc(func(params informational.ListProtocolsParams) middleware.Responder {
 		return ae.IsAllowed(router.List, params.HTTPRequest, "", "", permissions.Always())
 	})
 }

@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -43,7 +45,7 @@ type OperatingSystem struct {
 
 	// type
 	// Required: true
-	Type OsType `json:"type"`
+	Type *OsType `json:"type"`
 
 	// versions
 	// Required: true
@@ -70,11 +72,21 @@ func (m *OperatingSystem) Validate(formats strfmt.Registry) error {
 
 func (m *OperatingSystem) validateType(formats strfmt.Registry) error {
 
-	if err := m.Type.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("type")
-		}
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
+	}
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -84,6 +96,34 @@ func (m *OperatingSystem) validateVersions(formats strfmt.Registry) error {
 
 	if err := validate.Required("versions", "body", m.Versions); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this operating system based on the context it is used
+func (m *OperatingSystem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *OperatingSystem) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
 	}
 
 	return nil

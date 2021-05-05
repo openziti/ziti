@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -50,7 +52,8 @@ type IdentityDetail struct {
 	Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 	// default hosting cost
-	DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
+	// Required: true
+	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost"`
 
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
@@ -127,7 +130,7 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
-		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
+		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost"`
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
@@ -216,7 +219,7 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
-		DefaultHostingCost TerminatorCost `json:"defaultHostingCost,omitempty"`
+		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost"`
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
@@ -386,11 +389,13 @@ func (m *IdentityDetail) validateAppData(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if err := m.AppData.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -416,15 +421,21 @@ func (m *IdentityDetail) validateAuthenticators(formats strfmt.Registry) error {
 
 func (m *IdentityDetail) validateDefaultHostingCost(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.DefaultHostingCost) { // not required
-		return nil
+	if err := validate.Required("defaultHostingCost", "body", m.DefaultHostingCost); err != nil {
+		return err
 	}
 
-	if err := m.DefaultHostingCost.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("defaultHostingCost")
-		}
+	if err := validate.Required("defaultHostingCost", "body", m.DefaultHostingCost); err != nil {
 		return err
+	}
+
+	if m.DefaultHostingCost != nil {
+		if err := m.DefaultHostingCost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("defaultHostingCost")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -572,11 +583,17 @@ func (m *IdentityDetail) validateSdkInfo(formats strfmt.Registry) error {
 
 func (m *IdentityDetail) validateServiceHostingCosts(formats strfmt.Registry) error {
 
-	if err := m.ServiceHostingCosts.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("serviceHostingCosts")
-		}
+	if err := validate.Required("serviceHostingCosts", "body", m.ServiceHostingCosts); err != nil {
 		return err
+	}
+
+	if m.ServiceHostingCosts != nil {
+		if err := m.ServiceHostingCosts.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("serviceHostingCosts")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -584,11 +601,17 @@ func (m *IdentityDetail) validateServiceHostingCosts(formats strfmt.Registry) er
 
 func (m *IdentityDetail) validateServiceHostingPrecedences(formats strfmt.Registry) error {
 
-	if err := m.ServiceHostingPrecedences.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("serviceHostingPrecedences")
-		}
+	if err := validate.Required("serviceHostingPrecedences", "body", m.ServiceHostingPrecedences); err != nil {
 		return err
+	}
+
+	if m.ServiceHostingPrecedences != nil {
+		if err := m.ServiceHostingPrecedences.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("serviceHostingPrecedences")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -616,6 +639,209 @@ func (m *IdentityDetail) validateTypeID(formats strfmt.Registry) error {
 
 	if err := validate.Required("typeId", "body", m.TypeID); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this identity detail based on the context it is used
+func (m *IdentityDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateAppData(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateAuthenticators(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateDefaultHostingCost(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateDefaultHostingPrecedence(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEnrollment(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEnvInfo(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSdkInfo(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceHostingCosts(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceHostingPrecedences(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("appData")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateAuthenticators(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Authenticators != nil {
+		if err := m.Authenticators.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("authenticators")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateDefaultHostingCost(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.DefaultHostingCost != nil {
+		if err := m.DefaultHostingCost.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("defaultHostingCost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateDefaultHostingPrecedence(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.DefaultHostingPrecedence.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("defaultHostingPrecedence")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateEnrollment(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Enrollment != nil {
+		if err := m.Enrollment.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("enrollment")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateEnvInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.EnvInfo != nil {
+		if err := m.EnvInfo.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("envInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateSdkInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.SdkInfo != nil {
+		if err := m.SdkInfo.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("sdkInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateServiceHostingCosts(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceHostingCosts.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingCosts")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateServiceHostingPrecedences(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceHostingPrecedences.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceHostingPrecedences")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
 	}
 
 	return nil

@@ -61,8 +61,12 @@ func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.L
 	return links
 }
 
-func getDefaultHostingCost(v rest_model.TerminatorCost) uint16 {
-	return uint16(v)
+func getDefaultHostingCost(v *rest_model.TerminatorCost) uint16 {
+	if v == nil {
+		return 0
+	}
+
+	return uint16(*v)
 }
 
 func getServiceHostingPrecedences(v rest_model.TerminatorPrecedenceMap) map[string]ziti.Precedence {
@@ -81,18 +85,19 @@ func getRestServiceHostingPrecedences(v map[string]ziti.Precedence) rest_model.T
 	return result
 }
 
-func getServiceHostingCosts(v rest_model.TerminatorCostMap) map[string]uint16 {
+func getServiceHostingCosts(costMap rest_model.TerminatorCostMap) map[string]uint16 {
 	result := map[string]uint16{}
-	for k, v := range v {
-		result[k] = uint16(v)
+	for key, cost := range costMap {
+		result[key] = uint16(*cost)
 	}
 	return result
 }
 
-func getRestServiceHostingCosts(v map[string]uint16) rest_model.TerminatorCostMap {
+func getRestServiceHostingCosts(costMap map[string]uint16) rest_model.TerminatorCostMap {
 	result := rest_model.TerminatorCostMap{}
-	for k, v := range v {
-		result[k] = rest_model.TerminatorCost(v)
+	for key, cost := range costMap {
+		val := rest_model.TerminatorCost(cost)
+		result[key] = &val
 	}
 	return result
 }
@@ -224,6 +229,8 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		pfxlog.Logger().Errorf("error attempting to determine identity id's [%s] API session existence: %v", identity.Id, err)
 	}
 
+	cost := rest_model.TerminatorCost(identity.DefaultHostingCost)
+
 	ret := &rest_model.IdentityDetail{
 		BaseEntity:                BaseEntityToRestModel(identity, IdentityLinkFactory),
 		IsAdmin:                   &identity.IsAdmin,
@@ -235,7 +242,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		HasEdgeRouterConnection:   &identity.HasHeartbeat,
 		HasAPISession:             &hasApiSession,
 		DefaultHostingPrecedence:  rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
-		DefaultHostingCost:        rest_model.TerminatorCost(identity.DefaultHostingCost),
+		DefaultHostingCost:        &cost,
 		ServiceHostingPrecedences: getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getRestServiceHostingCosts(identity.ServiceHostingCosts),
 		IsMfaEnabled:              &isMfaEnabled,

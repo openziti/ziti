@@ -52,10 +52,10 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidPassword(t *testing.T) {
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 	_, _ = body.SetP("invalid_password", "password")
 
-	resp, err := tests.ctx.DefaultClient().R().
+	resp, err := tests.ctx.DefaultClientApiClient().R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	t.Run("should not have returned an error", func(t *testing.T) {
 		require.New(t).NoError(err)
@@ -73,10 +73,10 @@ func (tests *authUpdbTests) testAuthenticateUpdbInvalidUsername(t *testing.T) {
 	_, _ = body.SetP("weeewoooweeewooo123", "username")
 	_, _ = body.SetP("admin", "password")
 
-	resp, err := tests.ctx.DefaultClient().R().
+	resp, err := tests.ctx.DefaultClientApiClient().R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	t.Run("should not have returned an error", func(t *testing.T) {
 		require.New(t).NoError(err)
@@ -93,10 +93,10 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingPassword(t *testing.T) {
 	body := gabs.New()
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 
-	resp, err := tests.ctx.DefaultClient().R().
+	resp, err := tests.ctx.DefaultClientApiClient().R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	t.Run("should not have returned an error", func(t *testing.T) {
 		require.New(t).NoError(err)
@@ -113,10 +113,10 @@ func (tests *authUpdbTests) testAuthenticateUPDBMissingUsername(t *testing.T) {
 	body := gabs.New()
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
-	resp, err := tests.ctx.DefaultClient().R().
+	resp, err := tests.ctx.DefaultClientApiClient().R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	if err != nil {
 		t.Errorf("failed to authenticate via UPDB as default admin: %s", err)
@@ -138,10 +138,10 @@ func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Username, "username")
 	_, _ = body.SetP(tests.ctx.AdminAuthenticator.Password, "password")
 
-	resp, err := tests.ctx.DefaultClient().R().
+	resp, err := tests.ctx.DefaultClientApiClient().R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
-		Post("/authenticate?method=password")
+		Post("authenticate?method=password")
 
 	t.Run("should not have returned an error", func(t *testing.T) {
 		require.New(t).NoError(err)

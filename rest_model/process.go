@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -46,7 +48,7 @@ type Process struct {
 
 	// os type
 	// Required: true
-	OsType OsType `json:"osType"`
+	OsType *OsType `json:"osType"`
 
 	// path
 	// Required: true
@@ -76,11 +78,21 @@ func (m *Process) Validate(formats strfmt.Registry) error {
 
 func (m *Process) validateOsType(formats strfmt.Registry) error {
 
-	if err := m.OsType.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("osType")
-		}
+	if err := validate.Required("osType", "body", m.OsType); err != nil {
 		return err
+	}
+
+	if err := validate.Required("osType", "body", m.OsType); err != nil {
+		return err
+	}
+
+	if m.OsType != nil {
+		if err := m.OsType.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("osType")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -90,6 +102,34 @@ func (m *Process) validatePath(formats strfmt.Registry) error {
 
 	if err := validate.Required("path", "body", m.Path); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this process based on the context it is used
+func (m *Process) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateOsType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Process) contextValidateOsType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.OsType != nil {
+		if err := m.OsType.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("osType")
+			}
+			return err
+		}
 	}
 
 	return nil

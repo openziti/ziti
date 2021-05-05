@@ -28,7 +28,7 @@ type SessionRequestResponder struct {
 	ae *env.AppEnv
 }
 
-func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, link rest_model.Link) {
+func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, _ rest_model.Link) {
 	modelSession, err := nsr.ae.GetHandlers().Session.Read(id)
 	if err != nil {
 		nsr.RespondWithError(err)

@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -364,6 +366,55 @@ func (m *APISessionDetail) validateToken(formats strfmt.Registry) error {
 
 	if err := validate.Required("token", "body", m.Token); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this api session detail based on the context it is used
+func (m *APISessionDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateAuthQueries(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentity(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *APISessionDetail) contextValidateAuthQueries(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.AuthQueries.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("authQueries")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) contextValidateIdentity(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Identity != nil {
+		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("identity")
+			}
+			return err
+		}
 	}
 
 	return nil

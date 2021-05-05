@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strconv"
 
@@ -42,7 +43,7 @@ import (
 
 // PostureCheckProcessMultiUpdate posture check process multi update
 //
-// swagger:model PostureCheckProcessMultiUpdate
+// swagger:model postureCheckProcessMultiUpdate
 type PostureCheckProcessMultiUpdate struct {
 	nameField *string
 
@@ -57,7 +58,7 @@ type PostureCheckProcessMultiUpdate struct {
 
 	// semantic
 	// Required: true
-	Semantic Semantic `json:"semantic"`
+	Semantic *Semantic `json:"semantic"`
 }
 
 // Name gets the name of this subtype
@@ -110,7 +111,7 @@ func (m *PostureCheckProcessMultiUpdate) UnmarshalJSON(raw []byte) error {
 
 		// semantic
 		// Required: true
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -173,7 +174,7 @@ func (m PostureCheckProcessMultiUpdate) MarshalJSON() ([]byte, error) {
 
 		// semantic
 		// Required: true
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}{
 
 		Processes: m.Processes,
@@ -269,11 +270,13 @@ func (m *PostureCheckProcessMultiUpdate) validateTags(formats strfmt.Registry) e
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -312,11 +315,115 @@ func (m *PostureCheckProcessMultiUpdate) validateProcesses(formats strfmt.Regist
 
 func (m *PostureCheckProcessMultiUpdate) validateSemantic(formats strfmt.Registry) error {
 
-	if err := m.Semantic.Validate(formats); err != nil {
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check process multi update based on the context it is used
+func (m *PostureCheckProcessMultiUpdate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateProcesses(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckProcessMultiUpdate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
+			return ve.ValidateName("roleAttributes")
 		}
 		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessMultiUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessMultiUpdate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessMultiUpdate) contextValidateProcesses(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Processes); i++ {
+
+		if m.Processes[i] != nil {
+			if err := m.Processes[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessMultiUpdate) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil

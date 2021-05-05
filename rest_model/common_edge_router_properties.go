@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -100,16 +102,17 @@ func (m *CommonEdgeRouterProperties) Validate(formats strfmt.Registry) error {
 }
 
 func (m *CommonEdgeRouterProperties) validateAppData(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.AppData) { // not required
 		return nil
 	}
 
-	if err := m.AppData.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -144,12 +147,42 @@ func (m *CommonEdgeRouterProperties) validateName(formats strfmt.Registry) error
 
 func (m *CommonEdgeRouterProperties) validateSupportedProtocols(formats strfmt.Registry) error {
 
+	if err := validate.Required("supportedProtocols", "body", m.SupportedProtocols); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (m *CommonEdgeRouterProperties) validateSyncStatus(formats strfmt.Registry) error {
 
 	if err := validate.Required("syncStatus", "body", m.SyncStatus); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this common edge router properties based on the context it is used
+func (m *CommonEdgeRouterProperties) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateAppData(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *CommonEdgeRouterProperties) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("appData")
+		}
 		return err
 	}
 

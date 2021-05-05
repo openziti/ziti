@@ -40,7 +40,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("ca auto enrollment", func(t *testing.T) {
 
@@ -48,10 +48,10 @@ func Test_IdentityEnrollment(t *testing.T) {
 			testCa := newTestCa()
 			ctx.testContextChanged(t)
 
-			testCaId := ctx.AdminSession.requireCreateEntity(testCa)
+			testCaId := ctx.AdminManagementSession.requireCreateEntity(testCa)
 			ctx.Req.NotEmpty(testCaId)
 
-			caContainer := ctx.AdminSession.requireQuery("cas/" + testCaId)
+			caContainer := ctx.AdminManagementSession.requireQuery("cas/" + testCaId)
 			ctx.Req.NotEmpty(caContainer)
 
 			token := caContainer.Path("data.verificationToken").Data().(string)
@@ -66,7 +66,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 			}
 			verifyPem := pem.EncodeToMemory(verificationBlock)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + testCaId + "/verify")
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + testCaId + "/verify")
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
 
@@ -75,7 +75,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.Req.NoError(err)
 
-				restClient, _, transport := ctx.NewClientComponents()
+				restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
 				transport.TLSClientConfig.Certificates = []tls.Certificate{
 					{
 						Certificate: [][]byte{cert.Raw},
@@ -103,7 +103,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.Req.NoError(err)
 
-				restClient, _, transport := ctx.NewClientComponents()
+				restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
 				transport.TLSClientConfig.Certificates = []tls.Certificate{
 					{
 						Certificate: [][]byte{cert.Raw},
@@ -133,7 +133,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 					cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 					ctx.Req.NoError(err)
 
-					restClient, _, transport := ctx.NewClientComponents()
+					restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
 					transport.TLSClientConfig.Certificates = []tls.Certificate{
 						{
 							Certificate: [][]byte{cert.Raw},

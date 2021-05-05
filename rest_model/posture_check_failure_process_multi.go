@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strconv"
 
@@ -58,7 +59,7 @@ type PostureCheckFailureProcessMulti struct {
 
 	// semantic
 	// Required: true
-	Semantic Semantic `json:"semantic"`
+	Semantic *Semantic `json:"semantic"`
 }
 
 // PostureCheckID gets the posture check Id of this subtype
@@ -104,7 +105,7 @@ func (m *PostureCheckFailureProcessMulti) UnmarshalJSON(raw []byte) error {
 
 		// semantic
 		// Required: true
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -167,7 +168,7 @@ func (m PostureCheckFailureProcessMulti) MarshalJSON() ([]byte, error) {
 
 		// semantic
 		// Required: true
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}{
 
 		ActualValue: m.ActualValue,
@@ -300,11 +301,93 @@ func (m *PostureCheckFailureProcessMulti) validateExpectedValue(formats strfmt.R
 
 func (m *PostureCheckFailureProcessMulti) validateSemantic(formats strfmt.Registry) error {
 
-	if err := m.Semantic.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
-		}
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
 		return err
+	}
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check failure process multi based on the context it is used
+func (m *PostureCheckFailureProcessMulti) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateActualValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateExpectedValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckFailureProcessMulti) contextValidateActualValue(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.ActualValue); i++ {
+
+		if m.ActualValue[i] != nil {
+			if err := m.ActualValue[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("actualValue" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PostureCheckFailureProcessMulti) contextValidateExpectedValue(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.ExpectedValue); i++ {
+
+		if m.ExpectedValue[i] != nil {
+			if err := m.ExpectedValue[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("expectedValue" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PostureCheckFailureProcessMulti) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil

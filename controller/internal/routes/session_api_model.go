@@ -100,6 +100,8 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 		return nil, err
 	}
 
+	dialBindType := rest_model.DialBind(sessionModel.Type)
+
 	ret := &rest_model.SessionDetail{
 		BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
 		APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
@@ -107,7 +109,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 		Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
 		ServiceID:    &service.Id,
 		EdgeRouters:  edgeRouters,
-		Type:         rest_model.DialBind(sessionModel.Type),
+		Type:         &dialBindType,
 		Token:        &sessionModel.Token,
 	}
 

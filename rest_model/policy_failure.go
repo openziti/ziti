@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"strconv"
@@ -151,7 +152,6 @@ func (m *PolicyFailure) Validate(formats strfmt.Registry) error {
 }
 
 func (m *PolicyFailure) validateChecks(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Checks()) { // not required
 		return nil
 	}
@@ -159,6 +159,36 @@ func (m *PolicyFailure) validateChecks(formats strfmt.Registry) error {
 	for i := 0; i < len(m.Checks()); i++ {
 
 		if err := m.checksField[i].Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("checks" + "." + strconv.Itoa(i))
+			}
+			return err
+		}
+
+	}
+
+	return nil
+}
+
+// ContextValidate validate this policy failure based on the context it is used
+func (m *PolicyFailure) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateChecks(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PolicyFailure) contextValidateChecks(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Checks()); i++ {
+
+		if err := m.checksField[i].ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("checks" + "." + strconv.Itoa(i))
 			}

@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,24 +42,20 @@ import (
 
 // PostureResponseProcessCreate posture response process create
 //
-// swagger:model PostureResponseProcessCreate
+// swagger:model postureResponseProcessCreate
 type PostureResponseProcessCreate struct {
 	idField *string
 
 	// hash
-	// Required: true
-	Hash *string `json:"hash"`
+	Hash string `json:"hash,omitempty"`
 
 	// is running
-	// Required: true
-	IsRunning *bool `json:"isRunning"`
+	IsRunning bool `json:"isRunning,omitempty"`
 
 	// path
-	// Required: true
-	Path *string `json:"path"`
+	Path string `json:"path,omitempty"`
 
 	// signer fingerprints
-	// Required: true
 	SignerFingerprints []string `json:"signerFingerprints"`
 }
 
@@ -86,19 +83,15 @@ func (m *PostureResponseProcessCreate) UnmarshalJSON(raw []byte) error {
 	var data struct {
 
 		// hash
-		// Required: true
-		Hash *string `json:"hash"`
+		Hash string `json:"hash,omitempty"`
 
 		// is running
-		// Required: true
-		IsRunning *bool `json:"isRunning"`
+		IsRunning bool `json:"isRunning,omitempty"`
 
 		// path
-		// Required: true
-		Path *string `json:"path"`
+		Path string `json:"path,omitempty"`
 
 		// signer fingerprints
-		// Required: true
 		SignerFingerprints []string `json:"signerFingerprints"`
 	}
 	buf := bytes.NewBuffer(raw)
@@ -150,19 +143,15 @@ func (m PostureResponseProcessCreate) MarshalJSON() ([]byte, error) {
 	b1, err = json.Marshal(struct {
 
 		// hash
-		// Required: true
-		Hash *string `json:"hash"`
+		Hash string `json:"hash,omitempty"`
 
 		// is running
-		// Required: true
-		IsRunning *bool `json:"isRunning"`
+		IsRunning bool `json:"isRunning,omitempty"`
 
 		// path
-		// Required: true
-		Path *string `json:"path"`
+		Path string `json:"path,omitempty"`
 
 		// signer fingerprints
-		// Required: true
 		SignerFingerprints []string `json:"signerFingerprints"`
 	}{
 
@@ -202,22 +191,6 @@ func (m *PostureResponseProcessCreate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateHash(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateIsRunning(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validatePath(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateSignerFingerprints(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -233,36 +206,22 @@ func (m *PostureResponseProcessCreate) validateID(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *PostureResponseProcessCreate) validateHash(formats strfmt.Registry) error {
+// ContextValidate validate this posture response process create based on the context it is used
+func (m *PostureResponseProcessCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
 
-	if err := validate.Required("hash", "body", m.Hash); err != nil {
-		return err
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
 	}
-
 	return nil
 }
 
-func (m *PostureResponseProcessCreate) validateIsRunning(formats strfmt.Registry) error {
+func (m *PostureResponseProcessCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.Required("isRunning", "body", m.IsRunning); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureResponseProcessCreate) validatePath(formats strfmt.Registry) error {
-
-	if err := validate.Required("path", "body", m.Path); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *PostureResponseProcessCreate) validateSignerFingerprints(formats strfmt.Registry) error {
-
-	if err := validate.Required("signerFingerprints", "body", m.SignerFingerprints); err != nil {
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
 		return err
 	}
 

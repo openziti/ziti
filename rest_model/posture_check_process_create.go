@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckProcessCreate posture check process create
 //
-// swagger:model PostureCheckProcessCreate
+// swagger:model postureCheckProcessCreate
 type PostureCheckProcessCreate struct {
 	nameField *string
 
@@ -246,11 +247,13 @@ func (m *PostureCheckProcessCreate) validateTags(formats strfmt.Registry) error 
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -264,6 +267,78 @@ func (m *PostureCheckProcessCreate) validateProcess(formats strfmt.Registry) err
 
 	if m.Process != nil {
 		if err := m.Process.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("process")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check process create based on the context it is used
+func (m *PostureCheckProcessCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateProcess(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckProcessCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckProcessCreate) contextValidateProcess(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Process != nil {
+		if err := m.Process.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("process")
 			}

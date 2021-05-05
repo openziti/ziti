@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -104,7 +105,6 @@ func (m *PostureQueries) validatePolicyID(formats strfmt.Registry) error {
 }
 
 func (m *PostureQueries) validatePolicyType(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.PolicyType) { // not required
 		return nil
 	}
@@ -132,6 +132,54 @@ func (m *PostureQueries) validatePostureQueries(formats strfmt.Registry) error {
 
 		if m.PostureQueries[i] != nil {
 			if err := m.PostureQueries[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("postureQueries" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture queries based on the context it is used
+func (m *PostureQueries) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidatePolicyType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePostureQueries(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureQueries) contextValidatePolicyType(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.PolicyType.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("policyType")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureQueries) contextValidatePostureQueries(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.PostureQueries); i++ {
+
+		if m.PostureQueries[i] != nil {
+			if err := m.PostureQueries[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("postureQueries" + "." + strconv.Itoa(i))
 				}

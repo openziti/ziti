@@ -30,9 +30,9 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	cert2 "github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/rest_client_api_server/operations/enroll"
+	"github.com/openziti/edge/rest_client_api_server/operations/well_known"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/enroll"
-	"github.com/openziti/edge/rest_server/operations/well_known"
 	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"strings"
@@ -53,36 +53,35 @@ func NewEnrollRouter() *EnrollRouter {
 func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 
 	//Enroll
-
-	ae.Api.EnrollEnrollHandler = enroll.EnrollHandlerFunc(func(params enroll.EnrollParams) middleware.Responder {
+	ae.ClientApi.EnrollEnrollHandler = enroll.EnrollHandlerFunc(func(params enroll.EnrollParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.EnrollEnrollCaHandler = enroll.EnrollCaHandlerFunc(func(params enroll.EnrollCaParams) middleware.Responder {
+	ae.ClientApi.EnrollEnrollCaHandler = enroll.EnrollCaHandlerFunc(func(params enroll.EnrollCaParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.EnrollEnrollOttCaHandler = enroll.EnrollOttCaHandlerFunc(func(params enroll.EnrollOttCaParams) middleware.Responder {
+	ae.ClientApi.EnrollEnrollOttCaHandler = enroll.EnrollOttCaHandlerFunc(func(params enroll.EnrollOttCaParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.EnrollEnrollOttHandler = enroll.EnrollOttHandlerFunc(func(params enroll.EnrollOttParams) middleware.Responder {
+	ae.ClientApi.EnrollEnrollOttHandler = enroll.EnrollOttHandlerFunc(func(params enroll.EnrollOttParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
-	ae.Api.EnrollEnrollErOttHandler = enroll.EnrollErOttHandlerFunc(func(params enroll.EnrollErOttParams) middleware.Responder {
+	ae.ClientApi.EnrollEnrollErOttHandler = enroll.EnrollErOttHandlerFunc(func(params enroll.EnrollErOttParams) middleware.Responder {
 		return ae.IsAllowed(ro.enrollHandler, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	// Extend Enrollment
-	ae.Api.EnrollExtendRouterEnrollmentHandler = enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
+	ae.ClientApi.EnrollExtendRouterEnrollmentHandler = enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			ro.extendRouterEnrollment(ae, rc, params)
 		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	// Utility, well-known
-	ae.Api.WellKnownListWellKnownCasHandler = well_known.ListWellKnownCasHandlerFunc(func(params well_known.ListWellKnownCasParams) middleware.Responder {
+	ae.ClientApi.WellKnownListWellKnownCasHandler = well_known.ListWellKnownCasHandlerFunc(func(params well_known.ListWellKnownCasParams) middleware.Responder {
 		return ae.IsAllowed(ro.getCaCerts, params.HTTPRequest, "", "", permissions.Always())
 	})
 }

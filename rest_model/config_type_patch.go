@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -41,6 +43,7 @@ import (
 type ConfigTypePatch struct {
 
 	// name
+	// Example: ziti-tunneler-server.v1
 	Name string `json:"name,omitempty"`
 
 	// A JSON schema to enforce configuration against
@@ -65,12 +68,39 @@ func (m *ConfigTypePatch) Validate(formats strfmt.Registry) error {
 }
 
 func (m *ConfigTypePatch) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this config type patch based on the context it is used
+func (m *ConfigTypePatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ConfigTypePatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

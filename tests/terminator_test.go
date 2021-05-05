@@ -24,14 +24,14 @@ func Test_Terminators(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.requireNewService(nil, nil)
+	service := ctx.AdminManagementSession.requireNewService(nil, nil)
 	edgeRouter := ctx.createAndEnrollEdgeRouter(false)
-	terminator := ctx.AdminSession.requireNewTerminator(service.Id, edgeRouter.id, "transport", "tcp:localhost:2020")
+	terminator := ctx.AdminManagementSession.requireNewTerminator(service.Id, edgeRouter.id, "transport", "tcp:localhost:2020")
 	ctx.Req.NotEmpty(terminator.id)
 
-	ctx.AdminSession.validateEntityWithQuery(terminator)
-	ctx.AdminSession.validateEntityWithLookup(terminator)
-	ctx.AdminSession.validateAssociations(service, terminator.getEntityType(), terminator)
+	ctx.AdminManagementSession.validateEntityWithQuery(terminator)
+	ctx.AdminManagementSession.validateEntityWithLookup(terminator)
+	ctx.AdminManagementSession.validateAssociations(service, terminator.getEntityType(), terminator)
 }

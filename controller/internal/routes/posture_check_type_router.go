@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_server/operations/posture_checks"
+	"github.com/openziti/edge/rest_management_api_server/operations/posture_checks"
 )
 
 func init() {
@@ -41,11 +41,11 @@ func NewPostureCheckTypeRouter() *PostureCheckTypeRouter {
 
 func (r *PostureCheckTypeRouter) Register(ae *env.AppEnv) {
 
-	ae.Api.PostureChecksDetailPostureCheckTypeHandler = posture_checks.DetailPostureCheckTypeHandlerFunc(func(params posture_checks.DetailPostureCheckTypeParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.PostureChecksDetailPostureCheckTypeHandler = posture_checks.DetailPostureCheckTypeHandlerFunc(func(params posture_checks.DetailPostureCheckTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.Api.PostureChecksListPostureCheckTypesHandler = posture_checks.ListPostureCheckTypesHandlerFunc(func(params posture_checks.ListPostureCheckTypesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.PostureChecksListPostureCheckTypesHandler = posture_checks.ListPostureCheckTypesHandlerFunc(func(params posture_checks.ListPostureCheckTypesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 

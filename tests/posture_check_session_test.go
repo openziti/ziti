@@ -30,7 +30,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	dialIdentityRole := eid.New()
 	hostIdentityRole := eid.New()
@@ -38,20 +38,20 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 	postureCheckRole := eid.New()
 	dialDomain := "dial.example.com"
 
-	_ = ctx.AdminSession.requireNewPostureCheckDomain(s(dialDomain), s(postureCheckRole))
+	_ = ctx.AdminManagementSession.requireNewPostureCheckDomain(s(dialDomain), s(postureCheckRole))
 
-	ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
-	ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
 
-	service := ctx.AdminSession.testContext.newService(s(serviceRole), nil)
+	service := ctx.AdminManagementSession.testContext.newService(s(serviceRole), nil)
 	service.terminatorStrategy = xt_smartrouting.Name
-	ctx.AdminSession.requireCreateEntity(service)
+	ctx.AdminManagementSession.requireCreateEntity(service)
 
-	ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), s("#"+postureCheckRole))
-	ctx.AdminSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+hostIdentityRole), nil)
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), s("#"+postureCheckRole))
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+hostIdentityRole), nil)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
-	_, hostContext := ctx.AdminSession.RequireCreateSdkContext(hostIdentityRole)
+	_, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext(hostIdentityRole)
 	defer hostContext.Close()
 
 	listener, err := hostContext.Listen(service.Name)
@@ -83,7 +83,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 
 		t.Run("can be created", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			_, ztx := ctx.AdminSession.RequireCreateSdkContext(dialIdentityRole)
+			_, ztx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
 			clientContext = &ziti.ContextImplTest{
 				Context: ztx,
 			}
@@ -121,7 +121,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				currentPostureDomain = "invalid"
-				postureCache.SendPostureData()
+				postureCache.Evaluate()
 
 				lastReadCount := 0
 				var lastReadErr error

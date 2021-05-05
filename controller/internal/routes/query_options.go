@@ -26,12 +26,9 @@ import (
 
 const (
 	LimitMax      = 500
-	OffsetMax     = 100000
-	LimitDefault  = 10
-	OffsetDefault = 0
 )
 
-// Represents external query options, which limits some query options (i.e. return all vs max limit). PublicQueryOptions
+// PublicQueryOptions represents external query options, which limits some query options (i.e. return all vs max limit). PublicQueryOptions
 // can be used internally as long as the public option limitations are fitting.
 type PublicQueryOptions struct {
 	Predicate string

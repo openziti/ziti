@@ -29,39 +29,39 @@ func TestEdgeRouterIdentities(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	edgeRouter1 := ctx.AdminSession.requireNewTunnelerEnabledEdgeRouter()
+	edgeRouter1 := ctx.AdminManagementSession.requireNewTunnelerEnabledEdgeRouter()
 
 	// identity should have been created
-	identities := ctx.AdminSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
+	identities := ctx.AdminManagementSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
 	ctx.Req.Equal(1, len(identities))
 
 	identity1 := identities[0]
 	ctx.Req.Equal(edgeRouter1.name, identity1.name)
 
-	resp := ctx.AdminSession.deleteEntityOfType("identities", identity1.Id)
+	resp := ctx.AdminManagementSession.deleteEntityOfType("identities", identity1.Id)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
 
 	identity1.name = edgeRouter1.name
 	identity1.roleAttributes = []string{"test", "hello"}
-	ctx.AdminSession.requireUpdateEntity(identity1)
-	ctx.AdminSession.validateEntityWithLookup(identity1)
+	ctx.AdminManagementSession.requireUpdateEntity(identity1)
+	ctx.AdminManagementSession.validateEntityWithLookup(identity1)
 
 	identity1.name = edgeRouter1.name
 	identity1.roleAttributes = []string{"foo", "bar"}
-	ctx.AdminSession.requirePatchEntity(identity1, "roleAttributes")
-	ctx.AdminSession.validateEntityWithLookup(identity1)
+	ctx.AdminManagementSession.requirePatchEntity(identity1, "roleAttributes")
+	ctx.AdminManagementSession.validateEntityWithLookup(identity1)
 
 	identity1.name = uuid.NewString()
-	resp = ctx.AdminSession.patchEntity(identity1, "name")
+	resp = ctx.AdminManagementSession.patchEntity(identity1, "name")
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode()) // should not be allowed to change name
 
-	resp = ctx.AdminSession.updateEntity(identity1)
+	resp = ctx.AdminManagementSession.updateEntity(identity1)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode()) // should not be allowed to change name
 
 	// edge router policy should have been created
-	edgeRouterPolicies := ctx.AdminSession.listEdgeRouterPolicies("")
+	edgeRouterPolicies := ctx.AdminManagementSession.listEdgeRouterPolicies("")
 	ctx.Req.Equal(1, len(edgeRouterPolicies))
 
 	edgeRouterPolicy1 := edgeRouterPolicies[0]
@@ -71,62 +71,62 @@ func TestEdgeRouterIdentities(t *testing.T) {
 	ctx.Req.Equal(1, len(edgeRouterPolicy1.identityRoles))
 	ctx.Req.Equal("@"+identity1.Id, edgeRouterPolicy1.identityRoles[0])
 
-	resp = ctx.AdminSession.deleteEntityOfType("edge-router-policies", edgeRouterPolicy1.id)
+	resp = ctx.AdminManagementSession.deleteEntityOfType("edge-router-policies", edgeRouterPolicy1.id)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
 
 	// deleting edge router should remove all three entitie
-	ctx.AdminSession.requireDeleteEntity(edgeRouter1)
-	ctx.RequireNotFoundError(ctx.AdminSession.query("edge-routers/" + edgeRouter1.id))
-	ctx.RequireNotFoundError(ctx.AdminSession.query("identities/" + identity1.Id))
-	ctx.RequireNotFoundError(ctx.AdminSession.query("edge-router-policies/" + edgeRouterPolicy1.id))
+	ctx.AdminManagementSession.requireDeleteEntity(edgeRouter1)
+	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("edge-routers/" + edgeRouter1.id))
+	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("identities/" + identity1.Id))
+	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("edge-router-policies/" + edgeRouterPolicy1.id))
 }
 
 func TestEdgeRouterIdentitiesNotEnabled(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	edgeRouter1 := ctx.AdminSession.requireNewEdgeRouter()
+	edgeRouter1 := ctx.AdminManagementSession.requireNewEdgeRouter()
 
-	identities := ctx.AdminSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
+	identities := ctx.AdminManagementSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
 	ctx.Req.Equal(0, len(identities))
 
-	edgeRouterPolicies := ctx.AdminSession.listEdgeRouterPolicies("")
+	edgeRouterPolicies := ctx.AdminManagementSession.listEdgeRouterPolicies("")
 	ctx.Req.Equal(0, len(edgeRouterPolicies))
 
 	edgeRouter1.isTunnelerEnabled = true
-	ctx.AdminSession.requireUpdateEntity(edgeRouter1)
+	ctx.AdminManagementSession.requireUpdateEntity(edgeRouter1)
 
 	// identity should have been created
-	identities = ctx.AdminSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
+	identities = ctx.AdminManagementSession.listIdentities("filter=" + url.QueryEscape(`type="Router"`))
 	ctx.Req.Equal(1, len(identities))
 
 	identity1 := identities[0]
 	ctx.Req.Equal(edgeRouter1.name, identity1.name)
 
-	resp := ctx.AdminSession.deleteEntityOfType("identities", identity1.Id)
+	resp := ctx.AdminManagementSession.deleteEntityOfType("identities", identity1.Id)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
 
 	identity1.name = edgeRouter1.name
 	identity1.roleAttributes = []string{"test", "hello"}
-	ctx.AdminSession.requireUpdateEntity(identity1)
-	ctx.AdminSession.validateEntityWithLookup(identity1)
+	ctx.AdminManagementSession.requireUpdateEntity(identity1)
+	ctx.AdminManagementSession.validateEntityWithLookup(identity1)
 
 	identity1.name = edgeRouter1.name
 	identity1.roleAttributes = []string{"foo", "bar"}
-	ctx.AdminSession.requirePatchEntity(identity1, "roleAttributes")
-	ctx.AdminSession.validateEntityWithLookup(identity1)
+	ctx.AdminManagementSession.requirePatchEntity(identity1, "roleAttributes")
+	ctx.AdminManagementSession.validateEntityWithLookup(identity1)
 
 	identity1.name = uuid.NewString()
-	resp = ctx.AdminSession.patchEntity(identity1, "name")
+	resp = ctx.AdminManagementSession.patchEntity(identity1, "name")
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode()) // should not be allowed to change name
 
-	resp = ctx.AdminSession.updateEntity(identity1)
+	resp = ctx.AdminManagementSession.updateEntity(identity1)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode()) // should not be allowed to change name
 
 	// edge router policy should have been created
-	edgeRouterPolicies = ctx.AdminSession.listEdgeRouterPolicies("")
+	edgeRouterPolicies = ctx.AdminManagementSession.listEdgeRouterPolicies("")
 	ctx.Req.Equal(1, len(edgeRouterPolicies))
 
 	edgeRouterPolicy1 := edgeRouterPolicies[0]
@@ -137,9 +137,9 @@ func TestEdgeRouterIdentitiesNotEnabled(t *testing.T) {
 	ctx.Req.Equal("@"+identity1.Id, edgeRouterPolicy1.identityRoles[0])
 
 	edgeRouter1.isTunnelerEnabled = false
-	ctx.AdminSession.requireUpdateEntity(edgeRouter1)
+	ctx.AdminManagementSession.requireUpdateEntity(edgeRouter1)
 
 	// setting flag to false should remove associated entities
-	ctx.RequireNotFoundError(ctx.AdminSession.query("identities/" + identity1.Id))
-	ctx.RequireNotFoundError(ctx.AdminSession.query("edge-router-policies/" + edgeRouterPolicy1.id))
+	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("identities/" + identity1.Id))
+	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("edge-router-policies/" + edgeRouterPolicy1.id))
 }

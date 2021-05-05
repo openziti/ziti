@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -52,11 +54,11 @@ type TerminatorDetail struct {
 
 	// cost
 	// Required: true
-	Cost TerminatorCost `json:"cost"`
+	Cost *TerminatorCost `json:"cost"`
 
 	// dynamic cost
 	// Required: true
-	DynamicCost TerminatorCost `json:"dynamicCost"`
+	DynamicCost *TerminatorCost `json:"dynamicCost"`
 
 	// identity
 	// Required: true
@@ -64,7 +66,7 @@ type TerminatorDetail struct {
 
 	// precedence
 	// Required: true
-	Precedence TerminatorPrecedence `json:"precedence"`
+	Precedence *TerminatorPrecedence `json:"precedence"`
 
 	// router
 	// Required: true
@@ -98,13 +100,13 @@ func (m *TerminatorDetail) UnmarshalJSON(raw []byte) error {
 
 		Binding *string `json:"binding"`
 
-		Cost TerminatorCost `json:"cost"`
+		Cost *TerminatorCost `json:"cost"`
 
-		DynamicCost TerminatorCost `json:"dynamicCost"`
+		DynamicCost *TerminatorCost `json:"dynamicCost"`
 
 		Identity *string `json:"identity"`
 
-		Precedence TerminatorPrecedence `json:"precedence"`
+		Precedence *TerminatorPrecedence `json:"precedence"`
 
 		Router *EntityRef `json:"router"`
 
@@ -155,13 +157,13 @@ func (m TerminatorDetail) MarshalJSON() ([]byte, error) {
 
 		Binding *string `json:"binding"`
 
-		Cost TerminatorCost `json:"cost"`
+		Cost *TerminatorCost `json:"cost"`
 
-		DynamicCost TerminatorCost `json:"dynamicCost"`
+		DynamicCost *TerminatorCost `json:"dynamicCost"`
 
 		Identity *string `json:"identity"`
 
-		Precedence TerminatorPrecedence `json:"precedence"`
+		Precedence *TerminatorPrecedence `json:"precedence"`
 
 		Router *EntityRef `json:"router"`
 
@@ -275,11 +277,21 @@ func (m *TerminatorDetail) validateBinding(formats strfmt.Registry) error {
 
 func (m *TerminatorDetail) validateCost(formats strfmt.Registry) error {
 
-	if err := m.Cost.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("cost")
-		}
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
 		return err
+	}
+
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
+		return err
+	}
+
+	if m.Cost != nil {
+		if err := m.Cost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cost")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -287,11 +299,21 @@ func (m *TerminatorDetail) validateCost(formats strfmt.Registry) error {
 
 func (m *TerminatorDetail) validateDynamicCost(formats strfmt.Registry) error {
 
-	if err := m.DynamicCost.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("dynamicCost")
-		}
+	if err := validate.Required("dynamicCost", "body", m.DynamicCost); err != nil {
 		return err
+	}
+
+	if err := validate.Required("dynamicCost", "body", m.DynamicCost); err != nil {
+		return err
+	}
+
+	if m.DynamicCost != nil {
+		if err := m.DynamicCost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("dynamicCost")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -308,11 +330,21 @@ func (m *TerminatorDetail) validateIdentity(formats strfmt.Registry) error {
 
 func (m *TerminatorDetail) validatePrecedence(formats strfmt.Registry) error {
 
-	if err := m.Precedence.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("precedence")
-		}
+	if err := validate.Required("precedence", "body", m.Precedence); err != nil {
 		return err
+	}
+
+	if err := validate.Required("precedence", "body", m.Precedence); err != nil {
+		return err
+	}
+
+	if m.Precedence != nil {
+		if err := m.Precedence.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("precedence")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -367,6 +399,111 @@ func (m *TerminatorDetail) validateServiceID(formats strfmt.Registry) error {
 
 	if err := validate.Required("serviceId", "body", m.ServiceID); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this terminator detail based on the context it is used
+func (m *TerminatorDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateCost(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateDynamicCost(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePrecedence(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRouter(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateService(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *TerminatorDetail) contextValidateCost(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Cost != nil {
+		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorDetail) contextValidateDynamicCost(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.DynamicCost != nil {
+		if err := m.DynamicCost.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("dynamicCost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorDetail) contextValidatePrecedence(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Precedence != nil {
+		if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("precedence")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorDetail) contextValidateRouter(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Router != nil {
+		if err := m.Router.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("router")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorDetail) contextValidateService(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Service != nil {
+		if err := m.Service.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("service")
+			}
+			return err
+		}
 	}
 
 	return nil

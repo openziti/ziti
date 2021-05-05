@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,7 +42,7 @@ import (
 
 // PostureCheckMacAddressCreate posture check mac address create
 //
-// swagger:model PostureCheckMacAddressCreate
+// swagger:model postureCheckMacAddressCreate
 type PostureCheckMacAddressCreate struct {
 	nameField *string
 
@@ -249,11 +250,13 @@ func (m *PostureCheckMacAddressCreate) validateTags(formats strfmt.Registry) err
 		return nil
 	}
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -268,6 +271,60 @@ func (m *PostureCheckMacAddressCreate) validateMacAddresses(formats strfmt.Regis
 	iMacAddressesSize := int64(len(m.MacAddresses))
 
 	if err := validate.MinItems("macAddresses", "body", iMacAddressesSize, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check mac address create based on the context it is used
+func (m *PostureCheckMacAddressCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckMacAddressCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckMacAddressCreate) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
+		}
 		return err
 	}
 

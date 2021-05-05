@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -42,6 +44,7 @@ import (
 type CaCreate struct {
 
 	// cert pem
+	// Example: -----BEGIN CERTIFICATE-----\nMIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT\nAlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk\nTmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy\nNTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D\nMRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg\nRXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z\nIaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/\n3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh\nMB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG\nuc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB\nhjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms\nkllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE\n1ZG1zveyMvsYsH04C9FndE6w2MLvlA==\n-----END CERTIFICATE-----\n
 	// Required: true
 	CertPem *string `json:"certPem"`
 
@@ -53,18 +56,22 @@ type CaCreate struct {
 	IdentityRoles Roles `json:"identityRoles"`
 
 	// is auth enabled
+	// Example: true
 	// Required: true
 	IsAuthEnabled *bool `json:"isAuthEnabled"`
 
 	// is auto ca enrollment enabled
+	// Example: true
 	// Required: true
 	IsAutoCaEnrollmentEnabled *bool `json:"isAutoCaEnrollmentEnabled"`
 
 	// is ott ca enrollment enabled
+	// Example: true
 	// Required: true
 	IsOttCaEnrollmentEnabled *bool `json:"isOttCaEnrollmentEnabled"`
 
 	// name
+	// Example: Test 3rd Party External CA
 	// Required: true
 	Name *string `json:"name"`
 
@@ -172,12 +179,55 @@ func (m *CaCreate) validateName(formats strfmt.Registry) error {
 }
 
 func (m *CaCreate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this ca create based on the context it is used
+func (m *CaCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *CaCreate) contextValidateIdentityRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *CaCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

@@ -29,12 +29,12 @@ func Test_Dataflow(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
 
 	ctx.CreateEnrollAndStartEdgeRouter()
-	_, hostContext := ctx.AdminSession.RequireCreateSdkContext()
+	_, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext.Close()
 
 	listener, err := hostContext.Listen(service.Name)
@@ -59,7 +59,7 @@ func Test_Dataflow(t *testing.T) {
 	})
 	testServer.start()
 
-	_, clientContext := ctx.AdminSession.RequireCreateSdkContext()
+	_, clientContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer clientContext.Close()
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))

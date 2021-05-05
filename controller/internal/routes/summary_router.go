@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/informational"
 	"go.etcd.io/bbolt"
 
 	"reflect"
@@ -45,7 +45,7 @@ func NewSummaryRouter() *SummaryRouter {
 }
 
 func (r *SummaryRouter) Register(ae *env.AppEnv) {
-	ae.Api.InformationalListSummaryHandler = informational.ListSummaryHandlerFunc(func(params informational.ListSummaryParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.InformationalListSummaryHandler = informational.ListSummaryHandlerFunc(func(params informational.ListSummaryParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 

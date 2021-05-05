@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strconv"
 
@@ -269,6 +270,56 @@ func (m *PostureCheckFailureOperatingSystem) validateExpectedValue(formats strfm
 
 		if m.ExpectedValue[i] != nil {
 			if err := m.ExpectedValue[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("expectedValue" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check failure operating system based on the context it is used
+func (m *PostureCheckFailureOperatingSystem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateActualValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateExpectedValue(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PostureCheckFailureOperatingSystem) contextValidateActualValue(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ActualValue != nil {
+		if err := m.ActualValue.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("actualValue")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *PostureCheckFailureOperatingSystem) contextValidateExpectedValue(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.ExpectedValue); i++ {
+
+		if m.ExpectedValue[i] != nil {
+			if err := m.ExpectedValue[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("expectedValue" + "." + strconv.Itoa(i))
 				}

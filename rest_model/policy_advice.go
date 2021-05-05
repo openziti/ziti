@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -93,7 +94,6 @@ func (m *PolicyAdvice) Validate(formats strfmt.Registry) error {
 }
 
 func (m *PolicyAdvice) validateCommonRouters(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.CommonRouters) { // not required
 		return nil
 	}
@@ -118,7 +118,6 @@ func (m *PolicyAdvice) validateCommonRouters(formats strfmt.Registry) error {
 }
 
 func (m *PolicyAdvice) validateIdentity(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Identity) { // not required
 		return nil
 	}
@@ -136,13 +135,80 @@ func (m *PolicyAdvice) validateIdentity(formats strfmt.Registry) error {
 }
 
 func (m *PolicyAdvice) validateService(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Service) { // not required
 		return nil
 	}
 
 	if m.Service != nil {
 		if err := m.Service.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("service")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this policy advice based on the context it is used
+func (m *PolicyAdvice) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateCommonRouters(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentity(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateService(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *PolicyAdvice) contextValidateCommonRouters(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.CommonRouters); i++ {
+
+		if m.CommonRouters[i] != nil {
+			if err := m.CommonRouters[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("commonRouters" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PolicyAdvice) contextValidateIdentity(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Identity != nil {
+		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("identity")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *PolicyAdvice) contextValidateService(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Service != nil {
+		if err := m.Service.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
 			}

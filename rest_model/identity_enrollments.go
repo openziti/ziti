@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -74,7 +76,6 @@ func (m *IdentityEnrollments) Validate(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollments) validateOtt(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Ott) { // not required
 		return nil
 	}
@@ -92,7 +93,6 @@ func (m *IdentityEnrollments) validateOtt(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollments) validateOttca(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Ottca) { // not required
 		return nil
 	}
@@ -110,13 +110,76 @@ func (m *IdentityEnrollments) validateOttca(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollments) validateUpdb(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Updb) { // not required
 		return nil
 	}
 
 	if m.Updb != nil {
 		if err := m.Updb.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("updb")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this identity enrollments based on the context it is used
+func (m *IdentityEnrollments) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateOtt(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateOttca(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUpdb(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityEnrollments) contextValidateOtt(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Ott != nil {
+		if err := m.Ott.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("ott")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityEnrollments) contextValidateOttca(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Ottca != nil {
+		if err := m.Ottca.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("ottca")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityEnrollments) contextValidateUpdb(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Updb != nil {
+		if err := m.Updb.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
 			}
@@ -179,7 +242,6 @@ func (m *IdentityEnrollmentsOtt) Validate(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollmentsOtt) validateExpiresAt(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ExpiresAt) { // not required
 		return nil
 	}
@@ -188,6 +250,11 @@ func (m *IdentityEnrollmentsOtt) validateExpiresAt(formats strfmt.Registry) erro
 		return err
 	}
 
+	return nil
+}
+
+// ContextValidate validates this identity enrollments ott based on context it is used
+func (m *IdentityEnrollmentsOtt) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
@@ -253,7 +320,6 @@ func (m *IdentityEnrollmentsOttca) Validate(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollmentsOttca) validateCa(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Ca) { // not required
 		return nil
 	}
@@ -271,13 +337,40 @@ func (m *IdentityEnrollmentsOttca) validateCa(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollmentsOttca) validateExpiresAt(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ExpiresAt) { // not required
 		return nil
 	}
 
 	if err := validate.FormatOf("ottca"+"."+"expiresAt", "body", "date-time", m.ExpiresAt.String(), formats); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this identity enrollments ottca based on the context it is used
+func (m *IdentityEnrollmentsOttca) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateCa(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityEnrollmentsOttca) contextValidateCa(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Ca != nil {
+		if err := m.Ca.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("ottca" + "." + "ca")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -335,7 +428,6 @@ func (m *IdentityEnrollmentsUpdb) Validate(formats strfmt.Registry) error {
 }
 
 func (m *IdentityEnrollmentsUpdb) validateExpiresAt(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ExpiresAt) { // not required
 		return nil
 	}
@@ -344,6 +436,11 @@ func (m *IdentityEnrollmentsUpdb) validateExpiresAt(formats strfmt.Registry) err
 		return err
 	}
 
+	return nil
+}
+
+// ContextValidate validates this identity enrollments updb based on context it is used
+func (m *IdentityEnrollmentsUpdb) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 

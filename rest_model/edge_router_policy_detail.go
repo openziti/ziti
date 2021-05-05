@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -68,7 +70,7 @@ type EdgeRouterPolicyDetail struct {
 
 	// semantic
 	// Required: true
-	Semantic Semantic `json:"semantic"`
+	Semantic *Semantic `json:"semantic"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -94,7 +96,7 @@ func (m *EdgeRouterPolicyDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -139,7 +141,7 @@ func (m EdgeRouterPolicyDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
-		Semantic Semantic `json:"semantic"`
+		Semantic *Semantic `json:"semantic"`
 	}
 
 	dataAO1.EdgeRouterRoles = m.EdgeRouterRoles
@@ -291,11 +293,118 @@ func (m *EdgeRouterPolicyDetail) validateName(formats strfmt.Registry) error {
 
 func (m *EdgeRouterPolicyDetail) validateSemantic(formats strfmt.Registry) error {
 
-	if err := m.Semantic.Validate(formats); err != nil {
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this edge router policy detail based on the context it is used
+func (m *EdgeRouterPolicyDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouterRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouterRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentityRolesDisplay(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) contextValidateEdgeRouterRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.EdgeRouterRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
+			return ve.ValidateName("edgeRouterRoles")
 		}
 		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) contextValidateEdgeRouterRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.EdgeRouterRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("edgeRouterRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) contextValidateIdentityRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) contextValidateIdentityRolesDisplay(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRolesDisplay.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRolesDisplay")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterPolicyDetail) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil

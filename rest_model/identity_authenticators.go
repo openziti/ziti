@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -66,7 +68,6 @@ func (m *IdentityAuthenticators) Validate(formats strfmt.Registry) error {
 }
 
 func (m *IdentityAuthenticators) validateCert(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Cert) { // not required
 		return nil
 	}
@@ -84,13 +85,58 @@ func (m *IdentityAuthenticators) validateCert(formats strfmt.Registry) error {
 }
 
 func (m *IdentityAuthenticators) validateUpdb(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Updb) { // not required
 		return nil
 	}
 
 	if m.Updb != nil {
 		if err := m.Updb.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("updb")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this identity authenticators based on the context it is used
+func (m *IdentityAuthenticators) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateCert(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUpdb(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *IdentityAuthenticators) contextValidateCert(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Cert != nil {
+		if err := m.Cert.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cert")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *IdentityAuthenticators) contextValidateUpdb(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Updb != nil {
+		if err := m.Updb.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
 			}
@@ -133,6 +179,11 @@ func (m *IdentityAuthenticatorsCert) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+// ContextValidate validates this identity authenticators cert based on context it is used
+func (m *IdentityAuthenticatorsCert) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	return nil
+}
+
 // MarshalBinary interface implementation
 func (m *IdentityAuthenticatorsCert) MarshalBinary() ([]byte, error) {
 	if m == nil {
@@ -162,6 +213,11 @@ type IdentityAuthenticatorsUpdb struct {
 
 // Validate validates this identity authenticators updb
 func (m *IdentityAuthenticatorsUpdb) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this identity authenticators updb based on context it is used
+func (m *IdentityAuthenticatorsUpdb) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 

@@ -35,7 +35,7 @@ func Test_AuthPerformance(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	reg := metrics.NewRegistry()
 	histogram := newHistogram()
@@ -45,8 +45,8 @@ func Test_AuthPerformance(t *testing.T) {
 
 	go metrics.Write(reg, 5*time.Second, os.Stdout)
 
-	identity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
-	config := ctx.AdminSession.testContext.EnrollIdentity(identity.Id)
+	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
 	context := ziti.NewContextWithConfig(config)
 	_, _ = context.GetServices()
@@ -83,7 +83,7 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	reg := metrics.NewRegistry()
 	apiSessionCreateHistogram := newHistogram()
@@ -100,8 +100,8 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	identity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
-	config := ctx.AdminSession.testContext.EnrollIdentity(identity.Id)
+	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
 	context := ziti.NewContextWithConfig(config)
 	_, _ = context.GetServices()
@@ -117,7 +117,7 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 	_, err = client.Login(info)
 	ctx.Req.NoError(err)
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
 	for i := 0; i < 25; i++ {
 		go func() {
@@ -149,7 +149,7 @@ func Test_SessionCreatePerformance(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	reg := metrics.NewRegistry()
 	histogram := newHistogram()
@@ -161,9 +161,9 @@ func Test_SessionCreatePerformance(t *testing.T) {
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("smartrouting")
-	identity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
-	config := ctx.AdminSession.testContext.EnrollIdentity(identity.Id)
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
+	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
 	context := ziti.NewContextWithConfig(config)
 	_, _ = context.GetServices()

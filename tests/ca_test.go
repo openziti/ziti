@@ -16,16 +16,16 @@ func Test_CA(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("identity attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()
 		role2 := eid.New()
 		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
-		ctx.AdminSession.validateEntityWithQuery(ca)
-		ctx.AdminSession.validateEntityWithLookup(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
+		ctx.AdminManagementSession.validateEntityWithQuery(ca)
+		ctx.AdminManagementSession.validateEntityWithLookup(ca)
 	})
 
 	t.Run("identity attributes should be updated", func(t *testing.T) {
@@ -33,12 +33,12 @@ func Test_CA(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
 		role3 := eid.New()
 		ca.identityRoles = []string{role2, role3}
-		ctx.AdminSession.requireUpdateEntity(ca)
-		ctx.AdminSession.validateEntityWithLookup(ca)
+		ctx.AdminManagementSession.requireUpdateEntity(ca)
+		ctx.AdminManagementSession.validateEntityWithLookup(ca)
 	})
 
 	t.Run("identity name format should default if not specified", func(t *testing.T) {
@@ -48,13 +48,13 @@ func Test_CA(t *testing.T) {
 		ca := newTestCa(role1, role2)
 
 		ca.identityNameFormat = ""
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
 		//set to default for verification
 		ca.identityNameFormat = model.DefaultCaIdentityNameFormat
 
-		ctx.AdminSession.validateEntityWithQuery(ca)
-		ctx.AdminSession.validateEntityWithLookup(ca)
+		ctx.AdminManagementSession.validateEntityWithQuery(ca)
+		ctx.AdminManagementSession.validateEntityWithLookup(ca)
 	})
 
 	t.Run("identities from auto enrollment inherit CA identity roles", func(t *testing.T) {
@@ -62,9 +62,9 @@ func Test_CA(t *testing.T) {
 		role1 := eid.New()
 		role2 := eid.New()
 		ca := newTestCa(role1, role2)
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
 		ctx.Req.NotEmpty(verificationToken)
@@ -73,7 +73,7 @@ func Test_CA(t *testing.T) {
 
 		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
@@ -84,11 +84,11 @@ func Test_CA(t *testing.T) {
 
 		ctx.completeCaAutoEnrollment(clientAuthenticator)
 
-		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
 		sort.Strings(ca.identityRoles)
 		ctx.pathEqualsStringSlice(identity, ca.identityRoles, path("data", "roleAttributes"))
 	})
@@ -99,9 +99,9 @@ func Test_CA(t *testing.T) {
 
 		expectedName := "singular.name.not.great"
 		ca.identityNameFormat = expectedName
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
 		ctx.Req.NotEmpty(verificationToken)
@@ -110,7 +110,7 @@ func Test_CA(t *testing.T) {
 
 		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
@@ -121,11 +121,11 @@ func Test_CA(t *testing.T) {
 
 		ctx.completeCaAutoEnrollment(clientAuthenticator)
 
-		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})
 
@@ -138,16 +138,16 @@ func Test_CA(t *testing.T) {
 		//create CA
 		ca := newTestCa()
 		ca.identityNameFormat = firstExpectedName
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
 		ctx.Req.NotEmpty(verificationToken)
 
 		//validate CA
 		validationAuth := ca.CreateSignedCert(verificationToken)
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
@@ -160,22 +160,22 @@ func Test_CA(t *testing.T) {
 		firstClientAuthenticator := ca.CreateSignedCert(eid.New())
 		ctx.completeCaAutoEnrollment(firstClientAuthenticator)
 
-		firstEnrolledSession, err := firstClientAuthenticator.Authenticate(ctx)
+		firstEnrolledSession, err := firstClientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		firstIdentity := ctx.AdminSession.requireQuery("identities/" + firstEnrolledSession.identityId)
+		firstIdentity := ctx.AdminManagementSession.requireQuery("identities/" + firstEnrolledSession.identityId)
 		ctx.Req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
 
 		//second firstIdentity that collides, becomes
 		secondClientAuthenticator := ca.CreateSignedCert(eid.New())
 		ctx.completeCaAutoEnrollment(secondClientAuthenticator)
 
-		secondEnrolledSession, err := secondClientAuthenticator.Authenticate(ctx)
+		secondEnrolledSession, err := secondClientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		secondIdentity := ctx.AdminSession.requireQuery("identities/" + secondEnrolledSession.identityId)
+		secondIdentity := ctx.AdminManagementSession.requireQuery("identities/" + secondEnrolledSession.identityId)
 		ctx.Req.Equal(secondExpectedName, secondIdentity.Path("data.name").Data().(string))
 	})
 
@@ -184,9 +184,9 @@ func Test_CA(t *testing.T) {
 		ca := newTestCa()
 		ca.identityNameFormat = "[caName] - [caId] - [commonName] - [requestedName] - [identityId]"
 
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 
 		ctx.Req.NotEmpty(verificationToken)
@@ -195,7 +195,7 @@ func Test_CA(t *testing.T) {
 
 		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
@@ -207,11 +207,11 @@ func Test_CA(t *testing.T) {
 		requestedName := "bobby"
 		ctx.completeCaAutoEnrollmentWithName(clientAuthenticator, requestedName)
 
-		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminSession.requireQuery("identities/" + enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
 		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.cert.Subject.CommonName, requestedName, enrolledSession.identityId)
 
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
@@ -221,16 +221,16 @@ func Test_CA(t *testing.T) {
 		ctx.testContextChanged(t)
 		ca := newTestCa()
 
-		ca.id = ctx.AdminSession.requireCreateEntity(ca)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-		caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+		caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 		verificationToken := caValues.Path("data.verificationToken").Data().(string)
 		ctx.Req.NotEmpty(verificationToken)
 
 		validationAuth := ca.CreateSignedCert(verificationToken)
 		clientAuthenticator := ca.CreateSignedCert(eid.New())
 
-		resp, err := ctx.AdminSession.newAuthenticatedRequest().
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 			SetHeader("content-type", "text/plain").
 			SetBody(validationAuth.certPem).
 			Post("cas/" + ca.id + "/verify")
@@ -241,7 +241,7 @@ func Test_CA(t *testing.T) {
 
 		ctx.completeCaAutoEnrollment(clientAuthenticator)
 
-		enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 		ctx.Req.NotEmpty(enrolledSession)
@@ -249,11 +249,11 @@ func Test_CA(t *testing.T) {
 		t.Run("CAs with auth disabled can no longer authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			ca.isAuthEnabled = false
-			resp := ctx.AdminSession.patchEntity(ca, "isAuthEnabled")
+			resp := ctx.AdminManagementSession.patchEntity(ca, "isAuthEnabled")
 			ctx.Req.NotEmpty(resp)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 			ctx.Req.Error(err)
 			ctx.Req.Empty(enrolledSession)
@@ -262,11 +262,11 @@ func Test_CA(t *testing.T) {
 		t.Run("CAs with auth re-enabled an authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			ca.isAuthEnabled = true
-			resp := ctx.AdminSession.patchEntity(ca, "isAuthEnabled")
+			resp := ctx.AdminManagementSession.patchEntity(ca, "isAuthEnabled")
 			ctx.Req.NotEmpty(resp)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotEmpty(enrolledSession)
@@ -274,9 +274,9 @@ func Test_CA(t *testing.T) {
 
 		t.Run("deleting a CA no longer allows authentication", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			ctx.AdminSession.requireDeleteEntity(ca)
+			ctx.AdminManagementSession.requireDeleteEntity(ca)
 
-			enrolledSession, err := clientAuthenticator.Authenticate(ctx)
+			enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
 			ctx.Req.Error(err)
 			ctx.Req.Empty(enrolledSession)
@@ -295,15 +295,15 @@ func Test_CA(t *testing.T) {
 
 			ca := newTestCa()
 
-			ca.id = ctx.AdminSession.requireCreateEntity(ca)
+			ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
 
-			caValues := ctx.AdminSession.requireQuery("cas/" + ca.id)
+			caValues := ctx.AdminManagementSession.requireQuery("cas/" + ca.id)
 			verificationToken := caValues.Path("data.verificationToken").Data().(string)
 			ctx.Req.NotEmpty(verificationToken)
 
 			validationAuth := ca.CreateSignedCert(verificationToken)
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
 				SetHeader("content-type", "text/plain").
 				SetBody(validationAuth.certPem).
 				Post("cas/" + ca.id + "/verify")
@@ -312,21 +312,21 @@ func Test_CA(t *testing.T) {
 			ctx.logJson(resp.Body())
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-			unenrolledOttCaIdentity = ctx.AdminSession.RequireNewIdentityWithCaOtt(false, ca.id)
+			unenrolledOttCaIdentity = ctx.AdminManagementSession.RequireNewIdentityWithCaOtt(false, ca.id)
 
-			unenrolledOttCaIdentityContainer = ctx.AdminSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
+			unenrolledOttCaIdentityContainer = ctx.AdminManagementSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
 
 			ctx.Req.True(unenrolledOttCaIdentityContainer.ExistsP("data.enrollment.ottca.id"), "expected ottca to have an enrollment id")
 
 			enrollmentId = unenrolledOttCaIdentityContainer.Path("data.enrollment.ottca.id").Data().(string)
 			ctx.Req.NotEmpty(enrollmentId, "enrollment id should not be empty string")
 
-			ctx.AdminSession.requireDeleteEntity(ca)
+			ctx.AdminManagementSession.requireDeleteEntity(ca)
 
 			t.Run("enrollment should have been removed", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				status, _ := ctx.AdminSession.query("/enrollments/" + enrollmentId)
+				status, _ := ctx.AdminManagementSession.query("enrollments/" + enrollmentId)
 
 				ctx.Req.Equal(http.StatusNotFound, status, "expected enrollment to not be found")
 
@@ -336,14 +336,14 @@ func Test_CA(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
-				_ = ctx.AdminSession.requireQuery(fmt.Sprintf(`/identities?filter=id="%s"`, unenrolledOttCaIdentity.Id))
+				_ = ctx.AdminManagementSession.requireQuery(fmt.Sprintf(`identities?filter=id="%s"`, unenrolledOttCaIdentity.Id))
 			})
 
 			t.Run("identities with previous enrollments tied to deleted CAs should not error on detail", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				ctx.Req.NotEmpty(unenrolledOttCaIdentity.Id)
-				_ = ctx.AdminSession.requireQuery("/identities/" + unenrolledOttCaIdentity.Id)
+				_ = ctx.AdminManagementSession.requireQuery("identities/" + unenrolledOttCaIdentity.Id)
 			})
 		})
 	})

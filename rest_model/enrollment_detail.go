@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -40,6 +42,7 @@ import (
 // method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
 // use the username field, but not vice versa.
 //
+// Example: {"_links":{"self":{"href":"./enrollments/624fa53f-7629-4a7a-9e38-c1f4ce322c1d"}},"ca":null,"createdAt":"0001-01-01T00:00:00Z","expiresAt":"2020-03-11T20:20:24.0055543Z","id":"624fa53f-7629-4a7a-9e38-c1f4ce322c1d","identity":{"_links":{"self":{"href":"./identities/f047ac96-dc3a-408a-a6f2-0ba487c08ef9"}},"id":"f047ac96-dc3a-408a-a6f2-0ba487c08ef9","name":"updb--0f245140-7f2e-4326-badf-6aba55e52475","urlName":"identities"},"method":"updb","tags":null,"token":"1e727c8f-07e4-4a1d-a8b0-da0c7a01c6e1","updatedAt":"0001-01-01T00:00:00Z","username":"example-username"}
 //
 // swagger:model enrollmentDetail
 type EnrollmentDetail struct {
@@ -254,6 +257,10 @@ func (m *EnrollmentDetail) Validate(formats strfmt.Registry) error {
 
 func (m *EnrollmentDetail) validateDetails(formats strfmt.Registry) error {
 
+	if err := validate.Required("details", "body", m.Details); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -332,6 +339,75 @@ func (m *EnrollmentDetail) validateTransitRouter(formats strfmt.Registry) error 
 
 	if m.TransitRouter != nil {
 		if err := m.TransitRouter.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("transitRouter")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this enrollment detail based on the context it is used
+func (m *EnrollmentDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateEdgeRouter(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateIdentity(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTransitRouter(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *EnrollmentDetail) contextValidateEdgeRouter(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.EdgeRouter != nil {
+		if err := m.EdgeRouter.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("edgeRouter")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EnrollmentDetail) contextValidateIdentity(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Identity != nil {
+		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("identity")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EnrollmentDetail) contextValidateTransitRouter(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.TransitRouter != nil {
+		if err := m.TransitRouter.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("transitRouter")
 			}

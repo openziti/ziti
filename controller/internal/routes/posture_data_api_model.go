@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-func MapPostureDataToRestModel(ae *env.AppEnv, postureData *model.PostureData) *rest_model.PostureData {
+func MapPostureDataToRestModel(_ *env.AppEnv, postureData *model.PostureData) *rest_model.PostureData {
 	ret := &rest_model.PostureData{
 		Domain:                MapPostureDataDomainToRestModel(&postureData.Domain),
 		Mac:                   MapPostureDataMacToRestModel(&postureData.Mac),
@@ -147,9 +147,10 @@ func MapPostureCheckFailureProcessToRestModel(failure *model.PostureCheckFailure
 		ret.ActualValue.SignerFingerprints = val.ActualValue.SignerFingerprints
 		ret.ActualValue.IsRunning = &val.ActualValue.IsRunning
 
+		osType := rest_model.OsType(val.ExpectedValue.OsType)
 		ret.ExpectedValue.Hashes = val.ExpectedValue.Hashes
 		ret.ExpectedValue.Path = &val.ExpectedValue.Path
-		ret.ExpectedValue.OsType = rest_model.OsType(val.ExpectedValue.OsType)
+		ret.ExpectedValue.OsType = &osType
 		ret.ExpectedValue.SignerFingerprint = val.ExpectedValue.Fingerprint
 	} else {
 		pfxlog.Logger().Errorf("could not convert failure values of %T for posture check %s, expected process", failure.PostureCheckFailureValues, failure.PostureCheckId)
@@ -169,7 +170,8 @@ func MapPostureCheckFailureProcessMultiToRestModel(failure *model.PostureCheckFa
 	restResult.SetPostureCheckName(&failure.PostureCheckName)
 
 	if val, ok := failure.PostureCheckFailureValues.(*model.PostureCheckFailureValuesProcessMulti); ok {
-		restResult.Semantic = rest_model.Semantic(val.ExpectedValue.Semantic)
+		semantic := rest_model.Semantic(val.ExpectedValue.Semantic)
+		restResult.Semantic = &semantic
 
 		for _, valActual := range val.ActualValue {
 			restActual := &rest_model.PostureCheckFailureProcessActual{
@@ -183,9 +185,10 @@ func MapPostureCheckFailureProcessMultiToRestModel(failure *model.PostureCheckFa
 		}
 
 		for _, valExpected := range val.ExpectedValue.Processes {
+			osType := rest_model.OsType(valExpected.OsType)
 			restExpected := &rest_model.ProcessMulti{
 				Hashes:             valExpected.Hashes,
-				OsType:             rest_model.OsType(valExpected.OsType),
+				OsType:             &osType,
 				Path:               &valExpected.Path,
 				SignerFingerprints: valExpected.SignerFingerprints,
 			}
@@ -253,8 +256,10 @@ func MapPostureCheckFailureOsToRestModel(failure *model.PostureCheckFailure) *re
 		ret.ExpectedValue = []*rest_model.OperatingSystem{}
 
 		for _, os := range val.ExpectedValue {
+			osType := rest_model.OsType(os.OsType)
+
 			newOs := &rest_model.OperatingSystem{
-				Type:     rest_model.OsType(os.OsType),
+				Type:     &osType,
 				Versions: os.OsVersions,
 			}
 			ret.ExpectedValue = append(ret.ExpectedValue, newOs)
@@ -285,11 +290,11 @@ func MapPostureCheckFailureMfaToRestModel(failure *model.PostureCheckFailure) *r
 	return ret
 }
 
-func MapPostureDataFailedSessionRequestToRestModel(modelFailedSessionRequests []*model.PostureSessionRequestFailure) []*rest_model.FailedSessionRequest {
-	ret := []*rest_model.FailedSessionRequest{}
+func MapPostureDataFailedSessionRequestToRestModel(modelFailedSessionRequests []*model.PostureSessionRequestFailure) []*rest_model.FailedServiceRequest {
+	ret := []*rest_model.FailedServiceRequest{}
 
 	for _, modelFailedSessionRequest := range modelFailedSessionRequests {
-		failedSessionRequest := &rest_model.FailedSessionRequest{
+		failedSessionRequest := &rest_model.FailedServiceRequest{
 			APISessionID:   modelFailedSessionRequest.ApiSessionId,
 			PolicyFailures: []*rest_model.PolicyFailure{},
 			ServiceID:      modelFailedSessionRequest.ServiceId,

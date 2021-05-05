@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -188,8 +190,8 @@ func (m *ConfigDetail) validateConfigTypeID(formats strfmt.Registry) error {
 
 func (m *ConfigDetail) validateData(formats strfmt.Registry) error {
 
-	if err := validate.Required("data", "body", m.Data); err != nil {
-		return err
+	if m.Data == nil {
+		return errors.Required("data", "body", nil)
 	}
 
 	return nil
@@ -199,6 +201,39 @@ func (m *ConfigDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this config detail based on the context it is used
+func (m *ConfigDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with BaseEntity
+	if err := m.BaseEntity.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateConfigType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ConfigDetail) contextValidateConfigType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ConfigType != nil {
+		if err := m.ConfigType.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("configType")
+			}
+			return err
+		}
 	}
 
 	return nil

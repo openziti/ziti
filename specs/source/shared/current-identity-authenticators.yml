@@ -1,0 +1,91 @@
+---
+
+paths:
+  current-identity-authenticators:
+    get:
+      summary: List authenticators for the current identity
+      description: Retrieves a list of authenticators assigned to the current API session's identity; supports filtering, sorting, and pagination.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: listCurrentIdentityAuthenticators
+      parameters:
+        - $ref: 'parameters.yml#/limit'
+        - $ref: 'parameters.yml#/offset'
+        - $ref: 'parameters.yml#/filter'
+      responses:
+        '200':
+          $ref: 'authenticators.yml#/responses/listAuthenticators'
+        '401':
+          $ref: 'standard-responses.yml#/responses/unauthorizedResponse'
+  current-identity-authenticators-id:
+    parameters:
+      - $ref: 'parameters.yml#/id'
+    get:
+      summary: Retrieve an authenticator for the current identity
+      description: Retrieves a single authenticator by id. Will only show authenticators assigned to the API session's identity.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: detailCurrentIdentityAuthenticator
+      responses:
+        '200':
+          $ref: 'authenticators.yml#/responses/detailAuthenticator'
+        '404':
+          $ref: 'standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: 'standard-responses.yml#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an authenticator of this identity
+      description: |
+        Update all fields on an authenticator by id.  Will only update authenticators assigned to the API session's
+        identity.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: updateCurrentIdentityAuthenticator
+      parameters:
+        - name: authenticator
+          in: body
+          required: true
+          description: 'An authenticator put object'
+          schema:
+            $ref: 'authenticators.yml#/definitions/authenticatorUpdateWithCurrent'
+      responses:
+        '200':
+          $ref: 'standard-responses.yml#/responses/updateResponse'
+        '400':
+          $ref: 'standard-responses.yml#/responses/badRequestResponse'
+        '404':
+          $ref: 'standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: 'standard-responses.yml#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an authenticator of this identity
+      description: |
+        Update the supplied fields on an authenticator by id. Will only update authenticators assigned to the API
+        session's identity.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Current API Session
+      operationId: patchCurrentIdentityAuthenticator
+      parameters:
+        - name: authenticator
+          in: body
+          required: true
+          description: An authenticator patch object
+          schema:
+            $ref: 'authenticators.yml#/definitions/authenticatorPatchWithCurrent'
+      responses:
+        '200':
+          $ref: 'standard-responses.yml#/responses/patchResponse'
+        '400':
+          $ref: 'standard-responses.yml#/responses/badRequestResponse'
+        '404':
+          $ref: 'standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: 'standard-responses.yml#/responses/unauthorizedResponse'

@@ -30,28 +30,30 @@ func Test_ConfigTypes(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	identityRole := eid.New()
-	nonAdminUser := ctx.AdminSession.createUserAndLogin(false, s(identityRole), nil)
+	nonAdminUserClientSession := ctx.AdminManagementSession.createUserAndLoginClientApi(false, s(identityRole), nil)
+	nonAdminUserManagementSession, err := nonAdminUserClientSession.CloneToManagementApi(ctx)
+	ctx.Req.NoError(err)
 
 	t.Run("create config type without name should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		configType := ctx.newConfigType()
 		configType.Name = ""
-		resp := ctx.AdminSession.createEntity(configType)
+		resp := ctx.AdminManagementSession.createEntity(configType)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
 	})
 
 	t.Run("create config type without schema should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
-		configType := ctx.AdminSession.requireCreateNewConfigType()
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 
-		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		entityJson = ctx.AdminSession.validateEntityWithLookup(configType)
+		entityJson = ctx.AdminManagementSession.validateEntityWithLookup(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
@@ -72,7 +74,7 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		resp := ctx.AdminSession.createEntity(configType)
+		resp := ctx.AdminManagementSession.createEntity(configType)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "schema")
 	})
 
@@ -100,32 +102,32 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		configType.Id = ctx.AdminSession.requireCreateEntity(configType)
+		configType.Id = ctx.AdminManagementSession.requireCreateEntity(configType)
 
-		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		entityJson = ctx.AdminSession.validateEntityWithLookup(configType)
+		entityJson = ctx.AdminManagementSession.validateEntityWithLookup(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 	})
 
 	t.Run("lookup non-existent config type as admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + eid.New()))
+		ctx.RequireNotFoundError(ctx.AdminManagementSession.query("config-types/" + eid.New()))
 	})
 
 	t.Run("lookup config type as non-admin should fail", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		configType := ctx.AdminSession.requireCreateNewConfigType()
-		ctx.requireUnauthorizedError(nonAdminUser.query("config-types/" + configType.Id))
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
+		ctx.requireUnauthorizedError(nonAdminUserManagementSession.query("config-types/" + configType.Id))
 	})
 
 	t.Run("update config type should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
-		configType := ctx.AdminSession.requireCreateNewConfigType()
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 
-		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(configType)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
@@ -149,17 +151,17 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		ctx.AdminSession.requireUpdateEntity(configType)
-		jsonConfig := ctx.AdminSession.validateUpdate(configType)
+		ctx.AdminManagementSession.requireUpdateEntity(configType)
+		jsonConfig := ctx.AdminManagementSession.validateUpdate(configType)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 	})
 
 	t.Run("patch config should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
-		configType := ctx.AdminSession.requireCreateNewConfigType()
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 
-		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(configType)
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
@@ -183,20 +185,20 @@ func Test_ConfigTypes(t *testing.T) {
 				},
 			},
 		}
-		ctx.AdminSession.requirePatchEntity(configType, "schema")
-		jsonConfig := ctx.AdminSession.validateUpdate(configType)
+		ctx.AdminManagementSession.requirePatchEntity(configType, "schema")
+		jsonConfig := ctx.AdminManagementSession.validateUpdate(configType)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 	})
 
 	t.Run("delete should pass", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		now := time.Now()
-		configType := ctx.AdminSession.requireCreateNewConfigType()
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 
-		entityJson := ctx.AdminSession.validateEntityWithQuery(configType)
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(configType)
 		ctx.validateDateFieldsForCreate(now, entityJson)
 
-		ctx.AdminSession.requireDeleteEntity(configType)
-		ctx.RequireNotFoundError(ctx.AdminSession.query("config-types/" + configType.Id))
+		ctx.AdminManagementSession.requireDeleteEntity(configType)
+		ctx.RequireNotFoundError(ctx.AdminManagementSession.query("config-types/" + configType.Id))
 	})
 }

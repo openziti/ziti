@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/strfmt"
 )
 
@@ -40,5 +42,10 @@ type Tags map[string]interface{}
 
 // Validate validates this tags
 func (m Tags) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this tags based on context it is used
+func (m Tags) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

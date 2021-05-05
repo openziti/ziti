@@ -1,0 +1,126 @@
+---
+
+paths:
+  authenticators:
+    get:
+      summary: List authenticators
+      description: |
+        Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.
+        This endpoint requries admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: listAuthenticators
+
+      responses:
+        '200':
+          $ref: '../shared/authenticators.yml#/responses/listAuthenticators'
+    post:
+      summary: Creates an authenticator
+      description: |
+        Creates an authenticator for a specific identity. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: createAuthenticator
+      parameters:
+        - name: authenticator
+          in: body
+          required: true
+          description: A Authenticator create object
+          schema:
+            $ref: '../shared/authenticators.yml#/definitions/authenticatorCreate'
+      responses:
+        '201':
+          description: The create was successful
+          schema:
+            $ref: '../shared/authenticators.yml#/definitions/authenticatorCreate'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  authenticators-id:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    get:
+      summary: Retrieves a single authenticator
+      description: Retrieves a single authenticator by id. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: detailAuthenticator
+      responses:
+        '200':
+          $ref: '../shared/authenticators.yml#/responses/detailAuthenticator'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on an authenticator
+      description: Update all fields on an authenticator by id. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: updateAuthenticator
+      parameters:
+        - name: authenticator
+          in: body
+          required: true
+          description: 'An authenticator put object'
+          schema:
+            $ref: '../shared/authenticators.yml#/definitions/authenticatorUpdate'
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/updateResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on an authenticator
+      description: Update the supplied fields on an authenticator by id. Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: patchAuthenticator
+      parameters:
+        - name: authenticator
+          in: body
+          required: true
+          description: An authenticator patch object
+          schema:
+            $ref: '../shared/authenticators.yml#/definitions/authenticatorPatch'
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/patchResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete an Authenticator
+      description: |
+        Delete an authenticator by id. Deleting all authenticators for an identity will make it impossible to log in.
+        Requires admin access.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: deleteAuthenticator
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/deleteResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'

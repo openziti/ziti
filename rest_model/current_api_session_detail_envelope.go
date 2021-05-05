@@ -30,15 +30,17 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
-// CurrentAPISessionDetailEnvelope current API session detail envelope
+// CurrentAPISessionDetailEnvelope current Api session detail envelope
 //
-// swagger:model currentAPISessionDetailEnvelope
+// swagger:model currentApiSessionDetailEnvelope
 type CurrentAPISessionDetailEnvelope struct {
 
 	// data
@@ -50,7 +52,7 @@ type CurrentAPISessionDetailEnvelope struct {
 	Meta *Meta `json:"meta"`
 }
 
-// Validate validates this current API session detail envelope
+// Validate validates this current Api session detail envelope
 func (m *CurrentAPISessionDetailEnvelope) Validate(formats strfmt.Registry) error {
 	var res []error
 
@@ -94,6 +96,52 @@ func (m *CurrentAPISessionDetailEnvelope) validateMeta(formats strfmt.Registry) 
 
 	if m.Meta != nil {
 		if err := m.Meta.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("meta")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this current Api session detail envelope based on the context it is used
+func (m *CurrentAPISessionDetailEnvelope) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateData(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateMeta(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *CurrentAPISessionDetailEnvelope) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Data != nil {
+		if err := m.Data.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("data")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *CurrentAPISessionDetailEnvelope) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Meta != nil {
+		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
 			}

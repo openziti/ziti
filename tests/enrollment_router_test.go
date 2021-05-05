@@ -43,18 +43,18 @@ func Test_RouterEnrollment(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("a edge router", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		t.Run("that is newly created", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			edgeRouter := ctx.AdminSession.requireNewEdgeRouter()
+			edgeRouter := ctx.AdminManagementSession.requireNewEdgeRouter()
 
 			t.Run("is unenrolled", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
 
 				ctx.Req.NoError(err)
 
@@ -88,7 +88,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				ctx.Req.Error(err, "expected remote error bad TLS certificate")
 			})
 
-			t.Run("connecting to the control cahnnel with ca signed client cert and not enrolled fails", func(t *testing.T) {
+			t.Run("connecting to the control channel with ca signed client cert and not enrolled fails", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				ctx.testContextChanged(t)
@@ -120,7 +120,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				ctx.Req.NoError(err)
 				ctx.Req.NotNil(randomToken)
 
-				resp, err := ctx.newRequest().SetBody("{}").Post("/enroll?method=erott&token=" + randomToken.String())
+				resp, err := ctx.newAnonymousClientApiRequest().SetBody("{}").Post("/enroll?method=erott&token=" + randomToken.String())
 				ctx.Req.NoError(err)
 
 				standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
@@ -131,7 +131,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				ctx.testContextChanged(t)
 
 				//get token
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
 
 				ctx.Req.NoError(err)
 
@@ -151,7 +151,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
@@ -162,10 +162,10 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set("", "serverCertCsr")
-					bodyContainer.Set("", "certCsr")
+					_, _ = bodyContainer.Set("", "serverCertCsr")
+					_, _ = bodyContainer.Set("", "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -176,10 +176,10 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set("", "serverCertCsr")
-					bodyContainer.Set("", "certCsr")
+					_, _ = bodyContainer.Set("", "serverCertCsr")
+					_, _ = bodyContainer.Set("", "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -195,9 +195,9 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set(clientCsrPem, "certCsr")
+					_, _ = bodyContainer.Set(clientCsrPem, "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
@@ -213,10 +213,10 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set("", "serverCertCsr")
-					bodyContainer.Set(clientCsrPem, "certCsr")
+					_, _ = bodyContainer.Set("", "serverCertCsr")
+					_, _ = bodyContainer.Set(clientCsrPem, "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -232,9 +232,9 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set(serverCsrPem, "serverCertCsr")
+					_, _ = bodyContainer.Set(serverCsrPem, "serverCertCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
@@ -250,10 +250,10 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set(serverCsrPem, "serverCertCsr")
-					bodyContainer.Set("", "certCsr")
+					_, _ = bodyContainer.Set(serverCsrPem, "serverCertCsr")
+					_, _ = bodyContainer.Set("", "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
@@ -274,10 +274,10 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					bodyContainer := gabs.New()
 
-					bodyContainer.Set(serverCsrPem, "serverCertCsr")
-					bodyContainer.Set(clientCsrPem, "certCsr")
+					_, _ = bodyContainer.Set(serverCsrPem, "serverCertCsr")
+					_, _ = bodyContainer.Set(clientCsrPem, "certCsr")
 
-					resp, err := ctx.newRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
+					resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 					ctx.Req.NoError(err)
 
 					standardJsonResponseTests(resp, http.StatusOK, t)
@@ -306,7 +306,7 @@ func Test_RouterEnrollment(t *testing.T) {
 					t.Run("is reported as enrolled", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
-						resp, err := ctx.AdminSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
+						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/edge-routers/" + edgeRouter.id)
 						ctx.Req.NoError(err)
 						ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
@@ -373,7 +373,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 						defer func(){
 							if ch != nil {
-								ch.Close()
+								_ = ch.Close()
 							}
 						}()
 
@@ -388,10 +388,10 @@ func Test_RouterEnrollment(t *testing.T) {
 							ctx.testContextChanged(t)
 							body := gabs.New()
 
-							body.Set("", "serverCertCsr")
-							body.Set("", "certCsr")
+							_, _ = body.Set("", "serverCertCsr")
+							_, _ = body.Set("", "certCsr")
 
-							resp, err := ctx.newRequest().SetBody(body.String()).Post("/enroll/extend/router")
+							resp, err := ctx.newAnonymousClientApiRequest().SetBody(body.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
 
 							standardErrorJsonResponseTests(resp, "UNAUTHORIZED", http.StatusUnauthorized, t)
@@ -405,39 +405,39 @@ func Test_RouterEnrollment(t *testing.T) {
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
 
-							standardErrorJsonResponseTests(resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest, t)
+							standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
 						})
 
 						t.Run("a client CSR but missing server CSR field fails", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
 							body := gabs.New()
-							body.Set("", "certCsr")
+							_, _ = body.Set("", "certCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
 
-							standardErrorJsonResponseTests(resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest, t)
+							standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
 						})
 
 						t.Run("a server CSR but missing client CSR field fails", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
 							body := gabs.New()
-							body.Set("", "serverCertCsr")
+							_, _ = body.Set("", "serverCertCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
 
-							standardErrorJsonResponseTests(resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest, t)
+							standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
 						})
 
 						t.Run("an empty client and server CSR fields fails", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
 							body := gabs.New()
-							body.Set("", "serverCertCsr")
-							body.Set("", "certCsr")
+							_, _ = body.Set("", "serverCertCsr")
+							_, _ = body.Set("", "certCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
@@ -456,8 +456,8 @@ func Test_RouterEnrollment(t *testing.T) {
 
 							extensionBodyContainer := gabs.New()
 
-							extensionBodyContainer.Set("", "serverCertCsr")
-							extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
+							_, _ = extensionBodyContainer.Set("", "serverCertCsr")
+							_, _ = extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
@@ -476,8 +476,8 @@ func Test_RouterEnrollment(t *testing.T) {
 
 							extensionBodyContainer := gabs.New()
 
-							extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
-							extensionBodyContainer.Set("", "certCsr")
+							_, _ = extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
+							_, _ = extensionBodyContainer.Set("", "certCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
@@ -500,8 +500,8 @@ func Test_RouterEnrollment(t *testing.T) {
 
 							extensionBodyContainer := gabs.New()
 
-							extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
-							extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
+							_, _ = extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
+							_, _ = extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
 
 							resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 							ctx.Req.NoError(err)
@@ -555,7 +555,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 								defer func(){
 									if ch != nil {
-										ch.Close()
+										_ = ch.Close()
 									}
 								}()
 								ctx.Req.Error(err)
@@ -572,7 +572,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 								defer func(){
 									if ch != nil {
-										ch.Close()
+										_ = ch.Close()
 									}
 								}()
 

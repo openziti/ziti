@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -42,6 +43,11 @@ import (
 // swagger:model postureCheckType
 type PostureCheckType string
 
+func NewPostureCheckType(value PostureCheckType) *PostureCheckType {
+	v := value
+	return &v
+}
+
 const (
 
 	// PostureCheckTypeOS captures enum value "OS"
@@ -49,9 +55,6 @@ const (
 
 	// PostureCheckTypePROCESS captures enum value "PROCESS"
 	PostureCheckTypePROCESS PostureCheckType = "PROCESS"
-
-	// PostureCheckTypePROCESSMULTI captures enum value "PROCESS_MULTI"
-	PostureCheckTypePROCESSMULTI PostureCheckType = "PROCESS_MULTI"
 
 	// PostureCheckTypeDOMAIN captures enum value "DOMAIN"
 	PostureCheckTypeDOMAIN PostureCheckType = "DOMAIN"
@@ -61,6 +64,9 @@ const (
 
 	// PostureCheckTypeMFA captures enum value "MFA"
 	PostureCheckTypeMFA PostureCheckType = "MFA"
+
+	// PostureCheckTypePROCESSMULTI captures enum value "PROCESS_MULTI"
+	PostureCheckTypePROCESSMULTI PostureCheckType = "PROCESS_MULTI"
 )
 
 // for schema
@@ -68,7 +74,7 @@ var postureCheckTypeEnum []interface{}
 
 func init() {
 	var res []PostureCheckType
-	if err := json.Unmarshal([]byte(`["OS","PROCESS","PROCESS_MULTI","DOMAIN","MAC","MFA"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["OS","PROCESS","DOMAIN","MAC","MFA","PROCESS_MULTI"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {
@@ -95,5 +101,10 @@ func (m PostureCheckType) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// ContextValidate validates this posture check type based on context it is used
+func (m PostureCheckType) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

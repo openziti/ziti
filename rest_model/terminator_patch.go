@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -47,7 +49,7 @@ type TerminatorPatch struct {
 	Binding string `json:"binding,omitempty"`
 
 	// cost
-	Cost TerminatorCost `json:"cost,omitempty"`
+	Cost *TerminatorCost `json:"cost,omitempty"`
 
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`
@@ -85,23 +87,23 @@ func (m *TerminatorPatch) Validate(formats strfmt.Registry) error {
 }
 
 func (m *TerminatorPatch) validateCost(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Cost) { // not required
 		return nil
 	}
 
-	if err := m.Cost.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("cost")
+	if m.Cost != nil {
+		if err := m.Cost.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cost")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
 }
 
 func (m *TerminatorPatch) validatePrecedence(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Precedence) { // not required
 		return nil
 	}
@@ -117,12 +119,73 @@ func (m *TerminatorPatch) validatePrecedence(formats strfmt.Registry) error {
 }
 
 func (m *TerminatorPatch) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this terminator patch based on the context it is used
+func (m *TerminatorPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateCost(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePrecedence(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *TerminatorPatch) contextValidateCost(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Cost != nil {
+		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cost")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *TerminatorPatch) contextValidatePrecedence(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("precedence")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *TerminatorPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}

@@ -31,7 +31,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	t.Run("can create a MFA posture check associated to a service", func(t *testing.T) {
@@ -41,20 +41,20 @@ func Test_PostureChecks_MFA(t *testing.T) {
 		serviceRole := eid.New()
 		postureCheckRole := eid.New()
 
-		_, enrolledIdentityAuthenticator := ctx.AdminSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
-		enrolledIdentitySession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 
 		ctx.Req.NoError(err)
 
-		service := ctx.AdminSession.requireNewService(s(serviceRole), nil)
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
-		postureCheck := ctx.AdminSession.requireNewPostureCheckMFA(s(postureCheckRole))
+		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckMFA(s(postureCheckRole))
 
-		ctx.AdminSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
-		ctx.AdminSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
 
-		ctx.AdminSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
 		ctx.Req.NoError(err)
 
@@ -164,7 +164,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			t.Run("a new api session can pass MFA auth to create service session", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				newSession, err := enrolledIdentityAuthenticator.Authenticate(ctx)
+				newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
 				ctx.Req.NoError(err)
 
 				resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Post("/authenticate/mfa")
@@ -176,11 +176,11 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
-				sessionConntainer, err := gabs.ParseJSON(resp.Body())
+				sessionContainer, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
 
-				ctx.Req.True(sessionConntainer.ExistsP("data.id"))
-				sessionId, ok := sessionConntainer.Path("data.id").Data().(string)
+				ctx.Req.True(sessionContainer.ExistsP("data.id"))
+				sessionId, ok := sessionContainer.Path("data.id").Data().(string)
 				ctx.Req.True(ok)
 				ctx.Req.NotEmpty(sessionId)
 

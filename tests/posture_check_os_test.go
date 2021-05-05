@@ -29,7 +29,7 @@ func Test_PostureChecks_Os(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	t.Run("can CRUD OS posture checks", func(t *testing.T) {
@@ -58,7 +58,7 @@ func Test_PostureChecks_Os(t *testing.T) {
 			_, _ = osPost.Set(originalTypeId, "typeId")
 			_, _ = osPost.Set(originalOses, "operatingSystems")
 
-			resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Post("/posture-checks")
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPost.String()).Post("/posture-checks")
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
@@ -70,7 +70,7 @@ func Test_PostureChecks_Os(t *testing.T) {
 
 			t.Run("can get", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
@@ -111,14 +111,14 @@ func Test_PostureChecks_Os(t *testing.T) {
 				_, _ = osPatch.Set(newOses, "operatingSystems")
 				_, _ = osPatch.Set(originalTypeId, "typeId")
 
-				patchResp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
+				patchResp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusOK, patchResp.StatusCode())
 
 				t.Run("get after os patch has proper values", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+					resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
 					ctx.Req.NoError(err)
 					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
@@ -157,14 +157,14 @@ func Test_PostureChecks_Os(t *testing.T) {
 				_, _ = osPatch.Set(newTags, "tags")
 				_, _ = osPatch.Set(originalTypeId, "typeId")
 
-				patchResp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
+				patchResp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPatch.String()).Patch("/posture-checks/" + postureCheckId)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusOK, patchResp.StatusCode())
 
 				t.Run("get after tags patch has proper values", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					resp, err := ctx.AdminSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
+					resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(osPost.String()).Get("/posture-checks/" + postureCheckId)
 					ctx.Req.NoError(err)
 					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
@@ -194,7 +194,7 @@ func Test_PostureChecks_Os(t *testing.T) {
 
 			t.Run("can delete", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.AdminSession.deleteEntityOfType("posture-checks", postureCheckId)
+				ctx.AdminManagementSession.deleteEntityOfType("posture-checks", postureCheckId)
 			})
 		})
 

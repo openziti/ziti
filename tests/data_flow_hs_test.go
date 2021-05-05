@@ -31,20 +31,20 @@ func Test_HSDataflow(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
-	service := ctx.AdminSession.RequireNewServiceAccessibleToAll("weighted")
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("weighted")
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	_, hostContext1 := ctx.AdminSession.RequireCreateSdkContext()
+	_, hostContext1 := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext1.Close()
 
 	listener1, err := hostContext1.Listen(service.Name)
 	ctx.Req.NoError(err)
 	ctx.requireNListener(1, listener1, 2*time.Second)
 
-	_, hostContext2 := ctx.AdminSession.RequireCreateSdkContext()
+	_, hostContext2 := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext2.Close()
 
 	listener2, err := hostContext2.Listen(service.Name)
@@ -73,7 +73,7 @@ func Test_HSDataflow(t *testing.T) {
 	server1.start()
 	server2.start()
 
-	clientIdentity := ctx.AdminSession.RequireNewIdentityWithOtt(false)
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
 	clientContext := ziti.NewContextWithConfig(clientConfig)
 

@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_management_api_server/operations/role_attributes"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_server/operations/role_attributes"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -38,15 +38,15 @@ func NewRoleAttributesRouter() *RoleAttributesRouter {
 }
 
 func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
-	ae.Api.RoleAttributesListEdgeRouterRoleAttributesHandler = role_attributes.ListEdgeRouterRoleAttributesHandlerFunc(func(params role_attributes.ListEdgeRouterRoleAttributesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.RoleAttributesListEdgeRouterRoleAttributesHandler = role_attributes.ListEdgeRouterRoleAttributesHandlerFunc(func(params role_attributes.ListEdgeRouterRoleAttributesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listEdgeRouterRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.RoleAttributesListIdentityRoleAttributesHandler = role_attributes.ListIdentityRoleAttributesHandlerFunc(func(params role_attributes.ListIdentityRoleAttributesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.RoleAttributesListIdentityRoleAttributesHandler = role_attributes.ListIdentityRoleAttributesHandlerFunc(func(params role_attributes.ListIdentityRoleAttributesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listIdentityRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
-	ae.Api.RoleAttributesListServiceRoleAttributesHandler = role_attributes.ListServiceRoleAttributesHandlerFunc(func(params role_attributes.ListServiceRoleAttributesParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.RoleAttributesListServiceRoleAttributesHandler = role_attributes.ListServiceRoleAttributesHandlerFunc(func(params role_attributes.ListServiceRoleAttributesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listServiceRoleAttributes, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 }

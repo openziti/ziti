@@ -44,7 +44,11 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		Identity:       terminator.Identity,
 		IdentitySecret: terminator.IdentitySecret,
 		Precedence:     xt.GetPrecedenceForName(string(terminator.Precedence)),
-		Cost:           uint16(terminator.Cost),
+		Cost:           0,
+	}
+
+	if terminator.Cost != nil {
+		ret.Cost = uint16(*terminator.Cost)
 	}
 
 	return ret
@@ -61,7 +65,7 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 		Binding:    stringz.OrEmpty(terminator.Binding),
 		Address:    stringz.OrEmpty(terminator.Address),
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
-		Cost:       uint16(terminator.Cost),
+		Cost:       uint16(*terminator.Cost),
 	}
 	return ret
 }
@@ -77,7 +81,7 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 		Binding:    terminator.Binding,
 		Address:    terminator.Address,
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
-		Cost:       uint16(terminator.Cost),
+		Cost:       uint16(*terminator.Cost),
 	}
 	return ret
 }
@@ -115,6 +119,9 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 		return nil, err
 	}
 
+	cost := rest_model.TerminatorCost(int64(terminator.Cost))
+	dynamicCost := rest_model.TerminatorCost(xt.GlobalCosts().GetDynamicCost(terminator.Id))
+
 	ret := &rest_model.TerminatorDetail{
 		BaseEntity:  BaseEntityToRestModel(terminator, TerminatorLinkFactory),
 		ServiceID:   &terminator.Service,
@@ -124,23 +131,26 @@ func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*
 		Binding:     &terminator.Binding,
 		Address:     &terminator.Address,
 		Identity:    &terminator.Identity,
-		Cost:        rest_model.TerminatorCost(int64(terminator.Cost)),
-		DynamicCost: rest_model.TerminatorCost(xt.GlobalCosts().GetDynamicCost(terminator.Id)),
+		Cost:        &cost,
+		DynamicCost: &dynamicCost,
 	}
 
 	precedence := terminator.Precedence
+
+	resultPrecedence := rest_model.TerminatorPrecedenceDefault
+
 	if precedence.IsRequired() {
-		ret.Precedence = "required"
+		resultPrecedence = rest_model.TerminatorPrecedenceRequired
 	} else if precedence.IsFailed() {
-		ret.Precedence = "failed"
-	} else {
-		ret.Precedence = "default"
+		resultPrecedence = rest_model.TerminatorPrecedenceFailed
 	}
+
+	ret.Precedence = &resultPrecedence
 
 	return ret, nil
 }
 
-func MapLimitedTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapClientTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	terminator, ok := e.(*network.Terminator)
 
 	if !ok {
@@ -161,13 +171,13 @@ func MapLimitedTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext
 	return restModel, nil
 }
 
-func MapLimitedTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetailLimited, error) {
+func MapLimitedTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorClientDetail, error) {
 	service, err := ae.Handlers.EdgeService.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := &rest_model.TerminatorDetailLimited{
+	ret := &rest_model.TerminatorClientDetail{
 		BaseEntity: BaseEntityToRestModel(terminator, TerminatorLinkFactory),
 		ServiceID:  &terminator.Service,
 		Service:    ToEntityRef(service.Name, service, ServiceLinkFactory),

@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -62,7 +64,7 @@ type ServicePolicyCreate struct {
 
 	// type
 	// Required: true
-	Type DialBind `json:"type"`
+	Type *DialBind `json:"type"`
 }
 
 // Validate validates this service policy create
@@ -104,7 +106,6 @@ func (m *ServicePolicyCreate) Validate(formats strfmt.Registry) error {
 }
 
 func (m *ServicePolicyCreate) validateIdentityRoles(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.IdentityRoles) { // not required
 		return nil
 	}
@@ -129,7 +130,6 @@ func (m *ServicePolicyCreate) validateName(formats strfmt.Registry) error {
 }
 
 func (m *ServicePolicyCreate) validatePostureCheckRoles(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.PostureCheckRoles) { // not required
 		return nil
 	}
@@ -145,7 +145,6 @@ func (m *ServicePolicyCreate) validatePostureCheckRoles(formats strfmt.Registry)
 }
 
 func (m *ServicePolicyCreate) validateSemantic(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Semantic) { // not required
 		return nil
 	}
@@ -161,7 +160,6 @@ func (m *ServicePolicyCreate) validateSemantic(formats strfmt.Registry) error {
 }
 
 func (m *ServicePolicyCreate) validateServiceRoles(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.ServiceRoles) { // not required
 		return nil
 	}
@@ -177,12 +175,129 @@ func (m *ServicePolicyCreate) validateServiceRoles(formats strfmt.Registry) erro
 }
 
 func (m *ServicePolicyCreate) validateTags(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
 
-	if err := m.Tags.Validate(formats); err != nil {
+	if m.Tags != nil {
+		if err := m.Tags.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyCreate) validateType(formats strfmt.Registry) error {
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this service policy create based on the context it is used
+func (m *ServicePolicyCreate) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidatePostureCheckRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSemantic(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateServiceRoles(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ServicePolicyCreate) contextValidateIdentityRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("identityRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyCreate) contextValidatePostureCheckRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.PostureCheckRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("postureCheckRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyCreate) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("semantic")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyCreate) contextValidateServiceRoles(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("serviceRoles")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *ServicePolicyCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
 		}
@@ -192,13 +307,15 @@ func (m *ServicePolicyCreate) validateTags(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ServicePolicyCreate) validateType(formats strfmt.Registry) error {
+func (m *ServicePolicyCreate) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Type.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("type")
+	if m.Type != nil {
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

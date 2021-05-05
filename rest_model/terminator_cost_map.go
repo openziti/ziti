@@ -30,14 +30,17 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 )
 
 // TerminatorCostMap terminator cost map
 //
 // swagger:model terminatorCostMap
-type TerminatorCostMap map[string]TerminatorCost
+type TerminatorCostMap map[string]*TerminatorCost
 
 // Validate validates this terminator cost map
 func (m TerminatorCostMap) Validate(formats strfmt.Registry) error {
@@ -45,8 +48,31 @@ func (m TerminatorCostMap) Validate(formats strfmt.Registry) error {
 
 	for k := range m {
 
+		if swag.IsZero(m[k]) { // not required
+			continue
+		}
 		if val, ok := m[k]; ok {
 			if err := val.Validate(formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+// ContextValidate validate this terminator cost map based on the context it is used
+func (m TerminatorCostMap) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	for k := range m {
+
+		if val, ok := m[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}
 		}

@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -68,6 +70,34 @@ func (m *APISessionPostureData) validateMfa(formats strfmt.Registry) error {
 
 	if m.Mfa != nil {
 		if err := m.Mfa.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("mfa")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this api session posture data based on the context it is used
+func (m *APISessionPostureData) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateMfa(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *APISessionPostureData) contextValidateMfa(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Mfa != nil {
+		if err := m.Mfa.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("mfa")
 			}

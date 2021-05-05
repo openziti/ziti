@@ -29,17 +29,17 @@ func Test_ApiSession(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("config types should be set and viewable", func(t *testing.T) {
-		configType1 := ctx.AdminSession.requireCreateNewConfigType()
-		configType2 := ctx.AdminSession.requireCreateNewConfigType()
+		configType1 := ctx.AdminManagementSession.requireCreateNewConfigType()
+		configType2 := ctx.AdminManagementSession.requireCreateNewConfigType()
 
-		_, auth := ctx.AdminSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
+		_, auth := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
 
 		auth.ConfigTypes = s(configType1.Id, configType2.Name)
 
-		session, err := auth.Authenticate(ctx)
+		session, err := auth.AuthenticateClientApi(ctx)
 		ctx.Req.NoError(err)
 
 		expected := s(configType1.Id, configType2.Id)

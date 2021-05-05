@@ -30,6 +30,8 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -45,15 +47,19 @@ type Version struct {
 	APIVersions map[string]map[string]APIVersion `json:"apiVersions,omitempty"`
 
 	// build date
+	// Example: 2020-02-11 16:09:08
 	BuildDate string `json:"buildDate,omitempty"`
 
 	// revision
+	// Example: ea556fc18740
 	Revision string `json:"revision,omitempty"`
 
 	// runtime version
+	// Example: go1.13.5
 	RuntimeVersion string `json:"runtimeVersion,omitempty"`
 
 	// version
+	// Example: v0.9.0
 	Version string `json:"version,omitempty"`
 }
 
@@ -72,7 +78,6 @@ func (m *Version) Validate(formats strfmt.Registry) error {
 }
 
 func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.APIVersions) { // not required
 		return nil
 	}
@@ -86,6 +91,39 @@ func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
 			}
 			if val, ok := m.APIVersions[k][kk]; ok {
 				if err := val.Validate(formats); err != nil {
+					return err
+				}
+			}
+
+		}
+
+	}
+
+	return nil
+}
+
+// ContextValidate validate this version based on the context it is used
+func (m *Version) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateAPIVersions(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Version) contextValidateAPIVersions(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.APIVersions {
+
+		for kk := range m.APIVersions[k] {
+
+			if val, ok := m.APIVersions[k][kk]; ok {
+				if err := val.ContextValidate(ctx, formats); err != nil {
 					return err
 				}
 			}

@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -243,6 +244,16 @@ func (m *PostureCheckFailureDomain) validateExpectedValue(formats strfmt.Registr
 		return err
 	}
 
+	return nil
+}
+
+// ContextValidate validate this posture check failure domain based on the context it is used
+func (m *PostureCheckFailureDomain) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

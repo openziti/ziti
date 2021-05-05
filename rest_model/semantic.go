@@ -30,6 +30,7 @@ package rest_model
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/go-openapi/errors"
@@ -41,6 +42,11 @@ import (
 //
 // swagger:model semantic
 type Semantic string
+
+func NewSemantic(value Semantic) *Semantic {
+	v := value
+	return &v
+}
 
 const (
 
@@ -83,5 +89,10 @@ func (m Semantic) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// ContextValidate validates this semantic based on context it is used
+func (m Semantic) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }

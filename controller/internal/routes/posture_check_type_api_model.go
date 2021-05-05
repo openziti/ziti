@@ -50,9 +50,10 @@ func MapPostureCheckTypeToRestModel(postureCheckType *model.PostureCheckType) *r
 	operatingSystems := []*rest_model.OperatingSystem{}
 
 	for _, os := range postureCheckType.OperatingSystems {
+		osType := rest_model.OsType(os.OsType)
 
 		newOs := &rest_model.OperatingSystem{
-			Type:     rest_model.OsType(os.OsType),
+			Type:     &osType,
 			Versions: os.OsVersions,
 		}
 		operatingSystems = append(operatingSystems, newOs)

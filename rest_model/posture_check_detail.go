@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -43,9 +44,10 @@ import (
 
 // PostureCheckDetail posture check detail
 //
-// swagger:discriminator PostureCheckDetail typeId
+// swagger:discriminator postureCheckDetail typeId
 type PostureCheckDetail interface {
 	runtime.Validatable
+	runtime.ContextValidatable
 
 	// links
 	// Required: true
@@ -180,7 +182,7 @@ func (m *postureCheckDetail) SetTags(val Tags) {
 
 // TypeID gets the type Id of this polymorphic type
 func (m *postureCheckDetail) TypeID() string {
-	return "PostureCheckDetail"
+	return "postureCheckDetail"
 }
 
 // SetTypeID sets the type Id of this polymorphic type
@@ -289,7 +291,7 @@ func unmarshalPostureCheckDetail(data []byte, consumer runtime.Consumer) (Postur
 			return nil, err
 		}
 		return &result, nil
-	case "PostureCheckDetail":
+	case "postureCheckDetail":
 		var result postureCheckDetail
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
@@ -343,11 +345,17 @@ func (m *postureCheckDetail) Validate(formats strfmt.Registry) error {
 
 func (m *postureCheckDetail) validateLinks(formats strfmt.Registry) error {
 
-	if err := m.Links().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("_links")
-		}
+	if err := validate.Required("_links", "body", m.Links()); err != nil {
 		return err
+	}
+
+	if m.Links() != nil {
+		if err := m.Links().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("_links")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -402,11 +410,17 @@ func (m *postureCheckDetail) validateRoleAttributes(formats strfmt.Registry) err
 
 func (m *postureCheckDetail) validateTags(formats strfmt.Registry) error {
 
-	if err := m.Tags().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
-		}
+	if err := validate.Required("tags", "body", m.Tags()); err != nil {
 		return err
+	}
+
+	if m.Tags() != nil {
+		if err := m.Tags().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -428,6 +442,64 @@ func (m *postureCheckDetail) validateUpdatedAt(formats strfmt.Registry) error {
 func (m *postureCheckDetail) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this posture check detail based on the context it is used
+func (m *postureCheckDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateLinks(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRoleAttributes(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTags(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *postureCheckDetail) contextValidateLinks(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Links().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("_links")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("roleAttributes")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckDetail) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("tags")
+		}
 		return err
 	}
 
