@@ -35,9 +35,15 @@ const (
 	BindPointContextKey  = ContextKey("XWebBindPointContextKey")
 )
 
-// Represents all of the http.Server's and http.Handler's necessary to run a single xweb.WebListener
+type namedHttpServer struct {
+	*http.Server
+	ApiBindingList  []string
+	WebListenerName string
+}
+
+// Server represents all of the http.Server's and http.Handler's necessary to run a single xweb.WebListener
 type Server struct {
-	httpServers    []*http.Server
+	httpServers    []*namedHttpServer
 	corsOptions    []handlers.CORSOption
 	logWriter      *io.PipeWriter
 	options        *Options
@@ -46,7 +52,7 @@ type Server struct {
 	OnHandlerPanic func(writer http.ResponseWriter, request *http.Request, panicVal interface{})
 }
 
-// Create a new xweb.Server from an xweb.WebListener. All necessary http.Handler's will be created from the supplied
+// NewServer creates a new xweb.Server from an xweb.WebListener. All necessary http.Handler's will be created from the supplied
 // DemuxFactory and WebHandlerFactoryRegistry.
 func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFactoryRegistry WebHandlerFactoryRegistry) (*Server, error) {
 	logWriter := pfxlog.Logger().Writer()
@@ -60,10 +66,11 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 	server := &Server{
 		logWriter:   logWriter,
 		config:      &webListener,
-		httpServers: []*http.Server{},
+		httpServers: []*namedHttpServer{},
 	}
 
 	var webHandlers []WebHandler
+	var apiBindingList []string
 
 	for _, api := range webListener.APIs {
 		if factory := handlerFactoryRegistry.Get(api.Binding()); factory != nil {
@@ -71,6 +78,7 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 				pfxlog.Logger().Fatalf("encountered error building handler for api binding [%s]: %v", api.Binding(), err)
 			} else {
 				webHandlers = append(webHandlers, webHandler)
+				apiBindingList = append(apiBindingList, api.binding)
 			}
 		} else {
 			pfxlog.Logger().Fatalf("encountered api binding [%s] which has no associated factory registered", api.Binding())
@@ -84,16 +92,20 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 	}
 
 	for _, bindPoint := range webListener.BindPoints {
-		httpServer := &http.Server{
-			Addr:         bindPoint.InterfaceAddress,
-			WriteTimeout: webListener.Options.WriteTimeout,
-			ReadTimeout:  webListener.Options.ReadTimeout,
-			IdleTimeout:  webListener.Options.WriteTimeout,
-			Handler:      server.wrap(demuxWebHandler, bindPoint),
-			TLSConfig:    tlsConfig,
-			ErrorLog:     log.New(logWriter, "", 0),
+		namedServer := &namedHttpServer{
+			ApiBindingList:  apiBindingList,
+			WebListenerName: webListener.Name,
+			Server: &http.Server{
+				Addr:         bindPoint.InterfaceAddress,
+				WriteTimeout: webListener.Options.WriteTimeout,
+				ReadTimeout:  webListener.Options.ReadTimeout,
+				IdleTimeout:  webListener.Options.WriteTimeout,
+				Handler:      server.wrap(demuxWebHandler, bindPoint),
+				TLSConfig:    tlsConfig,
+				ErrorLog:     log.New(logWriter, "", 0),
+			},
 		}
-		server.httpServers = append(server.httpServers, httpServer)
+		server.httpServers = append(server.httpServers, namedServer)
 	}
 
 	return server, nil
@@ -134,7 +146,7 @@ func (server *Server) Start() error {
 	logger := pfxlog.Logger()
 
 	for _, httpServer := range server.httpServers {
-		logger.Info("starting API to listen and serve tls on: ", httpServer.Addr)
+		logger.Infof("starting API to listen and serve tls on %s for web listener %s with APIs: %v", httpServer.Addr, httpServer.WebListenerName, httpServer.ApiBindingList)
 		err := httpServer.ListenAndServeTLS("", "")
 		if err != http.ErrServerClosed {
 
@@ -145,7 +157,7 @@ func (server *Server) Start() error {
 	return nil
 }
 
-// Stop the server and all underlying http.Server's
+// Shutdown stops the server and all underlying http.Server's
 func (server *Server) Shutdown(ctx context.Context) {
 	_ = server.logWriter.Close()
 
