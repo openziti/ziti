@@ -7,6 +7,35 @@
 * Removed xtv framework from fabric and moved edge terminator identity validation to control channel handler. The `terminator:` section may be removed from the controller configuration file.
 * Listen for SIGINT for router shutdown
 * Implement dial and listen identity options in go tunneler
+* Edge REST API Deprecation Warnings
+* Posture Check Process Multi
+
+### Deprecation Warning Of Non-Prefixed Edge REST API
+
+Upcoming changes will remove support for non-prefixed Edge REST API URLs. The correct API URL prefix has been `edge/v1`
+for over a year and not using will become unsupported at a future date. Additionally, the Edge REST API will be splitting
+into two separate APIs in the coming months:
+
+  - `/edge/management/v1`
+  - `/edge/client/v1`
+
+These new prefixes are not currently live and will be released in a subsequent version.
+
+### Posture Check Process Multi
+
+A new posture check type has been introduced: `PROCESS_MULTI`. This posture check
+is meant to replace the posture check type `PROCESS` and `PROCESS` should be considered
+deprecated. `PROCESS_MULTI` covers all the uses that its predecessor provided with
+additional semantic configuration options.
+
+#### Process Multi Fields:
+
+- semantic: Either `AllOf` or `OneOf`. Determines which processes specified in `processes` must pass
+- processes: An array of objects representing a process. Similar to `PROCESS`'s fields but with the ability to specify multiple binary hashes
+  -  osType - Any of the standard posture check OS types (Android, iOS, macOS, Linux, Windows, WindowsServer)
+  -  path - The absolute file path the process is expected to run from
+  -  hashes - An array of sha512 hashes that are valid (optional, none allows any)
+  -  signerFingerprints - An array of sha1 signer fingerprints that are valid (optional, none allows any)
 
 # Release 0.19.12
 
