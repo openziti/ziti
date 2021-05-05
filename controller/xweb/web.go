@@ -20,17 +20,16 @@ Package xweb provides facilities to creating composable xweb.WebHandlers and htt
 Basics
 
 xweb provides customizable and extendable components to stand up multiple http.Server's listening on one or more
-network interfaces.
+network interfaces and ports.
 
 Each xweb.Xweb is responsible for defining configuration sections to be parsed, parsing the configuration, starting
 servers, and shutting down relevant server. An example implementation is included in the package: xweb.XwebImpl. This
 implementation should cover most use cases. In addition xweb.XwebImpl makes use of xweb.Config which is reusable
-component for parsing xweb.XwebImpl configuration sections. Both xweb.Xweb xweb.Config assume that configuration will
-be acquired from some source and be presented as a map of interface{}-to-interface{} values
-(map[interface{}]interface{}) per the openziti/foundation config.Subconfig pattern.
+component for parsing xweb.XwebImpl configuration sections. Both xweb.Xweb and xweb.Config assume that configuration
+will be acquired from some source and be presented as a map of interface{}-to-interface{} values.
 
 xweb.Config configuration sections allow the definition of an array of xweb.WebListener. In turn each xweb.WebListener
-can listen on many interface/port combinations specified by an array of xweb.BindPoint and host many http.Handler's
+can listen on many interface/port combinations specified by an array of xweb.BindPoint's and host many http.Handler's
 by defining an array of xweb.API's that are converted into xweb.WebHandler's. xweb.WebHandler's are http.Handler's with
 meta data and can be as complex or as simple as necessary - using other libraries or only the standard http Go
 capabilities.
@@ -49,7 +48,7 @@ import (
 	"time"
 )
 
-// Implements config.Subconfig to allow Xweb implementations to be used during the normal Ziti component  startup
+// Xweb implements config.Subconfig to allow Xweb implementations to be used during the normal Ziti component startup
 // and configuration phase.
 type Xweb interface {
 	Enabled() bool
@@ -63,7 +62,7 @@ const (
 	WebSection             = "web"
 )
 
-// A simple implementation of xweb.XWeb used for registration and configuration from controller.Controller.
+// XwebImpl is a simple implementation of xweb.XWeb, used for registration and configuration from controller.Controller.
 // Implements necessary interfaces to be a config.Subconfig.
 type XwebImpl struct {
 	Config       *Config
@@ -75,7 +74,7 @@ type XwebImpl struct {
 func NewXwebImpl(registry WebHandlerFactoryRegistry) *XwebImpl {
 	return &XwebImpl{
 		Registry:     registry,
-		DemuxFactory: &PathPrefixDemuxFactory{},
+		DemuxFactory: &IsHandledDemuxFactory{},
 		Config: &Config{
 			DefaultIdentitySection: DefaultIdentitySection,
 			WebSection:             WebSection,
@@ -83,12 +82,12 @@ func NewXwebImpl(registry WebHandlerFactoryRegistry) *XwebImpl {
 	}
 }
 
-// Whether this subconfig should be considered enabled
+// Enabled returns true/false on whether this subconfig should be considered enabled
 func (xwebimpl *XwebImpl) Enabled() bool {
 	return xwebimpl.Config.Enabled()
 }
 
-// Handle subconfig operations for xweb.Xweb components
+// LoadConfig handles subconfig operations for xweb.Xweb components
 func (xwebimpl *XwebImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
 	if err := xwebimpl.Config.Parse(cfgmap); err != nil {
 		return err
@@ -102,7 +101,7 @@ func (xwebimpl *XwebImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
 	return nil
 }
 
-// Starts the necessary xweb.Server's
+// Run starts the necessary xweb.Server's
 func (xwebimpl *XwebImpl) Run() {
 	for _, webListener := range xwebimpl.Config.WebListeners {
 		server, err := NewServer(webListener, xwebimpl.DemuxFactory, xwebimpl.Registry)
@@ -113,13 +112,15 @@ func (xwebimpl *XwebImpl) Run() {
 
 		xwebimpl.servers = append(xwebimpl.servers, server)
 
-		if err := server.Start(); err != nil {
-			pfxlog.Logger().Errorf("error starting xgweb_rest server %s: %v", webListener.Name, err)
-		}
+		go func(){
+			if err := server.Start(); err != nil {
+				pfxlog.Logger().Errorf("error starting xweb_rest server %s: %v", webListener.Name, err)
+			}
+		}()
 	}
 }
 
-// Stop all running xweb.Server's
+// Shutdown stop all running xweb.Server's
 func (xwebimpl *XwebImpl) Shutdown() {
 	for _, server := range xwebimpl.servers {
 		localServer := server
@@ -128,6 +129,5 @@ func (xwebimpl *XwebImpl) Shutdown() {
 			defer cancel()
 			localServer.Shutdown(ctx)
 		}()
-
 	}
 }

@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-// The root configuration options necessary to start numerous http.Server instances via WebListener's.
+// Config is the root configuration options necessary to start numerous http.Server instances via WebListener's.
 type Config struct {
 	WebListeners          []*WebListener
 	DefaultIdentityConfig *identity.IdentityConfig
@@ -35,7 +35,7 @@ type Config struct {
 	enabled                bool
 }
 
-// Parses a configuration map, looking for sections that define an identity.IdentityConfig and an array of WebListener's.
+// Parse parses a configuration map, looking for sections that define an identity.IdentityConfig and an array of WebListener's.
 func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 
 	if config.DefaultIdentitySection == "" {
@@ -87,8 +87,8 @@ func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 	return nil
 }
 
-// Uses a WebHandlerFactoryRegistry to validate that all API bindings may be fulfilled. All other relevant Config values
-// are also validated.
+// Validate uses a WebHandlerFactoryRegistry to validate that all API bindings may be fulfilled. All other relevant
+// Config values are also validated.
 func (config *Config) Validate(registry WebHandlerFactoryRegistry) error {
 
 	//validate default identity by loading
@@ -116,13 +116,14 @@ func (config *Config) Validate(registry WebHandlerFactoryRegistry) error {
 	return nil
 }
 
-// Whether this configuration should be considered "enabled". Set to true after Validate passes.
+// Enabled returns true/false on whether this configuration should be considered "enabled". Set to true after
+// Validate passes.
 func (config *Config) Enabled() bool {
 	return config.enabled
 }
 
-// The configuration that will eventually be used to create an xweb.Server (which in turn houses all of the components
-// necessary to run multiple http.Server's).
+// WebListener is the configuration that will eventually be used to create an xweb.Server (which in turn houses all
+// of the components necessary to run multiple http.Server's).
 type WebListener struct {
 	Name       string
 	APIs       []*API
@@ -136,7 +137,7 @@ type WebListener struct {
 	DefaultIdentity       identity.Identity
 }
 
-// Parses a configuration map to set all relavant WebListener values.
+// Parse parses a configuration map to set all relevant WebListener values.
 func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}) error {
 	//parse name, required, string
 	if nameInterface, ok := webConfigMap["name"]; ok {
@@ -223,7 +224,7 @@ func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}) error {
 	return nil
 }
 
-// Validates all WebListener values
+// Validate all WebListener values
 func (web *WebListener) Validate(registry WebHandlerFactoryRegistry) error {
 	if web.Name == "" {
 		return errors.New("name must not be empty")
@@ -284,7 +285,7 @@ func (web *WebListener) Validate(registry WebHandlerFactoryRegistry) error {
 
 }
 
-// Represents some "api" or "site" by binding name. Each API configuration is used against a WebHandlerFactoryRegistry
+// API represents some "api" or "site" by binding name. Each API configuration is used against a WebHandlerFactoryRegistry
 // to locate the proper factory to generate a WebHandler. The options provided by this structure are parsed by the
 // WebHandlerFactory and the behavior, valid keys, and valid values are not defined by xweb components, but by that
 // WebHandlerFactory and it resulting WebHandler's.
@@ -293,18 +294,18 @@ type API struct {
 	options map[interface{}]interface{}
 }
 
-// Returns the string that uniquely identifies bo the WebHandlerFactory and resulting WebHandler's that will be attached
+// Binding returns the string that uniquely identifies bo the WebHandlerFactory and resulting WebHandler's that will be attached
 // to some WebListener and its resulting Server.
 func (api *API) Binding() string {
 	return api.binding
 }
 
-// Returns the options associated with thsi API binding.
+// Options returns the options associated with thsi API binding.
 func (api *API) Options() map[interface{}]interface{} {
 	return api.options
 }
 
-// Parses the configuration map for an API.
+// Parse the configuration map for an API.
 func (api *API) Parse(apiConfigMap map[interface{}]interface{}) error {
 	if bindingInterface, ok := apiConfigMap["binding"]; ok {
 		if binding, ok := bindingInterface.(string); ok {
@@ -327,7 +328,7 @@ func (api *API) Parse(apiConfigMap map[interface{}]interface{}) error {
 	return nil
 }
 
-// Validates this configuration object.
+// Validate this configuration object.
 func (api *API) Validate() error {
 	if api.Binding() == "" {
 		return errors.New("binding must be specified")
@@ -336,14 +337,14 @@ func (api *API) Validate() error {
 	return nil
 }
 
-// Represents the interface:port address of where a http.Server should listen for a WebListener and the public
+// BindPoint represents the interface:port address of where a http.Server should listen for a WebListener and the public
 // address that should be used to address it.
 type BindPoint struct {
 	InterfaceAddress string // <interface>:<port>
 	Address          string //<ip/host>:<port>
 }
 
-// Parses the configuration map for a BindPoint.
+// Parse the configuration map for a BindPoint.
 func (bindPoint *BindPoint) Parse(config map[interface{}]interface{}) error {
 	if interfaceVal, ok := config["interface"]; ok {
 		if address, ok := interfaceVal.(string); ok {
@@ -364,7 +365,7 @@ func (bindPoint *BindPoint) Parse(config map[interface{}]interface{}) error {
 	return nil
 }
 
-// Validates this configuration object.
+// Validate this configuration object.
 func (bindPoint *BindPoint) Validate() error {
 	if bindPoint.InterfaceAddress == "" {
 		return errors.New("value for address must be provided")
@@ -377,19 +378,19 @@ func (bindPoint *BindPoint) Validate() error {
 	return nil
 }
 
-// The WebListener shared options configuration struct.
+// Options is the shared options for a WebListener.
 type Options struct {
 	TimeoutOptions
 	TlsVersionOptions
 }
 
-// Defaults all necessary values
+// Default provides defaults for all necessary values
 func (options *Options) Default() {
 	options.TimeoutOptions.Default()
 	options.TlsVersionOptions.Default()
 }
 
-// Parses a configuariont map
+// Parse parses a configuration map
 func (options *Options) Parse(optionsMap map[interface{}]interface{}) error {
 	if err := options.TimeoutOptions.Parse(optionsMap); err != nil {
 		return fmt.Errorf("error parsing options: %v", err)
@@ -402,21 +403,21 @@ func (options *Options) Parse(optionsMap map[interface{}]interface{}) error {
 	return nil
 }
 
-//Represents http timeout options
+// TimeoutOptions represents http timeout options
 type TimeoutOptions struct {
 	ReadTimeout  time.Duration
 	IdleTimeout  time.Duration
 	WriteTimeout time.Duration
 }
 
-// Defaults all http. timeout options
+// Default defaults all HTTP timeout options
 func (timeoutOptions *TimeoutOptions) Default() {
 	timeoutOptions.WriteTimeout = time.Second * 10
 	timeoutOptions.ReadTimeout = time.Second * 5
 	timeoutOptions.IdleTimeout = time.Second * 5
 }
 
-// Parses a config map
+// Parse parses a config map
 func (timeoutOptions *TimeoutOptions) Parse(config map[interface{}]interface{}) error {
 	if interfaceVal, ok := config["readTimeoutMs"]; ok {
 		if readTimeoutMs, ok := interfaceVal.(int); ok {
@@ -445,7 +446,7 @@ func (timeoutOptions *TimeoutOptions) Parse(config map[interface{}]interface{}) 
 	return nil
 }
 
-// Validtes all settings
+// Validate validates all settings and return nil or an error
 func (timeoutOptions *TimeoutOptions) Validate() error {
 	if timeoutOptions.WriteTimeout <= 0 {
 		return fmt.Errorf("value [%s] for writeTimeout too low, must be positive", timeoutOptions.WriteTimeout.String())
@@ -462,7 +463,7 @@ func (timeoutOptions *TimeoutOptions) Validate() error {
 	return nil
 }
 
-// Represents TLS version options
+// TlsVersionOptions represents TLS version options
 type TlsVersionOptions struct {
 	MinTLSVersion    int
 	minTLSVersionStr string
@@ -471,7 +472,7 @@ type TlsVersionOptions struct {
 	maxTLSVersionStr string
 }
 
-// A map of configuration strings to TLS version identifiers
+// tlsVersionMap is a map of configuration strings to TLS version identifiers
 var tlsVersionMap = map[string]int{
 	"TLS1.0": tls.VersionTLS10,
 	"TLS1.1": tls.VersionTLS11,
@@ -479,13 +480,13 @@ var tlsVersionMap = map[string]int{
 	"TLS1.3": tls.VersionTLS13,
 }
 
-// Defaults TLS versions
+// Default defaults TLS versions
 func (tlsVersionOptions *TlsVersionOptions) Default() {
 	tlsVersionOptions.MinTLSVersion = tls.VersionTLS12
 	tlsVersionOptions.MaxTLSVersion = tls.VersionTLS13
 }
 
-// Parses a config map
+// Parse parses a config map
 func (tlsVersionOptions *TlsVersionOptions) Parse(config map[interface{}]interface{}) error {
 	if interfaceVal, ok := config["minTLSVersion"]; ok {
 		var ok bool
@@ -516,7 +517,7 @@ func (tlsVersionOptions *TlsVersionOptions) Parse(config map[interface{}]interfa
 	return nil
 }
 
-// Validates the configuration values
+// Validate validates the configuration values and returns nil or error
 func (tlsVersionOptions *TlsVersionOptions) Validate() error {
 	if tlsVersionOptions.MinTLSVersion > tlsVersionOptions.MaxTLSVersion {
 		return fmt.Errorf("minTLSVersion [%s] must be less than or equal to maxTLSVersion [%s]", tlsVersionOptions.minTLSVersionStr, tlsVersionOptions.maxTLSVersionStr)

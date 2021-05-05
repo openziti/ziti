@@ -21,25 +21,25 @@ import (
 	"net/http"
 )
 
-// Describes a registry of binding to WebHandlerFactory registrations
+// WebHandlerFactoryRegistry describes a registry of binding to WebHandlerFactory registrations
 type WebHandlerFactoryRegistry interface {
 	Add(factory WebHandlerFactory) error
 	Get(binding string) WebHandlerFactory
 }
 
-// A basic WebHandlerFactoryRegistry implementation backed by a simple mapping of binding to WebHandlerFactories
+// WebHandlerFactoryRegistryImpl is a basic WebHandlerFactoryRegistry implementation backed by a simple mapping of binding (string) to WebHandlerFactories
 type WebHandlerFactoryRegistryImpl struct {
 	factories map[string]WebHandlerFactory
 }
 
-// Create a new WebHandlerFactoryRegistryImpl
+// NewWebHandlerFactoryRegistryImpl creates a new WebHandlerFactoryRegistryImpl
 func NewWebHandlerFactoryRegistryImpl() *WebHandlerFactoryRegistryImpl {
 	return &WebHandlerFactoryRegistryImpl{
 		factories: map[string]WebHandlerFactory{},
 	}
 }
 
-// Adds a factory to the registry. Errors if a previous factory with the same binding is registered.
+// Add adds a factory to the registry. Errors if a previous factory with the same binding is registered.
 func (registry WebHandlerFactoryRegistryImpl) Add(factory WebHandlerFactory) error {
 	if _, ok := registry.factories[factory.Binding()]; ok {
 		return fmt.Errorf("binding [%s] already registered", factory.Binding())
@@ -50,32 +50,33 @@ func (registry WebHandlerFactoryRegistryImpl) Add(factory WebHandlerFactory) err
 	return nil
 }
 
-// Retrieves a factory based on a binding or nil if no factory for the binding is registered
+// Get retrieves a factory based on a binding or nil if no factory for the binding is registered
 func (registry WebHandlerFactoryRegistryImpl) Get(binding string) WebHandlerFactory {
 	return registry.factories[binding]
 }
 
-// An interface defines the minimum operations necessary to convert configuration into a WebHandler by some WebHandlerFactory
-// The APIBinding.Binding() value is used to map configuration data to specific WebHandlerFactory instances that
-// generate a WebHandler with the same binding value.
+// APIBinding is an interface defines the minimum operations necessary to convert configuration into a WebHandler
+// by some WebHandlerFactory. The APIBinding.Binding() value is used to map configuration data to specific
+// WebHandlerFactory instances that  generate a WebHandler with the same binding value.
 type APIBinding interface {
 	Binding() string
 	Options() map[interface{}]interface{}
 }
 
-// A  http.Handler with options, binding, and information for a specific web API that was generated from
-// a WebHandlerFactory.
+// WebHandler is an interface that is a  http.Handler with options, binding, and information for a specific web API
+// that was generated from a WebHandlerFactory.
 type WebHandler interface {
 	Binding() string
 	Options() map[interface{}]interface{}
 	RootPath() string
+	IsHandler(r *http.Request) bool
 
 	http.Handler
 }
 
-// Generates WebHandler instances. Factories can use a single instance or multiple instances based on need.
-// This interface allows WebHandler logic to be reused across multiple xweb.Server's while delegating the instance
-// management to the factory.
+// The WebHandlerFactory interface generates WebHandler instances. Factories can use a single instance or multiple
+// instances based on need. This interface allows WebHandler logic to be reused across multiple xweb.Server's while
+// delegating the instance management to the factory.
 type WebHandlerFactory interface {
 	Binding() string
 	New(webListener *WebListener, options map[interface{}]interface{}) (WebHandler, error)
