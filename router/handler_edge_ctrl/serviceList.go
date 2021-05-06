@@ -66,6 +66,6 @@ func (self *ServiceListHandler) handleServicesList(list *edge_ctrl_pb.ServicesLi
 		}
 
 		serviceList = append(serviceList, service)
-		self.handler(list.LastUpdate, serviceList)
 	}
+	self.handler(list.LastUpdate, serviceList)
 }
