@@ -26,17 +26,21 @@ import (
 
 // Config is the root configuration options necessary to start numerous http.Server instances via WebListener's.
 type Config struct {
-	WebListeners          []*WebListener
-	DefaultIdentityConfig *identity.IdentityConfig
-	DefaultIdentity       identity.Identity
+	SourceConfig map[interface{}]interface{}
 
+	WebListeners []*WebListener
+	WebSection   string
+
+	DefaultIdentityConfig  *identity.IdentityConfig
+	DefaultIdentity        identity.Identity
 	DefaultIdentitySection string
-	WebSection             string
-	enabled                bool
+
+	enabled bool
 }
 
 // Parse parses a configuration map, looking for sections that define an identity.IdentityConfig and an array of WebListener's.
 func (config *Config) Parse(configMap map[interface{}]interface{}) error {
+	config.SourceConfig = configMap
 
 	if config.DefaultIdentitySection == "" {
 		return errors.New("identity section not specified for configuration")
@@ -103,10 +107,22 @@ func (config *Config) Validate(registry WebHandlerFactoryRegistry) error {
 		webListener.DefaultIdentity = config.DefaultIdentity
 	}
 
-	for i, web := range config.WebListeners {
+	presentApis := map[string]WebHandlerFactory{}
+
+	for i, webListener := range config.WebListeners {
 		//validate attributes
-		if err := web.Validate(registry); err != nil {
+		if err := webListener.Validate(registry); err != nil {
 			return fmt.Errorf("could not validate web listener at %s[%d]: %v", config.WebSection, i, err)
+		}
+
+		for _, api := range webListener.APIs {
+			presentApis[api.Binding()] = registry.Get(api.Binding())
+		}
+	}
+
+	for presentApiBinding, presentApiFactory := range presentApis {
+		if err := presentApiFactory.Validate(config); err != nil {
+			return fmt.Errorf("error validating API binding %s: %v", presentApiBinding, err)
 		}
 	}
 
@@ -120,262 +136,6 @@ func (config *Config) Validate(registry WebHandlerFactoryRegistry) error {
 // Validate passes.
 func (config *Config) Enabled() bool {
 	return config.enabled
-}
-
-// WebListener is the configuration that will eventually be used to create an xweb.Server (which in turn houses all
-// of the components necessary to run multiple http.Server's).
-type WebListener struct {
-	Name       string
-	APIs       []*API
-	BindPoints []*BindPoint
-	Options    Options
-
-	IdentityConfig *identity.IdentityConfig
-	Identity       identity.Identity
-
-	DefaultIdentityConfig *identity.IdentityConfig
-	DefaultIdentity       identity.Identity
-}
-
-// Parse parses a configuration map to set all relevant WebListener values.
-func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}) error {
-	//parse name, required, string
-	if nameInterface, ok := webConfigMap["name"]; ok {
-		if name, ok := nameInterface.(string); ok {
-			web.Name = name
-		} else {
-			return errors.New("name is required to be a string")
-		}
-	} else {
-		return errors.New("name is required")
-	}
-
-	//parse apis, require 1, objet, defer
-	if apiInterface, ok := webConfigMap["apis"]; ok {
-		if apiArrayInterfaces, ok := apiInterface.([]interface{}); ok {
-			for i, apiInterface := range apiArrayInterfaces {
-				if apiMap, ok := apiInterface.(map[interface{}]interface{}); ok {
-					api := &API{}
-					if err := api.Parse(apiMap); err != nil {
-						return fmt.Errorf("error parsing api configuration at index [%d]: %v", i, err)
-					}
-
-					web.APIs = append(web.APIs, api)
-				} else {
-					return fmt.Errorf("error parsing api configuration at index [%d]: not a map", i)
-				}
-			}
-		} else {
-			return errors.New("api section must be an array")
-		}
-	} else {
-		return errors.New("apis section is required")
-	}
-
-	//parse listen address
-	if addressInterface, ok := webConfigMap["bindPoints"]; ok {
-		if addressesArrayInterfaces, ok := addressInterface.([]interface{}); ok {
-			for i, addressInterface := range addressesArrayInterfaces {
-				if addressMap, ok := addressInterface.(map[interface{}]interface{}); ok {
-					address := &BindPoint{}
-					if err := address.Parse(addressMap); err != nil {
-						return fmt.Errorf("error parsing address configuration at index [%d]: %v", i, err)
-					}
-
-					web.BindPoints = append(web.BindPoints, address)
-				} else {
-					return fmt.Errorf("error parsing address configuration at index [%d]: not a map", i)
-				}
-			}
-		} else {
-			return errors.New("addresses section must be an array")
-		}
-	} else {
-		return errors.New("addresses section is required")
-	}
-
-	//parse identity
-	if identityInterface, ok := webConfigMap["identity"]; ok {
-		if identityMap, ok := identityInterface.(map[interface{}]interface{}); ok {
-			if identityConfig, err := parseIdentityConfig(identityMap); err == nil {
-				web.IdentityConfig = identityConfig
-			} else {
-				return fmt.Errorf("error parsing identity section: %v", err)
-			}
-
-		} else {
-			return errors.New("identity section must be a map if defined")
-		}
-
-	} //no else, optional, will defer to router identity
-
-	//parse options
-	web.Options = Options{}
-	web.Options.Default()
-
-	if optionsInterface, ok := webConfigMap["options"]; ok {
-		if optionMap, ok := optionsInterface.(map[interface{}]interface{}); ok {
-			if err := web.Options.Parse(optionMap); err != nil {
-				return fmt.Errorf("error parsing options section: %v", err)
-			}
-		} //no else, options are optional
-	}
-
-	return nil
-}
-
-// Validate all WebListener values
-func (web *WebListener) Validate(registry WebHandlerFactoryRegistry) error {
-	if web.Name == "" {
-		return errors.New("name must not be empty")
-	}
-
-	if len(web.APIs) <= 0 {
-		return errors.New("no APIs specified, must specify at least one")
-	}
-
-	for i, api := range web.APIs {
-		if err := api.Validate(); err != nil {
-			return fmt.Errorf("invalid API at index [%d]: %v", i, err)
-		}
-
-		//check if binding is valid
-		if binding := registry.Get(api.Binding()); binding == nil {
-			return fmt.Errorf("invalid API at index [%d]: invalid binding %s", i, api.Binding())
-		}
-	}
-
-	if len(web.BindPoints) <= 0 {
-		return errors.New("no addresses specified, must specify at lest one")
-	}
-
-	for i, address := range web.BindPoints {
-		if err := address.Validate(); err != nil {
-			return fmt.Errorf("invalid address at index [%d]: %v", i, err)
-		}
-	}
-
-	//default identity config
-	if web.IdentityConfig == nil {
-		web.IdentityConfig = web.DefaultIdentityConfig
-		web.Identity = web.DefaultIdentity
-	}
-
-	if web.Identity == nil {
-		if web.IdentityConfig == nil {
-			return errors.New("no identity specified")
-		}
-
-		if id, err := identity.LoadIdentity(*web.IdentityConfig); err == nil {
-			web.Identity = id
-		} else {
-			return fmt.Errorf("failed to load identity: %v", err)
-		}
-	}
-
-	if err := web.Options.TlsVersionOptions.Validate(); err != nil {
-		return fmt.Errorf("invalid TLS version option: %v", err)
-	}
-
-	if err := web.Options.TimeoutOptions.Validate(); err != nil {
-		return fmt.Errorf("invalid timeout option: %v", err)
-	}
-
-	return nil
-
-}
-
-// API represents some "api" or "site" by binding name. Each API configuration is used against a WebHandlerFactoryRegistry
-// to locate the proper factory to generate a WebHandler. The options provided by this structure are parsed by the
-// WebHandlerFactory and the behavior, valid keys, and valid values are not defined by xweb components, but by that
-// WebHandlerFactory and it resulting WebHandler's.
-type API struct {
-	binding string
-	options map[interface{}]interface{}
-}
-
-// Binding returns the string that uniquely identifies bo the WebHandlerFactory and resulting WebHandler's that will be attached
-// to some WebListener and its resulting Server.
-func (api *API) Binding() string {
-	return api.binding
-}
-
-// Options returns the options associated with thsi API binding.
-func (api *API) Options() map[interface{}]interface{} {
-	return api.options
-}
-
-// Parse the configuration map for an API.
-func (api *API) Parse(apiConfigMap map[interface{}]interface{}) error {
-	if bindingInterface, ok := apiConfigMap["binding"]; ok {
-		if binding, ok := bindingInterface.(string); ok {
-			api.binding = binding
-		} else {
-			return errors.New("binding must be a string")
-		}
-	} else {
-		return errors.New("binding is required")
-	}
-
-	if optionsInterface, ok := apiConfigMap["options"]; ok {
-		if optionsMap, ok := optionsInterface.(map[interface{}]interface{}); ok {
-			api.options = optionsMap //leave to bindings to interpret further
-		} else {
-			return errors.New("options if declared must be a map")
-		}
-	} //no else optional
-
-	return nil
-}
-
-// Validate this configuration object.
-func (api *API) Validate() error {
-	if api.Binding() == "" {
-		return errors.New("binding must be specified")
-	}
-
-	return nil
-}
-
-// BindPoint represents the interface:port address of where a http.Server should listen for a WebListener and the public
-// address that should be used to address it.
-type BindPoint struct {
-	InterfaceAddress string // <interface>:<port>
-	Address          string //<ip/host>:<port>
-}
-
-// Parse the configuration map for a BindPoint.
-func (bindPoint *BindPoint) Parse(config map[interface{}]interface{}) error {
-	if interfaceVal, ok := config["interface"]; ok {
-		if address, ok := interfaceVal.(string); ok {
-			bindPoint.InterfaceAddress = address
-		} else {
-			return fmt.Errorf("could not use value for address, not a string")
-		}
-	}
-
-	if interfaceVal, ok := config["address"]; ok {
-		if address, ok := interfaceVal.(string); ok {
-			bindPoint.Address = address
-		} else {
-			return errors.New("could not use value for address, not a string")
-		}
-	}
-
-	return nil
-}
-
-// Validate this configuration object.
-func (bindPoint *BindPoint) Validate() error {
-	if bindPoint.InterfaceAddress == "" {
-		return errors.New("value for address must be provided")
-	}
-
-	if bindPoint.Address == "" {
-		return errors.New("value for address must be provided")
-	}
-
-	return nil
 }
 
 // Options is the shared options for a WebListener.
@@ -419,27 +179,39 @@ func (timeoutOptions *TimeoutOptions) Default() {
 
 // Parse parses a config map
 func (timeoutOptions *TimeoutOptions) Parse(config map[interface{}]interface{}) error {
-	if interfaceVal, ok := config["readTimeoutMs"]; ok {
-		if readTimeoutMs, ok := interfaceVal.(int); ok {
-			timeoutOptions.ReadTimeout = time.Duration(readTimeoutMs) * time.Millisecond
+	if interfaceVal, ok := config["readTimeout"]; ok {
+		if readTimeoutStr, ok := interfaceVal.(string); ok {
+			if readTimeout, err := time.ParseDuration(readTimeoutStr); err == nil {
+				timeoutOptions.ReadTimeout = readTimeout
+			} else {
+				return fmt.Errorf("could not parse readTimeout %s as a duration (e.g. 1m): %v", readTimeoutStr, err)
+			}
 		} else {
-			return errors.New("could not use value for readTimeoutMs, not an integer")
+			return errors.New("could not use value for readTimeout, not a string")
 		}
 	}
 
-	if interfaceVal, ok := config["idleTimeoutMs"]; ok {
-		if idleTimeoutMs, ok := interfaceVal.(int); ok {
-			timeoutOptions.IdleTimeout = time.Duration(idleTimeoutMs) * time.Millisecond
+	if interfaceVal, ok := config["idleTimeout"]; ok {
+		if idleTimeoutStr, ok := interfaceVal.(string); ok {
+			if idleTimeout, err := time.ParseDuration(idleTimeoutStr); err == nil {
+				timeoutOptions.IdleTimeout = idleTimeout
+			} else {
+				return fmt.Errorf("could not parse idleTimeout %s as a duration (e.g. 1m): %v", idleTimeoutStr, err)
+			}
 		} else {
-			return errors.New("could not use value for idleTimeoutMs, not an integer")
+			return errors.New("could not use value for idleTimeout, not a string")
 		}
 	}
 
-	if interfaceVal, ok := config["writeTimeoutMs"]; ok {
-		if writeTimeoutMs, ok := interfaceVal.(int); ok {
-			timeoutOptions.WriteTimeout = time.Duration(writeTimeoutMs) * time.Millisecond
+	if interfaceVal, ok := config["writeTimeout"]; ok {
+		if writeTimeoutStr, ok := interfaceVal.(string); ok {
+			if writeTimeout, err := time.ParseDuration(writeTimeoutStr); err == nil {
+				timeoutOptions.WriteTimeout = writeTimeout
+			} else {
+				return fmt.Errorf("could not parse writeTimeout %s as a duration (e.g. 1m): %v", writeTimeoutStr, err)
+			}
 		} else {
-			return errors.New("could not use value for writeTimeoutMs, not an integer")
+			return errors.New("could not use value for writeTimeout, not a string")
 		}
 	}
 

@@ -18,9 +18,9 @@ package xweb
 
 import "context"
 
-// WebHandlerFromContext us a utility function to retrieve a WebHandler reference, that the demux http.Handler
+// WebHandlerFromRequestContext us a utility function to retrieve a WebHandler reference, that the demux http.Handler
 // deferred to, during downstream  http.Handler processing from the http.Request context.
-func WebHandlerFromContext(ctx context.Context) *WebHandler {
+func WebHandlerFromRequestContext(ctx context.Context) *WebHandler {
 	if val := ctx.Value(WebHandlerContextKey); val != nil {
 		if handler, ok := val.(*WebHandler); ok {
 			return handler
@@ -29,12 +29,12 @@ func WebHandlerFromContext(ctx context.Context) *WebHandler {
 	return nil
 }
 
-// ListenAddressFromContext is a utility function to retrieve a BindPoint reference from the http.Request context
-// that indicates what interface and port combo the incoming http.Request was handled on.
-func ListenAddressFromContext(ctx context.Context) *BindPoint {
-	if val := ctx.Value(BindPointContextKey); val != nil {
-		if handler, ok := val.(*BindPoint); ok {
-			return handler
+// WebContextFromRequestContext is a utility function to retrieve a *XWebContext reference from the http.Request
+// that provides access to XWeb configuration like BindPoint, WebListener, and Config values.
+func WebContextFromRequestContext(ctx context.Context) *XWebContext {
+	if val := ctx.Value(WebContextKey); val != nil {
+		if webContext, ok := val.(*XWebContext); ok {
+			return webContext
 		}
 	}
 	return nil
