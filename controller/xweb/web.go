@@ -39,6 +39,11 @@ to the correct xweb.WebHandler. The responsibility is handled by another configu
 "xweb demux handler". This handler's responsibility is to inspect incoming requests and forward them to the correct
 xweb.WebHandler. It is specified by an xweb.DemuxFactory and a reference implementation, xweb.PathPrefixDemuxFactory
 has been provided.
+
+Another way to say it: each Xweb defines a configuration section (default `web`) to define WebListener's and their
+hosted APIs. Each WebListener maps to one http.Server per BindPoint. No two WebListeners can have colliding BindPoint's
+due to port conflicts.
+
 */
 package xweb
 
@@ -104,7 +109,7 @@ func (xwebimpl *XwebImpl) LoadConfig(cfgmap map[interface{}]interface{}) error {
 // Run starts the necessary xweb.Server's
 func (xwebimpl *XwebImpl) Run() {
 	for _, webListener := range xwebimpl.Config.WebListeners {
-		server, err := NewServer(webListener, xwebimpl.DemuxFactory, xwebimpl.Registry)
+		server, err := NewServer(webListener, xwebimpl.DemuxFactory, xwebimpl.Registry, xwebimpl.Config)
 
 		if err != nil {
 			pfxlog.Logger().Fatalf("error starting xweb server for %s: %v", webListener.Name, err)

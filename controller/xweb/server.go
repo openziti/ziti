@@ -20,41 +20,61 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/gorilla/handlers"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/debugz"
 	"io"
 	"log"
+	"net"
 	"net/http"
 )
 
 type ContextKey string
 
 const (
-	WebHandlerContextKey = ContextKey("XWebHandlerContextKey")
-	BindPointContextKey  = ContextKey("XWebBindPointContextKey")
+	WebHandlerContextKey  = ContextKey("XWebHandlerContextKey")
+	WebContextKey        = ContextKey("XWebContext")
 )
+
+type XWebContext struct {
+	BindPoint   *BindPoint
+	WebListener *WebListener
+	XWebConfig  *Config
+}
 
 type namedHttpServer struct {
 	*http.Server
-	ApiBindingList  []string
-	WebListenerName string
+	ApiBindingList []string
+	BindPoint      *BindPoint
+	WebListener    *WebListener
+	XWebConfig     *Config
+}
+
+func (s namedHttpServer) NewBaseContext(_ net.Listener) context.Context {
+	xwebContext := &XWebContext{
+		BindPoint:   s.BindPoint,
+		WebListener: s.WebListener,
+		XWebConfig:  s.XWebConfig,
+	}
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, WebContextKey, xwebContext)
+
+	return ctx
 }
 
 // Server represents all of the http.Server's and http.Handler's necessary to run a single xweb.WebListener
 type Server struct {
-	httpServers    []*namedHttpServer
-	corsOptions    []handlers.CORSOption
-	logWriter      *io.PipeWriter
-	options        *Options
-	config         interface{}
-	Handle         http.Handler
-	OnHandlerPanic func(writer http.ResponseWriter, request *http.Request, panicVal interface{})
+	httpServers       []*namedHttpServer
+	logWriter         *io.PipeWriter
+	options           *Options
+	config            interface{}
+	Handle            http.Handler
+	OnHandlerPanic    func(writer http.ResponseWriter, request *http.Request, panicVal interface{})
+	ParentWebListener *WebListener
 }
 
 // NewServer creates a new xweb.Server from an xweb.WebListener. All necessary http.Handler's will be created from the supplied
 // DemuxFactory and WebHandlerFactoryRegistry.
-func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFactoryRegistry WebHandlerFactoryRegistry) (*Server, error) {
+func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFactoryRegistry WebHandlerFactoryRegistry, config *Config) (*Server, error) {
 	logWriter := pfxlog.Logger().Writer()
 
 	tlsConfig := webListener.Identity.ServerTLSConfig()
@@ -64,9 +84,10 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 	tlsConfig.MaxVersion = uint16(webListener.Options.MaxTLSVersion)
 
 	server := &Server{
-		logWriter:   logWriter,
-		config:      &webListener,
-		httpServers: []*namedHttpServer{},
+		logWriter:         logWriter,
+		config:            &webListener,
+		httpServers:       []*namedHttpServer{},
+		ParentWebListener: webListener,
 	}
 
 	var webHandlers []WebHandler
@@ -93,33 +114,31 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 
 	for _, bindPoint := range webListener.BindPoints {
 		namedServer := &namedHttpServer{
-			ApiBindingList:  apiBindingList,
-			WebListenerName: webListener.Name,
+			ApiBindingList: apiBindingList,
+			WebListener:    webListener,
+			BindPoint:      bindPoint,
+			XWebConfig:     config,
 			Server: &http.Server{
 				Addr:         bindPoint.InterfaceAddress,
 				WriteTimeout: webListener.Options.WriteTimeout,
 				ReadTimeout:  webListener.Options.ReadTimeout,
 				IdleTimeout:  webListener.Options.WriteTimeout,
-				Handler:      server.wrap(demuxWebHandler, bindPoint),
+				Handler:      server.wrapPanicRecovery(demuxWebHandler),
 				TLSConfig:    tlsConfig,
 				ErrorLog:     log.New(logWriter, "", 0),
 			},
 		}
+
+		namedServer.BaseContext = namedServer.NewBaseContext
+
 		server.httpServers = append(server.httpServers, namedServer)
 	}
 
 	return server, nil
 }
 
-// Wrap a http.Handler with another http.Handler that ensures the BindPoint information is
-// embedded in the http.Request, provides CORS support, and panic recovery.
-func (server *Server) wrap(handler http.Handler, bindPoint *BindPoint) http.Handler {
-
-	//todo: move all cors functionality external to xweb
-	if server.corsOptions != nil {
-		corsHandler := handlers.CORS(server.corsOptions...)
-		handler = corsHandler(handler)
-	}
+// wrapPanicRecovery wraps a http.Handler with another http.Handler that provides recovery.
+func (server *Server) wrapPanicRecovery(handler http.Handler, ) http.Handler {
 
 	wrappedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() {
@@ -132,10 +151,7 @@ func (server *Server) wrap(handler http.Handler, bindPoint *BindPoint) http.Hand
 			}
 		}()
 
-		//store the BindPoint on the request context, useful for logging and responses with server addresses
-		ctx := context.WithValue(request.Context(), BindPointContextKey, &bindPoint)
-		newRequest := request.WithContext(ctx)
-		handler.ServeHTTP(writer, newRequest)
+		handler.ServeHTTP(writer, request)
 	})
 
 	return wrappedHandler
@@ -146,7 +162,7 @@ func (server *Server) Start() error {
 	logger := pfxlog.Logger()
 
 	for _, httpServer := range server.httpServers {
-		logger.Infof("starting API to listen and serve tls on %s for web listener %s with APIs: %v", httpServer.Addr, httpServer.WebListenerName, httpServer.ApiBindingList)
+		logger.Infof("starting API to listen and serve tls on %s for web listener %s with APIs: %v", httpServer.Addr, httpServer.WebListener.Name, httpServer.ApiBindingList)
 		err := httpServer.ListenAndServeTLS("", "")
 		if err != http.ErrServerClosed {
 
