@@ -80,7 +80,7 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 
 	// Adds and Updates
 	for _, s := range services {
-		self.services.Upsert(s.Name, s, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		self.services.Upsert(s.Id, s, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 			if !exist {
 				self.serviceListener.HandleServicesChange(ziti.ServiceAdded, s)
 				return s
