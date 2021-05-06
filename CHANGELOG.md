@@ -1,3 +1,10 @@
+# Release 0.20.0
+
+## What's New
+
+* Fix bug in router/tunneler where only first 10 services would get picked up for intercepting/hosting
+* Fix bug in router/tunneler where we'd process services multiple times on service add/remove/update
+
 # Release 0.19.13
 
 ## What's New
