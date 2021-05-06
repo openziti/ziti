@@ -88,7 +88,7 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 		return
 	}
 
-	query, err := ast.Parse(self.appEnv.BoltStores.EdgeService, "")
+	query, err := ast.Parse(self.appEnv.BoltStores.EdgeService, "limit none")
 	if err != nil {
 		logger.WithError(err).Error("could not create service list query")
 		return
