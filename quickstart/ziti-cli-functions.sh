@@ -178,4 +178,3 @@ function checkControllerName {
   return 0
 }
 
-function
