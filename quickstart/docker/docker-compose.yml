@@ -4,7 +4,6 @@ services:
     image: openziti/quickstart:latest
     env_file:
       - ./default.env
-    build: ./image
     ports:
       - 1280:1280
     networks:
