@@ -33,7 +33,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
-	github.com/lucsky/cuid v1.0.2
+	github.com/lucsky/cuid v1.2.0
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mdlayher/netlink v1.4.0
 	github.com/michaelquigley/pfxlog v0.3.7
