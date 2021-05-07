@@ -72,7 +72,7 @@ func run(cmd *cobra.Command, args []string) {
 		edgeController.SetHostController(fabricController)
 		edgeController.Initialize()
 		go waitForShutdown(fabricController, edgeController)
-		go edgeController.Run()
+		edgeController.Run()
 		if err := fabricController.Run(); err != nil {
 			panic(err)
 		}
