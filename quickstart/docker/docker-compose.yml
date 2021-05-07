@@ -1,7 +1,7 @@
 version: '2.4'
 services:
   ziti-controller:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     env_file:
       - ./default.env
     build: ./image
@@ -17,7 +17,7 @@ services:
       - "/openziti/scripts/run-controller.sh"
 
   ziti-edge-router:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
@@ -30,7 +30,7 @@ services:
     command: "/openziti/scripts/run-edge-router.sh edge"
 
   ziti-edge-router-wss:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
     ports:
@@ -43,7 +43,7 @@ services:
     command: "/openziti/scripts/run-edge-router.sh wss"
 
   ziti-fabric-router-br:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
     #ports:
@@ -58,7 +58,7 @@ services:
     command: "/openziti/scripts/run-edge-router.sh fabric"
 
   ziti-private-red:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
     #ports:
@@ -72,7 +72,7 @@ services:
     command: "/openziti/scripts/run-edge-router.sh private"
 
   ziti-private-blue:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
     #ports:
