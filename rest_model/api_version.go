@@ -43,6 +43,9 @@ import (
 // swagger:model apiVersion
 type APIVersion struct {
 
+	// api base urls
+	APIBaseUrls []string `json:"apiBaseUrls"`
+
 	// path
 	// Required: true
 	Path *string `json:"path"`

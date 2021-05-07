@@ -85,8 +85,8 @@ func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity bol
 	entity.IPAddress = boltApiSession.IPAddress
 	entity.MfaRequired = boltApiSession.MfaRequired
 	entity.MfaComplete = boltApiSession.MfaComplete
-	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds)
-	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeoutSeconds
+	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeout)
+	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 
 	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)

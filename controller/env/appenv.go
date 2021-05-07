@@ -38,7 +38,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/events"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/edge/internal/jwtsigner"
 	clientServer "github.com/openziti/edge/rest_client_api_server"
 	clientOperations "github.com/openziti/edge/rest_client_api_server/operations"
 	managementServer "github.com/openziti/edge/rest_management_api_server"
@@ -46,6 +46,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
+	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
@@ -56,30 +57,35 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 )
 
 var _ model.Env = &AppEnv{}
 
 type AppEnv struct {
-	BoltStores             *persistence.Stores
-	Handlers               *model.Handlers
-	Config                 *edgeConfig.Config
-	EnrollmentJwtGenerator jwt.EnrollmentGenerator
-	Versions               *config.Versions
+	BoltStores *persistence.Stores
+	Handlers   *model.Handlers
+	Config     *edgeConfig.Config
+
+	Versions *config.Versions
+
 	ApiServerCsrSigner     cert.Signer
 	ApiClientCsrSigner     cert.Signer
 	ControlClientCsrSigner cert.Signer
-	FingerprintGenerator   cert.FingerprintGenerator
-	AuthRegistry           model.AuthRegistry
-	EnrollRegistry         model.EnrollmentRegistry
-	Broker                 *Broker
-	HostController         HostController
-	ManagementApi          *managementOperations.ZitiEdgeManagementAPI
-	ClientApi              *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap     cmap.ConcurrentMap
-	StartupTime            time.Time
-	InstanceId             string
+
+	FingerprintGenerator     cert.FingerprintGenerator
+	AuthRegistry             model.AuthRegistry
+	EnrollRegistry           model.EnrollmentRegistry
+	Broker                   *Broker
+	HostController           HostController
+	ManagementApi            *managementOperations.ZitiEdgeManagementAPI
+	ClientApi                *clientOperations.ZitiEdgeClientAPI
+	IdentityRefreshMap       cmap.ConcurrentMap
+	StartupTime              time.Time
+	InstanceId               string
+	findEnrollmentSignerOnce sync.Once
+	enrollmentSigner         jwtsigner.Signer
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -88,6 +94,10 @@ func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
 
 func (ae *AppEnv) GetControlClientCsrSigner() cert.Signer {
 	return ae.ControlClientCsrSigner
+}
+
+func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
+	return ae.ApiClientCsrSigner
 }
 
 func (ae *AppEnv) GetHostController() model.HostController {
@@ -102,8 +112,8 @@ func (ae *AppEnv) GetConfig() *edgeConfig.Config {
 	return ae.Config
 }
 
-func (ae *AppEnv) GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator {
-	return ae.EnrollmentJwtGenerator
+func (ae *AppEnv) GetJwtSigner() jwtsigner.Signer {
+	return ae.enrollmentSigner
 }
 
 func (ae *AppEnv) GetDbProvider() persistence.DbProvider {
@@ -126,10 +136,6 @@ func (ae *AppEnv) IsEdgeRouterOnline(id string) bool {
 	return ae.Broker.IsEdgeRouterOnline(id)
 }
 
-func (ae *AppEnv) GetApiClientCsrSigner() cert.Signer {
-	return ae.ApiClientCsrSigner
-}
-
 func (ae *AppEnv) GetMetricsRegistry() metrics.Registry {
 	return ae.HostController.GetNetwork().GetMetricsRegistry()
 }
@@ -141,6 +147,7 @@ func (ae *AppEnv) GetFingerprintGenerator() cert.FingerprintGenerator {
 type HostController interface {
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
+	RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error
 	GetNetwork() *network.Network
 	GetCloseNotifyChannel() <-chan struct{}
 	Shutdown()
@@ -339,11 +346,6 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 	managementApi.TextYamlProducer = &YamlProducer{}
 	managementApi.ZtSessionAuth = clientApi.ZtSessionAuth
 
-	sm := getJwtSigningMethod(c.Api.Identity.ServerCert())
-	key := c.Api.Identity.ServerCert().PrivateKey
-
-	ae.EnrollmentJwtGenerator = jwt.NewJwtIdentityEnrollmentGenerator(ae.Config.Api.Advertise, sm, key)
-
 	ae.ApiClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ApiServerCsrSigner = cert.NewServerSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
 	ae.ControlClientCsrSigner = cert.NewClientSigner(ae.Config.Enrollment.SigningCert.Cert().Leaf, ae.Config.Enrollment.SigningCert.Cert().PrivateKey)
@@ -494,4 +496,9 @@ func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
 
 func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 	ae.IdentityRefreshMap.Set(identityId, time.Now().UTC())
+}
+
+func (ae *AppEnv) SetEnrollmentSigningCert(serverCert *tls.Certificate) {
+	signMethod := getJwtSigningMethod(serverCert)
+	ae.enrollmentSigner = jwtsigner.New(ae.Config.Api.Address, signMethod, serverCert.PrivateKey)
 }

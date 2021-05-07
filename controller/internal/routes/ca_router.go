@@ -266,7 +266,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		EnrollmentMethod: method,
 		StandardClaims: jwt2.StandardClaims{
 			ExpiresAt: notAfter,
-			Issuer:    fmt.Sprintf(`https://%s/`, ae.Config.Api.Advertise),
+			Issuer:    fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
 		},
 	}
 	mapClaims, err := claims.ToMapClaims()
@@ -276,7 +276,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	jwt, genErr := ae.EnrollmentJwtGenerator.Generate(ca.Id, ca.Id, mapClaims)
+	jwt, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, mapClaims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))

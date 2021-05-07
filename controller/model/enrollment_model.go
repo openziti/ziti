@@ -61,7 +61,7 @@ func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 			Audience:  "",
 			ExpiresAt: expiresAt.Unix(),
 			Id:        entity.Token,
-			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Advertise),
+			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Address),
 			NotBefore: 0,
 			Subject:   subject,
 		},
@@ -73,7 +73,7 @@ func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 		return err
 	}
 
-	signedJwt, err := env.GetEnrollmentJwtGenerator().Generate(subject, entity.Id, mapClaims)
+	signedJwt, err := env.GetJwtSigner().Generate(subject, entity.Id, mapClaims)
 
 	if err != nil {
 		return err

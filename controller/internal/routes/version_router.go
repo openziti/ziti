@@ -6,6 +6,7 @@
 	You may obtain a copy of the License at
 
 	https://www.apache.org/licenses/LICENSE-2.0
+	https://www.apache.org/licenses/LICENSE-2.0
 
 	Unless required by applicable law or agreed to in writing, software
 	distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +27,9 @@ import (
 	clientInformational "github.com/openziti/edge/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/xweb"
 	"runtime"
+	"sync"
 )
 
 func init() {
@@ -35,7 +38,9 @@ func init() {
 }
 
 type VersionRouter struct {
-	BasePath string
+	BasePath           string
+	cachedVersions     *rest_model.Version
+	cachedVersionsOnce sync.Once
 }
 
 func NewVersionRouter() *VersionRouter {
@@ -63,21 +68,74 @@ func (ir *VersionRouter) Register(ae *env.AppEnv) {
 }
 
 func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
-	buildInfo := build.GetBuildInfo()
-	data := rest_model.Version{
-		BuildDate:      buildInfo.BuildDate(),
-		Revision:       buildInfo.Revision(),
-		RuntimeVersion: runtime.Version(),
-		Version:        buildInfo.Version(),
-		APIVersions: map[string]map[string]rest_model.APIVersion{
-			"edge": {controller.RestApiV1: mapApiVersionToRestModel(controller.LegacyClientRestApiBaseUrlV1)},
-		},
+	ir.cachedVersionsOnce.Do(func() {
+
+		buildInfo := build.GetBuildInfo()
+		ir.cachedVersions = &rest_model.Version{
+			BuildDate:      buildInfo.BuildDate(),
+			Revision:       buildInfo.Revision(),
+			RuntimeVersion: runtime.Version(),
+			Version:        buildInfo.Version(),
+			APIVersions: map[string]map[string]rest_model.APIVersion{
+				controller.ClientApiBinding:     {controller.VersionV1: mapApiVersionToRestModel(controller.ClientRestApiBaseUrlV1)},
+				controller.ManagementApiBinding: {controller.VersionV1: mapApiVersionToRestModel(controller.ManagementRestApiBaseUrlV1)},
+			},
+		}
+
+		for apiBinding, apiVersionToPathMap := range controller.AllApiBindingVersions {
+			ir.cachedVersions.APIVersions[apiBinding] = map[string]rest_model.APIVersion{}
+
+			for apiVersion, apiPath := range apiVersionToPathMap {
+				ir.cachedVersions.APIVersions[apiBinding][apiVersion] = mapApiVersionToRestModel(apiPath)
+			}
+		}
+
+		xwebContext := xweb.WebContextFromRequestContext(rc.Request.Context())
+
+		apiToBaseUrls := map[string]map[string]struct{}{} //api -> webListener addresses + path
+
+		for _, webListener := range xwebContext.XWebConfig.WebListeners {
+			for _, api := range webListener.APIs {
+				if _, ok := apiToBaseUrls[api.Binding()]; !ok {
+					apiToBaseUrls[api.Binding()] = map[string]struct{}{}
+				}
+
+				for _, bindPoint := range webListener.BindPoints {
+					apiBaseUrl := bindPoint.Address + apiBindingToPath(api.Binding())
+					apiToBaseUrls[api.Binding()][apiBaseUrl] = struct{}{}
+				}
+			}
+		}
+
+		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
+			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
+				apiVersion := apiVersionMap["v1"]
+				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://" + apiBaseUrl)
+				apiVersionMap["v1"] = apiVersion
+			}
+		}
+
+		ir.cachedVersions.APIVersions[controller.LegacyClientApiBinding] = ir.cachedVersions.APIVersions[controller.ClientApiBinding]
+	})
+
+	rc.RespondWithOk(ir.cachedVersions, &rest_model.Meta{})
+}
+
+func apiBindingToPath(binding string) string {
+	switch binding {
+	case "edge":
+		return controller.ClientRestApiBaseUrlV1
+	case controller.ClientApiBinding:
+		return controller.ClientRestApiBaseUrlV1
+	case controller.ManagementApiBinding:
+		return controller.ManagementRestApiBaseUrlV1
 	}
-	rc.RespondWithOk(data, &rest_model.Meta{})
+	return ""
 }
 
 func mapApiVersionToRestModel(path string) rest_model.APIVersion {
 	return rest_model.APIVersion{
-		Path:    &path,
+		Path:       &path,
+		APIBaseUrls: []string{},
 	}
 }

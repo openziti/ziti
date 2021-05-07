@@ -3491,6 +3491,12 @@ func init() {
         "path"
       ],
       "properties": {
+        "apiBaseUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "path": {
           "type": "string"
         },
@@ -8796,6 +8802,12 @@ func init() {
         "path"
       ],
       "properties": {
+        "apiBaseUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "path": {
           "type": "string"
         },

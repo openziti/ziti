@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/internal/jwt"
+	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/metrics"
 	"github.com/xeipuuv/gojsonschema"
@@ -29,7 +29,7 @@ import (
 type Env interface {
 	GetHandlers() *Handlers
 	GetConfig() *config.Config
-	GetEnrollmentJwtGenerator() jwt.EnrollmentGenerator
+	GetJwtSigner() jwtsigner.Signer
 	GetDbProvider() persistence.DbProvider
 	GetStores() *persistence.Stores
 	GetAuthRegistry() AuthRegistry

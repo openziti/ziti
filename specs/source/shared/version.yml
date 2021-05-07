@@ -67,6 +67,10 @@ definitions:
         type: string
       path:
         type: string
+      apiBaseUrls:
+        type: array
+        items:
+          type: string
   versionInfo:
     type: object
     required:

@@ -2576,6 +2576,10 @@ definitions:
     required:
     - path
     properties:
+      apiBaseUrls:
+        type: array
+        items:
+          type: string
       path:
         type: string
       version:

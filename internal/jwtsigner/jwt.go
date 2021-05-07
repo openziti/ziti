@@ -14,31 +14,31 @@
 	limitations under the License.
 */
 
-package jwt
+package jwtsigner
 
 import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type EnrollmentGenerator interface {
+type Signer interface {
 	Generate(string, string, jwt.MapClaims) (string, error)
 }
 
-type IdentityEnrollmentJwtGenerator struct {
+type IdentitySigner struct {
 	signingMethod jwt.SigningMethod
 	issuer        string
 	key           interface{}
 }
 
-func NewJwtIdentityEnrollmentGenerator(issuer string, sm jwt.SigningMethod, key interface{}) *IdentityEnrollmentJwtGenerator {
-	return &IdentityEnrollmentJwtGenerator{
+func New(issuer string, sm jwt.SigningMethod, key interface{}) *IdentitySigner {
+	return &IdentitySigner{
 		signingMethod: sm,
 		issuer:        issuer,
 		key:           key,
 	}
 }
 
-func (j *IdentityEnrollmentJwtGenerator) Generate(subj, jti string, claims jwt.MapClaims) (string, error) {
+func (j *IdentitySigner) Generate(subj, jti string, claims jwt.MapClaims) (string, error) {
 	token := jwt.NewWithClaims(j.signingMethod, claims)
 	return token.SignedString(j.key)
 }
