@@ -36,6 +36,7 @@ type updateEdgeRouterOptions struct {
 	roleAttributes    []string
 	tags              map[string]string
 	appData           map[string]string
+	usePut            bool
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -67,6 +68,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
 
 	options.AddCommonFlags(cmd)
 
@@ -111,6 +113,10 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+	if o.usePut {
+		_, err = putEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+	} else {
+		_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+	}
 	return err
 }

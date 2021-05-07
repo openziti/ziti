@@ -26,8 +26,8 @@ Ziti represents the next generation of secure, open-source networking for your a
 **Developer Focus**
 * [Open source code, available with the Apache 2.0 license](https://github.com/openziti)
 * Fully programable REST management APIs
-* [SDKs for a variety of programming languages](~/ziti/clients/sdks.md)
-* [Application specific configuration store allowing centralized management of configuration allowing you to add structured configuration specific to your application](~/config-store/overview.md)
+* [SDKs for a variety of programming languages](https://openziti.github.io/ziti/clients/sdks)
+* [Application specific configuration store allowing centralized management of configuration allowing you to add structured configuration specific to your application](https://openziti.github.io/ziti/config-store/overview)
 * An extensible fabric, allowing you to add your own 
     * load balancing algorithms
     * interconnect protocols
@@ -36,9 +36,9 @@ Ziti represents the next generation of secure, open-source networking for your a
     * control and management plane messaging and semantics   
 
 **Easy Management**
-* [A flexible and expressive policy model for managing access to services and edge routers](~/ziti/policies/overview.md)
+* [A flexible and expressive policy model for managing access to services and edge routers](https://openziti.github.io/ziti/policies/overview)
 * A web based admin console
-* [Pre-built tunnelers and proxies for a variety of operating systems, including mobile](~/ziti/clients/tunneler.md)
+* [Pre-built tunnelers and proxies for a variety of operating systems, including mobile](https://openziti.github.io/ziti/clients/tunneler)
 
 Let's break some of these buzzwords down.
 

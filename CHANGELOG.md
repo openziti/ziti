@@ -1,11 +1,105 @@
+# Release 0.20.0
+
+## What's New
+
+* Fix bug in router/tunneler where only first 10 services would get picked up for intercepting/hosting
+* Fix bug in router/tunneler where we'd process services multiple times on service add/remove/update
+
+# Release 0.19.13
+
+## What's New
+
+* Fix bug in tunneler source transparency when using UDP
+* Added guidance under /quickstart for quickly launching a simplified, local environment suitable for local dev testing and learning
+* Removed xtv framework from fabric and moved edge terminator identity validation to control channel handler. The `terminator:` section may be removed from the controller configuration file.
+* Listen for SIGINT for router shutdown
+* Implement dial and listen identity options in go tunneler
+* Edge REST API Deprecation Warnings
+* Posture Check Process Multi
+
+### Deprecation Warning Of Non-Prefixed Edge REST API
+
+Upcoming changes will remove support for non-prefixed Edge REST API URLs. The correct API URL prefix has been `edge/v1`
+for over a year and not using will become unsupported at a future date. Additionally, the Edge REST API will be splitting
+into two separate APIs in the coming months:
+
+  - `/edge/management/v1`
+  - `/edge/client/v1`
+
+These new prefixes are not currently live and will be released in a subsequent version.
+
+### Posture Check Process Multi
+
+A new posture check type has been introduced: `PROCESS_MULTI`. This posture check
+is meant to replace the posture check type `PROCESS` and `PROCESS` should be considered
+deprecated. `PROCESS_MULTI` covers all the uses that its predecessor provided with
+additional semantic configuration options.
+
+#### Process Multi Fields:
+
+- semantic: Either `AllOf` or `OneOf`. Determines which processes specified in `processes` must pass
+- processes: An array of objects representing a process. Similar to `PROCESS`'s fields but with the ability to specify multiple binary hashes
+  -  osType - Any of the standard posture check OS types (Android, iOS, macOS, Linux, Windows, WindowsServer)
+  -  path - The absolute file path the process is expected to run from
+  -  hashes - An array of sha512 hashes that are valid (optional, none allows any)
+  -  signerFingerprints - An array of sha1 signer fingerprints that are valid (optional, none allows any)
+
+# Release 0.19.12
+
+## What's New
+
+* Revert dial error messages to what sdks are expecting. Add error codes so future sdks don't have to parse error text
+* Add router events
+* Allow filters with no predicate if sort or paging clauses are provided
+   * Ex: instead of `true limit 5` you could have just `limit 5`. Or instead of `true sort by name` you could have `sort by name`
+* Corrected host.v1 configuration type schema to prevent empty port range objects
+
+## Router events
+
+To enable:
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.routers
+```
+
+Example JSON output:
+
+```
+{
+  "namespace": "fabric.routers",
+  "event_type": "router-online",
+  "timestamp": "2021-04-22T11:26:31.99299884-04:00",
+  "router_id": "JAoyjafljO",
+  "router_online": true
+}
+{
+  "namespace": "fabric.routers",
+  "event_type": "router-offline",
+  "timestamp": "2021-04-22T11:26:41.335114358-04:00",
+  "router_id": "JAoyjafljO",
+  "router_online": false
+}
+```
+
 # Release 0.19.11
 
 ## What's New
 
+* Add workaround for bbolt bug which caused some data to get left behind when deleting identities, seen when turning off tunneler capability on edge routers
+* Remove deprecated ziti-enroller command. Enrollement can be done using the ziti-tunnel, ziti-router and ziti commands
+* Fix UDP intercept handling
 * The host.v1 service configuration type has been changed as follows:
     * Rename `dialIntercepted*` properties to `forwardProtocol`, `forwardAddress`, `forwardPort` for better consistency with non-tunneler client applications.
     * Add `allowedProtocols`, `allowedAddresses`, and `allowedPortRanges` properties to whitelist destinations that are dialed via `forward*`. The `allowed*` properties are required for any corresponding `forward*` property that is `true`.
     * Add `allowedSourceAddresses`, which serves as a whitelist for source IPs/CIDRs and informs the hosting tunneler of the local routes to establish when hosting a service.
+* Ziti Controller will now report service posture query policy types (Dial/Bind)
+* Ziti Controller now supports enrollment extension for routers
+* Ziti Router now support forcing enrollment extension via `run -e`
+* Ziti Routers will now automatically extend their enrollment before their certificates expire
+* `ziti edge enroll` with a UPDB JWT now confirms and properly sets the password supplied
 
   Caveats:
     * Any existing host.v1 configurations that use will become invalid.

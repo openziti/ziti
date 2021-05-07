@@ -22,29 +22,29 @@ link:
     - binding: transport
 
 listeners:
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
-  - binding: edge
+#  - binding: tunnel
+#    options:
+#      mode: host #tproxy|tun|host
+  - binding: transport
     address: tls:0.0.0.0:3022
     options:
       advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3022
       connectTimeoutMs: 5000
       getSessionTimeout: 60s
 
-edge:
-  csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
-    sans:
-      dns:
-        - ${ZITI_EDGE_ROUTER_HOSTNAME}
-        - localhost
-      ip:
-        - "127.0.0.1"
+#edge:
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - ${ZITI_EDGE_ROUTER_HOSTNAME}
+      - localhost
+    ip:
+      - "127.0.0.1"
 
 #transport:
 #  ws:

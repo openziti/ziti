@@ -148,10 +148,26 @@ func processEnrollment() error {
 
 	if tkn.EnrollmentMethod == "updb" {
 		if password == "" {
-			password, err = term.PromptPassword("updb enrollment requires a password", false)
+			password, err = term.PromptPassword("updb enrollment requires a password, please enter one: ", false)
+			password = strings.TrimSpace(password)
+
 			if err != nil {
-				return fmt.Errorf("failed to complete enrollment, updb requires a non-empty password")
+				return fmt.Errorf("failed to complete enrollment, updb requires a non-empty password: %v", err)
 			}
+
+			confirm, err := term.PromptPassword("please confirm what you entered: ", false)
+
+			if err != nil {
+				return fmt.Errorf("failed to complete enrollment, updb password confirmation failed: %v", err)
+			}
+
+			confirm = strings.TrimSpace(confirm)
+
+			if password != confirm {
+				return fmt.Errorf("failed to complete enrollment, passwords did not match")
+			}
+
+			flags.Password = password
 		}
 
 		return enroll.EnrollUpdb(flags)

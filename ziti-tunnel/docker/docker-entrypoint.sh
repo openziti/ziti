@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 function alldone() {
     # send SIGINT to ziti-tunnel to trigger a cleanup of iptables mangle rules
@@ -32,23 +34,45 @@ fi
 
 json="${persisted_dir}/${NF_REG_NAME}.json"
 if [ ! -f "${json}" ]; then
-    echo "identity configuration ${json} does not exist"
-    for dir in "/var/run/secrets/netfoundry.io/enrollment-token" "${persisted_dir}"; do
-        _jwt="${dir}/${NF_REG_NAME}.jwt"
-        echo "looking for ${_jwt}"
-        if [ -f "${_jwt}" ]; then
-            jwt="${_jwt}"
-            break
-        fi
+    echo "WARN: identity configuration ${json} does not exist" >&2
+    for dir in  "/var/run/secrets/kubernetes.io/enrollment-token" \
+                "/enrollment-token" \
+                "${persisted_dir}";
+        do
+            [[ -d ${dir} ]] || {
+                echo "INFO: ${dir} is not a directory"
+                continue
+            }
+            _jwt="${dir}/${NF_REG_NAME}.jwt"
+            echo "INFO: looking for ${_jwt}"
+            if [ -f "${_jwt}" ]; then
+                jwt="${_jwt}"
+                break
+            else
+                echo "WARN: failed to find ${_jwt} in ${dir}" >&2
+            fi
     done
-    if [ -z "${jwt}" ]; then
-        echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations"
+    if [ -z "${jwt:-}" ]; then
+        echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations" >&2
         exit 1
     fi
-    echo "enrolling ${jwt}"
+    echo "INFO: enrolling ${jwt}"
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
+echo "INFO: probing iptables"
+if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present"; then
+    for LEGACY in {ip{,6},eb,arp}tables; do
+        if which ${LEGACY}-legacy &>/dev/null; then
+            echo "INFO: updating $LEGACY alternative to ${LEGACY}-legacy"
+            update-alternatives --set $LEGACY $(which ${LEGACY}-legacy)
+        else
+            echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy" >&2
+        fi
+    done
+fi
+
+# optionally run an alternative shell CMD
 echo "running ziti-tunnel"
 set -x
 ziti-tunnel -i "${json}" "${@}" &
