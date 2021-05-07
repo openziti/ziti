@@ -31,10 +31,6 @@ import (
 	"time"
 )
 
-const (
-	ManagementApiBinding = "edge-management"
-)
-
 var _ xweb.WebHandlerFactory = &ManagementApiFactory{}
 
 type ManagementApiFactory struct {
@@ -53,7 +49,7 @@ func NewManagementApiFactory(appEnv *env.AppEnv) *ManagementApiFactory {
 }
 
 func (factory ManagementApiFactory) Binding() string {
-	return ManagementApiBinding
+	return controller.ManagementApiBinding
 }
 
 func (factory ManagementApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
@@ -79,7 +75,7 @@ type ManagementApiHandler struct {
 }
 
 func (managementApi ManagementApiHandler) Binding() string {
-	return ManagementApiBinding
+	return controller.ManagementApiBinding
 }
 
 func (managementApi ManagementApiHandler) Options() map[interface{}]interface{} {

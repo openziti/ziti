@@ -32,10 +32,6 @@ import (
 	"time"
 )
 
-const (
-	ClientApiBinding = "edge-client"
-)
-
 var _ xweb.WebHandlerFactory = &ClientApiFactory{}
 
 type ClientApiFactory struct {
@@ -46,7 +42,7 @@ type ClientApiFactory struct {
 func (factory ClientApiFactory) Validate(config *xweb.Config) error {
 	for _, webListener := range config.WebListeners {
 		for _, api := range webListener.APIs {
-			if api.Binding() == ClientApiBinding {
+			if api.Binding() == controller.ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == factory.appEnv.Config.Api.Address {
 						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert())
@@ -58,7 +54,7 @@ func (factory ClientApiFactory) Validate(config *xweb.Config) error {
 		}
 	}
 
-	return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of API [%s]", factory.appEnv.Config.Api.Address, ClientApiBinding)
+	return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of API [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
 }
 
 func NewClientApiFactory(appEnv *env.AppEnv) *ClientApiFactory {
@@ -68,7 +64,7 @@ func NewClientApiFactory(appEnv *env.AppEnv) *ClientApiFactory {
 }
 
 func (factory ClientApiFactory) Binding() string {
-	return ClientApiBinding
+	return controller.ClientApiBinding
 }
 
 func (factory ClientApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
@@ -94,7 +90,7 @@ type ClientApiHandler struct {
 }
 
 func (clientApi ClientApiHandler) Binding() string {
-	return ClientApiBinding
+	return controller.ClientApiBinding
 }
 
 func (clientApi ClientApiHandler) Options() map[interface{}]interface{} {
