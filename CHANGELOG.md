@@ -6,11 +6,6 @@
 * Fix bug in router/tunneler where we'd process services multiple times on service add/remove/update
 * Edge Management REST API Transit Router Deprecation
 * Edge REST API Split & Configuration Changes
-* Changelog split
-
-### Changelog Split
-
-Minor
 
 ### Edge Management REST API Transit Router Deprecation
 
