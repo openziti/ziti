@@ -78,7 +78,7 @@ func DownloadFile(filepath string, url string) (err error) {
 func newClient() *resty.Client {
 	return resty.
 		New().
-		SetTimeout(time.Duration(2 * time.Second)).
+		SetTimeout(2 * time.Second).
 		SetRetryCount(5).
 		SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 }
@@ -908,4 +908,41 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	}
 
 	return jsonParsed, nil
+}
+
+// EdgeControllerGetManagementApiBasePath accepts host as `http://domain:port` and attempts to
+// determine the proper path that should be used to access the Edge Management API. Depending
+// on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
+// `/edge/management/<version>` and `/edge/client/<version>`.
+func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
+	client := newClient()
+
+	client.SetHostURL(host)
+
+	if cert != "" {
+		client.SetRootCertificate(cert)
+	}
+
+	resp, err := client.R().Get("/version")
+
+	if err != nil || resp.StatusCode() != http.StatusOK {
+		return host
+	}
+
+	data, err := gabs.ParseJSON(resp.Body())
+
+	if err != nil {
+		return host
+	}
+
+	// controller w/ APIs split
+	if data.ExistsP("data.apiVersions.edge-management") {
+		if path, ok := data.Path("data.apiVersions.edge-management.v1.path").Data().(string); !ok {
+			return host
+		} else {
+			return host + path
+		}
+	}
+
+	return host
 }
