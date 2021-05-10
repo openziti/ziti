@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ./pki-functions.sh
+source ${ZITI_SCRIPTS}/pki-functions.sh
 
 pki_create_ca "${ZITI_CONTROLLER_ROOTCA_NAME}"
 pki_create_ca "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"
