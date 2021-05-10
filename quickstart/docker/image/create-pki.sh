@@ -2,12 +2,17 @@
 function pki_client_server {
   name_local=$1
   ZITI_CA_NAME_local=$2
+  ip_local=$3
+
+  if [[ "${ip_local}" == "" ]]; then
+    ip_local="127.0.0.1"
+  fi
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-server.key"; then
     echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
     ziti pki create server --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${name_local}-server" \
-          --dns "${name_local},localhost" --ip 127.0.0.1 \
+          --dns "${name_local},localhost" --ip "${ip_local}" \
           --server-name "${name_local} server certificate"
   else
     echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
@@ -72,10 +77,6 @@ else
 fi
 echo " "
 
-pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}"
-pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_EDGE_WSS_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_ROUTER_BR_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_ROUTER_RED_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
-#pki_client_server "${ZITI_ZAC_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
+pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE}"
+pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"
+#pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE}"
