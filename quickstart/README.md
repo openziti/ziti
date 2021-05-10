@@ -1,72 +1,109 @@
-# Quickstart - AWS
+# Quickstart
 
-This quickstart is a barebones guide to running a full developer environment in AWS. It is not fault-tolerant. If you require fault tolerance this guide is not for you. This guide also assumes you're at least familiar with AWS's console and cloud development. Feel free to replace any steps along the way you desire but these steps were tested at lesat a few times and hopefully whenever you're reading this, the steps are still valid. If not file an issue or shoot over to [Discourse](https://openziti.discourse.group/) and start a discussion.
+This directory contains a set of scripts designed to make it easy to establish a starter overlay network.
+The expectation is that these scripts and docker image are useful for learning or for establishing 
+simple networks. As with any solution it is common for additional changes to the configuration to be required
+after expanding beyond the initial setup.
 
-## Setup a Server
+There are three different modes contained in these folders. One mode allows you very quickly get setup and
+run the two main components  of a Ziti network: ziti-controller and ziti-router. The [Express](#express)
+configuration will guide you here.
 
-1. After logging into AWS, navigate to the EC2 Dashboard
-1. From the EC2 Dashboard, click "Launch Instance"
-1. Find "Ubuntu Server 20.04 LTS (HVM), SSD Volume Type" and click 'select'
-1. At the bottom of the screen - click the "Review and Launch" button
-1. In AWS "Step 7. Review Instance Launch", find the "Security Groups" row and expand it if necessary
-1. Click "Edit security groups"
-1. Click "Add Rule" and select "Custom TCP Rule" and enter Port Range:"8441" Source: "0.0.0.0/0"
-1. Click "Add Rule" and select "Custom TCP Rule" and enter Port Range:"8442" Source: "0.0.0.0/0"
-1. Click "Add Rule" and select "Custom TCP Rule" and enter Port Range:"8443" Source: "0.0.0.0/0"
-1. Your console should look like this:
-    ![img.png](img.png)
+The remaining two modes all use [docker](https://docs.docker.com/get-started/) to establish environments.
+The first of the docker-based quickstarts uses [docker-compose](https://docs.docker.com/compose/). 
+You will find a fully defined Ziti Network in a compose file which should allow you to understand better
+and learn how multiple routers can be linked to form a mesh network or serve as an initial
+template to build your own compose file from.
 
-1. click "Review and Launch" and then "Launch"
-1. Select your keypair and choose "Launch Instances"
+Lastly, you can choose to run [docker](https://docs.docker.com/get-started/) directly. This mode is necessarily
+more verbose but should you prefer to not use docker-compose it can also illustrate how to establish
+a Ziti Network piece by piece.
+
+## Prerequisties
+
+### Bash
+
+All of these quickstarts will use bash. On MacOS/linux this will be natural however on Windows you'll want
+to ensure you have a suitable shell. There are numerous shells available but perhaps the simplest will be
+to use [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install-win10). You 
+might also use git-bash, cygwin, or any other bash shell you fancy.
+
+### Docker/Docker Compose
+
+If you are interested in using the quickstarts which use docker/docker-compose you will clearly need to
+have one or both installed and be moderately familiar with whichever you are using.
+
+### Review All Scripts
+
+Remember - it's always a good idea to review any scripts before you run them. We encourage you to review
+the scripts in these folders before running them.
+
+## Express
+
+By far the easiest way to establish an environment quickly is to simply run the express install script
+found at [./quickstart/local/express/express-dev-env.sh](). 
+
+### What It Does
+
+The express install script will do quite a few things to get you bootstrapped.  It will:
+
+1. create a full suite of configuration files located by default at ~/.ziti/quickstart/$(hostname)
+    1. create a full suite of PKI
+    1. create a config file for the controller
+    1. create a config file for an edge router
+1. download the latest distribution of ziti from github.com/openziti/ziti/releases
+1. unzip the distribution
+1. start the `ziti-controller` and `ziti-router` executables
+1. the `ziti-controller` should now be exposed on https://$(hostname):1280
+
+## Docker - Compose
+
+The [docker-compose](https://docs.docker.com/compose/) based example will create numerous `ziti-router`s 
+as well as spooling up a `ziti-controller` and expose the controller on port 1280. This configuration is intended to
+look and feel like the following image:
+![image info](./docker-compose-nw.svg)
+
+Here, a simple Ziti Network is shown which contains two public Ziti Edge Routers, one router without the "edge" enabled
+and usable only for transit, and two private edge routers: one blue, one red. The goal with this setup is to attempt to
+have a single isolated service that is not accessible from outside of the blue network (as best as possible with 
+only docker).
+
+## Docker - No Compose
+
+You can still startup a dev environment easily with [docker](https://docs.docker.com/get-started/) only. In this example
+you will start a Ziti Controller as well as a single Ziti Edge Router.
+
+### Prerequisite
+
+Since the openziti project is all about creating overlay networks - it's important for the docker containers to be
+able to communicate to one another. This is accomplished using a docker network and setting the alias of the container 
+on that docker network.
+
+Before running the commands below please do the following:
+  
+      #declare a variable that defines the 'network'
+      zitinw="myZitiNetwork"
+      
+      #declare a fully qualified path to the location you want your shared files to go and create it
+      zitinw_shared="${HOME}/.ziti/dockerenvs/${zitinw}"
+      mkdir -p "${zitinw_shared}"
+
+      #make a docker network for isolation while allowing the parts to be able to interact
+      docker network create "$zitinw"
+
+### Staring the Containers
+
+To start the containers you can simply run these two commands in two different shells. (or choose to daemonize them
+once you're ready to do so). Take special note of the initial variables used in these commands. The ${zitinw} variable
+is expected to be set. See the Prerequisite section above:
+
+Ziti Controller:
+    
+    docker run --name "${zitinw}-controller" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --network-alias=ziti-controller --network-alias=ziti-edge-controller --rm openziti/quickstart /openziti/scripts/run-controller.sh
+
+Ziti Edge Router:
    
-## SSH to the Server
+    routerName=ziti-edge; docker run --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-edge-router.sh edge
 
-1. After ssh'ing to the new ubuntu machine - run: sudo apt update && sudo apt install jq -y
-1. Clone the public github repos: git clone https://github.com/openziti/ziti.git
-1. Set a whole bunch of environment variables. you will need to know the public ip address as well as public dns name. Replace "____EXTERNAL___IP____" and "____EXTERNAL___DNS____" with the proper values:
 
-       export EXTERNAL_IP="____EXTERNAL___IP____"export EXTERNAL_DNS="____EXTERNAL___DNS____"
-       export ZITI_EDGE_CONTROLLER_IP_OVERRIDE="${EXTERNAL_IP}"
-       export ZITI_EDGE_ROUTER_IP_OVERRIDE="${EXTERNAL_IP}"
-       export ZITI_EDGE_CONTROLLER_HOSTNAME="${EXTERNAL_DNS}"
-       export ZITI_EDGE_ROUTER_HOSTNAME="${EXTERNAL_DNS}"
-       export ZITI_EDGE_CONTROLLER_PORT=8441
-       export ZITI_EDGE_ROUTER_PORT=8442
-1. Start the Ziti Controller and Ziti Edge Router by using the "express" script:
-   
-       ~/ziti/quickstart/local/express/express-dev-env.sh
-1. Test the script worked properly by using a curl statement:
-   
-       curl -k "https://${EXTERNAL_DNS}:${ZITI_EDGE_CONTROLLER_PORT}/version"
-       {"data":{"apiVersions":{"edge":{"v1":{"path":"/edge/v1"}}},"buildDate":"2021-05-05 20:59:40","revision":"73dd1db42bf4","runtimeVersion":"go1.16.3","version":"v0.19.13"},"meta":{}}
 
-## Setting up the Ziti Admin Console
-
-1. Install docker on the machine. I followed these instructions https://linuxize.com/post/how-to-install-and-use-docker-on-ubuntu-20-04/ but we'll condense them here for you to copy/paste:
-   
-       sudo apt update
-       sudo apt install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y
-       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-       sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-       sudo apt install docker-ce docker-ce-cli containerd.io -y
-       sudo usermod -aG docker $USER
-1. Log out of the server, and log back in to activate docker for your user
-1. Copy/paste this command to start the Ziti Admin Console in TLS mode:
-
-       docker run -d \
-       --name zac \
-       -p 8443:8443 \
-       -v "/home/ubuntu/.ziti/quickstart/$(hostname)/pki/$(hostname)-intermediate/keys/$(hostname)-server.key":/usr/src/app/server.key \
-       -v "/home/ubuntu/.ziti/quickstart/$(hostname)/pki/$(hostname)-intermediate/certs/$(hostname)-server.chain.pem":/usr/src/app/server.chain.pem \
-       openziti/zac
-1. At this point you should be able to navigate to both: https://external-dns-name:8443 as well as https://external-ip:8443 and see the ZAC login screen. (The TLS warnings your browser will show you are normal - it's because these steps use a self-signed certificate generated in the install process)
-1. Set the controller as shown:
-
-    ![img_1.png](img_1.png)
-1. Login with admin/admin
-   
-    ![img_2.png](img_2.png)
-   
-1. **IMPORTANT!!!** Edit your profile and change the password 
-
-    ![img_3.png](img_3.png)
