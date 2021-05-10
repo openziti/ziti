@@ -15,7 +15,7 @@ if [[ "${ZITI_NETWORK}" == "" ]]; then
     export ZITI_NETWORK=${1}
   fi
   if [[ "${ZITI_NETWORK}" = "" ]]; then
-    echo "ERROR: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)"
+    echo "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)"
     export ZITI_NETWORK=$(hostname)
   fi
 fi
