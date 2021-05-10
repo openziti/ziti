@@ -50,7 +50,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in this webListener's bindPoints.
-    address: 0.0.0.0:${ZITI_EDGE_CONTROLLER_PORT}
+    address: ${ZITI_EDGE_CONTROLLER_API}
   # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
   enrollment:
     # signingCert - required
