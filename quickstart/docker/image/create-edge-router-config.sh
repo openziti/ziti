@@ -26,9 +26,9 @@ listeners:
     options:
       mode: host #tproxy|tun|host
   - binding: edge
-    address: tls:0.0.0.0:3022
+    address: tls:0.0.0.0:${ZITI_EDGE_ROUTER_PORT}
     options:
-      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3022
+      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:${ZITI_EDGE_ROUTER_PORT}
       connectTimeoutMs: 5000
       getSessionTimeout: 60s
 

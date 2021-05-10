@@ -9,6 +9,7 @@ until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); d
 done
 
 if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
 #echo 'export ZITI_EDGE_ROUTER_RAWNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}"'"' > "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
 #echo 'export ZITI_EDGE_ROUTER_HOSTNAME="'"${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"'"' >> "${ZITI_EDGE_ROUTER_HOSTNAME}.env"
