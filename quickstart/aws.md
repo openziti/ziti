@@ -1,6 +1,6 @@
 # Quickstart - AWS
 
-This quickstart is a barebones guide to running a full developer environment in AWS. It is not fault-tolerant. If you require fault tolerance this guide is not for you. This guide also assumes you're at least familiar with AWS's console and cloud development. Feel free to replace any steps along the way you desire but these steps were tested at lesat a few times and hopefully whenever you're reading this, the steps are still valid. If not file an issue or shoot over to [Discourse](https://openziti.discourse.group/) and start a discussion.
+This quickstart is a barebones guide to running a full developer environment in AWS. It is not fault-tolerant. If you require fault tolerance this guide is not for you. This guide also assumes you're at least familiar with AWS's console and cloud development. Feel free to replace any steps along the way you desire but these steps were tested at least a few times and hopefully whenever you're reading this, the steps are still valid. If not file an issue or shoot over to [Discourse](https://openziti.discourse.group/) and start a discussion.
 
 ## Setup a Server
 
@@ -23,7 +23,7 @@ This quickstart is a barebones guide to running a full developer environment in 
 
 1. After ssh'ing to the new ubuntu machine - run: sudo apt update && sudo apt install jq -y
 1. Clone the public github repos: git clone https://github.com/openziti/ziti.git
-1. Set a whole bunch of environment variables. you will need to know the public ip address as well as public dns name. Replace "____EXTERNAL___IP____" and "____EXTERNAL___DNS____" with the proper values:
+1. Set a whole bunch of environment variables. You will need to know the public ip address as well as public dns name. Replace "____EXTERNAL___IP____" and "____EXTERNAL___DNS____" with the proper values:
 
        export EXTERNAL_IP="____EXTERNAL___IP____"export EXTERNAL_DNS="____EXTERNAL___DNS____"
        export ZITI_EDGE_CONTROLLER_IP_OVERRIDE="${EXTERNAL_IP}"
