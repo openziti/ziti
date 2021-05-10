@@ -86,6 +86,9 @@ function expressConfiguration {
   fi
   export ZITI_EDGE_ROUTER_RAWNAME="public-edge-router"
   export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+
   generateEnvFile "${nw}"
   #checkHostsFile
   getLatestZiti "yes"
