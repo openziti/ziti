@@ -90,11 +90,11 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 0.0.0.0:1280
+      - interface: 0.0.0.0:${ZITI_EDGE_CONTROLLER_PORT}
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 0.0.0.0:1280
+        address: ${ZITI_EDGE_CONTROLLER_API}
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
     identity:
