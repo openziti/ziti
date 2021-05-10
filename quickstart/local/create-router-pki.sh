@@ -1,0 +1,1 @@
+../docker/image/create-router-pki.sh

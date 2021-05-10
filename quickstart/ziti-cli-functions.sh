@@ -57,8 +57,8 @@ function initializeController {
   echo -e "ziti-controller initialized. see $(BLUE ${ZITI_HOME}/controller-init.log) for details"
 }
 function startZitiController {
-  unused=$(ziti-controller run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-controller.log" 2>&1 &)
-  echo -e "ziti-controller started. log located at: $(BLUE ${ZITI_HOME}/ziti-controller.log)"
+  unused=$(ziti-controller run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-edge-controller.log" 2>&1 &)
+  echo -e "ziti-controller started. log located at: $(BLUE ${ZITI_HOME}/ziti-edge-controller.log)"
 }
 function stopZitiController {
   killall ziti-controller

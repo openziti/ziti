@@ -143,9 +143,5 @@ web:
         options: { }
       - binding: edge-client
         options: { }
-    apis:
-      - binding: edge-management
-        options: { }
-      - binding: edge-client
-        options: { }
+
 HereDocForEdgeConfiguration

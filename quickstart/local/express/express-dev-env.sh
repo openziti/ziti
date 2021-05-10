@@ -84,17 +84,12 @@ function expressConfiguration {
   else
     nw="$1"
   fi
-  export ZITI_EDGE_ROUTER_RAWNAME="public-edge-router"
-  export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"
-  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
   generateEnvFile "${nw}"
   #checkHostsFile
   getLatestZiti "yes"
   generatePki
   generateControllerConfig
-  generateEdgeRouterConfig
   initializeController
   startZitiController
   echo "starting the ziti controller to enroll the edge router"
@@ -109,6 +104,12 @@ function expressConfiguration {
   unused=$(ziti edge delete service-edge-router-policy allSvcPublicRouters)
   unused=$(ziti edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
 
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+
+  "${ZITI_SCRIPTS}/create-router-pki.sh"
+  generateEdgeRouterConfig
+
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
   unused=$(ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}")
   unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
@@ -117,7 +118,7 @@ function expressConfiguration {
   unused=$(ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" &> "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.enrollment.log")
   echo ""
   sleep 1
-  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &)
+  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-edge-router-${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &)
 }
 
 function decideOperation {
