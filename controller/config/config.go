@@ -69,9 +69,9 @@ type Config struct {
 	Enabled            bool
 	Api                Api
 	Enrollment         Enrollment
-	caPems             [][]byte
-	caPemsBuf          []byte
-	caPemsOnce         sync.Once
+
+	caPems     *bytes.Buffer
+	caPemsOnce sync.Once
 }
 
 type HttpTimeouts struct {
@@ -81,59 +81,35 @@ type HttpTimeouts struct {
 	IdleTimeoutsDuration      time.Duration
 }
 
+func NewConfig() *Config {
+	return &Config{
+		Enabled: false,
+		caPems:  bytes.NewBuffer(nil),
+	}
+}
+
 func (c *Config) SessionTimeoutDuration() time.Duration {
 	return c.Api.SessionTimeout
 }
 
-func toHex(data []byte) string {
-	var buf bytes.Buffer
-	for i, b := range data {
-		if i > 0 {
-			_, _ = fmt.Fprintf(&buf, ":")
-		}
-		_, _ = fmt.Fprintf(&buf, "%02x", b)
-	}
-	return strings.ToUpper(buf.String())
-}
-
 func (c *Config) CaPems() []byte {
 	c.caPemsOnce.Do(func() {
-		buf := bytes.Buffer{}
-		//dedupe chains
-		pemMap := map[string][]byte{}
-		for _, caChain := range c.caPems {
-			rest := caChain
-			for len(rest) != 0 {
-				var block *pem.Block
-				block, rest = pem.Decode(rest)
-
-				if block != nil {
-					hash := sha1.Sum(block.Bytes)
-					fingerprint := toHex(hash[:])
-					pemMap[fingerprint] = pem.EncodeToMemory(block)
-				}
-			}
-		}
-
-		i := 0
-		for _, pemBytes := range pemMap {
-			if i != 0 {
-				buf.Write([]byte("\n"))
-			}
-			buf.Write(pemBytes)
-			i++
-		}
-		c.caPemsBuf = buf.Bytes()
+		c.RefreshCaPems()
 	})
 
-	return c.caPemsBuf
+	return c.caPems.Bytes()
 }
 
-// AddCaPems adds a byte array of PEMs to the current buffered list of CAs. The PEMs should
-// be certificate bodies separate by new lines.
+// AddCaPems adds a byte array of certificates to the current buffered list of CAs. The certificates
+// should be in PEM format separated by new lines. RefreshCaPems should be called after all
+// calls to AddCaPems are completed.
 func (c *Config) AddCaPems(caPems []byte) {
-	c.caPemsBuf = append(c.caPemsBuf, []byte("\n")...)
-	c.caPemsBuf = append(c.caPemsBuf, caPems...)
+	c.caPems.WriteString("\n")
+	c.caPems.Write(caPems)
+}
+
+func (c *Config) RefreshCaPems() {
+	c.caPems = CalculateCaPems(c.caPems)
 }
 
 func (c *Config) loadRootIdentity(fabricConfigMap map[interface{}]interface{}) error {
@@ -175,7 +151,8 @@ func (c *Config) loadRootIdentity(fabricConfigMap map[interface{}]interface{}) e
 		return fmt.Errorf("could not read file CA file from [identity.ca]")
 	}
 
-	c.caPems = append(c.caPems, c.RootIdentityCaPem)
+	_, _ = c.caPems.WriteString("\n")
+	_, _ = c.caPems.Write(c.RootIdentityCaPem)
 
 	c.RootIdentity, err = identity.LoadIdentity(c.RootIdentityConfig)
 
@@ -265,7 +242,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 					pfxlog.Logger().WithError(err).Panic("unable to read [edge.enrollment.cert]")
 				}
 				//The signer is a valid trust anchor
-				c.caPems = append(c.caPems, certPem)
+				_, _ = c.caPems.WriteString("\n")
+				_, _ = c.caPems.Write(certPem)
 
 			} else {
 				return fmt.Errorf("required configuration value [edge.enrollment.cert] is missing")
@@ -284,7 +262,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 					return fmt.Errorf("could not read file CA file from [edge.enrollment.signingCert.ca]")
 				}
 
-				c.caPems = append(c.caPems, c.Enrollment.SigningCertCaPem)
+				_, _ = c.caPems.WriteString("\n")
+				_, _ = c.caPems.Write(c.Enrollment.SigningCertCaPem)
 			} //not an error if the signing certificate's CA is already represented in the root [identity.ca]
 
 			if c.Enrollment.SigningCert, err = identity.LoadIdentity(c.Enrollment.SigningCertConfig); err != nil {
@@ -351,9 +330,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 }
 
 func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
-	edgeConfig := &Config{
-		Enabled: false,
-	}
+	edgeConfig := NewConfig()
 
 	var edgeConfigMap map[interface{}]interface{}
 
@@ -386,4 +363,40 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	}
 
 	return edgeConfig, nil
+}
+
+// CalculateCaPems takes the supplied caPems buffer as a set of PEM Certificates separated by new lines. Duplicate
+// certificates are removed and the result is returned as a bytes.Buffer of PEM Certificates separated by new lines.
+func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
+	caPemMap := map[string][]byte{}
+
+	newCaPems := bytes.Buffer{}
+	blocksToProcess := caPems.Bytes()
+	for len(blocksToProcess) != 0 {
+		var block *pem.Block
+		block, blocksToProcess = pem.Decode(blocksToProcess)
+
+		if block != nil {
+			hash := sha1.Sum(block.Bytes)
+			fingerprint := toHex(hash[:])
+			newPem := pem.EncodeToMemory(block)
+			caPemMap[fingerprint] = newPem
+			_, _ = newCaPems.WriteString("\n")
+			_, _ = newCaPems.Write(newPem)
+		}
+	}
+
+	return &newCaPems
+}
+
+// toHex takes a byte array returns a hex formatted fingerprint
+func toHex(data []byte) string {
+	var buf bytes.Buffer
+	for i, b := range data {
+		if i > 0 {
+			_, _ = fmt.Fprintf(&buf, ":")
+		}
+		_, _ = fmt.Fprintf(&buf, "%02x", b)
+	}
+	return strings.ToUpper(buf.String())
 }
