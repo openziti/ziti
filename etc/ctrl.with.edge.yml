@@ -94,7 +94,7 @@ edge:
     sessionTimeout: 30m
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
-    # defined in this webListener's bindPoints.
+    # defined in a bind point's address field for the `edge-client` API in the web section.
     address: 127.0.0.1:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
@@ -187,16 +187,6 @@ web:
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the `edge-api` and contains both optional values and
         # required values.
-        options: { }
-      - binding: edge-client
-        options: { }
-  - name: test-remove-me
-    bindPoints:
-      - interface: 127.0.0.1:1281
-        address: 127.0.0.1:1281
-    options: { }
-    apis:
-      - binding: edge-management
         options: { }
       - binding: edge-client
         options: { }
