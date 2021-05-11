@@ -129,6 +129,13 @@ func (c *Config) CaPems() []byte {
 	return c.caPemsBuf
 }
 
+// AddCaPems adds a byte array of PEMs to the current buffered list of CAs. The PEMs should
+// be certificate bodies separate by new lines.
+func (c *Config) AddCaPems(caPems []byte) {
+	c.caPemsBuf = append(c.caPemsBuf, []byte("\n")...)
+	c.caPemsBuf = append(c.caPemsBuf, caPems...)
+}
+
 func (c *Config) loadRootIdentity(fabricConfigMap map[interface{}]interface{}) error {
 	var fabricIdentitySubMap map[interface{}]interface{}
 	if value, found := fabricConfigMap["identity"]; found {
@@ -365,6 +372,10 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	}
 
 	var err error
+
+	if err = edgeConfig.loadRootIdentity(configMap); err != nil {
+		return nil, err
+	}
 
 	if err = edgeConfig.loadApiSection(edgeConfigMap); err != nil {
 		return nil, err
