@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/edge/rest_client_api_server"
 	"github.com/openziti/fabric/controller/xweb"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -40,21 +41,39 @@ type ClientApiFactory struct {
 }
 
 func (factory ClientApiFactory) Validate(config *xweb.Config) error {
+	clientApiFound := false
 	for _, webListener := range config.WebListeners {
 		for _, api := range webListener.APIs {
-			if api.Binding() == controller.ClientApiBinding {
+
+			if webListener.IdentityConfig != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding){
+				caBytes, err := ioutil.ReadFile(webListener.IdentityConfig.CA)
+
+				if err != nil {
+					return errors.Errorf("could not read xweb web listener [%s]'s CA file [%s] to retrieve CA PEMs: %v", webListener.Name, webListener.IdentityConfig.CA, err)
+				}
+
+				factory.appEnv.Config.AddCaPems(caBytes)
+			}
+
+			if !clientApiFound && api.Binding() == controller.ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == factory.appEnv.Config.Api.Address {
 						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert())
-						return nil
+						clientApiFound = true
+						break
 					}
 				}
-				break //done with this webListener, look for next if we are still running
 			}
 		}
 	}
 
-	return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of API [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
+	factory.appEnv.Config.RefreshCaPems()
+
+	if !clientApiFound {
+		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of API [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
+	}
+
+	return nil
 }
 
 func NewClientApiFactory(appEnv *env.AppEnv) *ClientApiFactory {
