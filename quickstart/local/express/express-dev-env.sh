@@ -53,10 +53,15 @@ function generateEnvFile {
 
   echo -e "Generating new network with name: $(BLUE "${ZITI_NETWORK}")"
 
-  export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK}"
-  export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK}"
-  export ZITI_ZAC_RAWNAME="${ZITI_NETWORK}"
-  export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}"
+  if [[ "${ZITI_CONTROLLER_RAWNAME}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK}-controller"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK}-edge-controller"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_ZAC_RAWNAME}" == "" ]]; then export export ZITI_ZAC_RAWNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_ZAC_HOSTNAME}" == "" ]]; then export export ZITI_ZAC_HOSTNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"; fi
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
   export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK}"
   export ZITI_SCRIPTS="$(realpath "${ZITI_SCRIPT_DIR}/..")"
@@ -87,13 +92,14 @@ function expressConfiguration {
 
   generateEnvFile "${nw}"
   #checkHostsFile
-  getLatestZiti "yes"
+  #getLatestZiti "yes"
   generatePki
   generateControllerConfig
   initializeController
   startZitiController
   echo "starting the ziti controller to enroll the edge router"
   sleep 2
+
   zitiLogin
 
   echo -e "----------  Creating an edge router policy allowing all identities to connect to routers with a $(GREEN "#public") attribute"
@@ -104,21 +110,19 @@ function expressConfiguration {
   unused=$(ziti edge delete service-edge-router-policy allSvcPublicRouters)
   unused=$(ziti edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
 
-  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
-
   "${ZITI_SCRIPTS}/create-router-pki.sh"
   generateEdgeRouterConfig
 
-  echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-  unused=$(ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}")
-  unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t)
+  echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
+  unused=$(ziti edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}")
+  unused=$(ziti edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t)
   sleep 1
-  echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-  unused=$(ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" &> "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.enrollment.log")
+  echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
+
+  unused=$(ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log")
   echo ""
   sleep 1
-  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-edge-router-${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &)
+  unused=$(ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &)
 }
 
 function decideOperation {

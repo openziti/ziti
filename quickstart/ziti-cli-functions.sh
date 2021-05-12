@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export ZITI_QUICKSTART_SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
+
 ASCI_WHITE='\033[01;37m'
 ASCI_RESTORE='\033[0m'
 ASCI_RED='\033[00;31m'
@@ -178,3 +181,6 @@ function checkControllerName {
   return 0
 }
 
+function unsetZitiEnv {
+  for zEnvVar in $(set -o posix ; set | grep ZITI_ | sort); do unset $(echo ${zEnvVar} | cut -d '=' -f1); done
+}
