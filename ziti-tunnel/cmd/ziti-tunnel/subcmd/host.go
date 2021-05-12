@@ -19,8 +19,6 @@ package subcmd
 import (
 	"github.com/openziti/edge/tunnel/intercept/host"
 	"github.com/spf13/cobra"
-	"math"
-	"strconv"
 )
 
 var runHostCmd = &cobra.Command{
@@ -37,10 +35,6 @@ func init() {
 }
 
 func runHost(_ *cobra.Command, args []string) error {
-	// Fiddle with the poll rate and resolver settings if the user didn't wan't anything special.
-	if !root.Flag(svcPollRateFlag).Changed {
-		_ = root.PersistentFlags().Set(svcPollRateFlag, strconv.FormatUint(math.MaxUint32, 10))
-	}
 	if !root.Flag(resolverCfgFlag).Changed {
 		_ = root.PersistentFlags().Set(resolverCfgFlag, "")
 	}

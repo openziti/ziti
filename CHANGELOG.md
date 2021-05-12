@@ -1,3 +1,10 @@
+# Release 0.20.1
+
+## What's New
+
+* Fix bug in sdk which could cause panic by return nil connection and nil error
+* [ziti#170](https://github.com/openziti/ziti/issues/170) Fix service poll refresh default for ziti-tunnel host mode
+
 # Release 0.20.0
 
 ## What's New
