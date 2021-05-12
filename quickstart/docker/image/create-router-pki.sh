@@ -27,4 +27,4 @@ function pki_client_server {
   echo " "
 }
 
-pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}"
+pki_client_server "${ZITI_EDGE_ROUTER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE}"
