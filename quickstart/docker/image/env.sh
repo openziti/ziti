@@ -51,10 +51,9 @@ export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}-
 export ZITI_SIGNING_ROOTCA_NAME="${ZITI_SIGNING_CERT_NAME}-root-ca"
 export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_SIGNING_CERT_NAME}-intermediate"
 
-export ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
-export ZITI_BIN="${ZITI_BIN_DIR}/ziti"
+export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
 
-mkdir -p ${ZITI_BIN_DIR}
+mkdir -p ${ZITI_BIN_ROOT}
 mkdir -p ${ZITI_HOME}/db
 mkdir -p ${ZITI_PKI}
 
@@ -70,10 +69,11 @@ echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
 #when sourcing the emitted file add the bin folder to the path
 tee -a "${ENV_FILE}" > /dev/null <<'heredoc'
-if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
-  echo "${ZITI_BIN} is already on the path"
-else
-  echo "adding ${ZITI_BIN} to the path"
-  export PATH=$PATH:"${ZITI_BIN}"
+if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
+  echo "adding ${ZITI_BIN_DIR} to the path"
+  export PATH=$PATH:"${ZITI_BIN_DIR}"
 fi
+echo " "
+echo    "                  ziti binaries are located at: ${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}"
+echo -e 'add this to your path if you want by executing: '"$(GREEN 'export PATH=$PATH:'"${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}")"
 heredoc

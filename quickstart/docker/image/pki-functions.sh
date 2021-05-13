@@ -11,7 +11,7 @@ function pki_client_server {
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-server.key"; then
     echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
-    ziti pki create server --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
+    "${ZITI_BIN_DIR}/ziti" pki create server --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${name_local}-server" \
           --dns "${name_local},localhost" --ip "${ip_local}" \
           --server-name "${name_local} server certificate"
@@ -22,7 +22,7 @@ function pki_client_server {
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-client.key"; then
     echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
-    ziti pki create client --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
+    "${ZITI_BIN_DIR}/ziti" pki create client --pki-root="${ZITI_PKI}" --ca-name "${ZITI_CA_NAME_local}" \
           --client-file "${name_local}-client" \
           --key-file "${name_local}-server" \
           --client-name "${name_local}"
@@ -36,7 +36,7 @@ function pki_client_server {
 function pki_create_ca {
   if ! test -f "${ZITI_PKI}/${1}/keys/${1}.key"; then
     echo "Creating CA: ${1}"
-    ziti pki create ca --pki-root="${ZITI_PKI}" --ca-file="${1}" --ca-name="${1} Root CA"
+    "${ZITI_BIN_DIR}/ziti" pki create ca --pki-root="${ZITI_PKI}" --ca-file="${1}" --ca-name="${1} Root CA"
   else
     echo "Creating CA: ${1}"
     echo "key exists"
@@ -47,7 +47,7 @@ function pki_create_ca {
 function pki_create_intermediate {
   if ! test -f "${ZITI_PKI}/${2}/keys/${2}.key"; then
     echo "Creating intermediate: ${1} ${2} ${3}"
-    ziti pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${1}" \
+    "${ZITI_BIN_DIR}/ziti" pki create intermediate --pki-root "${ZITI_PKI}" --ca-name "${1}" \
           --intermediate-name "${2}" \
           --intermediate-file "${2}" --max-path-len ${3}
   else

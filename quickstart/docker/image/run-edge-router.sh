@@ -14,7 +14,7 @@ if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="30
 "${ZITI_SCRIPTS}/create-router-pki.sh"
 
 echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
-ziti edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
@@ -34,12 +34,12 @@ if [[ "$1" == "private" ]]; then
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-ziti edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}"
-ziti edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t
+"${ZITI_BIN_DIR}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}"
+"${ZITI_BIN_DIR}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t
 sleep 1
 echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
-ziti-router enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
+"${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
 echo ""
 #sleep 100000
-ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
+"${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
 

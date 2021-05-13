@@ -14,7 +14,7 @@ pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMED
 
 if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK}-dotzeet.key"; then
   echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK}"
-  ziti pki create client --pki-root="${ZITI_PKI}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
+  "${ZITI_BIN_DIR}/ziti" pki create client --pki-root="${ZITI_PKI}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
         --client-file="${ZITI_NETWORK}-dotzeet" \
         --client-name "${ZITI_NETWORK} Management"
 else
