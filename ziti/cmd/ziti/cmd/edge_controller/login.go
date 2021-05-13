@@ -24,8 +24,10 @@ import (
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
+	"net/url"
 	"path/filepath"
 	"strings"
 )
@@ -47,7 +49,7 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 	}
 
 	cmd := &cobra.Command{
-		Use:   "login my.controller.hostname[:port]",
+		Use:   "login my.controller.hostname[:port]/path",
 		Short: "logs into a Ziti Edge Controller instance",
 		Long:  `login allows the ziti command to establish a session with a Ziti Edge Controller, allowing more commands to be run against the controller.`,
 		Args:  cobra.MinimumNArgs(1),
@@ -81,6 +83,20 @@ func (o *loginOptions) Run() error {
 
 	if !strings.HasPrefix(host, "http") {
 		host = "https://" + host
+	}
+
+	if certAbs, err := filepath.Abs(o.Cert); err == nil {
+		o.Cert = certAbs
+	}
+
+	hostUrl, err := url.Parse(host)
+
+	if err != nil {
+		return errors.Errorf("could not parse host, invalid: %v", err)
+	}
+
+	if hostUrl.Path == "" {
+		host = util.EdgeControllerGetManagementApiBasePath(host, o.Cert)
 	}
 
 	if o.Username != "" && o.Password == "" {
@@ -130,3 +146,4 @@ func (o *loginOptions) Run() error {
 
 	return err
 }
+
