@@ -74,6 +74,6 @@ if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; t
   export PATH=$PATH:"${ZITI_BIN_DIR}"
 fi
 echo " "
-echo    "                  ziti binaries are located at: ${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}"
-echo -e 'add this to your path if you want by executing: '"$(GREEN 'export PATH=$PATH:'"${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}")"
+echo    "                  ziti binaries are located at: ${ZITI_BIN_DIR}"
+echo -e 'add this to your path if you want by executing: export PATH=$PATH:'"${ZITI_BIN_DIR}"
 heredoc
