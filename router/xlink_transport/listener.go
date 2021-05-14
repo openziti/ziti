@@ -62,6 +62,9 @@ func (self *listener) acceptLoop() {
 		headers := ch.Underlay().Headers()
 		channelType := byte(0)
 		if headers != nil {
+			if v, ok := headers[LinkHeaderRouterId]; ok {
+				logrus.Infof("accepting link from [r/%s]", string(v))
+			}
 			if val, ok := headers[LinkHeaderType]; ok {
 				channelType = val[0]
 			}

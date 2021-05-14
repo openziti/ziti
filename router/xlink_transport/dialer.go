@@ -26,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
+func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerId string) error {
 	address, err := transport.ParseAddress(addressString)
 	if err != nil {
 		return fmt.Errorf("error parsing link address [%s] (%w)", addressString, err)
@@ -36,8 +36,9 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 	connId := uuid.New().String()
 
 	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
-		LinkHeaderConnId: []byte(connId),
-		LinkHeaderType:   {PayloadChannel},
+		LinkHeaderRouterId: []byte(routerId),
+		LinkHeaderConnId:   []byte(connId),
+		LinkHeaderType:     {PayloadChannel},
 	})
 
 	logrus.Infof("dialing payload channel for link [l/%s]", linkId.Token)

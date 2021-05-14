@@ -38,7 +38,7 @@ type Accepter interface {
 }
 
 type Dialer interface {
-	Dial(address string, id *identity.TokenId) error
+	Dial(address string, id *identity.TokenId, routerId string) error
 }
 
 type Xlink interface {

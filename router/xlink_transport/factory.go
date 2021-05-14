@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	LinkHeaderConnId = 0
-	LinkHeaderType   = 1
+	LinkHeaderConnId   = 0
+	LinkHeaderType     = 1
+	LinkHeaderRouterId = 2
 
 	PayloadChannel = 1
 	AckChannel     = 2
