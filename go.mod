@@ -27,9 +27,9 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.3.7
-	github.com/openziti/edge v0.19.112-0.20210513202147-a8a6a2dbe654
+	github.com/openziti/edge v0.19.114-0.20210514111109-92625cfe95e4
 	github.com/openziti/fabric v0.16.62
-	github.com/openziti/foundation v0.15.51-0.20210513200524-aada3f4bd5b1
+	github.com/openziti/foundation v0.15.52-0.20210514110638-7aea9fd913dd
 	github.com/openziti/sdk-golang v0.15.49
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
