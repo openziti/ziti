@@ -64,7 +64,7 @@ func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
 	logrus.Info("received link connect request")
 	dial := &ctrl_pb.Dial{}
 	if err := proto.Unmarshal(msg.Body, dial); err == nil {
-		linkId := self.id.ShallowCloneWithNewToken(dial.Id)
+		linkId := self.id.ShallowCloneWithNewToken(dial.LinkId)
 		if len(self.dialers) == 1 {
 			if err := self.dialers[0].Dial(dial.Address, linkId); err == nil {
 				if err := self.sendLinkMessage(linkId); err != nil {

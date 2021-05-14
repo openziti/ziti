@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package ctrl.pb;
+option go_package = "github.com/openziti/fabric/pb/ctrl_pb";
 
 enum ContentType {
   Zero = 0;
@@ -76,8 +77,9 @@ message UpdateTerminatorRequest {
 }
 
 message Dial {
-  string id = 1;
+  string linkId = 1;
   string address = 2;
+  string routerId = 3;
 }
 
 message Link {

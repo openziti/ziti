@@ -143,8 +143,9 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 		connect := &Dial{}
 		if err := proto.Unmarshal(msg.Body, connect); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Dial")
-			meta["id"] = connect.Id
+			meta["linkIid"] = connect.LinkId
 			meta["address"] = connect.Address
+			meta["routerId"] = connect.RouterId
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
