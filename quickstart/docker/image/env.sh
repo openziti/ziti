@@ -69,11 +69,12 @@ echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
 #when sourcing the emitted file add the bin folder to the path
 tee -a "${ENV_FILE}" > /dev/null <<'heredoc'
+echo " "
 if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
   echo "adding ${ZITI_BIN_DIR} to the path"
   export PATH=$PATH:"${ZITI_BIN_DIR}"
-fi
-echo " "
+else
 echo    "                  ziti binaries are located at: ${ZITI_BIN_DIR}"
 echo -e 'add this to your path if you want by executing: export PATH=$PATH:'"${ZITI_BIN_DIR}"
+fi
 heredoc
