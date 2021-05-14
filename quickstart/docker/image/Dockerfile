@@ -11,11 +11,16 @@ RUN useradd -ms /bin/bash ziti && \
 USER ziti
 WORKDIR /openziti
 
+ENV ZITI_HOME=/openziti
+ENV ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
+
 # copy the ziti binaries to a directory already on the path
-COPY --chown=ziti ziti.ignore /usr/local/bin/
+#COPY --chown=ziti ziti.ignore /usr/local/bin/
+COPY --chown=ziti ziti.ignore "${ZITI_BIN_DIR}"
 COPY --chown=ziti *.sh ./scripts/
 
-ENV ZITI_HOME=/openziti
+#ENV ZITI_HOME=/openziti
+#ENV ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
 ENV ZITI_SHARED=${ZITI_HOME}/shared
 ENV ZITI_SCRIPTS=${ZITI_HOME}/scripts
 ENV ENV_FILE=${ZITI_HOME}/ziti.env
