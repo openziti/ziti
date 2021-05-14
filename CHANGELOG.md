@@ -2,9 +2,9 @@
 
 ## What's New
 
-* Fix bug in sdk which could cause panic by return nil connection and nil error
-* [ziti#170](https://github.com/openziti/ziti/issues/170) Fix service poll refresh default for ziti-tunnel host mode
-* Fix deadlock in control channel reconnect triggerable when network path to controller is unreliable
+* Fixes a bug in the GO sdk which could cause panic by return nil connection and nil error
+* [ziti#170](https://github.com/openziti/ziti/issues/170) Fixes the service poll refresh default for ziti-tunnel host mode
+* Fixes a deadlock in control channel reconnect logic triggerable when network path to controller is unreliable
 
 # Release 0.20.0
 
