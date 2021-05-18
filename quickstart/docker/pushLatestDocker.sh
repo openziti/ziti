@@ -26,9 +26,9 @@ if [ -d "${ZITI_BIN_ROOT}/image/ziti.ignore" ]; then
 fi
 
 docker run --rm -it openziti/quickstart /openziti/ziti-bin/ziti version
-if [ -f "${ZITI_BIN_ROOT}/ziti-*tar.gz" ]; then
-  rm "${ZITI_BIN_ROOT}/ziti-*tar.gz"
-fi
+#if [ -f "${ZITI_BIN_ROOT}/ziti-*tar.gz" ]; then
+#  rm "${ZITI_BIN_ROOT}/ziti-*tar.gz"
+#fi
 if [ -d "${ZITI_BIN_ROOT}/ziti-bin" ]; then
   rm -rf "${ZITI_BIN_ROOT}/ziti-bin"
 fi
@@ -39,6 +39,6 @@ fi
 vers="$(echo "${ZITI_BINARIES_VERSION}" | cut -c 2-100)"
 docker tag openziti/quickstart "openziti/quickstart:${vers}"
 docker tag openziti/quickstart "openziti/quickstart:latest"
-docker push "openziti/quickstart:${vers}"
-docker push "openziti/quickstart:latest"
+#docker push "openziti/quickstart:${vers}"
+#docker push "openziti/quickstart:latest"
 

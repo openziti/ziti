@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
+
 ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
 
@@ -15,7 +17,8 @@ createControllerConfig
 # create a place for the internal db
 mkdir -p $ZITI_HOME/db
 
-"${ZITI_SCRIPTS}/create-fabric-identity.sh"
+#"${ZITI_SCRIPTS}/create-fabric-identity.sh"
+createFabricIdentity
 
 "${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/controller.yaml"
 

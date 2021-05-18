@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
+
 ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
 
@@ -11,27 +13,26 @@ done
 if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
 if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
-"${ZITI_SCRIPTS}/create-router-pki.sh"
+createRouterPki
 
 echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
 "${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
-  #"${ZITI_SCRIPTS}/create-edge-router-config.sh"
   createEdgeRouterConfig
 fi
 if [[ "$1" == "wss" ]]; then
   echo "CREATING EDGE ROUTER WSS CONFIG"
-  "${ZITI_SCRIPTS}/create-edge-router-wss-config.sh"
+  createEdgeRouterWssConfig
 fi
 if [[ "$1" == "fabric" ]]; then
   echo "CREATING FABRIC ROUTER CONFIG"
-  "${ZITI_SCRIPTS}/create-fabric-router-config.sh"
+  createFabricRouterConfig
 fi
 if [[ "$1" == "private" ]]; then
   echo "CREATING PRIVATE ROUTER CONFIG"
-  "${ZITI_SCRIPTS}/create-private-router-config.sh"
+  createPrivateRouterConfig
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
