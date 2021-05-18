@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export ZITI_QUICKSTART_SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
+
 ASCI_WHITE='\033[01;37m'
 ASCI_RESTORE='\033[0m'
 ASCI_RED='\033[00;31m'
@@ -35,7 +38,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  unused=$(ziti edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
+  unused=$("${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
 }
 function reinitializeZitiController {
   cleanZitiController
@@ -53,12 +56,13 @@ function generateEdgeRouterConfig {
   "${ZITI_QUICKSTART_SCRIPT_ROOT}/docker/image/create-edge-router-config.sh"
 }
 function initializeController {
-  ziti-controller edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}" &> "${ZITI_HOME}/controller-init.log"
+  "${ZITI_BIN_DIR}/ziti-controller" edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}" &> "${ZITI_HOME}/controller-init.log"
   echo -e "ziti-controller initialized. see $(BLUE ${ZITI_HOME}/controller-init.log) for details"
 }
 function startZitiController {
-  unused=$(ziti-controller run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-controller.log" 2>&1 &)
-  echo -e "ziti-controller started. log located at: $(BLUE ${ZITI_HOME}/ziti-controller.log)"
+  # shellcheck disable=SC2034
+  unused=$("${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-edge-controller.log" 2>&1 &)
+  echo -e "ziti-controller started. log located at: $(BLUE ${ZITI_HOME}/ziti-edge-controller.log)"
 }
 function stopZitiController {
   killall ziti-controller
@@ -70,10 +74,10 @@ function checkHostsFile {
 
   if [[ "0" = "${ctrlexists}" ]] || [[ "0" = "${edgectrlexists}" ]] || [[ "0" = "${erexists}" ]]; then
     echo " "
-    echo -e $(YELLOW "Ziti is generally used to create an overlay network. Generally speaking this will involve more than one host")
-    echo -e $(YELLOW "Since this is a script geared towards setting up a very minimal development environment it needs to make some")
-    echo -e $(YELLOW "assumptions. One of these assumptions is that the three specific entries are entered onto your hosts file.")
-    echo -e $(YELLOW "One or more of these are missing:")
+    echo -e "$(YELLOW "Ziti is generally used to create an overlay network. Generally speaking this will involve more than one host")"
+    echo -e "$(YELLOW "Since this is a script geared towards setting up a very minimal development environment it needs to make some")"
+    echo -e "$(YELLOW "assumptions. One of these assumptions is that the three specific entries are entered onto your hosts file.")"
+    echo -e "$(YELLOW "One or more of these are missing:")"
     echo " "
     if [[ "0" == "${ctrlexists}" ]]; then
       echo -e "  * $(RED "MISSING: ${ZITI_EDGE_CONTROLLER_HOSTNAME}") "
@@ -100,41 +104,51 @@ function checkHostsFile {
   fi
 }
 
+function getLatestZitiVersion {
+  if [[ "${ZITI_BINARIES_VERSION}" == "" ]]; then
+    zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
+    echo ${zitilatest} > /mnt/v/temp/a.txt
+    export ZITI_BINARIES_TARFILE=$(echo "${zitilatest}" | jq -r '.assets[] | select(.name | startswith("ziti-linux-amd")) | .name')
+    # shellcheck disable=SC2155
+    export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | jq -r '.tag_name')
+  fi
+  #echo -e 'Ziti tar.gz: '"$(BLUE "${ZITI_BINARIES_TARFILE}")"
+  #echo -e 'Latest ziti is: '"$(BLUE "${ZITI_BINARIES_VERSION}")"
+}
+
 function getLatestZiti {
   if [[ "${ZITI_HOME}" == "" ]]; then
     echo "ERROR: ZITI_HOME is not set!"
     return
   fi
-  if [[ "${ZITI_BIN_DIR}" == "" ]]; then
-    ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
+  if [[ "${ZITI_BIN_ROOT}" == "" ]]; then
+    export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
   fi
-  if [[ "${ZITI_BIN}" == "" ]]; then
-    ZITI_BIN="${ZITI_BIN_DIR}/ziti"
-  fi
+  mkdir -p "${ZITI_BIN_ROOT}"
+  getLatestZitiVersion
+  export ZITI_BIN_DIR="${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}"
 
-  zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
-  zitiversion=$(echo ${zitilatest} | jq -r '.tag_name')
-  echo "Latest ziti is: ${zitiversion}"
-  zititgz=$(echo ${zitilatest} | jq -r '.assets[] | select(.name | startswith("ziti-linux-amd")) | .name')
-
-  if ! test -f "${ZITI_HOME}/${zititgz}"; then
-    echo -e 'Downloading '"$(BLUE "${zititgz}")"' into '"$(BLUE "${ZITI_HOME}")"
-    zitidl="https://github.com/openziti/ziti/releases/download/${zitiversion}/${zititgz}"
-
-    wget -q "${zitidl}" -O "${ZITI_HOME}/${zititgz}"
+  ZITI_BINARIES_TARFILE_ABSPATH="${ZITI_HOME}/ziti-bin/${ZITI_BINARIES_TARFILE}"
+  if ! test -f "${ZITI_BINARIES_TARFILE_ABSPATH}"; then
+    echo -e 'Downloading '"$(BLUE "${ZITI_BINARIES_TARFILE}")"' to '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"
+    zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION}/${ZITI_BINARIES_TARFILE}"
+    wget -q "${zitidl}" -O "${ZITI_BINARIES_TARFILE_ABSPATH}"
+  else
+    echo -e "$(YELLOW 'Already Downloaded ')""$(BLUE "${ZITI_BINARIES_TARFILE}")"' at: '"${ZITI_BINARIES_TARFILE_ABSPATH}"
   fi
 
-  mkdir -p "${ZITI_BIN_DIR}"
-  echo -e 'UNZIPPING '"$(BLUE "${ZITI_HOME}/${zititgz}")"' into: '"$(GREEN ${ZITI_BIN_DIR})"
-  tar -xf "${ZITI_HOME}/${zititgz}" --directory "${ZITI_BIN_DIR}"
+  echo -e 'UNZIPPING '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN ${ZITI_BIN_DIR})"
+  rm -rf "${ZITI_BIN_ROOT}/ziti-${ZITI_BINARIES_VERSION}"
+  tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ZITI_BIN_ROOT}"
+  mv "${ZITI_BIN_ROOT}/ziti" "${ZITI_BIN_DIR}"
 
   if [[ "$1" == "yes" ]]; then
-    echo "Adding ${ZITI_BIN} to the path if necessary:"
-    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN}" && echo "yes")" == "yes" ]]; then
-      echo -e "$(GREEN "${ZITI_BIN}") is already on the path"
+    echo "Adding ${ZITI_BIN_DIR} to the path if necessary:"
+    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
+      echo -e "$(GREEN "${ZITI_BIN_DIR}") is already on the path"
     else
-      echo -e "adding $(RED "${ZITI_BIN}") to the path"
-      export PATH=$PATH:"${ZITI_BIN}"
+      echo -e "adding $(RED "${ZITI_BIN_DIR}") to the path"
+      export PATH=$PATH:"${ZITI_BIN_DIR}"
     fi
   fi
 }
@@ -178,3 +192,6 @@ function checkControllerName {
   return 0
 }
 
+function unsetZitiEnv {
+  for zEnvVar in $(set -o posix ; set | grep -e "^ZITI_" | sort); do envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"; echo unsetting "[${envvar}]${zEnvVar}"; unset "${envvar}"; done
+}

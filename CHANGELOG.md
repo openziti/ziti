@@ -1,3 +1,18 @@
+# Release 0.20.2
+
+## What's New
+
+* ziti-router will now emit a stackdump before exiting when it receives a SIGQUIT
+* ziti ps stack now takes a --stack-timeout and will quit after the specified timeout if the stack dump hasn't completed yet
+
+# Release 0.20.1
+
+## What's New
+
+* Fixes a bug in the GO sdk which could cause panic by return nil connection and nil error
+* [ziti#170](https://github.com/openziti/ziti/issues/170) Fixes the service poll refresh default for ziti-tunnel host mode
+* Fixes a deadlock in control channel reconnect logic triggerable when network path to controller is unreliable
+
 # Release 0.20.0
 
 ## What's New
