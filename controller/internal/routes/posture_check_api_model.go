@@ -368,6 +368,7 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 		}
 
 		ret = detail
+		setBaseEntityDetailsOnPostureCheck(ret, i)
 	}
 
 	return ret, nil
