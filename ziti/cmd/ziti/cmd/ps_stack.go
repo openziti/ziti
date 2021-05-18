@@ -23,12 +23,14 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"time"
 )
 
 // PsStackOptions the options for the create spring command
 type PsStackOptions struct {
 	PsOptions
 	CtrlListener string
+	StackTimeout time.Duration
 }
 
 // NewCmdPsStack creates a command object for the "create" command
@@ -45,7 +47,7 @@ func NewCmdPsStack(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 
 	cmd := &cobra.Command{
 		Args: cobra.MaximumNArgs(1),
-		Use:  "stack <optional-target>",
+		Use:  "stack [<optional-target>]",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -55,12 +57,16 @@ func NewCmdPsStack(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	}
 
 	options.addCommonFlags(cmd)
+	cmd.Flags().DurationVar(&options.StackTimeout, "stack-timeout", 5*time.Second, "Timeout for stack operation")
 
 	return cmd
 }
 
 // Run implements the command
 func (o *PsStackOptions) Run() error {
+	time.AfterFunc(o.StackTimeout, func() {
+		os.Exit(-1)
+	})
 	addr, err := agent.ParseGopsAddress(o.Args)
 	if err != nil {
 		return err
