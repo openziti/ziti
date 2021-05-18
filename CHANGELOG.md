@@ -1,3 +1,10 @@
+# Release 0.20.2
+
+## What's New
+
+* ziti-router will now emit a stackdump before exiting when it receives a SIGQUIT
+* ziti ps stack now takes a --stack-timeout and will quit after the specified timeout if the stack dump hasn't completed yet
+
 # Release 0.20.1
 
 ## What's New
