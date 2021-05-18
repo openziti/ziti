@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ${ZITI_SCRIPTS}/env.sh
+ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
 
 until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
@@ -18,7 +18,8 @@ echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
-  "${ZITI_SCRIPTS}/create-edge-router-config.sh"
+  #"${ZITI_SCRIPTS}/create-edge-router-config.sh"
+  createEdgeRouterConfig
 fi
 if [[ "$1" == "wss" ]]; then
   echo "CREATING EDGE ROUTER WSS CONFIG"

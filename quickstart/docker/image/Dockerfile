@@ -26,6 +26,7 @@ ENV ZITI_SCRIPTS=${ZITI_HOME}/scripts
 ENV ENV_FILE=${ZITI_HOME}/ziti.env
 ENV ZITI_NETWORK=ziti
 
-RUN ${ZITI_SCRIPTS}/env.sh && \
+RUN source "ziti-cli-functions.sh" && \
+    ziti_createEnvFile && \
     echo "source ${ZITI_HOME}/ziti.env" >> ~/.bashrc
 

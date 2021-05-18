@@ -1,14 +1,13 @@
 #!/bin/bash
 
-. ${ZITI_SCRIPTS}/env.sh
+ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
 
-"${ZITI_SCRIPTS}/create-pki.sh"
-
 # create pki
+createPki
 
 # generates the config file for the controller
-"${ZITI_SCRIPTS}/create-controller-config.sh"
+createControllerConfig
 
 # initialize the database with the admin user:
 "${ZITI_BIN_DIR}/ziti-controller" edge init "${ZITI_HOME}/controller.yaml" -u "${ZITI_USER}" -p "${ZITI_PWD}"
