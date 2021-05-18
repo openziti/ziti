@@ -4,6 +4,8 @@
 
 * ziti-router will now emit a stackdump before exiting when it receives a SIGQUIT
 * ziti ps stack now takes a --stack-timeout and will quit after the specified timeout if the stack dump hasn't completed yet
+* ziti now supports posture check types of process multi
+* Fixes a bug in Ziti Management API where posture checks of type process multi were missing their base entity information (createdAt, updatedAt, etc.)
 
 # Release 0.20.1
 

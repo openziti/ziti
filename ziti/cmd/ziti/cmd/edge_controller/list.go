@@ -19,6 +19,7 @@ package edge_controller
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"io"
@@ -705,6 +706,26 @@ func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
 	case "OS":
 		operatingSystems, _ := entity.Path("operatingSystems").Children()
 		config = strings.Join(postureCheckOsToStrings(operatingSystems), ",")
+	case "PROCESS_MULTI":
+		postureCheck := rest_model.PostureCheckProcessMultiDetail{}
+		if err := postureCheck.UnmarshalJSON(entity.Bytes()); err != nil {
+			return err
+		}
+
+		baseConfig := fmt.Sprintf("(SEMANTIC: %s)", *postureCheck.Semantic)
+
+		if _, err := fmt.Fprintf(o.Out, "id: %-10v    type: %-10v    name: %-15v    role attributes: %-10s     param: %v\n", id, typeId, name, roleAttributes, baseConfig); err != nil {
+			return err
+		}
+
+		for _, process := range postureCheck.Processes {
+			process.SignerFingerprints = getEllipsesStrings(process.SignerFingerprints, 4, 2)
+			process.Hashes = getEllipsesStrings(process.Hashes, 4, 2)
+			_, _ = fmt.Fprintf(o.Out, "\t(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)\n", *process.OsType, *process.Path, strings.Join(process.Hashes, ","), strings.Join(process.SignerFingerprints, ", "))
+		}
+
+		return nil
+
 	case "PROCESS":
 		process := entity.Path("process")
 
@@ -717,17 +738,13 @@ func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
 
 			for _, hash := range hashes {
 				hashStr := hash.(string)
-				if hashStr != "" {
-					hashStr = hashStr[0:4] + "..." + hashStr[len(hashStr)-2:]
-					hashStrings = append(hashStrings, hashStr)
-				}
-
+				hashStrings = append(hashStrings, getEllipsesString(hashStr, 4, 2))
 			}
 		}
 		signerFingerprint := "N/A"
 		if val := process.Path("signerFingerprint").Data(); val != nil {
 			if valStr := val.(string); valStr != "" {
-				signerFingerprint = valStr[0:4] + "..." + valStr[len(valStr)-2:]
+				signerFingerprint = getEllipsesString(valStr, 4, 2)
 			}
 		}
 
@@ -735,7 +752,7 @@ func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
 			hashStrings = append(hashStrings, "N/A")
 		}
 
-		config = fmt.Sprintf("(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)", os, path, strings.Join(hashStrings, ","), signerFingerprint)
+		config = fmt.Sprintf("\n\t(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)", os, path, strings.Join(hashStrings, ","), signerFingerprint)
 	}
 
 	if _, err := fmt.Fprintf(o.Out, "id: %-10v    type: %-10v    name: %-15v    role attributes: %-10s     param: %v\n", id, typeId, name, roleAttributes, config); err != nil {
@@ -743,6 +760,25 @@ func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
 	}
 
 	return nil
+}
+
+func getEllipsesString(val string, lead, lag int) string {
+	total := lead + lag + 3
+
+	if len(val) <= total {
+		return val
+	}
+
+	return val[0:lead] + "..." + val[len(val)-lag:]
+}
+
+func getEllipsesStrings(values []string, lead, lag int) []string {
+	var ret []string
+	for _, val := range values {
+		ret = append(ret, getEllipsesString(val, lead, lag))
+	}
+
+	return ret
 }
 
 func outputPostureChecks(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
