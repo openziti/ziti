@@ -181,7 +181,7 @@ func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, par
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
 	Patch(rc, func(id string, fields JsonFields) error {
-		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields.FilterMaps("tags"))
+		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields.FilterMaps("tags", "appData"))
 	})
 }
 
