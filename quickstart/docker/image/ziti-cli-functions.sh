@@ -1234,6 +1234,6 @@ HeredocForSystemd
   echo "Router systemd file written to: ${ziti_home}/${router_name}.systemd"
 }
 
-
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+set +uo pipefail
