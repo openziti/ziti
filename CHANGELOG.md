@@ -1,3 +1,9 @@
+# Release 0.20.3
+
+## What's New
+
+* Bug fix: Update of identity appData wasn't working
+
 # Release 0.20.2
 
 ## What's New
