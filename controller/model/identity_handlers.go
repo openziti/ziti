@@ -37,21 +37,13 @@ const (
 
 type IdentityHandler struct {
 	baseHandler
-	allowedFieldsChecker boltz.FieldChecker
-	updateSdkInfoTimer   metrics.Timer
-	identityStatusMap    *identityStatusMap
+	updateSdkInfoTimer metrics.Timer
+	identityStatusMap  *identityStatusMap
 }
 
 func NewIdentityHandler(env Env) *IdentityHandler {
 	handler := &IdentityHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Identity),
-		allowedFieldsChecker: boltz.MapFieldChecker{
-			persistence.FieldName:                   struct{}{},
-			persistence.FieldIdentityIsDefaultAdmin: struct{}{},
-			persistence.FieldIdentityIsAdmin:        struct{}{},
-			persistence.FieldIdentityType:           struct{}{},
-			boltz.FieldTags:                         struct{}{},
-		},
+		baseHandler:        newBaseHandler(env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
