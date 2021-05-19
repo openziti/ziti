@@ -1176,7 +1176,7 @@ function createControllerSystemdFile {
     return 1
   fi
 
-systemd_file="${ziti_home}/ziti-controller.systemd"
+systemd_file="${ziti_home}/ziti-controller.service"
 cat > "${systemd_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Controller
@@ -1224,7 +1224,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ziti_bin_dir}/ziti-router
-ExecStart="${ziti_bin_dir}/ziti-router run" "${ziti_home}/${router_name}.yml"
+ExecStart="${ziti_bin_dir}/ziti-router run" "${ziti_home}/${router_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
