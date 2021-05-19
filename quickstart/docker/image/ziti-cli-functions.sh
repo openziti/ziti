@@ -1184,7 +1184,7 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=${ziti_bin_dir}/ziti-controller
+WorkingDirectory=${ziti_home}
 ExecStart="${ziti_bin_dir}/ziti-controller" run "${ziti_home}/controller.yaml"
 Restart=always
 RestartSec=2
@@ -1223,7 +1223,7 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=${ziti_bin_dir}/ziti-router
+WorkingDirectory=${ziti_home}
 ExecStart="${ziti_bin_dir}/ziti-router" run "${ziti_home}/${router_name}.yaml"
 Restart=always
 RestartSec=2
