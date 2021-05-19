@@ -1224,7 +1224,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ziti_bin_dir}/ziti-router
-ExecStart="${ziti_bin_dir}/ziti-router run" "${ziti_home}/${router_name}.yaml"
+ExecStart="${ziti_bin_dir}/ziti-router" run "${ziti_home}/${router_name}.yaml"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
