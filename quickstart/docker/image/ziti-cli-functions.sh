@@ -337,6 +337,7 @@ function ziti_expressConfiguration {
 
   createRouterPki
   createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
+  createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
 
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
   unused=$("${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}")
