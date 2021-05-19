@@ -1218,13 +1218,52 @@ function createRouterSystemdFile {
 systemd_file="${ziti_home}/ziti-router-${router_name}.service"
 cat > "${systemd_file}" <<HeredocForSystemd
 [Unit]
-Description=Ziti-Router
+Description=Ziti-Router for ${router_name}
 After=network.target
 
 [Service]
 User=root
 WorkingDirectory=${ziti_home}
 ExecStart="${ziti_bin_dir}/ziti-router" run "${ziti_home}/${router_name}.yaml"
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+HeredocForSystemd
+  echo "Router systemd file written to: ${systemd_file}"
+}
+
+function createZacSystemdFile {
+  router_name="${1-}"
+  if [[ "${router_name}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "createZacSystemdFile requires a parameter to be supplied") "
+    return 1
+  fi
+
+  ziti_home="${ZITI_HOME-}"
+  if [[ "${ziti_home}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "ZITI_HOME is not set") "
+    return 1
+  fi
+
+  ziti_bin_dir="${ZITI_BIN_DIR-}"
+  if [[ "${ziti_bin_dir}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "ZITI_BIN_DIR is not set") "
+    return 1
+  fi
+systemd_file="${ziti_home}/ziti-console.service"
+cat > "${systemd_file}" <<HeredocForSystemd
+[Unit]
+Description=Ziti-Console
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=${ziti_home}/ziti-console
+ExecStart=node "${ziti_home}/ziti-console/server.js"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536
