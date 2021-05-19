@@ -1175,7 +1175,8 @@ function createControllerSystemdFile {
     return 1
   fi
 
-cat > "${ziti_home}/${ziti_ctrl_name}.systemd" <<HeredocForSystemd
+systemd_file="${ziti_home}/ziti-controller.systemd"
+cat > "${systemd_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Controller
 After=network.target
@@ -1192,7 +1193,7 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 
 HeredocForSystemd
-  echo "Controller systemd file written to: ${ziti_home}/${ziti_ctrl_name}.systemd"
+  echo "Controller systemd file written to: ${systemd_file}"
 }
 
 function createRouterSystemdFile {
@@ -1213,8 +1214,8 @@ function createRouterSystemdFile {
     echo -e "  * ERROR: $(RED "ZITI_BIN_DIR is not set") "
     return 1
   fi
-
-cat > "${ziti_home}/${router_name}.systemd" <<HeredocForSystemd
+systemd_file="${ziti_home}/ziti-router-${router_name}.service"
+cat > "${systemd_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Router
 After=network.target
@@ -1231,7 +1232,7 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 
 HeredocForSystemd
-  echo "Router systemd file written to: ${ziti_home}/${router_name}.systemd"
+  echo "Router systemd file written to: ${systemd_file}"
 }
 
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
