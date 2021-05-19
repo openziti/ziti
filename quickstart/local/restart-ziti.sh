@@ -14,7 +14,7 @@ source ${curdir}/env.sh
 DIRNAME=$(dirname $0)
 [[ ${USE_DNSMASQ:-} -eq 1 ]] && source ${DIRNAME}/run-dns.sh
 
-ziti-controller -v run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti-controller.log" 2>&1 &
+"${ZITI_BIN_DIR}/ziti-controller" -v run "${ZITI_HOME}/controller.yaml" > "${ZITI_HOME}/ziti_edge-controller.log" 2>&1 &
 # sleep 2
 # ziti-router run "${ZITI_HOME}/${ZITI_ROUTER_BR_NAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_BR_NAME}.log" 2>&1 &
 # sleep 1

@@ -17,6 +17,7 @@
 package subcmd
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/router/fabric"
@@ -26,6 +27,7 @@ import (
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -96,7 +98,7 @@ func run(cmd *cobra.Command, args []string) {
 			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
 		}
 
-		go waitForShutdown(r)
+		go waitForShutdown(r, config)
 
 		if err := r.Run(); err != nil {
 			logrus.WithError(err).Fatal("error starting")
@@ -115,11 +117,17 @@ func getFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 	return ret
 }
 
-func waitForShutdown(r *router.Router) {
+func waitForShutdown(r *router.Router, config *router.Config) {
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(ch, os.Interrupt, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
-	<-ch
+	s := <-ch
+
+	if s == syscall.SIGQUIT {
+		fmt.Println("=== STACK DUMP BEGIN ===")
+		debugz.DumpStack()
+		fmt.Println("=== STACK DUMP CLOSE ===")
+	}
 
 	pfxlog.Logger().Info("shutting down ziti-router")
 
