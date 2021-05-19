@@ -319,6 +319,7 @@ function ziti_expressConfiguration {
 
   createPki
   createControllerConfig
+  createControllerSystemdFile
   initializeController
   startZitiController
   echo "starting the ziti controller to enroll the edge router"
@@ -1044,7 +1045,6 @@ web:
 HereDocForEdgeConfiguration
 
   echo "controller configuration file written to: ${ziti_home}/controller.yaml"
-  createControllerSystemdFile
 }
 
 # shellcheck disable=SC2120
@@ -1136,14 +1136,14 @@ function ziti_createEnvFile {
 
   #when sourcing the emitted file add the bin folder to the path
   tee -a "${ENV_FILE}" > /dev/null <<'heredoc'
-  echo " "
-  if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
-    echo "adding ${ZITI_BIN_DIR} to the path"
-    export PATH=$PATH:"${ZITI_BIN_DIR}"
-  else
-  echo    "                  ziti binaries are located at: ${ZITI_BIN_DIR}"
-  echo -e 'add this to your path if you want by executing: export PATH=$PATH:'"${ZITI_BIN_DIR}"
-  fi
+echo " "
+if [[ ! "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
+  echo "adding ${ZITI_BIN_DIR} to the path"
+  export PATH=$PATH:"${ZITI_BIN_DIR}"
+else
+echo    "                  ziti binaries are located at: ${ZITI_BIN_DIR}"
+echo -e 'add this to your path if you want by executing: export PATH=$PATH:'"${ZITI_BIN_DIR}"
+fi
 heredoc
 
 }
