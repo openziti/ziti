@@ -36,7 +36,7 @@ This quickstart is a barebones guide to running a full developer environment in 
    
 1. Run this single command to download and bootstrap the ziti-controller and ziti-router (feel free to read the bash script before running if you like):
 
-       source <(wget -qO- https://raw.githubusercontent.com/openziti/ziti/unify-quickstart-functions/quickstart/docker/image/ziti-cli-functions.sh); expressInstall
+       source <(wget -qO- https://raw.githubusercontent.com/openziti/ziti/release-next/quickstart/docker/image/ziti-cli-functions.sh); expressInstall
 
 1. At this point the controller and router are running and can be accessed from anywhere. Confirm both are running by running:
 
