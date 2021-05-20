@@ -3,6 +3,7 @@
 ## What's New
 
 * Bug fix: Update of identity appData wasn't working
+* Bug fix: Terminator updates failed if cost wasn't specified
 
 # Release 0.20.2
 
