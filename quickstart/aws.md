@@ -97,6 +97,7 @@ This quickstart is a barebones guide to running a full developer environment in 
        git clone https://github.com/openziti/ziti-console.git "${ZITI_HOME}/ziti-console"
 1. Install node and npm and get the server ready
 
+       cd "${ZITI_HOME}/ziti-console"
        sudo apt install npm nodejs -y
        npm install
 1. Use the ziti-controller certificates for the Ziti Console:
@@ -105,7 +106,8 @@ This quickstart is a barebones guide to running a full developer environment in 
        ln -s "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_HOSTNAME}-intermediate/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key" "${ZITI_HOME}/ziti-console/server.key"
 1. Emit the Ziti Console systemd file and update systemd to start the Ziti Console
 
-       createZacSystemdFilesudo cp "${ZITI_HOME}/ziti-console.service" /etc/systemd/system
+       createZacSystemdFile
+       sudo cp "${ZITI_HOME}/ziti-console.service" /etc/systemd/system
        sudo systemctl daemon-reload
        sudo systemctl start ziti-console
 1. Verify the Ziti Console is running
