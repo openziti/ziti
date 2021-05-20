@@ -1237,12 +1237,6 @@ HeredocForSystemd
 }
 
 function createZacSystemdFile {
-  router_name="${1-}"
-  if [[ "${router_name}" == "" ]]; then
-    echo -e "  * ERROR: $(RED "createZacSystemdFile requires a parameter to be supplied") "
-    return 1
-  fi
-
   ziti_home="${ZITI_HOME-}"
   if [[ "${ziti_home}" == "" ]]; then
     echo -e "  * ERROR: $(RED "ZITI_HOME is not set") "
@@ -1272,7 +1266,7 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 
 HeredocForSystemd
-  echo "Router systemd file written to: ${systemd_file}"
+  echo "ziti-console systemd file written to: ${systemd_file}"
 }
 
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
