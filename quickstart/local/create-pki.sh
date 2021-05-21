@@ -1,1 +1,0 @@
-../docker/image/create-pki.sh

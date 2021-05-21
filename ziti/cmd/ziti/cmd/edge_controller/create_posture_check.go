@@ -19,9 +19,12 @@ package edge_controller
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/rest_management_api_client/posture_checks"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 	"io"
 	"regexp"
@@ -39,6 +42,7 @@ func newCreatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 	cmd.AddCommand(newCreatePostureCheckProcessCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckOsCmd(f, out, errOut))
 	cmd.AddCommand(newCreatePostureCheckMfaCmd(f, out, errOut))
+	cmd.AddCommand(newCreatePostureCheckProcessMultiCmd(f, out, errOut))
 
 	return cmd
 }
@@ -67,10 +71,24 @@ type createPostureCheckOsOptions struct {
 
 type createPostureCheckProcessOptions struct {
 	createPostureCheckOptions
-	hash         []string
+	hashes       []string
 	signer       string
 	normalizedOs string
 	path         string
+}
+
+type createPostureCheckProcessMultiOptions struct {
+	createPostureCheckOptions
+	rawBinaryFileHashes []string //csv per process then by pipe delimited, flags parses the CSV
+	binaryFileHashes    [][]string
+
+	rawBinarySigners []string //csv per process then by pipe delimited, flags parses the CSV
+	binarySigners    [][]string
+
+	semantic string
+	osTypes  []string
+	paths    []string
+	name     string
 }
 
 func (options *createPostureCheckOptions) addPostureFlags(cmd *cobra.Command) {
@@ -172,7 +190,7 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 			},
 			tags: make(map[string]string),
 		},
-		hash:   nil,
+		hashes: nil,
 		signer: "",
 	}
 
@@ -208,8 +226,99 @@ func newCreatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 	options.AddCommonFlags(cmd)
 	options.createPostureCheckOptions.addPostureFlags(cmd)
 
-	cmd.Flags().StringSliceVarP(&options.hash, "hash-sig", "s", nil, "One or more sha512 hashes separated by commas of valid binaries")
+	cmd.Flags().StringSliceVarP(&options.hashes, "hash-sigs", "s", nil, "One or more sha512 hashes separated by commas of valid binaries")
 	cmd.Flags().StringVarP(&options.signer, "signer-fingerprint", "f", "", "The sha1 hash of a signer certificate")
+
+	return cmd
+}
+
+func newCreatePostureCheckProcessMultiCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &createPostureCheckProcessMultiOptions{
+		createPostureCheckOptions: createPostureCheckOptions{
+			edgeOptions: edgeOptions{
+				CommonOptions: common.CommonOptions{
+					Factory: f,
+					Out:     out,
+					Err:     errOut,
+				},
+			},
+			tags: make(map[string]string),
+		},
+		rawBinaryFileHashes: nil,
+		rawBinarySigners:    nil,
+	}
+
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("process-multi <name> <semantic=AllOf|AnyOf> <os csv=%s|%s|%s|%s> <absolutePath csv>", OsLinux, OsMacOs, OsWindows, OsWindowsServer),
+		Short: "creates a posture check multi for an OS specific process. Provide os and paths as comma separated values",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if err := cobra.ExactArgs(4)(cmd, args); err != nil {
+				return err
+			}
+
+			options.name = args[0]
+			options.semantic = args[1]
+
+			if options.semantic != string(rest_model.SemanticAllOf) && options.semantic != string(rest_model.SemanticAnyOf) {
+				return fmt.Errorf("invalid semantic [%s]: expected %s|%s", options.semantic, rest_model.SemanticAnyOf, rest_model.SemanticAllOf)
+			}
+
+			oses := strings.Split(args[2], ",")
+			for _, os := range oses {
+				os = normalizeOsType(os)
+				if os == "" || os == OsAndroid || os == OsIOS {
+					return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s|%s", args[1], OsLinux, OsMacOs, OsWindows, OsWindowsServer)
+				}
+
+				options.osTypes = append(options.osTypes, os)
+			}
+
+			options.paths = strings.Split(args[3], ",")
+
+			if len(options.paths) != len(options.osTypes) {
+				return fmt.Errorf("number of paths supplied does not match number of os types supplied")
+			}
+
+			for _, rawHash := range options.rawBinaryFileHashes {
+				hashes := strings.Split(rawHash, "|")
+				cleanHashes, err := cleanSha512s(hashes)
+				if err != nil {
+					return err
+				}
+
+				options.binaryFileHashes = append(options.binaryFileHashes, cleanHashes)
+			}
+
+			for _, rawSigner := range options.rawBinarySigners {
+				signers := strings.Split(rawSigner, "|")
+				cleanedSigners, err := cleanSha1s(signers)
+
+				if err != nil {
+					return err
+				}
+				options.binarySigners = append(options.binarySigners, cleanedSigners)
+			}
+
+			return nil
+
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+
+			err := runCreatePostureCheckProcessMulti(options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	options.AddCommonFlags(cmd)
+	options.createPostureCheckOptions.addPostureFlags(cmd)
+
+	cmd.Flags().StringSliceVarP(&options.rawBinaryFileHashes, "hash-sigs", "s", nil, "One or more sha512 hashes of valid binaries separated by pipe and by comma for processes")
+	cmd.Flags().StringSliceVarP(&options.rawBinarySigners, "signer-fingerprints", "f", nil, "One or more sha1 hash of a valid signer certificate separated by pipe and by comma for processes")
 
 	return cmd
 }
@@ -226,7 +335,7 @@ const (
 	PostureCheckTypeProcess = "PROCESS"
 	PostureCheckTypeMAC     = "MAC"
 	PostureCheckTypeOS      = "OS"
-	PostureCheckTypeMFA 	= "MFA"
+	PostureCheckTypeMFA     = "MFA"
 )
 
 // Returns the normalized Edge API value or empty string
@@ -255,13 +364,18 @@ func cleanHexString(in string) string {
 	return hexClean.ReplaceAllString(strings.ToLower(in), "")
 }
 
-func cleanSha512(in []string) ([]string, error) {
+func cleanSha512s(in []string) ([]string, error) {
 
 	hashMap := map[string]struct{}{}
 	for _, hash := range in {
+		hash = strings.TrimSpace(hash)
+
+		if len(hash) == 0 {
+			continue
+		}
 		cleanHash := cleanHexString(hash)
 
-		if len(cleanHash) < 64 {
+		if len(cleanHash) != 64 {
 			return nil, fmt.Errorf("sha512 hash must be 64 hex characters, given [%s], cleaned [%s] with a length of %d", hash, cleanHash, len(cleanHash))
 		}
 
@@ -279,11 +393,36 @@ func cleanSha512(in []string) ([]string, error) {
 func cleanSha1(in string) (string, error) {
 	cleanSig := cleanHexString(in)
 
-	if len(cleanSig) < 20 {
+	if len(cleanSig) != 40 {
 		return "", fmt.Errorf("sha1 hash must be 20 hex characters, given [%s], cleaned [%s] with a length of %d", in, cleanSig, len(cleanSig))
 	}
 
 	return cleanSig, nil
+}
+
+func cleanSha1s(in []string) ([]string, error) {
+	hashMap := map[string]struct{}{}
+	for _, hash := range in {
+		hash = strings.TrimSpace(hash)
+
+		if len(hash) == 0 {
+			continue
+		}
+		cleanHash, err := cleanSha1(hash)
+
+		if err != nil {
+			return nil, err
+		}
+
+		hashMap[cleanHash] = struct{}{}
+	}
+
+	var cleanHashes []string
+	for hash := range hashMap {
+		cleanHashes = append(cleanHashes, hash)
+	}
+
+	return cleanHashes, nil
 }
 
 func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
@@ -293,7 +432,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 	setJSONValue(entityData, o.normalizedOs, "process", "osType")
 	setJSONValue(entityData, o.path, "process", "path")
 
-	hashes, err := cleanSha512(o.hash)
+	hashes, err := cleanSha512s(o.hashes)
 
 	if err != nil {
 		return err
@@ -322,6 +461,56 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 	checkId := result.S("data", "id").Data()
 
 	if _, err = fmt.Fprintf(o.Out, "%v\n", checkId); err != nil {
+		panic(err)
+	}
+
+	return err
+}
+
+func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOptions) error {
+	managementClient, err := util.DefaultEdgeManagementClient()
+
+	if err != nil {
+		return err
+	}
+	var processes []*rest_model.ProcessMulti
+
+	for i, osType := range options.osTypes {
+		newOsType := rest_model.OsType(osType)
+		process := &rest_model.ProcessMulti{
+			OsType: &newOsType,
+			Path:   &options.paths[i],
+		}
+
+		if len(options.binarySigners) > i {
+			process.SignerFingerprints = options.binarySigners[i]
+		}
+
+		if len(options.binaryFileHashes) > i {
+			process.Hashes = options.binaryFileHashes[i]
+		}
+
+		processes = append(processes, process)
+	}
+
+	semantic := rest_model.Semantic(options.semantic)
+	params := posture_checks.NewCreatePostureCheckParams()
+	params.PostureCheck = &rest_model.PostureCheckProcessMultiCreate{
+		Processes: processes,
+		Semantic:  &semantic,
+	}
+	params.PostureCheck.SetRoleAttributes(options.roleAttributes)
+	params.PostureCheck.SetName(&options.name)
+
+	resp, err := managementClient.PostureChecks.CreatePostureCheck(params, nil)
+
+	if err != nil {
+		panic(err)
+	}
+
+	checkId := resp.GetPayload().Data.ID
+
+	if _, err = fmt.Fprintf(options.Out, "%v\n", checkId); err != nil {
 		panic(err)
 	}
 
@@ -540,7 +729,6 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 		Versions: cleanVersions,
 	}, nil
 }
-
 
 func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := createPostureCheckOptions{

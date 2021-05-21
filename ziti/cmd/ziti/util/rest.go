@@ -21,16 +21,25 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/blang/semver"
+	openApiRuntime "github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	"github.com/openziti/edge/rest_management_api_client"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	"io"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -683,6 +692,79 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 	}
 
 	return jsonParsed, nil
+}
+
+func NewEdgeManagementClient(session *Session) (*rest_management_api_client.ZitiEdgeManagement, error) {
+	httpClientTransport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 10 * time.Second,
+
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       10 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+
+	}
+
+	rootCaPool := x509.NewCertPool()
+
+	rootPemData, err := ioutil.ReadFile(session.Cert)
+	if err != nil {
+		return nil, errors.Errorf("could not read session certificates [%s]: %v", session.Cert, err)
+	}
+
+	rootCaPool.AppendCertsFromPEM(rootPemData)
+
+	httpClientTransport.TLSClientConfig = &tls.Config{
+		RootCAs: rootCaPool,
+	}
+
+	httpClient := &http.Client{
+		Transport: httpClientTransport,
+		Timeout:   10 * time.Second,
+	}
+	parsedHost, err := url.Parse(session.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := httptransport.NewWithClient(parsedHost.Host, rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
+
+	transport.DefaultAuthentication = &EdgeManagementAuth{
+		Token: session.Token,
+	}
+	return rest_management_api_client.New(transport, nil), nil
+}
+
+var defaultEdgeManagementClient *rest_management_api_client.ZitiEdgeManagement
+
+func DefaultEdgeManagementClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
+	if defaultEdgeManagementClient == nil {
+		session := &Session{}
+		if err := session.Load(); err != nil {
+			return nil, err
+		}
+
+		if client, err := NewEdgeManagementClient(session); err != nil {
+			return nil, err
+		} else {
+			defaultEdgeManagementClient = client
+		}
+	}
+
+	return defaultEdgeManagementClient, nil
+}
+
+type EdgeManagementAuth struct {
+	Token string
+}
+
+func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientRequest, registry strfmt.Registry) error {
+	return request.SetHeaderParam("zt-session", e.Token)
 }
 
 // EdgeControllerCreate will create entities of the given type in the given Edge Controller

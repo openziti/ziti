@@ -279,7 +279,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("hash-sigs") {
-		o.hashes, err = cleanSha512(o.hashes)
+		o.hashes, err = cleanSha512s(o.hashes)
 
 		if err != nil {
 			return err
