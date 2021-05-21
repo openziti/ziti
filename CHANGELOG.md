@@ -1,3 +1,20 @@
+# Release 0.20.3
+
+## What's New
+
+* Bug fix: Update of identity appData wasn't working
+* Bug fix: Terminator updates failed if cost wasn't specified
+* Bug fix: Control channel handler routines were exiting on error instead of just closing peer and continuing
+
+# Release 0.20.2
+
+## What's New
+
+* ziti-router will now emit a stackdump before exiting when it receives a SIGQUIT
+* ziti ps stack now takes a --stack-timeout and will quit after the specified timeout if the stack dump hasn't completed yet
+* ziti now supports posture check types of process multi
+* Fixes a bug in Ziti Management API where posture checks of type process multi were missing their base entity information (createdAt, updatedAt, etc.)
+
 # Release 0.20.1
 
 ## What's New
