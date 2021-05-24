@@ -101,8 +101,8 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               mountPath: /netfoundry
             securityContext:
               capabilities:
-              add:
-                - NET_ADMIN
+                add:
+                  - NET_ADMIN
           dnsPolicy: "None"
           dnsConfig:
             nameservers:

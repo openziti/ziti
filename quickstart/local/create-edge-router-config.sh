@@ -1,1 +1,0 @@
-../docker/image/create-edge-router-config.sh

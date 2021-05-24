@@ -3,6 +3,8 @@
 ## What's New
 
 * Bug fix: Update of identity appData wasn't working
+* Bug fix: Terminator updates failed if cost wasn't specified
+* Bug fix: Control channel handler routines were exiting on error instead of just closing peer and continuing
 
 # Release 0.20.2
 

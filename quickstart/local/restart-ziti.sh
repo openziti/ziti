@@ -9,7 +9,7 @@ else
     export network_name="${USER}"
 fi
 
-source ${curdir}/env.sh
+ziti_createEnvFile
 
 DIRNAME=$(dirname $0)
 [[ ${USE_DNSMASQ:-} -eq 1 ]] && source ${DIRNAME}/run-dns.sh
