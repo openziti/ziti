@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"reflect"
 )
 
@@ -73,7 +74,15 @@ type listenerConfig struct {
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
-	config := &dialerConfig{}
+	config := &dialerConfig{split: true}
+
+	if value, found := data["split"]; found {
+		if split, ok := value.(bool); ok {
+			config.split = split
+		} else {
+			return nil, errors.Errorf("invalid 'split' flag in listener config (%s)", reflect.TypeOf(value))
+		}
+	}
 
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -87,5 +96,6 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 }
 
 type dialerConfig struct {
+	split   bool
 	options *channel2.Options
 }
