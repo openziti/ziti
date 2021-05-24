@@ -17,23 +17,43 @@
 package xlink_transport
 
 import (
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerId string) error {
 	address, err := transport.ParseAddress(addressString)
 	if err != nil {
-		return fmt.Errorf("error parsing link address [%s] (%w)", addressString, err)
+		return errors.Wrapf(err, "error parsing link address [%s]", addressString)
 	}
-	logrus.Infof("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
 	connId := uuid.New().String()
+
+	var xli xlink.Xlink
+	if self.config.split {
+		xli, err = self.dialSplit(linkId, address, routerId, connId)
+	} else {
+		xli, err = self.dialSingle(linkId, address, routerId, connId)
+	}
+	if err != nil {
+		return errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
+	}
+
+	if err := self.accepter.Accept(xli); err != nil {
+		return errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
+	}
+
+	return nil
+
+}
+
+func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
+	logrus.Infof("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
 	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
 		LinkHeaderRouterId: []byte(routerId),
@@ -41,11 +61,11 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerI
 		LinkHeaderType:     {PayloadChannel},
 	})
 
-	logrus.Infof("dialing payload channel for link [l/%s]", linkId.Token)
+	logrus.Infof("dialing payload channel for [l/%s]", linkId.Token)
 
 	payloadCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, self.config.options, self.tcfg)
 	if err != nil {
-		return fmt.Errorf("error dialing link [l/%s] for payload (%w)", linkId.Token, err)
+		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
 
 	ackDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
@@ -53,34 +73,53 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerI
 		LinkHeaderType:   {AckChannel},
 	})
 
-	logrus.Infof("dialing ack channel for link [l/%s]", linkId.Token)
+	logrus.Infof("dialing ack channel for [l/%s]", linkId.Token)
 
 	ackCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, self.config.options, self.tcfg)
 	if err != nil {
 		_ = payloadCh.Close()
-		return fmt.Errorf("error dialing link [l/%s] for ack (%w)", linkId.Token, err)
+		return nil, errors.Wrapf(err, "error dialing ack channel for [l/%s]", linkId.Token)
 	}
 
-	xlink := &splitImpl{id: linkId, payloadCh: payloadCh, ackCh: ackCh}
+	xli := &splitImpl{id: linkId, payloadCh: payloadCh, ackCh: ackCh}
 
 	if self.chAccepter != nil {
-		if err := self.chAccepter.AcceptChannel(xlink, payloadCh, true); err != nil {
-			_ = xlink.Close()
-			return fmt.Errorf("error accepting outgoing channel (%w)", err)
+		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true); err != nil {
+			_ = xli.Close()
+			return nil, errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", linkId.Token)
 		}
-
-		if err := self.chAccepter.AcceptChannel(xlink, ackCh, false); err != nil {
-			_ = xlink.Close()
-			return fmt.Errorf("error accepting outgoing channel (%w)", err)
+		if err := self.chAccepter.AcceptChannel(xli, ackCh, false); err != nil {
+			_ = xli.Close()
+			return nil, errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", linkId.Token)
 		}
 	}
 
-	if err := self.accepter.Accept(xlink); err != nil {
-		return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
+	return xli, nil
+}
+
+func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
+	logrus.Infof("dialing link with single channel [l/%s]", linkId.Token)
+
+	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
+		LinkHeaderRouterId: []byte(routerId),
+		LinkHeaderConnId:   []byte(connId),
+	})
+
+	payloadCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, self.config.options, self.tcfg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "dialing link [l/%s] for payload", linkId.Token)
 	}
 
-	return nil
+	xli := &impl{id: linkId, ch: payloadCh}
 
+	if self.chAccepter != nil {
+		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true); err != nil {
+			_ = xli.Close()
+			return nil, errors.Wrapf(err, "error accepting outgoing channel for [l/%s]", linkId.Token)
+		}
+	}
+
+	return xli, nil
 }
 
 type dialer struct {
