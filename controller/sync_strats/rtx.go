@@ -72,9 +72,7 @@ func (rtx *RouterSender) Start() {
 
 func (rtx *RouterSender) Stop() {
 	if rtx.stopping.CompareAndSwap(false, true) {
-		go func() {
-			rtx.closeNotify <- struct{}{}
-		}()
+		close(rtx.closeNotify)
 	}
 }
 
