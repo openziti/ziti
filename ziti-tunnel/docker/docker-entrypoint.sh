@@ -48,6 +48,8 @@ if [ ! -f "${json}" ]; then
             if [ -f "${_jwt}" ]; then
                 jwt="${_jwt}"
                 break
+            elif [ -p "${_jwt}" ]; then
+                read -rt1 jwt < "${_jwt}"
             else
                 echo "WARN: failed to find ${_jwt} in ${dir}" >&2
             fi
@@ -56,8 +58,8 @@ if [ ! -f "${json}" ]; then
         echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations" >&2
         exit 1
     fi
-    echo "INFO: enrolling ${jwt}"
-    ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
+    echo "INFO: enrolling ${NF_REG_NAME}"
+    ziti-tunnel enroll --jwt <(cat<<<"${jwt:-$(cat<"${jwt}")}") --out "${json}"
 fi
 
 echo "INFO: probing iptables"
