@@ -1,3 +1,8 @@
+## Release 0.20.4
+
+* Bug fix: Fix a deadlock that can occur if Edge Routers disconnect during session synchronization or update processes
+* Bug fix: Fix URL for CAS create in Ziti CLI
+
 # Release 0.20.3
 
 ## What's New
