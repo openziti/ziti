@@ -104,7 +104,7 @@ func runCreateCa(options *createCaOptions) (err error) {
 	setJSONValue(data, string(options.caPemBytes), "certPem")
 	setJSONValue(data, options.identityRoles, "identityRoles")
 
-	result, err := createEntityOfType("/edge/management/v1/cas", data.String(), &options.edgeOptions)
+	result, err := createEntityOfType("cas", data.String(), &options.edgeOptions)
 
 	if err != nil {
 		panic(err)
