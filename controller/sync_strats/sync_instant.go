@@ -44,7 +44,7 @@ const (
 
 var _ env.RouterSyncStrategy = &InstantStrategy{}
 
-// Options for the instant strategy.
+// InstantStrategyOptions is the options for the instant strategy.
 // - MaxQueuedRouterConnects    - max number of router connected events to buffer
 // - MaxQueuedClientHellos      - max number of client hello messages to buffer
 // - RouterConnectWorkerCount   - max number of workers used to process router connections
@@ -62,15 +62,15 @@ type InstantStrategyOptions struct {
 	SessionChunkSize         int
 }
 
-// Original API Session synchronization implementation. Assumes that on connect, the router requires and instant
+// InstantStrategy assumes that on connect, the router requires and instant
 // and full set of API Sessions. Send individual create, update, delete events for sessions after synchronization.
 //
-// This strategy uses a series of queus and workers to managed sychronization state. The order of events is as follows:
+// This strategy uses a series of queues and workers to managed synchronization state. The order of events is as follows:
 // 1. An edge router connects to the controller, triggering RouterConnected()
 // 2. A RouterSender is created encapsulating the Edge Router, Router, and Sync State
 // 3. The RouterSender is queued on the routerConnectedQueue channel which buffers up to options.MaxQueuedRouterConnects
 // 4. The routerConnectedQueue is read and the edge server hello is sent
-// 5. The controller waits for a client hello to be recieved via ReceiveClientHello message
+// 5. The controller waits for a client hello to be received via ReceiveClientHello message
 // 6. The client hello is used to identity the RouterSender associated with the client and is queued on
 //    the receivedClientHelloQueue channel which buffers up to options.MaxQueuedClientHellos
 // 7. A startSynchronizeWorker will pick up the RouterSender from the receivedClientHelloQueue and being to
@@ -175,6 +175,10 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 }
 
 func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
+	pfxlog.Logger().WithField("routerId", router.Id).
+		WithField("routerName", router.Name).
+		WithField("routerFingerprint", router.Fingerprint).
+		Debugf("instant stretegy detected router with id %s disconnecting", router.Id)
 	strategy.rtxMap.Remove(router.Id)
 }
 
@@ -489,5 +493,5 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 type InstantSyncState struct {
 	Id       string `json:"id"`       //unique id for the sync attempt
 	IsLast   bool   `json:"isLast"`   //
-	Sequence int    `json:"sequence"` //inreasing id from 0 per id for the
+	Sequence int    `json:"sequence"` //increasing id from 0 per id for the
 }

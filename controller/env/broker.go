@@ -75,14 +75,7 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 
 func (broker *Broker) RouterConnected(router *network.Router) {
 	go func() {
-
 		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
-
-		//check connection status, if already connected, ignore as it will be disconnected shortly
-		if broker.ae.IsEdgeRouterOnline(router.Id) {
-			log.Errorf("duplicate router connection detected [id: %s], ignoring", router.Id)
-			return
-		}
 
 		if router.Fingerprint == nil {
 			log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
@@ -103,17 +96,7 @@ func (broker *Broker) RouterConnected(router *network.Router) {
 }
 
 func (broker *Broker) RouterDisconnected(r *network.Router) {
-	// if disconnected but, by id it is still connected then it may have been a dupe
-	// router connecting and being disconnected
-	if !broker.ae.HostController.GetNetwork().ConnectedRouter(r.Id) {
-		go func() {
-			pfxlog.Logger().WithField("routerId", r.Id).
-				WithField("routerName", r.Name).
-				WithField("routerFingerprint", r.Fingerprint).
-				Debugf("broker detected router with id %s disconnecting", r.Id)
-			broker.routerSyncStrategy.RouterDisconnected(r)
-		}()
-	}
+	broker.routerSyncStrategy.RouterDisconnected(r)
 }
 
 func (broker *Broker) apiSessionCreated(args ...interface{}) {
