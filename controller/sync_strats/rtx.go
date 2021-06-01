@@ -38,7 +38,6 @@ type RouterSender struct {
 	send        chan *channel2.Message
 	closeNotify chan struct{}
 	running     concurrenz.AtomicBoolean
-	stopping    concurrenz.AtomicBoolean
 
 	sync.Mutex
 }
@@ -49,9 +48,8 @@ func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendB
 		EdgeRouter:  edgeRouter,
 		Router:      router,
 		send:        make(chan *channel2.Message, sendBufferSize),
-		closeNotify: make(chan struct{}, 0),
+		closeNotify: nil,
 		running:     concurrenz.AtomicBoolean(0),
-		stopping:    concurrenz.AtomicBoolean(0),
 		RouterState: env.NewLockingRouterStatus(),
 	}
 }
@@ -66,13 +64,19 @@ func (rtx *RouterSender) GetState() env.RouterStateValues {
 
 func (rtx *RouterSender) Start() {
 	if rtx.running.CompareAndSwap(false, true) {
+		if rtx.closeNotify == nil {
+			rtx.closeNotify = make(chan struct{}, 0)
+		}
+
 		go rtx.run()
 	}
 }
 
 func (rtx *RouterSender) Stop() {
-	if rtx.stopping.CompareAndSwap(false, true) {
+	if rtx.running.CompareAndSwap(true, false) {
 		close(rtx.closeNotify)
+
+		rtx.closeNotify = nil
 	}
 }
 
@@ -80,8 +84,6 @@ func (rtx *RouterSender) run() {
 	for {
 		select {
 		case <-rtx.closeNotify:
-			rtx.running.Set(false)
-			rtx.stopping.Set(false)
 			return
 		case msg := <-rtx.send:
 			if !rtx.Router.Control.IsClosed() {
@@ -101,7 +103,7 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 }
 
 func (rtx *RouterSender) Send(msg *channel2.Message) {
-	if rtx.stopping.Get() || !rtx.running.Get() {
+	if !rtx.running.Get() {
 		pfxlog.Logger().Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
 		return
 	}
