@@ -43,15 +43,19 @@ type RouterSender struct {
 }
 
 func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
-	return &RouterSender{
+	rtx := &RouterSender{
 		Id:          eid.New(),
 		EdgeRouter:  edgeRouter,
 		Router:      router,
 		send:        make(chan *channel2.Message, sendBufferSize),
-		closeNotify: nil,
-		running:     concurrenz.AtomicBoolean(0),
+		closeNotify: make(chan struct{}, 0),
+		running:     concurrenz.AtomicBoolean(1),
 		RouterState: env.NewLockingRouterStatus(),
 	}
+
+	go rtx.run()
+
+	return rtx
 }
 
 func (rtx *RouterSender) GetState() env.RouterStateValues {
@@ -62,21 +66,9 @@ func (rtx *RouterSender) GetState() env.RouterStateValues {
 	return rtx.Values()
 }
 
-func (rtx *RouterSender) Start() {
-	if rtx.running.CompareAndSwap(false, true) {
-		if rtx.closeNotify == nil {
-			rtx.closeNotify = make(chan struct{}, 0)
-		}
-
-		go rtx.run()
-	}
-}
-
 func (rtx *RouterSender) Stop() {
 	if rtx.running.CompareAndSwap(true, false) {
 		close(rtx.closeNotify)
-
-		rtx.closeNotify = nil
 	}
 }
 
@@ -132,7 +124,6 @@ type routerTxMap struct {
 
 func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
 	m.internalMap.Store(id, routerMessageTxer)
-	routerMessageTxer.Start()
 }
 
 func (m *routerTxMap) Get(id string) *RouterSender {
