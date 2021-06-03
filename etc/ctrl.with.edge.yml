@@ -109,14 +109,14 @@ edge:
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
-      # durationMinutes - optional, default 5m
+      # duration - optional, default 5m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       duration: 5m
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
-      # durationMinutes - optional, default 5m
+      # duration - optional, default 5m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       duration: 5m
