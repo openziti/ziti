@@ -63,7 +63,7 @@ func (factory *CaLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 func MapCreateCaToModel(ca *rest_model.CaCreate) *model.Ca {
 	ret := &model.Ca{
 		BaseEntity: models.BaseEntity{
-			Tags: ca.Tags,
+			Tags: TagsOrDefault(ca.Tags),
 		},
 		Name:                      stringz.OrEmpty(ca.Name),
 		Fingerprint:               "",
@@ -83,7 +83,7 @@ func MapCreateCaToModel(ca *rest_model.CaCreate) *model.Ca {
 func MapUpdateCaToModel(id string, ca *rest_model.CaUpdate) *model.Ca {
 	ret := &model.Ca{
 		BaseEntity: models.BaseEntity{
-			Tags: ca.Tags,
+			Tags: TagsOrDefault(ca.Tags),
 			Id:   id,
 		},
 		Name:                      stringz.OrEmpty(ca.Name),
@@ -100,7 +100,7 @@ func MapUpdateCaToModel(id string, ca *rest_model.CaUpdate) *model.Ca {
 func MapPatchCaToModel(id string, ca *rest_model.CaPatch) *model.Ca {
 	ret := &model.Ca{
 		BaseEntity: models.BaseEntity{
-			Tags: ca.Tags,
+			Tags: TagsOrDefault(ca.Tags),
 			Id:   id,
 		},
 		Name:                      ca.Name,

@@ -140,6 +140,12 @@ func unmarshalPostureResponseCreate(data []byte, consumer runtime.Consumer) (Pos
 			return nil, err
 		}
 		return &result, nil
+	case "ENDPOINT_STATE":
+		var result PostureResponseEndpointStateCreate
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "MAC":
 		var result PostureResponseMacAddressCreate
 		if err := consumer.Consume(buf2, &result); err != nil {

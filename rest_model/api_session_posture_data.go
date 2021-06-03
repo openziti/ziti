@@ -43,14 +43,24 @@ import (
 // swagger:model apiSessionPostureData
 type APISessionPostureData struct {
 
+	// endpoint state
+	EndpointState *PostureDataEndpointState `json:"endpointState,omitempty"`
+
 	// mfa
 	// Required: true
 	Mfa *PostureDataMfa `json:"mfa"`
+
+	// sdk version
+	SdkVersion string `json:"sdkVersion,omitempty"`
 }
 
 // Validate validates this api session posture data
 func (m *APISessionPostureData) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	if err := m.validateEndpointState(formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.validateMfa(formats); err != nil {
 		res = append(res, err)
@@ -59,6 +69,23 @@ func (m *APISessionPostureData) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *APISessionPostureData) validateEndpointState(formats strfmt.Registry) error {
+	if swag.IsZero(m.EndpointState) { // not required
+		return nil
+	}
+
+	if m.EndpointState != nil {
+		if err := m.EndpointState.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("endpointState")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -84,6 +111,10 @@ func (m *APISessionPostureData) validateMfa(formats strfmt.Registry) error {
 func (m *APISessionPostureData) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateEndpointState(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateMfa(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -91,6 +122,20 @@ func (m *APISessionPostureData) ContextValidate(ctx context.Context, formats str
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *APISessionPostureData) contextValidateEndpointState(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.EndpointState != nil {
+		if err := m.EndpointState.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("endpointState")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 

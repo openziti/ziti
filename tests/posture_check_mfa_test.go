@@ -21,7 +21,9 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/rest_model"
 	"net/http"
 	"net/url"
 	"testing"
@@ -48,7 +50,29 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
 
-		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckMFA(s(postureCheckRole))
+		origTimeout := int64(-1)
+		postureCheck := rest_model.PostureCheckMfaCreate{
+			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+				PromptOnUnlock: false,
+				PromptOnWake:   false,
+				TimeoutSeconds: origTimeout,
+			},
+		}
+
+		origName := uuid.New().String()
+		postureCheck.SetName(&origName)
+		postureCheck.SetTypeID(rest_model.PostureCheckTypeMFA)
+
+		origAttributes := rest_model.Attributes(s(postureCheckRole))
+		postureCheck.SetRoleAttributes(&origAttributes)
+		postureCheckJson, err := postureCheck.MarshalJSON()
+		ctx.Req.NoError(err)
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(postureCheckJson).Post("/posture-checks")
+		ctx.Req.NoError(err)
+		standardJsonResponseTests(resp, http.StatusCreated, t)
+
+		postureCheckId := ctx.getEntityId(resp.Body())
+		ctx.Req.NotEmpty(postureCheckId)
 
 		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
 
@@ -78,8 +102,8 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.Len(postureQueries, 1)
 
-			ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
-			ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
+			ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+			ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
 
 			t.Run("query is currently failing", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -184,7 +208,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.Req.True(ok)
 				ctx.Req.NotEmpty(sessionId)
 
-				t.Run("removing MFA", func(t *testing.T) {
+				t.Run("removing MFA while the service requires MFA", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Delete("/current-identity/mfa")
 					ctx.Req.NoError(err)
@@ -204,6 +228,347 @@ func Test_PostureChecks_MFA(t *testing.T) {
 						ctx.Req.NoError(err)
 
 						ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+					})
+				})
+			})
+		})
+	})
+
+	t.Run("can create a MFA posture check with promptOnWake, promptOnUnlock associated to a service", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityRole := eid.New()
+		serviceRole := eid.New()
+		postureCheckRole := eid.New()
+
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+
+		ctx.Req.NoError(err)
+
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
+
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+
+		origTimeout := int64(10)
+		postureCheck := rest_model.PostureCheckMfaCreate{
+			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+				PromptOnUnlock: true,
+				PromptOnWake:   true,
+				TimeoutSeconds: origTimeout,
+			},
+		}
+
+		origName := uuid.New().String()
+		postureCheck.SetName(&origName)
+		postureCheck.SetTypeID(rest_model.PostureCheckTypeMFA)
+
+		origAttributes := rest_model.Attributes(s(postureCheckRole))
+		postureCheck.SetRoleAttributes(&origAttributes)
+
+		postureCheckBody, err := postureCheck.MarshalJSON()
+		ctx.Req.NoError(err)
+
+		resp := ctx.AdminManagementSession.createEntityOfType("posture-checks", postureCheckBody)
+
+		standardJsonResponseTests(resp, http.StatusCreated, t)
+		postureCheckId := ctx.getEntityId(resp.Body())
+		ctx.Req.NotEmpty(postureCheckId)
+
+		t.Run("identity can see service via policies", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
+		})
+
+		t.Run("service has the posture check in its queries", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			code, body := enrolledIdentitySession.query("/services/" + service.Id)
+			ctx.Req.Equal(http.StatusOK, code)
+			entityService, err := gabs.ParseJSON(body)
+			ctx.Req.NoError(err)
+
+			querySet, err := entityService.Path("data.postureQueries").Children()
+			ctx.Req.NoError(err)
+			ctx.Req.Len(querySet, 1)
+
+			postureQueries, err := querySet[0].Path("postureQueries").Children()
+			ctx.Req.NoError(err)
+			ctx.Req.Len(postureQueries, 1)
+
+			ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+			ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
+
+			t.Run("query is currently failing", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
+				ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+			})
+		})
+
+		t.Run("cannot create session with failing queries", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			resp, err := enrolledIdentitySession.createNewSession(service.Id)
+			ctx.Req.NoError(err)
+
+			ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+		})
+
+		t.Run("providing posture data", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			mfaSecret := ""
+
+			t.Run("by starting enrollment in MFA", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err := enrolledIdentitySession.newAuthenticatedRequest().Post("/current-identity/mfa")
+
+				ctx.Req.NoError(err)
+				standardJsonResponseTests(resp, http.StatusCreated, t)
+
+				t.Run("does not allow service session creation", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := enrolledIdentitySession.createNewSession(service.Id)
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+				})
+			})
+
+			t.Run("by finishing enrollment in MFA", func(t *testing.T) {
+				resp, err := enrolledIdentitySession.newAuthenticatedRequest().Get("/current-identity/mfa")
+				ctx.Req.NoError(err)
+
+				standardJsonResponseTests(resp, http.StatusOK, t)
+
+				mfa, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				rawUrl := mfa.Path("data.provisioningUrl").Data().(string)
+				ctx.Req.NotEmpty(rawUrl)
+
+				parsedUrl, err := url.Parse(rawUrl)
+				ctx.Req.NoError(err)
+
+				queryParams, err := url.ParseQuery(parsedUrl.RawQuery)
+				ctx.Req.NoError(err)
+				secrets := queryParams["secret"]
+				ctx.Req.NotNil(secrets)
+				ctx.Req.NotEmpty(secrets)
+
+				mfaSecret = secrets[0]
+
+				ctx.testContextChanged(t)
+
+				code := computeMFACode(mfaSecret)
+
+				resp, err = enrolledIdentitySession.newAuthenticatedRequest().
+					SetBody(newMfaCodeBody(code)).
+					Post("/current-identity/mfa/verify")
+
+				ctx.Req.NoError(err)
+				standardJsonResponseTests(resp, http.StatusOK, t)
+
+				t.Run("allows service session creation", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := enrolledIdentitySession.createNewSession(service.Id)
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+				})
+			})
+
+			t.Run("a new api session can pass MFA auth to create service session if there are no endpoint state changes", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+				ctx.Req.NoError(err)
+
+				resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Post("/authenticate/mfa")
+				ctx.Req.NoError(err)
+
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				resp, err = newSession.createNewSession(service.Id)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+				sessionContainer, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				ctx.Req.True(sessionContainer.ExistsP("data.id"))
+				sessionId, ok := sessionContainer.Path("data.id").Data().(string)
+				ctx.Req.True(ok)
+				ctx.Req.NotEmpty(sessionId)
+			})
+
+			t.Run("a new api session that is marked as unlocked can create a new session inside grace period", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+				ctx.Req.NoError(err)
+
+				resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Post("/authenticate/mfa")
+				ctx.Req.NoError(err)
+
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				postureResponseUnlocked := rest_model.PostureResponseEndpointStateCreate{
+					Unlocked: true,
+				}
+				postureResponseUnlocked.SetID(&postureCheckId)
+
+				newSession.requireCreateRestModelPostureResponse(postureResponseUnlocked)
+
+				resp, err = newSession.createNewSession(service.Id)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+			})
+
+			t.Run("a new api session that is marked as woken can create a new session inside the grace period", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+				ctx.Req.NoError(err)
+
+				resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Post("/authenticate/mfa")
+				ctx.Req.NoError(err)
+
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				postureResponseUnlocked := rest_model.PostureResponseEndpointStateCreate{
+					Woken: true,
+				}
+				postureResponseUnlocked.SetID(&postureCheckId)
+
+				newSession.requireCreateRestModelPostureResponse(postureResponseUnlocked)
+
+				resp, err = newSession.createNewSession(service.Id)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+			})
+		})
+	})
+
+	t.Run("can create and patch an MFA posture check", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		origTimeout := int64(60)
+		postureCheck := rest_model.PostureCheckMfaCreate{
+			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+				PromptOnUnlock: true,
+				PromptOnWake:   true,
+				TimeoutSeconds: origTimeout,
+			},
+		}
+
+		origName := uuid.New().String()
+		postureCheck.SetName(&origName)
+		postureCheck.SetTypeID(rest_model.PostureCheckTypeMFA)
+
+		origRole := uuid.New().String()
+		origAttributes := rest_model.Attributes{
+			origRole,
+		}
+		postureCheck.SetRoleAttributes(&origAttributes)
+
+		origTags := map[string]interface{}{
+			"keyOne": "valueOne",
+		}
+		postureCheck.SetTags(&rest_model.Tags{SubTags: origTags})
+
+		postureCheckBody, err := postureCheck.MarshalJSON()
+		ctx.Req.NoError(err)
+
+		resp := ctx.AdminManagementSession.createEntityOfType("posture-checks", postureCheckBody)
+
+		standardJsonResponseTests(resp, http.StatusCreated, t)
+		id := ctx.getEntityId(resp.Body())
+		ctx.Req.NotEmpty(id)
+
+		t.Run("can be retrieved", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			resp, err := ctx.AdminManagementSession.NewRequest().Get("posture-checks/" + id)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(resp)
+			standardJsonResponseTests(resp, http.StatusOK, t)
+
+			envelope := rest_model.DetailPostureCheckEnvelope{}
+
+			err = envelope.UnmarshalJSON(resp.Body())
+			ctx.Req.NoError(err)
+
+			getAfterCreateCheck, ok := envelope.Data().(*rest_model.PostureCheckMfaDetail)
+			ctx.Req.True(ok)
+			ctx.Req.NotNil(getAfterCreateCheck)
+
+			t.Run("has the correct values", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.Req.Equal(origName, *getAfterCreateCheck.Name())
+				ctx.Req.ElementsMatch(s(origRole), *getAfterCreateCheck.RoleAttributes())
+				ctx.Req.Len(getAfterCreateCheck.Tags().SubTags, 1)
+				ctx.Req.Contains(getAfterCreateCheck.Tags().SubTags, "keyOne")
+				ctx.Req.Equal("valueOne", getAfterCreateCheck.Tags().SubTags["keyOne"])
+				ctx.Req.True(getAfterCreateCheck.PromptOnUnlock)
+				ctx.Req.True(getAfterCreateCheck.PromptOnWake)
+				ctx.Req.Equal(origTimeout, getAfterCreateCheck.TimeoutSeconds)
+			})
+
+			t.Run("can be patch timeout and promptOnUnlock", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				patchTimeout := int64(30)
+				f := false
+
+				patchCheck := rest_model.PostureCheckMfaPatch{
+					PostureCheckMfaPropertiesPatch: rest_model.PostureCheckMfaPropertiesPatch{
+						PromptOnUnlock: &f,
+						TimeoutSeconds: &patchTimeout,
+					},
+				}
+
+				patchBody, err := patchCheck.MarshalJSON()
+				ctx.Req.NoError(err)
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().
+					SetBody(patchBody).
+					Patch("posture-checks/" + id)
+
+				ctx.Req.NoError(err)
+
+				standardJsonResponseTests(resp, http.StatusOK, t)
+
+				t.Run("can be retrieved", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					resp, err := ctx.AdminManagementSession.NewRequest().Get("posture-checks/" + id)
+					ctx.Req.NoError(err)
+					ctx.Req.NotNil(resp)
+					standardJsonResponseTests(resp, http.StatusOK, t)
+
+					envelope := rest_model.DetailPostureCheckEnvelope{}
+
+					err = envelope.UnmarshalJSON(resp.Body())
+					ctx.Req.NoError(err)
+
+					getAfterPatchOneCheck, ok := envelope.Data().(*rest_model.PostureCheckMfaDetail)
+					ctx.Req.True(ok)
+					ctx.Req.NotNil(getAfterPatchOneCheck)
+
+					t.Run("has the correct values", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						ctx.Req.Equal(origName, *getAfterPatchOneCheck.Name())
+						ctx.Req.ElementsMatch(s(origRole), *getAfterPatchOneCheck.RoleAttributes())
+						ctx.Req.Len(getAfterPatchOneCheck.Tags().SubTags, 1)
+						ctx.Req.Contains(getAfterPatchOneCheck.Tags().SubTags, "keyOne")
+						ctx.Req.Equal("valueOne", getAfterPatchOneCheck.Tags().SubTags["keyOne"])
+						ctx.Req.False(getAfterPatchOneCheck.PromptOnUnlock)
+						ctx.Req.True(getAfterPatchOneCheck.PromptOnWake)
+						ctx.Req.Equal(patchTimeout, getAfterPatchOneCheck.TimeoutSeconds)
 					})
 				})
 			})

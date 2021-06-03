@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/metrics"
 	"testing"
 	"time"
@@ -30,11 +31,34 @@ import (
 
 var _ Env = &TestContext{}
 
+var _ HostController = &testHostController{}
+
+type testHostController struct {
+	closeNotify chan struct{}
+}
+
+func (t testHostController) GetNetwork() *network.Network {
+	return nil
+}
+
+func (t testHostController) Shutdown() {
+	close(t.closeNotify)
+}
+
+func (t testHostController) GetCloseNotifyChannel() <-chan struct{} {
+	return t.closeNotify
+}
+
+func (t testHostController) Stop() {
+	close(t.closeNotify)
+}
+
 type TestContext struct {
 	*persistence.TestContext
 	handlers        *Handlers
 	config          *config.Config
 	metricsRegistry metrics.Registry
+	hostController  *testHostController
 }
 
 func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
@@ -76,7 +100,7 @@ func (ctx *TestContext) GetControlClientCsrSigner() cert.Signer {
 }
 
 func (ctx *TestContext) GetHostController() HostController {
-	panic("implement me")
+	return ctx.hostController
 }
 
 func (ctx *TestContext) GetSchemas() Schemas {
@@ -99,6 +123,9 @@ func newTestContext(t *testing.T) *TestContext {
 	context := &TestContext{
 		TestContext:     persistence.NewTestContext(t),
 		metricsRegistry: metrics.NewRegistry("test", nil),
+		hostController: &testHostController{
+			closeNotify: make(chan struct{}),
+		},
 	}
 	context.Init()
 	return context
@@ -117,6 +144,9 @@ func (ctx *TestContext) Init() {
 }
 
 func (ctx *TestContext) Cleanup() {
+	if ctx.hostController != nil {
+		ctx.hostController.Stop()
+	}
 	ctx.TestContext.Cleanup()
 }
 

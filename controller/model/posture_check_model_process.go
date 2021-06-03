@@ -33,6 +33,10 @@ type PostureCheckProcess struct {
 	Fingerprint    string
 }
 
+func (p *PostureCheckProcess) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+	return PostureCheckNoTimeout
+}
+
 func (p *PostureCheckProcess) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	ret := &PostureCheckFailureValuesProcess{
 		ActualValue: PostureResponseProcess{

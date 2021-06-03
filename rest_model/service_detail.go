@@ -71,7 +71,7 @@ type ServiceDetail struct {
 
 	// role attributes
 	// Required: true
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes"`
 
 	// terminator strategy
 	// Required: true
@@ -101,7 +101,7 @@ func (m *ServiceDetail) UnmarshalJSON(raw []byte) error {
 
 		PostureQueries []*PostureQueries `json:"postureQueries"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
 	}
@@ -150,7 +150,7 @@ func (m ServiceDetail) MarshalJSON() ([]byte, error) {
 
 		PostureQueries []*PostureQueries `json:"postureQueries"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		TerminatorStrategy *string `json:"terminatorStrategy"`
 	}
@@ -329,11 +329,13 @@ func (m *ServiceDetail) validateRoleAttributes(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -407,11 +409,13 @@ func (m *ServiceDetail) contextValidatePostureQueries(ctx context.Context, forma
 
 func (m *ServiceDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

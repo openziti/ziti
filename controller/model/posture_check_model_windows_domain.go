@@ -29,6 +29,10 @@ type PostureCheckDomains struct {
 	Domains []string
 }
 
+func (p *PostureCheckDomains) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+	return PostureCheckNoTimeout
+}
+
 func (p *PostureCheckDomains) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	return &PostureCheckFailureValuesDomain{
 		ActualValue:   pd.Domain.Name,

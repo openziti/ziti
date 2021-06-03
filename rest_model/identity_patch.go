@@ -43,7 +43,7 @@ import (
 type IdentityPatch struct {
 
 	// app data
-	AppData Tags `json:"appData"`
+	AppData *Tags `json:"appData,omitempty"`
 
 	// default hosting cost
 	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
@@ -58,7 +58,7 @@ type IdentityPatch struct {
 	Name string `json:"name,omitempty"`
 
 	// role attributes
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
 	// service hosting costs
 	ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts,omitempty"`
@@ -67,7 +67,7 @@ type IdentityPatch struct {
 	ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences,omitempty"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// type
 	Type IdentityType `json:"type,omitempty"`
@@ -169,11 +169,13 @@ func (m *IdentityPatch) validateRoleAttributes(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -289,11 +291,13 @@ func (m *IdentityPatch) ContextValidate(ctx context.Context, formats strfmt.Regi
 
 func (m *IdentityPatch) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -327,11 +331,13 @@ func (m *IdentityPatch) contextValidateDefaultHostingPrecedence(ctx context.Cont
 
 func (m *IdentityPatch) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -363,11 +369,13 @@ func (m *IdentityPatch) contextValidateServiceHostingPrecedences(ctx context.Con
 
 func (m *IdentityPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

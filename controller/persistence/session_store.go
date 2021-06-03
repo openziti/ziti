@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	FieldSessionToken      = "token"
-	FieldSessionApiSession = "apiSession"
-	FieldSessionService    = "service"
-	FieldSessionType       = "type"
+	FieldSessionToken           = "token"
+	FieldSessionApiSession      = "apiSession"
+	FieldSessionService         = "service"
+	FieldSessionType            = "type"
+	FieldSessionServicePolicies = "servicePolicies"
 
 	FieldSessionCertCert        = "cert"
 	FieldSessionCertFingerprint = "fingerprint"
@@ -45,12 +46,13 @@ var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 
 type Session struct {
 	boltz.BaseExtEntity
-	Token        string
-	ApiSessionId string
-	ServiceId    string
-	Type         string
-	Certs        []*SessionCert
-	ApiSession   *ApiSession
+	Token           string
+	ApiSessionId    string
+	ServiceId       string
+	Type            string
+	Certs           []*SessionCert
+	ApiSession      *ApiSession
+	ServicePolicies []string
 }
 
 func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -59,6 +61,7 @@ func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) 
 	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
 	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
 	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
+	entity.ServicePolicies = bucket.GetStringList(FieldSessionServicePolicies)
 }
 
 func (entity *Session) SetValues(ctx *boltz.PersistContext) {
@@ -76,6 +79,7 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
 	ctx.SetString(FieldSessionService, entity.ServiceId)
 	ctx.SetString(FieldSessionType, entity.Type)
+	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
 
 	if ctx.FieldChecker == nil || ctx.FieldChecker.IsUpdated("sessionCerts") {
 		mutateCtx := boltz.NewMutateContext(ctx.Bucket.Tx())
@@ -146,9 +150,10 @@ func newSessionStore(stores *stores) *sessionStoreImpl {
 type sessionStoreImpl struct {
 	*baseStore
 
-	indexToken       boltz.ReadIndex
-	symbolApiSession boltz.EntitySymbol
-	symbolService    boltz.EntitySymbol
+	indexToken            boltz.ReadIndex
+	symbolApiSession      boltz.EntitySymbol
+	symbolService         boltz.EntitySymbol
+	symbolServicePolicies boltz.EntitySetSymbol
 }
 
 func (store *sessionStoreImpl) NewStoreEntity() boltz.Entity {
@@ -167,14 +172,14 @@ func (store *sessionStoreImpl) initializeLocal() {
 
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
 	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
+	store.symbolServicePolicies = store.AddFkSetSymbol(FieldSessionServicePolicies, store.stores.servicePolicy)
 	store.AddSymbol(FieldSessionType, ast.NodeTypeString)
 
 	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeDelete)
 	store.AddFkConstraint(store.symbolService, false, boltz.CascadeDelete)
 }
 
-func (store *sessionStoreImpl) initializeLinked() {
-}
+func (store *sessionStoreImpl) initializeLinked() {}
 
 func (store *sessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Session, error) {
 	entity := &Session{}

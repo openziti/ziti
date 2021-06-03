@@ -8646,7 +8646,7 @@ paths:
         "200":
           description: A list of sessions
           schema:
-            $ref: '#/definitions/listSessionsEnvelope'
+            $ref: '#/definitions/listSessionsManagementEnvelope'
         "401":
           description: The currently supplied session does not have the correct access
             rights to request this resource
@@ -8679,7 +8679,7 @@ paths:
         "200":
           description: A single session
           schema:
-            $ref: '#/definitions/detailSessionEnvelope'
+            $ref: '#/definitions/detailSessionManagementEnvelope'
         "401":
           description: The currently supplied session does not have the correct access
             rights to request this resource
@@ -9913,8 +9913,12 @@ definitions:
     required:
     - mfa
     properties:
+      endpointState:
+        $ref: '#/definitions/postureDataEndpointState'
       mfa:
         $ref: '#/definitions/postureDataMfa'
+      sdkVersion:
+        type: string
   apiVersion:
     type: object
     required:
@@ -9933,7 +9937,8 @@ definitions:
     type: array
     items:
       type: string
-    x-omitempty: false
+    x-nullable: true
+    x-omitempty: true
   authQueryDetail:
     type: object
     required:
@@ -10079,7 +10084,6 @@ definitions:
     - createdAt
     - updatedAt
     - _links
-    - tags
     properties:
       _links:
         $ref: '#/definitions/links'
@@ -10723,14 +10727,14 @@ definitions:
         $ref: '#/definitions/servicePolicyDetail'
       meta:
         $ref: '#/definitions/meta'
-  detailSessionEnvelope:
+  detailSessionManagementEnvelope:
     type: object
     required:
     - meta
     - data
     properties:
       data:
-        $ref: '#/definitions/sessionDetail'
+        $ref: '#/definitions/sessionManagementDetail'
       meta:
         $ref: '#/definitions/meta'
   detailSessionRoutePathEnvelope:
@@ -11552,14 +11556,14 @@ definitions:
         $ref: '#/definitions/serviceList'
       meta:
         $ref: '#/definitions/meta'
-  listSessionsEnvelope:
+  listSessionsManagementEnvelope:
     type: object
     required:
     - meta
     - data
     properties:
       data:
-        $ref: '#/definitions/sessionList'
+        $ref: '#/definitions/sessionManagementList'
       meta:
         $ref: '#/definitions/meta'
   listSpecsEnvelope:
@@ -11885,9 +11889,9 @@ definitions:
       - expectedValue
       properties:
         actualValue:
-          type: boolean
+          $ref: '#/definitions/postureChecksFailureMfaValues'
         expectedValue:
-          type: boolean
+          $ref: '#/definitions/postureChecksFailureMfaValues'
     x-class: MFA
   postureCheckFailureOperatingSystem:
     allOf:
@@ -12020,18 +12024,48 @@ definitions:
   postureCheckMfaCreate:
     allOf:
     - $ref: '#/definitions/postureCheckCreate'
+    - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: MFA
   postureCheckMfaDetail:
     allOf:
     - $ref: '#/definitions/postureCheckDetail'
+    - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: MFA
   postureCheckMfaPatch:
     allOf:
     - $ref: '#/definitions/postureCheckPatch'
+    - $ref: '#/definitions/postureCheckMfaPropertiesPatch'
     x-class: MFA
+  postureCheckMfaProperties:
+    type: object
+    properties:
+      ignoreLegacyEndpoints:
+        type: boolean
+      promptOnUnlock:
+        type: boolean
+      promptOnWake:
+        type: boolean
+      timeoutSeconds:
+        type: integer
+  postureCheckMfaPropertiesPatch:
+    type: object
+    properties:
+      ignoreLegacyEndpoints:
+        type: boolean
+        x-nullable: true
+      promptOnUnlock:
+        type: boolean
+        x-nullable: true
+      promptOnWake:
+        type: boolean
+        x-nullable: true
+      timeoutSeconds:
+        type: integer
+        x-nullable: true
   postureCheckMfaUpdate:
     allOf:
     - $ref: '#/definitions/postureCheckUpdate'
+    - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: MFA
   postureCheckOperatingSystemCreate:
     allOf:
@@ -12239,6 +12273,17 @@ definitions:
       typeId:
         $ref: '#/definitions/postureCheckType'
     discriminator: typeId
+  postureChecksFailureMfaValues:
+    type: object
+    properties:
+      passedMfa:
+        type: boolean
+      passedOnUnlock:
+        type: boolean
+      passedOnWake:
+        type: boolean
+      timedOut:
+        type: boolean
   postureData:
     type: object
     required:
@@ -12286,6 +12331,18 @@ definitions:
       properties:
         domain:
           type: string
+  postureDataEndpointState:
+    type: object
+    required:
+    - wokenAt
+    - unlockedAt
+    properties:
+      unlockedAt:
+        type: string
+        format: date-time
+      wokenAt:
+        type: string
+        format: date-time
   postureDataEnvelope:
     type: object
     required:
@@ -12313,10 +12370,16 @@ definitions:
     required:
     - apiSessionId
     - passedMfa
+    - passedOnWake
+    - passedOnUnlock
     properties:
       apiSessionId:
         type: string
       passedMfa:
+        type: boolean
+      passedOnUnlock:
+        type: boolean
+      passedOnWake:
         type: boolean
   postureDataOs:
     type: object
@@ -12895,10 +12958,19 @@ definitions:
           type: object
           additionalProperties:
             type: string
-  sessionList:
+  sessionManagementDetail:
+    allOf:
+    - $ref: '#/definitions/sessionDetail'
+    - type: object
+      properties:
+        servicePolicies:
+          type: array
+          items:
+            $ref: '#/definitions/entityRef'
+  sessionManagementList:
     type: array
     items:
-      $ref: '#/definitions/sessionDetail'
+      $ref: '#/definitions/sessionManagementDetail'
   sessionRoutePathDetail:
     type: object
     properties:
@@ -12922,13 +12994,16 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/specDetail'
-  tags:
-    description: 'A map of user defined fields and values. The values are limited
-      to the following types/values: null, string, boolean'
+  subTags:
     type: object
     additionalProperties:
       type: object
-    x-omitempty: false
+  tags:
+    description: 'A map of user defined fields and values. The values are limited
+      to the following types/values: null, string, boolean'
+    allOf:
+    - $ref: '#/definitions/subTags'
+    x-nullable: true
   terminatorCost:
     type: integer
     maximum: 65535

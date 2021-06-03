@@ -35,7 +35,7 @@ var ConfigLinkFactory = NewBasicLinkFactory(EntityNameConfig)
 func MapCreateConfigToModel(config *rest_model.ConfigCreate) *model.Config {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
-			Tags: config.Tags,
+			Tags: TagsOrDefault(config.Tags),
 		},
 		Name:   stringz.OrEmpty(config.Name),
 		TypeId: stringz.OrEmpty(config.ConfigTypeID),
@@ -52,7 +52,7 @@ func MapCreateConfigToModel(config *rest_model.ConfigCreate) *model.Config {
 func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.Config {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
-			Tags: config.Tags,
+			Tags: TagsOrDefault(config.Tags),
 			Id:   id,
 		},
 		Name: stringz.OrEmpty(config.Name),
@@ -70,7 +70,7 @@ func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.C
 func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) *model.Config {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
-			Tags: config.Tags,
+			Tags: TagsOrDefault(config.Tags),
 			Id:   id,
 		},
 		Name: config.Name,

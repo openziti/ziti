@@ -47,9 +47,9 @@ import (
 type PostureCheckProcessMultiPatch struct {
 	nameField string
 
-	roleAttributesField Attributes
+	roleAttributesField *Attributes
 
-	tagsField Tags
+	tagsField *Tags
 
 	// processes
 	// Min Items: 1
@@ -70,22 +70,22 @@ func (m *PostureCheckProcessMultiPatch) SetName(val string) {
 }
 
 // RoleAttributes gets the role attributes of this subtype
-func (m *PostureCheckProcessMultiPatch) RoleAttributes() Attributes {
+func (m *PostureCheckProcessMultiPatch) RoleAttributes() *Attributes {
 	return m.roleAttributesField
 }
 
 // SetRoleAttributes sets the role attributes of this subtype
-func (m *PostureCheckProcessMultiPatch) SetRoleAttributes(val Attributes) {
+func (m *PostureCheckProcessMultiPatch) SetRoleAttributes(val *Attributes) {
 	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckProcessMultiPatch) Tags() Tags {
+func (m *PostureCheckProcessMultiPatch) Tags() *Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckProcessMultiPatch) SetTags(val Tags) {
+func (m *PostureCheckProcessMultiPatch) SetTags(val *Tags) {
 	m.tagsField = val
 }
 
@@ -122,9 +122,9 @@ func (m *PostureCheckProcessMultiPatch) UnmarshalJSON(raw []byte) error {
 
 		Name string `json:"name,omitempty"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}
@@ -181,9 +181,9 @@ func (m PostureCheckProcessMultiPatch) MarshalJSON() ([]byte, error) {
 	b2, err = json.Marshal(struct {
 		Name string `json:"name,omitempty"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}{
@@ -235,11 +235,13 @@ func (m *PostureCheckProcessMultiPatch) validateRoleAttributes(formats strfmt.Re
 		return nil
 	}
 
-	if err := m.RoleAttributes().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -338,11 +340,13 @@ func (m *PostureCheckProcessMultiPatch) ContextValidate(ctx context.Context, for
 
 func (m *PostureCheckProcessMultiPatch) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -350,11 +354,13 @@ func (m *PostureCheckProcessMultiPatch) contextValidateRoleAttributes(ctx contex
 
 func (m *PostureCheckProcessMultiPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

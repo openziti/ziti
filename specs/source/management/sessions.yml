@@ -19,7 +19,7 @@ paths:
         - $ref: '../shared/parameters.yml#/filter'
       responses:
         '200':
-          $ref: '../shared/sessions.yml#/responses/listSessions'
+          $ref: '#/responses/listSessionsManagement'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
   sessions-id:
@@ -35,7 +35,7 @@ paths:
       operationId: detailSession
       responses:
         '200':
-          $ref: '../shared/sessions.yml#/responses/detailSession'
+          $ref: '#/responses/detailSessionManagement'
         '404':
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
@@ -81,6 +81,15 @@ responses:
     description: A single session's route path
     schema:
       $ref: '#/definitions/detailSessionRoutePathEnvelope'
+  listSessionsManagement:
+    description: A list of sessions
+    schema:
+      $ref: '#/definitions/listSessionsManagementEnvelope'
+  detailSessionManagement:
+    description: A single session
+    schema:
+      $ref: '#/definitions/detailSessionManagementEnvelope'
+
 
 definitions:
   detailSessionRoutePathEnvelope:
@@ -100,3 +109,36 @@ definitions:
         type: array
         items:
           type: string
+  listSessionsManagementEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '../shared/standard-responses.yml#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionManagementList'
+  detailSessionManagementEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '../shared/standard-responses.yml#/definitions/meta'
+      data:
+        $ref: '#/definitions/sessionManagementDetail'
+  sessionManagementList:
+      type: array
+      items:
+        $ref: '#/definitions/sessionManagementDetail'
+  sessionManagementDetail:
+    allOf:
+      - $ref: '../shared/sessions.yml#/definitions/sessionDetail'
+      - type: object
+        properties:
+          servicePolicies:
+            type: array
+            items:
+              $ref: '../shared/base-entity.yml#/definitions/entityRef'

@@ -19,6 +19,7 @@ package routes
 import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/errorz"
 	"net/http"
@@ -137,4 +138,35 @@ func NewQueryResult(result interface{}, metadata *models.QueryMetaData) *QueryRe
 		Offset:           metadata.Offset,
 		FilterableFields: metadata.FilterableFields,
 	}
+}
+
+func TagsOrDefault(tags *rest_model.Tags) map[string]interface{} {
+	if tags == nil || tags.SubTags == nil {
+		return map[string]interface{}{}
+	}
+	return tags.SubTags
+}
+
+func AttributesOrDefault(attributes *rest_model.Attributes) rest_model.Attributes {
+	if attributes == nil {
+		return rest_model.Attributes{}
+	}
+
+	return *attributes
+}
+
+func BoolOrDefault(val *bool) bool {
+	if val == nil {
+		return false
+	}
+
+	return *val
+}
+
+func Int64OrDefault(val *int64) int64 {
+	if val == nil {
+		return 0
+	}
+
+	return *val
 }

@@ -44,7 +44,7 @@ import (
 type CommonEdgeRouterProperties struct {
 
 	// app data
-	AppData Tags `json:"appData"`
+	AppData *Tags `json:"appData,omitempty"`
 
 	// hostname
 	// Required: true
@@ -179,11 +179,13 @@ func (m *CommonEdgeRouterProperties) ContextValidate(ctx context.Context, format
 
 func (m *CommonEdgeRouterProperties) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

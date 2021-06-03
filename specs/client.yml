@@ -2589,7 +2589,8 @@ definitions:
     type: array
     items:
       type: string
-    x-omitempty: false
+    x-nullable: true
+    x-omitempty: true
   authQueryDetail:
     type: object
     required:
@@ -2709,7 +2710,6 @@ definitions:
     - createdAt
     - updatedAt
     - _links
-    - tags
     properties:
       _links:
         $ref: '#/definitions/links'
@@ -3420,6 +3420,16 @@ definitions:
         domain:
           type: string
     x-class: DOMAIN
+  postureResponseEndpointStateCreate:
+    allOf:
+    - $ref: '#/definitions/postureResponseCreate'
+    - type: object
+      properties:
+        unlocked:
+          type: boolean
+        woken:
+          type: boolean
+    x-class: ENDPOINT_STATE
   postureResponseMacAddressCreate:
     allOf:
     - $ref: '#/definitions/postureResponseCreate'
@@ -3660,13 +3670,16 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/specDetail'
-  tags:
-    description: 'A map of user defined fields and values. The values are limited
-      to the following types/values: null, string, boolean'
+  subTags:
     type: object
     additionalProperties:
       type: object
-    x-omitempty: false
+  tags:
+    description: 'A map of user defined fields and values. The values are limited
+      to the following types/values: null, string, boolean'
+    allOf:
+    - $ref: '#/definitions/subTags'
+    x-nullable: true
   terminatorClientDetail:
     type: object
     allOf:

@@ -35,7 +35,7 @@ var TerminatorLinkFactory = NewBasicLinkFactory(EntityNameTerminator)
 func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *network.Terminator {
 	ret := &network.Terminator{
 		BaseEntity: models.BaseEntity{
-			Tags: terminator.Tags,
+			Tags: TagsOrDefault(terminator.Tags),
 		},
 		Service:        stringz.OrEmpty(terminator.Service),
 		Router:         stringz.OrEmpty(terminator.Router),
@@ -56,7 +56,7 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpdate) *network.Terminator {
 	ret := &network.Terminator{
 		BaseEntity: models.BaseEntity{
-			Tags: terminator.Tags,
+			Tags: TagsOrDefault(terminator.Tags),
 			Id:   id,
 		},
 		Service:    stringz.OrEmpty(terminator.Service),
@@ -76,7 +76,7 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *network.Terminator {
 	ret := &network.Terminator{
 		BaseEntity: models.BaseEntity{
-			Tags: terminator.Tags,
+			Tags: TagsOrDefault(terminator.Tags),
 			Id:   id,
 		},
 		Service:    terminator.Service,

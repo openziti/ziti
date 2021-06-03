@@ -78,7 +78,7 @@ func MapUpdateAuthenticatorToModel(id string, in *rest_model.AuthenticatorUpdate
 	result := &model.Authenticator{
 		BaseEntity: models.BaseEntity{
 			Id:   id,
-			Tags: in.Tags,
+			Tags: TagsOrDefault(in.Tags),
 		},
 		Method: persistence.MethodAuthenticatorUpdb,
 	}
@@ -97,7 +97,7 @@ func MapPatchAuthenticatorToModel(id string, in *rest_model.AuthenticatorPatch) 
 	result := &model.Authenticator{
 		BaseEntity: models.BaseEntity{
 			Id:   id,
-			Tags: in.Tags,
+			Tags: TagsOrDefault(in.Tags),
 		},
 		Method: persistence.MethodAuthenticatorUpdb,
 	}

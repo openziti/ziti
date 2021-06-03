@@ -80,19 +80,19 @@ func NewDetailSessionOK() *DetailSessionOK {
 A single session
 */
 type DetailSessionOK struct {
-	Payload *rest_model.DetailSessionEnvelope
+	Payload *rest_model.DetailSessionManagementEnvelope
 }
 
 func (o *DetailSessionOK) Error() string {
 	return fmt.Sprintf("[GET /sessions/{id}][%d] detailSessionOK  %+v", 200, o.Payload)
 }
-func (o *DetailSessionOK) GetPayload() *rest_model.DetailSessionEnvelope {
+func (o *DetailSessionOK) GetPayload() *rest_model.DetailSessionManagementEnvelope {
 	return o.Payload
 }
 
 func (o *DetailSessionOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.DetailSessionEnvelope)
+	o.Payload = new(rest_model.DetailSessionManagementEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

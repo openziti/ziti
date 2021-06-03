@@ -44,7 +44,7 @@ import (
 type IdentityUpdate struct {
 
 	// app data
-	AppData Tags `json:"appData"`
+	AppData *Tags `json:"appData,omitempty"`
 
 	// default hosting cost
 	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
@@ -61,7 +61,7 @@ type IdentityUpdate struct {
 	Name *string `json:"name"`
 
 	// role attributes
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
 	// service hosting costs
 	ServiceHostingCosts TerminatorCostMap `json:"serviceHostingCosts,omitempty"`
@@ -70,7 +70,7 @@ type IdentityUpdate struct {
 	ServiceHostingPrecedences TerminatorPrecedenceMap `json:"serviceHostingPrecedences,omitempty"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// type
 	// Required: true
@@ -199,11 +199,13 @@ func (m *IdentityUpdate) validateRoleAttributes(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -326,11 +328,13 @@ func (m *IdentityUpdate) ContextValidate(ctx context.Context, formats strfmt.Reg
 
 func (m *IdentityUpdate) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -364,11 +368,13 @@ func (m *IdentityUpdate) contextValidateDefaultHostingPrecedence(ctx context.Con
 
 func (m *IdentityUpdate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -400,11 +406,13 @@ func (m *IdentityUpdate) contextValidateServiceHostingPrecedences(ctx context.Co
 
 func (m *IdentityUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

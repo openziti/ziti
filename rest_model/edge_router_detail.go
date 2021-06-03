@@ -74,7 +74,7 @@ type EdgeRouterDetail struct {
 
 	// role attributes
 	// Required: true
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes"`
 
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
@@ -112,7 +112,7 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 		IsVerified *bool `json:"isVerified"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
@@ -171,7 +171,7 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 		IsVerified *bool `json:"isVerified"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
@@ -295,11 +295,13 @@ func (m *EdgeRouterDetail) validateRoleAttributes(formats strfmt.Registry) error
 		return err
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -352,11 +354,13 @@ func (m *EdgeRouterDetail) ContextValidate(ctx context.Context, formats strfmt.R
 
 func (m *EdgeRouterDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

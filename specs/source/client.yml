@@ -113,3 +113,5 @@ definitions:
     $ref: 'client/posture-response.yml#/definitions/postureResponseMacAddressCreate'
   postureResponseProcessCreate:
     $ref: 'client/posture-response.yml#/definitions/postureResponseProcessCreate'
+  postureResponseEndpointStateCreate:
+    $ref: 'client/posture-response.yml#/definitions/postureResponseEndpointStateCreate'

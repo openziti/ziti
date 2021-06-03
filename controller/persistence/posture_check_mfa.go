@@ -20,18 +20,39 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 )
 
+const (
+	FieldPostureCheckMfaTimeoutSeconds = "timeoutSeconds"
+	FieldPostureCheckMfaPromptOnWake   = "promptOnWake"
+	FieldPostureCheckMfaPromptOnUnlock = "promptOnUnlock"
+	FieldPostureCheckMfaIgnoreLegacyEndpoints = "ignoreLegacyEndpoints"
+)
+
 type PostureCheckMfa struct {
-	Domains []string
+	TimeoutSeconds        int64
+	PromptOnWake          bool
+	PromptOnUnlock        bool
+	IgnoreLegacyEndpoints bool
 }
 
 func newPostureCheckMfa() PostureCheckSubType {
 	return &PostureCheckMfa{
-		Domains: []string{},
+		TimeoutSeconds: 0,
+		PromptOnWake:   false,
+		PromptOnUnlock: false,
+		IgnoreLegacyEndpoints: false,
 	}
 }
 
 func (entity *PostureCheckMfa) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.TimeoutSeconds = bucket.GetInt64WithDefault(FieldPostureCheckMfaTimeoutSeconds, 0)
+	entity.PromptOnWake = bucket.GetBoolWithDefault(FieldPostureCheckMfaPromptOnWake, false)
+	entity.PromptOnUnlock = bucket.GetBoolWithDefault(FieldPostureCheckMfaPromptOnUnlock, false)
+	entity.IgnoreLegacyEndpoints = bucket.GetBoolWithDefault(FieldPostureCheckMfaIgnoreLegacyEndpoints, false)
 }
 
 func (entity *PostureCheckMfa) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
+	bucket.SetInt64(FieldPostureCheckMfaTimeoutSeconds, entity.TimeoutSeconds, ctx.FieldChecker)
+	bucket.SetBool(FieldPostureCheckMfaPromptOnWake, entity.PromptOnWake, ctx.FieldChecker)
+	bucket.SetBool(FieldPostureCheckMfaPromptOnUnlock, entity.PromptOnUnlock, ctx.FieldChecker)
+	bucket.SetBool(FieldPostureCheckMfaIgnoreLegacyEndpoints, entity.IgnoreLegacyEndpoints, ctx.FieldChecker)
 }

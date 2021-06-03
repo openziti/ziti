@@ -122,3 +122,14 @@ definitions:
             items:
               type: string
     x-class: "PROCESS"
+
+  postureResponseEndpointStateCreate:
+    allOf:
+      - $ref: '#/definitions/postureResponseCreate'
+      - type: object
+        properties:
+          unlocked:
+            type: boolean
+          woken:
+            type: boolean
+    x-class: "ENDPOINT_STATE"

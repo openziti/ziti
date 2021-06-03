@@ -60,7 +60,7 @@ type ServicePolicyCreate struct {
 	ServiceRoles Roles `json:"serviceRoles"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// type
 	// Required: true
@@ -297,11 +297,13 @@ func (m *ServicePolicyCreate) contextValidateServiceRoles(ctx context.Context, f
 
 func (m *ServicePolicyCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

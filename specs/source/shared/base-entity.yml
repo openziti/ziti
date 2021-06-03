@@ -8,7 +8,6 @@ definitions:
       - createdAt
       - updatedAt
       - _links
-      - tags
     properties:
       id:
         type: string
@@ -55,15 +54,19 @@ definitions:
         $ref: '#/definitions/links'
   tags:
     description: 'A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean'
+    allOf:
+      - $ref: '#/definitions/subTags'
+    x-nullable: true
+  subTags:
     type: object
-    x-omitempty: false
     additionalProperties: {
       type: object
     }
   attributes:
     description: A set of strings used to loosly couple this resource to policies
     type: array
-    x-omitempty: false
+    x-omitempty: true
+    x-nullable: true
     items:
       type: string
   roles:

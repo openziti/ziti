@@ -146,7 +146,7 @@ func (handler *MfaHandler) Verify(mfa *Mfa, code string) (bool, error) {
 	return handler.VerifyTOTP(mfa, code)
 }
 
-// Verifies TOTP values only, not recovery codes
+// VerifyTOTP verifies TOTP values only, not recovery codes
 func (handler *MfaHandler) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
 	otp := dgoogauth.OTPConfig{
 		Secret:     mfa.Secret,

@@ -53,7 +53,7 @@ func (factory *ServicePolicyLinkFactoryImpl) Links(entity models.Entity) rest_mo
 func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *model.ServicePolicy {
 	ret := &model.ServicePolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 		},
 		Name:              stringz.OrEmpty(policy.Name),
 		PolicyType:        string(*policy.Type),
@@ -69,7 +69,7 @@ func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *mode
 func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUpdate) *model.ServicePolicy {
 	ret := &model.ServicePolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 			Id:   id,
 		},
 		Name:              stringz.OrEmpty(policy.Name),
@@ -86,7 +86,7 @@ func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUp
 func MapPatchServicePolicyToModel(id string, policy *rest_model.ServicePolicyPatch) *model.ServicePolicy {
 	ret := &model.ServicePolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 			Id:   id,
 		},
 		Name:              policy.Name,

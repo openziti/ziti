@@ -20,21 +20,90 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMfa{}
 
+const MfaPromptGracePeriod = -5 * time.Minute //5m
+
 type PostureCheckMfa struct {
+	TimeoutSeconds        int64
+	PromptOnWake          bool
+	PromptOnUnlock        bool
+	IgnoreLegacyEndpoints bool
+}
+
+func (p *PostureCheckMfa) GetTimeoutSeconds(apiSessionId string, pd *PostureData) int64 {
+	if p.TimeoutSeconds == PostureCheckNoTimeout {
+		return PostureCheckNoTimeout
+	}
+
+	apiSessionData := pd.ApiSessions[apiSessionId]
+
+	if apiSessionData == nil || apiSessionData.Mfa == nil || apiSessionData.Mfa.PassedMfaAt == nil {
+		return 0
+	}
+
+	timeSinceLastMfa := time.Now().Sub(*apiSessionData.Mfa.PassedMfaAt)
+
+	timeout := p.TimeoutSeconds - int64(timeSinceLastMfa.Seconds())
+	if timeout < 0 {
+		return 0
+	}
+
+	if p.PromptOnWake && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.WokenAt != nil {
+		onWakeTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.WokenAt.Add(MfaPromptGracePeriod)).Seconds())
+
+		if onWakeTimeOut < 0 {
+			onWakeTimeOut = 0
+		}
+
+		if onWakeTimeOut < timeout {
+			timeout = onWakeTimeOut
+		}
+	}
+
+	if p.PromptOnUnlock && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.UnlockedAt != nil {
+		onUnlockTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.UnlockedAt.Add(MfaPromptGracePeriod)).Seconds())
+
+		if onUnlockTimeOut < 0 {
+			onUnlockTimeOut = 0
+		}
+
+		if onUnlockTimeOut < timeout {
+			timeout = onUnlockTimeOut
+		}
+	}
+
+	return timeout
 }
 
 func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) PostureCheckFailureValues {
 	ret := &PostureCheckFailureValuesMfa{
-		ActualValue:   false,
-		ExpectedValue: true,
+		ActualValue: PostureCheckMfaValues{
+			PassedMfa:             false,
+			TimedOutSeconds:       true,
+			PassedOnWake:          false,
+			PassedOnUnlock:        false,
+			IgnoreLegacyEndpoints: false,
+		},
+		ExpectedValue: PostureCheckMfaValues{
+			PassedMfa:             true,
+			PassedOnWake:          p.PromptOnWake,
+			PassedOnUnlock:        p.PromptOnUnlock,
+			TimedOutSeconds:       false,
+			IgnoreLegacyEndpoints: p.IgnoreLegacyEndpoints,
+		},
 	}
 
-	if val, ok := pd.ApiSessions[apiSessionId]; ok {
-		ret.ActualValue = val.Mfa.PassedMfa
+	if apiSessionData, ok := pd.ApiSessions[apiSessionId]; ok {
+		if apiSessionData.Mfa != nil {
+			ret.ActualValue.TimedOutSeconds = apiSessionData.Mfa.TimedOut
+			ret.ActualValue.PassedMfa = apiSessionData.Mfa.PassedMfaAt != nil
+		}
+		ret.ActualValue.PassedOnUnlock = p.PassedOnUnlock(apiSessionData)
+		ret.ActualValue.PassedOnWake = p.PassedOnWake(apiSessionData)
 	}
 
 	return ret
@@ -43,8 +112,78 @@ func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) Po
 func (p *PostureCheckMfa) Evaluate(apiSessionId string, pd *PostureData) bool {
 	apiSessionData := pd.ApiSessions[apiSessionId]
 
-	if apiSessionData != nil {
-		return apiSessionData.Mfa.PassedMfa
+	if apiSessionData == nil {
+		return false
+	}
+
+	if apiSessionData.Mfa == nil {
+		return false
+	}
+
+	if apiSessionData.Mfa.PassedMfaAt == nil {
+		return false
+	}
+	now := time.Now().UTC()
+	timeoutSeconds := p.GetTimeoutSeconds(apiSessionId, pd)
+
+	if timeoutSeconds != PostureCheckNoTimeout {
+		expiresAt := apiSessionData.Mfa.PassedMfaAt.Add(time.Duration(timeoutSeconds) * time.Second)
+		if expiresAt.Before(now) {
+			apiSessionData.Mfa.TimedOut = true
+		}
+	}
+
+	if apiSessionData.Mfa.TimedOut {
+		return false
+	}
+
+	if !p.PassedOnWake(apiSessionData) {
+		return false
+	}
+
+	if !p.PassedOnUnlock(apiSessionData) {
+		return false
+	}
+
+	return true
+}
+
+func (p *PostureCheckMfa) PassedOnWake(apiSessionData *ApiSessionPostureData) bool {
+	if !p.PromptOnWake {
+		return true
+	}
+
+	if apiSessionData == nil {
+		return false
+	}
+
+	if apiSessionData.Mfa == nil || apiSessionData.Mfa.PassedMfaAt == nil {
+		return false
+	}
+	now := time.Now().UTC()
+	if apiSessionData.EndpointState == nil || apiSessionData.EndpointState.WokenAt == nil || apiSessionData.EndpointState.WokenAt.Before(*apiSessionData.Mfa.PassedMfaAt) || now.Add(MfaPromptGracePeriod).Before(*apiSessionData.EndpointState.WokenAt) {
+		return true
+	}
+
+	return false
+}
+
+func (p *PostureCheckMfa) PassedOnUnlock(apiSessionData *ApiSessionPostureData) bool {
+	if !p.PromptOnUnlock {
+		return true
+	}
+
+	if apiSessionData == nil {
+		return false
+	}
+
+	if apiSessionData.Mfa == nil || apiSessionData.Mfa.PassedMfaAt == nil {
+		return false
+	}
+
+	now := time.Now().UTC()
+	if apiSessionData.EndpointState == nil || apiSessionData.EndpointState.UnlockedAt == nil || apiSessionData.EndpointState.UnlockedAt.Before(*apiSessionData.Mfa.PassedMfaAt) || now.Add(MfaPromptGracePeriod).Before(*apiSessionData.EndpointState.UnlockedAt) {
+		return true
 	}
 
 	return false
@@ -58,27 +197,45 @@ func (p *PostureCheckMfa) fillFrom(handler Handler, tx *bbolt.Tx, check *persist
 	subCheck := subType.(*persistence.PostureCheckMfa)
 
 	if subCheck == nil {
-		return fmt.Errorf("could not covert domain check to bolt type")
+		return fmt.Errorf("could not covert mfa check to bolt type")
 	}
+
+	p.TimeoutSeconds = subCheck.TimeoutSeconds
+	p.PromptOnWake = subCheck.PromptOnWake
+	p.PromptOnUnlock = subCheck.PromptOnUnlock
+	p.IgnoreLegacyEndpoints = subCheck.IgnoreLegacyEndpoints
 
 	return nil
 }
 
 func (p *PostureCheckMfa) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMfa{}, nil
+	return &persistence.PostureCheckMfa{
+		TimeoutSeconds:        p.TimeoutSeconds,
+		PromptOnWake:          p.PromptOnWake,
+		PromptOnUnlock:        p.PromptOnUnlock,
+		IgnoreLegacyEndpoints: p.IgnoreLegacyEndpoints,
+	}, nil
 }
 
 func (p *PostureCheckMfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMfa{}, nil
+	return p.toBoltEntityForCreate(tx, handler)
 }
 
 func (p *PostureCheckMfa) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMfa{}, nil
+	return p.toBoltEntityForCreate(tx, handler)
+}
+
+type PostureCheckMfaValues struct {
+	TimedOutSeconds       bool
+	PassedMfa             bool
+	PassedOnWake          bool
+	PassedOnUnlock        bool
+	IgnoreLegacyEndpoints bool
 }
 
 type PostureCheckFailureValuesMfa struct {
-	ActualValue   bool
-	ExpectedValue bool
+	ActualValue   PostureCheckMfaValues
+	ExpectedValue PostureCheckMfaValues
 }
 
 func (p PostureCheckFailureValuesMfa) Expected() interface{} {

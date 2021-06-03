@@ -1,0 +1,433 @@
+/*
+	Copyright NetFoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package model
+
+import (
+	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
+)
+
+const (
+	mfaTestPostureCheckId = "abc123"
+	mfaTestApiSessionId   = "def456"
+)
+
+func TestPostureCheckModelMfa(t *testing.T) {
+	t.Run("Evaluate", func(t *testing.T) {
+		t.Run("returns true for valid MFA check", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false if API Session data is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId] = nil
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false if state is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa = nil
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true if endpoint state is nil (no wake or unlock events)", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState = nil
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false if MFA passedAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = nil
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false if MFA timed out", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.TimedOut = true
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true if woke reported after MFA and inside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			wokenAt := time.Now().UTC()
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true if woke reported after MFA and just inside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			mfaCheck.TimeoutSeconds = PostureCheckNoTimeout
+			wokenAt := time.Now().Add(MfaPromptGracePeriod).Add(1 * time.Second).UTC() //4min 59 seconds ago
+			passedMfaAt := wokenAt.Add(-1 * time.Minute)
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedMfaAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false if woke reported after MFA and outside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			//set passed mfa before woken, put woken 6 minutes in the past making now() outside of the 5min grace period
+			wokenAt := time.Now().Add(MfaPromptGracePeriod).UTC()
+			passedMfaAt := wokenAt.Add(-1 * time.Minute)
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedMfaAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true if unlocked reported after MFA and inside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			unlockedAt := time.Now().UTC()
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true if woke reported after MFA and just inside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			mfaCheck.TimeoutSeconds = PostureCheckNoTimeout
+			wokenAt := time.Now().Add(MfaPromptGracePeriod).Add(1 * time.Second).UTC() //4min 59 seconds ago
+			passedMfaAt := wokenAt.Add(-1 * time.Minute)
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedMfaAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false if unlocked reported after MFA and outside grace period", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			//set passed mfa before woken, put woken 6 minutes in the past making now() outside of the 5min grace period
+			unlockedAt := time.Now().Add(MfaPromptGracePeriod).UTC()
+			passedMfaAt := unlockedAt.Add(-1 * time.Minute)
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedMfaAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+	})
+
+	t.Run("PassedOnWake", func(t *testing.T) {
+
+		t.Run("returns true with default case", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true when PromptOnWake is false", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			mfaCheck.PromptOnWake = false
+
+			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false when PromptOnWake is true and ApiSessionData is nil", func(t *testing.T) {
+			mfaCheck, _ := newMfaCheckAndPostureData()
+
+			result := mfaCheck.PassedOnWake(nil)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false when PromptOnWake is true and MFA state is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.Mfa = nil
+
+			result := mfaCheck.PassedOnWake(apiSessionData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false when PromptOnWake is true and MFA PassedAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.Mfa.PassedMfaAt = nil
+
+			result := mfaCheck.PassedOnWake(apiSessionData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true when PromptOnWake is true and endpoint state is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.EndpointState = nil
+
+			result := mfaCheck.PassedOnWake(apiSessionData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true when PromptOnWake is true and endpoint state WokenAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.EndpointState.WokenAt = nil
+
+			result := mfaCheck.PassedOnWake(apiSessionData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+	})
+
+	t.Run("PassedOnUnlock", func(t *testing.T) {
+
+		t.Run("returns true with default case", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true when PromptOnUnlock is false", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			mfaCheck.PromptOnUnlock = false
+
+			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false when PromptOnUnlock is true and ApiSessionData is nil", func(t *testing.T) {
+			mfaCheck, _ := newMfaCheckAndPostureData()
+
+			result := mfaCheck.PassedOnUnlock(nil)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false when PromptOnUnlock is true and MFA state is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.Mfa = nil
+
+			result := mfaCheck.PassedOnUnlock(apiSessionData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false when PromptOnUnlock is true and MFA PassedAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.Mfa.PassedMfaAt = nil
+
+			result := mfaCheck.PassedOnUnlock(apiSessionData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true when PromptOnUnlock is true and endpoint state is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.EndpointState = nil
+
+			result := mfaCheck.PassedOnUnlock(apiSessionData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns true when PromptOnUnlock is true and endpoint state UnlockedAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+
+			apiSessionData.EndpointState.UnlockedAt = nil
+
+			result := mfaCheck.PassedOnUnlock(apiSessionData)
+
+			req := require.New(t)
+			req.True(result)
+		})
+	})
+
+	t.Run("FailureValues", func(t *testing.T) {
+		t.Run("expected values for default case are correct", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			val := mfaCheck.FailureValues(mfaTestApiSessionId, postureData)
+			failureValues := val.(*PostureCheckFailureValuesMfa)
+
+			req.NotEmpty(failureValues)
+			req.True(failureValues.ExpectedValue.PassedMfa)
+			req.True(failureValues.ExpectedValue.PassedOnWake)
+			req.True(failureValues.ExpectedValue.PassedOnUnlock)
+			req.False(failureValues.ExpectedValue.TimedOutSeconds)
+		})
+
+		t.Run("actual values for default case are correct", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			val := mfaCheck.FailureValues(mfaTestApiSessionId, postureData)
+			failureValues := val.(*PostureCheckFailureValuesMfa)
+
+			req.NotEmpty(failureValues)
+			req.True(failureValues.ActualValue.PassedMfa)
+			req.True(failureValues.ActualValue.PassedOnWake)
+			req.True(failureValues.ActualValue.PassedOnUnlock)
+			req.False(failureValues.ActualValue.TimedOutSeconds)
+		})
+
+		t.Run("actual values for for invalid API Session are correct", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			val := mfaCheck.FailureValues("invalid_api_session_id", postureData)
+			failureValues := val.(*PostureCheckFailureValuesMfa)
+
+			req.NotEmpty(failureValues)
+			req.False(failureValues.ActualValue.PassedMfa)
+			req.False(failureValues.ActualValue.PassedOnWake)
+			req.False(failureValues.ActualValue.PassedOnUnlock)
+			req.True(failureValues.ActualValue.TimedOutSeconds)
+		})
+	})
+}
+
+// newMfaCheckAndPostureData returns a MFA posture check and posture data that will
+// pass evaluation. The posture check will evaluate promptOnWake and promptOnUnlock
+// with events occurring 10 seconds in the past.
+func newMfaCheckAndPostureData() (*PostureCheckMfa, *PostureData) {
+	passedMfaAt := time.Now().UTC()
+	lastUpdatedAt := passedMfaAt
+
+	wokenAt := time.Now().Add(-10 * time.Second)
+	unlockedAt := time.Now().Add(-10 * time.Second)
+
+	postureResponse := &PostureResponse{
+		PostureCheckId: mfaTestPostureCheckId,
+		TypeId:         PostureCheckTypeMFA,
+		TimedOut:       false,
+		LastUpdatedAt:  lastUpdatedAt,
+	}
+
+	postureResponseMfa := &PostureResponseMfa{
+		PostureResponse: nil,
+		ApiSessionId:    mfaTestApiSessionId,
+		PassedMfaAt:     &passedMfaAt,
+	}
+
+	postureResponse.SubType = postureResponseMfa
+	postureResponseMfa.PostureResponse = postureResponse
+
+	validPostureData := &PostureData{
+		ApiSessions: map[string]*ApiSessionPostureData{
+			mfaTestApiSessionId: {
+				Mfa: postureResponseMfa,
+				EndpointState: &PostureResponseEndpointState{
+					ApiSessionId: mfaTestApiSessionId,
+					WokenAt:      &wokenAt,
+					UnlockedAt:   &unlockedAt,
+				},
+			},
+		},
+	}
+
+	mfaCheck := &PostureCheckMfa{
+		TimeoutSeconds: 60,
+		PromptOnWake:   true,
+		PromptOnUnlock: true,
+	}
+
+	return mfaCheck, validPostureData
+}

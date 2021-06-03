@@ -27,7 +27,7 @@ import (
 func NewPostureResponseHandler(env Env) *PostureResponseHandler {
 	handler := &PostureResponseHandler{
 		env:          env,
-		postureCache: newPostureCache(),
+		postureCache: newPostureCache(env),
 	}
 
 	handler.AddPostureDataListener(handler.postureDataUpdated)
@@ -53,7 +53,7 @@ func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessi
 
 	postureSubType := &PostureResponseMfa{
 		ApiSessionId: apiSessionId,
-		PassedMfa:    isPassed,
+		PassedMfaAt:  &postureResponse.LastUpdatedAt,
 	}
 
 	postureResponse.SubType = postureSubType
@@ -72,11 +72,17 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 
 	pd := handler.postureCache.PostureData(identityId)
 
+	var passedAt *time.Time = nil
+
+	if isPassed {
+		passedAt = &postureResponse.LastUpdatedAt
+	}
+
 	if pd != nil {
 		for apiSessionId, _ := range pd.ApiSessions {
 			postureSubType := &PostureResponseMfa{
 				ApiSessionId: apiSessionId,
-				PassedMfa:    isPassed,
+				PassedMfaAt:  passedAt,
 			}
 
 			postureResponse.SubType = postureSubType
@@ -86,7 +92,6 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		}
 	}
 }
-
 
 func (handler *PostureResponseHandler) AddPostureDataListener(cb func(env Env, identityId string)) {
 	handler.postureCache.AddListener(EventIdentityPostureDataAltered, func(i ...interface{}) {
@@ -197,4 +202,20 @@ func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string,
 
 func (handler *PostureResponseHandler) PostureData(id string) *PostureData {
 	return handler.postureCache.PostureData(id)
+}
+
+func (handler *PostureResponseHandler) SetSdkVersion(identityId, apiSessionId, version string) {
+	if identityId == "" || apiSessionId == "" {
+		return
+	}
+	pd := handler.PostureData(identityId)
+
+	if pd != nil {
+		if _, ok := pd.ApiSessions[apiSessionId]; !ok {
+			pd.ApiSessions[apiSessionId] = &ApiSessionPostureData{}
+		}
+
+		apiSessionData := pd.ApiSessions[apiSessionId]
+		apiSessionData.SdkVersion = version
+	}
 }

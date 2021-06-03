@@ -55,12 +55,12 @@ func (factory *EdgeRouterLinkFactoryImpl) Links(entity models.Entity) rest_model
 func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.EdgeRouter {
 	ret := &model.EdgeRouter{
 		BaseEntity: models.BaseEntity{
-			Tags: router.Tags,
+			Tags: TagsOrDefault(router.Tags),
 		},
 		Name:              stringz.OrEmpty(router.Name),
-		RoleAttributes:    router.RoleAttributes,
+		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
-		AppData:           router.AppData,
+		AppData:           TagsOrDefault(router.AppData),
 	}
 
 	return ret
@@ -69,13 +69,13 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) *model.EdgeRouter {
 	ret := &model.EdgeRouter{
 		BaseEntity: models.BaseEntity{
-			Tags: router.Tags,
+			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name:              stringz.OrEmpty(router.Name),
-		RoleAttributes:    router.RoleAttributes,
+		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
-		AppData:           router.AppData,
+		AppData:           TagsOrDefault(router.AppData),
 	}
 
 	return ret
@@ -84,13 +84,13 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *model.EdgeRouter {
 	ret := &model.EdgeRouter{
 		BaseEntity: models.BaseEntity{
-			Tags: router.Tags,
+			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name:              router.Name,
-		RoleAttributes:    router.RoleAttributes,
+		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
-		AppData:           router.AppData,
+		AppData:           TagsOrDefault(router.AppData),
 	}
 
 	return ret
@@ -133,6 +133,16 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	routerState := ae.Broker.GetEdgeRouterState(router.Id)
 	syncStatusStr := string(routerState.SyncStatus)
 
+	roleAttributes := rest_model.Attributes(router.RoleAttributes)
+
+	appData := rest_model.Tags{
+		SubTags: router.AppData,
+	}
+
+	if appData.SubTags == nil {
+		appData.SubTags = map[string]interface{}{}
+	}
+
 	ret := &rest_model.EdgeRouterDetail{
 		BaseEntity: BaseEntityToRestModel(router, EdgeRouterLinkFactory),
 		CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
@@ -141,9 +151,9 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			Hostname:           &routerState.Hostname,
 			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatusStr,
-			AppData:            router.AppData,
+			AppData:            &appData,
 		},
-		RoleAttributes:      router.RoleAttributes,
+		RoleAttributes:      &roleAttributes,
 		EnrollmentToken:     nil,
 		EnrollmentCreatedAt: nil,
 		EnrollmentExpiresAt: nil,

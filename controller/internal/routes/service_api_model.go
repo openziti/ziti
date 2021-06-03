@@ -56,7 +56,7 @@ func (factory *ServiceLinkFactoryIml) Links(entity models.Entity) rest_model.Lin
 func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: service.Tags,
+			Tags: TagsOrDefault(service.Tags),
 		},
 		Name:               stringz.OrEmpty(service.Name),
 		TerminatorStrategy: service.TerminatorStrategy,
@@ -71,7 +71,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *model.Service {
 func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: service.Tags,
+			Tags: TagsOrDefault(service.Tags),
 			Id:   id,
 		},
 		Name:               stringz.OrEmpty(service.Name),
@@ -87,7 +87,7 @@ func MapUpdateServiceToModel(id string, service *rest_model.ServiceUpdate) *mode
 func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.Service {
 	ret := &model.Service{
 		BaseEntity: models.BaseEntity{
-			Tags: service.Tags,
+			Tags: TagsOrDefault(service.Tags),
 			Id:   id,
 		},
 		Name:               service.Name,
@@ -139,11 +139,13 @@ func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*
 }
 
 func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (*rest_model.ServiceDetail, error) {
+	roleAttributes := rest_model.Attributes(service.RoleAttributes)
+
 	ret := &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,
 		TerminatorStrategy: &service.TerminatorStrategy,
-		RoleAttributes:     service.RoleAttributes,
+		RoleAttributes:     &roleAttributes,
 		Configs:            service.Configs,
 		Config:             service.Config,
 		EncryptionRequired: &service.EncryptionRequired,
@@ -155,8 +157,6 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 	}
 
 	validChecks := map[string]bool{} //cache individual check status
-
-	noTimeout := int64(-1)
 
 	policyPostureCheckMap := ae.GetHandlers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
 
@@ -191,9 +191,9 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 				isCheckPassing, _ = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
-
+			timeoutSeconds := postureCheck.TimeoutSeconds(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id))
 			query.IsPassing = &isCheckPassing
-			query.Timeout = &noTimeout
+			query.Timeout = &timeoutSeconds
 			querySet.PostureQueries = append(querySet.PostureQueries, query)
 
 			if !isCheckPassing {

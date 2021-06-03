@@ -44,7 +44,7 @@ import (
 type EdgeRouterCreate struct {
 
 	// app data
-	AppData Tags `json:"appData"`
+	AppData *Tags `json:"appData,omitempty"`
 
 	// is tunneler enabled
 	IsTunnelerEnabled bool `json:"isTunnelerEnabled,omitempty"`
@@ -54,10 +54,10 @@ type EdgeRouterCreate struct {
 	Name *string `json:"name"`
 
 	// role attributes
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 }
 
 // Validate validates this edge router create
@@ -117,11 +117,13 @@ func (m *EdgeRouterCreate) validateRoleAttributes(formats strfmt.Registry) error
 		return nil
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -168,11 +170,13 @@ func (m *EdgeRouterCreate) ContextValidate(ctx context.Context, formats strfmt.R
 
 func (m *EdgeRouterCreate) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -180,11 +184,13 @@ func (m *EdgeRouterCreate) contextValidateAppData(ctx context.Context, formats s
 
 func (m *EdgeRouterCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -192,11 +198,13 @@ func (m *EdgeRouterCreate) contextValidateRoleAttributes(ctx context.Context, fo
 
 func (m *EdgeRouterCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

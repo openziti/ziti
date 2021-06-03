@@ -28,16 +28,25 @@ func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_
 	createdAt := strfmt.DateTime(entity.GetCreatedAt())
 	updatedAt := strfmt.DateTime(entity.GetUpdatedAt())
 
-	return rest_model.BaseEntity{
+	tags := rest_model.Tags{
+		SubTags: entity.GetTags(),
+	}
+	ret := rest_model.BaseEntity{
 		ID:        &id,
 		CreatedAt: &createdAt,
 		UpdatedAt: &updatedAt,
 		Links:     linkFactory.Links(entity),
-		Tags:      entity.GetTags(),
+		Tags:     &tags,
 	}
+
+	if ret.Tags.SubTags == nil {
+		ret.Tags.SubTags = map[string]interface{}{}
+	}
+
+	return ret
 }
 
-type FullLinkFactory interface{
+type FullLinkFactory interface {
 	LinksFactory
 	SelfLinkFactory
 }

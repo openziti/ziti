@@ -46,7 +46,7 @@ type AuthenticatorPatch struct {
 	Password *PasswordNullable `json:"password,omitempty"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// username
 	Username *UsernameNullable `json:"username,omitempty"`
@@ -163,11 +163,13 @@ func (m *AuthenticatorPatch) contextValidatePassword(ctx context.Context, format
 
 func (m *AuthenticatorPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
