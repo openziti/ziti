@@ -1,4 +1,13 @@
-## Release 0.20.4
+# Release 0.20.5
+
+## What's New
+
+* Bug fix: Fix panic on double chan close that can occur when edge routers disconnect/reconnect in rapid succession
+* Bug fix: Fix defaults for enrollment durations when not specified (would default near 0 values)
+
+# Release 0.20.4
+
+## What's New
 
 * Bug fix: Fix a deadlock that can occur if Edge Routers disconnect during session synchronization or update processes
 * Bug fix: Fix URL for CAS create in Ziti CLI
