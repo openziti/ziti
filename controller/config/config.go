@@ -35,8 +35,8 @@ const (
 	sessionTimeoutDefault = 10 * time.Minute
 	sessionTimeoutMin     = 1 * time.Minute
 
-	enrollmentDurationMin     = 5
-	enrollmentDurationDefault = 1440
+	enrollmentDurationMin     = 5 * time.Minute
+	enrollmentDurationDefault = 5 * time.Minute
 )
 
 type Enrollment struct {
@@ -48,7 +48,7 @@ type Enrollment struct {
 }
 
 type EnrollmentOption struct {
-	DurationMinutes time.Duration
+	Duration time.Duration
 }
 
 type Api struct {
@@ -292,7 +292,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				edgeIdentityDuration = enrollmentDurationDefault
 			}
 
-			c.Enrollment.EdgeIdentity = EnrollmentOption{DurationMinutes: edgeIdentityDuration}
+			c.Enrollment.EdgeIdentity = EnrollmentOption{Duration: edgeIdentityDuration}
 
 		} else {
 			return errors.New("required configuration section [edge.enrollment.edgeIdentity] missing")
@@ -316,7 +316,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				edgeRouterDuration = enrollmentDurationDefault
 			}
 
-			c.Enrollment.EdgeRouter = EnrollmentOption{DurationMinutes: edgeRouterDuration}
+			c.Enrollment.EdgeRouter = EnrollmentOption{Duration: edgeRouterDuration}
 
 		} else {
 			return errors.New("required configuration section [edge.enrollment.edgeRouter] missing")
