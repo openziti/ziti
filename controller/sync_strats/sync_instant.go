@@ -178,7 +178,7 @@ func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
 	pfxlog.Logger().WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
 		WithField("routerFingerprint", router.Fingerprint).
-		Debugf("instant stretegy detected router with id %s disconnecting", router.Id)
+		Infof("edge router [%s] disconnecting", router.Id)
 	strategy.rtxMap.Remove(router.Id)
 }
 

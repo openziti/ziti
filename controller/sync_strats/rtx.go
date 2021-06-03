@@ -38,22 +38,24 @@ type RouterSender struct {
 	send        chan *channel2.Message
 	closeNotify chan struct{}
 	running     concurrenz.AtomicBoolean
-	stopping    concurrenz.AtomicBoolean
 
 	sync.Mutex
 }
 
 func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendBufferSize int) *RouterSender {
-	return &RouterSender{
+	rtx := &RouterSender{
 		Id:          eid.New(),
 		EdgeRouter:  edgeRouter,
 		Router:      router,
 		send:        make(chan *channel2.Message, sendBufferSize),
 		closeNotify: make(chan struct{}, 0),
-		running:     concurrenz.AtomicBoolean(0),
-		stopping:    concurrenz.AtomicBoolean(0),
+		running:     concurrenz.AtomicBoolean(1),
 		RouterState: env.NewLockingRouterStatus(),
 	}
+
+	go rtx.run()
+
+	return rtx
 }
 
 func (rtx *RouterSender) GetState() env.RouterStateValues {
@@ -64,14 +66,8 @@ func (rtx *RouterSender) GetState() env.RouterStateValues {
 	return rtx.Values()
 }
 
-func (rtx *RouterSender) Start() {
-	if rtx.running.CompareAndSwap(false, true) {
-		go rtx.run()
-	}
-}
-
 func (rtx *RouterSender) Stop() {
-	if rtx.stopping.CompareAndSwap(false, true) {
+	if rtx.running.CompareAndSwap(true, false) {
 		close(rtx.closeNotify)
 	}
 }
@@ -80,8 +76,6 @@ func (rtx *RouterSender) run() {
 	for {
 		select {
 		case <-rtx.closeNotify:
-			rtx.running.Set(false)
-			rtx.stopping.Set(false)
 			return
 		case msg := <-rtx.send:
 			if !rtx.Router.Control.IsClosed() {
@@ -101,7 +95,7 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 }
 
 func (rtx *RouterSender) Send(msg *channel2.Message) {
-	if rtx.stopping.Get() || !rtx.running.Get() {
+	if !rtx.running.Get() {
 		pfxlog.Logger().Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
 		return
 	}
@@ -130,7 +124,6 @@ type routerTxMap struct {
 
 func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
 	m.internalMap.Store(id, routerMessageTxer)
-	routerMessageTxer.Start()
 }
 
 func (m *routerTxMap) Get(id string) *RouterSender {
