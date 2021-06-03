@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/foundation/metrics"
 	"testing"
+	"time"
 )
 
 var _ Env = &TestContext{}
@@ -108,7 +109,7 @@ func (ctx *TestContext) Init() {
 	ctx.config = &config.Config{
 		Enrollment: config.Enrollment{
 			EdgeRouter: config.EnrollmentOption{
-				DurationMinutes: 60,
+				Duration: 60 * time.Second,
 			},
 		},
 	}

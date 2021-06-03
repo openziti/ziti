@@ -47,7 +47,7 @@ type Enrollment struct {
 
 func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 	now := time.Now()
-	expiresAt := now.Add(env.GetConfig().Enrollment.EdgeIdentity.DurationMinutes)
+	expiresAt := now.Add(env.GetConfig().Enrollment.EdgeIdentity.Duration)
 	entity.IssuedAt = &now
 	entity.ExpiresAt = &expiresAt
 
