@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"math"
 	"sync/atomic"
 	"time"
@@ -92,6 +93,8 @@ func (self *txPayload) isRetransmittable() bool {
 }
 
 func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
+	logrus.Warnf("txPortalStartSize = %d", x.Options.TxPortalStartSize)
+
 	buffer := &LinkSendBuffer{
 		x:                 x,
 		buffer:            make(map[int32]*txPayload),
