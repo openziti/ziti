@@ -106,7 +106,12 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 	}
 
 	if newApiSession {
-		response.ApiSession = ctx.getCreateApiSessionResponse()
+		var err error
+		response.ApiSession, err = ctx.getCreateApiSessionResponse()
+		if err != nil {
+			self.returnError(ctx, internalError(err))
+			return
+		}
 	}
 
 	self.sendResponse(ctx, response)

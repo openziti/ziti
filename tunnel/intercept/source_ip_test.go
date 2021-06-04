@@ -67,3 +67,21 @@ func Test_SourceIp(t *testing.T) {
 	testMatch("$tunneler_id.appData[srcip]", "123.456.789.10:5555")
 	testMatch("$tunneler_id.appData[sourceIp]:$tunneler_id.appData[sourcePort]", "15.14.13.12:1999")
 }
+
+func Test_TemplateIdentity(t *testing.T) {
+	svc := &entities.Service{}
+	hostTerminator := &entities.HostV2Terminator{ListenOptions: &entities.HostV2ListenOptions{}}
+	provider := &testProvider{}
+	currentIdentity, err := provider.GetCurrentIdentity()
+	req := require.New(t)
+	req.NoError(err)
+
+	testMatch := func(templ string, expected string) {
+		hostTerminator.ListenOptions.Identity = templ
+		listenOptions, err := getDefaultOptions(svc, currentIdentity, hostTerminator)
+		req.NoError(err)
+		req.Equal(expected, listenOptions.Identity)
+	}
+
+	testMatch("$tunneler_id.appData[sourceIp]", "15.14.13.12")
+}

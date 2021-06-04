@@ -1,6 +1,8 @@
 package handler_edge_ctrl
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
@@ -182,12 +184,17 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 	}
 }
 
-func (self *baseTunnelRequestContext) getCreateApiSessionResponse() *edge_ctrl_pb.CreateApiSessionResponse {
+func (self *baseTunnelRequestContext) getCreateApiSessionResponse() (*edge_ctrl_pb.CreateApiSessionResponse, error) {
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
 	if self.identity.DefaultHostingPrecedence == ziti.PrecedenceRequired {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
 	} else if self.identity.DefaultHostingPrecedence == ziti.PrecedenceFailed {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
+	}
+
+	appDataJson, err := mapToJson(self.identity.AppData)
+	if err != nil {
+		return nil, err
 	}
 
 	return &edge_ctrl_pb.CreateApiSessionResponse{
@@ -198,7 +205,19 @@ func (self *baseTunnelRequestContext) getCreateApiSessionResponse() *edge_ctrl_p
 		IdentityName:             self.identity.Name,
 		DefaultHostingPrecedence: precedence,
 		DefaultHostingCost:       uint32(self.identity.DefaultHostingCost),
+		AppDataJson:              appDataJson,
+	}, nil
+}
+
+func mapToJson(m map[string]interface{}) (string, error) {
+	if len(m) == 0 {
+		return "", nil
 	}
+
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	err := encoder.Encode(m)
+	return buf.String(), err
 }
 
 func (self *baseTunnelRequestContext) getCreateSessionResponse() *edge_ctrl_pb.CreateSessionResponse {
