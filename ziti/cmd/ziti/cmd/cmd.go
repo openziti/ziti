@@ -132,6 +132,7 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	pkiCommands := NewCmdPKI(f, out, err)
 	edgeCommand := edge_controller.NewCmdEdge(f, out, err)
 	logFilter := NewCmdLogFormat(f, out, err)
+	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(f, out, err)
 
 	installCommands := []*cobra.Command{
 		NewCmdInstall(f, out, err),
@@ -159,6 +160,7 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 				executeCommands,
 				psCommands,
 				pkiCommands,
+				unwrapIdentityFileCommand,
 			},
 		},
 		{

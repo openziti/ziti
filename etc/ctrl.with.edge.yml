@@ -109,14 +109,14 @@ edge:
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
-      # durationMinutes - optional, default 5m
+      # duration - optional, default 5m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       duration: 5m
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
-      # durationMinutes - optional, default 5m
+      # duration - optional, default 5m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and not longer be usable.
       duration: 5m
@@ -153,17 +153,17 @@ web:
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
     options:
-      # idleTimeoutMs - optional, default 5000ms
+      # idleTimeout - optional, default 5000ms
       # The maximum amount of idle time in milliseconds allowed for pipelined HTTP requests. Setting this too high
       # can cause resources on the host to be consumed as clients remain connected and idle. Lowering this value
       # will cause clients to reconnect on subsequent HTTPs requests.
       idleTimeout: 5000ms  #http timeouts, new
-      # readTimeoutMs - optional, default 5000ms
+      # readTimeout - optional, default 5000ms
       # The maximum amount of time in milliseconds http servers will wait to read the first incoming requests. A higher
       # value risks consuming resources on the host with clients that are acting bad faith or suffering from high latency
       # or packet loss. A lower value can risk losing connections to high latency/packet loss clients.
       readTimeout: 5000ms
-      # writeTimeoutMs - optional, default 10000ms
+      # writeTimeout - optional, default 10000ms
       # The total maximum time in milliseconds that the http server will wait for a single requests to be received and
       # responded too. A higher value can allow long running requests to consume resources on the host. A lower value
       # can risk ending requests before the server has a chance to respond.
