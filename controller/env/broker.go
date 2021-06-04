@@ -109,7 +109,7 @@ func (broker *Broker) RouterDisconnected(r *network.Router) {
 			pfxlog.Logger().WithField("routerId", r.Id).
 				WithField("routerName", r.Name).
 				WithField("routerFingerprint", r.Fingerprint).
-				Debugf("broker detected router with id %s disconnecting", r.Id)
+				Infof("broker detected router with id %s disconnecting", r.Id)
 			broker.routerSyncStrategy.RouterDisconnected(r)
 		}()
 	}
