@@ -36,8 +36,9 @@ func (network *Network) assemble() {
 				network.linkController.add(missingLink)
 
 				dial := &ctrl_pb.Dial{
-					Id:      missingLink.Id.Token,
-					Address: missingLink.Dst.AdvertisedListener,
+					LinkId:   missingLink.Id.Token,
+					Address:  missingLink.Dst.AdvertisedListener,
+					RouterId: missingLink.Dst.Id,
 				}
 				bytes, err := proto.Marshal(dial)
 				if err == nil {

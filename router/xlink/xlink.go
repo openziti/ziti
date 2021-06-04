@@ -19,11 +19,12 @@ package xlink
 import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/transport"
 )
 
 type Factory interface {
-	CreateListener(id *identity.TokenId, f Forwarder, config map[interface{}]interface{}) (Listener, error)
-	CreateDialer(id *identity.TokenId, f Forwarder, config map[interface{}]interface{}) (Dialer, error)
+	CreateListener(id *identity.TokenId, f Forwarder, config transport.Configuration) (Listener, error)
+	CreateDialer(id *identity.TokenId, f Forwarder, config transport.Configuration) (Dialer, error)
 }
 
 type Listener interface {
@@ -37,7 +38,7 @@ type Accepter interface {
 }
 
 type Dialer interface {
-	Dial(address string, id *identity.TokenId) error
+	Dial(address string, id *identity.TokenId, routerId string) error
 }
 
 type Xlink interface {
