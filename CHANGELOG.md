@@ -1,3 +1,9 @@
+# Release 0.20.6
+
+## What's New
+
+* Bug fix: Revert defensive Edge Router disconnect protection in Edge
+
 # Release 0.20.5
 
 ## What's New
