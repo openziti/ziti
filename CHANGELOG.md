@@ -1,3 +1,7 @@
+# Release 0.20.7
+
+* Bug fix: tunneler identity appData wasn't propagated to tunneler/router
+
 # Release 0.20.6
 
 ## What's New
