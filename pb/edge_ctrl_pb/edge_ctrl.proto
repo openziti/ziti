@@ -215,6 +215,7 @@ message CreateApiSessionResponse {
   string identityName = 5;
   TerminatorPrecedence defaultHostingPrecedence = 6;
   uint32 defaultHostingCost = 7;
+  string appDataJson = 8;
 }
 
 message CreateCircuitForServiceRequest {

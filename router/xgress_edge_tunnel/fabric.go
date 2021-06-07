@@ -17,6 +17,7 @@
 package xgress_edge_tunnel
 
 import (
+	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/netfoundry/secretstream/kx"
 	"github.com/openziti/edge/build"
@@ -91,6 +92,15 @@ func (self *fabricProvider) updateApiSession(resp *edge_ctrl_pb.CreateApiSession
 		Name:                     resp.IdentityName,
 		DefaultHostingPrecedence: strings.ToLower(resp.DefaultHostingPrecedence.String()),
 		DefaultHostingCost:       uint16(resp.DefaultHostingCost),
+		AppData:                  map[string]interface{}{},
+	}
+
+	if resp.AppDataJson != "" {
+		decoder := json.NewDecoder(strings.NewReader(resp.AppDataJson))
+		err := decoder.Decode(&self.currentIdentity.AppData)
+		if err != nil {
+			logrus.WithError(err).Errorf("failed to decode appDataJson: '%v'", resp.AppDataJson)
+		}
 	}
 
 	self.tunneler.stateManager.AddConnectedApiSession(self.apiSessionToken)

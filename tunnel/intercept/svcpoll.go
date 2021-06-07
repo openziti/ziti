@@ -322,14 +322,16 @@ func replaceTemplatized(input string, currentIdentity *edge.CurrentIdentity) (st
 			return "", errors.New("input contains unclosed $tunneler_id.appData[")
 		}
 		tagName := postStr[0:closeIdx]
-
+		logrus.Infof("looking up tagname: %v", tagName)
 		tagValue := ""
+		logrus.Infof("appData: %v", currentIdentity.AppData)
 		if currentIdentity.AppData != nil {
 			val, found := currentIdentity.AppData[tagName]
 			if found {
 				tagValue = fmt.Sprintf("%v", val)
 			}
 		}
+		logrus.Infof("value: %v", tagValue)
 
 		fullTag := start + tagName + "]"
 		input = strings.ReplaceAll(input, fullTag, tagValue)

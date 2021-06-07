@@ -125,7 +125,12 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	}
 
 	if newApiSession {
-		response.ApiSession = ctx.getCreateApiSessionResponse()
+		var err error
+		response.ApiSession, err = ctx.getCreateApiSessionResponse()
+		if err != nil {
+			self.returnError(ctx, internalError(err))
+			return
+		}
 	}
 
 	body, err := proto.Marshal(response)
