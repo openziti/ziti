@@ -1,6 +1,21 @@
 # Release 0.20.7
 
+## What's New
+
+* Xlink now supports to a boolean `split` option to enable/disable separated payload and ack channels.
+* Router identity now propagated through the link establishment plumbing. Will facilitate router-directed `transport.Configuration` profiles in a future release.
 * Bug fix: tunneler identity appData wasn't propagated to tunneler/router
+
+### Split Xlink Payload/Ack Channels
+
+Split payload and ack channels are enabled by default, preserving the behavior of previous releases. To disable split channels, merge the following stanza into your router configuration:
+
+```
+link:
+  dialers:
+    - binding:              transport
+      split:                false
+```
 
 # Release 0.20.6
 
