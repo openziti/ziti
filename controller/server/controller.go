@@ -262,6 +262,10 @@ func (c *Controller) Run() {
 	if err := c.AppEnv.HostController.RegisterXWebHandlerFactory(clientApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
 	}
+
+	if err = c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {
+		log.WithError(err).Fatalf("error starting policy engine")
+	}
 }
 
 func (c *Controller) Shutdown() {
