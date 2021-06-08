@@ -176,13 +176,15 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 			Tags: identity.Tags,
 			Id:   id,
 		},
-		Name:                     identity.Name,
-		IdentityTypeId:           identityTypeId,
-		IsAdmin:                  identity.IsAdmin,
-		RoleAttributes:           identity.RoleAttributes,
-		DefaultHostingPrecedence: ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
-		DefaultHostingCost:       getDefaultHostingCost(identity.DefaultHostingCost),
-		AppData:                  identity.AppData,
+		Name:                      identity.Name,
+		IdentityTypeId:            identityTypeId,
+		IsAdmin:                   identity.IsAdmin,
+		RoleAttributes:            identity.RoleAttributes,
+		DefaultHostingPrecedence:  ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
+		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
+		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
+		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
+		AppData:                   identity.AppData,
 	}
 
 	return ret

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
 )
@@ -78,9 +79,7 @@ func (rtx *RouterSender) run() {
 		case <-rtx.closeNotify:
 			return
 		case msg := <-rtx.send:
-			if !rtx.Router.Control.IsClosed() {
-				_ = rtx.Router.Control.Send(msg)
-			}
+			_ = rtx.Router.Control.Send(msg)
 		}
 	}
 }
@@ -94,16 +93,16 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 		WithField("routerChannelIsOpen", !rtx.Router.Control.IsClosed())
 }
 
-func (rtx *RouterSender) Send(msg *channel2.Message) {
+func (rtx *RouterSender) Send(msg *channel2.Message) error {
 	if !rtx.running.Get() {
-		pfxlog.Logger().Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
-		return
+		rtx.logger().Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
+		return errors.Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
 	}
 
 	if rtx.Router.Control.IsClosed() {
-		pfxlog.Logger().Errorf("cannot send to router [%s], rtx's channel is closed", rtx.Router.Id)
+		rtx.logger().Errorf("cannot send to router [%s], rtx's channel is closed", rtx.Router.Id)
 		rtx.Stop()
-		return
+		return errors.Errorf("cannot send to router [%s], rtx's channel is closed", rtx.Router.Id)
 	}
 
 	select {
@@ -111,10 +110,7 @@ func (rtx *RouterSender) Send(msg *channel2.Message) {
 	case <-rtx.closeNotify:
 	}
 
-}
-
-func (rtx *RouterSender) IsConnected() bool {
-	return !rtx.Router.Control.IsClosed()
+	return nil
 }
 
 // Map used make working with internal RouterSender easier as sync.Map accepts and returns interface{}
@@ -140,16 +136,15 @@ func (m *routerTxMap) GetState(id string) env.RouterStateValues {
 }
 
 func (m *routerTxMap) Remove(id string) {
-	entry := m.Get(id)
-	if entry != nil {
+	if val, found := m.internalMap.LoadAndDelete(id); found {
+		entry := val.(*RouterSender)
 		entry.Stop()
-		m.internalMap.Delete(id)
 	}
 }
 
 // Range creates a snapshot of the rtx's to loop over and will execute callback
 // with each rtx.
-func (m *routerTxMap) Range(callback func(entries *RouterSender) bool) {
+func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
 	var rtxs []*RouterSender
 
 	m.internalMap.Range(func(edgeRouterId, value interface{}) bool {
@@ -159,7 +154,7 @@ func (m *routerTxMap) Range(callback func(entries *RouterSender) bool) {
 			pfxlog.Logger().Errorf("could not convert edge router entry got %t: %v", value, value)
 		}
 
-		return false
+		return true
 	})
 
 	for _, rtx := range rtxs {
