@@ -199,9 +199,8 @@ func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSess
 		Sequence: 0,
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
-		strategy.sendApiSessionAdded(rtx, false, state, []*edge_ctrl_pb.ApiSession{apiSessionProto})
-		return true
+	strategy.rtxMap.Range(func(rtx *RouterSender) {
+		_ = strategy.sendApiSessionAdded(rtx, false, state, []*edge_ctrl_pb.ApiSession{apiSessionProto})
 	})
 }
 
@@ -221,13 +220,12 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 		ApiSessions: []*edge_ctrl_pb.ApiSession{apiSessionProto},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(apiSessionAdded)
 		msg := channel2.NewMessage(env.ApiSessionUpdatedType, content)
 		msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
 		msg.Headers[env.SyncStrategyStateHeader] = nil
-		rtx.Send(msg)
-		return true
+		_ = rtx.Send(msg)
 	})
 }
 
@@ -236,11 +234,10 @@ func (strategy *InstantStrategy) ApiSessionDeleted(apiSession *persistence.ApiSe
 		Tokens: []string{apiSession.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel2.NewMessage(env.ApiSessionRemovedType, content)
-		rtx.Send(msg)
-		return true
+		_ = rtx.Send(msg)
 	})
 }
 
@@ -249,11 +246,10 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 		Tokens: []string{session.Token},
 	}
 
-	strategy.rtxMap.Range(func(rtx *RouterSender) bool {
+	strategy.rtxMap.Range(func(rtx *RouterSender) {
 		content, _ := proto.Marshal(sessionRemoved)
 		msg := channel2.NewMessage(env.SessionRemovedType, content)
-		rtx.Send(msg)
-		return true
+		_ = rtx.Send(msg)
 	})
 }
 
@@ -362,7 +358,6 @@ func (strategy *InstantStrategy) ReceiveResync(r *network.Router, _ *edge_ctrl_p
 }
 
 func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello *edge_ctrl_pb.ClientHello) {
-
 	rtx := strategy.rtxMap.Get(r.Id)
 
 	if rtx == nil {
@@ -451,7 +446,9 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 
 			if len(apiSessions) >= chunkSize {
 				state.IsLast = !cursor.IsValid()
-				strategy.sendApiSessionAdded(rtx, true, state, apiSessions)
+				if err = strategy.sendApiSessionAdded(rtx, true, state, apiSessions); err != nil {
+					return err
+				}
 
 				state.Sequence = state.Sequence + 1
 				apiSessions = []*edge_ctrl_pb.ApiSession{}
@@ -460,19 +457,22 @@ func (strategy *InstantStrategy) synchronize(rtx *RouterSender) {
 
 		if len(apiSessions) > 0 {
 			state.IsLast = true
-			strategy.sendApiSessionAdded(rtx, true, state, apiSessions)
+			if err := strategy.sendApiSessionAdded(rtx, true, state, apiSessions); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
 
 	if err != nil {
 		logger.WithError(err).Error("failure synchronizing api sessions")
+		rtx.SetSyncStatus(env.RouterSyncError)
+	} else {
+		rtx.SetSyncStatus(env.RouterSyncDone)
 	}
-
-	rtx.SetSyncStatus(env.RouterSyncDone)
 }
 
-func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) {
+func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullState bool, state *InstantSyncState, apiSessions []*edge_ctrl_pb.ApiSession) error {
 	stateBytes, _ := json.Marshal(state)
 
 	msgContent := &edge_ctrl_pb.ApiSessionAdded{
@@ -487,7 +487,7 @@ func (strategy *InstantStrategy) sendApiSessionAdded(rtx *RouterSender, isFullSt
 	msg.Headers[env.SyncStrategyTypeHeader] = []byte(strategy.Type())
 	msg.Headers[env.SyncStrategyStateHeader] = stateBytes
 
-	rtx.Send(msg)
+	return rtx.Send(msg)
 }
 
 type InstantSyncState struct {
