@@ -5,6 +5,9 @@
 * Xlink now supports to a boolean `split` option to enable/disable separated payload and ack channels.
 * Router identity now propagated through the link establishment plumbing. Will facilitate router-directed `transport.Configuration` profiles in a future release.
 * Bug fix: tunneler identity appData wasn't propagated to tunneler/router
+* Bug fix: API session updates were only being sent to one router (regression since 0.20.4)
+* Bug fix: API session enforcer wasn't being started (regression since 0.20.0)
+* Bug fix: Setting per identity service costs/precedences didn't work with PATCH
 
 ### Split Xlink Payload/Ack Channels
 
