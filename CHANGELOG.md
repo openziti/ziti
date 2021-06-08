@@ -1,4 +1,8 @@
-# Release 0.20.7
+# Release 0.20.8
+
+## What's New
+
+* 0.20.7 was missing the most up-to-date version of the openziti/edge library dependency
 
 ## What's New
 
