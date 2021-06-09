@@ -258,32 +258,6 @@ func (handler *EdgeServiceHandler) mergeConfigs(tx *bbolt.Tx, configTypes map[st
 	}
 }
 
-func (handler *EdgeServiceHandler) StreamByServicePolicyId(servicePolicyId string, collect func(*ServiceDetail, error) error) error {
-	query := fmt.Sprintf(`anyOf(servicePolicies) = "%v"`, servicePolicyId)
-
-	return handler.Stream(query, collect)
-}
-
-func (handler *EdgeServiceHandler) Stream(query string, collect func(*ServiceDetail, error) error) error {
-	filter, err := ast.Parse(handler.Store, query)
-
-	if err != nil {
-		return fmt.Errorf("could not parse query for streaming edge services: %v", err)
-	}
-
-	return handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		for cursor := handler.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
-			current := cursor.Current()
-
-			service, err := handler.readInTx(tx, string(current))
-			if err := collect(service, err); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 type PolicyPostureChecks struct {
 	PostureChecks []*PostureCheck
 	PolicyType    persistence.PolicyType

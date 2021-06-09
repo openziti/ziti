@@ -347,6 +347,17 @@ func (handler *baseHandler) deleteEntity(id string) error {
 	})
 }
 
+func (handler *baseHandler) deleteEntityBatch(ids []string) error {
+	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		for _, id := range ids {
+			if err := handler.GetStore().DeleteById(boltz.NewMutateContext(tx), id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (handler *baseHandler) list(queryString string, resultHandler models.ListResultHandler) error {
 	return handler.GetDb().View(func(tx *bbolt.Tx) error {
 		return handler.ListWithTx(tx, queryString, resultHandler)
