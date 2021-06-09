@@ -106,16 +106,24 @@ function checkHostsFile {
 }
 
 function getLatestZitiVersion {
+  if ! setOs; then
+    return 1
+  fi
+
+  ZITI_ARCH="amd64"
+  if [[ "$(uname -a)" == *"arm"* ]]; then
+    ZITI_ARCH="arm"
+  fi
+
+  unset ZITI_BINARIES_VERSION
+
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
     zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
-    echo "${zitilatest}" > /mnt/v/temp/a.txt
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_TARFILE=$(echo "${zitilatest}" | jq -r '.assets[] | select(.name | startswith("ziti-linux-amd")) | .name')
+    export ZITI_BINARIES_TARFILE=$(echo "${zitilatest}" | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
     export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | jq -r '.tag_name')
   fi
-  #echo -e 'Ziti tar.gz: '"$(BLUE "${ZITI_BINARIES_TARFILE}")"
-  #echo -e 'Latest ziti is: '"$(BLUE "${ZITI_BINARIES_VERSION}")"
 }
 
 function getLatestZiti {
@@ -131,7 +139,13 @@ function getLatestZiti {
   export ZITI_BIN_ROOT="${ziti_bin_root}/ziti-bin"
 
   mkdir -p "${ziti_bin_root}"
-  getLatestZitiVersion
+
+  if ! getLatestZitiVersion; then
+  echo -e 'ERROR: '"$(RED " xxx ")"' yyy  '"$(GREEN "zzz")"
+  echo -e 'ERROR: '"$(RED " xxx ")"' yyy  '"$(GREEN "zzz")"
+  tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ziti_bin_root}"
+  tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ziti_bin_root}"
+  fi
 
   ziti_bin_ver="${ZITI_BINARIES_VERSION-}"
   if [[ "${ziti_bin_ver}" == "" ]]; then
@@ -151,7 +165,9 @@ function getLatestZiti {
 
   echo -e 'UNZIPPING '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   rm -rf "${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION-}"
+  echo -e 'UNZIPPING '"$(RED "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ziti_bin_root}"
+  echo -e 'UNZIPPING '"$(RED "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   mv "${ziti_bin_root}/ziti" "${ZITI_BIN_DIR-}"
 
   if [[ "${1-}" == "yes" ]]; then
@@ -1267,6 +1283,30 @@ WantedBy=multi-user.target
 
 HeredocForSystemd
   echo "ziti-console systemd file written to: ${systemd_file}"
+}
+
+function setOs {
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          export ZITI_OSTYPE="linux"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+          export ZITI_OSTYPE="darwin"
+  elif [[ "$OSTYPE" == "cygwin" ]]; then
+          echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
+          return 1
+  elif [[ "$OSTYPE" == "msys" ]]; then
+          echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
+          return 1
+  elif [[ "$OSTYPE" == "win32" ]]; then
+          echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
+          return 1
+  elif [[ "$OSTYPE" == "freebsd"* ]]; then
+          echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
+          return 1
+  else
+          echo -e "  * ERROR: $(RED "\$OSTYPE is not set or is unknown: [$OSTYPE]. Cannot continue") "
+          return 1
+  fi
+  return 0
 }
 
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
