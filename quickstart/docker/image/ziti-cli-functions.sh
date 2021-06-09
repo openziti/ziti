@@ -294,7 +294,7 @@ function generateEnvFile {
   fi
 
   # shellcheck disable=SC2155
-  export ZITI_SCRIPTS="$(realpath "${ZITI_SCRIPT_DIR}/..")"
+  export ZITI_SCRIPTS="$(realpath "${ZITI_QUICKSTART_SCRIPT_ROOT}/..")"
 
   if ! ziti_createEnvFile; then
     return 1
