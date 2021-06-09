@@ -1314,8 +1314,6 @@ function setOs {
   return 0
 }
 
-ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
 param1="$@"
 
 if [[ "${param1}" != "" ]]; then
