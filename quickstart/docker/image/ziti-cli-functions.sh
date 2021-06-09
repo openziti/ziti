@@ -173,7 +173,7 @@ function getLatestZiti {
   mv "${ziti_bin_root}/ziti" "${ZITI_BIN_DIR}"
 
   echo -e 'Marking executables at '"$(GREEN "${ZITI_BIN_DIR}")"' executable'
-  chmod +x "${ZITI_BIN_DIR}/*"
+  chmod +x "${ZITI_BIN_DIR}/"*
 
   if [[ "${1-}" == "yes" ]]; then
     echo "Adding ${ZITI_BIN_DIR} to the path if necessary:"
