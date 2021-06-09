@@ -165,9 +165,7 @@ function getLatestZiti {
 
   echo -e 'UNZIPPING '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   rm -rf "${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION-}"
-  echo -e 'UNZIPPING '"$(RED "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ziti_bin_root}"
-  echo -e 'UNZIPPING '"$(RED "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
   mv "${ziti_bin_root}/ziti" "${ZITI_BIN_DIR-}"
 
   if [[ "${1-}" == "yes" ]]; then
