@@ -206,7 +206,7 @@ function checkPrereqs {
 }
 
 function checkControllerName {
-  if [[ ${ZITI_EDGE_CONTROLLER_HOSTNAME} == *['!'@#\$%^\&*()_+]* ]]; then
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" == *['!'@#\$%^\&*\(\)_+]* ]]; then
     echo -e "$(RED "  - The provided Network name contains an invalid character: '!'@#\$%^\&*()_+")"
     return 1
   fi
@@ -506,43 +506,43 @@ function printUsage()
 
 function verifyCertAgainstPool()
 {
-    if [[ "" == "${1-}" ]]
-    then
-        printUsage "verifyCertAgainstPool"
-        return 1
-    fi
+  if [[ "" == "${1-}" ]]
+  then
+      printUsage "verifyCertAgainstPool"
+      return 1
+  fi
 
-    if [[ "" == "$2" ]]
-    then
-        printUsage "verifyCertAgainstPool"
-        return 1
-    fi
+  if [[ "" == "$2" ]]
+  then
+      printUsage "verifyCertAgainstPool"
+      return 1
+  fi
 
-    echo "    Verifying that this certificate:"
-    echo "        - ${1-}"
-    echo "    is valid for this ca pool:"
-    echo "        - $2"
-    echo ""
-    openssl verify -partial_chain -CAfile "$2" "${1-}"
-    # shellcheck disable=SC2181
-    if [ $? -eq 0 ]; then
-        echo ""
-        echo "============      SUCCESS!      ============"
-    else
-        echo ""
-        echo "============ FAILED TO VALIDATE ============"
-    fi
+  echo "    Verifying that this certificate:"
+  echo "        - ${1-}"
+  echo "    is valid for this ca pool:"
+  echo "        - $2"
+  echo ""
+  openssl verify -partial_chain -CAfile "$2" "${1-}"
+  # shellcheck disable=SC2181
+  if [ $? -eq 0 ]; then
+      echo ""
+      echo "============      SUCCESS!      ============"
+  else
+      echo ""
+      echo "============ FAILED TO VALIDATE ============"
+  fi
 }
 
 function showIssuerAndSubjectForPEM()
 {
-    echo "Displaying Issuer and Subject for cert pool:"
-    echo "    ${1-}"
-    openssl crl2pkcs7 -nocrl -certfile "${1-}" | openssl pkcs7 -print_certs -text -noout | grep -E "(Subject|Issuer)"
+  echo "Displaying Issuer and Subject for cert pool:"
+  echo "    ${1-}"
+  openssl crl2pkcs7 -nocrl -certfile "${1-}" | openssl pkcs7 -print_certs -text -noout | grep -E "(Subject|Issuer)"
 }
 
 function createRouterPki {
-pki_client_server "${ZITI_EDGE_ROUTER_RAWNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
+  pki_client_server "${ZITI_EDGE_ROUTER_RAWNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
 }
 
 function createPrivateRouterConfig {
@@ -619,29 +619,29 @@ HereDocForEdgeRouter
 function createPki {
   echo "Generating PKI"
 
-pki_create_ca "${ZITI_CONTROLLER_ROOTCA_NAME}"
-pki_create_ca "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"
-pki_create_ca "${ZITI_SIGNING_ROOTCA_NAME}"
+  pki_create_ca "${ZITI_CONTROLLER_ROOTCA_NAME}"
+  pki_create_ca "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}"
+  pki_create_ca "${ZITI_SIGNING_ROOTCA_NAME}"
 
-ZITI_SPURIOUS_INTERMEDIATE="${ZITI_SIGNING_INTERMEDIATE_NAME}_spurious_intermediate"
-pki_create_intermediate "${ZITI_CONTROLLER_ROOTCA_NAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" 1
-pki_create_intermediate "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" 1
-pki_create_intermediate "${ZITI_SIGNING_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
-pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
+  ZITI_SPURIOUS_INTERMEDIATE="${ZITI_SIGNING_INTERMEDIATE_NAME}_spurious_intermediate"
+  pki_create_intermediate "${ZITI_CONTROLLER_ROOTCA_NAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" 1
+  pki_create_intermediate "${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" 1
+  pki_create_intermediate "${ZITI_SIGNING_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
+  pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
-if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"; then
-  echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-  "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
-        --client-file="${ZITI_NETWORK-}-dotzeet" \
-        --client-name "${ZITI_NETWORK-} Management"
-else
-  echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-  echo "key exists"
-fi
-echo " "
+  if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"; then
+    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
+    "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
+          --client-file="${ZITI_NETWORK-}-dotzeet" \
+          --client-name "${ZITI_NETWORK-} Management"
+  else
+    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
+    echo "key exists"
+  fi
+  echo " "
 
-pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}"
-pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}"
+  pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}"
+  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}"
 
 }
 
