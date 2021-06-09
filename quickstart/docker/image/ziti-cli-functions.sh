@@ -5,8 +5,9 @@ set -uo pipefail
 # shellcheck disable=SC2155
 export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/$(hostname)"
 
+# shellcheck disable=SC2164
 # shellcheck disable=SC2155
-export ZITI_QUICKSTART_SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export ZITI_QUICKSTART_SCRIPT_ROOT="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
 ASCI_WHITE='\033[01;37m'
@@ -106,6 +107,8 @@ function checkHostsFile {
 }
 
 function getLatestZitiVersion {
+  setupZitiHome
+
   if ! setOs; then
     return 1
   fi
@@ -127,6 +130,7 @@ function getLatestZitiVersion {
 }
 
 function getLatestZiti {
+  setupZitiHome
   if [[ "${ZITI_HOME-}" == "" ]]; then
     echo "ERROR: ZITI_HOME is not set!"
     return 1
@@ -156,8 +160,8 @@ function getLatestZiti {
 
   ZITI_BINARIES_TARFILE_ABSPATH="${ZITI_HOME-}/ziti-bin/${ZITI_BINARIES_TARFILE}"
   if ! test -f "${ZITI_BINARIES_TARFILE_ABSPATH}"; then
-    echo -e 'Downloading '"$(BLUE "${ZITI_BINARIES_TARFILE}")"' to '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"
     zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_TARFILE}"
+    echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"
     wget -q "${zitidl}" -O "${ZITI_BINARIES_TARFILE_ABSPATH}"
   else
     echo -e "$(YELLOW 'Already Downloaded ')""$(BLUE "${ZITI_BINARIES_TARFILE}")"' at: '"${ZITI_BINARIES_TARFILE_ABSPATH}"
@@ -265,7 +269,10 @@ function setupZitiNetwork {
 }
 
 function setupZitiHome {
-  export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK-}"
+  if [[ "${ZITI_HOME-}" == "" ]]; then
+    export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK-}"
+    echo "using default ZITI_HOME: ${ZITI_HOME}"
+  fi
 }
 
 function generateEnvFile {
@@ -1308,5 +1315,11 @@ function setOs {
 }
 
 ZITI_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+param1="$@"
+
+if [[ "${param1}" != "" ]]; then
+  eval "$@"
+fi
 
 set +uo pipefail
