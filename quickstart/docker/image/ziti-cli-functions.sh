@@ -167,18 +167,21 @@ function getLatestZiti {
     echo -e "$(YELLOW 'Already Downloaded ')""$(BLUE "${ZITI_BINARIES_TARFILE}")"' at: '"${ZITI_BINARIES_TARFILE_ABSPATH}"
   fi
 
-  echo -e 'UNZIPPING '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR-}")"
+  echo -e 'UNZIPPING '"$(BLUE "${ZITI_BINARIES_TARFILE_ABSPATH}")"' into: '"$(GREEN "${ZITI_BIN_DIR}")"
   rm -rf "${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION-}"
   tar -xf "${ZITI_BINARIES_TARFILE_ABSPATH}" --directory "${ziti_bin_root}"
-  mv "${ziti_bin_root}/ziti" "${ZITI_BIN_DIR-}"
+  mv "${ziti_bin_root}/ziti" "${ZITI_BIN_DIR}"
+
+  echo -e 'Marking executables at '"$(GREEN "${ZITI_BIN_DIR}")"' executable'
+  chmod +x "${ZITI_BIN_DIR}/*"
 
   if [[ "${1-}" == "yes" ]]; then
-    echo "Adding ${ZITI_BIN_DIR-} to the path if necessary:"
-    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR-}" && echo "yes")" == "yes" ]]; then
-      echo -e "$(GREEN "${ZITI_BIN_DIR-}") is already on the path"
+    echo "Adding ${ZITI_BIN_DIR} to the path if necessary:"
+    if [[ "$(echo "$PATH"|grep -q "${ZITI_BIN_DIR}" && echo "yes")" == "yes" ]]; then
+      echo -e "$(GREEN "${ZITI_BIN_DIR}") is already on the path"
     else
-      echo -e "adding $(RED "${ZITI_BIN_DIR-}") to the path"
-      export PATH=$PATH:"${ZITI_BIN_DIR-}"
+      echo -e "adding $(RED "${ZITI_BIN_DIR}") to the path"
+      export PATH=$PATH:"${ZITI_BIN_DIR}"
     fi
   fi
 }
