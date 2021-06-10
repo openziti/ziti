@@ -155,6 +155,13 @@ func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, 
 			fields.AddField(persistence.FieldPostureCheckProcessFingerprint)
 		}
 
+		if fields.IsUpdated("processes") {
+			fields.AddField(persistence.FieldPostureCheckProcessMultiPath)
+			fields.AddField(persistence.FieldPostureCheckProcessMultiOsType)
+			fields.AddField(persistence.FieldPostureCheckProcessMultiSignerFingerprints)
+			fields.AddField(persistence.FieldPostureCheckProcessMultiHashes)
+		}
+
 		return ae.Handlers.PostureCheck.Patch(check, fields.FilterMaps("tags"))
 	})
 }

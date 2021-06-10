@@ -364,6 +364,14 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 				SignerFingerprints: process.SignerFingerprints,
 			}
 
+			if newProc.Hashes == nil {
+				newProc.Hashes = []string{}
+			}
+
+			if newProc.SignerFingerprints == nil {
+				newProc.SignerFingerprints = []string{}
+			}
+
 			detail.Processes = append(detail.Processes, newProc)
 		}
 

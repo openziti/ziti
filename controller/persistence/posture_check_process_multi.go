@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/boltz"
 )
 
@@ -54,11 +55,11 @@ func (entity *PostureCheckProcessMulti) LoadValues(_ boltz.CrudStore, bucket *bo
 
 	processCursor := processesBucket.Cursor()
 
-	for path, _ := processCursor.First(); path != nil; path, _ = processCursor.Next() {
-		procBucket := processesBucket.GetBucket(string(path))
+	for key, _ := processCursor.First(); key != nil; key, _ = processCursor.Next() {
+		procBucket := processesBucket.GetBucket(string(key))
 		proc := &ProcessMulti{}
 
-		proc.Path = string(path)
+		proc.Path = procBucket.GetStringOrError(FieldPostureCheckProcessMultiPath)
 		proc.OsType = procBucket.GetStringOrError(FieldPostureCheckProcessMultiOsType)
 		proc.SignerFingerprints = procBucket.GetStringList(FieldPostureCheckProcessMultiSignerFingerprints)
 		proc.Hashes = procBucket.GetStringList(FieldPostureCheckProcessMultiHashes)
@@ -72,22 +73,32 @@ func (entity *PostureCheckProcessMulti) SetValues(ctx *boltz.PersistContext, buc
 
 	processesBucket := bucket.GetOrCreateBucket(FieldPostureCheckProcessMultiProcesses)
 
-	seenPaths := map[string]struct{}{}
+	seenKeys := map[string]struct{}{}
 	for _, proc := range entity.Processes {
-		seenPaths[proc.Path] = struct{}{}
+		key := proc.OsType + "-" + proc.Path
+		seenKeys[key] = struct{}{}
 
-		procBucket := processesBucket.GetOrCreateBucket(proc.Path)
+		procBucket := processesBucket.GetOrCreateBucket(key)
 
+		procBucket.SetString(FieldPostureCheckProcessMultiPath, proc.Path, ctx.FieldChecker)
 		procBucket.SetString(FieldPostureCheckProcessMultiOsType, proc.OsType, ctx.FieldChecker)
-		procBucket.SetStringList(FieldPostureCheckProcessHashes, proc.Hashes, ctx.FieldChecker)
+		procBucket.SetStringList(FieldPostureCheckProcessMultiHashes, proc.Hashes, ctx.FieldChecker)
 		procBucket.SetStringList(FieldPostureCheckProcessMultiSignerFingerprints, proc.SignerFingerprints, ctx.FieldChecker)
 	}
 
 	processCursor := processesBucket.Cursor()
 
-	for path, _ := processCursor.First(); path != nil; path, _ = processCursor.Next() {
-		if _, ok := seenPaths[string(path)]; !ok {
-			_ = processesBucket.Delete(path)
+	var removeKeys [][]byte
+	for key, _ := processCursor.First(); key != nil; key, _ = processCursor.Next() {
+		if _, ok := seenKeys[string(key)]; !ok {
+			removeKeys = append(removeKeys, key)
 		}
+	}
+
+	for _, key := range removeKeys {
+		if err := processesBucket.DeleteBucket(key); err != nil {
+			pfxlog.Logger().Debugf("error deleting multi process key %s: %v", string(key), err)
+		}
+
 	}
 }
