@@ -45,7 +45,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  unused=$("${ZITI_BIN_DIR-}/ziti${ZITI_EXE_SUFFIX}" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
+  unused=$("${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
 }
 function cleanZitiController {
   ziti_home="${ZITI_HOME-}"
@@ -58,12 +58,12 @@ function cleanZitiController {
   initializeController
 }
 function initializeController {
-  "${ZITI_BIN_DIR-}/ziti-controller${ZITI_EXE_SUFFIX}" edge init "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${ZITI_HOME_OS_SPECIFIC}/controller-init.log"
+  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${ZITI_HOME_OS_SPECIFIC}/controller-init.log"
   echo -e "ziti-controller initialized. see $(BLUE "${ZITI_HOME-}/controller-init.log") for details"
 }
 function startZitiController {
   # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-controller${ZITI_EXE_SUFFIX}" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
+  unused=$("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
   echo -e "ziti-controller started. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
 }
 function stopZitiController {
@@ -375,11 +375,11 @@ function ziti_expressConfiguration {
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
 
-  unused=$("${ZITI_BIN_DIR-}/ziti-router${ZITI_EXE_SUFFIX}" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log")
+  unused=$("${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log")
   echo ""
   sleep 1
   # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-router${ZITI_EXE_SUFFIX}" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &)
+  unused=$("${ZITI_BIN_DIR-}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &)
 
   echo "Express setup complete!"
 }
@@ -470,7 +470,7 @@ function pki_client_server {
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-server.key"; then
     echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
-    "${ZITI_BIN_DIR-}/ziti${ZITI_EXE_SUFFIX}" pki create server --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
+    "${ZITI_BIN_DIR-}/ziti" pki create server --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${name_local}-server" \
           --dns "${name_local},localhost" --ip "${ip_local}" \
           --server-name "${name_local} server certificate"
@@ -481,7 +481,7 @@ function pki_client_server {
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-client.key"; then
     echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
-    "${ZITI_BIN_DIR-}/ziti${ZITI_EXE_SUFFIX}" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
+    "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
           --client-file "${name_local}-client" \
           --key-file "${name_local}-server" \
           --client-name "${name_local}"
@@ -497,7 +497,7 @@ function pki_create_ca {
 
   echo "Creating CA: ${cert}"
   if ! test -f "${ZITI_PKI}/${cert}/keys/${cert}.key"; then
-    "${ZITI_BIN_DIR}/ziti${ZITI_EXE_SUFFIX}" pki create ca --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-file="${cert}" --ca-name="${cert} Root CA"
+    "${ZITI_BIN_DIR}/ziti" pki create ca --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-file="${cert}" --ca-name="${cert} Root CA"
   else
     echo "key exists"
   fi
@@ -507,7 +507,7 @@ function pki_create_ca {
 function pki_create_intermediate {
   echo "Creating intermediate: ${1} ${2} ${3}"
   if ! test -f "${ZITI_PKI}/${2}/keys/${2}.key"; then
-    "${ZITI_BIN_DIR}/ziti${ZITI_EXE_SUFFIX}" pki create intermediate --pki-root "${ZITI_PKI_OS_SPECIFIC}" --ca-name "${1}" \
+    "${ZITI_BIN_DIR}/ziti" pki create intermediate --pki-root "${ZITI_PKI_OS_SPECIFIC}" --ca-name "${1}" \
           --intermediate-name "${2}" \
           --intermediate-file "${2}" --max-path-len "${3}"
   else
@@ -647,7 +647,7 @@ function createPki {
 
   if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"; then
     echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-    "${ZITI_BIN_DIR-}/ziti${ZITI_EXE_SUFFIX}" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
+    "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
           --client-file="${ZITI_NETWORK-}-dotzeet" \
           --client-name "${ZITI_NETWORK-} Management"
   else
@@ -1324,7 +1324,6 @@ function setOs {
           export ZITI_OSTYPE="darwin"
   elif [[ "$OSTYPE" == "cygwin" ]]; then
           export ZITI_OSTYPE="windows"
-          export ZITI_EXE_SUFFIX=".exe"
           #echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
           #return 1
   elif [[ "$OSTYPE" == "msys" ]]; then
@@ -1332,7 +1331,6 @@ function setOs {
           return 1
   elif [[ "$OSTYPE" == "win32" ]]; then
           export ZITI_OSTYPE="windows"
-          export ZITI_EXE_SUFFIX=".exe"
   elif [[ "$OSTYPE" == "freebsd"* ]]; then
           echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
           return 1
