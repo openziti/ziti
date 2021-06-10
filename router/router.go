@@ -44,6 +44,7 @@ import (
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
@@ -72,6 +73,7 @@ type Router struct {
 	eventDispatcher event.Dispatcher
 	metricsReporter metrics.Handler
 	versionProvider common.VersionProvider
+	debugOperations map[byte]func(c *bufio.ReadWriter) error
 }
 
 func (self *Router) MetricsRegistry() metrics.UsageRegistry {
@@ -111,6 +113,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		shutdownDoneC:   make(chan struct{}),
 		eventDispatcher: eventDispatcher,
 		versionProvider: versionProvider,
+		debugOperations: map[byte]func(c *bufio.ReadWriter) error{},
 	}
 }
 
@@ -359,6 +362,84 @@ const (
 	OpenControlChannel  byte = 4
 )
 
+func (router *Router) RegisterDefaultDebugOps() {
+	router.debugOperations[DumpForwarderTables] = router.debugOpWriteForwarderTables
+	router.debugOperations[UpdateRoute] = router.debugOpUpdateRouter
+	router.debugOperations[CloseControlChannel] = router.debugOpCloseControlChannel
+	router.debugOperations[OpenControlChannel] = router.debugOpOpenControlChannel
+}
+
+func (router *Router) RegisterDebugOp(opId byte, f func(c *bufio.ReadWriter) error) {
+	router.debugOperations[opId] = f
+}
+
+func (router *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
+	tables := router.forwarder.Debug()
+	_, err := c.Write([]byte(tables))
+	return err
+}
+
+func (router *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
+	logrus.Error("received debug operation to update routes")
+	sizeBuf := make([]byte, 4)
+	if _, err := c.Read(sizeBuf); err != nil {
+		return err
+	}
+	size := binary.LittleEndian.Uint32(sizeBuf)
+	messageBuf := make([]byte, size)
+
+	if _, err := c.Read(messageBuf); err != nil {
+		return err
+	}
+
+	route := &ctrl_pb.Route{}
+	if err := proto.Unmarshal(messageBuf, route); err != nil {
+		return err
+	}
+
+	logrus.Errorf("updating with route: %+v", route)
+	logrus.Errorf("updating with route: %v", route)
+
+	router.forwarder.Route(route)
+	_, _ = c.WriteString("route added")
+	return nil
+}
+
+func (router *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
+	logrus.Warn("control channel: closing")
+	_, _ = c.WriteString("control channel: closing\n")
+	if toggleable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+		if err := toggleable.Disconnect(); err != nil {
+			logrus.WithError(err).Error("control channel: failed to close")
+			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+		} else {
+			logrus.Warn("control channel: closed")
+			_, _ = c.WriteString("control channel: closed")
+		}
+	} else {
+		logrus.Warn("control channel: error not toggleable")
+		_, _ = c.WriteString("control channel: error not toggleable")
+	}
+	return nil
+}
+
+func (router *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
+	logrus.Warn("control channel: reconnecting")
+	if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
+		if err := togglable.Reconnect(); err != nil {
+			logrus.WithError(err).Error("control channel: failed to reconnect")
+			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+		} else {
+			logrus.Warn("control channel: reconnected")
+			_, _ = c.WriteString("control channel: reconnected")
+		}
+	} else {
+		logrus.Warn("control channel: error not toggleable")
+		_, _ = c.WriteString("control channel: error not toggleable")
+	}
+	return nil
+}
+
 func (router *Router) HandleDebug(conn io.ReadWriter) error {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	op, err := bconn.ReadByte()
@@ -366,65 +447,10 @@ func (router *Router) HandleDebug(conn io.ReadWriter) error {
 		return err
 	}
 
-	switch op {
-	case DumpForwarderTables:
-		tables := router.forwarder.Debug()
-		_, err := conn.Write([]byte(tables))
-		return err
-	case UpdateRoute:
-		logrus.Error("received debug operation to update routes")
-		sizeBuf := make([]byte, 4)
-		if _, err := bconn.Read(sizeBuf); err != nil {
-			return err
-		}
-		size := binary.LittleEndian.Uint32(sizeBuf)
-		messageBuf := make([]byte, size)
-
-		if _, err := bconn.Read(messageBuf); err != nil {
-			return err
-		}
-
-		route := &ctrl_pb.Route{}
-		if err := proto.Unmarshal(messageBuf, route); err != nil {
-			return err
-		}
-
-		logrus.Errorf("updating with route: %+v", route)
-		logrus.Errorf("updating with route: %v", route)
-
-		router.forwarder.Route(route)
-	case CloseControlChannel:
-		logrus.Warn("control channel: closing")
-		_, _ = bconn.WriteString("control channel: closing\n")
-		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
-			if err := togglable.Disconnect(); err != nil {
-				logrus.WithError(err).Error("control channel: failed to close")
-				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
-			} else {
-				logrus.Warn("control channel: closed")
-				_, _ = bconn.WriteString("control channel: closed")
-			}
-		} else {
-			logrus.Warn("control channel: error not toggleable")
-			_, _ = bconn.WriteString("control channel: error not toggleable")
-		}
-	case OpenControlChannel:
-		logrus.Warn("control channel: reconnecting")
-		if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
-			if err := togglable.Reconnect(); err != nil {
-				logrus.WithError(err).Error("control channel: failed to reconnect")
-				_, _ = bconn.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
-			} else {
-				logrus.Warn("control channel: reconnected")
-				_, _ = bconn.WriteString("control channel: reconnected")
-			}
-		} else {
-			logrus.Warn("control channel: error not toggleable")
-			_, _ = bconn.WriteString("control channel: error not toggleable")
-		}
+	if opF, ok := router.debugOperations[op]; ok {
+		return opF(bconn)
 	}
-
-	return nil
+	return errors.Errorf("invalid operation %v", op)
 }
 
 type connectionToggle interface {
