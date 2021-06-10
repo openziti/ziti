@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/runner"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -75,8 +76,16 @@ func (s *ApiSessionEnforcer) Run() error {
 			break
 		}
 
-		for _, id := range ids {
-			_ = s.appEnv.GetHandlers().ApiSession.Delete(id)
+		logrus.Debugf("found %v expired api-sessions to remove", len(ids))
+
+		if err = s.appEnv.GetHandlers().ApiSession.DeleteBatch(ids); err != nil {
+			logrus.WithError(err).Error("failure while batch deleting expired api sessions")
+
+			for _, id := range ids {
+				if err = s.appEnv.GetHandlers().ApiSession.Delete(id); err != nil {
+					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
+				}
+			}
 		}
 	}
 

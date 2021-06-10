@@ -101,6 +101,10 @@ func (handler *ApiSessionHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
+func (handler *ApiSessionHandler) DeleteBatch(id []string) error {
+	return handler.deleteEntityBatch(id)
+}
+
 func (handler *ApiSessionHandler) MarkActivityById(apiSessionId string) {
 	handler.HeartbeatCollector.Mark(apiSessionId)
 }
