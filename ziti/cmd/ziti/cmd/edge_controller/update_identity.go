@@ -100,12 +100,12 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("defaultHostingCost") {
+	if o.Cmd.Flags().Changed("default-hosting-cost") {
 		setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("defaultHostingPrecedence") {
+	if o.Cmd.Flags().Changed("default-hosting-precedence") {
 		prec, err := normalizeAndValidatePrecedence(o.defaultHostingPrecedence)
 		if err != nil {
 			return err
