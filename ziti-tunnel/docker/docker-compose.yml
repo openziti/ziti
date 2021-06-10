@@ -1,43 +1,53 @@
 version: "3.3"
 
 x-base-service-conf: &base-service-conf
-    image: netfoundry/ziti-tunnel:latest
+    image: netfoundry/ziti-tunnel:latest # https://hub.docker.com/r/netfoundry/ziti-tunnel/tags?page=1&ordering=last_updated
     volumes:
-    - .:/netfoundry
+    - .:/netfoundry     # mount current dir with identity config file
     environment:
         - NF_REG_NAME
         - PFXLOG_NO_JSON=true
 ​
 services:
-    ziti-test:
-        <<: *base-service-conf
-        network_mode: host
-        entrypoint: ["sh", "-c", "while true; do sleep 11; done"]
-    ziti-tproxy:
+    ziti-tproxy:        # iptables transparent interceptor with DNS
         <<: *base-service-conf
         network_mode: host
         cap_add:
-        - NET_ADMIN    # iptables filter
-        - NET_RAW      # iptables mangle
-        command: tproxy
-#        command: tproxy --resolver udp://127.0.0.123:53
-    ziti-iproxy:
-        <<: *base-service-conf
-        network_mode: host
-        cap_add:
-        - NET_ADMIN    # iptables filter
-        - NET_RAW      # iptables mangle
-        command: tproxy --resolver none
-    ziti-proxy:
+        - NET_ADMIN     # iptables filter
+        - NET_RAW       # iptables mangle
+        dns:            # optionally, override DNS inherited from Docker host
+        - 127.0.0.1     # this first NS must match the built-in nameserver's bind address,
+        - 1.1.1.1       #   and a recursive NS is also needed e.g. 8.8.8.8
+        command: 
+        - tproxy
+        #- --resolver=udp://127.1.2.3:53     # override nameserver bind address (always 53/udp); default is 127.0.0.1
+        #- --dnsSvcIpRange=100.64.64.0/18    # override the IP range used for DNS intercepts; default is 100.64/10
+    ziti-proxy:         # bind a named service to a container port, optionally forward host port to container
         <<: *base-service-conf
         ports:
         - "8888:8888"
         - "9999:9999"
-        command: proxy "my example service":8888 "my other example service":9999
-    ziti-host-docker:  # terminate a service for a server that's reachable by this docker network
-        <<: *base-service-conf
-        command: host 
-    ziti-host-egress:  # terminate a service for a server that's reachable by the host network
+        command: 
+        - proxy
+        - "my example service":8888 # example named service and container port to bind as TCP proxy
+        #- "my other example service":9999
+    ziti-host:          # terminate a service for a server that's reachable by the host network
         <<: *base-service-conf
         network_mode: host
         command: host 
+    ziti-bridge:        # terminate a service for a server that's reachable by this Docker network
+        <<: *base-service-conf
+        command: host 
+    ziti-iproxy:        # iptables transparent interceptor without DNS
+        <<: *base-service-conf
+        network_mode: host
+        cap_add:
+        - NET_ADMIN     # iptables filter
+        - NET_RAW       # iptables mangle
+        command: 
+        - tproxy
+        - --resolver none
+    ziti-test:          # docker-compose exec ziti-test bash
+        <<: *base-service-conf
+        network_mode: host
+        entrypoint: ["sh", "-c", "while true; do sleep infinity; done"]
