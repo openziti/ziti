@@ -1202,6 +1202,7 @@ function waitForController {
   #done
   while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://${ZITI_EDGE_CONTROLLER_API}/version)" != "200" ]]; do
     echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+    sleep 3
   done
 }
 
