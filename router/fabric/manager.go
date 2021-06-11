@@ -17,6 +17,8 @@
 package fabric
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
@@ -62,6 +64,11 @@ type StateManager interface {
 
 	StartHeartbeat(channel channel2.Channel, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel2.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
+
+	DumpApiSessions(c *bufio.ReadWriter) error
+	MarkSyncInProgress(trackerId string)
+	MarkSyncStopped(trackerId string)
+	IsSyncInProgress() bool
 }
 
 type StateManagerImpl struct {
@@ -77,6 +84,28 @@ type StateManagerImpl struct {
 	events.EventEmmiter
 	heartbeatRunner    runner.Runner
 	heartbeatOperation *heartbeatOperation
+	currentSync        string
+	syncLock           sync.Mutex
+}
+
+func (sm *StateManagerImpl) MarkSyncInProgress(trackerId string) {
+	sm.syncLock.Lock()
+	defer sm.syncLock.Unlock()
+	sm.currentSync = trackerId
+}
+
+func (sm *StateManagerImpl) MarkSyncStopped(trackerId string) {
+	sm.syncLock.Lock()
+	defer sm.syncLock.Unlock()
+	if sm.currentSync == trackerId {
+		sm.currentSync = ""
+	}
+}
+
+func (sm *StateManagerImpl) IsSyncInProgress() bool {
+	sm.syncLock.Lock()
+	defer sm.syncLock.Unlock()
+	return sm.currentSync == ""
 }
 
 func NewStateManager() StateManager {
@@ -367,6 +396,46 @@ func (sm *StateManagerImpl) flushRecentlyRemoved() {
 	for _, key := range toRemove {
 		sm.recentlyRemovedSessions.Remove(key)
 	}
+}
+
+func (sm *StateManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
+	ch := make(chan string, 15)
+
+	go func() {
+		defer close(ch)
+		i := 0
+		deadline := time.After(time.Second)
+		timedOut := false
+		sm.apiSessionsByToken.Range(func(key, value interface{}) bool {
+			i++
+			session := value.(*edge_ctrl_pb.ApiSession)
+			val := fmt.Sprintf("%v: id: %v, token: %v\n", i, session.Id, session.Token)
+			select {
+			case ch <- val:
+			case <-deadline:
+				timedOut = true
+				return false
+			}
+			if i%10000 == 0 {
+				// allow a second to dump each 10k entries
+				deadline = time.After(time.Second)
+			}
+			return true
+		})
+		if timedOut {
+			select {
+			case ch <- "timed out":
+			case <-time.After(time.Second):
+			}
+		}
+	}()
+
+	for val := range ch {
+		if _, err := c.WriteString(val); err != nil {
+			return err
+		}
+	}
+	return c.Flush()
 }
 
 func newMapWithMutex() *MapWithMutex {

@@ -225,9 +225,12 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	hasApiSession := false
 
-	if apiSessionList, err := ae.GetHandlers().ApiSession.Query(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id)); err == nil {
-		hasApiSession = apiSessionList.Count > 0
-	} else {
+	err = ae.GetHandlers().ApiSession.StreamIds(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id), func(s string, err error) error {
+		hasApiSession = true
+		return nil
+	})
+
+	if err != nil {
 		pfxlog.Logger().Errorf("error attempting to determine identity id's [%s] API session existence: %v", identity.Id, err)
 	}
 

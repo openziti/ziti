@@ -65,8 +65,8 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	broker.ae.GetStores().Session.AddListener(boltz.EventDelete, broker.sessionDeleted)
 	broker.ae.GetStores().ApiSession.AddListener(boltz.EventCreate, broker.apiSessionCreated)
 	broker.ae.GetStores().ApiSession.AddListener(boltz.EventDelete, broker.apiSessionDeleted)
-	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventCreate, broker.apiSessionCertificateHandler)
-	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventDelete, broker.apiSessionCertificateHandler)
+	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventCreate, broker.apiSessionCertificateCreated)
+	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventDelete, broker.apiSessionCertificateDeleted)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 
@@ -156,7 +156,15 @@ func (broker *Broker) sessionDeleted(args ...interface{}) {
 	broker.routerSyncStrategy.SessionDeleted(session)
 }
 
-func (broker *Broker) apiSessionCertificateHandler(args ...interface{}) {
+func (broker *Broker) apiSessionCertificateCreated(args ...interface{}) {
+	broker.apiSessionCertificateHandler(false, args...)
+}
+
+func (broker *Broker) apiSessionCertificateDeleted(args ...interface{}) {
+	broker.apiSessionCertificateHandler(true, args...)
+}
+
+func (broker *Broker) apiSessionCertificateHandler(delete bool, args ...interface{}) {
 	var apiSessionCert *persistence.ApiSessionCertificate
 	if len(args) == 1 {
 		apiSessionCert, _ = args[0].(*persistence.ApiSessionCertificate)
@@ -174,7 +182,10 @@ func (broker *Broker) apiSessionCertificateHandler(args ...interface{}) {
 	})
 
 	if err != nil {
-		pfxlog.Logger().WithError(err).Error("could not process API Session certificate event, failed to query for parent API Session")
+		// If it's not found, it's because it was deleted, which is expected when the cert was deleted via session delete cascade
+		if !delete || !boltz.IsErrNotFoundErr(err) {
+			pfxlog.Logger().WithError(err).Error("could not process API Session certificate event, failed to query for parent API Session")
+		}
 		return
 	}
 

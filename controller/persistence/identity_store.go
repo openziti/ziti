@@ -49,8 +49,8 @@ const (
 
 	FieldIdentityBindServices              = "bindServices"
 	FieldIdentityDialServices              = "dialServices"
-	FieldIdentityDefaultHostingPrecedence  = "hostingPrecedence"
-	FieldIdentityDefaultHostingCost        = "hostingCost"
+	FieldIdentityDefaultHostingPrecedence  = "defaultHostingPrecedence"
+	FieldIdentityDefaultHostingCost        = "defaultHostingCost"
 	FieldIdentityServiceHostingPrecedences = "serviceHostingPrecedences"
 	FieldIdentityServiceHostingCosts       = "serviceHostingCosts"
 	FieldIdentityAppData                   = "appData"
