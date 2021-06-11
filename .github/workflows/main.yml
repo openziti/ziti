@@ -6,6 +6,7 @@ on:
       - main
       - release-v*
   pull_request:
+  workflow_dispatch:
 
 env:
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
