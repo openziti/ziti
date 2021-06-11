@@ -160,7 +160,7 @@ function getLatestZiti {
   if ! test -f "${ZITI_BINARIES_FILE_ABSPATH}"; then
     zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
     echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ZITI_BINARIES_FILE_ABSPATH}")"
-    wget -q "${zitidl}" -O "${ZITI_BINARIES_FILE_ABSPATH}"
+    curl -Ls "${zitidl}" -o "${ZITI_BINARIES_FILE_ABSPATH}"
   else
     echo -e "$(YELLOW 'Already Downloaded ')""$(BLUE "${ZITI_BINARIES_FILE}")"' at: '"${ZITI_BINARIES_FILE_ABSPATH}"
   fi
@@ -193,7 +193,7 @@ function getLatestZiti {
 }
 
 function checkPrereqs {
-  commands_to_test=(curl jq wget)
+  commands_to_test=(curl jq)
   missing_requirements=""
   # verify all the commands required in the automation exist before trying to run the full suite
   for cmd in "${commands_to_test[@]}"
@@ -1327,8 +1327,9 @@ function setOs {
           #echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
           #return 1
   elif [[ "$OSTYPE" == "msys" ]]; then
-          echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
-          return 1
+          export ZITI_OSTYPE="windows"
+          #echo -e "  * ERROR: $(RED "\$OSTYPE [$OSTYPE] is not supported at this time") "
+          #return 1
   elif [[ "$OSTYPE" == "win32" ]]; then
           export ZITI_OSTYPE="windows"
   elif [[ "$OSTYPE" == "freebsd"* ]]; then
