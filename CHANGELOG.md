@@ -1,8 +1,20 @@
+# Release 0.20.9
+
+## What's New
+
+* Bug fix: router session sync would fail if it took longer than a second
+* Bug fix: API sessions created during session sync could get thrown out when session sync was finalized
+* Bug fix: Update of identity defaultHostingCost and defaultHostingPrecedence didn't work
+* Improvement: List identities is faster as it no longer always iterates through all api-sessions
+* Improvement: API Session enforcer now batches deletes of session for better performance
+
 # Release 0.20.8
 
 ## What's New
 
 * 0.20.7 was missing the most up-to-date version of the openziti/edge library dependency
+
+# Release 0.20.7
 
 ## What's New
 
