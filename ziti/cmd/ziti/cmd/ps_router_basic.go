@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/agent"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -26,15 +25,12 @@ import (
 	"os"
 )
 
-// PsRouteOptions the options for the create spring command
-type PsDumpRoutesOptions struct {
+type PsBasicRouterCmdOptions struct {
 	PsOptions
-	CtrlListener string
 }
 
-// NewCmdPsDumpRoutes creates a command object for the "dump-routes" command
-func NewCmdPsDumpRoutes(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsDumpRoutesOptions{
+func NewCmdPsBasicRouterCmd(name string, op byte, f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &PsBasicRouterCmdOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
 				Factory: f,
@@ -46,11 +42,11 @@ func NewCmdPsDumpRoutes(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 	cmd := &cobra.Command{
 		Args: cobra.MaximumNArgs(1),
-		Use:  "dump-routes <optional-target> ",
+		Use:  name + " <optional-target> ",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
+			err := options.Run(op)
 			cmdhelper.CheckErr(err)
 		},
 	}
@@ -61,13 +57,13 @@ func NewCmdPsDumpRoutes(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 }
 
 // Run implements the command
-func (o *PsDumpRoutesOptions) Run() error {
+func (o *PsBasicRouterCmdOptions) Run(op byte) error {
 	addr, err := agent.ParseGopsAddress(o.Args)
 	if err != nil {
 		return err
 	}
 
-	buf := []byte{router.DumpForwarderTables}
+	buf := []byte{op}
 
 	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
 }
