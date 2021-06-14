@@ -12074,6 +12074,8 @@ definitions:
     x-class: OS
   postureCheckPatch:
     type: object
+    required:
+    - typeId
     properties:
       name:
         type: string
@@ -12081,6 +12083,8 @@ definitions:
         $ref: '#/definitions/attributes'
       tags:
         $ref: '#/definitions/tags'
+      typeId:
+        $ref: '#/definitions/postureCheckType'
     discriminator: typeId
   postureCheckProcessCreate:
     allOf:

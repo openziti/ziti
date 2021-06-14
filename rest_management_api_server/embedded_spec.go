@@ -17045,6 +17045,9 @@ func init() {
     },
     "postureCheckPatch": {
       "type": "object",
+      "required": [
+        "typeId"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -17054,6 +17057,9 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "typeId": {
+          "$ref": "#/definitions/postureCheckType"
         }
       },
       "discriminator": "typeId"
@@ -35719,6 +35725,9 @@ func init() {
     },
     "postureCheckPatch": {
       "type": "object",
+      "required": [
+        "typeId"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -35728,6 +35737,9 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "typeId": {
+          "$ref": "#/definitions/postureCheckType"
         }
       },
       "discriminator": "typeId"
