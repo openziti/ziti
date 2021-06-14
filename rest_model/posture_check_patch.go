@@ -62,6 +62,11 @@ type PostureCheckPatch interface {
 	Tags() Tags
 	SetTags(Tags)
 
+	// type Id
+	// Required: true
+	TypeID() PostureCheckType
+	SetTypeID(PostureCheckType)
+
 	// AdditionalProperties in base type shoud be handled just like regular properties
 	// At this moment, the base type property is pushed down to the subtype
 }
@@ -72,6 +77,8 @@ type postureCheckPatch struct {
 	roleAttributesField Attributes
 
 	tagsField Tags
+
+	typeIdField PostureCheckType
 }
 
 // Name gets the name of this polymorphic type
@@ -102,6 +109,15 @@ func (m *postureCheckPatch) Tags() Tags {
 // SetTags sets the tags of this polymorphic type
 func (m *postureCheckPatch) SetTags(val Tags) {
 	m.tagsField = val
+}
+
+// TypeID gets the type Id of this polymorphic type
+func (m *postureCheckPatch) TypeID() PostureCheckType {
+	return "postureCheckPatch"
+}
+
+// SetTypeID sets the type Id of this polymorphic type
+func (m *postureCheckPatch) SetTypeID(val PostureCheckType) {
 }
 
 // UnmarshalPostureCheckPatchSlice unmarshals polymorphic slices of PostureCheckPatch
@@ -258,6 +274,10 @@ func (m *postureCheckPatch) ContextValidate(ctx context.Context, formats strfmt.
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateTypeID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -281,6 +301,18 @@ func (m *postureCheckPatch) contextValidateTags(ctx context.Context, formats str
 	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *postureCheckPatch) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
 		}
 		return err
 	}

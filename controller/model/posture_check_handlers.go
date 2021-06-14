@@ -72,7 +72,13 @@ func (handler *PostureCheckHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessFingerprint) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessOs) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessPath) ||
-		strings.EqualFold(field, persistence.FieldPostureCheckProcessHashes)
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessHashes) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiOsType) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiHashes) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiPath) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiSignerFingerprints) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiProcesses) ||
+		strings.EqualFold(field, persistence.FieldSemantic)
 }
 
 func (handler *PostureCheckHandler) Update(ca *PostureCheck) error {

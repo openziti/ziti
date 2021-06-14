@@ -239,9 +239,13 @@ definitions:
   postureCheckPatch:
     type: object
     discriminator: typeId
+    required:
+      - typeId
     properties:
       name:
         type: string
+      typeId:
+        $ref: '../shared/posture-checks.yml#/definitions/postureCheckType'
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:

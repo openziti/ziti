@@ -85,6 +85,15 @@ func (m *PostureCheckDomainPatch) SetTags(val Tags) {
 	m.tagsField = val
 }
 
+// TypeID gets the type Id of this subtype
+func (m *PostureCheckDomainPatch) TypeID() PostureCheckType {
+	return "DOMAIN"
+}
+
+// SetTypeID sets the type Id of this subtype
+func (m *PostureCheckDomainPatch) SetTypeID(val PostureCheckType) {
+}
+
 // UnmarshalJSON unmarshals this object with a polymorphic type from a JSON structure
 func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
@@ -109,6 +118,8 @@ func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		Tags Tags `json:"tags"`
+
+		TypeID PostureCheckType `json:"typeId"`
 	}
 	buf = bytes.NewBuffer(raw)
 	dec = json.NewDecoder(buf)
@@ -125,6 +136,11 @@ func (m *PostureCheckDomainPatch) UnmarshalJSON(raw []byte) error {
 	result.roleAttributesField = base.RoleAttributes
 
 	result.tagsField = base.Tags
+
+	if base.TypeID != result.TypeID() {
+		/* Not the type we're looking for. */
+		return errors.New(422, "invalid typeId value: %q", base.TypeID)
+	}
 
 	result.Domains = data.Domains
 
@@ -155,6 +171,8 @@ func (m PostureCheckDomainPatch) MarshalJSON() ([]byte, error) {
 		RoleAttributes Attributes `json:"roleAttributes"`
 
 		Tags Tags `json:"tags"`
+
+		TypeID PostureCheckType `json:"typeId"`
 	}{
 
 		Name: m.Name(),
@@ -162,6 +180,8 @@ func (m PostureCheckDomainPatch) MarshalJSON() ([]byte, error) {
 		RoleAttributes: m.RoleAttributes(),
 
 		Tags: m.Tags(),
+
+		TypeID: m.TypeID(),
 	})
 	if err != nil {
 		return nil, err
@@ -276,6 +296,18 @@ func (m *PostureCheckDomainPatch) contextValidateTags(ctx context.Context, forma
 	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("tags")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureCheckDomainPatch) contextValidateTypeID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("typeId")
 		}
 		return err
 	}

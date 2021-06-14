@@ -20,6 +20,7 @@ package tests
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
 	"net/http"
@@ -427,7 +428,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 
 				t.Run("posture 03", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					
+
 					hash := process03.Hashes[1]
 					postureResponse := &rest_model.PostureResponseProcessCreate{
 						Hash:      hash,
@@ -478,7 +479,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 					})
 				})
 			})
-			
+
 			t.Run("by submitting invalid", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
@@ -516,7 +517,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.NotNil(resp)
 	})
-	
+
 	t.Run("can create a process all of multi posture check (anyOf, 4 processes) associated to a service", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
@@ -709,5 +710,89 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 			})
 		})
 	})
-}
 
+	t.Run("a PATCH operation against a process multi posture check", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		originalProcesses := []*rest_model.ProcessMulti{
+			process01,
+			process04,
+		}
+
+		patchProcesses := []*rest_model.ProcessMulti{
+			process02,
+			process03,
+			process04,
+		}
+
+		originalCheck := ctx.AdminManagementSession.requireNewPostureCheckProcessMulti(rest_model.SemanticAnyOf, originalProcesses, nil)
+
+		patchCheck := rest_model.PostureCheckProcessMultiPatch{
+			Processes: patchProcesses,
+			Semantic:  rest_model.SemanticAllOf,
+		}
+
+		newName := uuid.New().String()
+		patchCheck.SetName(newName)
+		patchCheck.SetTypeID(rest_model.PostureCheckTypePROCESSMULTI)
+
+		patchResp, patchErr := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(patchCheck).Patch("posture-checks/" + *originalCheck.ID())
+
+		t.Run("succeeds", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.Req.NoError(patchErr)
+			standardJsonResponseTests(patchResp, 200, t)
+		})
+
+		t.Run("can retrieve values properly", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			getResp, getErr := ctx.AdminManagementSession.newAuthenticatedRequest().Get("posture-checks/" + *originalCheck.ID())
+			ctx.Req.NoError(getErr)
+			envelope := rest_model.DetailPostureCheckEnvelope{
+				Meta: &rest_model.Meta{},
+			}
+
+			err := envelope.UnmarshalJSON(getResp.Body())
+
+			t.Run("response can be unmarshalled", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.Req.NoError(err)
+
+				data := envelope.Data()
+				getCheck := data.(*rest_model.PostureCheckProcessMultiDetail)
+				ctx.Req.NotNil(getCheck)
+
+				t.Run("retrieved values has the correct name", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.Equal(newName, *getCheck.Name())
+				})
+				t.Run("retrieved values has the correct semantic", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.Equal(rest_model.SemanticAllOf, *getCheck.Semantic)
+				})
+
+				t.Run("retrieved values has the correct number of processes", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					ctx.Req.Len(getCheck.Processes, len(patchCheck.Processes))
+				})
+
+				t.Run("retrieved values has the correct processes", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					for _, patchProcess := range patchProcesses {
+						isMatched := false
+						for _, getProcess := range getCheck.Processes {
+							if *getProcess.OsType == *patchProcess.OsType && *getProcess.Path == *patchProcess.Path {
+								isMatched = true
+								ctx.Req.ElementsMatch(patchProcess.Hashes, getProcess.Hashes)
+								ctx.Req.ElementsMatch(patchProcess.SignerFingerprints, getProcess.SignerFingerprints)
+								break
+							}
+						}
+						ctx.Req.True(isMatched, "a process applied via patch was not found in subsequent get: %s, %s, %v, %v", *patchProcess.OsType, *patchProcess.Path, patchProcess.Hashes, patchProcess.SignerFingerprints)
+					}
+				})
+			})
+		})
+	})
+}
