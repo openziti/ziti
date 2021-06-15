@@ -22,6 +22,7 @@ import (
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"net"
 	"os"
@@ -29,10 +30,12 @@ import (
 
 // Add an address (or prefix) to the specified network interface.
 func AddLocalAddress(prefix *net.IPNet, ifName string) error {
+	logrus.Debugf("adding local address '%v' to interface %v", prefix.String(), ifName)
 	return nlAddrReq(prefix, nil, ifName, unix.RTM_NEWADDR)
 }
 
 func RemoveLocalAddress(prefix *net.IPNet, ifName string) error {
+	logrus.Debugf("removing local address '%v' from interface %v", prefix.String(), ifName)
 	return nlAddrReq(prefix, nil, ifName, unix.RTM_DELADDR)
 }
 
