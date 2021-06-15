@@ -1,3 +1,10 @@
+# Release 0.20.10
+
+## What's New
+
+* Bug fix: patch for process multi would clear information
+
+
 # Release 0.20.9
 
 ## What's New
