@@ -90,7 +90,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           - image: centos
             name: testclient
             command: ["sh","-c","while true; set -x; do curl -sSLf eth0.ziti.cli 2>&1; set +x; sleep 5; done"]
-          - image: netfoundry/ziti-tunnel:0.5.8-2554
+          - image: netfoundry/ziti-tunnel:latest
             name: ziti-tunnel
             env:
             - name: NF_REG_NAME
