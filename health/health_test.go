@@ -133,9 +133,9 @@ func Test_ManagerWithEventCounts(t *testing.T) {
 					Action:  "increase cost 10",
 				},
 			},
+			Timeout: 100 * time.Millisecond,
 		},
 		Address: "localhost:9876",
-		Timeout: 100 * time.Millisecond,
 	}
 
 	err := mgr.RegisterServiceChecks(state, []CheckDefinition{pingDef})
@@ -213,9 +213,9 @@ func Test_ManagerWithDurations(t *testing.T) {
 					Action:  "increase cost 10",
 				},
 			},
+			Timeout: 100 * time.Millisecond,
 		},
 		Address: "localhost:9876",
-		Timeout: 100 * time.Millisecond,
 	}
 
 	err := mgr.RegisterServiceChecks(state, []CheckDefinition{pingDef})
@@ -269,9 +269,9 @@ func newHttpCheck() *HttpCheckDefinition {
 				{Trigger: "pass", Action: "mark healthy"},
 				{Trigger: "pass", Action: "increase cost 10"},
 			},
+			Timeout: 100 * time.Millisecond,
 		},
-		Url:     "http://localhost:9876",
-		Timeout: 100 * time.Millisecond,
+		Url: "http://localhost:9876",
 	}
 }
 
@@ -533,9 +533,9 @@ func Test_ChangeAndHealthSend(t *testing.T) {
 			Actions: []*ActionDefinition{
 				{Trigger: "change", Action: "send event"},
 			},
+			Timeout: 100 * time.Millisecond,
 		},
-		Url:     "http://localhost:9876",
-		Timeout: 100 * time.Millisecond,
+		Url: "http://localhost:9876",
 	}
 
 	err := mgr.RegisterServiceChecks(state, []CheckDefinition{healthCheckDef})

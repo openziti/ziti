@@ -20,6 +20,8 @@ dmitri.shuralyov.com/state v0.0.0-20180228185332-28bcc343414c/go.mod h1:0PRwlb0D
 git.apache.org/thrift.git v0.0.0-20180902110319-2566ecd5d999/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
 github.com/AppsFlyer/go-sundheit v0.3.1 h1:Zqnr3wV3WQmXonc234k9XZAoV2KHUHw3osR5k2iHQZE=
 github.com/AppsFlyer/go-sundheit v0.3.1/go.mod h1:iZ8zWMS7idcvmqewf5mEymWWgoOiG/0WD4+aeh+heX4=
+github.com/AppsFlyer/go-sundheit v0.4.0 h1:7ECd0YWaXJQ9LzdCFrpGxJVeAgXvNarN6uwxrJsh69A=
+github.com/AppsFlyer/go-sundheit v0.4.0/go.mod h1:iZ8zWMS7idcvmqewf5mEymWWgoOiG/0WD4+aeh+heX4=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
