@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -132,7 +133,7 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	switch q.Qtype {
 	case dns.TypeA:
 		name := q.Name
-		address, ok := r.names[name]
+		address, ok := r.names[strings.ToLower(name)]
 		if ok {
 			msg.Authoritative = true
 			msg.Rcode = dns.RcodeSuccess
@@ -156,17 +157,17 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 func (r *resolver) AddHostname(hostname string, ip net.IP) error {
 	r.namesMtx.Lock()
 	log.Infof("adding %s = %s to resolver", hostname, ip.String())
-	r.names[hostname+"."] = ip
+	r.names[strings.ToLower(hostname)+"."] = ip
 	r.namesMtx.Unlock()
 	return nil
 }
 
 func (r *resolver) RemoveHostname(hostname string, ip net.IP) error {
 	r.namesMtx.Lock()
-	if _, ok := r.names[hostname+"."]; ok {
+	if _, ok := r.names[strings.ToLower(hostname)+"."]; ok {
 		log.Infof("removing %s from resolver", hostname)
 	}
-	delete(r.names, hostname+".")
+	delete(r.names, strings.ToLower(hostname)+".")
 	r.namesMtx.Unlock()
 	return nil
 }
