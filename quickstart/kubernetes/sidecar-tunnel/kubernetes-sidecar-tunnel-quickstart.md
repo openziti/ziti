@@ -38,7 +38,9 @@ Create the Identity:
 
     $ ziti edge controller create identity device tunnel-sidecar -o tunnel-sidecar.jwt
 
-Create the AppWAN:
+Create the AppWAN and reference the service created in the Ziti Network Quickstart. We'll be using `eth0.ziti.cli`
+here but if you created `eth0.ziti.ui` in the quickstart - use that instead. Also note that in the
+tunnel-sidecar-demo.yaml:
 
     $ ziti edge controller create app-wan ziti-tunnel-appwan -i tunnel-sidecar -s eth0.ziti.cli
 
@@ -52,7 +54,7 @@ We can mount the JWT as a secret like this:
 ## Deploy the Pod
 
 Deploy a Pod that runs a client application and `ziti-tunnel` as a sidecar container. For this
-demonstration, the client application is `wget`. Our Pod runs `wget` in a loop so we can see content
+demonstration, the client application is `curl`. Our Pod runs `curl` in a loop so we can see content
 from our Ziti service in the Pod's logs.
 
 Save the following yaml to a file named tunnel-sidecar-demo.yaml
@@ -87,7 +89,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           containers:
           - image: centos
             name: testclient
-            command: ["sh","-c","while true; set -x; do curl -sSLf ethzero.ziti.ui 2>&1; set +x; sleep 5; done"]
+            command: ["sh","-c","while true; set -x; do curl -sSLf eth0.ziti.cli 2>&1; set +x; sleep 5; done"]
           - image: netfoundry/ziti-tunnel:0.5.8-2554
             name: ziti-tunnel
             env:
@@ -101,8 +103,8 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               mountPath: /netfoundry
             securityContext:
               capabilities:
-                add:
-                  - NET_ADMIN
+              add:
+                - NET_ADMIN
           dnsPolicy: "None"
           dnsConfig:
             nameservers:
@@ -146,5 +148,5 @@ Then we can tail the logs for the "testclient" container:
     54.67.121.213
     54.67.121.213
 
-Notice that the `wget` client is using the DNS name that we provided in the Ziti service definition to make the
+Notice that the `curl` client is using the DNS name that we provided in the Ziti service definition to make the
 request.
