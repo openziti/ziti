@@ -18,9 +18,13 @@ package router
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	gosundheit "github.com/AppsFlyer/go-sundheit"
+	"github.com/AppsFlyer/go-sundheit/checks"
+	httphealth "github.com/AppsFlyer/go-sundheit/http"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
@@ -48,6 +52,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
@@ -141,6 +146,10 @@ func (self *Router) Start() error {
 	self.startXlinkDialers()
 	self.startXlinkListeners()
 	self.startXgressListeners()
+
+	if err := self.StartHealthCheckEndpoint(); err != nil {
+		return err
+	}
 
 	if err := self.startControlPlane(); err != nil {
 		return err
@@ -353,6 +362,65 @@ func (self *Router) startControlPlane() error {
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
+}
+
+func (self *Router) StartHealthCheckEndpoint() error {
+	checkConfig := self.config.HealthCheck
+	if checkConfig.Port > 0 {
+		logrus.Infof("starting health check on %v:%v, with ctrl ping initially after %v, then every %v, timing out after %v",
+			checkConfig.BindAddress, checkConfig.Port, checkConfig.InitialDelay, checkConfig.CtrlPingInterval, checkConfig.CtrlPingTimeout)
+
+		h := gosundheit.New()
+		ctrlPinger := &controllerPinger{
+			router: self,
+		}
+		ctrlPingCheck, err := checks.NewPingCheck("controllerPing", ctrlPinger)
+		if err != nil {
+			return err
+		}
+		err = h.RegisterCheck(ctrlPingCheck,
+			gosundheit.ExecutionPeriod(checkConfig.CtrlPingInterval),
+			gosundheit.ExecutionTimeout(checkConfig.CtrlPingTimeout),
+			gosundheit.InitiallyPassing(true),
+			gosundheit.InitialDelay(checkConfig.InitialDelay),
+		)
+
+		if err != nil {
+			return err
+		}
+
+		http.Handle("/", httphealth.HandleHealthJSON(h))
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf("%v:%v", checkConfig.BindAddress, checkConfig.Port), nil)
+			logrus.WithError(err).Error("health check server exited")
+		}()
+	}
+
+	return nil
+}
+
+type controllerPinger struct {
+	router *Router
+}
+
+func (self *controllerPinger) PingContext(ctx context.Context) error {
+	ch := self.router.ctrl
+	if ch == nil {
+		return errors.Errorf("control channel not yet established")
+	}
+
+	if ch.IsClosed() {
+		return errors.Errorf("control channel not yet established")
+	}
+
+	msg := channel2.NewMessage(channel2.ContentTypePingType, nil)
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(30 * time.Second)
+	}
+	timeout := deadline.Sub(time.Now())
+	_, err := self.router.ctrl.SendAndWaitWithTimeout(msg, timeout)
+	return err
 }
 
 const (
