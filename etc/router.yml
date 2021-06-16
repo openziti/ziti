@@ -58,6 +58,18 @@ forwarder:
 ctrl:
   endpoint:             tls:127.0.0.1:6262
 
+healthCheck:
+  # Specifies the health check port. If not present, the health check will be disabled
+  #port: 8081
+  # Specifies what address to bind to. Default to blank, which will bind to all available addresses
+  bindAddress: ""
+  # How often to ping the controller over the control channel. Defaults to 30 seconds
+  ctrlPingInterval: 30s
+  # When to timeout the ping. Defaults to 15 seconds
+  ctrlPingTimeout: 15s
+  # How long to wait before pinging the controller. Defaults to 15 seconds
+  initialDelay: 15s
+
 # Listener Configuration
 #
 # Define the Xgress listeners to start up, and their configuration.

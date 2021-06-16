@@ -36,6 +36,18 @@ link:
   dialers:
     - binding:          transport
 
+healthCheck:
+  # Specifies the health check port. If not present, the health check will be disabled
+  #port: 8081
+  # Specifies what address to bind to. Default to blank, which will bind to all available addresses
+  bindAddress: ""
+  # How often to ping the controller over the control channel. Defaults to 30 seconds
+  ctrlPingInterval: 30s
+  # When to timeout the ping. Defaults to 15 seconds
+  ctrlPingTimeout: 15s
+  # How long to wait before pinging the controller. Defaults to 15 seconds
+  initialDelay: 15s
+  
 metrics:
   reportInterval: 15s
   messageQueueSize: 10

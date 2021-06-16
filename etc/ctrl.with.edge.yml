@@ -179,9 +179,12 @@ web:
     apis:
       # binding - required
       # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - health-checks
       #   - edge-management
       #   - edge-client
       #   - fabric-management
+      - binding: health-checks
+        options: { }
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.
@@ -190,3 +193,4 @@ web:
         options: { }
       - binding: edge-client
         options: { }
+

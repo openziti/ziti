@@ -3,7 +3,119 @@
 ## What's New
 
 * Bug fix: patch for process multi would clear information
+* Bug fix: [ziti#420](https://github.com/openziti/ziti/issues/420) fix ziti-tunnel failover with multiple interfaces when once becomes unavailable
+* Bug fix: [edge#670](https://github.com/openziti/edge/issues/670) fix ziti-tunnel issue where address were left assigned to loopback after clean shutdown
+* Bug fix: race condition in edge session sync could cause router panic. Regression since 0.20.9
+* Bug fix: terminator updates and deletes from the combined router/tunneler weren't working
+* Feature: Router health checks
+* Feature: Controller health check
 
+## Router Health Checks
+
+Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section. 
+
+```
+healthChecks:
+    ctrlPingCheck:
+        # How often to ping the controller over the control channel. Defaults to 30 seconds
+        interval: 30s
+        # When to timeout the ping. Defaults to 15 seconds
+        timeout: 15s
+        # How long to wait before pinging the controller. Defaults to 15 seconds
+        initialDelay: 15s
+```
+
+The health check endpoint is configured via XWeb, same as in the controller. As section like the following can be added to the router config to enable the endpoint.
+
+```
+web:
+  - name: health-check
+    bindPoints:
+      - interface: 127.0.0.1:8081
+        address: 127.0.0.1:8081
+    apis:
+      - binding: health-checks
+```
+
+The health check output will look like this:
+
+```
+$ curl -k https://localhost:8081/health-checks
+{
+    "data": {
+        "checks": [
+            {
+                "healthy": true,
+                "id": "controllerPing",
+                "lastCheckDuration": "767.381µs",
+                "lastCheckTime": "2021-06-21T16:22:36-04:00"
+            }
+        ],
+        "healthy": true
+    },
+    "meta": {}
+}
+
+```
+
+The endpoint will return a 200 if the health checks are passing and 503 if they are not.
+
+# Controller Health Check
+Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section. 
+
+```
+healthChecks:
+    boltCheck:
+        # How often to check the bolt db. Defaults to 30 seconds
+        interval: 30s
+        # When to timeout the bolt db check. Defaults to 15 seconds
+        timeout: 15s
+        # How long to wait before starting bolt db checks. Defaults to 15 seconds
+        initialDelay: 15s
+```
+
+The health check endpoint is configured via XWeb. In order to enable the health check endpoint, add it **first** to the list of apis.
+
+```
+    apis:
+      # binding - required
+      # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - edge-management
+      #   - edge-client
+      #   - fabric-management
+      - binding: health-checks
+        options: { }
+      - binding: edge-management
+        # options - variable optional/required
+        # This section is used to define values that are specified by the API they are associated with.
+        # These settings are per API. The example below is for the `edge-api` and contains both optional values and
+        # required values.
+        options: { }
+      - binding: edge-client
+        options: { }
+
+```
+
+The health check output will look like this:
+
+```
+$ curl -k https://localhost:1280/health-checks
+{
+    "data": {
+        "checks": [
+            {
+                "healthy": true,
+                "id": "bolt.read",
+                "lastCheckDuration": "27.46µs",
+                "lastCheckTime": "2021-06-21T17:32:31-04:00"
+            }
+        ],
+        "healthy": true
+    },
+    "meta": {}
+}
+
+```
 
 # Release 0.20.9
 
