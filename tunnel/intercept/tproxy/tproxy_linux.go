@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/sdk-golang/ziti/edge/impl"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -331,20 +332,16 @@ func getOriginalDest(oob []byte) (*net.UDPAddr, error) {
 }
 
 func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) {
-	log := pfxlog.Logger()
-	err := ipt.Delete(table, srcChain, []string{"-j", dstChain}...)
-	if err != nil {
-		log.Errorf("failed to unlink chain %s: %v", dstChain, err)
+	if err := ipt.Delete(table, srcChain, []string{"-j", dstChain}...); err != nil {
+		logrus.Errorf("failed to unlink chain %s: %v", dstChain, err)
 	}
 
-	err = ipt.ClearChain(table, dstChain)
-	if err != nil {
-		log.Errorf("failed to clear chain %s, %v", dstChain, err)
+	if err := ipt.ClearChain(table, dstChain); err != nil {
+		logrus.Errorf("failed to clear chain %s, %v", dstChain, err)
 	}
 
-	err = ipt.DeleteChain(table, dstChain)
-	if err != nil {
-		log.Errorf("failed to delete chain %s: %v", dstChain, err)
+	if err := ipt.DeleteChain(table, dstChain); err != nil {
+		logrus.Errorf("failed to delete chain %s: %v", dstChain, err)
 	}
 }
 
@@ -422,6 +419,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 		return fmt.Errorf("failed to add local route: %v", err)
 	}
 	tracker.AddAddress(ipNet.String())
+	self.addresses = append(self.addresses, interceptAddr)
 
 	interceptAddr.TproxySpec = []string{
 		"-m", "comment", "--comment", service.Name,
@@ -458,32 +456,36 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 }
 
 func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
-	// keep track of routes used by all intercepts. use a map to avoid duplicates
-	routes := map[string]*net.IPNet{}
+	var errors []error
+
 	for _, addr := range self.addresses {
 		err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
 		if err != nil {
-			return fmt.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+			errors = append(errors, err)
+			logrus.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
 		}
 		if self.interceptor.lanIf != "" {
 			err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
 			if err != nil {
-				return fmt.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+				errors = append(errors, err)
+				logrus.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
 			}
 		}
-		ipn := addr.IpNet()
-		routes[ipn.String()] = ipn
-	}
-	for _, ipNet := range routes {
+
+		ipNet := addr.IpNet()
 		if tracker.RemoveAddress(ipNet.String()) {
 			err := router.RemoveLocalAddress(ipNet, "lo")
 			if err != nil {
-				return fmt.Errorf("failed to remove route for service %s: %v", self.service.Name, err)
+				errors = append(errors, err)
+				logrus.Errorf("failed to remove route for service %s: %v", self.service.Name, err)
 			}
 		}
 	}
 
-	return nil
+	if len(errors) == 0 {
+		return nil
+	}
+	return impl.MultipleErrors(errors)
 }
 
 type IPPortAddr interface {

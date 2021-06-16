@@ -346,11 +346,13 @@ type AddressTracker interface {
 type addrTracker map[string]int
 
 func (self addrTracker) AddAddress(addr string) {
+	logrus.Debugf("adding %v from address tracker: %+v", addr, self)
 	useCnt := self[addr]
 	self[addr] = useCnt + 1
 }
 
 func (self addrTracker) RemoveAddress(addr string) bool {
+	logrus.Debugf("trying to remove %v from address tracker: %+v", addr, self)
 	useCnt := self[addr]
 	if useCnt <= 1 {
 		delete(self, addr)
