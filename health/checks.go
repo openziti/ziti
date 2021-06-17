@@ -18,6 +18,7 @@ import (
 type CheckDefinition interface {
 	GetType() string
 	GetInterval() time.Duration
+	GetTimeout() time.Duration
 	CreateCheck(name string) (Check, error)
 	CreateActions() ([]Action, error)
 	fmt.Stringer
@@ -161,11 +162,16 @@ func (self *actionImpl) Invoke(state *ServiceState) {
 
 type BaseCheckDefinition struct {
 	Interval time.Duration
+	Timeout  time.Duration
 	Actions  []*ActionDefinition
 }
 
 func (self *BaseCheckDefinition) GetInterval() time.Duration {
 	return self.Interval
+}
+
+func (self *BaseCheckDefinition) GetTimeout() time.Duration {
+	return self.Timeout
 }
 
 func (self *BaseCheckDefinition) CreateActions() ([]Action, error) {
@@ -183,7 +189,6 @@ func (self *BaseCheckDefinition) CreateActions() ([]Action, error) {
 type PortCheckDefinition struct {
 	BaseCheckDefinition `mapstructure:",squash"`
 	Address             string
-	Timeout             time.Duration
 }
 
 func (self *PortCheckDefinition) String() string {
@@ -195,13 +200,12 @@ func (self *PortCheckDefinition) GetType() string {
 }
 
 func (self *PortCheckDefinition) CreateCheck(name string) (Check, error) {
-	return checks.NewPingCheck(name, checks.NewDialPinger("tcp", self.Address), self.Timeout)
+	return checks.NewPingCheck(name, checks.NewDialPinger("tcp", self.Address))
 }
 
 type HttpCheckDefinition struct {
 	BaseCheckDefinition `mapstructure:",squash"`
 	Url                 string
-	Timeout             time.Duration
 	Method              string
 	Body                string
 	ExpectStatus        int

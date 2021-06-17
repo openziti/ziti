@@ -1,6 +1,7 @@
 package health
 
 import (
+	"context"
 	"fmt"
 	health "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
@@ -24,7 +25,7 @@ type ServiceUpdater interface {
 
 type Check interface {
 	Name() string
-	Execute() (details interface{}, err error)
+	Execute(context context.Context) (details interface{}, err error)
 }
 
 type Action interface {
@@ -222,17 +223,19 @@ func (self *manager) RegisterServiceChecks(service *ServiceState, checkDefinitio
 
 		self.checks.Store(id, context)
 
-		checkConfig := &health.Config{
-			Check:            check,
-			ExecutionPeriod:  checkDefinition.GetInterval(),
-			InitialDelay:     0,
-			InitiallyPassing: true,
+		options := []health.CheckOption{
+			health.ExecutionPeriod(checkDefinition.GetInterval()),
+			health.InitiallyPassing(true),
+		}
+
+		if checkDefinition.GetTimeout() > 0 {
+			options = append(options, health.ExecutionTimeout(checkDefinition.GetTimeout()))
 		}
 
 		logger.WithField("service", service.Service).
 			WithField("hostContext", service.HostContext).
 			Debugf("adding check: %v", checkDefinition.String())
-		if err = self.health.RegisterCheck(checkConfig); err != nil {
+		if err = self.health.RegisterCheck(check, options...); err != nil {
 			return err
 		}
 	}
