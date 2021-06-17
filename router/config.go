@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"math"
 	"time"
 )
 
@@ -88,6 +89,13 @@ type Config struct {
 	Metrics   struct {
 		ReportInterval   time.Duration
 		MessageQueueSize int
+	}
+	HealthCheck struct {
+		BindAddress      string
+		Port             uint16
+		CtrlPingInterval time.Duration
+		CtrlPingTimeout  time.Duration
+		InitialDelay     time.Duration
 	}
 	src map[interface{}]interface{}
 }
@@ -327,6 +335,49 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		}
 	}
+
+	cfg.HealthCheck.CtrlPingInterval = 30 * time.Second
+	cfg.HealthCheck.CtrlPingTimeout = 15 * time.Second
+	cfg.HealthCheck.InitialDelay = 15 * time.Second
+
+	if value, found := cfgmap["healthCheck"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["bindAddress"]; found {
+				if addr, ok := value.(string); !ok {
+					return nil, errors.Wrap(err, "invalid value for healthCheck.bindAddress")
+				} else {
+					cfg.HealthCheck.BindAddress = addr
+				}
+			}
+
+			if value, found := submap["port"]; found {
+				if port, ok := value.(int); !ok || port < 0 || port > math.MaxUint16 {
+					return nil, errors.Wrap(err, "invalid value for healthCheck.port")
+				} else {
+					cfg.HealthCheck.Port = uint16(port)
+				}
+			}
+
+			if value, found := submap["ctrlPingInterval"]; found {
+				if cfg.HealthCheck.CtrlPingInterval, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for healthCheck.ctrlPingInterval")
+				}
+			}
+
+			if value, found := submap["ctrlPingTimeout"]; found {
+				if cfg.HealthCheck.CtrlPingTimeout, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for healthCheck.ctrlPingTimeout")
+				}
+			}
+
+			if value, found := submap["initialDelay"]; found {
+				if cfg.HealthCheck.InitialDelay, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for healthCheck.initialDelay")
+				}
+			}
+		}
+	}
+
 	return cfg, nil
 }
 
