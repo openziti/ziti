@@ -25,3 +25,4 @@ Pipfile
 ziti.ignore
 linux-build
 *.log
+/build/

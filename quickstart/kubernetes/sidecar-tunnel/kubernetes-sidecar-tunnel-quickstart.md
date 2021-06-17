@@ -68,7 +68,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
         - ReadWriteOnce
       resources:
         requests:
-          storage: 1Gi
+          storage: 100Mi
     ---
     apiVersion: apps/v1
     kind: Deployment
@@ -103,7 +103,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               mountPath: /netfoundry
             securityContext:
               capabilities:
-              add:
+                add:
                 - NET_ADMIN
           dnsPolicy: "None"
           dnsConfig:
