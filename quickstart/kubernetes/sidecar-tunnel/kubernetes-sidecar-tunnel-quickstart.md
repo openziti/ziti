@@ -16,11 +16,9 @@ by hostname instead of IP address.
 
 [Here's some detail on how the various intercept modes work on Linux](https://openziti.github.io/ziti/clients/linux.html)
 
-
 ### Solution Overview
 
 ![Diagram of solution](./sidecar-diagram.svg)
-
 
 ## Prerequisites
 
@@ -36,13 +34,13 @@ We will create a new identity for our client, with a new AppWAN that uses the et
 
 Create the Identity:
 
-    $ ziti edge controller create identity device tunnel-sidecar -o tunnel-sidecar.jwt
+    ziti edge controller create identity device tunnel-sidecar -o tunnel-sidecar.jwt
 
 Create the AppWAN and reference the service created in the Ziti Network Quickstart. We'll be using `eth0.ziti.cli`
 here but if you created `eth0.ziti.ui` in the quickstart - use that instead. Also note that in the
 tunnel-sidecar-demo.yaml:
 
-    $ ziti edge controller create app-wan ziti-tunnel-appwan -i tunnel-sidecar -s eth0.ziti.cli
+    ziti edge controller create app-wan ziti-tunnel-appwan -i tunnel-sidecar -s eth0.ziti.cli
 
 ## Create a Kubernetes Secret
 
@@ -50,6 +48,7 @@ The `ziti-tunnel` sidecar will access its identity by mounting a Kubernetes secr
 We can mount the JWT as a secret like this:
 
     $ kubectl create secret generic tunnel-sidecar.jwt --from-file=tunnel-sidecar.jwt
+    secret/tunnel-sidecar.jwt created
 
 ## Deploy the Pod
 
@@ -97,7 +96,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               value: tunnel-sidecar
             volumeMounts:
             - name: tunnel-sidecar-jwt
-              mountPath: "/var/run/secrets/netfoundry.io/enrollment-token"
+              mountPath: "/var/run/secrets/kubernetes.io/enrollment-token"
               readOnly: true
             - name: ziti-tunnel-persistent-storage
               mountPath: /netfoundry
@@ -119,7 +118,6 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
             secret:
               secretName: tunnel-sidecar.jwt
 
-
 You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 
 1. The name of the identity that is assumed by `ziti-tunnel` must be passed into the container with the
@@ -133,6 +131,8 @@ You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 Once the yaml is saved, we can deploy the Pod with `kubectl`
 
     $ kubectl apply -f ./tunnel-sidecar-demo.yaml
+    persistentvolumeclaim/tunnel-sidecar-pv-claim created
+    deployment.apps/ziti-tunnel-sidecar-demo created
 
 ## Test the Service
 
