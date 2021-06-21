@@ -96,7 +96,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
               value: tunnel-sidecar
             volumeMounts:
             - name: tunnel-sidecar-jwt
-              mountPath: "/var/run/secrets/netfoundry.io/enrollment-token"
+              mountPath: "/var/run/secrets/kubernetes.io/enrollment-token"
               readOnly: true
             - name: ziti-tunnel-persistent-storage
               mountPath: /netfoundry
