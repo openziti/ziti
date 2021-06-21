@@ -408,7 +408,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.router = router.Create(config, NewVersionProviderTest())
 
 	stateManager := fabric.NewStateManager()
-	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager)
+	xgressEdgeFactory := xgress_edge.NewFactory(config, NewVersionProviderTest(), stateManager, ctx.router.MetricsRegistry())
 	xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
 
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)

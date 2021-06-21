@@ -180,8 +180,10 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 
 	logger := pfxlog.Logger().WithField("strategy", reqWithState.SyncStrategyType)
 
-	if reqWithState.isPostSyncData && h.syncTracker != nil {
-		h.syncTracker.Add(reqWithState)
+	if reqWithState.isPostSyncData {
+		if h.syncTracker != nil {
+			h.syncTracker.Add(reqWithState)
+		}
 		return
 	}
 
