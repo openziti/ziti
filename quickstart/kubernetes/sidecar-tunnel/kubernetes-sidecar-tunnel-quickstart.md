@@ -16,11 +16,9 @@ by hostname instead of IP address.
 
 [Here's some detail on how the various intercept modes work on Linux](https://openziti.github.io/ziti/clients/linux.html)
 
-
 ### Solution Overview
 
 ![Diagram of solution](./sidecar-diagram.svg)
-
 
 ## Prerequisites
 
@@ -118,7 +116,6 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           - name: tunnel-sidecar-jwt
             secret:
               secretName: tunnel-sidecar.jwt
-
 
 You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 
