@@ -91,7 +91,7 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 
 func NewAccepter(listener *listener, uListener channel2.UnderlayListener, options *channel2.Options) *Accepter {
 	edgeBindHandler := &edgeBindHandler{listener: listener}
-	sessionHandler := newSessionConnectHandler(listener.factory.stateManager, listener.options)
+	sessionHandler := newSessionConnectHandler(listener.factory.stateManager, listener.options, listener.factory.metricsRegistry)
 
 	optionsWithBind := options
 	if optionsWithBind == nil {

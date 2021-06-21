@@ -23,16 +23,24 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
 
 type sessionConnectionHandler struct {
-	stateManager fabric.StateManager
-	options      *Options
+	stateManager                     fabric.StateManager
+	options                          *Options
+	invalidApiSessionToken           metrics.Meter
+	invalidApiSessionTokenDuringSync metrics.Meter
 }
 
-func newSessionConnectHandler(stateManager fabric.StateManager, options *Options) *sessionConnectionHandler {
-	return &sessionConnectionHandler{stateManager: stateManager, options: options}
+func newSessionConnectHandler(stateManager fabric.StateManager, options *Options, metricsRegistry metrics.Registry) *sessionConnectionHandler {
+	return &sessionConnectionHandler{
+		stateManager:                     stateManager,
+		options:                          options,
+		invalidApiSessionToken:           metricsRegistry.Meter("edge.invalid_api_tokens"),
+		invalidApiSessionTokenDuringSync: metricsRegistry.Meter("edge.invalid_api_tokens_during_sync"),
+	}
 }
 
 func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error {
@@ -59,6 +67,11 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 
 			for _, cert := range certificates {
 				subjects = append(subjects, cert.Subject.String())
+			}
+
+			handler.invalidApiSessionToken.Mark(1)
+			if handler.stateManager.IsSyncInProgress() {
+				handler.invalidApiSessionTokenDuringSync.Mark(1)
 			}
 
 			return fmt.Errorf("no api session found for token [%s], fingerprints: [%v], subjects [%v]", token, fingerprints, subjects)

@@ -13,7 +13,7 @@ zitiEdgeDir=$(realpath "$scriptDir/..")
 clientSourceSpec=$(realpath "$zitiEdgeDir/specs/source/client.yml")
 clientSwagSpec=$(realpath "$zitiEdgeDir/specs/client.yml")
 
-managementSourceSpec=$(realpath "$zitiEdgeDir/specs/management.yml")
+managementSourceSpec=$(realpath "$zitiEdgeDir/specs/source/management.yml")
 managementSwagSpec=$(realpath "$zitiEdgeDir/specs/management.yml")
 
 copyrightFile=$(realpath "$scriptDir/template.copyright.txt")

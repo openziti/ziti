@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"strings"
@@ -44,6 +45,7 @@ type Factory struct {
 	stateManager     fabric.StateManager
 	versionProvider  common.VersionProvider
 	certChecker      *CertExpirationChecker
+	metricsRegistry  metrics.Registry
 }
 
 func (factory *Factory) Channel() channel2.Channel {
@@ -93,7 +95,7 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, ch))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
 	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
-	ch.AddReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func(){
+	ch.AddReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
 		factory.certChecker.CertsUpdated()
 	}))
 
@@ -144,12 +146,13 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider, stateManager fabric.StateManager) *Factory {
+func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
 	factory := &Factory{
 		hostedServices:  &hostedServiceRegistry{},
 		stateManager:    stateManager,
 		versionProvider: versionProvider,
 		routerConfig:    routerConfig,
+		metricsRegistry: metricsRegistry,
 	}
 	return factory
 }
