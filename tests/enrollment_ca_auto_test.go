@@ -29,6 +29,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/rest_model"
 	"math/big"
 	"net/http"
 	"strings"
@@ -46,6 +47,9 @@ func Test_IdentityEnrollment(t *testing.T) {
 
 		t.Run("setup CA", func(t *testing.T) {
 			testCa := newTestCa()
+
+			testCa.identityNameFormat = "[requestedName]"
+
 			ctx.testContextChanged(t)
 
 			testCaId := ctx.AdminManagementSession.requireCreateEntity(testCa)
@@ -128,11 +132,12 @@ func Test_IdentityEnrollment(t *testing.T) {
 			})
 
 			t.Run("can enroll with a name", func(t *testing.T) {
-				t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
+				t.Run("can enroll with", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 					ctx.Req.NoError(err)
 
+					name := eid.New()
 					restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
 					transport.TLSClientConfig.Certificates = []tls.Certificate{
 						{
@@ -143,12 +148,35 @@ func Test_IdentityEnrollment(t *testing.T) {
 
 					resp, err := restClient.R().
 						SetHeader("content-type", "application/json").
-						SetBody(`{"name": "` + eid.New() + `"}`).
+						SetBody(`{"name": "` + name + `"}`).
 						Post("enroll?method=ca")
 
 					ctx.Req.NoError(err)
 
 					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+					t.Run("the name was given to the identity", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities")
+
+						ctx.Req.NoError(err)
+						standardJsonResponseTests(resp, http.StatusOK, t)
+
+						envelope := rest_model.ListIdentitiesEnvelope{}
+
+						err = envelope.UnmarshalBinary(resp.Body())
+						ctx.Req.NoError(err)
+						found := false
+						for _, identity := range envelope.Data {
+							if *identity.Name == name {
+								found = true
+								break
+							}
+						}
+
+						ctx.Req.True(found, "identity with name not found")
+					})
 				})
 			})
 		})
