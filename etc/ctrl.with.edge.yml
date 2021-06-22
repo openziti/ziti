@@ -79,6 +79,15 @@ mgmt:
 #  enabled:              false
 #  delay:                5
 
+healthChecks:
+  boltCheck:
+    # How often to try entering a bolt read tx. Defaults to 30 seconds
+    interval: 30s
+    # When to timeout the check. Defaults to 15 seconds
+    timeout: 15s
+    # How long to wait before starting the check. Defaults to 15 seconds
+    initialDelay: 15s
+
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:

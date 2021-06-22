@@ -36,17 +36,14 @@ link:
   dialers:
     - binding:          transport
 
-healthCheck:
-  # Specifies the health check port. If not present, the health check will be disabled
-  #port: 8081
-  # Specifies what address to bind to. Default to blank, which will bind to all available addresses
-  bindAddress: ""
-  # How often to ping the controller over the control channel. Defaults to 30 seconds
-  ctrlPingInterval: 30s
-  # When to timeout the ping. Defaults to 15 seconds
-  ctrlPingTimeout: 15s
-  # How long to wait before pinging the controller. Defaults to 15 seconds
-  initialDelay: 15s
+healthChecks:
+  ctrlPingCheck:
+    # How often to ping the controller over the control channel. Defaults to 30 seconds
+    interval: 30s
+    # When to timeout the ping. Defaults to 15 seconds
+    timeout: 15s
+    # How long to wait before pinging the controller. Defaults to 15 seconds
+    initialDelay: 15s
   
 metrics:
   reportInterval: 15s
@@ -114,3 +111,28 @@ listeners:
   - binding: transport
     address: tls:0.0.0.0:7099
 
+web:
+  # name - required
+  # Provides a name for this listener, used for logging output. Not required to be unique, but is highly suggested.
+  - name: health-check
+    # bindPoints - required
+    # One or more bind points are required. A bind point specifies an interface (interface:port string) that defines
+    # where on the host machine the webListener will listen and the address (host:port) that should be used to
+    # publicly address the webListener(i.e. mydomain.com, localhost, 127.0.0.1). This public address may be used for
+    # incoming address resolution as well as used in responses in the API.
+    bindPoints:
+      #interface - required
+      # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
+      - interface: 127.0.0.1:8081
+        # address - required
+        # The public address that external incoming requests will be able to resolve. Used in request processing and
+        # response content that requires full host:port/path addresses.
+        address: 127.0.0.1:8081
+    # apis - required
+    # Allows one or more APIs to be bound to this webListener
+    apis:
+      # binding - required
+      # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - health-checks
+      - binding: health-checks
+~                               
