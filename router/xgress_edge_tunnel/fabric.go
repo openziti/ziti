@@ -291,7 +291,7 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 func (self *fabricProvider) removeTerminator(terminatorId string) error {
 	msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorRequestType), []byte(terminatorId))
 	responseMsg, err := self.ctrlCh.Channel().SendAndWaitWithTimeout(msg, self.ctrlCh.DefaultRequestTimeout())
-	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
+	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType)
 }
 
 func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, precedence *edge.Precedence) error {
@@ -301,6 +301,7 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 
 	if cost != nil {
 		request.Cost = uint32(*cost)
+		request.UpdateCost = true
 	}
 
 	if precedence != nil {
@@ -322,7 +323,7 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 	logger.Debug("updating terminator")
 
 	responseMsg, err := self.ctrlCh.Channel().SendForReply(request, self.ctrlCh.DefaultRequestTimeout())
-	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
+	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTunnelTerminatorResponseType); err != nil {
 		logger.WithError(err).Error("terminator update failed")
 		return err
 	}

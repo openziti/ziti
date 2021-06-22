@@ -46,7 +46,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
-	"github.com/openziti/fabric/controller/xweb"
+	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"

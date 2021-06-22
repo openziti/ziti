@@ -68,6 +68,17 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 		return
 	}
 
+	logger := logrus.
+		WithField("router", self.ch.Id().Token).
+		WithField("token", ctx.req.SessionToken).
+		WithField("terminator", ctx.req.TerminatorId).
+		WithField("cost", ctx.req.Cost).
+		WithField("updateCost", ctx.req.UpdateCost).
+		WithField("precedence", ctx.req.Precedence).
+		WithField("updatePrecedence", ctx.req.UpdatePrecedence)
+
+	logger.Debug("update request received")
+
 	ctx.loadSession(ctx.req.SessionToken)
 	ctx.checkSessionType(persistence.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
@@ -78,11 +89,6 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 		self.returnError(ctx, ctx.err)
 		return
 	}
-
-	logger := logrus.
-		WithField("router", self.ch.Id().Token).
-		WithField("token", ctx.req.SessionToken).
-		WithField("terminator", ctx.req.TerminatorId)
 
 	logger.Info("updated terminator")
 

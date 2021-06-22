@@ -27,7 +27,7 @@ import (
 	clientInformational "github.com/openziti/edge/rest_client_api_server/operations/informational"
 	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/fabric/controller/xweb"
+	"github.com/openziti/fabric/xweb"
 	"runtime"
 	"sync"
 )
@@ -110,7 +110,7 @@ func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 		for apiBinding, apiVersionMap := range ir.cachedVersions.APIVersions {
 			for apiBaseUrl := range apiToBaseUrls[apiBinding] {
 				apiVersion := apiVersionMap["v1"]
-				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://" + apiBaseUrl)
+				apiVersion.APIBaseUrls = append(apiVersion.APIBaseUrls, "https://"+apiBaseUrl)
 				apiVersionMap["v1"] = apiVersion
 			}
 		}
@@ -135,7 +135,7 @@ func apiBindingToPath(binding string) string {
 
 func mapApiVersionToRestModel(path string) rest_model.APIVersion {
 	return rest_model.APIVersion{
-		Path:       &path,
+		Path:        &path,
 		APIBaseUrls: []string{},
 	}
 }

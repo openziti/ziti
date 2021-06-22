@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_management_api_client"
 	"github.com/openziti/edge/rest_management_api_server"
-	"github.com/openziti/fabric/controller/xweb"
+	"github.com/openziti/fabric/xweb"
 	"net/http"
 	"strings"
 	"time"

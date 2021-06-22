@@ -48,13 +48,13 @@ func (self *updateTunnelTerminatorHandler) Label() string {
 }
 
 func (self *updateTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	req := &edge_ctrl_pb.UpdateTerminatorRequest{}
+	req := &edge_ctrl_pb.UpdateTunnelTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal UpdateTerminator")
 		return
 	}
 
-	ctx := &UpdateTerminatorRequestContext{
+	ctx := &UpdateTunnelTerminatorRequestContext{
 		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
 		req:                       req,
 	}
@@ -62,12 +62,19 @@ func (self *updateTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, 
 	go self.UpdateTerminator(ctx)
 }
 
-func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorRequestContext) {
-	logger := logrus.WithField("router", self.ch.Id().Token).WithField("terminatorId", ctx.req.TerminatorId)
-
+func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTerminatorRequestContext) {
 	if !ctx.loadRouter() {
 		return
 	}
+
+	logger := logrus.WithField("router", self.ch.Id().Token).
+		WithField("terminatorId", ctx.req.TerminatorId).
+		WithField("cost", ctx.req.Cost).
+		WithField("updateCost", ctx.req.UpdateCost).
+		WithField("precedence", ctx.req.Precedence).
+		WithField("updatePrecedence", ctx.req.UpdatePrecedence)
+
+	logrus.Debug("update request received")
 
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.TunnelBinding)
 	ctx.updateTerminator(terminator, ctx.req)

@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_client_api_client"
 	"github.com/openziti/edge/rest_client_api_server"
-	"github.com/openziti/fabric/controller/xweb"
+	"github.com/openziti/fabric/xweb"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
@@ -45,7 +45,7 @@ func (factory ClientApiFactory) Validate(config *xweb.Config) error {
 	for _, webListener := range config.WebListeners {
 		for _, api := range webListener.APIs {
 
-			if webListener.IdentityConfig != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding){
+			if webListener.IdentityConfig != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
 				caBytes, err := ioutil.ReadFile(webListener.IdentityConfig.CA)
 
 				if err != nil {
