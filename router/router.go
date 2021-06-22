@@ -24,11 +24,11 @@ import (
 	"fmt"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
-	httphealth "github.com/AppsFlyer/go-sundheit/http"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/health"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
@@ -41,6 +41,7 @@ import (
 	"github.com/openziti/fabric/router/xgress_transport_udp"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
+	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
@@ -52,7 +53,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
-	"net/http"
 	"time"
 )
 
@@ -79,6 +79,9 @@ type Router struct {
 	metricsReporter metrics.Handler
 	versionProvider common.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
+
+	xwebs               []xweb.Xweb
+	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
 }
 
 func (self *Router) MetricsRegistry() metrics.UsageRegistry {
@@ -109,16 +112,17 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	xgress.InitRetransmitter(fwd, fwd, metricsRegistry, closeNotify)
 
 	return &Router{
-		config:          config,
-		faulter:         faulter,
-		scanner:         scanner,
-		forwarder:       fwd,
-		metricsRegistry: metricsRegistry,
-		shutdownC:       closeNotify,
-		shutdownDoneC:   make(chan struct{}),
-		eventDispatcher: eventDispatcher,
-		versionProvider: versionProvider,
-		debugOperations: map[byte]func(c *bufio.ReadWriter) error{},
+		config:              config,
+		faulter:             faulter,
+		scanner:             scanner,
+		forwarder:           fwd,
+		metricsRegistry:     metricsRegistry,
+		shutdownC:           closeNotify,
+		shutdownDoneC:       make(chan struct{}),
+		eventDispatcher:     eventDispatcher,
+		versionProvider:     versionProvider,
+		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
+		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
 	}
 }
 
@@ -139,6 +143,15 @@ func (self *Router) Start() error {
 
 	self.startProfiling()
 
+	healthChecker, err := self.initializeHealthChecks()
+	if err != nil {
+		logrus.WithError(err).Fatalf("failed to create health checker")
+	}
+
+	if err := self.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+		logrus.WithError(err).Fatalf("failed to create health checks api factory")
+	}
+
 	if err := self.registerComponents(); err != nil {
 		return err
 	}
@@ -147,8 +160,8 @@ func (self *Router) Start() error {
 	self.startXlinkListeners()
 	self.startXgressListeners()
 
-	if err := self.StartHealthCheckEndpoint(); err != nil {
-		return err
+	for _, web := range self.xwebs {
+		go web.Run()
 	}
 
 	if err := self.startControlPlane(); err != nil {
@@ -177,6 +190,10 @@ func (self *Router) Shutdown() error {
 			if err := xgressListener.Close(); err != nil {
 				errors = append(errors, err)
 			}
+		}
+
+		for _, web := range self.xwebs {
+			go web.Shutdown()
 		}
 
 		close(self.shutdownDoneC)
@@ -241,6 +258,10 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
+
+	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry)); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -364,39 +385,149 @@ func (self *Router) startControlPlane() error {
 	return nil
 }
 
-func (self *Router) StartHealthCheckEndpoint() error {
-	checkConfig := self.config.HealthCheck
-	if checkConfig.Port > 0 {
-		logrus.Infof("starting health check on %v:%v, with ctrl ping initially after %v, then every %v, timing out after %v",
-			checkConfig.BindAddress, checkConfig.Port, checkConfig.InitialDelay, checkConfig.CtrlPingInterval, checkConfig.CtrlPingTimeout)
+func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
+	checkConfig := self.config.HealthChecks
+	logrus.Infof("starting health check with ctrl ping initially after %v, then every %v, timing out after %v",
+		checkConfig.CtrlPingCheck.InitialDelay, checkConfig.CtrlPingCheck.Interval, checkConfig.CtrlPingCheck.Timeout)
 
-		h := gosundheit.New()
-		ctrlPinger := &controllerPinger{
-			router: self,
-		}
-		ctrlPingCheck, err := checks.NewPingCheck("controllerPing", ctrlPinger)
-		if err != nil {
-			return err
-		}
-		err = h.RegisterCheck(ctrlPingCheck,
-			gosundheit.ExecutionPeriod(checkConfig.CtrlPingInterval),
-			gosundheit.ExecutionTimeout(checkConfig.CtrlPingTimeout),
-			gosundheit.InitiallyPassing(true),
-			gosundheit.InitialDelay(checkConfig.InitialDelay),
-		)
-
-		if err != nil {
-			return err
-		}
-
-		http.Handle("/", httphealth.HandleHealthJSON(h))
-		go func() {
-			err := http.ListenAndServe(fmt.Sprintf("%v:%v", checkConfig.BindAddress, checkConfig.Port), nil)
-			logrus.WithError(err).Error("health check server exited")
-		}()
+	h := gosundheit.New()
+	ctrlPinger := &controllerPinger{
+		router: self,
+	}
+	ctrlPingCheck, err := checks.NewPingCheck("controllerPing", ctrlPinger)
+	if err != nil {
+		return nil, err
 	}
 
+	err = h.RegisterCheck(ctrlPingCheck,
+		gosundheit.ExecutionPeriod(checkConfig.CtrlPingCheck.InitialDelay),
+		gosundheit.ExecutionTimeout(checkConfig.CtrlPingCheck.Timeout),
+		gosundheit.InitiallyPassing(true),
+		gosundheit.InitialDelay(checkConfig.CtrlPingCheck.InitialDelay),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
+const (
+	DumpForwarderTables byte = 1
+	UpdateRoute         byte = 2
+	CloseControlChannel byte = 3
+	OpenControlChannel  byte = 4
+)
+
+func (self *Router) RegisterDefaultDebugOps() {
+	self.debugOperations[DumpForwarderTables] = self.debugOpWriteForwarderTables
+	self.debugOperations[UpdateRoute] = self.debugOpUpdateRouter
+	self.debugOperations[CloseControlChannel] = self.debugOpCloseControlChannel
+	self.debugOperations[OpenControlChannel] = self.debugOpOpenControlChannel
+}
+
+func (self *Router) RegisterDebugOp(opId byte, f func(c *bufio.ReadWriter) error) {
+	self.debugOperations[opId] = f
+}
+
+func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
+	tables := self.forwarder.Debug()
+	_, err := c.Write([]byte(tables))
+	return err
+}
+
+func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
+	logrus.Error("received debug operation to update routes")
+	sizeBuf := make([]byte, 4)
+	if _, err := c.Read(sizeBuf); err != nil {
+		return err
+	}
+	size := binary.LittleEndian.Uint32(sizeBuf)
+	messageBuf := make([]byte, size)
+
+	if _, err := c.Read(messageBuf); err != nil {
+		return err
+	}
+
+	route := &ctrl_pb.Route{}
+	if err := proto.Unmarshal(messageBuf, route); err != nil {
+		return err
+	}
+
+	logrus.Errorf("updating with route: %+v", route)
+	logrus.Errorf("updating with route: %v", route)
+
+	self.forwarder.Route(route)
+	_, _ = c.WriteString("route added")
 	return nil
+}
+
+func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
+	logrus.Warn("control channel: closing")
+	_, _ = c.WriteString("control channel: closing\n")
+	if toggleable, ok := self.ctrl.Underlay().(connectionToggle); ok {
+		if err := toggleable.Disconnect(); err != nil {
+			logrus.WithError(err).Error("control channel: failed to close")
+			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+		} else {
+			logrus.Warn("control channel: closed")
+			_, _ = c.WriteString("control channel: closed")
+		}
+	} else {
+		logrus.Warn("control channel: error not toggleable")
+		_, _ = c.WriteString("control channel: error not toggleable")
+	}
+	return nil
+}
+
+func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
+	logrus.Warn("control channel: reconnecting")
+	if togglable, ok := self.ctrl.Underlay().(connectionToggle); ok {
+		if err := togglable.Reconnect(); err != nil {
+			logrus.WithError(err).Error("control channel: failed to reconnect")
+			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+		} else {
+			logrus.Warn("control channel: reconnected")
+			_, _ = c.WriteString("control channel: reconnected")
+		}
+	} else {
+		logrus.Warn("control channel: error not toggleable")
+		_, _ = c.WriteString("control channel: error not toggleable")
+	}
+	return nil
+}
+
+func (self *Router) HandleDebug(conn io.ReadWriter) error {
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	op, err := bconn.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	if opF, ok := self.debugOperations[op]; ok {
+		return opF(bconn)
+	}
+	return errors.Errorf("invalid operation %v", op)
+}
+
+func (self *Router) RegisterXweb(x xweb.Xweb) error {
+	if err := self.config.Configure(x); err != nil {
+		return err
+	}
+	if x.Enabled() {
+		self.xwebs = append(self.xwebs, x)
+	}
+	return nil
+}
+
+func (self *Router) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error {
+	return self.xwebFactoryRegistry.Add(x)
+}
+
+type connectionToggle interface {
+	Disconnect() error
+	Reconnect() error
 }
 
 type controllerPinger struct {
@@ -421,107 +552,4 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 	timeout := deadline.Sub(time.Now())
 	_, err := self.router.ctrl.SendAndWaitWithTimeout(msg, timeout)
 	return err
-}
-
-const (
-	DumpForwarderTables byte = 1
-	UpdateRoute         byte = 2
-	CloseControlChannel byte = 3
-	OpenControlChannel  byte = 4
-)
-
-func (router *Router) RegisterDefaultDebugOps() {
-	router.debugOperations[DumpForwarderTables] = router.debugOpWriteForwarderTables
-	router.debugOperations[UpdateRoute] = router.debugOpUpdateRouter
-	router.debugOperations[CloseControlChannel] = router.debugOpCloseControlChannel
-	router.debugOperations[OpenControlChannel] = router.debugOpOpenControlChannel
-}
-
-func (router *Router) RegisterDebugOp(opId byte, f func(c *bufio.ReadWriter) error) {
-	router.debugOperations[opId] = f
-}
-
-func (router *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
-	tables := router.forwarder.Debug()
-	_, err := c.Write([]byte(tables))
-	return err
-}
-
-func (router *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
-	logrus.Error("received debug operation to update routes")
-	sizeBuf := make([]byte, 4)
-	if _, err := c.Read(sizeBuf); err != nil {
-		return err
-	}
-	size := binary.LittleEndian.Uint32(sizeBuf)
-	messageBuf := make([]byte, size)
-
-	if _, err := c.Read(messageBuf); err != nil {
-		return err
-	}
-
-	route := &ctrl_pb.Route{}
-	if err := proto.Unmarshal(messageBuf, route); err != nil {
-		return err
-	}
-
-	logrus.Errorf("updating with route: %+v", route)
-	logrus.Errorf("updating with route: %v", route)
-
-	router.forwarder.Route(route)
-	_, _ = c.WriteString("route added")
-	return nil
-}
-
-func (router *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: closing")
-	_, _ = c.WriteString("control channel: closing\n")
-	if toggleable, ok := router.ctrl.Underlay().(connectionToggle); ok {
-		if err := toggleable.Disconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to close")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
-		} else {
-			logrus.Warn("control channel: closed")
-			_, _ = c.WriteString("control channel: closed")
-		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
-	return nil
-}
-
-func (router *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: reconnecting")
-	if togglable, ok := router.ctrl.Underlay().(connectionToggle); ok {
-		if err := togglable.Reconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to reconnect")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
-		} else {
-			logrus.Warn("control channel: reconnected")
-			_, _ = c.WriteString("control channel: reconnected")
-		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
-	return nil
-}
-
-func (router *Router) HandleDebug(conn io.ReadWriter) error {
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	op, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if opF, ok := router.debugOperations[op]; ok {
-		return opF(bconn)
-	}
-	return errors.Errorf("invalid operation %v", op)
-}
-
-type connectionToggle interface {
-	Disconnect() error
-	Reconnect() error
 }

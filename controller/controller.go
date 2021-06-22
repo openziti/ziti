@@ -31,8 +31,9 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
-	"github.com/openziti/fabric/controller/xweb"
 	"github.com/openziti/fabric/events"
+	"github.com/openziti/fabric/health"
+	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/profiler"
@@ -79,6 +80,15 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
+	}
+
+	healthChecker, err := c.initializeHealthChecks()
+	if err != nil {
+		logrus.WithError(err).Fatalf("failed to create health checker")
+	}
+
+	if err := c.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
 	return c, nil

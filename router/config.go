@@ -31,7 +31,6 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"math"
 	"time"
 )
 
@@ -90,12 +89,12 @@ type Config struct {
 		ReportInterval   time.Duration
 		MessageQueueSize int
 	}
-	HealthCheck struct {
-		BindAddress      string
-		Port             uint16
-		CtrlPingInterval time.Duration
-		CtrlPingTimeout  time.Duration
-		InitialDelay     time.Duration
+	HealthChecks struct {
+		CtrlPingCheck struct {
+			Interval     time.Duration
+			Timeout      time.Duration
+			InitialDelay time.Duration
+		}
 	}
 	src map[interface{}]interface{}
 }
@@ -336,45 +335,43 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	cfg.HealthCheck.CtrlPingInterval = 30 * time.Second
-	cfg.HealthCheck.CtrlPingTimeout = 15 * time.Second
-	cfg.HealthCheck.InitialDelay = 15 * time.Second
+	cfg.HealthChecks.CtrlPingCheck.Interval = 30 * time.Second
+	cfg.HealthChecks.CtrlPingCheck.Timeout = 15 * time.Second
+	cfg.HealthChecks.CtrlPingCheck.InitialDelay = 15 * time.Second
 
-	if value, found := cfgmap["healthCheck"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["bindAddress"]; found {
-				if addr, ok := value.(string); !ok {
-					return nil, errors.Wrap(err, "invalid value for healthCheck.bindAddress")
+	if value, found := cfgmap["healthChecks"]; found {
+		if healthChecksMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := healthChecksMap["ctrlPingCheck"]; found {
+				if boltMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := boltMap["interval"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							cfg.HealthChecks.CtrlPingCheck.Interval = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.interval value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["timeout"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							cfg.HealthChecks.CtrlPingCheck.Timeout = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.timeout value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["initialDelay"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							cfg.HealthChecks.CtrlPingCheck.InitialDelay = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.initialDelay value '%v", value)
+						}
+					}
 				} else {
-					cfg.HealthCheck.BindAddress = addr
+					pfxlog.Logger().Warn("invalid [healthChecks.bolt] stanza")
 				}
 			}
-
-			if value, found := submap["port"]; found {
-				if port, ok := value.(int); !ok || port < 0 || port > math.MaxUint16 {
-					return nil, errors.Wrap(err, "invalid value for healthCheck.port")
-				} else {
-					cfg.HealthCheck.Port = uint16(port)
-				}
-			}
-
-			if value, found := submap["ctrlPingInterval"]; found {
-				if cfg.HealthCheck.CtrlPingInterval, err = time.ParseDuration(value.(string)); err != nil {
-					return nil, errors.Wrap(err, "invalid value for healthCheck.ctrlPingInterval")
-				}
-			}
-
-			if value, found := submap["ctrlPingTimeout"]; found {
-				if cfg.HealthCheck.CtrlPingTimeout, err = time.ParseDuration(value.(string)); err != nil {
-					return nil, errors.Wrap(err, "invalid value for healthCheck.ctrlPingTimeout")
-				}
-			}
-
-			if value, found := submap["initialDelay"]; found {
-				if cfg.HealthCheck.InitialDelay, err = time.ParseDuration(value.(string)); err != nil {
-					return nil, errors.Wrap(err, "invalid value for healthCheck.initialDelay")
-				}
-			}
+		} else {
+			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
 	}
 

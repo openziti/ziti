@@ -18,6 +18,7 @@ package xweb
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -41,6 +42,7 @@ func NewWebHandlerFactoryRegistryImpl() *WebHandlerFactoryRegistryImpl {
 
 // Add adds a factory to the registry. Errors if a previous factory with the same binding is registered.
 func (registry WebHandlerFactoryRegistryImpl) Add(factory WebHandlerFactory) error {
+	logrus.Debugf("adding xweb factory with binding: %v", factory.Binding())
 	if _, ok := registry.factories[factory.Binding()]; ok {
 		return fmt.Errorf("binding [%s] already registered", factory.Binding())
 	}

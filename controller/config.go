@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"time"
@@ -59,8 +60,15 @@ type Config struct {
 		Listener transport.Address
 		Options  *channel2.Options
 	}
-	Metrics *metrics.Config
-	src     map[interface{}]interface{}
+	Metrics      *metrics.Config
+	HealthChecks struct {
+		BoltCheck struct {
+			Interval     time.Duration
+			Timeout      time.Duration
+			InitialDelay time.Duration
+		}
+	}
+	src map[interface{}]interface{}
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -254,6 +262,46 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		} else {
 			pfxlog.Logger().Warn("invalid or empty [metrics] stanza")
+		}
+	}
+
+	config.HealthChecks.BoltCheck.Interval = 30 * time.Second
+	config.HealthChecks.BoltCheck.Timeout = 20 * time.Second
+	config.HealthChecks.BoltCheck.InitialDelay = 30 * time.Second
+
+	if value, found := cfgmap["healthChecks"]; found {
+		if healthChecksMap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := healthChecksMap["boltCheck"]; found {
+				if boltMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := boltMap["interval"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							config.HealthChecks.BoltCheck.Interval = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.interval value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["timeout"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							config.HealthChecks.BoltCheck.Timeout = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.timeout value '%v", value)
+						}
+					}
+
+					if value, found := boltMap["initialDelay"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							config.HealthChecks.BoltCheck.InitialDelay = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.initialDelay value '%v", value)
+						}
+					}
+				} else {
+					pfxlog.Logger().Warn("invalid [healthChecks.bolt] stanza")
+				}
+			}
+		} else {
+			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
 	}
 
