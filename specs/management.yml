@@ -296,6 +296,16 @@ paths:
       - Authenticator
       summary: List authenticators
       operationId: listAuthenticators
+      parameters:
+      - type: integer
+        name: limit
+        in: query
+      - type: integer
+        name: offset
+        in: query
+      - type: string
+        name: filter
+        in: query
       responses:
         "200":
           description: A list of authenticators
