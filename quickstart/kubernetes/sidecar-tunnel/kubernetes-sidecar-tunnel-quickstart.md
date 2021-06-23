@@ -16,11 +16,9 @@ by hostname instead of IP address.
 
 [Here's some detail on how the various intercept modes work on Linux](https://openziti.github.io/ziti/clients/linux.html)
 
-
 ### Solution Overview
 
 ![Diagram of solution](./sidecar-diagram.svg)
-
 
 ## Prerequisites
 
@@ -36,11 +34,13 @@ We will create a new identity for our client, with a new AppWAN that uses the et
 
 Create the Identity:
 
-    $ ziti edge controller create identity device tunnel-sidecar -o tunnel-sidecar.jwt
+    ziti edge controller create identity device tunnel-sidecar -o tunnel-sidecar.jwt
 
-Create the AppWAN:
+Create the AppWAN and reference the service created in the Ziti Network Quickstart. We'll be using `eth0.ziti.cli`
+here but if you created `eth0.ziti.ui` in the quickstart - use that instead. Also note that in the
+tunnel-sidecar-demo.yaml:
 
-    $ ziti edge controller create app-wan ziti-tunnel-appwan -i tunnel-sidecar -s eth0.ziti.cli
+    ziti edge controller create app-wan ziti-tunnel-appwan -i tunnel-sidecar -s eth0.ziti.cli
 
 ## Create a Kubernetes Secret
 
@@ -48,11 +48,12 @@ The `ziti-tunnel` sidecar will access its identity by mounting a Kubernetes secr
 We can mount the JWT as a secret like this:
 
     $ kubectl create secret generic tunnel-sidecar.jwt --from-file=tunnel-sidecar.jwt
+    secret/tunnel-sidecar.jwt created
 
 ## Deploy the Pod
 
 Deploy a Pod that runs a client application and `ziti-tunnel` as a sidecar container. For this
-demonstration, the client application is `wget`. Our Pod runs `wget` in a loop so we can see content
+demonstration, the client application is `curl`. Our Pod runs `curl` in a loop so we can see content
 from our Ziti service in the Pod's logs.
 
 Save the following yaml to a file named tunnel-sidecar-demo.yaml
@@ -66,7 +67,7 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
         - ReadWriteOnce
       resources:
         requests:
-          storage: 1Gi
+          storage: 100Mi
     ---
     apiVersion: apps/v1
     kind: Deployment
@@ -87,22 +88,22 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
           containers:
           - image: centos
             name: testclient
-            command: ["sh","-c","while true; set -x; do curl -sSLf ethzero.ziti.ui 2>&1; set +x; sleep 5; done"]
-          - image: netfoundry/ziti-tunnel:0.5.8-2554
+            command: ["sh","-c","while true; set -x; do curl -sSLf eth0.ziti.cli 2>&1; set +x; sleep 5; done"]
+          - image: netfoundry/ziti-tunnel:latest
             name: ziti-tunnel
             env:
             - name: NF_REG_NAME
               value: tunnel-sidecar
             volumeMounts:
             - name: tunnel-sidecar-jwt
-              mountPath: "/var/run/secrets/netfoundry.io/enrollment-token"
+              mountPath: "/var/run/secrets/kubernetes.io/enrollment-token"
               readOnly: true
             - name: ziti-tunnel-persistent-storage
               mountPath: /netfoundry
             securityContext:
               capabilities:
                 add:
-                  - NET_ADMIN
+                - NET_ADMIN
           dnsPolicy: "None"
           dnsConfig:
             nameservers:
@@ -117,7 +118,6 @@ Save the following yaml to a file named tunnel-sidecar-demo.yaml
             secret:
               secretName: tunnel-sidecar.jwt
 
-
 You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 
 1. The name of the identity that is assumed by `ziti-tunnel` must be passed into the container with the
@@ -131,6 +131,8 @@ You'll notice that the `ziti-tunnel` sidecar container has a few requirements:
 Once the yaml is saved, we can deploy the Pod with `kubectl`
 
     $ kubectl apply -f ./tunnel-sidecar-demo.yaml
+    persistentvolumeclaim/tunnel-sidecar-pv-claim created
+    deployment.apps/ziti-tunnel-sidecar-demo created
 
 ## Test the Service
 
@@ -146,5 +148,5 @@ Then we can tail the logs for the "testclient" container:
     54.67.121.213
     54.67.121.213
 
-Notice that the `wget` client is using the DNS name that we provided in the Ziti service definition to make the
+Notice that the `curl` client is using the DNS name that we provided in the Ziti service definition to make the
 request.
