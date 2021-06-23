@@ -17,11 +17,14 @@
 package edge_controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -78,24 +81,55 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 		return errors.New("an identity must be specified")
 	}
 
-	id, err := mapIdentityNameToID(options.idOrName, options.edgeOptions)
+	identityId, err := mapIdentityNameToID(options.idOrName, options.edgeOptions)
 
 	if err != nil {
 		return err
+	}
+
+	client, err := util.DefaultEdgeManagementClient()
+
+	if err != nil {
+		return err
+	}
+	filter := fmt.Sprintf(`identity="%s" and method="updb"`, identityId)
+
+	result, err := client.Authenticator.ListAuthenticators(&authenticator.ListAuthenticatorsParams{
+		Filter:  &filter,
+		Context: context.Background(),
+	}, nil)
+
+	if err != nil {
+		return err
+	}
+
+	if len(result.Payload.Data) != 0 {
+		return fmt.Errorf("updb authentictor already exists, update or remove it instead")
 	}
 
 	if options.password == "" {
 		if options.password, err = term.PromptPassword("Enter password: ", false); err != nil {
 			return err
 		}
+		verifyPassword := ""
+		if verifyPassword, err = term.PromptPassword("Enter password again: ", false); err != nil {
+			return err
+		}
+
+		if verifyPassword != options.password {
+			return errors.New("passwords did not match")
+		}
 	}
 
-	passwordData := gabs.New()
-	setJSONValue(passwordData, options.password, "password")
-	setJSONValue(passwordData, options.username, "username")
+	authenticatorData := gabs.New()
+	setJSONValue(authenticatorData, identityId, "identityId")
+	setJSONValue(authenticatorData, options.password, "password")
+	setJSONValue(authenticatorData, options.username, "username")
+	setJSONValue(authenticatorData, "updb", "method")
 
-	if _, err = createEntityOfType(fmt.Sprintf("identities/%s/updb", id), passwordData.String(), &options.edgeOptions); err != nil {
+	if _, err = createEntityOfType("authenticators", authenticatorData.String(), &options.edgeOptions); err != nil {
 		return err
 	}
+
 	return nil
 }

@@ -17,7 +17,10 @@
 package edge_controller
 
 import (
+	"context"
 	"fmt"
+	"github.com/openziti/edge/rest_management_api_client/authenticator"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -52,13 +55,43 @@ func newDeleteAuthenticatorUpdb(idType string, options *edgeOptions) *cobra.Comm
 }
 
 func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
-
-	id, err := mapIdentityNameToID(idOrName, options.edgeOptions)
+	identityId, err := mapIdentityNameToID(idOrName, options.edgeOptions)
 
 	if err != nil {
 		return err
 	}
-	_, err = deleteEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), "", &options.edgeOptions)
+
+	client, err := util.DefaultEdgeManagementClient()
+
+	if err != nil {
+		return err
+	}
+	filter := fmt.Sprintf(`identity="%s" and method="updb"`, identityId)
+
+	result, err := client.Authenticator.ListAuthenticators(&authenticator.ListAuthenticatorsParams{
+		Filter:  &filter,
+		Context: context.Background(),
+	}, nil)
+
+	if err != nil {
+		return err
+	}
+
+	if len(result.Payload.Data) != 1 {
+		return fmt.Errorf("incorrect number of results, expected 1, got %d", len(result.Payload.Data))
+	}
+
+	if result.Payload.Data[0].ID == nil {
+		return fmt.Errorf("authenticator contained a nil id")
+	}
+
+	if *result.Payload.Data[0].ID == "" {
+		return fmt.Errorf("authenticator contained an empty id")
+	}
+
+	authenticatorId := *result.Payload.Data[0].ID
+
+	_, err = deleteEntityOfType(fmt.Sprintf("authenticators/%s", authenticatorId), "", &options.edgeOptions)
 
 	if err != nil {
 		return err
