@@ -1,3 +1,7 @@
+# Release 0.20.11
+
+* Bug fix: CLI Admin create/update/delete for UPDB authenticators now function properly
+
 # Release 0.20.10
 
 ## What's New
