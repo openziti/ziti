@@ -38,6 +38,7 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 )
 
 // NewListAuthenticatorsParams creates a new ListAuthenticatorsParams object,
@@ -82,6 +83,16 @@ func NewListAuthenticatorsParamsWithHTTPClient(client *http.Client) *ListAuthent
    Typically these are written to a http.Request.
 */
 type ListAuthenticatorsParams struct {
+
+	// Filter.
+	Filter *string
+
+	// Limit.
+	Limit *int64
+
+	// Offset.
+	Offset *int64
+
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
@@ -135,6 +146,39 @@ func (o *ListAuthenticatorsParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithFilter adds the filter to the list authenticators params
+func (o *ListAuthenticatorsParams) WithFilter(filter *string) *ListAuthenticatorsParams {
+	o.SetFilter(filter)
+	return o
+}
+
+// SetFilter adds the filter to the list authenticators params
+func (o *ListAuthenticatorsParams) SetFilter(filter *string) {
+	o.Filter = filter
+}
+
+// WithLimit adds the limit to the list authenticators params
+func (o *ListAuthenticatorsParams) WithLimit(limit *int64) *ListAuthenticatorsParams {
+	o.SetLimit(limit)
+	return o
+}
+
+// SetLimit adds the limit to the list authenticators params
+func (o *ListAuthenticatorsParams) SetLimit(limit *int64) {
+	o.Limit = limit
+}
+
+// WithOffset adds the offset to the list authenticators params
+func (o *ListAuthenticatorsParams) WithOffset(offset *int64) *ListAuthenticatorsParams {
+	o.SetOffset(offset)
+	return o
+}
+
+// SetOffset adds the offset to the list authenticators params
+func (o *ListAuthenticatorsParams) SetOffset(offset *int64) {
+	o.Offset = offset
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *ListAuthenticatorsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -142,6 +186,57 @@ func (o *ListAuthenticatorsParams) WriteToRequest(r runtime.ClientRequest, reg s
 		return err
 	}
 	var res []error
+
+	if o.Filter != nil {
+
+		// query param filter
+		var qrFilter string
+
+		if o.Filter != nil {
+			qrFilter = *o.Filter
+		}
+		qFilter := qrFilter
+		if qFilter != "" {
+
+			if err := r.SetQueryParam("filter", qFilter); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Limit != nil {
+
+		// query param limit
+		var qrLimit int64
+
+		if o.Limit != nil {
+			qrLimit = *o.Limit
+		}
+		qLimit := swag.FormatInt64(qrLimit)
+		if qLimit != "" {
+
+			if err := r.SetQueryParam("limit", qLimit); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Offset != nil {
+
+		// query param offset
+		var qrOffset int64
+
+		if o.Offset != nil {
+			qrOffset = *o.Offset
+		}
+		qOffset := swag.FormatInt64(qrOffset)
+		if qOffset != "" {
+
+			if err := r.SetQueryParam("offset", qOffset); err != nil {
+				return err
+			}
+		}
+	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

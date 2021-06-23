@@ -12,7 +12,10 @@ paths:
       tags:
         - Authenticator
       operationId: listAuthenticators
-
+      parameters:
+        - $ref: '../shared/parameters.yml#/limit'
+        - $ref: '../shared/parameters.yml#/offset'
+        - $ref: '../shared/parameters.yml#/filter'
       responses:
         '200':
           $ref: '../shared/authenticators.yml#/responses/listAuthenticators'
