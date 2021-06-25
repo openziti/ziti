@@ -106,7 +106,7 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 
 		options, err := AppDataToMap(conn.GetAppData())
 		if err != nil {
-			logger.Error("dial failed")
+			logger.WithError(err).Error("dial failed")
 			conn.CompleteAcceptFailed(err)
 			if closeErr := conn.Close(); closeErr != nil {
 				logger.WithError(closeErr).Error("close of ziti connection failed")
@@ -116,7 +116,7 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 
 		externalConn, halfClose, err := hostCtx.Dial(options)
 		if err != nil {
-			logger.Error("dial failed")
+			logger.WithError(err).Error("dial failed")
 			conn.CompleteAcceptFailed(err)
 			if closeErr := conn.Close(); closeErr != nil {
 				logger.WithError(closeErr).Error("close of ziti connection failed")
