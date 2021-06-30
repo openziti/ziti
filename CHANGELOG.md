@@ -1,3 +1,9 @@
+# Release 0.20.11
+
+* Bug fix: CLI Admin create/update/delete for UPDB authenticators now function properly
+* Maintenance: better logging [sdk-golang#161](https://github.com/openziti/sdk-golang/pull/161) and [edge#700](https://github.com/openziti/edge/pull/700)
+* Bug fix: [sdk-golang#162](https://github.com/openziti/sdk-golang/pull/162) fix race condition on close of ziti connections
+
 # Release 0.20.10
 
 ## What's New
