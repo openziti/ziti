@@ -514,10 +514,11 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 		rc.RespondWithError(err)
 		return
 	}
+	
+	queryOptions, err := GetModelQueryOptionsFromRequest(rc.Request)
 
-	filter := rc.Request.URL.Query().Get("filter")
-	queryOptions := &PublicQueryOptions{
-		Predicate: filter,
+	if err != nil {
+		rc.RespondWithError(err)
 	}
 
 	result, err := listF(rc, id, queryOptions)
