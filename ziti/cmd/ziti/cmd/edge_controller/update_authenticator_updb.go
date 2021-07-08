@@ -17,9 +17,11 @@
 package edge_controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
@@ -134,16 +136,55 @@ func setIdentityPassword(identity, password string, options edgeOptions) error {
 		return err
 	}
 
+	client, err := util.DefaultEdgeManagementClient()
+
+	if err != nil {
+		return err
+	}
+	filter := fmt.Sprintf(`identity="%s" and method="updb"`, id)
+
+	result, err := client.Authenticator.ListAuthenticators(&authenticator.ListAuthenticatorsParams{
+		Filter: &filter,
+		Context: context.Background(),
+	}, nil)
+
+	if err != nil {
+		return err
+	}
+
+	if len(result.Payload.Data) != 1 {
+		return fmt.Errorf("incorrect number of results, expected 1, got %d", len(result.Payload.Data))
+	}
+
+	if result.Payload.Data[0].ID == nil {
+		return fmt.Errorf("authenticator contained a nil id")
+	}
+
+	if *result.Payload.Data[0].ID == "" {
+		return fmt.Errorf("authenticator contained an empty id")
+	}
+
+	authenticatorId := result.Payload.Data[0].ID
+
 	if password == "" {
 		if password, err = term.PromptPassword("Enter the identity's new password : ", false); err != nil {
 			return err
+		}
+
+		verifyPassword := ""
+		if verifyPassword, err = term.PromptPassword("Enter password again: ", false); err != nil {
+			return err
+		}
+
+		if verifyPassword != password {
+			return errors.New("passwords did not match")
 		}
 	}
 
 	passwordData := gabs.New()
 	setJSONValue(passwordData, password, "password")
 
-	_, err = putEntityOfType(fmt.Sprintf("identities/%s/updb/password", id), passwordData.String(), &options)
+	_, err = patchEntityOfType(fmt.Sprintf("authenticators/%s", *authenticatorId), passwordData.String(), &options)
 
 	if err != nil {
 		return err
