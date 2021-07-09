@@ -36,7 +36,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	t.Run("can create a MFA posture check associated to a service", func(t *testing.T) {
+	t.Run("can create a MFA posture check associated to a service with no prompts and no timeout", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		identityRole := eid.New()
@@ -109,6 +109,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.testContextChanged(t)
 				ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
 				ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+				ctx.Req.Equal(-1, int(postureQueries[0].Path("timeout").Data().(float64)))
 			})
 		})
 
@@ -183,6 +184,32 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 					ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 				})
+
+				t.Run("service has the posture check in its queries", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					code, body := enrolledIdentitySession.query("/services/" + service.Id)
+					ctx.Req.Equal(http.StatusOK, code)
+					entityService, err := gabs.ParseJSON(body)
+					ctx.Req.NoError(err)
+
+					querySet, err := entityService.Path("data.postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(querySet, 1)
+
+					postureQueries, err := querySet[0].Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
+
+					t.Run("query is currently passing", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+						ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+						ctx.Req.Equal(-1, int(postureQueries[0].Path("timeout").Data().(float64)))
+					})
+				})
 			})
 
 			t.Run("a new api session can pass MFA auth to create service session", func(t *testing.T) {
@@ -254,7 +281,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
 
-		origTimeout := int64(10)
+		origTimeout := int64(5000)
 		postureCheck := rest_model.PostureCheckMfaCreate{
 			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
 				PromptOnUnlock: true,
@@ -306,6 +333,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.testContextChanged(t)
 				ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
 				ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
+				ctx.Req.Equal(0, int(postureQueries[0].Path("timeout").Data().(float64)))
 			})
 		})
 
@@ -380,6 +408,75 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 					ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 				})
+
+				t.Run("service has the posture check in its queries", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					code, body := enrolledIdentitySession.query("/services/" + service.Id)
+					ctx.Req.Equal(http.StatusOK, code)
+					entityService, err := gabs.ParseJSON(body)
+					ctx.Req.NoError(err)
+
+					querySet, err := entityService.Path("data.postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(querySet, 1)
+
+					postureQueries, err := querySet[0].Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
+
+					t.Run("query is currently passing", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+						ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+						ctx.Req.Greater(int(postureQueries[0].Path("timeout").Data().(float64)), 0)
+					})
+				})
+
+				t.Run("sending woke state should lower timeout", func(t *testing.T) {
+					wokeState := rest_model.PostureResponseEndpointStateCreate{
+						Unlocked: false,
+						Woken:    true,
+					}
+					id := uuid.New().String()
+					wokeState.SetID(&id)
+
+					resp, err := enrolledIdentitySession.NewRequest().SetBody(wokeState).Post("posture-response")
+
+					ctx.Req.NoError(err)
+					standardJsonResponseTests(resp, http.StatusCreated, t)
+
+					t.Run("service has the posture check in its queries", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						code, body := enrolledIdentitySession.query("/services/" + service.Id)
+						ctx.Req.Equal(http.StatusOK, code)
+						entityService, err := gabs.ParseJSON(body)
+						ctx.Req.NoError(err)
+
+						querySet, err := entityService.Path("data.postureQueries").Children()
+						ctx.Req.NoError(err)
+						ctx.Req.Len(querySet, 1)
+
+						postureQueries, err := querySet[0].Path("postureQueries").Children()
+						ctx.Req.NoError(err)
+						ctx.Req.Len(postureQueries, 1)
+
+						ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+						ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
+
+						t.Run("query has a lower timeout", func(t *testing.T) {
+							ctx.testContextChanged(t)
+							ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+							ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+							ctx.Req.Greater(int(postureQueries[0].Path("timeout").Data().(float64)), 0)
+							ctx.Req.LessOrEqual(int(postureQueries[0].Path("timeout").Data().(float64)), 300)
+						})
+					})
+
+				})
+
 			})
 
 			t.Run("a new api session can pass MFA auth to create service session if there are no endpoint state changes", func(t *testing.T) {
