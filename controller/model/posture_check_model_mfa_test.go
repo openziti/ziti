@@ -93,6 +93,31 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.False(result)
 		})
 
+		t.Run("returns false if MFA timed out with legacy client and not ignoring legacy clients", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.TimedOut = true
+			postureData.ApiSessions[mfaTestApiSessionId].SdkInfo.Version = ""
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true if MFA timed out with legacy client and ignoring legacy clients", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			mfaCheck.IgnoreLegacyEndpoints = true
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.TimedOut = true
+			postureData.ApiSessions[mfaTestApiSessionId].SdkInfo.Version = ""
+
+			result := mfaCheck.Evaluate(mfaTestApiSessionId, postureData)
+
+			req := require.New(t)
+			req.False(result)
+		})
+
 		t.Run("returns true if woke reported after MFA and inside grace period", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 
@@ -382,6 +407,78 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.True(failureValues.ActualValue.TimedOutSeconds)
 		})
 	})
+	
+	t.Run("IsLegacyClient", func(t *testing.T) {
+		t.Run("returns false for 0.24.5", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false for ziti-sdk-c and  0.24.5", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo.Version = "0.24.5"
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns true for ziti-sdk-c and  0.24.4", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo.Version = "0.24.4"
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("returns false for missing type and  0.24.4", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo.Version = "0.24.4"
+			apiSessionData.SdkInfo.Type = ""
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false for ziti-sdk-c and  1.0.0", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo.Version = "1.0.0"
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false if sdk info is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo = nil
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+
+		t.Run("returns false if for ziti-sdk-c and an invalid version", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
+			apiSessionData.SdkInfo.Version = "weeeeeee"
+			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
+
+			req := require.New(t)
+			req.False(result)
+		})
+	})
 }
 
 // newMfaCheckAndPostureData returns a MFA posture check and posture data that will
@@ -418,6 +515,10 @@ func newMfaCheckAndPostureData() (*PostureCheckMfa, *PostureData) {
 					ApiSessionId: mfaTestApiSessionId,
 					WokenAt:      &wokenAt,
 					UnlockedAt:   &unlockedAt,
+				},
+				SdkInfo: &SdkInfo{
+					Type:       "ziti-sdk-c",
+					Version:    "0.24.5",
 				},
 			},
 		},

@@ -27,6 +27,7 @@ import (
 var _ PostureCheckSubType = &PostureCheckMfa{}
 var legacyCsdkVersion semver.Version
 
+const ZitiSdkTypeC = "ziti-sdk-c"
 const MfaPromptGracePeriod = -5 * time.Minute //5m
 
 func init() {
@@ -41,9 +42,9 @@ type PostureCheckMfa struct {
 }
 
 func (p *PostureCheckMfa) IsLegacyClient(apiSessionData *ApiSessionPostureData) bool {
-	if apiSessionData.SdkInfo != nil && apiSessionData.SdkInfo.Type == "ziti-sdk-c" {
+	if apiSessionData.SdkInfo != nil && apiSessionData.SdkInfo.Type == ZitiSdkTypeC {
 		if ver, err := semver.Parse(apiSessionData.SdkInfo.Version); err == nil {
-			ver.LTE(legacyCsdkVersion)
+			return ver.LTE(legacyCsdkVersion)
 		}
 	}
 
