@@ -137,5 +137,5 @@ definitions:
         $ref: '#/definitions/postureDataMfa'
       endpointState:
         $ref: '#/definitions/postureDataEndpointState'
-      sdkVersion:
-        type: string
+      sdkInfo:
+        $ref: '../shared/authenticate.yml#/definitions/sdkInfo'

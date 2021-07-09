@@ -171,7 +171,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		rc.RespondWithApiError(errorz.NewUnauthorized())
 	}
 
-	ae.GetHandlers().PostureResponse.SetSdkVersion(identity.Id, sessionId, identity.SdkInfo.Version)
+	ae.GetHandlers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
 	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession

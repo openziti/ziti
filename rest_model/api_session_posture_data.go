@@ -50,8 +50,8 @@ type APISessionPostureData struct {
 	// Required: true
 	Mfa *PostureDataMfa `json:"mfa"`
 
-	// sdk version
-	SdkVersion string `json:"sdkVersion,omitempty"`
+	// sdk info
+	SdkInfo *SdkInfo `json:"sdkInfo,omitempty"`
 }
 
 // Validate validates this api session posture data
@@ -63,6 +63,10 @@ func (m *APISessionPostureData) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateMfa(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateSdkInfo(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -107,6 +111,23 @@ func (m *APISessionPostureData) validateMfa(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *APISessionPostureData) validateSdkInfo(formats strfmt.Registry) error {
+	if swag.IsZero(m.SdkInfo) { // not required
+		return nil
+	}
+
+	if m.SdkInfo != nil {
+		if err := m.SdkInfo.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("sdkInfo")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this api session posture data based on the context it is used
 func (m *APISessionPostureData) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -116,6 +137,10 @@ func (m *APISessionPostureData) ContextValidate(ctx context.Context, formats str
 	}
 
 	if err := m.contextValidateMfa(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSdkInfo(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -145,6 +170,20 @@ func (m *APISessionPostureData) contextValidateMfa(ctx context.Context, formats 
 		if err := m.Mfa.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("mfa")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *APISessionPostureData) contextValidateSdkInfo(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.SdkInfo != nil {
+		if err := m.SdkInfo.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("sdkInfo")
 			}
 			return err
 		}

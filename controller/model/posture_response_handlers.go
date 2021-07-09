@@ -204,18 +204,26 @@ func (handler *PostureResponseHandler) PostureData(id string) *PostureData {
 	return handler.postureCache.PostureData(id)
 }
 
-func (handler *PostureResponseHandler) SetSdkVersion(identityId, apiSessionId, version string) {
-	if identityId == "" || apiSessionId == "" {
+func (handler *PostureResponseHandler) SetSdkInfo(identityId, apiSessionId string, sdkInfo *SdkInfo) {
+	if identityId == "" || apiSessionId == "" || sdkInfo == nil {
 		return
 	}
-	pd := handler.PostureData(identityId)
 
-	if pd != nil {
-		if _, ok := pd.ApiSessions[apiSessionId]; !ok {
-			pd.ApiSessions[apiSessionId] = &ApiSessionPostureData{}
+	handler.postureCache.Upsert(identityId, false, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		var postureData *PostureData
+		if exist {
+			postureData = valueInMap.(*PostureData)
+		} else {
+			postureData = newValue.(*PostureData)
 		}
 
-		apiSessionData := pd.ApiSessions[apiSessionId]
-		apiSessionData.SdkVersion = version
-	}
+		if _, ok := postureData.ApiSessions[apiSessionId]; !ok {
+			postureData.ApiSessions[apiSessionId] = &ApiSessionPostureData{}
+		}
+
+		apiSessionData := postureData.ApiSessions[apiSessionId]
+		apiSessionData.SdkInfo = sdkInfo
+
+		return postureData
+	})
 }

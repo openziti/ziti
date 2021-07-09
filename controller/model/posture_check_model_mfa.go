@@ -18,20 +18,36 @@ package model
 
 import (
 	"fmt"
+	"github.com/blang/semver"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
 	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMfa{}
+var legacyCsdkVersion semver.Version
 
 const MfaPromptGracePeriod = -5 * time.Minute //5m
+
+func init() {
+	legacyCsdkVersion = semver.MustParse("0.24.4")
+}
 
 type PostureCheckMfa struct {
 	TimeoutSeconds        int64
 	PromptOnWake          bool
 	PromptOnUnlock        bool
 	IgnoreLegacyEndpoints bool
+}
+
+func (p *PostureCheckMfa) IsLegacyClient(apiSessionData *ApiSessionPostureData) bool {
+	if apiSessionData.SdkInfo != nil && apiSessionData.SdkInfo.Type == "ziti-sdk-c" {
+		if ver, err := semver.Parse(apiSessionData.SdkInfo.Version); err == nil {
+			ver.LTE(legacyCsdkVersion)
+		}
+	}
+
+	return false
 }
 
 func (p *PostureCheckMfa) GetTimeoutSeconds(apiSessionId string, pd *PostureData) int64 {
@@ -43,6 +59,11 @@ func (p *PostureCheckMfa) GetTimeoutSeconds(apiSessionId string, pd *PostureData
 
 	if apiSessionData == nil || apiSessionData.Mfa == nil || apiSessionData.Mfa.PassedMfaAt == nil {
 		return 0
+	}
+
+	// for legacy endpoints return no timeout
+	if p.IgnoreLegacyEndpoints && p.IsLegacyClient(apiSessionData) {
+		return PostureCheckNoTimeout
 	}
 
 	timeSinceLastMfa := time.Now().Sub(*apiSessionData.Mfa.PassedMfaAt)

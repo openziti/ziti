@@ -122,12 +122,12 @@ func MapPostureDataApiSessionDataToRestModel(apiSessionData map[string]*model.Ap
 	ret := map[string]rest_model.APISessionPostureData{}
 
 	for apiSessionId, apiSessionData := range apiSessionData {
-		apiSessionPostureData := rest_model.APISessionPostureData {}
+		apiSessionPostureData := rest_model.APISessionPostureData{}
 
 		passedMfa := apiSessionData.Mfa != nil && apiSessionData.Mfa.PassedMfaAt != nil
 		apiSessionPostureData.Mfa = &rest_model.PostureDataMfa{
-				APISessionID: &apiSessionId,
-				PassedMfa:    &passedMfa,
+			APISessionID: &apiSessionId,
+			PassedMfa:    &passedMfa,
 		}
 
 		apiSessionPostureData.EndpointState = &rest_model.PostureDataEndpointState{
@@ -146,7 +146,17 @@ func MapPostureDataApiSessionDataToRestModel(apiSessionData map[string]*model.Ap
 				apiSessionPostureData.EndpointState.WokenAt = &formattedDate
 			}
 		}
-		apiSessionData.SdkVersion = apiSessionPostureData.SdkVersion
+
+		if apiSessionData.SdkInfo != nil {
+			apiSessionPostureData.SdkInfo = &rest_model.SdkInfo{
+				AppID:      apiSessionData.SdkInfo.AppId,
+				AppVersion: apiSessionData.SdkInfo.AppVersion,
+				Branch:     apiSessionData.SdkInfo.Branch,
+				Revision:   apiSessionData.SdkInfo.Revision,
+				Type:       apiSessionData.SdkInfo.Type,
+				Version:    apiSessionData.SdkInfo.Version,
+			}
+		}
 
 		ret[apiSessionId] = apiSessionPostureData
 	}

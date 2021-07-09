@@ -9917,8 +9917,8 @@ definitions:
         $ref: '#/definitions/postureDataEndpointState'
       mfa:
         $ref: '#/definitions/postureDataMfa'
-      sdkVersion:
-        type: string
+      sdkInfo:
+        $ref: '#/definitions/sdkInfo'
   apiVersion:
     type: object
     required:

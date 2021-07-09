@@ -95,7 +95,7 @@ func (pc *PostureCache) run(closeNotify <-chan struct{}) {
 }
 
 func (pc *PostureCache) Add(identityId string, postureResponses []*PostureResponse) {
-	pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	pc.Upsert(identityId, true, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		var postureData *PostureData
 		if exist {
 			postureData = valueInMap.(*PostureData)
@@ -111,6 +111,14 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 	})
 
 	pc.Emit(EventIdentityPostureDataAltered, identityId)
+}
+
+func (pc *PostureCache) Upsert(identityId string, emitDataAltered bool, cb func(exist bool, valueInMap interface{}, newValue interface{}) interface{}) {
+	pc.identityToPostureData.Upsert(identityId, newPostureData(), cb)
+
+	if emitDataAltered {
+		pc.Emit(EventIdentityPostureDataAltered, identityId)
+	}
 }
 
 const MaxPostureFailures = 100
@@ -314,7 +322,7 @@ type ApiSessionPostureData struct {
 	Mfa           *PostureResponseMfa           `json:"mfa"`
 	EndpointState *PostureResponseEndpointState `json:"endpointState"`
 	Sessions      map[string]*PostureSessionData
-	SdkVersion    string
+	SdkInfo       *SdkInfo
 }
 
 type PostureCheckFailureSubType interface {

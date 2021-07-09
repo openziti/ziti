@@ -13829,8 +13829,8 @@ func init() {
         "mfa": {
           "$ref": "#/definitions/postureDataMfa"
         },
-        "sdkVersion": {
-          "type": "string"
+        "sdkInfo": {
+          "$ref": "#/definitions/sdkInfo"
         }
       }
     },
@@ -32649,8 +32649,8 @@ func init() {
         "mfa": {
           "$ref": "#/definitions/postureDataMfa"
         },
-        "sdkVersion": {
-          "type": "string"
+        "sdkInfo": {
+          "$ref": "#/definitions/sdkInfo"
         }
       }
     },
