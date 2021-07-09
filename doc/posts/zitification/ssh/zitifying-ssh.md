@@ -1,60 +1,42 @@
+# Zitifying SSH
 
-since
-these
-applications are part of the life-blood of
-the internet. Without `ssh` so much of the
-internet would be
+As we learned in the [opening post](../README.md) - "zitifying" an application means to embed a Ziti SDK into an
+application and leverage the power of the Ziti Network to provide secure, truly zero-trust access to your application
+wherever in the world that application goes. In this post we are going to see how we have zitified ssh and why. Future
+posts will expand on this even further by showing how it is that NetFoundry uses `zssh` to support our customers.
+
+## Why SSH
+
+As I sit here typing these words I can tell you're skeptical. I can tell you're wondering why in the world we would even
+attempt to mess with `ssh` at all. After all, `ssh` has been a foundation of the administration of not only home
+networks but also corporate networks and the Internet itself. Surely if millions (billions?) of computers can interact
+every day safely and securly using `ssh` there is "no need" for us to be spending time zitifying `ssh`
+right? (Spoiler alert: wrong)
+
+I'm sure you've guessed that this is not the case whatsoever. Attackers don't leave `ssh` alone just because it's not
+worth it. Put a machine on the open internet, expose `ssh` on port 22 and watch for yourself all the attempts to
+access `ssh` using known default/weak/bad passwords flood in. Attacks are not always limited to coming from the outside
+either! A compromised machine on your network very well could behave in the same way when trying to expand/multiply. The
+problems don't just stop here either. DoS attacks, other zero-day type bugs and more are all waiting for any service
+sitting on the open internet.
+
+A zitified `ssh` client is superior since openssh/sshd can be configured to listen only on localhost, preventing any
+connections whatsoever from any network client - including the local network. Cool right? The only way to
+`ssh` to a machine using a Ziti Network will be to have an identity authorized for that Ziti Network. Let's see how we
+did that.
+
+## Network Setup
+
+## The Client
+
+## Providing SSH Access Through Ziti
+
+## Hardening SSH
+
+/etc/ssh/sshd_config
 
 
 
-<hr><br/></br>
 
-Once an application is "zitified" the application is  and has integrated the Ziti SDK within
-it, the only
-way the
-
-
-
-
-
-
-application can
-access spread accessing other resources on the
-network network connectivity is
-immediately secure has been moved INTO the application itself by integrating the Ziti SDK, this application is almost
-cert
-
-
-All you need to securely connect your application to a network resource is a Ziti overlay
-network and your
-application enrolled with that Ziti network.
-
-Let that sink in for just a moment. No extra software is needed, just your application.  No
-3rd-party VPN configured. No worries if you're at home or at the office or at the local coffee shop.
-
-Wherever this application goes,
-it is able to securely connect to the network resources already
-
-Due to the nature of how the
-Ziti
-overlay is
-created  is a
-revolutionary ideais a
-revolutionary new idea and ,
-and then
-benefiting from the secure, zero trust overlay networking, that Ziti provides. Incorporating an SDK into an
-application provides a tremendous benefit
-
-Welcome to the first post in a series of posts which are intended to introduce the topic of "zitification".  This
-introductory post will explain what the term "zitifiation" means. Once you learn what it means to "zitify" an
-application you'll understand why you will not only want to "zitify" your applications; you'll understand why you
-*need* to.
-
-What is "zitification"? As the name implies it's the act of taking an application you Right about now you are
-likely wondering what exactly the term
-"zitification" even means.
-
-This is a series of
-posts which will take you on a journey towards What does it mean to "Zitify" an application? "Zitification" - what
 
 
