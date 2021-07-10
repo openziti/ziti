@@ -107,18 +107,18 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 
 	ret := &model.Identity{
 		BaseEntity: models.BaseEntity{
-			Tags: identity.Tags,
+			Tags: TagsOrDefault(identity.Tags),
 		},
 		Name:                      stringz.OrEmpty(identity.Name),
 		IdentityTypeId:            identityTypeId,
 		IsDefaultAdmin:            false,
 		IsAdmin:                   *identity.IsAdmin,
-		RoleAttributes:            identity.RoleAttributes,
+		RoleAttributes:            AttributesOrDefault(identity.RoleAttributes),
 		DefaultHostingPrecedence:  ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
 		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
-		AppData:                   identity.AppData,
+		AppData:                   TagsOrDefault(identity.AppData),
 	}
 
 	if identity.Enrollment != nil {
@@ -153,18 +153,18 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, identityTypeId string) *model.Identity {
 	ret := &model.Identity{
 		BaseEntity: models.BaseEntity{
-			Tags: identity.Tags,
+			Tags: TagsOrDefault(identity.Tags),
 			Id:   id,
 		},
 		Name:                      stringz.OrEmpty(identity.Name),
 		IdentityTypeId:            identityTypeId,
 		IsAdmin:                   *identity.IsAdmin,
-		RoleAttributes:            identity.RoleAttributes,
+		RoleAttributes:            AttributesOrDefault(identity.RoleAttributes),
 		DefaultHostingPrecedence:  ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
 		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
-		AppData:                   identity.AppData,
+		AppData:                   TagsOrDefault(identity.AppData),
 	}
 
 	return ret
@@ -173,18 +173,18 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, identityTypeId string) *model.Identity {
 	ret := &model.Identity{
 		BaseEntity: models.BaseEntity{
-			Tags: identity.Tags,
+			Tags: TagsOrDefault(identity.Tags),
 			Id:   id,
 		},
 		Name:                      identity.Name,
 		IdentityTypeId:            identityTypeId,
 		IsAdmin:                   identity.IsAdmin,
-		RoleAttributes:            identity.RoleAttributes,
+		RoleAttributes:            AttributesOrDefault(identity.RoleAttributes),
 		DefaultHostingPrecedence:  ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence)),
 		DefaultHostingCost:        getDefaultHostingCost(identity.DefaultHostingCost),
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
-		AppData:                   identity.AppData,
+		AppData:                   TagsOrDefault(identity.AppData),
 	}
 
 	return ret
@@ -236,12 +236,21 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 
 	cost := rest_model.TerminatorCost(identity.DefaultHostingCost)
 
+	roleAttributes := rest_model.Attributes(identity.RoleAttributes)
+
+	appData := rest_model.Tags{
+		SubTags: identity.AppData,
+	}
+
+	if appData.SubTags == nil {
+		appData.SubTags = map[string]interface{}{}
+	}
 	ret := &rest_model.IdentityDetail{
 		BaseEntity:                BaseEntityToRestModel(identity, IdentityLinkFactory),
 		IsAdmin:                   &identity.IsAdmin,
 		IsDefaultAdmin:            &identity.IsDefaultAdmin,
 		Name:                      &identity.Name,
-		RoleAttributes:            identity.RoleAttributes,
+		RoleAttributes:            &roleAttributes,
 		Type:                      ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
 		TypeID:                    &identityType.Id,
 		HasEdgeRouterConnection:   &identity.HasHeartbeat,
@@ -251,7 +260,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		ServiceHostingPrecedences: getRestServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getRestServiceHostingCosts(identity.ServiceHostingCosts),
 		IsMfaEnabled:              &isMfaEnabled,
-		AppData:                   identity.AppData,
+		AppData:                   &appData,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

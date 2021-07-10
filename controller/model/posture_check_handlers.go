@@ -25,6 +25,10 @@ import (
 	"strings"
 )
 
+const (
+	PostureCheckNoTimeout = int64(-1)
+)
+
 func NewPostureCheckHandler(env Env) *PostureCheckHandler {
 	handler := &PostureCheckHandler{
 		baseHandler: newBaseHandler(env, env.GetStores().PostureCheck),
@@ -73,6 +77,10 @@ func (handler *PostureCheckHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessOs) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessPath) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessHashes) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckMfaPromptOnWake) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckMfaPromptOnUnlock) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckMfaTimeoutSeconds) ||
+		strings.EqualFold(field, persistence.FieldPostureCheckMfaIgnoreLegacyEndpoints) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiOsType) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiHashes) ||
 		strings.EqualFold(field, persistence.FieldPostureCheckProcessMultiPath) ||

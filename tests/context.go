@@ -633,7 +633,9 @@ func (ctx *TestContext) newPostureCheckProcessMulti(semantic rest_model.Semantic
 		Semantic:  &semantic,
 	}
 
-	check.SetRoleAttributes(roleAttributes)
+	attributes := rest_model.Attributes(roleAttributes)
+
+	check.SetRoleAttributes(&attributes)
 
 	name := uuid.New().String()
 	check.SetName(&name)

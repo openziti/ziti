@@ -153,7 +153,6 @@ func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *m
 }
 
 const (
-	//Identity Name Formatting
 	FormatSentinelStart       = "["
 	FormatSentinelEnd         = "]"
 	FormatSymbolCaName        = "caName"
@@ -162,7 +161,7 @@ const (
 	FormatSymbolRequestedName = "requestedName"
 	FormatSymbolIdentityId    = "identityId"
 
-	//ex: $caName$ - $commonName$
+	// DefaultCaIdentityNameFormat = "[caName] - [commonName]"
 	DefaultCaIdentityNameFormat = FormatSentinelStart + FormatSymbolCaName + FormatSentinelEnd + "-" + FormatSentinelStart + FormatSymbolCommonName + FormatSentinelEnd
 )
 

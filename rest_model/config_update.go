@@ -54,7 +54,7 @@ type ConfigUpdate struct {
 	Name *string `json:"name"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 }
 
 // Validate validates this config update
@@ -130,11 +130,13 @@ func (m *ConfigUpdate) ContextValidate(ctx context.Context, formats strfmt.Regis
 
 func (m *ConfigUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

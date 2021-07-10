@@ -56,7 +56,7 @@ type AuthenticatorCreate struct {
 	Password *string `json:"password"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// The username that the identity will login with. Used only for method='updb'
 	// Required: true
@@ -162,11 +162,13 @@ func (m *AuthenticatorCreate) ContextValidate(ctx context.Context, formats strfm
 
 func (m *AuthenticatorCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

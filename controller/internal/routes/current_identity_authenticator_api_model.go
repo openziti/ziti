@@ -58,7 +58,7 @@ func (factory *CurrentIdentityAuthenticatorLinkFactoryImpl) Links(entity models.
 func MapUpdateAuthenticatorWithCurrentToModel(id, identityId string, authenticator *rest_model.AuthenticatorUpdateWithCurrent) *model.AuthenticatorSelf {
 	ret := &model.AuthenticatorSelf{
 		BaseEntity: models.BaseEntity{
-			Tags: authenticator.Tags,
+			Tags: TagsOrDefault(authenticator.Tags),
 			Id:   id,
 		},
 		CurrentPassword: string(*authenticator.CurrentPassword),
@@ -73,7 +73,7 @@ func MapUpdateAuthenticatorWithCurrentToModel(id, identityId string, authenticat
 func MapPatchAuthenticatorWithCurrentToModel(id, identityId string, authenticator *rest_model.AuthenticatorPatchWithCurrent) *model.AuthenticatorSelf {
 	ret := &model.AuthenticatorSelf{
 		BaseEntity: models.BaseEntity{
-			Tags: authenticator.Tags,
+			Tags: TagsOrDefault(authenticator.Tags),
 			Id:   id,
 		},
 		CurrentPassword: string(*authenticator.CurrentPassword),

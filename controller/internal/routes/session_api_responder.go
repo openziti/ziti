@@ -40,7 +40,7 @@ func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, _ rest_model
 		return
 	}
 	newSessionEnvelope := &rest_model.SessionCreateEnvelope{
-		Data: restModel,
+		Data: &restModel.SessionDetail,
 		Meta: &rest_model.Meta{},
 	}
 

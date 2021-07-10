@@ -28,6 +28,10 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
 
+func (p *PostureCheckMacAddresses) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+	return PostureCheckNoTimeout
+}
+
 func (p *PostureCheckMacAddresses) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	return &PostureCheckFailureValuesMac{
 		ActualValue: pd.Mac.Addresses,

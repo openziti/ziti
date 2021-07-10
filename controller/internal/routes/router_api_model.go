@@ -28,7 +28,7 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRoute
 func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *model.TransitRouter {
 	ret := &model.TransitRouter{
 		BaseEntity: models.BaseEntity{
-			Tags: router.Tags,
+			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name: stringz.OrEmpty(router.Name),
@@ -40,7 +40,7 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *model.TransitRouter {
 	ret := &model.TransitRouter{
 		BaseEntity: models.BaseEntity{
-			Tags: router.Tags,
+			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
 		Name: router.Name,

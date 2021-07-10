@@ -47,6 +47,7 @@ type Env interface {
 type HostController interface {
 	GetNetwork() *network.Network
 	Shutdown()
+	GetCloseNotifyChannel() <-chan struct{}
 }
 
 type Schemas interface {

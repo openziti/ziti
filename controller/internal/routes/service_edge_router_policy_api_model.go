@@ -51,7 +51,7 @@ func (factory *ServiceEdgeRouterPolicyLinkFactoryImpl) Links(entity models.Entit
 func MapCreateServiceEdgeRouterPolicyToModel(policy *rest_model.ServiceEdgeRouterPolicyCreate) *model.ServiceEdgeRouterPolicy {
 	ret := &model.ServiceEdgeRouterPolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 		},
 		Name:            stringz.OrEmpty(policy.Name),
 		Semantic:        string(policy.Semantic),
@@ -65,7 +65,7 @@ func MapCreateServiceEdgeRouterPolicyToModel(policy *rest_model.ServiceEdgeRoute
 func MapUpdateServiceEdgeRouterPolicyToModel(id string, policy *rest_model.ServiceEdgeRouterPolicyUpdate) *model.ServiceEdgeRouterPolicy {
 	ret := &model.ServiceEdgeRouterPolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 			Id:   id,
 		},
 		Name:            stringz.OrEmpty(policy.Name),
@@ -80,7 +80,7 @@ func MapUpdateServiceEdgeRouterPolicyToModel(id string, policy *rest_model.Servi
 func MapPatchServiceEdgeRouterPolicyToModel(id string, policy *rest_model.ServiceEdgeRouterPolicyPatch) *model.ServiceEdgeRouterPolicy {
 	ret := &model.ServiceEdgeRouterPolicy{
 		BaseEntity: models.BaseEntity{
-			Tags: policy.Tags,
+			Tags: TagsOrDefault(policy.Tags),
 			Id:   id,
 		},
 		Name:            policy.Name,

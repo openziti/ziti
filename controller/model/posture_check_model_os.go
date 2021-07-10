@@ -32,6 +32,10 @@ type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
 }
 
+func (p *PostureCheckOperatingSystem) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+	return PostureCheckNoTimeout
+}
+
 func (p *PostureCheckOperatingSystem) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	return &PostureCheckFailureValuesOperatingSystem{
 		ActualValue: pd.Os,

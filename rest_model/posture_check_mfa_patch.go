@@ -45,9 +45,11 @@ import (
 type PostureCheckMfaPatch struct {
 	nameField string
 
-	roleAttributesField Attributes
+	roleAttributesField *Attributes
 
-	tagsField Tags
+	tagsField *Tags
+
+	PostureCheckMfaPropertiesPatch
 }
 
 // Name gets the name of this subtype
@@ -61,22 +63,22 @@ func (m *PostureCheckMfaPatch) SetName(val string) {
 }
 
 // RoleAttributes gets the role attributes of this subtype
-func (m *PostureCheckMfaPatch) RoleAttributes() Attributes {
+func (m *PostureCheckMfaPatch) RoleAttributes() *Attributes {
 	return m.roleAttributesField
 }
 
 // SetRoleAttributes sets the role attributes of this subtype
-func (m *PostureCheckMfaPatch) SetRoleAttributes(val Attributes) {
+func (m *PostureCheckMfaPatch) SetRoleAttributes(val *Attributes) {
 	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckMfaPatch) Tags() Tags {
+func (m *PostureCheckMfaPatch) Tags() *Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckMfaPatch) SetTags(val Tags) {
+func (m *PostureCheckMfaPatch) SetTags(val *Tags) {
 	m.tagsField = val
 }
 
@@ -92,6 +94,7 @@ func (m *PostureCheckMfaPatch) SetTypeID(val PostureCheckType) {
 // UnmarshalJSON unmarshals this object with a polymorphic type from a JSON structure
 func (m *PostureCheckMfaPatch) UnmarshalJSON(raw []byte) error {
 	var data struct {
+		PostureCheckMfaPropertiesPatch
 	}
 	buf := bytes.NewBuffer(raw)
 	dec := json.NewDecoder(buf)
@@ -106,9 +109,9 @@ func (m *PostureCheckMfaPatch) UnmarshalJSON(raw []byte) error {
 
 		Name string `json:"name,omitempty"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}
@@ -132,6 +135,7 @@ func (m *PostureCheckMfaPatch) UnmarshalJSON(raw []byte) error {
 		/* Not the type we're looking for. */
 		return errors.New(422, "invalid typeId value: %q", base.TypeID)
 	}
+	result.PostureCheckMfaPropertiesPatch = data.PostureCheckMfaPropertiesPatch
 
 	*m = result
 
@@ -143,16 +147,20 @@ func (m PostureCheckMfaPatch) MarshalJSON() ([]byte, error) {
 	var b1, b2, b3 []byte
 	var err error
 	b1, err = json.Marshal(struct {
-	}{})
+		PostureCheckMfaPropertiesPatch
+	}{
+
+		PostureCheckMfaPropertiesPatch: m.PostureCheckMfaPropertiesPatch,
+	})
 	if err != nil {
 		return nil, err
 	}
 	b2, err = json.Marshal(struct {
 		Name string `json:"name,omitempty"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}{
@@ -184,6 +192,11 @@ func (m *PostureCheckMfaPatch) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	// validation for a type composition with PostureCheckMfaPropertiesPatch
+	if err := m.PostureCheckMfaPropertiesPatch.Validate(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -196,11 +209,13 @@ func (m *PostureCheckMfaPatch) validateRoleAttributes(formats strfmt.Registry) e
 		return nil
 	}
 
-	if err := m.RoleAttributes().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -236,6 +251,11 @@ func (m *PostureCheckMfaPatch) ContextValidate(ctx context.Context, formats strf
 		res = append(res, err)
 	}
 
+	// validation for a type composition with PostureCheckMfaPropertiesPatch
+	if err := m.PostureCheckMfaPropertiesPatch.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -244,11 +264,13 @@ func (m *PostureCheckMfaPatch) ContextValidate(ctx context.Context, formats strf
 
 func (m *PostureCheckMfaPatch) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -256,11 +278,13 @@ func (m *PostureCheckMfaPatch) contextValidateRoleAttributes(ctx context.Context
 
 func (m *PostureCheckMfaPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

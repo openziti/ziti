@@ -51,13 +51,14 @@ func (factory *SessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Li
 func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCreate) *model.Session {
 	ret := &model.Session{
 		BaseEntity: models.BaseEntity{
-			Tags: session.Tags,
+			Tags: TagsOrDefault(session.Tags),
 		},
-		Token:        uuid.New().String(),
-		ApiSessionId: apiSessionId,
-		ServiceId:    session.ServiceID,
-		Type:         string(session.Type),
-		SessionCerts: nil,
+		Token:           uuid.New().String(),
+		ApiSessionId:    apiSessionId,
+		ServiceId:       session.ServiceID,
+		Type:            string(session.Type),
+		SessionCerts:    nil,
+		ServicePolicies: nil,
 	}
 
 	return ret
@@ -84,7 +85,7 @@ func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models
 	return restModel, nil
 }
 
-func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionDetail, error) {
+func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionManagementDetail, error) {
 	service, err := ae.Handlers.EdgeService.Read(sessionModel.ServiceId)
 	if err != nil {
 		return nil, err
@@ -102,15 +103,34 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 
 	dialBindType := rest_model.DialBind(sessionModel.Type)
 
-	ret := &rest_model.SessionDetail{
-		BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
-		APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
-		APISessionID: &apiSession.Id,
-		Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
-		ServiceID:    &service.Id,
-		EdgeRouters:  edgeRouters,
-		Type:         &dialBindType,
-		Token:        &sessionModel.Token,
+	servicePolicyRefs := []*rest_model.EntityRef{} //send `[]` not `null`
+
+	for _, servicePolicyId := range sessionModel.ServicePolicies {
+		if policy, err := ae.GetHandlers().ServicePolicy.Read(servicePolicyId); err != nil {
+			ref := &rest_model.EntityRef{
+				Links:  ServicePolicyLinkFactory.Links(policy),
+				Entity: EntityNameServicePolicy,
+				ID:     servicePolicyId,
+				Name:   policy.Name,
+			}
+
+			servicePolicyRefs = append(servicePolicyRefs, ref)
+		}
+
+	}
+
+	ret := &rest_model.SessionManagementDetail{
+		SessionDetail: rest_model.SessionDetail{
+			BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
+			APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
+			APISessionID: &apiSession.Id,
+			Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
+			ServiceID:    &service.Id,
+			EdgeRouters:  edgeRouters,
+			Type:         &dialBindType,
+			Token:        &sessionModel.Token,
+		},
+		ServicePolicies: servicePolicyRefs,
 	}
 
 	return ret, nil

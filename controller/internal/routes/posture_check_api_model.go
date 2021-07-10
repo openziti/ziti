@@ -51,12 +51,12 @@ func (factory *PostureCheckLinkFactoryImpl) Links(entity models.Entity) rest_mod
 func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *model.PostureCheck {
 	ret := &model.PostureCheck{
 		BaseEntity: models.BaseEntity{
-			Tags: postureCheck.Tags(),
+			Tags: TagsOrDefault(postureCheck.Tags()),
 		},
 		Name:           stringz.OrEmpty(postureCheck.Name()),
 		TypeId:         string(postureCheck.TypeID()),
 		Version:        1,
-		RoleAttributes: postureCheck.RoleAttributes(),
+		RoleAttributes: AttributesOrDefault(postureCheck.RoleAttributes()),
 	}
 
 	switch apiSubType := postureCheck.(type) {
@@ -89,7 +89,12 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 			Fingerprint: apiSubType.Process.SignerFingerprint,
 		}
 	case *rest_model.PostureCheckMfaCreate:
-		ret.SubType = &model.PostureCheckMfa{}
+		ret.SubType = &model.PostureCheckMfa{
+			TimeoutSeconds:        apiSubType.TimeoutSeconds,
+			PromptOnWake:          apiSubType.PromptOnWake,
+			PromptOnUnlock:        apiSubType.PromptOnUnlock,
+			IgnoreLegacyEndpoints: apiSubType.IgnoreLegacyEndpoints,
+		}
 	case *rest_model.PostureCheckProcessMultiCreate:
 		apiCheck := postureCheck.(*rest_model.PostureCheckProcessMultiCreate)
 		modelCheck := &model.PostureCheckProcessMulti{
@@ -117,11 +122,11 @@ func MapCreatePostureCheckToModel(postureCheck rest_model.PostureCheckCreate) *m
 func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureCheckUpdate) *model.PostureCheck {
 	ret := &model.PostureCheck{
 		BaseEntity: models.BaseEntity{
-			Tags: postureCheck.Tags(),
+			Tags: TagsOrDefault(postureCheck.Tags()),
 			Id:   id,
 		},
 		Name:           stringz.OrEmpty(postureCheck.Name()),
-		RoleAttributes: postureCheck.RoleAttributes(),
+		RoleAttributes: AttributesOrDefault(postureCheck.RoleAttributes()),
 	}
 
 	switch postureCheck.(type) {
@@ -156,7 +161,13 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			osCheck.OperatingSystems = append(osCheck.OperatingSystems, modelOs)
 		}
 	case *rest_model.PostureCheckMfaUpdate:
-		ret.SubType = &model.PostureCheckMfa{}
+		check := postureCheck.(*rest_model.PostureCheckMfaUpdate)
+		ret.SubType = &model.PostureCheckMfa{
+			TimeoutSeconds:        check.TimeoutSeconds,
+			PromptOnWake:          check.PromptOnWake,
+			PromptOnUnlock:        check.PromptOnUnlock,
+			IgnoreLegacyEndpoints: check.IgnoreLegacyEndpoints,
+		}
 	case *rest_model.PostureCheckProcessMultiUpdate:
 		apiCheck := postureCheck.(*rest_model.PostureCheckProcessMultiUpdate)
 		modelCheck := &model.PostureCheckProcessMulti{
@@ -184,12 +195,12 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheckPatch) *model.PostureCheck {
 	ret := &model.PostureCheck{
 		BaseEntity: models.BaseEntity{
-			Tags: postureCheck.Tags(),
+			Tags: TagsOrDefault(postureCheck.Tags()),
 			Id:   id,
 		},
 		Name:           postureCheck.Name(),
 		Version:        1,
-		RoleAttributes: postureCheck.RoleAttributes(),
+		RoleAttributes: AttributesOrDefault(postureCheck.RoleAttributes()),
 	}
 
 	switch postureCheck.(type) {
@@ -235,7 +246,13 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 
 		ret.TypeId = model.PostureCheckTypeOs
 	case *rest_model.PostureCheckMfaPatch:
-		ret.SubType = &model.PostureCheckMfa{}
+		check := postureCheck.(*rest_model.PostureCheckMfaPatch)
+		ret.SubType = &model.PostureCheckMfa{
+			TimeoutSeconds:        Int64OrDefault(check.TimeoutSeconds),
+			PromptOnWake:          BoolOrDefault(check.PromptOnWake),
+			PromptOnUnlock:        BoolOrDefault(check.PromptOnUnlock),
+			IgnoreLegacyEndpoints: BoolOrDefault(check.IgnoreLegacyEndpoints),
+		}
 		ret.TypeId = model.PostureCheckTypeMFA
 	case *rest_model.PostureCheckProcessMultiPatch:
 		apiCheck := postureCheck.(*rest_model.PostureCheckProcessMultiPatch)
@@ -278,7 +295,7 @@ func MapPostureChecksToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e
 	return restModel, nil
 }
 
-func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
+func MapPostureCheckToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (interface{}, error) {
 	i, ok := e.(*model.PostureCheck)
 
 	if !ok {
@@ -288,7 +305,7 @@ func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 		return nil, err
 	}
 
-	al, err := MapPostureCheckToRestModel(i)
+	al, err := MapPostureCheckToRestModel(ae, rc, i)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -299,7 +316,7 @@ func MapPostureCheckToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e mo
 	return al, nil
 }
 
-func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckDetail, error) {
+func MapPostureCheckToRestModel(ae *env.AppEnv, rc *response.RequestContext, i *model.PostureCheck) (rest_model.PostureCheckDetail, error) {
 	var ret rest_model.PostureCheckDetail
 
 	switch subType := i.SubType.(type) {
@@ -346,7 +363,14 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 		}
 		setBaseEntityDetailsOnPostureCheck(ret, i)
 	case *model.PostureCheckMfa:
-		ret = &rest_model.PostureCheckMfaDetail{}
+		ret = &rest_model.PostureCheckMfaDetail{
+			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+				PromptOnUnlock:        subType.PromptOnUnlock,
+				PromptOnWake:          subType.PromptOnWake,
+				TimeoutSeconds:        subType.TimeoutSeconds,
+				IgnoreLegacyEndpoints: subType.IgnoreLegacyEndpoints,
+			},
+		}
 		setBaseEntityDetailsOnPostureCheck(ret, i)
 	case *model.PostureCheckProcessMulti:
 		semantic := rest_model.Semantic(subType.Semantic)
@@ -383,17 +407,22 @@ func MapPostureCheckToRestModel(i *model.PostureCheck) (rest_model.PostureCheckD
 }
 
 func setBaseEntityDetailsOnPostureCheck(check rest_model.PostureCheckDetail, i *model.PostureCheck) {
+	if i.RoleAttributes == nil {
+		i.RoleAttributes = []string{}
+	}
+	roleAttributes := rest_model.Attributes(i.RoleAttributes)
+
 	createdAt := strfmt.DateTime(i.CreatedAt)
 	updatedAt := strfmt.DateTime(i.UpdatedAt)
 	check.SetCreatedAt(&createdAt)
 	check.SetUpdatedAt(&updatedAt)
-	check.SetTags(i.Tags)
+	check.SetTags(&rest_model.Tags{SubTags: i.Tags})
 	check.SetID(&i.Id)
 	check.SetLinks(PostureCheckLinkFactory.Links(i))
 	check.SetName(&i.Name)
 	check.SetTypeID(i.TypeId)
 	check.SetVersion(&i.Version)
-	check.SetRoleAttributes(i.RoleAttributes)
+	check.SetRoleAttributes(&roleAttributes)
 }
 
 func GetNamedPostureCheckRoles(postureCheckHandler *model.PostureCheckHandler, roles []string) rest_model.NamedRoles {

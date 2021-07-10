@@ -50,6 +50,14 @@ type PostureDataMfa struct {
 	// passed mfa
 	// Required: true
 	PassedMfa *bool `json:"passedMfa"`
+
+	// passed on unlock
+	// Required: true
+	PassedOnUnlock *bool `json:"passedOnUnlock"`
+
+	// passed on wake
+	// Required: true
+	PassedOnWake *bool `json:"passedOnWake"`
 }
 
 // Validate validates this posture data mfa
@@ -61,6 +69,14 @@ func (m *PostureDataMfa) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePassedMfa(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePassedOnUnlock(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePassedOnWake(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -82,6 +98,24 @@ func (m *PostureDataMfa) validateAPISessionID(formats strfmt.Registry) error {
 func (m *PostureDataMfa) validatePassedMfa(formats strfmt.Registry) error {
 
 	if err := validate.Required("passedMfa", "body", m.PassedMfa); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureDataMfa) validatePassedOnUnlock(formats strfmt.Registry) error {
+
+	if err := validate.Required("passedOnUnlock", "body", m.PassedOnUnlock); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureDataMfa) validatePassedOnWake(formats strfmt.Registry) error {
+
+	if err := validate.Required("passedOnWake", "body", m.PassedOnWake); err != nil {
 		return err
 	}
 

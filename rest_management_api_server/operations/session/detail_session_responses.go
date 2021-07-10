@@ -49,7 +49,7 @@ type DetailSessionOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.DetailSessionEnvelope `json:"body,omitempty"`
+	Payload *rest_model.DetailSessionManagementEnvelope `json:"body,omitempty"`
 }
 
 // NewDetailSessionOK creates DetailSessionOK with default headers values
@@ -59,13 +59,13 @@ func NewDetailSessionOK() *DetailSessionOK {
 }
 
 // WithPayload adds the payload to the detail session o k response
-func (o *DetailSessionOK) WithPayload(payload *rest_model.DetailSessionEnvelope) *DetailSessionOK {
+func (o *DetailSessionOK) WithPayload(payload *rest_model.DetailSessionManagementEnvelope) *DetailSessionOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the detail session o k response
-func (o *DetailSessionOK) SetPayload(payload *rest_model.DetailSessionEnvelope) {
+func (o *DetailSessionOK) SetPayload(payload *rest_model.DetailSessionManagementEnvelope) {
 	o.Payload = payload
 }
 

@@ -57,8 +57,7 @@ type BaseEntity struct {
 	ID *string `json:"id"`
 
 	// tags
-	// Required: true
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// updated at
 	// Required: true
@@ -137,9 +136,8 @@ func (m *BaseEntity) validateID(formats strfmt.Registry) error {
 }
 
 func (m *BaseEntity) validateTags(formats strfmt.Registry) error {
-
-	if err := validate.Required("tags", "body", m.Tags); err != nil {
-		return err
+	if swag.IsZero(m.Tags) { // not required
+		return nil
 	}
 
 	if m.Tags != nil {
@@ -199,11 +197,13 @@ func (m *BaseEntity) contextValidateLinks(ctx context.Context, formats strfmt.Re
 
 func (m *BaseEntity) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

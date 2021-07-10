@@ -47,9 +47,9 @@ import (
 type PostureCheckOperatingSystemCreate struct {
 	nameField *string
 
-	roleAttributesField Attributes
+	roleAttributesField *Attributes
 
-	tagsField Tags
+	tagsField *Tags
 
 	// operating systems
 	// Required: true
@@ -68,22 +68,22 @@ func (m *PostureCheckOperatingSystemCreate) SetName(val *string) {
 }
 
 // RoleAttributes gets the role attributes of this subtype
-func (m *PostureCheckOperatingSystemCreate) RoleAttributes() Attributes {
+func (m *PostureCheckOperatingSystemCreate) RoleAttributes() *Attributes {
 	return m.roleAttributesField
 }
 
 // SetRoleAttributes sets the role attributes of this subtype
-func (m *PostureCheckOperatingSystemCreate) SetRoleAttributes(val Attributes) {
+func (m *PostureCheckOperatingSystemCreate) SetRoleAttributes(val *Attributes) {
 	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckOperatingSystemCreate) Tags() Tags {
+func (m *PostureCheckOperatingSystemCreate) Tags() *Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckOperatingSystemCreate) SetTags(val Tags) {
+func (m *PostureCheckOperatingSystemCreate) SetTags(val *Tags) {
 	m.tagsField = val
 }
 
@@ -118,9 +118,9 @@ func (m *PostureCheckOperatingSystemCreate) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}
@@ -172,9 +172,9 @@ func (m PostureCheckOperatingSystemCreate) MarshalJSON() ([]byte, error) {
 	b2, err = json.Marshal(struct {
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId"`
 	}{
@@ -235,11 +235,13 @@ func (m *PostureCheckOperatingSystemCreate) validateRoleAttributes(formats strfm
 		return nil
 	}
 
-	if err := m.RoleAttributes().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -318,11 +320,13 @@ func (m *PostureCheckOperatingSystemCreate) ContextValidate(ctx context.Context,
 
 func (m *PostureCheckOperatingSystemCreate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -330,11 +334,13 @@ func (m *PostureCheckOperatingSystemCreate) contextValidateRoleAttributes(ctx co
 
 func (m *PostureCheckOperatingSystemCreate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

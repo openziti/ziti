@@ -32,20 +32,86 @@ package rest_model
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 )
 
 // Tags A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean
 //
 // swagger:model tags
-type Tags map[string]interface{}
+type Tags struct {
+	SubTags
+}
 
-// Validate validates this tags
-func (m Tags) Validate(formats strfmt.Registry) error {
+// UnmarshalJSON unmarshals this object from a JSON structure
+func (m *Tags) UnmarshalJSON(raw []byte) error {
+	// AO0
+	var aO0 SubTags
+	if err := swag.ReadJSON(raw, &aO0); err != nil {
+		return err
+	}
+	m.SubTags = aO0
+
 	return nil
 }
 
-// ContextValidate validates this tags based on context it is used
-func (m Tags) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// MarshalJSON marshals this object to a JSON structure
+func (m Tags) MarshalJSON() ([]byte, error) {
+	_parts := make([][]byte, 0, 1)
+
+	aO0, err := swag.WriteJSON(m.SubTags)
+	if err != nil {
+		return nil, err
+	}
+	_parts = append(_parts, aO0)
+	return swag.ConcatJSON(_parts...), nil
+}
+
+// Validate validates this tags
+func (m *Tags) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with SubTags
+	if err := m.SubTags.Validate(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+// ContextValidate validate this tags based on the context it is used
+func (m *Tags) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	// validation for a type composition with SubTags
+	if err := m.SubTags.ContextValidate(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (m *Tags) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
+}
+
+// UnmarshalBinary interface implementation
+func (m *Tags) UnmarshalBinary(b []byte) error {
+	var res Tags
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*m = res
 	return nil
 }

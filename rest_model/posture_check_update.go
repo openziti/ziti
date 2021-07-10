@@ -56,12 +56,12 @@ type PostureCheckUpdate interface {
 	SetName(*string)
 
 	// role attributes
-	RoleAttributes() Attributes
-	SetRoleAttributes(Attributes)
+	RoleAttributes() *Attributes
+	SetRoleAttributes(*Attributes)
 
 	// tags
-	Tags() Tags
-	SetTags(Tags)
+	Tags() *Tags
+	SetTags(*Tags)
 
 	// type Id
 	TypeID() PostureCheckType
@@ -74,9 +74,9 @@ type PostureCheckUpdate interface {
 type postureCheckUpdate struct {
 	nameField *string
 
-	roleAttributesField Attributes
+	roleAttributesField *Attributes
 
-	tagsField Tags
+	tagsField *Tags
 
 	typeIdField PostureCheckType
 }
@@ -92,22 +92,22 @@ func (m *postureCheckUpdate) SetName(val *string) {
 }
 
 // RoleAttributes gets the role attributes of this polymorphic type
-func (m *postureCheckUpdate) RoleAttributes() Attributes {
+func (m *postureCheckUpdate) RoleAttributes() *Attributes {
 	return m.roleAttributesField
 }
 
 // SetRoleAttributes sets the role attributes of this polymorphic type
-func (m *postureCheckUpdate) SetRoleAttributes(val Attributes) {
+func (m *postureCheckUpdate) SetRoleAttributes(val *Attributes) {
 	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this polymorphic type
-func (m *postureCheckUpdate) Tags() Tags {
+func (m *postureCheckUpdate) Tags() *Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this polymorphic type
-func (m *postureCheckUpdate) SetTags(val Tags) {
+func (m *postureCheckUpdate) SetTags(val *Tags) {
 	m.tagsField = val
 }
 
@@ -248,11 +248,13 @@ func (m *postureCheckUpdate) validateRoleAttributes(formats strfmt.Registry) err
 		return nil
 	}
 
-	if err := m.RoleAttributes().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -299,11 +301,13 @@ func (m *postureCheckUpdate) ContextValidate(ctx context.Context, formats strfmt
 
 func (m *postureCheckUpdate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -311,11 +315,13 @@ func (m *postureCheckUpdate) contextValidateRoleAttributes(ctx context.Context, 
 
 func (m *postureCheckUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

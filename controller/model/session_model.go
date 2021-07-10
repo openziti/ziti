@@ -30,11 +30,12 @@ import (
 
 type Session struct {
 	models.BaseEntity
-	Token        string
-	ApiSessionId string
-	ServiceId    string
-	Type         string
-	SessionCerts []*SessionCert
+	Token           string
+	ApiSessionId    string
+	ServiceId       string
+	Type            string
+	SessionCerts    []*SessionCert
+	ServicePolicies []string
 }
 
 type SessionCert struct {
@@ -54,12 +55,13 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	}
 
 	boltEntity := &persistence.Session{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Token:         entity.Token,
-		ApiSessionId:  entity.ApiSessionId,
-		ServiceId:     entity.ServiceId,
-		Type:          entity.Type,
-		ApiSession:    apiSession,
+		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:           entity.Token,
+		ApiSessionId:    entity.ApiSessionId,
+		ServiceId:       entity.ServiceId,
+		Type:            entity.Type,
+		ApiSession:      apiSession,
+		ServicePolicies: entity.ServicePolicies,
 	}
 
 	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
@@ -98,11 +100,12 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 
 func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
 	return &persistence.Session{
-		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Token:         entity.Token,
-		ApiSessionId:  entity.ApiSessionId,
-		ServiceId:     entity.ServiceId,
-		Type:          entity.Type,
+		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Token:           entity.Token,
+		ApiSessionId:    entity.ApiSessionId,
+		ServiceId:       entity.ServiceId,
+		Type:            entity.Type,
+		ServicePolicies: entity.ServicePolicies,
 	}, nil
 }
 
@@ -120,6 +123,7 @@ func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity)
 	entity.ApiSessionId = boltSession.ApiSessionId
 	entity.ServiceId = boltSession.ServiceId
 	entity.Type = boltSession.Type
+	entity.ServicePolicies = boltSession.ServicePolicies
 	return nil
 }
 

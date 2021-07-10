@@ -105,11 +105,29 @@ definitions:
     required:
       - apiSessionId
       - passedMfa
+      - passedOnWake
+      - passedOnUnlock
     properties:
       apiSessionId:
         type: string
       passedMfa:
         type: boolean
+      passedOnWake:
+        type: boolean
+      passedOnUnlock:
+        type: boolean
+  postureDataEndpointState:
+    type: object
+    required:
+      - wokenAt
+      - unlockedAt
+    properties:
+      wokenAt:
+        type: string
+        format: date-time
+      unlockedAt:
+        type: string
+        format: date-time
   apiSessionPostureData:
     type: object
     required:
@@ -117,3 +135,7 @@ definitions:
     properties:
       mfa:
         $ref: '#/definitions/postureDataMfa'
+      endpointState:
+        $ref: '#/definitions/postureDataEndpointState'
+      sdkInfo:
+        $ref: '../shared/authenticate.yml#/definitions/sdkInfo'

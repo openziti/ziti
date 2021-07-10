@@ -122,12 +122,43 @@ func MapPostureDataApiSessionDataToRestModel(apiSessionData map[string]*model.Ap
 	ret := map[string]rest_model.APISessionPostureData{}
 
 	for apiSessionId, apiSessionData := range apiSessionData {
-		ret[apiSessionId] = rest_model.APISessionPostureData{
-			Mfa: &rest_model.PostureDataMfa{
-				APISessionID: &apiSessionId,
-				PassedMfa:    &apiSessionData.Mfa.PassedMfa,
-			},
+		apiSessionPostureData := rest_model.APISessionPostureData{}
+
+		passedMfa := apiSessionData.Mfa != nil && apiSessionData.Mfa.PassedMfaAt != nil
+		apiSessionPostureData.Mfa = &rest_model.PostureDataMfa{
+			APISessionID: &apiSessionId,
+			PassedMfa:    &passedMfa,
 		}
+
+		apiSessionPostureData.EndpointState = &rest_model.PostureDataEndpointState{
+			UnlockedAt: nil,
+			WokenAt:    nil,
+		}
+
+		if apiSessionData.EndpointState != nil {
+			if apiSessionData.EndpointState.UnlockedAt != nil {
+				formattedDate := strfmt.DateTime(*apiSessionData.EndpointState.UnlockedAt)
+				apiSessionPostureData.EndpointState.UnlockedAt = &formattedDate
+			}
+
+			if apiSessionData.EndpointState.WokenAt != nil {
+				formattedDate := strfmt.DateTime(*apiSessionData.EndpointState.WokenAt)
+				apiSessionPostureData.EndpointState.WokenAt = &formattedDate
+			}
+		}
+
+		if apiSessionData.SdkInfo != nil {
+			apiSessionPostureData.SdkInfo = &rest_model.SdkInfo{
+				AppID:      apiSessionData.SdkInfo.AppId,
+				AppVersion: apiSessionData.SdkInfo.AppVersion,
+				Branch:     apiSessionData.SdkInfo.Branch,
+				Revision:   apiSessionData.SdkInfo.Revision,
+				Type:       apiSessionData.SdkInfo.Type,
+				Version:    apiSessionData.SdkInfo.Version,
+			}
+		}
+
+		ret[apiSessionId] = apiSessionPostureData
 	}
 
 	return ret
@@ -272,18 +303,27 @@ func MapPostureCheckFailureOsToRestModel(failure *model.PostureCheckFailure) *re
 }
 
 func MapPostureCheckFailureMfaToRestModel(failure *model.PostureCheckFailure) *rest_model.PostureCheckFailureMfa {
-	t := true
 	ret := &rest_model.PostureCheckFailureMfa{
 		ActualValue:   nil,
-		ExpectedValue: &t,
+		ExpectedValue: nil,
 	}
 	ret.SetPostureCheckID(&failure.PostureCheckId)
 	ret.SetPostureCheckType(failure.PostureCheckType)
 	ret.SetPostureCheckName(&failure.PostureCheckName)
 
 	if val, ok := failure.PostureCheckFailureValues.(*model.PostureCheckFailureValuesMfa); ok {
-		ret.ActualValue = &val.ActualValue
-		ret.ExpectedValue = &val.ExpectedValue
+		ret.ActualValue = &rest_model.PostureChecksFailureMfaValues{
+			PassedMfa:      val.ActualValue.PassedMfa,
+			PassedOnUnlock: val.ActualValue.PassedOnUnlock,
+			PassedOnWake:   val.ActualValue.PassedOnWake,
+			TimedOut:       val.ActualValue.TimedOutSeconds,
+		}
+		ret.ExpectedValue = &rest_model.PostureChecksFailureMfaValues{
+			PassedMfa:      val.ExpectedValue.PassedMfa,
+			PassedOnUnlock: val.ExpectedValue.PassedOnUnlock,
+			PassedOnWake:   val.ExpectedValue.PassedOnWake,
+			TimedOut:       val.ExpectedValue.TimedOutSeconds,
+		}
 	} else {
 		pfxlog.Logger().Errorf("could not convert failure values of %T for posture check %s, expected mfa", failure.PostureCheckFailureValues, failure.PostureCheckId)
 	}

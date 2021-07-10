@@ -74,19 +74,19 @@ func NewListSessionsOK() *ListSessionsOK {
 A list of sessions
 */
 type ListSessionsOK struct {
-	Payload *rest_model.ListSessionsEnvelope
+	Payload *rest_model.ListSessionsManagementEnvelope
 }
 
 func (o *ListSessionsOK) Error() string {
 	return fmt.Sprintf("[GET /sessions][%d] listSessionsOK  %+v", 200, o.Payload)
 }
-func (o *ListSessionsOK) GetPayload() *rest_model.ListSessionsEnvelope {
+func (o *ListSessionsOK) GetPayload() *rest_model.ListSessionsManagementEnvelope {
 	return o.Payload
 }
 
 func (o *ListSessionsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.ListSessionsEnvelope)
+	o.Payload = new(rest_model.ListSessionsManagementEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

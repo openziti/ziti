@@ -573,22 +573,55 @@ definitions:
   ###################################################################
   # Posture Check MFA
   ###################################################################
+  postureCheckMfaProperties:
+    type: object
+    properties:
+      timeoutSeconds:
+        type: integer
+      promptOnWake:
+        type: boolean
+      promptOnUnlock:
+        type: boolean
+      ignoreLegacyEndpoints:
+        type: boolean
+
+  postureCheckMfaPropertiesPatch:
+    type: object
+    properties:
+      timeoutSeconds:
+        type: integer
+        x-nullable: true
+      promptOnWake:
+        type: boolean
+        x-nullable: true
+      promptOnUnlock:
+        type: boolean
+        x-nullable: true
+      ignoreLegacyEndpoints:
+        type: boolean
+        x-nullable: true
+
   postureCheckMfaDetail:
     allOf:
       - $ref: '#/definitions/postureCheckDetail'
+      - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: "MFA"
 
   postureCheckMfaCreate:
     allOf:
       - $ref: '#/definitions/postureCheckCreate'
+      - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: "MFA"
+
 
   postureCheckMfaUpdate:
     allOf:
       - $ref: '#/definitions/postureCheckUpdate'
+      - $ref: '#/definitions/postureCheckMfaProperties'
     x-class: "MFA"
 
   postureCheckMfaPatch:
     allOf:
       - $ref: '#/definitions/postureCheckPatch'
+      - $ref: '#/definitions/postureCheckMfaPropertiesPatch'
     x-class: "MFA"

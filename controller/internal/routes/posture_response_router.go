@@ -150,5 +150,32 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		postureResponse.SubType = subType
 
 		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
+	case *rest_model.PostureResponseEndpointStateCreate:
+		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseEndpointStateCreate)
+
+		postureResponse := &model.PostureResponse{
+			PostureCheckId: *apiPostureResponse.ID(),
+			TypeId:         string(apiPostureResponse.TypeID()),
+			LastUpdatedAt:  time.Now(),
+			TimedOut:       false,
+		}
+
+		subType := &model.PostureResponseEndpointState{
+			ApiSessionId: rc.ApiSession.Id,
+		}
+		now := time.Now().UTC()
+
+		if apiPostureResponse.Woken {
+			subType.WokenAt = &now
+		}
+
+		if apiPostureResponse.Unlocked {
+			subType.UnlockedAt = &now
+		}
+
+		subType.PostureResponse = postureResponse
+		postureResponse.SubType = subType
+
+		ae.Handlers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 	}
 }

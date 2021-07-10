@@ -46,9 +46,9 @@ import (
 type PostureCheckDomainUpdate struct {
 	nameField *string
 
-	roleAttributesField Attributes
+	roleAttributesField *Attributes
 
-	tagsField Tags
+	tagsField *Tags
 
 	// domains
 	// Required: true
@@ -67,22 +67,22 @@ func (m *PostureCheckDomainUpdate) SetName(val *string) {
 }
 
 // RoleAttributes gets the role attributes of this subtype
-func (m *PostureCheckDomainUpdate) RoleAttributes() Attributes {
+func (m *PostureCheckDomainUpdate) RoleAttributes() *Attributes {
 	return m.roleAttributesField
 }
 
 // SetRoleAttributes sets the role attributes of this subtype
-func (m *PostureCheckDomainUpdate) SetRoleAttributes(val Attributes) {
+func (m *PostureCheckDomainUpdate) SetRoleAttributes(val *Attributes) {
 	m.roleAttributesField = val
 }
 
 // Tags gets the tags of this subtype
-func (m *PostureCheckDomainUpdate) Tags() Tags {
+func (m *PostureCheckDomainUpdate) Tags() *Tags {
 	return m.tagsField
 }
 
 // SetTags sets the tags of this subtype
-func (m *PostureCheckDomainUpdate) SetTags(val Tags) {
+func (m *PostureCheckDomainUpdate) SetTags(val *Tags) {
 	m.tagsField = val
 }
 
@@ -117,9 +117,9 @@ func (m *PostureCheckDomainUpdate) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId,omitempty"`
 	}
@@ -171,9 +171,9 @@ func (m PostureCheckDomainUpdate) MarshalJSON() ([]byte, error) {
 	b2, err = json.Marshal(struct {
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
-		Tags Tags `json:"tags"`
+		Tags *Tags `json:"tags,omitempty"`
 
 		TypeID PostureCheckType `json:"typeId,omitempty"`
 	}{
@@ -234,11 +234,13 @@ func (m *PostureCheckDomainUpdate) validateRoleAttributes(formats strfmt.Registr
 		return nil
 	}
 
-	if err := m.RoleAttributes().Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -297,11 +299,13 @@ func (m *PostureCheckDomainUpdate) ContextValidate(ctx context.Context, formats 
 
 func (m *PostureCheckDomainUpdate) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes() != nil {
+		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -309,11 +313,13 @@ func (m *PostureCheckDomainUpdate) contextValidateRoleAttributes(ctx context.Con
 
 func (m *PostureCheckDomainUpdate) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags().ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags() != nil {
+		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

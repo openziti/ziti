@@ -45,7 +45,7 @@ type IdentityDetail struct {
 	BaseEntity
 
 	// app data
-	AppData Tags `json:"appData"`
+	AppData *Tags `json:"appData,omitempty"`
 
 	// authenticators
 	// Required: true
@@ -92,7 +92,7 @@ type IdentityDetail struct {
 
 	// role attributes
 	// Required: true
-	RoleAttributes Attributes `json:"roleAttributes"`
+	RoleAttributes *Attributes `json:"roleAttributes"`
 
 	// sdk info
 	// Required: true
@@ -126,7 +126,7 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		AppData Tags `json:"appData"`
+		AppData *Tags `json:"appData,omitempty"`
 
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
@@ -150,7 +150,7 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		SdkInfo *SdkInfo `json:"sdkInfo"`
 
@@ -215,7 +215,7 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		AppData Tags `json:"appData"`
+		AppData *Tags `json:"appData,omitempty"`
 
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
@@ -239,7 +239,7 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
-		RoleAttributes Attributes `json:"roleAttributes"`
+		RoleAttributes *Attributes `json:"roleAttributes"`
 
 		SdkInfo *SdkInfo `json:"sdkInfo"`
 
@@ -553,11 +553,13 @@ func (m *IdentityDetail) validateRoleAttributes(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := m.RoleAttributes.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -705,11 +707,13 @@ func (m *IdentityDetail) ContextValidate(ctx context.Context, formats strfmt.Reg
 
 func (m *IdentityDetail) contextValidateAppData(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.AppData.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("appData")
+	if m.AppData != nil {
+		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("appData")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
@@ -785,11 +789,13 @@ func (m *IdentityDetail) contextValidateEnvInfo(ctx context.Context, formats str
 
 func (m *IdentityDetail) contextValidateRoleAttributes(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("roleAttributes")
+	if m.RoleAttributes != nil {
+		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("roleAttributes")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

@@ -101,8 +101,10 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 			if envInfo := envInfoInterface.(map[string]interface{}); envInfo != nil {
 				if err := mapstructure.Decode(envInfo, &identity.EnvInfo); err != nil {
 					logger.WithError(err).Error("error processing env info")
+				} else {
+					shouldUpdate = true
 				}
-				shouldUpdate = true
+
 			}
 		}
 
@@ -110,8 +112,9 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 			if sdkInfo := sdkInfoInterface.(map[string]interface{}); sdkInfo != nil {
 				if err := mapstructure.Decode(sdkInfo, &identity.SdkInfo); err != nil {
 					logger.WithError(err).Error("error processing sdk info")
+				} else {
+					shouldUpdate = true
 				}
-				shouldUpdate = true
 			}
 		}
 
@@ -167,6 +170,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
 		rc.RespondWithApiError(errorz.NewUnauthorized())
 	}
+
+	ae.GetHandlers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
 	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession

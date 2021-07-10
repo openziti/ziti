@@ -55,7 +55,7 @@ type ServicePatch struct {
 	RoleAttributes []string `json:"roleAttributes"`
 
 	// tags
-	Tags Tags `json:"tags"`
+	Tags *Tags `json:"tags,omitempty"`
 
 	// terminator strategy
 	TerminatorStrategy string `json:"terminatorStrategy,omitempty"`
@@ -108,11 +108,13 @@ func (m *ServicePatch) ContextValidate(ctx context.Context, formats strfmt.Regis
 
 func (m *ServicePatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Tags.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("tags")
+	if m.Tags != nil {
+		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("tags")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

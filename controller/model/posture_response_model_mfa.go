@@ -24,8 +24,8 @@ const (
 
 type PostureResponseMfa struct {
 	*PostureResponse
-	ApiSessionId string `json:"-"`
-	PassedMfa    bool   `json:"passedMfa"`
+	ApiSessionId string    `json:"-"`
+	PassedMfaAt  *time.Time `json:"passedMfaAt"`
 }
 
 func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
@@ -34,7 +34,7 @@ func (pr *PostureResponseMfa) Apply(postureData *PostureData) {
 		postureData.ApiSessions = map[string]*ApiSessionPostureData{}
 	}
 
-	if  postureData.ApiSessions[pr.ApiSessionId] == nil {
+	if postureData.ApiSessions[pr.ApiSessionId] == nil {
 		postureData.ApiSessions[pr.ApiSessionId] = &ApiSessionPostureData{}
 	}
 

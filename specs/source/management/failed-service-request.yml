@@ -185,6 +185,18 @@ definitions:
           - expectedValue
         properties:
           actualValue:
-            type: boolean
+            $ref: '#/definitions/postureChecksFailureMfaValues'
           expectedValue:
-            type: boolean
+            $ref: '#/definitions/postureChecksFailureMfaValues'
+
+  postureChecksFailureMfaValues:
+    type: object
+    properties:
+      passedMfa:
+        type: boolean
+      passedOnWake:
+        type: boolean
+      passedOnUnlock:
+        type: boolean
+      timedOut:
+        type: boolean

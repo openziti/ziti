@@ -3511,7 +3511,8 @@ func init() {
       "items": {
         "type": "string"
       },
-      "x-omitempty": false
+      "x-nullable": true,
+      "x-omitempty": true
     },
     "authQueryDetail": {
       "type": "object",
@@ -3694,8 +3695,7 @@ func init() {
         "id",
         "createdAt",
         "updatedAt",
-        "_links",
-        "tags"
+        "_links"
       ],
       "properties": {
         "_links": {
@@ -4774,6 +4774,25 @@ func init() {
       ],
       "x-class": "DOMAIN"
     },
+    "postureResponseEndpointStateCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/postureResponseCreate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unlocked": {
+              "type": "boolean"
+            },
+            "woken": {
+              "type": "boolean"
+            }
+          }
+        }
+      ],
+      "x-class": "ENDPOINT_STATE"
+    },
     "postureResponseMacAddressCreate": {
       "allOf": [
         {
@@ -5156,13 +5175,20 @@ func init() {
         "$ref": "#/definitions/specDetail"
       }
     },
-    "tags": {
-      "description": "A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean",
+    "subTags": {
       "type": "object",
       "additionalProperties": {
         "type": "object"
-      },
-      "x-omitempty": false
+      }
+    },
+    "tags": {
+      "description": "A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean",
+      "allOf": [
+        {
+          "$ref": "#/definitions/subTags"
+        }
+      ],
+      "x-nullable": true
     },
     "terminatorClientDetail": {
       "type": "object",
@@ -8822,7 +8848,8 @@ func init() {
       "items": {
         "type": "string"
       },
-      "x-omitempty": false
+      "x-nullable": true,
+      "x-omitempty": true
     },
     "authQueryDetail": {
       "type": "object",
@@ -9005,8 +9032,7 @@ func init() {
         "id",
         "createdAt",
         "updatedAt",
-        "_links",
-        "tags"
+        "_links"
       ],
       "properties": {
         "_links": {
@@ -10085,6 +10111,25 @@ func init() {
       ],
       "x-class": "DOMAIN"
     },
+    "postureResponseEndpointStateCreate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/postureResponseCreate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unlocked": {
+              "type": "boolean"
+            },
+            "woken": {
+              "type": "boolean"
+            }
+          }
+        }
+      ],
+      "x-class": "ENDPOINT_STATE"
+    },
     "postureResponseMacAddressCreate": {
       "allOf": [
         {
@@ -10467,13 +10512,20 @@ func init() {
         "$ref": "#/definitions/specDetail"
       }
     },
-    "tags": {
-      "description": "A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean",
+    "subTags": {
       "type": "object",
       "additionalProperties": {
         "type": "object"
-      },
-      "x-omitempty": false
+      }
+    },
+    "tags": {
+      "description": "A map of user defined fields and values. The values are limited to the following types/values: null, string, boolean",
+      "allOf": [
+        {
+          "$ref": "#/definitions/subTags"
+        }
+      ],
+      "x-nullable": true
     },
     "terminatorClientDetail": {
       "type": "object",
