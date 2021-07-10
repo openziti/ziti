@@ -1,5 +1,25 @@
 # Release 0.20.11
 
+## What's New
+
+* Bug fix: Management and Client API nested resources now support `limit` and `offset` outside of `filter` as query params
+* Feature: MFA Timeout Options
+
+## MFA Timeout Options
+
+The MFA posture check now supports three options:
+
+* `timeoutSeconds` - the number of seconds before an MFA TOTP will need to be provided before the posture check begins to fail (optional)
+* `promptOnWake` - reduces the current timeout to 5m (if not less than already) when an endpoint reports a "wake" event (optional)
+* `promptOnUnlock` - reduces the current timeout to 5m (if not less than already) when an endpoint reports an "unlock" event (optional)
+* `ignoreLegacyEndpoints` - forces all other options to be ignored for legacy clients that do not support event state (optional)
+
+Event states, `promptOnWake` and `promptOnUnlock` are only supported in Ziti C SDK v0.20.0 and later. Individual ZDE/ZME clients
+may take time to update. If older endpoint are used with the new MFA options `ignoreLegacyEndpoints` allows administrators to decide
+how those clients should be treated. If `ignoreLegacyEndpoints` is `true`, they will not be subject to timeout or wake events.
+
+# Release 0.20.11
+
 * Bug fix: CLI Admin create/update/delete for UPDB authenticators now function properly
 * Maintenance: better logging [sdk-golang#161](https://github.com/openziti/sdk-golang/pull/161) and [edge#700](https://github.com/openziti/edge/pull/700)
 * Bug fix: [sdk-golang#162](https://github.com/openziti/sdk-golang/pull/162) fix race condition on close of ziti connections
