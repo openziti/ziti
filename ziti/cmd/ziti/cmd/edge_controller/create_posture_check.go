@@ -499,7 +499,10 @@ func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOp
 		Processes: processes,
 		Semantic:  &semantic,
 	}
-	params.PostureCheck.SetRoleAttributes(options.roleAttributes)
+
+	attributes := rest_model.Attributes(options.roleAttributes)
+
+	params.PostureCheck.SetRoleAttributes(&attributes)
 	params.PostureCheck.SetName(&options.name)
 
 	resp, err := managementClient.PostureChecks.CreatePostureCheck(params, nil)

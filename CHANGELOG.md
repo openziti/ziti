@@ -2,7 +2,7 @@
 
 ## What's New
 
-* Bug fix: Management and Client API nested resources now support `limit` and `offset` outside of `filter` as query params
+* Bug fix: [edge#641](https://github.com/openziti/edge/issues/641)Management and Client API nested resources now support `limit` and `offset` outside of `filter` as query params
 * Feature: MFA Timeout Options
 
 ## MFA Timeout Options
