@@ -89,24 +89,24 @@ It really was that simple! Now let's break down the current flags for `zssh` and
 ## Zssh Flags
 
 We know that `zssh` requires access to
-a [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) but it is not clear 
-from the example above is where `zzsh` found the credentials required to access that network. `zssh` supports three 
-basic 
-flags:
+a [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) but it is not clear from the
+example above is where `zzsh` found the credentials required to access that network. `zssh` supports three basic flags:
 
     -i, --SshKeyPath string   Path to ssh key. default: $HOME/.ssh/id_rsa
     -c, --ZConfig string      Path to ziti config file. default: $HOME/.ziti/zssh.json
     -d, --debug               pass to enable additional debug information
 
-What you see above is exactly the output `zssh` provides should you pass the `-h/--help` flag or execute `zssh` 
-without any parameters.  The `-i/--SshKeyPath` flag is congruent to the `-i` flag for `ssh`. You would use it to supply your key 
-to the `ssh` client.  Under the hood of `zssh` is a full-fledged `ssh` client which works just like `ssh` does. If 
-your `~/.ssh/id_rsa` file is in the `authorized_keys` of the remote machine - then you won't need to specify the 
+What you see above is exactly the output `zssh` provides should you pass the `-h/--help` flag or execute `zssh`
+without any parameters. The `-i/--SshKeyPath` flag is congruent to the `-i` flag for `ssh`. You would use it to supply
+your key to the `ssh` client. Under the hood of `zssh` is a full-fledged `ssh` client which works just like `ssh` does.
+If your `~/.ssh/id_rsa` file is in the `authorized_keys` of the remote machine - then you won't need to specify the
 `-i/` flag (as I didn't in my example). It is required to use a key when using `zssh`.
 
-The `-c/--ZConfig` flag controls access to the network. It is also required when using `zssh`. By default `zssh` 
-will look at your home directory in a folder named `.ziti`. In bash this is would be the equivalent of `$HOME`. In 
-powershell this is the equivalent the environment variable named `USERPROFILE`.
+The `-c/--ZConfig` flag controls access to the network. It is also required when using `zssh`. By default `zssh`
+will look at your home directory in a folder named `.ziti` for a file named `zssh.json`. In bash this is would be the
+equivalent of `$HOME`. In powershell this is the equivalent the environment variable named `USERPROFILE`. If that file
+exists you will not need to supply this flag. If you need to `zssh` across various networks you can always simply
+specify the flag to change which network you are using.
 
 The `-d/--debug` flag is simply used to output additional information to assist you with debugging. An example is shown:
 
@@ -119,10 +119,10 @@ The `-d/--debug` flag is simply used to output additional information to assist 
     connected.
     ubuntu@ip-172-31-27-154:~$
 
-Shown above is also one additional piece of information, the remote username.  In the exmaple above since I have 
-`zssh`ed to an ubuntu image in AWS, the default username is `ubuntu` so in order to `zssh` there I need to tell the 
-remote `sshd` server that I wish to attach as the `ubuntu` user. If your username is the same for your local 
-environment as the remote machine you do not need to specify the username.  For example my local username is `cd` 
+Shown above is also one additional piece of information, the remote username. In the exmaple above since I have
+`zssh`ed to an ubuntu image in AWS, the default username is `ubuntu` so in order to `zssh` there I need to tell the
+remote `sshd` server that I wish to attach as the `ubuntu` user. If your username is the same for your local environment
+as the remote machine you do not need to specify the username. For example my local username is `cd`
 (my initials). When I `zssh` to my dev machine I can simply use `zssh ClintLinux`:
 
     $ ./zssh ClintLinux
