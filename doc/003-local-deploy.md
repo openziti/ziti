@@ -14,11 +14,11 @@ It will also include provisioning and running a Ziti Tunneler with a demo netcat
 router egress.  The full connection will be:
 
     SDK -> Edge Router -> Router -> Service
-    
+
 It is also possible to host a service and thus avoid egress through a router:
 
     Client SDK -> Edge Router -> Routers (0...1) -> Edge Router -> Server SDK
-   
+
 This document will guide the former.
 
 For binaries, this guide provides instructions to build them for your local environment. It is also possible to acquire
@@ -27,6 +27,7 @@ which does require a NetFoundry login. Extract the contents an use the binaries 
 are on your path.
 
 ## Build Requirements
+
 If building your own binaries
 
 - A Golang environment (1.12 or later)
@@ -67,14 +68,14 @@ Now that you have ziti cloned and compiling, the next step is to get your very f
 environment running.  These steps will bring you through setting up your first environment
 with ziti. We will:
 
-* [Requirements](#Requirements)
-* [Establish Environment Variables](#Establish-Environment-Variables)
-* [Create A Certificate Authority](#Create A Certificate Authority)
-* [Configure & Run A Ziti Controller](#Configure-&-Run-A-Ziti-Controller)
-* [Configure & Run A Ziti Router](#Configure-&-Run-A-Ziti-Router)
-* [Configure & Run A Ziti Edge Router](#Configure-&-Run-A-Ziti-Edge-Router)
-* [Configure A Service & Ziti Tunneler](#Configure-A-Service-&-Ziti-Tunneler)
-* [Configuring a hosted service](#Configuring-A-Hosted-Service)
+- [Requirements](#Requirements)
+- [Establish Environment Variables](#Establish-Environment-Variables)
+- [Create A Certificate Authority](#Create A Certificate Authority)
+- [Configure & Run A Ziti Controller](#Configure-&-Run-A-Ziti-Controller)
+- [Configure & Run A Ziti Router](#Configure-&-Run-A-Ziti-Router)
+- [Configure & Run A Ziti Edge Router](#Configure-&-Run-A-Ziti-Edge-Router)
+- [Configure A Service & Ziti Tunneler](#Configure-A-Service-&-Ziti-Tunneler)
+- [Configuring a hosted service](#Configuring-A-Hosted-Service)
 
 ## Requirements
 
@@ -84,9 +85,11 @@ with ziti. We will:
 - nc (netcat)
 
 ### A note on Windows
+
 These commands all require a running bash shell. Windows users this means you'll need to use
 WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports a bash compliant
-shell. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
+shell. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/).
+WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
 Also note that commands for `ziti`, `ziti-fabric`, `ziti-controller`, and `ziti-router` may need to have the `.exe`
 suffix added into the command provided in this document.
@@ -103,20 +106,19 @@ This means that temporarily adding these to your system hosts file (outlined bel
 
 - Windows: `windows: %windir%\system32\drivers\etc\hosts`
 - Linux: `/etc/hosts`
- 
- 
+
     127.0.0.1   up-and-running-ctrl.ziti.netfoundry.io
     127.0.0.1   up-and-running-er01.ziti.netfoundry.io
     127.0.0.1   up-and-running-r01.ziti.netfoundry.io
 
 If you are deploying on multiple machines with their own resolvable hostnames, this is not required. However, it will
-be necessary to alter the Environment Variable DNS San values to match your environment. Also, all generated Ziti 
+be necessary to alter the Environment Variable DNS San values to match your environment. Also, all generated Ziti
 Identities (server, client, and private keys), configuration files, and binaries will need to be copied to the correct
 hosts.
 
 ## Establish Environment Variables
 
-The environment variables ZITI_HOME and ZITI_NETWORK will be used to boostrap an environment configuration file and 
+The environment variables ZITI_HOME and ZITI_NETWORK will be used to boostrap an environment configuration file and
 directory structure to hold the various certificate, private keys, configuration files, and enrollment tokens that will
 be generated in this guide. This will help keep them separated on your file system for easy deletion later.
 
@@ -126,9 +128,9 @@ After these are defined an environment folder and 'env' file will be generated t
 
         export ZITI_NETWORK=up-and-running
         export ZITI_HOME=~/.ziti
-            
+
     For Windows users: if a bash shell is being used some absolute paths may not work (i.e. /mnt/c/myziti). Using paths
-that start with `~` are generally safer. Using `.` will make configuration files and `env` files sensitive to the 
+that start with `~` are generally safer. Using `.` will make configuration files and `env` files sensitive to the
 current working directory, but should work as long as the correct current working directory is maintained.
 
 1. Generate the base directory structure and `env` file
@@ -151,10 +153,10 @@ current working directory, but should work as long as the correct current workin
         " > ${ZITI_HOME}/env
 
     This file generated by the above snippet can be sourced any time to switch between working with multiple environments
-    generated by this document or when starting new terminal windows. 
-    
+    generated by this document or when starting new terminal windows.
+
     Source the newly created `env` file: `source ${ZITI_HOME}/env` or if the defaults were used `source .ziti/env`
-    
+
     - `ZITI_HOME` - The root directory that should be consider the "HOME" directory (defaults to ~ if not set)
     - `ZITI_NETWORK` - The name of the network being worked with, this value is used as the basis for other file names. Should not contain spaces
     - `ZITI_PKI` - The location of the PKI used by `ziti pki` via the `--pki-root` option
@@ -168,8 +170,8 @@ current working directory, but should work as long as the correct current workin
 
 ## Create A Certificate Authority
 
-All communication between Ziti components is secured using mutual TLS. In order to get a ziti environment running a 
-certificate authority is required. This document guides the reader through creating a Root Certificate Authority 
+All communication between Ziti components is secured using mutual TLS. In order to get a ziti environment running a
+certificate authority is required. This document guides the reader through creating a Root Certificate Authority
 (Root CA). It does not cover setups that should utilize Intermediate Certificate Authorities for production environments.
 
 The `ziti` CLI will be significantly streamline and reduce the prerequisite knowledge required to generate
@@ -189,7 +191,7 @@ lifting.
         ls -l $ZITI_PKI/$ZITI_CA_NAME
 
     Example:
-        
+
             total 0
             drwxr-xr-x 1 cd cd 512 Jan 28 16:39 certs
             drwx------ 1 cd cd 512 Jan 28 16:39 crls
@@ -199,24 +201,23 @@ lifting.
             -rw-r--r-- 1 cd cd  20 Jan 28 16:39 index.txt.attr
             -rw-r--r-- 1 cd cd   3 Jan 28 16:39 serial
 
-
 ## Configure-&-Run-A-Ziti-Controller
 
-The following steps outline how to configure and start the Ziti Controller. 
+The following steps outline how to configure and start the Ziti Controller.
 
 1. Ensure that the `env` file is sourced if you are using a new terminal.
 
 1. Generate the controller Ziti Identity (server, client, and private key)
 
     Server
-    
+
         ziti pki create server --pki-root=$ZITI_PKI --ca-name $ZITI_CA_NAME \
         --server-file "${ZITI_NETWORK}-ctrl-server" \
         --dns "${ZITI_CTRL_HOSTNAME}" --ip "127.0.0.1" \
         --server-name "${ZITI_NETWORK} Controller"
-    
+
     Client
-    
+
         ziti pki create client --pki-root=$ZITI_PKI --ca-name ${ZITI_CA_NAME} \
         --client-file "${ZITI_NETWORK}-ctrl-client" \
         --key-file "${ZITI_NETWORK}-ctrl-server" \
@@ -224,15 +225,14 @@ The following steps outline how to configure and start the Ziti Controller.
 
     Note: The client cert uses the controller server key as specified by `--key-file`.
 
-    Additional certificate common name and subject fields can be set as needed. Run `ziti pki create server -h` or 
+    Additional certificate common name and subject fields can be set as needed. Run `ziti pki create server -h` or
      `ziti pki create client -h` for options.
 
     The Ziti Identity files are output in the following locations
-    
+
         $ZITI_PKI/$ZITI_CA_NAME/certs/${ZITI_NETWORK}-ctrl-server.cert
         $ZITI_PKI/$ZITI_CA_NAME/certs/${ZITI_NETWORK}-ctrl-client.cert
         $ZITI_PKI/$ZITI_CA_NAME/keys/${ZITI_NETWORK}-ctrl-server.key
-        
 
 1. Generate the controller configuration file
 
@@ -286,17 +286,17 @@ and create a mesh to provide long-haul transport.
 To enroll a Ziti Router, the command line utility `ziti-fabric` will be used that requires its own Ziti Identity in order
 to connect to and control the fabric.
 
-To configure more routers, repeat steps 3+ from below but be sure to 
+To configure more routers, repeat steps 3+ from below but be sure to
+
 - alter the `--server-name`, `--client-name`, and `--dns` parameters in all commands
 - update the hosts file with any new hostnames
 
 1. The `ziti-fabric` command will be used to manage the fabric, a Ziti Identity must be generated to do that:
 
-
         ziti pki create client --pki-root="${ZITI_PKI}" --ca-name="${ZITI_CA_NAME}" \
         --client-file="${ZITI_NETWORK}-dotzeet" \
         --client-name "${ZITI_NETWORK} Management"
-        
+
 1. Generate an `identities.json` file that references the Ziti Identity:
 
        echo "
@@ -307,33 +307,33 @@ To configure more routers, repeat steps 3+ from below but be sure to
          key: ${ZITI_PKI}/${ZITI_CA_NAME}/keys/${ZITI_NETWORK}-dotzeet.key
          endpoint: tls:127.0.0.1:10000
        " > $ZITI_HOME/identities.yml
-        
+
 1. Verify the identity works:
 
         ziti-fabric list routers
-        
+
    Note: If 127.0.0.1 was not included in the controller cert, use the `-e` flag to set the address to the controller
-   (`ziti-fabric -e "tls:up-and-running-ctrl.ziti.netfoundry.io:10000" list routers` ) on this an all future 
+   (`ziti-fabric -e "tls:up-and-running-ctrl.ziti.netfoundry.io:10000" list routers` ) on this an all future
    `ziti-fabric` command.
 
 1. Generate the Ziti Router identity
 
     Server
-    
+
         ziti pki create server --pki-root=$ZITI_PKI --ca-name ${ZITI_CA_NAME} \
         --server-file "${ZITI_NETWORK}-r01-server" \
         --dns "${ZITI_R01_HOSTNAME}" --ip 127.0.0.1 \
         --server-name r01
 
     Client
-        
+
         ziti pki create client --pki-root=$ZITI_PKI --ca-name ${ZITI_CA_NAME} \
         --client-file "${ZITI_NETWORK}-r01-client" \
         --key-file "${ZITI_NETWORK}-r01-server" \
         --client-name r01
 
 1. Generate the router configuration file:
-        
+
        echo "v: 2
        
        identity:
@@ -358,29 +358,28 @@ To configure more routers, repeat steps 3+ from below but be sure to
         ziti-fabric create router "${ZITI_PKI}/${ZITI_CA_NAME}/certs/${ZITI_NETWORK}-r01-client.cert"
 
     Verify:
-    
+
         ziti-fabric list routers
-            
+
     Should show 1 router named `r01`.
-    
+
 1. Start the router:
 
         ziti-router run $ZITI_HOME/r01.yaml
-        
+
     Note that running this command will commandeer your current terminal. Use `screen` or multiple terminals by using
     `source` on the `env` file.
-
 
 ## Configure & Run A Ziti Edge Router
 
 A Ziti Edge Router allows the Ziti SDK to ingress to a Ziti overlay network. A Ziti Edge Router is a Ziti Router that has the `edge`
 section of the configuration defined and has gone through the Edge Router Enrollment process instead of the Ziti Router
-enrollment process. Ziti Edge Routers and Ziti Routers are run from the same binary `ziti-router`. 
+enrollment process. Ziti Edge Routers and Ziti Routers are run from the same binary `ziti-router`.
 
 Ensure that the `env` file is sourced if you are using a new terminal.
 
 1. Authenticate w/ the controller if not authenticated
-        
+
         #update username / password if the default admin password has been updated
         ziti edge controller login ${ZITI_EDGE_API_HOSTNAME} -u admin -p admin -c  ${ZITI_CA_FILE}
 
@@ -439,23 +438,21 @@ Ensure that the `env` file is sourced if you are using a new terminal.
 1. Start the edge router:
 
         ziti-router run $ZITI_HOME/er01.yaml
-        
+
     Note that running this command will commandeer your current terminal. Use `screen` or multiple terminals by using
     `source` on the `env` file.
-
 
 ## Configure A Service & Ziti Tunneler
 
 1. Authenticate w/ the controller if not authenticated
-        
+
         #update username / password if the default admin password has been updated
         ziti edge controller login ${ZITI_EDGE_API_HOSTNAME} -u admin -p admin -c  ${ZITI_CA_FILE}
 
-1. Create a service that will facilitate connecting to a local netcat server listening on port 7256 and that egresses 
+1. Create a service that will facilitate connecting to a local netcat server listening on port 7256 and that egresses
 the Ziti Fabric on our "r01" router
 
         ziti edge controller create service netcat7256 localhost 7256 r01 tcp://localhost:7256
-    
 
 1. Create a Ziti Edge Identity for the Ziti Tunneler process
 
@@ -470,17 +467,16 @@ the Ziti Fabric on our "r01" router
         ziti-enroller --jwt $ZITI_HOME/identity01.jwt -o $ZITI_HOME/identity01.json
 
 1. Start the Ziti Tunneler in proxy mode
-        
+
         ziti-tunnel proxy netcat7256:8145 -i $ZITI_HOME/identity01.json
 
 1. Start the netcat server
-    
+
         nc -k -n 127.0.0.1 -l 7256
 
 1. Start the netcat client that will connect to the Ziti Tunnel proxy
 
         nc -v 127.0.0.1 8145
-
 
 ## Configuring A Hosted Service
 
@@ -492,22 +488,16 @@ exact details of this are beyond this document but the high level steps are outl
 1. Add the new Ziti Identity to the hosts of a new service or an existing service
 1. Start the new Ziti Tunneler
 
-
-
 Example Hosted Service
 
-```sh
-ziti edge controller create service <service name> <dns host> <dns port> \
---hosted
---hosted-ids <someIdentityId>
---tags tunneler.dial.addr=<address for tunneler to dial>
-```
+    ziti edge controller create service <service name> <dns host> <dns port> \
+    --hosted
+    --hosted-ids <someIdentityId>
+    --tags tunneler.dial.addr=<address for tunneler to dial>
 
 Example:
-````
-ziti edge controller create service postgresql pg 5432 \-
---hosted
---hosted-ids 40c025cb-bc92-4a54-b55f-1429412f2644
--tags tunneler.dial.addr=tcp:127.0.0.1:5432
-```
 
+    ziti edge controller create service postgresql pg 5432 \-
+    --hosted
+    --hosted-ids 40c025cb-bc92-4a54-b55f-1429412f2644
+    -tags tunneler.dial.addr=tcp:127.0.0.1:5432
