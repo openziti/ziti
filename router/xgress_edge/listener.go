@@ -409,26 +409,6 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.M
 	}
 }
 
-func (self *edgeClientConn) sendStateClosed(connId uint32, message string) {
-	msg := edge.NewStateClosedMsg(connId, message)
-	pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Debug("sending state closed message")
-
-	syncC, err := self.ch.SendAndSyncWithPriority(msg, channel2.High)
-	if err != nil {
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
-		return
-	}
-
-	select {
-	case err = <-syncC:
-		if err != nil {
-			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
-		}
-	case <-time.After(time.Second * 5):
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
-	}
-}
-
 func getResultOrFailure(msg *channel2.Message, err error, result channel2.TypedMessage) error {
 	if err != nil {
 		return err

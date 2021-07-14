@@ -144,7 +144,7 @@ func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
 func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.GetParentStore().GrantSymbols(store)
 
-	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+	store.symbolRoleAttributes = store.AddPublicSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 
 	store.indexName = store.GetParentStore().(db.RouterStore).GetNameIndex()
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)

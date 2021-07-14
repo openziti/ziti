@@ -125,8 +125,8 @@ func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
 
 	store.indexName = store.addUniqueNameField()
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
-	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
-	store.symbolEdgeRouterRoles = store.AddSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
+	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
+	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
 	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
 	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
 }
