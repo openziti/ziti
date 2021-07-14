@@ -4,40 +4,36 @@ As we learned in the [opening post](../README.md) - "zitifying" an application m
 application and leverage the power of
 the [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) to provide secure, truly
 zero-trust access to your application wherever in the world that application goes. In this post we are going to see how
-we have zitified `ssh` and why. Future posts will expand on this even further by showing how it is that NetFoundry
-uses `zssh` to support our customers.
+we have zitified `ssh` and why.
 
-In this post you will see why a zitified `ssh` client makes
+In this post you will see why a zitified `ssh` client makes ... TODO?
 
-<hr>
+----
 
 ## Why SSH?
 
-As I sit here typing these words I can tell you're skeptical. I can tell you're wondering why in the world we would even
-attempt to mess with `ssh` at all. After all, `ssh` has been a foundation of the administration of not only home
-networks but also corporate networks and the Internet itself. Surely if millions (billions?) of computers can interact
-every day safely and securely using `ssh` there is "no need" for us to be spending time zitifying `ssh`
-right? (Spoiler alert: wrong)
+I'd understand if you're skeptical. Perhaps you're wondering why in the world we would mess with `ssh`. After all,
+`ssh` is foundational to the administration the internet itself. If untold millions of computers can interact
+every day safely and securely-enough using `ssh` there is no "need" to improve upon that, right?
 
-I'm sure you've guessed that this is not the case whatsoever. After all, attackers don't leave `ssh` alone just because
-it's not worth it to try! Put a machine on the open internet, expose `ssh` on port 22 and watch for yourself all the
-attempts to access `ssh` using known default/weak/bad passwords flood in. Attacks don't only come from the Internet
-either! Attacks from a single compromised machine on your network very well could behave in the same way as an outside
-attacker. This is particularly true for ransomware style attacks as the compromised machine attempts to expand/multiply.
-The problems don't just stop here either. DoS attacks, other zero-day type bugs and more are all waiting for any service
-sitting on the open internet.
+(Spoiler alert: wrong!)
 
-A zitified `ssh` client is superior since the port used by `ssh` can be elimitated from the Internet-based firewall or
-perhaps could even be configured to listen only on localhost, preventing any connections whatsoever from any network
-client. In this configuration the `ssh` process is effectively "dark"
-meaning the service is not only invisible to the Internet but also the local area network as well! The only way to
-`ssh` to a machine using a [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) will
-be to have an identity authorized for
-that [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network). Cool right? Let's see how
-we did that, and how you can do the same thing using
+I'm sure you've guessed that this is not the case. Attackers don't ignore `ssh`. Try this: expose an SSH server
+to the internet and watch for yourself as the brute force attacks commence within minutes. The attacks may also originate
+from from any compromised machine inside the network. This is particularly true for ransomware style attacks because the compromised
+machine serves as a beachhead in the land-and-expand phase of the attack. The problems don't just stop here. Denial of service attacks
+and zero-day exploits are surely lying in wait for an internet-exposed service to appear.
+
+A zitified `ssh` client is fundamentally-superior because the port used by `ssh` need not be exposed to the internet at all. That is,
+it can be completely elimitated from the exceptions in the firewall that separates the server from the internet. Even better, it can
+exposed only to localhost thereby barring even connections to the SSH server from the local network e.g. compromised or rogue devices.
+In this configuration the `ssh` process is effectively "dark". The only way to `ssh` to a machine using a
+[Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) will be to be in possession of a strong crypto
+identity that authorized for that particular service in the same [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network).
+Cool right? Let's see how we did that, and how you can do the same thing using
 a [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network).
 
-<hr>
+----
 
 ## How It's Done
 
@@ -46,21 +42,21 @@ There are a few steps necessary before being able to use `zssh`:
 * Establish a [Ziti Network in AWS](https://github.com/openziti/ziti/blob/release-next/quickstart/aws.md) (using AWS in
   this example)
 * Create and enroll two Ziti Endpoints (one for our `ssh` server, one for the client)
-    * the `sshd` server will run `ziti-tunnel` for this demonstration. Conviniently it will run on the same machine that
+  * the `sshd` server will run `ziti-tunnel` for this demonstration. Conviniently it will run on the same machine that
       I used to setup the [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network).
-    * the client in this case will run `zssh` from my local machine and I'll `zssh` to the other endpoint
+  * the client in this case will run `zssh` from my local machine and I'll `zssh` to the other endpoint
 * Create the [Ziti Service](https://openziti.github.io/ziti/services/overview.html) we'll use and authorize the two
   endpoints to use this service
 * Use the `zssh` binary from the client side and the `ziti-tunnel` binary from the serving side to connect
-* Harden `sshd` further by removing port 22 from any Internet-based firewall configuration (for example from within the
+* Harden `sshd` further by removing port 22 from any internet-based firewall configuration (for example from within the
   security-groups wizard in AWS) or by forcing `sshd` to only listen on `localhost/127.0.0.1`
 
-After preforming these steps you'll have an `sshd` server which is dark to the Internet or your LAN (depending on how
-you decided to harden `sshd`). Accessing the server via `ssh` must now occur using the Ziti Network. Since the service
-is no longer accessible directly through a network it is no longer susceptible to the types of attacks mentioned
-previously!
+After preforming these steps you'll have an `sshd` server which is dark to the internet or your LAN. Accessing the server
+via `ssh` must now occur using the Ziti Network. The SSH server is no longer directly-accessible through any IP network.
+The surface area for attack has been effectively minimized to the LAN or localhost, depending upon how narrowly you decided
+to expose `sshd`.
 
-<hr>
+----
 
 ## Zssh in Action
 
@@ -72,8 +68,8 @@ Once the prerequisites are satisfied, we can see `zssh` in action. Simply downlo
 
 Once you have the executable download, make sure it is named `zssh` and for simplicity's sake we'll assume it's on the
 path. The usage for `zssh` is very similar to the usage of `ssh` so anyone familiar with `zssh` should be able to pick
-up `zssh` easily, Should you forget the usage, executing the binary with no arguments returns the expected usage as
-well. The general format when uzing `zssh` will be: `zssh <remoteUsername>@<targetIdentity>`
+up `zssh` easily. Should you forget the usage, executing the binary with no arguments returns the built-in usage help.
+The general format when uzing `zssh` will be: `zssh <remoteUsername>@<targetIdentity>`
 
 Below you can see me `zssh` from my local machine to the AWS machine secured by `ziti-tunnel`:
 
@@ -84,13 +80,14 @@ Below you can see me `zssh` from my local machine to the AWS machine secured by 
 
 It really was that simple! Now let's break down the current flags for `zssh` and exactly how this worked.
 
-<hr>
+----
 
 ## Zssh Flags
 
-We know that `zssh` requires access to
-a [Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network) but it is not clear from the
-example above is where `zzsh` found the credentials required to access that network. `zssh` supports three basic flags:
+We know that `zssh` requires access to a
+[Ziti Network](https://openziti.github.io/ziti/overview.html#overview-of-a-ziti-network)
+but it is not clear from the example above is where `zzsh` found the credentials required to access 
+that network. `zssh` supports three basic flags:
 
     -i, --SshKeyPath string   Path to ssh key. default: $HOME/.ssh/id_rsa
     -c, --ZConfig string      Path to ziti config file. default: $HOME/.ziti/zssh.json
@@ -130,4 +127,4 @@ as the remote machine you do not need to specify the username. For example my lo
     connected.
     cd@clint-linux-vm ~
 
-Hopefully this post has been helpful and insightful. Zitifying an application is _POWERFUL_!!!!
+Hopefully this post has been helpful and insightful. Zitifying an application is _POWERFUL_!
