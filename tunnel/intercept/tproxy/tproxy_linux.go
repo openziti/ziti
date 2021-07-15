@@ -101,11 +101,17 @@ func (self *interceptor) Start(provider tunnel.FabricProvider) {
 }
 
 func (self *interceptor) Stop() {
+	servicesRemoved := false
 	self.serviceProxies.IterCb(func(key string, v interface{}) {
 		proxy := v.(*tProxy)
 		proxy.Stop(alwaysRemoveAddressTracker{})
+		servicesRemoved = true
 	})
 	self.serviceProxies.Clear()
+
+	if servicesRemoved {
+		self.cleanupChains()
+	}
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
@@ -122,8 +128,18 @@ func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.
 		proxy := val.(*tProxy)
 		proxy.Stop(tracker)
 		self.serviceProxies.Remove(serviceName)
+		self.cleanupChains()
 	}
 	return nil
+}
+
+func (self *interceptor) cleanupChains() {
+	if self.serviceProxies.IsEmpty() {
+		deleteIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain)
+		if self.lanIf != "" {
+			deleteIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
+		}
+	}
 }
 
 func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) (*tProxy, error) {
@@ -207,7 +223,9 @@ func (self *interceptor) addIptablesChain(ipt *iptables.IPTables, table, srcChai
 
 	err = ipt.AppendUnique(table, srcChain, []string{"-j", dstChain}...)
 	if err != nil {
-		return fmt.Errorf("failed to create '%s' --> '%s' link: %v", srcChain, dstChain, err)
+		return errors.Wrapf(err, "failed to create '%v' link: '%v' --> '%v'", table, srcChain, dstChain)
+	} else {
+		pfxlog.Logger().Infof("added iptables '%v' link '%v' --> '%v'", table, srcChain, dstChain)
 	}
 
 	return nil
@@ -332,41 +350,39 @@ func getOriginalDest(oob []byte) (*net.UDPAddr, error) {
 }
 
 func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain string) {
+	log := pfxlog.Logger().WithField("chain", dstChain)
+	log.Infof("removing iptables '%v' link '%v' --> '%v'", table, srcChain, dstChain)
+
 	if err := ipt.Delete(table, srcChain, []string{"-j", dstChain}...); err != nil {
-		logrus.Errorf("failed to unlink chain %s: %v", dstChain, err)
+		log.WithError(err).Error("failed to unlink chain")
 	}
 
 	if err := ipt.ClearChain(table, dstChain); err != nil {
-		logrus.Errorf("failed to clear chain %s, %v", dstChain, err)
+		log.WithError(err).Error("failed to clear chain")
 	}
 
 	if err := ipt.DeleteChain(table, dstChain); err != nil {
-		logrus.Errorf("failed to delete chain %s: %v", dstChain, err)
+		log.WithError(err).Error("failed to delete chain")
 	}
 }
 
 func (self *tProxy) Stop(tracker intercept.AddressTracker) {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("service", self.service.Name)
 	if self.tcpLn != nil {
 		if err := self.tcpLn.Close(); err != nil {
-			log.Errorf("failed to close TCP listener: %v", err)
+			log.WithError(err).Error("failed to close TCP listener")
 		}
 	}
 
 	if self.udpLn != nil {
 		if err := self.udpLn.Close(); err != nil {
-			log.Errorf("failed to close UDP listener: %v", err)
+			log.WithError(err).Error("failed to close UDP listener")
 		}
 	}
 
 	err := self.StopIntercepting(tracker)
 	if err != nil {
-		log.Errorf("failed to clean up intercept configuration for %s: %v", self.service.Name, err)
-	}
-
-	deleteIptablesChain(self.interceptor.ipt, mangleTable, "PREROUTING", dstChain)
-	if self.interceptor.lanIf != "" {
-		deleteIptablesChain(self.interceptor.ipt, filterTable, "INPUT", dstChain)
+		log.WithError(err).Error("failed to clean up intercept configuration")
 	}
 }
 
@@ -416,7 +432,7 @@ func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, 
 func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, service *entities.Service, port IPPortAddr, tracker intercept.AddressTracker) error {
 	ipNet := interceptAddr.IpNet()
 	if err := router.AddLocalAddress(ipNet, "lo"); err != nil {
-		return fmt.Errorf("failed to add local route: %v", err)
+		return errors.Wrapf(err, "failed to add local route %v", ipNet)
 	}
 	tracker.AddAddress(ipNet.String())
 	self.addresses = append(self.addresses, interceptAddr)
@@ -456,19 +472,26 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 }
 
 func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
-	var errors []error
+	var errorList []error
+
+	log := pfxlog.Logger().WithField("sevice", self.service.Name)
 
 	for _, addr := range self.addresses {
+		log := log.WithField("route", addr.IpNet())
+		log.Infof("removing intercepted low-port: %v, high-port: %v", addr.LowPort(), addr.HighPort())
+
+		log.Infof("Removing rule iptables -t %v -A %v %v", mangleTable, dstChain, addr.TproxySpec)
 		err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
 		if err != nil {
-			errors = append(errors, err)
-			logrus.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+			errorList = append(errorList, err)
+			log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
 		}
 		if self.interceptor.lanIf != "" {
+			pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, addr.TproxySpec)
 			err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
 			if err != nil {
-				errors = append(errors, err)
-				logrus.Errorf("failed to remove iptables rule for service %s: %v", self.service.Name, err)
+				errorList = append(errorList, err)
+				log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
 			}
 		}
 
@@ -476,16 +499,25 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 		if tracker.RemoveAddress(ipNet.String()) {
 			err := router.RemoveLocalAddress(ipNet, "lo")
 			if err != nil {
-				errors = append(errors, err)
-				logrus.Errorf("failed to remove route for service %s: %v", self.service.Name, err)
+				errorList = append(errorList, err)
+				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, self.service.Name)
 			}
 		}
 	}
 
-	if len(errors) == 0 {
+	if len(errorList) == 0 {
 		return nil
 	}
-	return impl.MultipleErrors(errors)
+	if len(errorList) == 1 {
+		return errorList[0]
+	}
+	return impl.MultipleErrors(errorList)
+}
+
+func (self *tProxy) logAddresses() {
+	for idx, addr := range self.addresses {
+		fmt.Printf("%v: (%p) %v\n", idx, addr, addr)
+	}
 }
 
 type IPPortAddr interface {

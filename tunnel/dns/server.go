@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net"
 	"net/url"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +37,23 @@ type resolver struct {
 	namesMtx sync.Mutex
 }
 
+func flushDnsCaches() {
+	bin, err := exec.LookPath("systemd-resolve")
+	if err != nil {
+		logrus.WithError(err).Warn("unable to find systemd-resolve in path, consider adding a dns flush to your restart process")
+		return
+	}
+
+	cmd := exec.Command(bin, "--flush-caches")
+	if err = cmd.Run(); err != nil {
+		logrus.WithError(err).Warn("unable to flush dns caches, consider adding a dns flush to your restart process")
+	} else {
+		logrus.Info("dns caches flushed")
+	}
+}
+
 func NewResolver(config string) Resolver {
+	flushDnsCaches()
 	if config == "" {
 		return nil
 	}
