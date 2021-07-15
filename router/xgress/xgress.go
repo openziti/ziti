@@ -256,6 +256,14 @@ func (self *Xgress) CloseTimeout(duration time.Duration) {
 	}
 }
 
+func (self *Xgress) Unrouted() {
+	// When we're unrouted, if end of session hasn't already arrived, give incoming/queued data
+	// a chance to outflow before closing
+	if !self.flags.IsSet(closedFlag) {
+		time.AfterFunc(self.Options.MaxCloseWait, self.Close)
+	}
+}
+
 /*
 Things which can trigger close
 

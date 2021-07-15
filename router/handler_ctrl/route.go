@@ -104,8 +104,13 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.
 }
 
 func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error) {
-	log := pfxlog.ContextLogger(ch.Label())
-	log.WithError(err).Errorf("failed to connect egress for [s/%s]", route.SessionId)
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("sessionId", "s/"+route.SessionId).
+		WithField("binding", route.Egress.Binding).
+		WithField("address", route.Egress.Destination).
+		WithField("attempt", route.Attempt)
+
+	log.WithError(err).Errorf("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error())
 	response.ReplyTo(msg)
@@ -116,8 +121,12 @@ func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Cha
 
 func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
-		log := pfxlog.Logger().WithField("sessionId", route.SessionId)
-		log.Debugf("route request received. binding: %v, destination: %v, address: %v", route.Egress.Binding, route.Egress.Destination, route.Egress.Address)
+		log := pfxlog.ContextLogger(ch.Label()).
+			WithField("sessionId", "s/"+route.SessionId).
+			WithField("binding", route.Egress.Binding).
+			WithField("address", route.Egress.Destination).
+			WithField("attempt", route.Attempt)
+		log.Debug("route request received")
 		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 				sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
@@ -128,14 +137,11 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 					rh.forwarder)
 
 				if rh.forwarder.Options.XgressDialDwellTime > 0 {
-					logrus.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
+					log.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
 					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 				}
 
-				if peerData, err := dialer.Dial(route.Egress.Destination,
-					sessionId,
-					xgress.Address(route.Egress.Address),
-					bindHandler); err == nil {
+				if peerData, err := dialer.Dial(route.Egress.Destination, sessionId, xgress.Address(route.Egress.Address), bindHandler); err == nil {
 					rh.success(msg, attempt, ch, route, peerData)
 				} else {
 					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))

@@ -47,7 +47,7 @@ type Destination interface {
 
 type XgressDestination interface {
 	Destination
-	Close()
+	Unrouted()
 	Start()
 	IsTerminator() bool
 	Label() string
@@ -88,7 +88,7 @@ func (forwarder *Forwarder) UnregisterDestinations(sessionId string) {
 			if destination, found := forwarder.destinations.getDestination(address); found {
 				pfxlog.Logger().Debugf("unregistering destination [@/%v] for [s/%v]", address, sessionId)
 				forwarder.destinations.removeDestination(address)
-				go destination.(XgressDestination).Close() // create close queue?
+				go destination.(XgressDestination).Unrouted()
 			} else {
 				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, sessionId)
 			}
