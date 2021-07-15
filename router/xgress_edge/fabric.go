@@ -210,7 +210,6 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 	if self.onClose != nil {
 		self.onClose()
-
 	}
 }
 

@@ -195,9 +195,9 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.symbolPolicyType = store.AddSymbol(FieldServicePolicyType, ast.NodeTypeInt64)
 	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
 
-	store.symbolIdentityRoles = store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
-	store.symbolServiceRoles = store.AddSetSymbol(FieldServiceRoles, ast.NodeTypeString)
-	store.symbolPostureCheckRoles = store.AddSetSymbol(FieldPostureCheckRoles, ast.NodeTypeString)
+	store.symbolIdentityRoles = store.AddPublicSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
+	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
+	store.symbolPostureCheckRoles = store.AddPublicSetSymbol(FieldPostureCheckRoles, ast.NodeTypeString)
 
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
