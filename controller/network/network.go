@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
@@ -325,12 +326,14 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string) (*Circuit, error) {
+func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context) (*Circuit, error) {
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
 	}
+	ctx.WithField("circuitId", circuitId)
+	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
@@ -347,7 +350,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 3: select terminator
-		strategy, terminator, pathNodes, err := network.selectPath(srcR, svc, targetIdentity)
+		strategy, terminator, pathNodes, err := network.selectPath(srcR, svc, targetIdentity, ctx)
 		if err != nil {
 			network.ServiceDialOtherError(serviceId)
 			return nil, err
@@ -368,30 +371,37 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
+		for _, msg := range rms {
+			msg.Context = &ctrl_pb.Context{
+				Fields:      ctx.GetStringFields(),
+				ChannelMask: ctx.GetChannelsMask(),
+			}
+		}
+
 		// 5: Routing
-		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt+1, circuitId)
-		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator)
+		logger.Debugf("route attempt [#%d] for [s/%s]", attempt+1, circuitId)
+		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator, ctx)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
-			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, circuitId, err)
+			logger.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, circuitId, err)
 			attempt++
 			if attempt < network.options.CreateCircuitRetries {
 				continue
 
 			} else {
 				// revert successful routes
-				logrus.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateCircuitRetries, circuitId)
+				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateCircuitRetries, circuitId)
 				for cleanupRId := range allCleanups {
 					if r, err := network.GetRouter(cleanupRId); err == nil {
 						if err := sendUnroute(r, circuitId, true); err == nil {
-							logrus.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 						} else {
-							logrus.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 						}
 					} else {
-						logrus.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, circuitId)
+						logger.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, circuitId)
 					}
 				}
 
@@ -410,16 +420,16 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 				cleanupCount++
 				if r, err := network.GetRouter(cleanupRId); err == nil {
 					if err := sendUnroute(r, circuitId, true); err == nil {
-						logrus.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 					} else {
-						logrus.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 					}
 				} else {
-					logrus.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, circuitId)
+					logger.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, circuitId)
 				}
 			}
 		}
-		logrus.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
+		logger.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
 
 		// 6: Create Circuit Object
 		ss := &Circuit{
@@ -433,7 +443,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		network.circuitController.add(ss)
 		network.CircuitCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Path)
 
-		logrus.Debugf("created circuit [s/%s] ==> %s", circuitId, ss.Path)
+		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, ss.Path)
 		return ss, nil
 	}
 }
@@ -452,12 +462,12 @@ func parseIdentityAndService(service string) (string, string) {
 	return identityId, serviceId
 }
 
-func (network *Network) selectPath(srcR *Router, svc *Service, identity string) (xt.Strategy, xt.Terminator, []*Router, error) {
+func (network *Network) selectPath(srcR *Router, svc *Service, identity string, ctx logcontext.Context) (xt.Strategy, xt.Terminator, []*Router, error) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
 
-	log := pfxlog.Logger()
+	log := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
 
 	for _, terminator := range svc.Terminators {
 		if terminator.Identity != identity {
@@ -477,7 +487,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 
 			path, cost, err := network.shortestPath(srcR, dstR)
 			if err != nil {
-				pfxlog.Logger().Debugf("error while calculating path for service %v: %v", svc.Id, err)
+				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
 				continue
 			}
@@ -527,7 +537,9 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 		return nil, nil, nil, errors.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
 	}
 
-	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+	path := paths[terminator.GetRouterId()].path
+
+	if log.Logger.IsLevelEnabled(logrus.DebugLevel) {
 		buf := strings.Builder{}
 		buf.WriteString("[")
 		if len(weightedTerminators) > 0 {
@@ -538,10 +550,15 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 			}
 		}
 		buf.WriteString("]")
-		pfxlog.Logger().Infof("selected %v for path from %v", terminator.GetId(), buf.String())
+		var routerIds []string
+		for _, r := range path {
+			routerIds = append(routerIds, fmt.Sprintf("r/%s", r.Id))
+		}
+		pathStr := strings.Join(routerIds, "->")
+		log.Debugf("selected terminator %v for path %v from %v", terminator.GetId(), pathStr, buf.String())
 	}
 
-	return strategy, terminator, paths[terminator.GetRouterId()].path, nil
+	return strategy, terminator, path, nil
 }
 
 func (network *Network) RemoveCircuit(circuitId string, now bool) error {
