@@ -6,7 +6,8 @@
   * NF-INTERCEPT chain was getting deleted when any intercept was stopped, not when all intercepts were stopped
   * IP address could get re-used across DNS entries. Added DNS cache flush on startup to avoid this
   * IP address cleanup was broken as all services would see last assigned IP
-* Bug fix: Introduce delay when closing xgress peer after receiving unroute if end of session not yet received. 
+* Bug fix: Introduce delay when closing xgress peer after receiving unroute if end of session not yet received
+* Bug fix: Posture timeouts (i.e. MFA timeouts) would not apply to the first session of an API session
 * Feature: Can now search relevant entities by role attributes
   * Services, edge routers and identities can be search by role attribute. Ex: `ziti edge list services 'anyOf(roleAttributes) = "one"'`
   * Polices can be searched by roles. Ex: `ziti edge list service-policies 'anyOf(identityRoles) = "#all"'`
