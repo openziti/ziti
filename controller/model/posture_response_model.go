@@ -54,6 +54,7 @@ func newPostureCache(env Env) *PostureCache {
 
 	env.GetStores().Session.AddListener(boltz.EventCreate, pc.SessionCreated)
 	env.GetStores().Session.AddListener(boltz.EventDelete, pc.SessionDeleted)
+	env.GetStores().ApiSession.AddListener(boltz.EventCreate, pc.ApiSessionCreated)
 	env.GetStores().ApiSession.AddListener(boltz.EventDelete, pc.ApiSessionDeleted)
 	env.GetStores().Identity.AddListener(boltz.EventDelete, pc.IdentityDeleted)
 
@@ -212,7 +213,7 @@ func (pc *PostureCache) SessionCreated(args ...interface{}) {
 
 	if identityIdVal, ok := pc.apiSessionIdToIdentityId.Get(session.ApiSessionId); ok {
 		identityId := identityIdVal.(string)
-		pc.identityToPostureData.Upsert(identityId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 			var pd *PostureData
 
 			if exist {
@@ -227,6 +228,10 @@ func (pc *PostureCache) SessionCreated(args ...interface{}) {
 
 			if _, ok := pd.ApiSessions[session.ApiSessionId]; !ok {
 				pd.ApiSessions[session.ApiSessionId] = &ApiSessionPostureData{}
+			}
+
+			if pd.ApiSessions[session.ApiSessionId].Sessions == nil {
+				pd.ApiSessions[session.ApiSessionId].Sessions = map[string]*PostureSessionData{}
 			}
 
 			pd.ApiSessions[session.ApiSessionId].Sessions[session.Id] = &PostureSessionData{
@@ -251,19 +256,21 @@ func (pc *PostureCache) SessionDeleted(args ...interface{}) {
 
 	if identityIdVal, ok := pc.apiSessionIdToIdentityId.Get(session.ApiSessionId); ok {
 		identityId := identityIdVal.(string)
-		pc.identityToPostureData.Upsert(identityId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+			var postureData *PostureData
 			if exist {
-				pd := valueInMap.(*PostureData)
+				postureData = valueInMap.(*PostureData)
+			} else {
+				postureData = newValue.(*PostureData)
+			}
 
-				if pd != nil {
-					if apiSessionData, ok := pd.ApiSessions[session.ApiSessionId]; ok {
-						if apiSessionData.Sessions != nil {
-							delete(apiSessionData.Sessions, session.Id)
-						}
-					}
+			if apiSessionData, ok := postureData.ApiSessions[session.ApiSessionId]; ok {
+				if apiSessionData.Sessions != nil {
+					delete(apiSessionData.Sessions, session.Id)
 				}
 			}
-			return nil
+
+			return postureData
 		})
 	}
 }
