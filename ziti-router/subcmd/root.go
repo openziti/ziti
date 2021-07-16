@@ -41,7 +41,7 @@ var root = &cobra.Command{
 
 		switch logFormatter {
 		case "pfxlog":
-			logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
+			logrus.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().StartingToday()))
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
 		case "text":
