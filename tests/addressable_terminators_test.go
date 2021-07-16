@@ -106,7 +106,7 @@ func Test_AddressableTerminators(t *testing.T) {
 			ctx.Req.NoError(err)
 			hostConn, err := waitForConn(host.listener, time.Second)
 			ctx.Req.NoError(err)
-			ctx.Req.Equal(client.id.name, hostConn.RemoteAddr().String())
+			ctx.Req.True(strings.Contains(hostConn.LocalAddr().String(), client.id.name))
 			ctx.Req.NoError(conn.Close())
 			ctx.Req.NoError(hostConn.Close())
 		}
