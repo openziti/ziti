@@ -392,7 +392,7 @@ func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) (bo
 func (pd *PostureData) CheckTimeouts() bool {
 	for _, apiSessionData := range pd.ApiSessions {
 		for _, sessionData := range apiSessionData.Sessions {
-			if sessionData.MfaTimeout != PostureCheckNoTimeout && apiSessionData.Mfa.PassedMfaAt != nil {
+			if sessionData.MfaTimeout != PostureCheckNoTimeout && apiSessionData.Mfa != nil && apiSessionData.Mfa.PassedMfaAt != nil {
 				expiresAt := apiSessionData.Mfa.PassedMfaAt.Add(time.Duration(sessionData.MfaTimeout) * time.Second)
 				if expiresAt.Before(time.Now()) {
 					return true

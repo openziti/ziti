@@ -80,9 +80,7 @@ const (
 )
 
 func init() {
-	pfxlog.Global(logrus.DebugLevel)
-	pfxlog.SetPrefix("github.com/openziti/")
-	logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
+	pfxlog.GlobalInit(logrus.DebugLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday())
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
