@@ -32,7 +32,11 @@ type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
 }
 
-func (p *PostureCheckOperatingSystem) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+func (p *PostureCheckOperatingSystem) GetTimeoutRemainingSeconds(_ string, _ *PostureData) int64 {
+	return PostureCheckNoTimeout
+}
+
+func (p *PostureCheckOperatingSystem) GetTimeoutSeconds() int64 {
 	return PostureCheckNoTimeout
 }
 

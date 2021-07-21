@@ -219,7 +219,7 @@ func (pc *PostureCache) SessionCreated(args ...interface{}) {
 			if exist {
 				pd = valueInMap.(*PostureData)
 			} else {
-				pd = newPostureData()
+				pd = newValue.(*PostureData)
 			}
 
 			if pd.ApiSessions == nil {

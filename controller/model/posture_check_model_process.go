@@ -33,7 +33,11 @@ type PostureCheckProcess struct {
 	Fingerprint    string
 }
 
-func (p *PostureCheckProcess) GetTimeoutSeconds(_ string, _ *PostureData) int64 {
+func (p *PostureCheckProcess) GetTimeoutSeconds() int64 {
+	return PostureCheckNoTimeout
+}
+
+func (p *PostureCheckProcess) GetTimeoutRemainingSeconds(_ string, _ *PostureData) int64 {
 	return PostureCheckNoTimeout
 }
 
