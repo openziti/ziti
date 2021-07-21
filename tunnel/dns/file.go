@@ -19,6 +19,7 @@ package dns
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -59,7 +60,7 @@ func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	defer f.Close()
 
 	if !isHostPresent(hostname, ip, f) {
-		_, err := f.Seek(0, os.SEEK_END)
+		_, err := f.Seek(0, io.SeekEnd)
 		if err != nil {
 			return err
 		}
@@ -72,7 +73,7 @@ func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	return nil
 }
 
-func (h *hostFile) RemoveHostname(s string, ip net.IP) error {
+func (h *hostFile) RemoveHostname(s string) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	return nil
