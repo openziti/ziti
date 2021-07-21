@@ -17,14 +17,15 @@
 package xgress_edge_tunnel
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
@@ -32,7 +33,11 @@ func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
 	return found
 }
 
-func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
+func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+		WithField("binding", "edge").
+		WithField("destination", destination)
+
 	val, ok := self.terminators.Get(destination)
 	if !ok {
 		return nil, errors.Errorf("tunnel terminator for destination %v not found", destination)
@@ -49,7 +54,7 @@ func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, addr
 		return nil, err
 	}
 
-	logrus.Infof("successful connection to %v from %v (s/%v)", destination, conn.LocalAddr(), sessionId.Token)
+	log.Infof("successful connection %v->%v for destination %v", conn.LocalAddr(), conn.RemoteAddr(), destination)
 
 	xgConn := xgress_common.NewXgressConn(conn, halfClose)
 	peerData := make(xt.PeerData, 1)

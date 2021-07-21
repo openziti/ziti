@@ -11,6 +11,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
@@ -113,6 +114,7 @@ type baseSessionRequestContext struct {
 	session      *model.Session
 	service      *model.Service
 	newSession   bool
+	logContext   logcontext.Context
 }
 
 func (self *baseSessionRequestContext) CleanupOnError() {
@@ -165,6 +167,36 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 				WithField("token", token).
 				WithField("operation", self.handler.Label()).
 				WithError(self.err).Errorf("invalid session")
+			return
+		}
+		apiSession, err := self.handler.getAppEnv().Handlers.ApiSession.Read(self.session.ApiSessionId)
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				self.err = InvalidApiSessionError{}
+			} else {
+				self.err = internalError(err)
+			}
+			logrus.
+				WithField("token", token).
+				WithField("operation", self.handler.Label()).
+				WithError(self.err).Errorf("invalid api-session")
+			return
+		}
+
+		self.logContext = logcontext.NewContext()
+		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(apiSession.IdentityId)
+		traceEnabled := traceSpec != nil && time.Now().Before(traceSpec.Until)
+		if traceEnabled {
+			self.logContext.SetChannelsMask(traceSpec.ChannelMask)
+			self.logContext.WithField("traceId", traceSpec.TraceId)
+		}
+		self.logContext.WithField("sessionId", self.session.Id)
+		self.logContext.WithField("apiSessionId", apiSession.Id)
+
+		if traceEnabled {
+			pfxlog.ChannelLogger(logcontext.EstablishPath).
+				Wire(self.logContext).
+				Debug("tracing enabled for this session")
 		}
 	}
 }
@@ -469,7 +501,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, 
 
 		n := self.handler.getAppEnv().GetHostController().GetNetwork()
 		var err error
-		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId)
+		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId, self.logContext)
 		if err != nil {
 			self.err = internalError(err)
 		}

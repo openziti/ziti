@@ -849,6 +849,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.UpdateIdentity has not yet been implemented")
 		})
 	}
+	if api.IdentityUpdateIdentityTracingHandler == nil {
+		api.IdentityUpdateIdentityTracingHandler = identity.UpdateIdentityTracingHandlerFunc(func(params identity.UpdateIdentityTracingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.UpdateIdentityTracing has not yet been implemented")
+		})
+	}
 	if api.PostureChecksUpdatePostureCheckHandler == nil {
 		api.PostureChecksUpdatePostureCheckHandler = posture_checks.UpdatePostureCheckHandlerFunc(func(params posture_checks.UpdatePostureCheckParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation posture_checks.UpdatePostureCheck has not yet been implemented")

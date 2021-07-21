@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
@@ -59,8 +60,11 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
-	log := pfxlog.Logger().WithField("session", sessionId.Token)
+func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+		WithField("binding", "edge").
+		WithField("destination", destination)
+
 	destParts := strings.Split(destination, ":")
 	if len(destParts) != 2 {
 		return nil, fmt.Errorf("destination '%v' format is incorrect", destination)
@@ -100,7 +104,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	if listenConn.assignIds {
 		connId := listenConn.nextDialConnId()
 		log = log.WithField("connId", connId)
-		log.Debug("router assigned connId for dial")
+		log.Debugf("router assigned connId %v for dial", connId)
 		dialRequest.PutUint32Header(edge.RouterProvidedConnId, connId)
 
 		conn, err := listenConn.newConnection(connId)
@@ -114,6 +118,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 		bindHandler.HandleXgressBind(x)
 		x.Start()
 
+		log.Debug("xgress start, sending dial to SDK")
 		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
 		if err != nil {
 			conn.close(false, err.Error())

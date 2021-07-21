@@ -8339,6 +8339,137 @@ func init() {
         }
       ]
     },
+    "/identities/{id}/trace": {
+      "put": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to enable/disable data flow tracing for an identity\n",
+        "tags": [
+          "Identity",
+          "Tracing"
+        ],
+        "summary": "Enable/disable data flow tracing for an identity",
+        "operationId": "updateIdentityTracing",
+        "parameters": [
+          {
+            "description": "A traceSpec object",
+            "name": "traceSpec",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/traceSpec"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the document that represents the trace state",
+            "schema": {
+              "$ref": "#/definitions/traceDetailEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/identity-role-attributes": {
       "get": {
         "security": [
@@ -19926,6 +20057,56 @@ func init() {
         }
       }
     },
+    "traceDetail": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "traceId": {
+          "type": "string"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "traceDetailEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/traceDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "traceSpec": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duration": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      }
+    },
     "username": {
       "type": "string",
       "maxLength": 100,
@@ -28238,6 +28419,137 @@ func init() {
             "description": "A list of edge routers",
             "schema": {
               "$ref": "#/definitions/listEdgeRoutersEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/identities/{id}/trace": {
+      "put": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to enable/disable data flow tracing for an identity\n",
+        "tags": [
+          "Identity",
+          "Tracing"
+        ],
+        "summary": "Enable/disable data flow tracing for an identity",
+        "operationId": "updateIdentityTracing",
+        "parameters": [
+          {
+            "description": "A traceSpec object",
+            "name": "traceSpec",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/traceSpec"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the document that represents the trace state",
+            "schema": {
+              "$ref": "#/definitions/traceDetailEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
             }
           },
           "401": {
@@ -39977,6 +40289,56 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        }
+      }
+    },
+    "traceDetail": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "traceId": {
+          "type": "string"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "traceDetailEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/traceDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "traceSpec": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duration": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "traceId": {
+          "type": "string"
         }
       }
     },

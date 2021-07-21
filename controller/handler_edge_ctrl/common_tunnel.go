@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
@@ -67,6 +68,14 @@ func (self *baseTunnelRequestContext) loadIdentity() {
 
 		if self.identity.IdentityTypeId != persistence.RouterIdentityType {
 			self.err = TunnelingNotEnabledError{}
+			return
+		}
+
+		self.logContext = logcontext.NewContext()
+		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(self.identity.Id)
+		if traceSpec != nil && time.Now().After(traceSpec.Until) {
+			self.logContext.SetChannelsMask(traceSpec.ChannelMask)
+			self.logContext.WithField("traceId", traceSpec.TraceId)
 		}
 	}
 }
@@ -94,7 +103,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 				self.err = internalError(err)
 				return false
 			}
-			logger.WithField("api-session-id", apiSessionId).Info("api session not found, creating new api session")
+			logger.WithField("apiSessionId", apiSessionId).Info("api session not found, creating new api session")
 			state.clearCurrentApiSessionId()
 		}
 
@@ -133,6 +142,9 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 		self.apiSession = apiSession
 		state.setCurrentApiSessionId(apiSession.Id)
 		state.configTypes = configTypes
+		if self.logContext != nil {
+			self.logContext.WithField("apiSessionId", apiSession.Id)
+		}
 		return true
 	}
 	return false
@@ -183,6 +195,9 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			return
 		}
 		self.newSession = true
+		if self.logContext != nil {
+			self.logContext.WithField("sessionId", self.session.Id)
+		}
 	}
 }
 

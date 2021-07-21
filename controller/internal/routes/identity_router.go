@@ -19,6 +19,8 @@ package routes
 import (
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
@@ -28,8 +30,13 @@ import (
 	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/sirupsen/logrus"
+	"time"
 )
 
 func init() {
@@ -129,6 +136,14 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(r.removeMfa, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
+
+	// trace
+	ae.ManagementApi.IdentityUpdateIdentityTracingHandler = identity.UpdateIdentityTracingHandlerFunc(func(params identity.UpdateIdentityTracingParams, i interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.updateTracing(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
 }
 
 func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -329,4 +344,51 @@ func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) 
 	}
 
 	rc.RespondWithEmptyOk()
+}
+
+func (r *IdentityRouter) updateTracing(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityTracingParams) {
+	id, _ := rc.GetEntityId()
+	_, err := ae.Handlers.Identity.Read(id)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if params.TraceSpec.Enabled {
+		d, err := time.ParseDuration(params.TraceSpec.Duration)
+		if err != nil {
+			rc.RespondWithError(errorz.NewFieldError(err.Error(), "duration", params.TraceSpec.Duration))
+			return
+		}
+
+		if params.TraceSpec.TraceID == "" {
+			params.TraceSpec.TraceID = uuid.NewString()
+		}
+
+		var channels []string
+		if len(params.TraceSpec.Channels) == 0 || stringz.Contains(params.TraceSpec.Channels, "all") {
+			channels = append(channels, logcontext.SelectPath, logcontext.EstablishPath)
+		} else {
+			channels = params.TraceSpec.Channels
+		}
+
+		var channelMask uint32
+		for _, channel := range channels {
+			channelMask |= logcontext.GetChannelMask(channel)
+		}
+
+		spec := ae.TraceManager.TraceIdentity(id, d, params.TraceSpec.TraceID, channelMask)
+		logrus.Infof("enabling tracing for identity %v with traceId %v for %v with mask %v", id, params.TraceSpec.TraceID, d, channelMask)
+		rc.RespondWithOk(&rest_model.TraceDetail{
+			Enabled: true,
+			TraceID: params.TraceSpec.TraceID,
+			Until:   strfmt.DateTime(spec.Until),
+		}, nil)
+	} else {
+		ae.TraceManager.RemoveIdentityTrace(id)
+		rc.RespondWithOk(&rest_model.TraceDetail{
+			Enabled: false,
+		}, nil)
+	}
 }

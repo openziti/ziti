@@ -108,6 +108,7 @@ func (c *Controller) SetHostController(h env.HostController) {
 	}
 
 	c.AppEnv.HostController = h
+	c.AppEnv.TraceManager = env.NewTraceManager(h.GetCloseNotifyChannel())
 	c.AppEnv.HostController.GetNetwork().AddCapability("ziti.edge")
 	if err := h.RegisterXctrl(c.xctrl); err != nil {
 		panic(err)
@@ -304,7 +305,7 @@ func (c *subctrl) GetTraceDecoders() []channel2.TraceMessageDecoder {
 func (c *subctrl) NotifyOfReconnect() {
 }
 
-func (c *subctrl) LoadConfig(cfgmap map[interface{}]interface{}) error {
+func (c *subctrl) LoadConfig(map[interface{}]interface{}) error {
 	return nil
 }
 
@@ -320,7 +321,7 @@ func (c *subctrl) BindChannel(ch channel2.Channel) error {
 	return nil
 }
 
-func (c *subctrl) Run(ch channel2.Channel, db boltz.Db, done chan struct{}) error {
+func (c *subctrl) Run(channel2.Channel, boltz.Db, chan struct{}) error {
 	return nil
 }
 
@@ -329,7 +330,7 @@ type submgmt struct {
 	channel channel2.Channel
 }
 
-func (m *submgmt) LoadConfig(cfgmap map[interface{}]interface{}) error {
+func (m *submgmt) LoadConfig(map[interface{}]interface{}) error {
 	return nil
 }
 
@@ -345,6 +346,6 @@ func (m *submgmt) BindChannel(ch channel2.Channel) error {
 	return nil
 }
 
-func (m *submgmt) Run(ch channel2.Channel, done chan struct{}) error {
+func (m *submgmt) Run(channel2.Channel, chan struct{}) error {
 	return nil
 }
