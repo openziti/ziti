@@ -81,7 +81,7 @@ func (addr *InterceptAddress) String() string {
 func GetInterceptAddresses(service *entities.Service, protocol string, resolver dns.Resolver) ([]*InterceptAddress, error) {
 	var result []*InterceptAddress
 	for _, addr := range service.InterceptV1Config.Addresses {
-		_, cidr, err := getInterceptIP(addr, resolver)
+		_, cidr, err := getInterceptIP(service, addr, resolver)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get intercept IP address for %v", addr)
 		}

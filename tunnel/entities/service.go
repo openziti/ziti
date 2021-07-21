@@ -11,6 +11,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -277,7 +278,23 @@ type Service struct {
 	HostV2Config         *HostV2Config
 	DialIdentityProvider TemplateFunc
 	SourceAddrProvider   TemplateFunc
-	StopHostHook         func()
+	cleanupActions       []func()
+	lock                 sync.Mutex
+}
+
+func (self *Service) AddCleanupAction(f func()) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.cleanupActions = append(self.cleanupActions, f)
+}
+
+func (self *Service) RunCleanupActions() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	for _, action := range self.cleanupActions {
+		action()
+	}
 }
 
 func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) string {

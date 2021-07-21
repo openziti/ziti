@@ -65,9 +65,9 @@ func NewResolver(config string) Resolver {
 
 	switch resolverURL.Scheme {
 	case "", "file":
-		return NewHostFile(resolverURL.Path)
+		return NewRefCountingResolver(NewHostFile(resolverURL.Path))
 	case "udp":
-		return NewDnsServer(resolverURL.Host)
+		return NewRefCountingResolver(NewDnsServer(resolverURL.Host))
 	}
 
 	log.Fatalf("invalid resolver configuration '%s'. must be 'file://' or 'udp://' URL", config)
@@ -136,7 +136,7 @@ func (r *resolver) testSystemResolver() error {
 		return fmt.Errorf("unexpected resolved address %s", resolved.IP.String())
 	}
 
-	_ = r.RemoveHostname(resolverTestHostname, resolverTestIP)
+	_ = r.RemoveHostname(resolverTestHostname)
 	return nil
 }
 
@@ -179,7 +179,7 @@ func (r *resolver) AddHostname(hostname string, ip net.IP) error {
 	return nil
 }
 
-func (r *resolver) RemoveHostname(hostname string, ip net.IP) error {
+func (r *resolver) RemoveHostname(hostname string) error {
 	r.namesMtx.Lock()
 	if _, ok := r.names[strings.ToLower(hostname)+"."]; ok {
 		log.Infof("removing %s from resolver", hostname)

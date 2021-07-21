@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel/dns"
+	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/utils"
 	"net"
 )
@@ -51,7 +52,7 @@ func SetDnsInterceptIpRange(cidr string) error {
 	return nil
 }
 
-func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet, error) {
+func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver) (net.IP, *net.IPNet, error) {
 	log := pfxlog.Logger()
 
 	ip, ipNet, err := utils.GetDialIP(hostname)
@@ -66,7 +67,14 @@ func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet,
 	if err == nil {
 		if len(addrs) > 0 {
 			ip := addrs[0].To4()
-			_ = resolver.AddHostname(hostname, ip)
+			if err = resolver.AddHostname(hostname, ip); err != nil {
+				log.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
+			}
+			svc.AddCleanupAction(func() {
+				if err = resolver.RemoveHostname(hostname); err != nil {
+					log.WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
+				}
+			})
 			prefixLen := utils.AddrBits(ip)
 			ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
 			return addrs[0], ipNet, nil
@@ -79,7 +87,16 @@ func getInterceptIP(hostname string, resolver dns.Resolver) (net.IP, *net.IPNet,
 	if ip == nil {
 		return nil, nil, fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
-	_ = resolver.AddHostname(hostname, ip)
+	if err = resolver.AddHostname(hostname, ip); err != nil {
+		log.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
+	}
+
+	svc.AddCleanupAction(func() {
+		if err = resolver.RemoveHostname(hostname); err != nil {
+			log.WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
+		}
+	})
+
 	prefixLen := utils.AddrBits(ip)
 	ipNet = &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
 	return ip, ipNet, nil

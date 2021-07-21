@@ -20,6 +20,6 @@ import "net"
 
 type Resolver interface {
 	AddHostname(string, net.IP) error
-	RemoveHostname(string, net.IP) error
+	RemoveHostname(string) error
 	Cleanup() error
 }
