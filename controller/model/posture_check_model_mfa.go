@@ -84,11 +84,7 @@ func (p *PostureCheckMfa) GetTimeoutRemainingSeconds(apiSessionId string, pd *Po
 	}
 
 	if p.PromptOnWake && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.WokenAt != nil {
-		onWakeTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.WokenAt.Add(MfaPromptGracePeriod)).Seconds())
-
-		if onWakeTimeOut <= 0 {
-			onWakeTimeOut = 0
-		}
+		onWakeTimeOut := calculateTimeout(time.Now(), *apiSessionData.EndpointState.WokenAt, -1 * MfaPromptGracePeriod)
 
 		if onWakeTimeOut < timeoutRemaining {
 			timeoutRemaining = onWakeTimeOut
@@ -96,18 +92,26 @@ func (p *PostureCheckMfa) GetTimeoutRemainingSeconds(apiSessionId string, pd *Po
 	}
 
 	if p.PromptOnUnlock && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.UnlockedAt != nil {
-		onUnlockTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.UnlockedAt.Add(MfaPromptGracePeriod)).Seconds())
+		onUnlockTimeout := calculateTimeout(time.Now(), *apiSessionData.EndpointState.UnlockedAt, -1 * MfaPromptGracePeriod)
 
-		if onUnlockTimeOut <= 0 {
-			onUnlockTimeOut = 0
-		}
-
-		if onUnlockTimeOut < timeoutRemaining {
-			timeoutRemaining = onUnlockTimeOut
+		if onUnlockTimeout < timeoutRemaining {
+			timeoutRemaining = onUnlockTimeout
 		}
 	}
 
 	return timeoutRemaining
+}
+
+func calculateTimeout(now time.Time, pastEventOccuredAt time.Time, gracePeriod time.Duration) int64 {
+	durationSinceEvent := now.Sub(pastEventOccuredAt)
+
+	timeout := int64((gracePeriod - durationSinceEvent).Seconds())
+
+	if timeout < 0 {
+		timeout = 0
+	}
+
+	return timeout
 }
 
 func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) PostureCheckFailureValues {
