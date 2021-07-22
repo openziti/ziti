@@ -224,6 +224,8 @@ func newUpdatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "ignore-legacy", "i", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
 	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "no-ignore-legacy", "l", false, "Do not ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
+
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	return cmd
 }
 
@@ -272,6 +274,11 @@ func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
 
 	if o.Cmd.Flags().Changed("no-ignore-legacy") {
 		setJSONValue(entityData, false, "ignoreLegacyEndpoints")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("role-attributes") {
+		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
