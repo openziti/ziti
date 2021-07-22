@@ -191,9 +191,12 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 				isCheckPassing, _ = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
-			timeoutSeconds := postureCheck.TimeoutSeconds(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id))
+			timeout := postureCheck.TimeoutSeconds()
+			timeoutRemaining := postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id))
+
 			query.IsPassing = &isCheckPassing
-			query.Timeout = &timeoutSeconds
+			query.TimeoutRemaining = &timeoutRemaining
+			query.Timeout = &timeout
 			querySet.PostureQueries = append(querySet.PostureQueries, query)
 
 			if !isCheckPassing {

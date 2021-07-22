@@ -42,7 +42,8 @@ type PostureCheckSubType interface {
 	fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
-	GetTimeoutSeconds(apiSessionId string, pd *PostureData) int64
+	GetTimeoutSeconds() int64
+	GetTimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64
 }
 
 type PostureCheckFailureValues interface {
@@ -141,6 +142,10 @@ func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool
 	return true, nil
 }
 
-func (entity *PostureCheck) TimeoutSeconds(apiSessionId string, pd *PostureData) int64 {
-	return entity.SubType.GetTimeoutSeconds(apiSessionId, pd)
+func (entity *PostureCheck) TimeoutSeconds() int64 {
+	return entity.SubType.GetTimeoutSeconds()
+}
+
+func (entity *PostureCheck) TimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64 {
+	return entity.SubType.GetTimeoutRemainingSeconds(apiSessionId, pd)
 }

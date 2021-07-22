@@ -3379,6 +3379,7 @@ definitions:
       - queryType
       - isPassing
       - timeout
+      - timeoutRemaining
       properties:
         isPassing:
           type: boolean
@@ -3391,6 +3392,8 @@ definitions:
         queryType:
           $ref: '#/definitions/postureCheckType'
         timeout:
+          type: integer
+        timeoutRemaining:
           type: integer
   postureQueryProcess:
     type: object

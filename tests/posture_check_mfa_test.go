@@ -333,7 +333,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.testContextChanged(t)
 				ctx.Req.False(querySet[0].Path("isPassing").Data().(bool))
 				ctx.Req.False(postureQueries[0].Path("isPassing").Data().(bool))
-				ctx.Req.Equal(0, int(postureQueries[0].Path("timeout").Data().(float64)))
+				ctx.Req.Equal(0, int(postureQueries[0].Path("timeoutRemaining").Data().(float64)))
 			})
 		})
 
@@ -470,13 +470,11 @@ func Test_PostureChecks_MFA(t *testing.T) {
 							ctx.testContextChanged(t)
 							ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
 							ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
-							ctx.Req.Greater(int(postureQueries[0].Path("timeout").Data().(float64)), 0)
-							ctx.Req.LessOrEqual(int(postureQueries[0].Path("timeout").Data().(float64)), 300)
+							ctx.Req.Greater(int(postureQueries[0].Path("timeoutRemaining").Data().(float64)), 0)
+							ctx.Req.LessOrEqual(int(postureQueries[0].Path("timeoutRemaining").Data().(float64)), 300)
 						})
 					})
-
 				})
-
 			})
 
 			t.Run("a new api session can pass MFA auth to create service session if there are no endpoint state changes", func(t *testing.T) {

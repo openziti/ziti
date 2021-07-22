@@ -17635,7 +17635,8 @@ func init() {
           "required": [
             "queryType",
             "isPassing",
-            "timeout"
+            "timeout",
+            "timeoutRemaining"
           ],
           "properties": {
             "isPassing": {
@@ -17654,6 +17655,9 @@ func init() {
               "$ref": "#/definitions/postureCheckType"
             },
             "timeout": {
+              "type": "integer"
+            },
+            "timeoutRemaining": {
               "type": "integer"
             }
           }
@@ -36455,7 +36459,8 @@ func init() {
           "required": [
             "queryType",
             "isPassing",
-            "timeout"
+            "timeout",
+            "timeoutRemaining"
           ],
           "properties": {
             "isPassing": {
@@ -36474,6 +36479,9 @@ func init() {
               "$ref": "#/definitions/postureCheckType"
             },
             "timeout": {
+              "type": "integer"
+            },
+            "timeoutRemaining": {
               "type": "integer"
             }
           }

@@ -51,13 +51,22 @@ func (p *PostureCheckMfa) IsLegacyClient(apiSessionData *ApiSessionPostureData) 
 	return false
 }
 
-func (p *PostureCheckMfa) GetTimeoutSeconds(apiSessionId string, pd *PostureData) int64 {
+func (p *PostureCheckMfa) GetTimeoutSeconds() int64 {
+	if p.TimeoutSeconds > 0 {
+		return p.TimeoutSeconds
+	}
+
+	return PostureCheckNoTimeout
+}
+
+func (p *PostureCheckMfa) GetTimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64 {
 	if p.TimeoutSeconds == PostureCheckNoTimeout {
 		return PostureCheckNoTimeout
 	}
 
 	apiSessionData := pd.ApiSessions[apiSessionId]
 
+	// no MFA data, return 0 as we have a timeout of some value
 	if apiSessionData == nil || apiSessionData.Mfa == nil || apiSessionData.Mfa.PassedMfaAt == nil {
 		return 0
 	}
@@ -69,36 +78,36 @@ func (p *PostureCheckMfa) GetTimeoutSeconds(apiSessionId string, pd *PostureData
 
 	timeSinceLastMfa := time.Now().Sub(*apiSessionData.Mfa.PassedMfaAt)
 
-	timeout := p.TimeoutSeconds - int64(timeSinceLastMfa.Seconds())
-	if timeout < 0 {
+	timeoutRemaining := p.TimeoutSeconds - int64(timeSinceLastMfa.Seconds())
+	if timeoutRemaining <= 0 {
 		return 0
 	}
 
 	if p.PromptOnWake && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.WokenAt != nil {
 		onWakeTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.WokenAt.Add(MfaPromptGracePeriod)).Seconds())
 
-		if onWakeTimeOut < 0 {
+		if onWakeTimeOut <= 0 {
 			onWakeTimeOut = 0
 		}
 
-		if onWakeTimeOut < timeout {
-			timeout = onWakeTimeOut
+		if onWakeTimeOut < timeoutRemaining {
+			timeoutRemaining = onWakeTimeOut
 		}
 	}
 
 	if p.PromptOnUnlock && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.UnlockedAt != nil {
 		onUnlockTimeOut := int64(time.Now().Sub(apiSessionData.EndpointState.UnlockedAt.Add(MfaPromptGracePeriod)).Seconds())
 
-		if onUnlockTimeOut < 0 {
+		if onUnlockTimeOut <= 0 {
 			onUnlockTimeOut = 0
 		}
 
-		if onUnlockTimeOut < timeout {
-			timeout = onUnlockTimeOut
+		if onUnlockTimeOut < timeoutRemaining {
+			timeoutRemaining = onUnlockTimeOut
 		}
 	}
 
-	return timeout
+	return timeoutRemaining
 }
 
 func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) PostureCheckFailureValues {
@@ -146,10 +155,10 @@ func (p *PostureCheckMfa) Evaluate(apiSessionId string, pd *PostureData) bool {
 		return false
 	}
 	now := time.Now().UTC()
-	timeoutSeconds := p.GetTimeoutSeconds(apiSessionId, pd)
+	timeoutRemainingSeconds := p.GetTimeoutRemainingSeconds(apiSessionId, pd)
 
-	if timeoutSeconds != PostureCheckNoTimeout {
-		expiresAt := apiSessionData.Mfa.PassedMfaAt.Add(time.Duration(timeoutSeconds) * time.Second)
+	if timeoutRemainingSeconds != PostureCheckNoTimeout {
+		expiresAt := apiSessionData.Mfa.PassedMfaAt.Add(time.Duration(timeoutRemainingSeconds) * time.Second)
 		if expiresAt.Before(now) {
 			apiSessionData.Mfa.TimedOut = true
 		}

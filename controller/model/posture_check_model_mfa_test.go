@@ -407,7 +407,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.True(failureValues.ActualValue.TimedOutSeconds)
 		})
 	})
-	
+
 	t.Run("IsLegacyClient", func(t *testing.T) {
 		t.Run("returns false for ziti-sdk-c and  0.25.0", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
@@ -478,6 +478,80 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.False(result)
 		})
 	})
+
+	t.Run("GetTimeoutSeconds", func(t *testing.T) {
+		t.Run("returns the static timeout value", func(t *testing.T) {
+			mfaCheck, _ := newMfaCheckAndPostureData()
+
+			req := require.New(t)
+			req.Equal(mfaCheck.TimeoutSeconds, mfaCheck.GetTimeoutSeconds())
+		})
+
+		t.Run("returns no timeout for negative numbers", func(t *testing.T) {
+			mfaCheck, _ := newMfaCheckAndPostureData()
+			mfaCheck.TimeoutSeconds = -100
+			req := require.New(t)
+			req.Equal(PostureCheckNoTimeout, mfaCheck.GetTimeoutSeconds())
+		})
+
+		t.Run("returns no timeout for 0", func(t *testing.T) {
+			mfaCheck, _ := newMfaCheckAndPostureData()
+			mfaCheck.TimeoutSeconds = 0
+			req := require.New(t)
+			req.Equal(PostureCheckNoTimeout, mfaCheck.GetTimeoutSeconds())
+		})
+	})
+
+	t.Run("GetTimeoutRemainingSeconds", func(t *testing.T) {
+		t.Run("returns 0 if no ApiSessionData is present", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			postureData.ApiSessions = map[string]*ApiSessionPostureData{}
+			req := require.New(t)
+			req.Equal(int64(0), mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData))
+		})
+
+		t.Run("returns 0 if no MFA data is present", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa = nil
+			req := require.New(t)
+			req.Equal(int64(0), mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData))
+		})
+
+		t.Run("returns 0 if no last MFA passedAt is nil", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = nil
+			req := require.New(t)
+			req.Equal(int64(0), mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData))
+		})
+
+		t.Run("returns near timeout if much time hasn't passed", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			req := require.New(t)
+
+			//time based, if on a slow machine this might slide
+			req.LessOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds)
+			req.GreaterOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds-5)
+		})
+
+		t.Run("returns not timeout for legacy clients if ignore legacy is true", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			mfaCheck.IgnoreLegacyEndpoints = true
+			postureData.ApiSessions[mfaTestApiSessionId].SdkInfo.Version = "0.24.4"
+
+			req := require.New(t)
+			req.Equal(PostureCheckNoTimeout, mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData))
+		})
+
+		t.Run("returns near timeout for legacy client if ignore legacy is false", func(t *testing.T) {
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+			postureData.ApiSessions[mfaTestApiSessionId].SdkInfo.Version = "0.24.4"
+			req := require.New(t)
+
+			//time based, if on a slow machine this might slide
+			req.LessOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds)
+			req.GreaterOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds-5)
+		})
+	})
 }
 
 // newMfaCheckAndPostureData returns a MFA posture check and posture data that will
@@ -516,8 +590,8 @@ func newMfaCheckAndPostureData() (*PostureCheckMfa, *PostureData) {
 					UnlockedAt:   &unlockedAt,
 				},
 				SdkInfo: &SdkInfo{
-					Type:       "ziti-sdk-c",
-					Version:    "0.25.0",
+					Type:    "ziti-sdk-c",
+					Version: "0.25.0",
 				},
 			},
 		},

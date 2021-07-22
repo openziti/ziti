@@ -27,10 +27,13 @@ definitions:
           - queryType
           - isPassing
           - timeout
+          - timeoutRemaining
         properties:
           isPassing:
             type: boolean
           timeout:
+            type: integer
+          timeoutRemaining:
             type: integer
           queryType:
             $ref: 'posture-checks.yml#/definitions/postureCheckType'
