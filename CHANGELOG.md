@@ -3,8 +3,9 @@
 ## What's New
 
 * Bug fix: Posture timeouts (i.e. MFA timeouts) would not apply to the first session of an API session
+* Bug fix: Fix panic during API Session deletion
 * Feature: Ziti CLI now supports attribute updates on MFA posture checks
-* Posture queries now support `timeout` and `timeoutRemaining`
+* Feature: Posture queries now support `timeout` and `timeoutRemaining`
 
 # Release 0.20.13
 
