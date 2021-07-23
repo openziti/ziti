@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	"github.com/michaelquigley/pfxlog/filter"
+	"github.com/michaelquigley/pfxlog"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
@@ -62,6 +62,10 @@ func NewCmdLogFormat(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 
 // Run implements this command
 func (o *LogFormatOptions) Run() error {
-	filter.Filter(o.absoluteTime, o.trimPrefix)
+	options := pfxlog.DefaultOptions().SetTrimPrefix(o.trimPrefix)
+	if o.absoluteTime {
+		options.SetAbsoluteTime()
+	}
+	pfxlog.Filter(options)
 	return nil
 }
