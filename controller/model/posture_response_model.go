@@ -282,7 +282,7 @@ func (pc *PostureCache) ApiSessionCreated(args ...interface{}) {
 	}
 
 	if apiSession == nil {
-		pfxlog.Logger().Error("api session delete event trigger with args[0] not convertible to *persistence.ApiSession")
+		pfxlog.Logger().Error("api session create event trigger with args[0] not convertible to *persistence.ApiSession")
 		return
 	}
 
@@ -299,10 +299,20 @@ func (pc *PostureCache) ApiSessionDeleted(args ...interface{}) {
 		pfxlog.Logger().Error("api session delete event trigger with args[0] not convertible to *persistence.ApiSession")
 		return
 	}
-	pd := pc.PostureData(apiSession.IdentityId)
-	if pd != nil && pd.ApiSessions != nil {
-		delete(pd.ApiSessions, apiSession.Id)
-	}
+
+	pc.identityToPostureData.Upsert(apiSession.IdentityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		if exist {
+			pd := valueInMap.(*PostureData)
+
+			if pd != nil && pd.ApiSessions != nil {
+				delete(pd.ApiSessions, apiSession.Id)
+			}
+
+			return pd
+		}
+
+		return newValue
+	})
 
 	pc.apiSessionIdToIdentityId.Remove(apiSession.Id)
 }
