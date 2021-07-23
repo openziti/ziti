@@ -6,11 +6,13 @@ go 1.16
 
 //replace github.com/openziti/dilithium => ../dilithium
 
-//replace github.com/openziti/fabric => ../fabric
+replace github.com/openziti/fabric => ../fabric
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
-//replace github.com/openziti/edge => ../edge
+replace github.com/openziti/edge => ../edge
+
+replace github.com/michaelquigley/pfxlog => ../pfxlog
 
 replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
