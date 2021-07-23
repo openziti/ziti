@@ -437,7 +437,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.True(result)
 		})
 
-		t.Run("returns false for missing type and  0.24.4", func(t *testing.T) {
+		t.Run("returns true for missing type and  0.24.4", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
 			apiSessionData.SdkInfo.Version = "0.24.4"
@@ -445,7 +445,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
 
 			req := require.New(t)
-			req.False(result)
+			req.True(result)
 		})
 
 		t.Run("returns false for ziti-sdk-c and  1.0.0", func(t *testing.T) {
@@ -458,24 +458,24 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.False(result)
 		})
 
-		t.Run("returns false if sdk info is nil", func(t *testing.T) {
+		t.Run("returns true if sdk info is nil", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
 			apiSessionData.SdkInfo = nil
 			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
 
 			req := require.New(t)
-			req.False(result)
+			req.True(result)
 		})
 
-		t.Run("returns false if for ziti-sdk-c and an invalid version", func(t *testing.T) {
+		t.Run("returns true if for ziti-sdk-c and an invalid version", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 			apiSessionData := postureData.ApiSessions[mfaTestApiSessionId]
 			apiSessionData.SdkInfo.Version = "weeeeeee"
 			result := mfaCheck.IsLegacyClient(postureData.ApiSessions[mfaTestApiSessionId])
 
 			req := require.New(t)
-			req.False(result)
+			req.True(result)
 		})
 	})
 

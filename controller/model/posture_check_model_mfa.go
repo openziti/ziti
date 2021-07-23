@@ -42,13 +42,19 @@ type PostureCheckMfa struct {
 }
 
 func (p *PostureCheckMfa) IsLegacyClient(apiSessionData *ApiSessionPostureData) bool {
-	if apiSessionData.SdkInfo != nil && apiSessionData.SdkInfo.Type == ZitiSdkTypeC {
+	if apiSessionData.SdkInfo == nil {
+		return true // don't know what it is
+	}
+
+	//c-sdk, return true/false based on version
+	if apiSessionData.SdkInfo.Type == ZitiSdkTypeC {
 		if ver, err := semver.Parse(apiSessionData.SdkInfo.Version); err == nil {
 			return ver.LT(minCSdkVersion)
 		}
 	}
 
-	return false
+	//else not sure what it is return true
+	return true
 }
 
 func (p *PostureCheckMfa) GetTimeoutSeconds() int64 {
