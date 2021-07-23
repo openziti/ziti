@@ -9,6 +9,10 @@
 * Feature: new `ziti edge list summary` command, which shows database entity counts
 * Bug fix: ziti-fabric didn't always report an error to the OS when it had an error
 * Refactor: All protobuf packages have been prefixed with `ziti.` to help prevent namespace clashes. Should not be a breaking change.
+* Feature: Selective debug logging by identity for path selection and circuit establishment
+    * `ziti edge trace identity <identity id>` will turn on debug logging for selecting paths and establishing circuits
+    * Addition context for these operations including circuitId, sessionid and apiSessionId should now be in log messages regardless of whether tracing is enabled
+    * Tracing is enabled for a given duration, which defaults to 10 minutes
 
 ## Breaking Changes
 Fabric sessions renamed to circuits. External integrators may be impacted by changes to events. See below for details.
