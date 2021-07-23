@@ -552,6 +552,65 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.GreaterOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds-5)
 		})
 	})
+	
+	t.Run("calculateTimeout", func(t *testing.T) {
+		
+		t.Run("eventAt == now, results in 5m", func(t *testing.T) {
+			req := require.New(t)
+
+			now, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
+			req.NoError(err)
+
+			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
+			req.NoError(err)
+
+			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+
+			req.Equal(int64(300), result)
+		})
+
+		t.Run("eventAt 3min ago, results in 2m", func(t *testing.T) {
+			req := require.New(t)
+
+			now, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
+			req.NoError(err)
+
+			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:27:00Z")
+			req.NoError(err)
+
+			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+
+			req.Equal(int64(120), result)
+		})
+
+		t.Run("eventAt 5m before now, results in 0", func(t *testing.T) {
+			req := require.New(t)
+
+			now, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
+			req.NoError(err)
+
+			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:25:00Z")
+			req.NoError(err)
+
+			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+
+			req.Equal(int64(0), result)
+		})
+
+		t.Run("eventAt 10m before now, results in 0", func(t *testing.T) {
+			req := require.New(t)
+
+			now, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
+			req.NoError(err)
+
+			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:20:00Z")
+			req.NoError(err)
+
+			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+
+			req.Equal(int64(0), result)
+		})
+	})
 }
 
 // newMfaCheckAndPostureData returns a MFA posture check and posture data that will
