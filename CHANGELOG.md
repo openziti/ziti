@@ -4,6 +4,7 @@
 
 * Bug fix: Posture timeouts (i.e. MFA timeouts) would not apply to the first session of an API session
 * Bug fix: Fix panic during API Session deletion
+* Bug fix: DNS entries in embedded DNS server in go tunneler apps were not being cleaned up
 * Feature: Ziti CLI now supports attribute updates on MFA posture checks
 * Feature: Posture queries now support `timeout` and `timeoutRemaining`
 
