@@ -39,6 +39,7 @@ func newUpdatePostureCheckCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer
 	cmd.AddCommand(newUpdatePostureCheckDomainCmd(f, out, errOut))
 	cmd.AddCommand(newUpdatePostureCheckProcessCmd(f, out, errOut))
 	cmd.AddCommand(newUpdatePostureCheckOsCmd(f, out, errOut))
+	cmd.AddCommand(newUpdatePostureCheckMfaCmd(f, out, errOut))
 
 	return cmd
 }
@@ -66,6 +67,14 @@ type updatePostureCheckProcessOptions struct {
 	signer string
 	os     string
 	path   string
+}
+
+type updatePostureCheckMfaOptions struct {
+	updatePostureCheckOptions
+	timeoutSeconds        int
+	promptOnWake          bool
+	promptOnUnlock        bool
+	ignoreLegacyEndpoints bool
 }
 
 type updatePostureCheckOsOptions struct {
@@ -99,7 +108,7 @@ func newUpdatePostureCheckMacCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 	options.AddCommonFlags(cmd)
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringSliceVarP(&options.addresses, "mac-addresses", "m", nil,
@@ -167,12 +176,120 @@ func newUpdatePostureCheckDomainCmd(f cmdutil.Factory, out io.Writer, errOut io.
 	options.AddCommonFlags(cmd)
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringSliceVarP(&options.domains, "domains", "d", nil,
 		"Set the domains of the posture check")
 	return cmd
+}
+
+func newUpdatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &updatePostureCheckMfaOptions{
+		updatePostureCheckOptions: updatePostureCheckOptions{
+			edgeOptions: edgeOptions{
+				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			},
+		},
+		timeoutSeconds:        -1,
+		promptOnWake:          false,
+		promptOnUnlock:        false,
+		ignoreLegacyEndpoints: false,
+	}
+
+	cmd := &cobra.Command{
+		Use:   "mfa <idOrName>",
+		Short: "updates an MFA posture check",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := runUpdatePostureCheckMfa(options)
+			cmdhelper.CheckErr(err)
+		},
+		SuggestFor: []string{},
+	}
+
+	options.AddCommonFlags(cmd)
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name ")
+	cmd.Flags().IntVarP(&options.timeoutSeconds, "seconds", "s", -1, "Seconds an MFA posture check allows before an additional MFA code must be submitted")
+
+	cmd.Flags().BoolVarP(&options.promptOnWake, "wake", "w", false, "Prompt for MFA code on endpoint wake")
+	cmd.Flags().BoolVarP(&options.promptOnWake, "no-wake", "z", false, "Do not prompt for MFA code on endpoint wake")
+
+	cmd.Flags().BoolVarP(&options.promptOnUnlock, "unlock", "u", false, "Prompt for MFA code on endpoint unlock")
+	cmd.Flags().BoolVarP(&options.promptOnUnlock, "no-unlock", "q", false, "Do not prompt for MFA code on endpoint unlock")
+
+	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "ignore-legacy", "i", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
+	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "no-ignore-legacy", "l", false, "Do not ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
+
+	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
+	return cmd
+}
+
+func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
+	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	if err != nil {
+		return err
+	}
+	entityData := gabs.New()
+	change := false
+
+	if o.Cmd.Flags().Changed("name") {
+		setJSONValue(entityData, o.name, "name")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("seconds") {
+		setJSONValue(entityData, o.timeoutSeconds, "timeoutSeconds")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("wake") {
+		setJSONValue(entityData, o.promptOnWake, "promptOnWake")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("no-wake") {
+		setJSONValue(entityData, false, "promptOnWake")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("unlock") {
+		setJSONValue(entityData, o.promptOnUnlock, "promptOnUnlock")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("no-unlock") {
+		setJSONValue(entityData, false, "promptOnUnlock")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("ignore-legacy") {
+		setJSONValue(entityData, o.ignoreLegacyEndpoints, "ignoreLegacyEndpoints")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("no-ignore-legacy") {
+		setJSONValue(entityData, false, "ignoreLegacyEndpoints")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("role-attributes") {
+		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		change = true
+	}
+
+	if !change {
+		return errors.New("no change specified. must specify at least one attribute to change")
+	}
+
+	setJSONValue(entityData, PostureCheckTypeMFA, "typeId")
+
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	return err
 }
 
 // runUpdatePostureCheckDomain update a new identity on the Ziti Edge Controller
@@ -244,7 +361,7 @@ func newUpdatePostureCheckProcessCmd(f cmdutil.Factory, out io.Writer, errOut io
 	options.AddCommonFlags(cmd)
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringVarP(&options.path, "path", "p", "", "set the path of the posture check")
@@ -348,7 +465,7 @@ func newUpdatePostureCheckOsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writ
 	options.AddCommonFlags(cmd)
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringSliceVarP(&options.os, "os", "o", nil,

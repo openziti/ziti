@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/router/debugops"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/edge/router/xgress_edge_transport"
@@ -67,23 +68,11 @@ func run(cmd *cobra.Command, args []string) {
 
 		r := router.Create(config, version.GetCmdBuildInfo())
 
-		if cliAgentEnabled {
-			options := agent.Options{Addr: cliAgentAddr}
-			if debugOpsEnabled {
-				options.CustomOps = map[byte]func(conn io.ReadWriter) error{
-					agent.CustomOp: r.HandleDebug,
-				}
-			}
-			if err := agent.Listen(options); err != nil {
-				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-			}
-		}
-
 		config.SetFlags(getFlags(cmd))
 
 		stateManager := fabric.NewStateManager()
 
-		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager)
+		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.MetricsRegistry())
 		xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
 		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 			logrus.Panicf("error registering edge in framework (%v)", err)
@@ -96,6 +85,20 @@ func run(cmd *cobra.Command, args []string) {
 		xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
 		if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
 			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
+		}
+
+		if cliAgentEnabled {
+			options := agent.Options{Addr: cliAgentAddr}
+			if debugOpsEnabled {
+				r.RegisterDefaultDebugOps()
+				debugops.RegisterEdgeRouterDebugOps(r, stateManager)
+				options.CustomOps = map[byte]func(conn io.ReadWriter) error{
+					agent.CustomOp: r.HandleDebug,
+				}
+			}
+			if err := agent.Listen(options); err != nil {
+				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+			}
 		}
 
 		go waitForShutdown(r, config)

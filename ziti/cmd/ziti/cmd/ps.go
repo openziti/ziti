@@ -19,6 +19,8 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/edge/router/debugops"
+	"github.com/openziti/fabric/router"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -71,6 +73,19 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 		},
 	}
 
+	routerCmd := &cobra.Command{
+		Use:   "router",
+		Short: "Show Ziti router process info",
+		Long:  psLong,
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := options.Run()
+			cmdhelper.CheckErr(err)
+		},
+	}
+
+	cmd.AddCommand(routerCmd)
 	cmd.AddCommand(NewCmdPsGet(f, out, errOut))
 	cmd.AddCommand(NewCmdPsGoversion(f, out, errOut))
 	cmd.AddCommand(NewCmdPsGc(f, out, errOut))
@@ -82,10 +97,12 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 	cmd.AddCommand(NewCmdPsPprofCpu(f, out, errOut))
 	cmd.AddCommand(NewCmdPsTrace(f, out, errOut))
 	cmd.AddCommand(NewCmdPsSetLogLevel(f, out, errOut))
-	cmd.AddCommand(NewCmdPsRoute(f, out, errOut))
-	cmd.AddCommand(NewCmdPsDumpRoutes(f, out, errOut))
-	cmd.AddCommand(NewCmdPsRouterDisconnect(f, out, errOut))
-	cmd.AddCommand(NewCmdPsRouterReconnect(f, out, errOut))
+
+	routerCmd.AddCommand(NewCmdPsRoute(f, out, errOut))
+	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-routes", router.DumpForwarderTables, f, out, errOut))
+	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("disconnect", router.CloseControlChannel, f, out, errOut))
+	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("reconnect", router.OpenControlChannel, f, out, errOut))
+	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-api-sessions", debugops.DumpApiSessions, f, out, errOut))
 
 	// cmd.AddCommand(NewCmdPsController(f, out, errOut))
 	// cmd.AddCommand(NewCmdPsMgmt(f, out, errOut))

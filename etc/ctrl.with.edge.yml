@@ -79,6 +79,15 @@ mgmt:
 #  enabled:              false
 #  delay:                5
 
+healthChecks:
+  boltCheck:
+    # How often to try entering a bolt read tx. Defaults to 30 seconds
+    interval: 30s
+    # When to timeout the check. Defaults to 15 seconds
+    timeout: 15s
+    # How long to wait before starting the check. Defaults to 15 seconds
+    initialDelay: 15s
+
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:
@@ -179,9 +188,12 @@ web:
     apis:
       # binding - required
       # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - health-checks
       #   - edge-management
       #   - edge-client
       #   - fabric-management
+      - binding: health-checks
+        options: { }
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.
@@ -190,3 +202,4 @@ web:
         options: { }
       - binding: edge-client
         options: { }
+

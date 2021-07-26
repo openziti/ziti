@@ -697,6 +697,13 @@ func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
 	config := ""
 
 	switch typeId {
+	case "MFA":
+		timeoutFloat, _ := entity.Path("timeoutSeconds").Data().(float64)
+		timeout := int64(timeoutFloat)
+		promptOnWake, _ := entity.Path("promptOnWake").Data().(bool)
+		promptOnUnlock, _ := entity.Path("promptOnUnlock").Data().(bool)
+		ignoreLegacyEndpoints, _ := entity.Path("ignoreLegacyEndpoints").Data().(bool)
+		config = fmt.Sprintf("timeout: %d, wake: %t, unlock: %t, ignore: %t", timeout, promptOnWake, promptOnUnlock, ignoreLegacyEndpoints)
 	case "MAC":
 		containers, _ := entity.Path("macAddresses").Children()
 		config = containerArrayToString(containers, 4)

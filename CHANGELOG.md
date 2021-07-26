@@ -1,8 +1,188 @@
+# Release 0.20.14
+
+## What's New
+
+* Bug fix: Posture timeouts (i.e. MFA timeouts) would not apply to the first session of an API session
+* Bug fix: Fix panic during API Session deletion
+* Bug fix: DNS entries in embedded DNS server in go tunneler apps were not being cleaned up
+* Feature: Ziti CLI now supports attribute updates on MFA posture checks
+* Feature: Posture queries now support `timeout` and `timeoutRemaining`
+
+# Release 0.20.13
+
+## What's New
+
+* Bug fix: [edge#712](https://github.com/openziti/edge/issues/712) 
+  * NF-INTERCEPT chain was getting deleted when any intercept was stopped, not when all intercepts were stopped
+  * IP address could get re-used across DNS entries. Added DNS cache flush on startup to avoid this
+  * IP address cleanup was broken as all services would see last assigned IP
+* Bug fix: Introduce delay when closing xgress peer after receiving unroute if end of session not yet received
+* Feature: Can now search relevant entities by role attributes
+  * Services, edge routers and identities can be search by role attribute. Ex: `ziti edge list services 'anyOf(roleAttributes) = "one"'`
+  * Polices can be searched by roles. Ex: `ziti edge list service-policies 'anyOf(identityRoles) = "#all"'`
+
+# Release 0.20.12
+
+## What's New
+
+* Bug fix: [edge#641](https://github.com/openziti/edge/issues/641)Management and Client API nested resources now support `limit` and `offset` outside of `filter` as query params
+* Feature: MFA Timeout Options
+
+## MFA Timeout Options
+
+The MFA posture check now supports three options:
+
+* `timeoutSeconds` - the number of seconds before an MFA TOTP will need to be provided before the posture check begins to fail (optional)
+* `promptOnWake` - reduces the current timeout to 5m (if not less than already) when an endpoint reports a "wake" event (optional)
+* `promptOnUnlock` - reduces the current timeout to 5m (if not less than already) when an endpoint reports an "unlock" event (optional)
+* `ignoreLegacyEndpoints` - forces all other options to be ignored for legacy clients that do not support event state (optional)
+
+Event states, `promptOnWake` and `promptOnUnlock` are only supported in Ziti C SDK v0.20.0 and later. Individual ZDE/ZME clients
+may take time to update. If older endpoint are used with the new MFA options `ignoreLegacyEndpoints` allows administrators to decide
+how those clients should be treated. If `ignoreLegacyEndpoints` is `true`, they will not be subject to timeout or wake events.
+
+# Release 0.20.11
+
+* Bug fix: CLI Admin create/update/delete for UPDB authenticators now function properly
+* Maintenance: better logging [sdk-golang#161](https://github.com/openziti/sdk-golang/pull/161) and [edge#700](https://github.com/openziti/edge/pull/700)
+* Bug fix: [sdk-golang#162](https://github.com/openziti/sdk-golang/pull/162) fix race condition on close of ziti connections
+
+# Release 0.20.10
+
+## What's New
+
+* Bug fix: patch for process multi would clear information
+* Bug fix: [ziti#420](https://github.com/openziti/ziti/issues/420) fix ziti-tunnel failover with multiple interfaces when once becomes unavailable
+* Bug fix: [edge#670](https://github.com/openziti/edge/issues/670) fix ziti-tunnel issue where address were left assigned to loopback after clean shutdown
+* Bug fix: race condition in edge session sync could cause router panic. Regression since 0.20.9
+* Bug fix: terminator updates and deletes from the combined router/tunneler weren't working
+* Feature: Router health checks
+* Feature: Controller health check
+
+## Router Health Checks
+
+Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section. 
+
+```
+healthChecks:
+    ctrlPingCheck:
+        # How often to ping the controller over the control channel. Defaults to 30 seconds
+        interval: 30s
+        # When to timeout the ping. Defaults to 15 seconds
+        timeout: 15s
+        # How long to wait before pinging the controller. Defaults to 15 seconds
+        initialDelay: 15s
+```
+
+The health check endpoint is configured via XWeb, same as in the controller. As section like the following can be added to the router config to enable the endpoint.
+
+```
+web:
+  - name: health-check
+    bindPoints:
+      - interface: 127.0.0.1:8081
+        address: 127.0.0.1:8081
+    apis:
+      - binding: health-checks
+```
+
+The health check output will look like this:
+
+```
+$ curl -k https://localhost:8081/health-checks
+{
+    "data": {
+        "checks": [
+            {
+                "healthy": true,
+                "id": "controllerPing",
+                "lastCheckDuration": "767.381µs",
+                "lastCheckTime": "2021-06-21T16:22:36-04:00"
+            }
+        ],
+        "healthy": true
+    },
+    "meta": {}
+}
+
+```
+
+The endpoint will return a 200 if the health checks are passing and 503 if they are not.
+
+# Controller Health Check
+Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section. 
+
+```
+healthChecks:
+    boltCheck:
+        # How often to check the bolt db. Defaults to 30 seconds
+        interval: 30s
+        # When to timeout the bolt db check. Defaults to 15 seconds
+        timeout: 15s
+        # How long to wait before starting bolt db checks. Defaults to 15 seconds
+        initialDelay: 15s
+```
+
+The health check endpoint is configured via XWeb. In order to enable the health check endpoint, add it **first** to the list of apis.
+
+```
+    apis:
+      # binding - required
+      # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - edge-management
+      #   - edge-client
+      #   - fabric-management
+      - binding: health-checks
+        options: { }
+      - binding: edge-management
+        # options - variable optional/required
+        # This section is used to define values that are specified by the API they are associated with.
+        # These settings are per API. The example below is for the `edge-api` and contains both optional values and
+        # required values.
+        options: { }
+      - binding: edge-client
+        options: { }
+
+```
+
+The health check output will look like this:
+
+```
+$ curl -k https://localhost:1280/health-checks
+{
+    "data": {
+        "checks": [
+            {
+                "healthy": true,
+                "id": "bolt.read",
+                "lastCheckDuration": "27.46µs",
+                "lastCheckTime": "2021-06-21T17:32:31-04:00"
+            }
+        ],
+        "healthy": true
+    },
+    "meta": {}
+}
+
+```
+
+# Release 0.20.9
+
+## What's New
+
+* Bug fix: router session sync would fail if it took longer than a second
+* Bug fix: API sessions created during session sync could get thrown out when session sync was finalized
+* Bug fix: Update of identity defaultHostingCost and defaultHostingPrecedence didn't work
+* Improvement: List identities is faster as it no longer always iterates through all api-sessions
+* Improvement: API Session enforcer now batches deletes of session for better performance
+
 # Release 0.20.8
 
 ## What's New
 
 * 0.20.7 was missing the most up-to-date version of the openziti/edge library dependency
+
+# Release 0.20.7
 
 ## What's New
 
