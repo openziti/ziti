@@ -80,3 +80,47 @@ func (o *ListCasOK) WriteResponse(rw http.ResponseWriter, producer runtime.Produ
 		}
 	}
 }
+
+// ListCasUnauthorizedCode is the HTTP code returned for type ListCasUnauthorized
+const ListCasUnauthorizedCode int = 401
+
+/*ListCasUnauthorized The currently supplied session does not have the correct access rights to request this resource
+
+swagger:response listCasUnauthorized
+*/
+type ListCasUnauthorized struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListCasUnauthorized creates ListCasUnauthorized with default headers values
+func NewListCasUnauthorized() *ListCasUnauthorized {
+
+	return &ListCasUnauthorized{}
+}
+
+// WithPayload adds the payload to the list cas unauthorized response
+func (o *ListCasUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *ListCasUnauthorized {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list cas unauthorized response
+func (o *ListCasUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListCasUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

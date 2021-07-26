@@ -41,6 +41,18 @@ func Test_CA(t *testing.T) {
 		ctx.AdminManagementSession.validateEntityWithLookup(ca)
 	})
 
+	t.Run("identityNameFormat should be updated", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		role1 := eid.New()
+		role2 := eid.New()
+		ca := newTestCa(role1, role2)
+		ca.id = ctx.AdminManagementSession.requireCreateEntity(ca)
+
+		ca.identityNameFormat = "123"
+		ctx.AdminManagementSession.requireUpdateEntity(ca)
+		ctx.AdminManagementSession.validateEntityWithLookup(ca)
+	})
+
 	t.Run("identity name format should default if not specified", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()

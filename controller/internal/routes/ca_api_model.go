@@ -91,7 +91,7 @@ func MapUpdateCaToModel(id string, ca *rest_model.CaUpdate) *model.Ca {
 		IsOttCaEnrollmentEnabled:  ca.IsOttCaEnrollmentEnabled != nil && *ca.IsOttCaEnrollmentEnabled,
 		IsAuthEnabled:             ca.IsAuthEnabled != nil && *ca.IsAuthEnabled,
 		IdentityRoles:             ca.IdentityRoles,
-		IdentityNameFormat:        ca.IdentityNameFormat,
+		IdentityNameFormat:        stringz.OrEmpty(ca.IdentityNameFormat),
 	}
 
 	return ret

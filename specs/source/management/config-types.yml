@@ -17,6 +17,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listConfigTypes'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
     post:
       summary: Create a config-type. Requires admin access.
       security:

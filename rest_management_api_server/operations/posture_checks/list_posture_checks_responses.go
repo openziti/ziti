@@ -80,3 +80,47 @@ func (o *ListPostureChecksOK) WriteResponse(rw http.ResponseWriter, producer run
 		}
 	}
 }
+
+// ListPostureChecksUnauthorizedCode is the HTTP code returned for type ListPostureChecksUnauthorized
+const ListPostureChecksUnauthorizedCode int = 401
+
+/*ListPostureChecksUnauthorized The currently supplied session does not have the correct access rights to request this resource
+
+swagger:response listPostureChecksUnauthorized
+*/
+type ListPostureChecksUnauthorized struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListPostureChecksUnauthorized creates ListPostureChecksUnauthorized with default headers values
+func NewListPostureChecksUnauthorized() *ListPostureChecksUnauthorized {
+
+	return &ListPostureChecksUnauthorized{}
+}
+
+// WithPayload adds the payload to the list posture checks unauthorized response
+func (o *ListPostureChecksUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *ListPostureChecksUnauthorized {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list posture checks unauthorized response
+func (o *ListPostureChecksUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListPostureChecksUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

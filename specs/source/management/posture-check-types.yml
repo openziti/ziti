@@ -19,6 +19,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listPostureCheckTypes'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
   posture-check-types-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
