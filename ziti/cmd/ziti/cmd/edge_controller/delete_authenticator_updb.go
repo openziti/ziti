@@ -61,7 +61,7 @@ func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
 		return err
 	}
 
-	client, err := util.DefaultEdgeManagementClient()
+	client, err := util.NewEdgeManagementClient(options)
 
 	if err != nil {
 		return err

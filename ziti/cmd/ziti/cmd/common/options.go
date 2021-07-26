@@ -17,9 +17,11 @@
 package common
 
 import (
+	"context"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
 	"io"
+	"time"
 )
 
 // CommonOptions contains common options and helper methods
@@ -34,4 +36,10 @@ type CommonOptions struct {
 	Staging        bool
 	ConfigIdentity string
 	Timeout        int
+}
+
+func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelFunc) {
+	timeout := time.Duration(options.Timeout) * time.Second
+
+	return context.WithTimeout(context.Background(), timeout)
 }

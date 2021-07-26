@@ -19,20 +19,20 @@ package edge_controller
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/pkg/errors"
-	"io"
-	"net/url"
-	"reflect"
-	"strings"
-
-	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"io"
+	"net/url"
+	"reflect"
+	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
@@ -132,6 +132,20 @@ type paging struct {
 	offset int64
 	count  int64
 	errorz.ErrorHolderImpl
+}
+
+func newPagingInfo(meta *rest_model.Meta) paging {
+	if meta != nil && meta.Pagination != nil {
+		pagingInfo := paging{
+			limit:  *meta.Pagination.Limit,
+			offset: *meta.Pagination.Offset,
+			count:  *meta.Pagination.TotalCount,
+		}
+
+		return pagingInfo
+	}
+
+	return paging{}
 }
 
 func (p *paging) output(o *edgeOptions) {
@@ -804,7 +818,26 @@ func outputPostureChecks(o *edgeOptions, children []*gabs.Container, pagingInfo 
 }
 
 func runListCAs(o *edgeOptions) error {
-	children, pagingInfo, err := listEntitiesWithOptions("cas", o)
+	client, err := util.NewEdgeManagementClient(o)
+
+	if err != nil {
+		return err
+	}
+
+	var filter *string = nil
+
+	if len(o.Args) > 0 {
+		filter = &o.Args[0]
+	}
+
+	context, cancelContext := o.TimeoutContext()
+	defer cancelContext()
+
+	result, err := client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{
+		Filter:  filter,
+		Context: context,
+	}, nil)
+
 	if err != nil {
 		return err
 	}
@@ -813,15 +846,42 @@ func runListCAs(o *edgeOptions) error {
 		return nil
 	}
 
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		cluster, _ := entity.Path("cluster.id").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    cluster-id: %v\n", id, name, cluster); err != nil {
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	for _, entity := range result.GetPayload().Data {
+		id := *entity.ID
+		name := *entity.Name
+		identityRoles := make([]string, 0)
+
+		for _, role := range entity.IdentityRoles {
+			identityRoles = append(identityRoles, role)
+		}
+
+		isVerified := *entity.IsVerified
+		fingerprint := ""
+		token := ""
+		if isVerified {
+			fingerprint = *entity.Fingerprint
+		} else {
+			token = entity.VerificationToken.String()
+		}
+
+		identityNameFormat := *entity.IdentityNameFormat
+
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isVerified: %v    token: %v    identityRoles: %v    identityNameFormat: %v    fingerprint: %v\n",
+			id, name, isVerified, token, identityRoles, identityNameFormat, fingerprint,
+		); err != nil {
 			return err
 		}
 	}
+
+	pagingInfo := newPagingInfo(payload.Meta)
 	pagingInfo.output(o)
+
 	return nil
 }
 

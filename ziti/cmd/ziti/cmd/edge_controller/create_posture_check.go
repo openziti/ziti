@@ -476,7 +476,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 }
 
 func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOptions) error {
-	managementClient, err := util.DefaultEdgeManagementClient()
+	managementClient, err := util.NewEdgeManagementClient(options)
 
 	if err != nil {
 		return err
