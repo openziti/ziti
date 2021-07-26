@@ -28,14 +28,14 @@ type Session struct {
 	ClientId   *identity.TokenId
 	Service    *Service
 	Terminator xt.Terminator
-	Circuit    *Circuit
+	Path       *Path
 	Rerouting  concurrenz.AtomicBoolean
 	PeerData   xt.PeerData
 }
 
 func (s *Session) latency() int64 {
 	var latency int64
-	for _, l := range s.Circuit.Links {
+	for _, l := range s.Path.Links {
 		latency += l.GetSrcLatency()
 		latency += l.GetDstLatency()
 	}

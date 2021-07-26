@@ -53,7 +53,7 @@ func (h *listSessionsHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 			Id:        s.Id.Token,
 			ClientId:  s.ClientId.Token,
 			ServiceId: s.Service.Id,
-			Circuit:   NewCircuit(s.Circuit),
+			Path:      NewPath(s.Path),
 		}
 		response.Sessions = append(response.Sessions, responseSession)
 	}
@@ -70,13 +70,13 @@ func (h *listSessionsHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 	}
 }
 
-func NewCircuit(circuit *network.Circuit) *mgmt_pb.Circuit {
-	mgmtCircuit := &mgmt_pb.Circuit{}
-	for _, r := range circuit.Path {
-		mgmtCircuit.Path = append(mgmtCircuit.Path, r.Id)
+func NewPath(path *network.Path) *mgmt_pb.Path {
+	mgmtPath := &mgmt_pb.Path{}
+	for _, r := range path.Nodes {
+		mgmtPath.Nodes = append(mgmtPath.Nodes, r.Id)
 	}
-	for _, l := range circuit.Links {
-		mgmtCircuit.Links = append(mgmtCircuit.Links, l.Id.Token)
+	for _, l := range path.Links {
+		mgmtPath.Links = append(mgmtPath.Links, l.Id.Token)
 	}
-	return mgmtCircuit
+	return mgmtPath
 }

@@ -439,16 +439,16 @@ func routerToString(router *Router) string {
 	return fmt.Sprintf("{id=[%s] fingerprint=[%s] listener=[%s] connected=[%t]}", router.Id, router.Fingerprint, router.ListenerAddress, router.Connected)
 }
 
-func (circuit *Circuit) CalculateDisplayPath() string {
-	if circuit == nil {
+func (self *Path) CalculateDisplayPath() string {
+	if self == nil {
 		return ""
 	}
 	out := ""
-	for i := 0; i < len(circuit.Path); i++ {
-		if i < len(circuit.Links) {
-			out += fmt.Sprintf("[r/%s]->{l/%s}->", circuit.Path[i], circuit.Links[i])
+	for i := 0; i < len(self.Nodes); i++ {
+		if i < len(self.Links) {
+			out += fmt.Sprintf("[r/%s]->{l/%s}->", self.Nodes[i], self.Links[i])
 		} else {
-			out += fmt.Sprintf("[r/%s]\n", circuit.Path[i])
+			out += fmt.Sprintf("[r/%s]\n", self.Nodes[i])
 		}
 	}
 	return out

@@ -66,42 +66,42 @@ type fabricSessionCreatedEventAdapter struct {
 	wrapped network.SessionEventHandler
 }
 
-func (adapter *fabricSessionCreatedEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
+func (adapter *fabricSessionCreatedEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Path) {
 	adapter.wrapped.SessionCreated(sessionId, clientId, serviceId, circuit)
 }
 
 func (adapter *fabricSessionCreatedEventAdapter) SessionDeleted(*identity.TokenId, *identity.TokenId) {
 }
 
-func (adapter *fabricSessionCreatedEventAdapter) CircuitUpdated(*identity.TokenId, *network.Circuit) {
+func (adapter *fabricSessionCreatedEventAdapter) PathUpdated(*identity.TokenId, *network.Path) {
 }
 
 type fabricSessionDeletedEventAdapter struct {
 	wrapped network.SessionEventHandler
 }
 
-func (adapter *fabricSessionDeletedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Circuit) {
+func (adapter *fabricSessionDeletedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Path) {
 }
 
 func (adapter *fabricSessionDeletedEventAdapter) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
 	adapter.wrapped.SessionDeleted(sessionId, clientId)
 }
 
-func (adapter *fabricSessionDeletedEventAdapter) CircuitUpdated(*identity.TokenId, *network.Circuit) {
+func (adapter *fabricSessionDeletedEventAdapter) PathUpdated(*identity.TokenId, *network.Path) {
 }
 
 type fabricSessionCircuitUpdatedEventAdapter struct {
 	wrapped network.SessionEventHandler
 }
 
-func (adapter *fabricSessionCircuitUpdatedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Circuit) {
+func (adapter *fabricSessionCircuitUpdatedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Path) {
 }
 
 func (adapter *fabricSessionCircuitUpdatedEventAdapter) SessionDeleted(*identity.TokenId, *identity.TokenId) {
 }
 
-func (adapter *fabricSessionCircuitUpdatedEventAdapter) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
-	adapter.wrapped.CircuitUpdated(sessionId, circuit)
+func (adapter *fabricSessionCircuitUpdatedEventAdapter) PathUpdated(sessionId *identity.TokenId, circuit *network.Path) {
+	adapter.wrapped.PathUpdated(sessionId, circuit)
 }
 
 // Will work for all fabric session event types
@@ -140,7 +140,7 @@ type sessionEventAdapter struct {
 	handler SessionEventHandler
 }
 
-func (adapter *sessionEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
+func (adapter *sessionEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Path) {
 	event := &SessionEvent{
 		Namespace: "fabric.sessions",
 		EventType: "created",
@@ -166,7 +166,7 @@ func (adapter *sessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, 
 	adapter.handler.AcceptSessionEvent(event)
 }
 
-func (adapter *sessionEventAdapter) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
+func (adapter *sessionEventAdapter) PathUpdated(sessionId *identity.TokenId, circuit *network.Path) {
 	event := &SessionEvent{
 		Namespace: "fabric.sessions",
 		EventType: "circuitUpdated",

@@ -57,7 +57,7 @@ func (self *routeSenderController) removeRouteSender(rs *routeSender) {
 
 type routeSender struct {
 	sessionId       string
-	circuit         *Circuit
+	path            *Path
 	routeMsgs       []*ctrl_pb.Route
 	timeout         time.Duration
 	in              chan *routeStatus
@@ -75,11 +75,11 @@ func newRouteSender(sessionId string, timeout time.Duration, serviceCounters Ser
 	}
 }
 
-func (self *routeSender) route(attempt uint32, circuit *Circuit, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
 	// send route messages
-	tr := circuit.Path[len(circuit.Path)-1]
-	for i := 0; i < len(circuit.Path); i++ {
-		r := circuit.Path[i]
+	tr := path.Nodes[len(path.Nodes)-1]
+	for i := 0; i < len(path.Nodes); i++ {
+		r := path.Nodes[i]
 		go self.sendRoute(r, routeMsgs[i])
 		self.attendance[r.Id] = false
 	}
@@ -112,7 +112,7 @@ attendance:
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 						self.serviceCounters.ServiceDialFail(terminator.GetServiceId())
 					}
-					cleanups = self.cleanups(circuit)
+					cleanups = self.cleanups(path)
 
 					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.sessionId, status.r.Id, status.rerr)
 				} else {
@@ -121,7 +121,7 @@ attendance:
 			}
 
 		case <-time.After(timeout):
-			cleanups = self.cleanups(circuit)
+			cleanups = self.cleanups(path)
 			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId())
 			return nil, cleanups, &routeTimeoutError{sessionId: self.sessionId}
 		}
@@ -153,9 +153,9 @@ func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	logrus.Debugf("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
 }
 
-func (self *routeSender) cleanups(circuit *Circuit) map[string]struct{} {
+func (self *routeSender) cleanups(path *Path) map[string]struct{} {
 	cleanups := make(map[string]struct{})
-	for _, r := range circuit.Path {
+	for _, r := range path.Nodes {
 		success, found := self.attendance[r.Id]
 		if found && success {
 			cleanups[r.Id] = struct{}{}

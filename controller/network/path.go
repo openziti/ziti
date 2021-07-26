@@ -17,10 +17,144 @@
 package network
 
 import (
-	"errors"
 	"fmt"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/pkg/errors"
 	"math"
 )
+
+type Path struct {
+	Nodes     []*Router
+	Links     []*Link
+	IngressId string
+	EgressId  string
+}
+
+func (self *Path) String() string {
+	if len(self.Nodes) < 1 {
+		return "{}"
+	}
+	if len(self.Links) != len(self.Nodes)-1 {
+		return "{malformed}"
+	}
+	out := fmt.Sprintf("[r/%s]", self.Nodes[0].Id)
+	for i := 0; i < len(self.Links); i++ {
+		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id.Token)
+		out += fmt.Sprintf("->[r/%s]", self.Nodes[i+1].Id)
+	}
+	return out
+}
+
+func (self *Path) EqualPath(other *Path) bool {
+	if len(self.Nodes) != len(other.Nodes) {
+		return false
+	}
+	if len(self.Links) != len(other.Links) {
+		return false
+	}
+	for i := 0; i < len(self.Nodes); i++ {
+		if self.Nodes[i] != other.Nodes[i] {
+			return false
+		}
+	}
+	for i := 0; i < len(self.Links); i++ {
+		if self.Links[i] != other.Links[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (self *Path) EgressRouter() *Router {
+	if len(self.Nodes) > 0 {
+		return self.Nodes[len(self.Nodes)-1]
+	}
+	return nil
+}
+
+func (self *Path) CreateRouteMessages(attempt uint32, sessionId *identity.TokenId, terminator xt.Terminator) ([]*ctrl_pb.Route, error) {
+	var routeMessages []*ctrl_pb.Route
+	if len(self.Links) == 0 {
+		// single router path
+		routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+			SrcAddress: self.IngressId,
+			DstAddress: self.EgressId,
+		})
+		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+			SrcAddress: self.EgressId,
+			DstAddress: self.IngressId,
+		})
+		routeMessage.Egress = &ctrl_pb.Route_Egress{
+			Binding:     terminator.GetBinding(),
+			Address:     self.EgressId,
+			Destination: terminator.GetAddress(),
+		}
+		routeMessages = append(routeMessages, routeMessage)
+	}
+
+	for i, link := range self.Links {
+		if i == 0 {
+			// ingress
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: self.IngressId,
+				DstAddress: link.Id.Token,
+			})
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: link.Id.Token,
+				DstAddress: self.IngressId,
+			})
+			routeMessages = append(routeMessages, routeMessage)
+		}
+		if i >= 0 && i < len(self.Links)-1 {
+			// transit
+			nextLink := self.Links[i+1]
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: link.Id.Token,
+				DstAddress: nextLink.Id.Token,
+			})
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: nextLink.Id.Token,
+				DstAddress: link.Id.Token,
+			})
+			routeMessages = append(routeMessages, routeMessage)
+		}
+		if i == len(self.Links)-1 {
+			// egress
+			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage.Egress = &ctrl_pb.Route_Egress{
+				Binding:     terminator.GetBinding(),
+				Address:     self.EgressId,
+				Destination: terminator.GetAddress(),
+			}
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: self.EgressId,
+				DstAddress: link.Id.Token,
+			})
+			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
+				SrcAddress: link.Id.Token,
+				DstAddress: self.EgressId,
+			})
+			routeMessages = append(routeMessages, routeMessage)
+		}
+	}
+	return routeMessages, nil
+}
+
+func (self *Path) usesLink(l *Link) bool {
+	if self.Links != nil {
+		for _, o := range self.Links {
+			if o == l {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int64, error) {
 	if srcR == nil || dstR == nil {

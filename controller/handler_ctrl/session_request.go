@@ -52,7 +52,7 @@ func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
 			if session, err := h.network.CreateSession(h.r, id, request.ServiceId); err == nil {
-				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Circuit.IngressId)
+				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 
 				//static terminator peer data

@@ -28,17 +28,17 @@ func getSessionEventHandlers() []SessionEventHandler {
 }
 
 type SessionEventHandler interface {
-	SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit)
+	SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, path *Path)
 	SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId)
-	CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit)
+	PathUpdated(sessionId *identity.TokenId, path *Path)
 }
 
-func (network *Network) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *Circuit) {
+func (network *Network) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, path *Path) {
 	event := &sessionCreatedEvent{
 		sessionId: sessionId,
 		clientId:  clientId,
 		serviceId: serviceId,
-		circuit:   circuit,
+		path:      path,
 	}
 	network.eventDispatcher.Dispatch(event)
 }
@@ -51,10 +51,10 @@ func (network *Network) SessionDeleted(sessionId *identity.TokenId, clientId *id
 	network.eventDispatcher.Dispatch(event)
 }
 
-func (network *Network) CircuitUpdated(sessionId *identity.TokenId, circuit *Circuit) {
-	event := &sessionCircuitEvent{
+func (network *Network) PathUpdated(sessionId *identity.TokenId, path *Path) {
+	event := &sessionPathEvent{
 		sessionId: sessionId,
-		circuit:   circuit,
+		path:      path,
 	}
 	network.eventDispatcher.Dispatch(event)
 }
@@ -63,13 +63,13 @@ type sessionCreatedEvent struct {
 	sessionId *identity.TokenId
 	clientId  *identity.TokenId
 	serviceId string
-	circuit   *Circuit
+	path      *Path
 }
 
 func (event *sessionCreatedEvent) Handle() {
 	handlers := getSessionEventHandlers()
 	for _, handler := range handlers {
-		go handler.SessionCreated(event.sessionId, event.clientId, event.serviceId, event.circuit)
+		go handler.SessionCreated(event.sessionId, event.clientId, event.serviceId, event.path)
 	}
 }
 
@@ -85,14 +85,14 @@ func (event *sessionDeletedEvent) Handle() {
 	}
 }
 
-type sessionCircuitEvent struct {
+type sessionPathEvent struct {
 	sessionId *identity.TokenId
-	circuit   *Circuit
+	path      *Path
 }
 
-func (event *sessionCircuitEvent) Handle() {
+func (event *sessionPathEvent) Handle() {
 	handlers := getSessionEventHandlers()
 	for _, handler := range handlers {
-		go handler.CircuitUpdated(event.sessionId, event.circuit)
+		go handler.PathUpdated(event.sessionId, event.path)
 	}
 }

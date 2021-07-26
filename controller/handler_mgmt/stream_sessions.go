@@ -62,13 +62,13 @@ type SessionsStreamHandler struct {
 	ch channel2.Channel
 }
 
-func (handler *SessionsStreamHandler) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
+func (handler *SessionsStreamHandler) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, path *network.Path) {
 	event := &mgmt_pb.StreamSessionsEvent{
 		EventType: mgmt_pb.StreamSessionEventType_SessionCreated,
 		SessionId: sessionId.Token,
 		ClientId:  clientId.Token,
 		ServiceId: serviceId,
-		Circuit:   NewCircuit(circuit),
+		Path:      NewPath(path),
 	}
 	handler.sendEvent(event)
 }
@@ -82,11 +82,11 @@ func (handler *SessionsStreamHandler) SessionDeleted(sessionId *identity.TokenId
 	handler.sendEvent(event)
 }
 
-func (handler *SessionsStreamHandler) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
+func (handler *SessionsStreamHandler) PathUpdated(sessionId *identity.TokenId, path *network.Path) {
 	event := &mgmt_pb.StreamSessionsEvent{
-		EventType: mgmt_pb.StreamSessionEventType_CircuitUpdated,
+		EventType: mgmt_pb.StreamSessionEventType_PathUpdated,
 		SessionId: sessionId.Token,
-		Circuit:   NewCircuit(circuit),
+		Path:      NewPath(path),
 	}
 	handler.sendEvent(event)
 }

@@ -53,7 +53,7 @@ func (network *Network) smart() {
 	/*
 	 * Develop candidates for rerouting.
 	 */
-	newCircuits := make(map[*Session]*Circuit)
+	newPaths := make(map[*Session]*Path)
 	var candidates []*Session
 	count := 0
 	ceiling := int(float32(len(sessions)) * network.options.Smart.RerouteFraction)
@@ -66,13 +66,13 @@ func (network *Network) smart() {
 	log.Tracef("smart reroute ceiling [%d]", ceiling)
 	for _, sId := range orderedSessions {
 		if session, found := network.GetSession(sId); found {
-			if updatedCircuit, err := network.UpdateCircuit(session.Circuit); err == nil {
-				if !updatedCircuit.EqualPath(session.Circuit) {
+			if updatedPath, err := network.UpdatePath(session.Path); err == nil {
+				if !updatedPath.EqualPath(session.Path) {
 					if count < ceiling {
 						count++
 						candidates = append(candidates, session)
-						newCircuits[session] = updatedCircuit
-						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", session.Id.Token, sessionLatencies[session.Id], session.Circuit.String(), updatedCircuit.String())
+						newPaths[session] = updatedPath
+						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", session.Id.Token, sessionLatencies[session.Id], session.Path.String(), updatedPath.String())
 					}
 				}
 			}
@@ -84,7 +84,7 @@ func (network *Network) smart() {
 	 * Reroute.
 	 */
 	for _, session := range candidates {
-		if err := network.smartReroute(session, newCircuits[session]); err != nil {
+		if err := network.smartReroute(session, newPaths[session]); err != nil {
 			log.Errorf("error rerouting [s/%s] (%s)", session.Id.Token, err)
 		}
 	}
