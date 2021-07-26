@@ -27,7 +27,7 @@ import (
 
 type Scanner struct {
 	ctrl        channel2.Channel
-	sessions    *sessionTable
+	circuits    *circuitTable
 	interval    time.Duration
 	timeout     time.Duration
 	closeNotify <-chan struct{}
@@ -36,7 +36,7 @@ type Scanner struct {
 func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
 	s := &Scanner{
 		interval:    options.IdleTxInterval,
-		timeout:     options.IdleSessionTimeout,
+		timeout:     options.IdleCircuitTimeout,
 		closeNotify: closeNotify,
 	}
 	if s.interval > 0 {
@@ -51,8 +51,8 @@ func (self *Scanner) SetCtrl(ch channel2.Channel) {
 	self.ctrl = ch
 }
 
-func (self *Scanner) setSessionTable(sessions *sessionTable) {
-	self.sessions = sessions
+func (self *Scanner) setCircuitTable(circuits *circuitTable) {
+	self.circuits = circuits
 }
 
 func (self *Scanner) run() {
@@ -71,33 +71,33 @@ func (self *Scanner) run() {
 }
 
 func (self *Scanner) scan() {
-	sessions := self.sessions.sessions.Items()
-	logrus.Debugf("scanning [%d] sessions", len(sessions))
+	circuits := self.circuits.circuits.Items()
+	logrus.Debugf("scanning [%d] circuits", len(circuits))
 
-	var idleSessionIds []string
-	for sessionId, ft := range sessions {
+	var idleCircuitIds []string
+	for circuitId, ft := range circuits {
 		if time.Since(ft.(*forwardTable).last) > self.timeout {
-			idleSessionIds = append(idleSessionIds, sessionId)
-			logrus.Warnf("[s/%s] idle after [%s]", sessionId, self.timeout)
+			idleCircuitIds = append(idleCircuitIds, circuitId)
+			logrus.Warnf("[s/%s] idle after [%s]", circuitId, self.timeout)
 		}
 	}
 
-	if len(idleSessionIds) > 0 {
-		logrus.Debugf("found [%d] idle sessions, confirming with controller", len(idleSessionIds))
+	if len(idleCircuitIds) > 0 {
+		logrus.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitIds))
 
 		if self.ctrl != nil {
-			confirm := &ctrl_pb.SessionConfirmation{SessionIds: idleSessionIds}
+			confirm := &ctrl_pb.CircuitConfirmation{CircuitIds: idleCircuitIds}
 			body, err := proto.Marshal(confirm)
 			if err == nil {
-				msg := channel2.NewMessage(ctrl_msg.SessionConfirmationType, body)
+				msg := channel2.NewMessage(ctrl_msg.CircuitConfirmationType, body)
 				if err := self.ctrl.Send(msg); err == nil {
-					logrus.Warnf("sent confirmation for [%d] sessions", len(idleSessionIds))
+					logrus.Warnf("sent confirmation for [%d] circuits", len(idleCircuitIds))
 				} else {
 					logrus.Errorf("error sending confirmation request (%v)", err)
 				}
 			}
 		} else {
-			logrus.Errorf("no ctrl channel, cannot request session confirmations")
+			logrus.Errorf("no ctrl channel, cannot request circuit confirmations")
 		}
 	}
 }

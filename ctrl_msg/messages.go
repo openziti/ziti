@@ -21,25 +21,25 @@ import (
 )
 
 const (
-	SessionSuccessType      = 1001
-	SessionFailedType       = 1016
+	CircuitSuccessType      = 1001
+	CircuitFailedType       = 1016
 	RouteResultType         = 1022
-	SessionConfirmationType = 1034
+	CircuitConfirmationType = 1034
 
-	SessionSuccessAddressHeader = 1100
+	CircuitSuccessAddressHeader = 1100
 	RouteResultAttemptHeader    = 1101
 	RouteResultSuccessHeader    = 1102
 	RouteResultErrorHeader      = 1103
 )
 
-func NewSessionSuccessMsg(sessionId, address string) *channel2.Message {
-	msg := channel2.NewMessage(SessionSuccessType, []byte(sessionId))
-	msg.Headers[SessionSuccessAddressHeader] = []byte(address)
+func NewCircuitSuccessMsg(sessionId, address string) *channel2.Message {
+	msg := channel2.NewMessage(CircuitSuccessType, []byte(sessionId))
+	msg.Headers[CircuitSuccessAddressHeader] = []byte(address)
 	return msg
 }
 
-func NewSessionFailedMsg(message string) *channel2.Message {
-	return channel2.NewMessage(SessionFailedType, []byte(message))
+func NewCircuitFailedMsg(message string) *channel2.Message {
+	return channel2.NewMessage(CircuitFailedType, []byte(message))
 }
 
 func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel2.Message {

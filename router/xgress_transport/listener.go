@@ -80,7 +80,7 @@ func (listener *listener) handleConnect(peer transport.Connection, bindHandler x
 
 	request, err := xgress.ReceiveRequest(peer)
 	if err == nil {
-		response := xgress.CreateSession(listener.ctrl, conn, request, bindHandler, listener.options)
+		response := xgress.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
 		err = xgress.SendResponse(response, peer.Writer())
 		if err != nil {
 			log.Errorf("error sending response (%s)", err)

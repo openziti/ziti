@@ -37,8 +37,8 @@ const (
 
 	closedFlag            = 0
 	rxerStartedFlag       = 1
-	endOfSessionRecvdFlag = 2
-	endOfSessionSentFlag  = 3
+	endOfCircuitRecvdFlag = 2
+	endOfCircuitSentFlag  = 3
 )
 
 type Address string
@@ -49,7 +49,7 @@ type Listener interface {
 }
 
 type Dialer interface {
-	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) (xt.PeerData, error)
+	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 
@@ -105,7 +105,7 @@ type Connection interface {
 }
 
 type Xgress struct {
-	sessionId            string
+	circuitId            string
 	address              Address
 	peer                 Connection
 	originator           Originator
@@ -123,9 +123,9 @@ type Xgress struct {
 	timeOfLastRxFromLink int64
 }
 
-func NewXgress(sessionId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
+func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
 	result := &Xgress{
-		sessionId:            sessionId.Token,
+		circuitId:            circuitId.Token,
 		address:              address,
 		peer:                 peer,
 		originator:           originator,
@@ -144,8 +144,8 @@ func (self *Xgress) GetTimeOfLastRxFromLink() int64 {
 	return self.timeOfLastRxFromLink
 }
 
-func (self *Xgress) SessionId() string {
-	return self.sessionId
+func (self *Xgress) CircuitId() string {
+	return self.circuitId
 }
 
 func (self *Xgress) Address() Address {
@@ -172,82 +172,82 @@ func (self *Xgress) AddPeekHandler(peekHandler PeekHandler) {
 	self.peekHandlers = append(self.peekHandlers, peekHandler)
 }
 
-func (self *Xgress) IsEndOfSessionReceived() bool {
-	return self.flags.IsSet(endOfSessionRecvdFlag)
+func (self *Xgress) IsEndOfCircuitReceived() bool {
+	return self.flags.IsSet(endOfCircuitRecvdFlag)
 }
 
-func (self *Xgress) markSessionEndReceived() {
-	self.flags.Set(endOfSessionRecvdFlag, true)
+func (self *Xgress) markCircuitEndReceived() {
+	self.flags.Set(endOfCircuitRecvdFlag, true)
 }
 
-func (self *Xgress) IsSessionStarted() bool {
+func (self *Xgress) IsCircuitStarted() bool {
 	return !self.IsTerminator() || self.flags.IsSet(rxerStartedFlag)
 }
 
-func (self *Xgress) firstSessionStartReceived() bool {
+func (self *Xgress) firstCircuitStartReceived() bool {
 	return self.flags.CompareAndSet(rxerStartedFlag, false, true)
 }
 
 func (self *Xgress) Start() {
 	log := pfxlog.ContextLogger(self.Label())
 	if self.IsTerminator() {
-		log.Debug("terminator: waiting for session start before starting receiver")
-		if self.Options.SessionStartTimeout > time.Second {
-			time.AfterFunc(self.Options.SessionStartTimeout, self.terminateIfNotStarted)
+		log.Debug("terminator: waiting for circuit start before starting receiver")
+		if self.Options.CircuitStartTimeout > time.Second {
+			time.AfterFunc(self.Options.CircuitStartTimeout, self.terminateIfNotStarted)
 		}
 	} else {
-		log.Debug("initiator: sending session start")
-		self.forwardPayload(self.GetStartSession())
+		log.Debug("initiator: sending circuit start")
+		self.forwardPayload(self.GetStartCircuit())
 		go self.rx()
 	}
 	go self.tx()
 }
 
 func (self *Xgress) terminateIfNotStarted() {
-	if !self.IsSessionStarted() {
-		logrus.WithField("xgress", self.Label()).Warn("xgress session not started in time, closing")
+	if !self.IsCircuitStarted() {
+		logrus.WithField("xgress", self.Label()).Warn("xgress circuit not started in time, closing")
 		self.Close()
 	}
 }
 
 func (self *Xgress) Label() string {
-	return fmt.Sprintf("{s/%s|@/%s}<%s>", self.sessionId, string(self.address), self.originator.String())
+	return fmt.Sprintf("{c/%s|@/%s}<%s>", self.circuitId, string(self.address), self.originator.String())
 }
 
-func (self *Xgress) GetStartSession() *Payload {
-	startSession := &Payload{
+func (self *Xgress) GetStartCircuit() *Payload {
+	startCircuit := &Payload{
 		Header: Header{
-			SessionId: self.sessionId,
-			Flags:     SetOriginatorFlag(uint32(PayloadFlagSessionStart), self.originator),
+			CircuitId: self.circuitId,
+			Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitStart), self.originator),
 		},
 		Sequence: self.nextReceiveSequence(),
 		Data:     nil,
 	}
-	return startSession
+	return startCircuit
 }
 
-func (self *Xgress) GetEndSession() *Payload {
-	endSession := &Payload{
+func (self *Xgress) GetEndCircuit() *Payload {
+	endCircuit := &Payload{
 		Header: Header{
-			SessionId: self.sessionId,
-			Flags:     SetOriginatorFlag(uint32(PayloadFlagSessionEnd), self.originator),
+			CircuitId: self.circuitId,
+			Flags:     SetOriginatorFlag(uint32(PayloadFlagCircuitEnd), self.originator),
 		},
 		Sequence: self.nextReceiveSequence(),
 		Data:     nil,
 	}
-	return endSession
+	return endCircuit
 }
 
-func (self *Xgress) ForwardEndOfSession(sendF func(payload *Payload) bool) {
-	// for now always send end of session. too many is better than not enough
-	if !self.IsEndOfSessionSent() {
-		sendF(self.GetEndSession())
-		self.flags.Set(endOfSessionSentFlag, true)
+func (self *Xgress) ForwardEndOfCircuit(sendF func(payload *Payload) bool) {
+	// for now always send end of circuit. too many is better than not enough
+	if !self.IsEndOfCircuitSent() {
+		sendF(self.GetEndCircuit())
+		self.flags.Set(endOfCircuitSentFlag, true)
 	}
 }
 
-func (self *Xgress) IsEndOfSessionSent() bool {
-	return self.flags.IsSet(endOfSessionSentFlag)
+func (self *Xgress) IsEndOfCircuitSent() bool {
+	return self.flags.IsSet(endOfCircuitSentFlag)
 }
 
 func (self *Xgress) CloseTimeout(duration time.Duration) {
@@ -257,7 +257,7 @@ func (self *Xgress) CloseTimeout(duration time.Duration) {
 }
 
 func (self *Xgress) Unrouted() {
-	// When we're unrouted, if end of session hasn't already arrived, give incoming/queued data
+	// When we're unrouted, if end of circuit hasn't already arrived, give incoming/queued data
 	// a chance to outflow before closing
 	if !self.flags.IsSet(closedFlag) {
 		time.AfterFunc(self.Options.MaxCloseWait, self.Close)
@@ -269,7 +269,7 @@ Things which can trigger close
 
 1. Read fails
 2. Write fails
-3. End of Session received
+3. End of Circuit received
 4. Unroute received
 
 */
@@ -310,8 +310,8 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 		return nil
 	}
 
-	if payload.IsSessionEndFlagSet() {
-		pfxlog.ContextLogger(self.Label()).Debug("received end of session Payload")
+	if payload.IsCircuitEndFlagSet() {
+		pfxlog.ContextLogger(self.Label()).Debug("received end of circuit Payload")
 	}
 	self.timeOfLastRxFromLink = info.NowInMilliseconds()
 	payloadIngester.ingest(payload, self)
@@ -326,8 +326,8 @@ func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error 
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {
-	if payload.IsSessionStartFlagSet() && self.firstSessionStartReceived() {
-		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received session start, starting xgress receiver")
+	if payload.IsCircuitStartFlagSet() && self.firstCircuitStartReceived() {
+		pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields()).Debug("received circuit start, starting xgress receiver")
 		go self.rx()
 	}
 
@@ -383,7 +383,7 @@ func (self *Xgress) tx() {
 	log.Debug("started")
 	defer log.Debug("exited")
 	defer func() {
-		if self.IsEndOfSessionReceived() {
+		if self.IsEndOfCircuitReceived() {
 			self.Close()
 		} else {
 			self.flushSendThenClose()
@@ -400,9 +400,9 @@ func (self *Xgress) tx() {
 			return
 		}
 
-		if payload.IsSessionEndFlagSet() {
-			self.markSessionEndReceived()
-			log.Debug("session end payload received, exiting")
+		if payload.IsCircuitEndFlagSet() {
+			self.markCircuitEndReceived()
+			log.Debug("circuit end payload received, exiting")
 			return
 		}
 
@@ -413,7 +413,7 @@ func (self *Xgress) tx() {
 			peekHandler.Tx(self, payload)
 		}
 
-		if !payload.IsSessionStartFlagSet() {
+		if !payload.IsCircuitStartFlagSet() {
 			start := time.Now()
 			n, err := self.peer.WritePayload(payload.Data, payload.Headers)
 			if err != nil {
@@ -438,13 +438,13 @@ func (self *Xgress) tx() {
 
 func (self *Xgress) flushSendThenClose() {
 	self.CloseTimeout(self.Options.MaxCloseWait)
-	self.ForwardEndOfSession(func(payload *Payload) bool {
+	self.ForwardEndOfCircuit(func(payload *Payload) bool {
 		if self.payloadBuffer.closed.Get() {
 			// Avoid spurious 'failed to forward payload' error if the buffer is already closed
 			return false
 		}
 
-		pfxlog.ContextLogger(self.Label()).Debug("sending end of session payload")
+		pfxlog.ContextLogger(self.Label()).Debug("sending end of circuit payload")
 		return self.forwardPayload(payload)
 	})
 }
@@ -490,7 +490,7 @@ func (self *Xgress) rx() {
 			length := mathz.MinInt(remaining, int(self.Options.Mtu))
 			payload := &Payload{
 				Header: Header{
-					SessionId: self.sessionId,
+					CircuitId: self.circuitId,
 					Flags:     SetOriginatorFlag(0, self.originator),
 				},
 				Sequence: self.nextReceiveSequence(),
@@ -547,7 +547,7 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 	if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
 		log.Debug("ready to acknowledge")
 
-		ack := NewAcknowledgement(self.sessionId, self.originator)
+		ack := NewAcknowledgement(self.circuitId, self.originator)
 		ack.RecvBufferSize = self.linkRxBuffer.Size()
 		ack.Sequence = append(ack.Sequence, payload.Sequence)
 		ack.RTT = payload.RTT
@@ -560,8 +560,8 @@ func (self *Xgress) PayloadReceived(payload *Payload) {
 }
 
 func (self *Xgress) SendEmptyAck() {
-	pfxlog.ContextLogger(self.Label()).WithField("session", self.sessionId).Debug("sending empty ack")
-	ack := NewAcknowledgement(self.sessionId, self.originator)
+	pfxlog.ContextLogger(self.Label()).WithField("circuit", self.circuitId).Debug("sending empty ack")
+	ack := NewAcknowledgement(self.circuitId, self.originator)
 	ack.RecvBufferSize = self.linkRxBuffer.Size()
 	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
 	acker.ack(ack, self.address)

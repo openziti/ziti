@@ -66,7 +66,7 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 
 	route := &ctrl_pb.Route{}
 	if err := proto.Unmarshal(msg.Body, route); err == nil {
-		logrus.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.SessionId)
+		logrus.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.CircuitId)
 
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
@@ -89,7 +89,7 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.
 	rh.forwarder.Route(route)
 
 	log := pfxlog.ContextLogger(ch.Label())
-	response := ctrl_msg.NewRouteResultSuccessMsg(route.SessionId, attempt)
+	response := ctrl_msg.NewRouteResultSuccessMsg(route.CircuitId, attempt)
 	for k, v := range peerData {
 		response.Headers[int32(k)] = v
 	}
@@ -97,39 +97,39 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.
 	response.ReplyTo(msg)
 
 	if err := rh.ctrl.Channel().Send(response); err == nil {
-		log.Debugf("handled route for [s/%s]", route.SessionId)
+		log.Debugf("handled route for [s/%s]", route.CircuitId)
 	} else {
-		log.Errorf("send response failed for [s/%s] (%s)", route.SessionId, err)
+		log.Errorf("send response failed for [s/%s] (%s)", route.CircuitId, err)
 	}
 }
 
 func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error) {
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("sessionId", "s/"+route.SessionId).
+		WithField("circuitId", route.CircuitId).
 		WithField("binding", route.Egress.Binding).
 		WithField("address", route.Egress.Destination).
 		WithField("attempt", route.Attempt)
 
 	log.WithError(err).Errorf("failed to connect egress")
 
-	response := ctrl_msg.NewRouteResultFailedMessage(route.SessionId, attempt, err.Error())
+	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
 	response.ReplyTo(msg)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
-		log.Errorf("send failure response failed for [s/%s] (%s)", route.SessionId, err)
+		log.Errorf("send failure response failed for [s/%s] (%s)", route.CircuitId, err)
 	}
 }
 
 func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route) {
 	rh.pool.Queue(func() {
 		log := pfxlog.ContextLogger(ch.Label()).
-			WithField("sessionId", "s/"+route.SessionId).
+			WithField("circuitId", route.CircuitId).
 			WithField("binding", route.Egress.Binding).
 			WithField("address", route.Egress.Destination).
 			WithField("attempt", route.Attempt)
 		log.Debug("route request received")
 		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-				sessionId := &identity.TokenId{Token: route.SessionId, Data: route.Egress.PeerData}
+				circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
 
 				bindHandler := handler_xgress.NewBindHandler(
 					handler_xgress.NewReceiveHandler(rh.forwarder),
@@ -141,16 +141,16 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 				}
 
-				if peerData, err := dialer.Dial(route.Egress.Destination, sessionId, xgress.Address(route.Egress.Address), bindHandler); err == nil {
+				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler); err == nil {
 					rh.success(msg, attempt, ch, route, peerData)
 				} else {
-					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
+					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.CircuitId))
 				}
 			} else {
-				rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.SessionId))
+				rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [s/%s]", route.CircuitId))
 			}
 		} else {
-			rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.SessionId))
+			rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [s/%s]", route.CircuitId))
 		}
 	})
 }

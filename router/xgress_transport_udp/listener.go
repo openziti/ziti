@@ -157,7 +157,7 @@ func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Sessi
 		log.Error(err)
 		response = &xgress.Response{Success: false, Message: "invalid request"}
 	} else {
-		response = xgress.CreateSession(l.ctrl, session, request, l.bindHandler, l.options)
+		response = xgress.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
 	}
 
 	l.eventChan <- &sessionResponse{addr: session.Address(), response: response}

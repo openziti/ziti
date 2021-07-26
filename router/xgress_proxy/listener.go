@@ -67,9 +67,9 @@ func (listener *listener) handleConnect(peer transport.Connection, bindHandler x
 	conn := &proxyXgressConnection{peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
 	request := &xgress.Request{ServiceId: listener.service}
-	response := xgress.CreateSession(listener.ctrl, conn, request, bindHandler, listener.options)
+	response := xgress.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
 	if !response.Success {
-		log.Errorf("error creating session (%s)", response.Message)
+		log.Errorf("error creating circuit (%s)", response.Message)
 		_ = peer.Close()
 	}
 }

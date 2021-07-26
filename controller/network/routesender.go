@@ -36,27 +36,27 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{senders: cmap.New()}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, sessionId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	v, found := self.senders.Get(sessionId)
+func (self *routeSenderController) forwardRouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
+	v, found := self.senders.Get(circuitId)
 	if found {
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, sessionId: sessionId, attempt: attempt, success: success, rerr: rerr, peerData: peerData}
+		routeSender.in <- &routeStatus{r: r, circuitId: circuitId, attempt: attempt, success: success, rerr: rerr, peerData: peerData}
 		return true
 	}
-	logrus.Warnf("did not find route sender for [s/%s]", sessionId)
+	logrus.Warnf("did not find route sender for [s/%s]", circuitId)
 	return false
 }
 
 func (self *routeSenderController) addRouteSender(rs *routeSender) {
-	self.senders.Set(rs.sessionId, rs)
+	self.senders.Set(rs.circuitId, rs)
 }
 
 func (self *routeSenderController) removeRouteSender(rs *routeSender) {
-	self.senders.Remove(rs.sessionId)
+	self.senders.Remove(rs.circuitId)
 }
 
 type routeSender struct {
-	sessionId       string
+	circuitId       string
 	path            *Path
 	routeMsgs       []*ctrl_pb.Route
 	timeout         time.Duration
@@ -65,9 +65,9 @@ type routeSender struct {
 	serviceCounters ServiceCounters
 }
 
-func newRouteSender(sessionId string, timeout time.Duration, serviceCounters ServiceCounters) *routeSender {
+func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters) *routeSender {
 	return &routeSender{
-		sessionId:       sessionId,
+		circuitId:       circuitId,
 		timeout:         timeout,
 		in:              make(chan *routeStatus, 16),
 		attendance:      make(map[string]bool),
@@ -92,7 +92,7 @@ attendance:
 		case status := <-self.in:
 			if status.success {
 				if status.attempt == attempt {
-					logrus.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.sessionId)
+					logrus.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.circuitId)
 
 					self.attendance[status.r.Id] = true
 					if status.r == tr {
@@ -101,12 +101,12 @@ attendance:
 						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId())
 					}
 				} else {
-					logrus.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
+					logrus.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
 				}
 
 			} else {
 				if status.attempt == attempt {
-					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.sessionId, status.rerr)
+					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.circuitId, status.rerr)
 
 					if status.r == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
@@ -114,16 +114,16 @@ attendance:
 					}
 					cleanups = self.cleanups(path)
 
-					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.sessionId, status.r.Id, status.rerr)
+					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.r.Id, status.rerr)
 				} else {
-					logrus.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.sessionId)
+					logrus.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
 				}
 			}
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)
 			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId())
-			return nil, cleanups, &routeTimeoutError{sessionId: self.sessionId}
+			return nil, cleanups, &routeTimeoutError{circuitId: self.circuitId}
 		}
 
 		allPresent := true
@@ -145,12 +145,12 @@ attendance:
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
 	body, err := proto.Marshal(routeMsg)
 	if err != nil {
-		logrus.Errorf("error marshalling route message for [s/%s] to [r/%s] (%v)", routeMsg.SessionId, r.Id, err)
+		logrus.Errorf("error marshalling route message for [s/%s] to [r/%s] (%v)", routeMsg.CircuitId, r.Id, err)
 		return
 	}
 	r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body))
 
-	logrus.Debugf("sent route message for [s/%s] to [r/%s]", routeMsg.SessionId, r.Id)
+	logrus.Debugf("sent route message for [s/%s] to [r/%s]", routeMsg.CircuitId, r.Id)
 }
 
 func (self *routeSender) cleanups(path *Path) map[string]struct{} {
@@ -166,7 +166,7 @@ func (self *routeSender) cleanups(path *Path) map[string]struct{} {
 
 type routeStatus struct {
 	r         *Router
-	sessionId string
+	circuitId string
 	attempt   uint32
 	success   bool
 	rerr      string
@@ -174,9 +174,9 @@ type routeStatus struct {
 }
 
 type routeTimeoutError struct {
-	sessionId string
+	circuitId string
 }
 
 func (self routeTimeoutError) Error() string {
-	return fmt.Sprintf("timeout creating routes for [s/%s]", self.sessionId)
+	return fmt.Sprintf("timeout creating routes for [s/%s]", self.circuitId)
 }

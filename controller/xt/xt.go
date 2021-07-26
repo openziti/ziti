@@ -83,7 +83,7 @@ type TerminatorEvent interface {
 type EventVisitor interface {
 	VisitDialFailed(event TerminatorEvent)
 	VisitDialSucceeded(event TerminatorEvent)
-	VisitSessionEnded(event TerminatorEvent)
+	VisitCircuitRemoved(event TerminatorEvent)
 }
 
 type Stats interface {

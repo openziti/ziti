@@ -28,7 +28,7 @@ type Options struct {
 	XgressDialDwellTime      time.Duration
 	FaultTxInterval          time.Duration
 	IdleTxInterval           time.Duration
-	IdleSessionTimeout       time.Duration
+	IdleCircuitTimeout       time.Duration
 	XgressDial               WorkerPoolOptions
 	LinkDial                 WorkerPoolOptions
 }
@@ -46,7 +46,7 @@ func DefaultOptions() *Options {
 		XgressDialDwellTime:      0,
 		FaultTxInterval:          15 * time.Second,
 		IdleTxInterval:           60 * time.Second,
-		IdleSessionTimeout:       60 * time.Second,
+		IdleCircuitTimeout:       60 * time.Second,
 		XgressDial: WorkerPoolOptions{
 			QueueLength: 1000,
 			WorkerCount: 10,
@@ -109,11 +109,11 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
-	if value, found := src["idleSessionTimeout"]; found {
+	if value, found := src["idleCircuitTimeout"]; found {
 		if val, ok := value.(int); ok {
-			options.IdleSessionTimeout = time.Duration(val) * time.Millisecond
+			options.IdleCircuitTimeout = time.Duration(val) * time.Millisecond
 		} else {
-			return nil, errors.New("invalid value for 'idleSessionTimeout'")
+			return nil, errors.New("invalid value for 'idleCircuitTimeout'")
 		}
 	}
 

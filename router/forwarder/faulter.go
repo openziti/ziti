@@ -29,12 +29,12 @@ import (
 type Faulter struct {
 	ctrl        channel2.Channel
 	interval    time.Duration
-	sessionIds  cmap.ConcurrentMap // map[sessionId]struct{}
+	circuitIds  cmap.ConcurrentMap // map[circuitId]struct{}
 	closeNotify chan struct{}
 }
 
 func NewFaulter(interval time.Duration, closeNotify chan struct{}) *Faulter {
-	f := &Faulter{interval: interval, sessionIds: cmap.New(), closeNotify: closeNotify}
+	f := &Faulter{interval: interval, circuitIds: cmap.New(), closeNotify: closeNotify}
 	if interval > 0 {
 		go f.run()
 	}
@@ -45,9 +45,9 @@ func (self *Faulter) SetCtrl(ch channel2.Channel) {
 	self.ctrl = ch
 }
 
-func (self *Faulter) report(sessionId string) {
+func (self *Faulter) report(circuitId string) {
 	if self.interval > 0 {
-		self.sessionIds.Set(sessionId, struct{}{})
+		self.circuitIds.Set(circuitId, struct{}{})
 	}
 }
 
@@ -58,15 +58,15 @@ func (self *Faulter) run() {
 	for {
 		select {
 		case <-time.After(self.interval):
-			workload := self.sessionIds.Keys()
+			workload := self.circuitIds.Keys()
 			if len(workload) > 0 {
-				// Proactively remove from reported sessionIds. If we fail below, forwarder will continue to report.
-				for _, sessionId := range workload {
-					self.sessionIds.Remove(sessionId)
+				// Proactively remove from reported circuitIds. If we fail below, forwarder will continue to report.
+				for _, circuitId := range workload {
+					self.circuitIds.Remove(circuitId)
 				}
 
-				sessionIds := strings.Join(workload, " ")
-				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: sessionIds}
+				circuitIds := strings.Join(workload, " ")
+				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
 				body, err := proto.Marshal(fault)
 				if err == nil {
 					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)

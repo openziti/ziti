@@ -41,10 +41,10 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newListLinksHandler(network))
 	ch.AddReceiveHandler(newListRoutersHandler(network))
 	ch.AddReceiveHandler(newListServicesHandler(network))
-	ch.AddReceiveHandler(newListSessionsHandler(network))
+	ch.AddReceiveHandler(newListCircuitsHandler(network))
 	ch.AddReceiveHandler(newRemoveRouterHandler(network))
 	ch.AddReceiveHandler(newRemoveServiceHandler(network))
-	ch.AddReceiveHandler(newRemoveSessionHandler(network))
+	ch.AddReceiveHandler(newRemoveCircuitHandler(network))
 	ch.AddReceiveHandler(newSetLinkCostHandler(network))
 	ch.AddReceiveHandler(newSetLinkDownHandler(network))
 
@@ -58,9 +58,9 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(streamMetricHandler)
 	ch.AddCloseHandler(streamMetricHandler)
 
-	streamSessionsHandler := newStreamSessionsHandler(network)
-	ch.AddReceiveHandler(streamSessionsHandler)
-	ch.AddCloseHandler(streamSessionsHandler)
+	streamCircuitsHandler := newStreamCircuitsHandler(network)
+	ch.AddReceiveHandler(streamCircuitsHandler)
+	ch.AddCloseHandler(streamCircuitsHandler)
 
 	streamTracesHandler := newStreamTracesHandler(network)
 	ch.AddReceiveHandler(streamTracesHandler)

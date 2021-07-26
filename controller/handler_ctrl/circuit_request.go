@@ -27,55 +27,55 @@ import (
 	"time"
 )
 
-type sessionRequestHandler struct {
+type circuitRequestHandler struct {
 	r       *network.Router
 	network *network.Network
 }
 
-func newSessionRequestHandler(r *network.Router, network *network.Network) *sessionRequestHandler {
-	return &sessionRequestHandler{r: r, network: network}
+func newCircuitRequestHandler(r *network.Router, network *network.Network) *circuitRequestHandler {
+	return &circuitRequestHandler{r: r, network: network}
 }
 
-func (h *sessionRequestHandler) ContentType() int32 {
-	return int32(ctrl_pb.ContentType_SessionRequestType)
+func (h *circuitRequestHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_CircuitRequestType)
 }
 
-func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *circuitRequestHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	request := &ctrl_pb.SessionRequest{}
+	request := &ctrl_pb.CircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
 		/*
-		 * This is running in a goroutine because CreateSession does a 'SendAndWait', which cannot be invoked from
+		 * This is running in a goroutine because CreateCircuit does a 'SendAndWait', which cannot be invoked from
 		 * inside a ReceiveHandler (without parallel support).
 		 */
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
-			if session, err := h.network.CreateSession(h.r, id, request.ServiceId); err == nil {
-				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Path.IngressId)
+			if circuit, err := h.network.CreateCircuit(h.r, id, request.ServiceId); err == nil {
+				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 
 				//static terminator peer data
-				for k, v := range session.Terminator.GetPeerData() {
+				for k, v := range circuit.Terminator.GetPeerData() {
 					responseMsg.Headers[int32(k)] = v
 				}
 
 				//runtime peer data
-				for k, v := range session.PeerData {
+				for k, v := range circuit.PeerData {
 					responseMsg.Headers[int32(k)] = v
 				}
 
 				if err := h.r.Control.SendWithTimeout(responseMsg, time.Second*10); err != nil {
-					log.Errorf("unable to respond with success to create session request for session %v (%s)", session.Id, err)
-					if err := h.network.RemoveSession(session.Id, true); err != nil {
-						log.Errorf("unable to remove session %v (%v)", session.Id, err)
+					log.Errorf("unable to respond with success to create circuit request for circuit %v (%s)", circuit.Id, err)
+					if err := h.network.RemoveCircuit(circuit.Id, true); err != nil {
+						log.Errorf("unable to remove circuit %v (%v)", circuit.Id, err)
 					}
 				}
 			} else {
-				responseMsg := ctrl_msg.NewSessionFailedMsg(err.Error())
+				responseMsg := ctrl_msg.NewCircuitFailedMsg(err.Error())
 				responseMsg.ReplyTo(msg)
 				if err := h.r.Control.Send(responseMsg); err != nil {
-					log.Errorf("unable to respond with failure to create session request for service %v (%s)", request.ServiceId, err)
+					log.Errorf("unable to respond with failure to create circuit request for service %v (%s)", request.ServiceId, err)
 				}
 			}
 		}()

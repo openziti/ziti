@@ -50,8 +50,8 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
 			log.WithError(err).Debug("unable to forward")
 		}
-		if payload.IsSessionEndFlagSet() {
-			self.forwarder.EndSession(payload.GetSessionId())
+		if payload.IsCircuitEndFlagSet() {
+			self.forwarder.EndCircuit(payload.GetCircuitId())
 		}
 	} else {
 		log.Errorf("unexpected error (%v)", err)

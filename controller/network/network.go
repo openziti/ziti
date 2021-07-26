@@ -54,7 +54,7 @@ type Network struct {
 	linkController         *linkController
 	linkChanged            chan *Link
 	forwardingFaults       chan *ForwardingFaultReport
-	sessionController      *sessionController
+	circuitController      *circuitController
 	routeSenderController  *routeSenderController
 	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
@@ -93,7 +93,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		linkController:        newLinkController(),
 		linkChanged:           make(chan *Link, 16),
 		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
-		sessionController:     newSessionController(),
+		circuitController:     newCircuitController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
 		eventDispatcher:       event.NewDispatcher(closeNotify),
@@ -194,20 +194,20 @@ func (network *Network) GetAllLinksForRouter(routerId string) []*Link {
 	return network.linkController.allLinksForRouter(routerId)
 }
 
-func (network *Network) GetSession(sessionId *identity.TokenId) (*Session, bool) {
-	return network.sessionController.get(sessionId)
+func (network *Network) GetCircuit(circuitId string) (*Circuit, bool) {
+	return network.circuitController.get(circuitId)
 }
 
-func (network *Network) GetAllSessions() []*Session {
-	return network.sessionController.all()
+func (network *Network) GetAllCircuits() []*Circuit {
+	return network.circuitController.all()
 }
 
-func (network *Network) RouteResult(r *Router, sessionId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	return network.routeSenderController.forwardRouteResult(r, sessionId, attempt, success, rerr, peerData)
+func (network *Network) RouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
+	return network.routeSenderController.forwardRouteResult(r, circuitId, attempt, success, rerr, peerData)
 }
 
-func (network *Network) newRouteSender(sessionId string) *routeSender {
-	rs := newRouteSender(sessionId, network.options.RouteTimeout, network)
+func (network *Network) newRouteSender(circuitId string) *routeSender {
+	rs := newRouteSender(circuitId, network.options.RouteTimeout, network)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
@@ -325,19 +325,18 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, service string) (*Session, error) {
-	// 1: Allocate Session Identifier
-	sessionIdHash, err := network.sequence.NextHash()
+func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string) (*Circuit, error) {
+	// 1: Allocate Circuit Identifier
+	circuitId, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
 	}
-	sessionId := &identity.TokenId{Token: sessionIdHash}
 
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	attempt := uint32(0)
 	allCleanups := make(map[string]struct{})
-	rs := network.newRouteSender(sessionId.Token)
+	rs := network.newRouteSender(circuitId)
 	defer func() { network.removeRouteSender(rs) }()
 	for {
 		// 2: Find Service
@@ -362,7 +361,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 4a: Create Route Messages
-		rms, err := path.CreateRouteMessages(attempt, sessionId, terminator)
+		rms, err := path.CreateRouteMessages(attempt, circuitId, terminator)
 		if err != nil {
 			network.ServiceDialOtherError(serviceId)
 			return nil, err
@@ -370,33 +369,33 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		// 5: Routing
-		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt+1, sessionId.Token)
+		logrus.Debugf("route attempt [#%d] for [s/%s]", attempt+1, circuitId)
 		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
-			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, sessionId.Token, err)
+			logrus.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, circuitId, err)
 			attempt++
-			if attempt < network.options.CreateSessionRetries {
+			if attempt < network.options.CreateCircuitRetries {
 				continue
 
 			} else {
 				// revert successful routes
-				logrus.Warnf("session creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
+				logrus.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateCircuitRetries, circuitId)
 				for cleanupRId := range allCleanups {
 					if r, err := network.GetRouter(cleanupRId); err == nil {
-						if err := sendUnroute(r, sessionId, true); err == nil {
-							logrus.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						if err := sendUnroute(r, circuitId, true); err == nil {
+							logrus.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 						} else {
-							logrus.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+							logrus.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 						}
 					} else {
-						logrus.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, sessionId.Token)
+						logrus.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, circuitId)
 					}
 				}
 
-				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating session [s/%s]", network.options.CreateSessionRetries, sessionId.Token)
+				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [s/%s]", network.options.CreateCircuitRetries, circuitId)
 			}
 		}
 
@@ -410,31 +409,31 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			if _, found := usedRouters[cleanupRId]; !found {
 				cleanupCount++
 				if r, err := network.GetRouter(cleanupRId); err == nil {
-					if err := sendUnroute(r, sessionId, true); err == nil {
-						logrus.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+					if err := sendUnroute(r, circuitId, true); err == nil {
+						logrus.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 					} else {
-						logrus.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", sessionId.Token, r.Id)
+						logrus.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
 					}
 				} else {
-					logrus.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, sessionId.Token)
+					logrus.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, circuitId)
 				}
 			}
 		}
-		logrus.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, sessionId.Token)
+		logrus.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
 
-		// 6: Create Session Object
-		ss := &Session{
-			Id:         sessionId,
-			ClientId:   clientId,
+		// 6: Create Circuit Object
+		ss := &Circuit{
+			Id:         circuitId,
+			ClientId:   clientId.Token,
 			Service:    svc,
 			Path:       path,
 			Terminator: terminator,
 			PeerData:   peerData,
 		}
-		network.sessionController.add(ss)
-		network.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Path)
+		network.circuitController.add(ss)
+		network.CircuitCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Path)
 
-		logrus.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Path)
+		logrus.Debugf("created circuit [s/%s] ==> %s", circuitId, ss.Path)
 		return ss, nil
 	}
 }
@@ -545,30 +544,30 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 	return strategy, terminator, paths[terminator.GetRouterId()].path, nil
 }
 
-func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) error {
+func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 	log := pfxlog.Logger()
 
-	if ss, found := network.sessionController.get(sessionId); found {
+	if ss, found := network.circuitController.get(circuitId); found {
 		for _, r := range ss.Path.Nodes {
 			err := sendUnroute(r, ss.Id, now)
 			if err != nil {
 				log.Errorf("error sending unroute to [r/%s] (%s)", r.Id, err)
 			}
 		}
-		network.sessionController.remove(ss)
-		network.SessionDeleted(ss.Id, ss.ClientId)
+		network.circuitController.remove(ss)
+		network.CircuitDeleted(ss.Id, ss.ClientId)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
-			strategy.NotifyEvent(xt.NewSessionEnded(ss.Terminator))
+			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
 		} else if err != nil {
-			log.Warnf("failed to notify strategy %v of session end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
+			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
 		}
 
-		log.Debugf("removed session [s/%s]", ss.Id.Token)
+		log.Debugf("removed circuit [s/%s]", ss.Id)
 
 		return nil
 	}
-	return InvalidSessionError{sessionId: sessionId.Token}
+	return InvalidCircuitError{circuitId: circuitId}
 }
 
 func (network *Network) CreatePath(srcR, dstR *Router) (*Path, error) {
@@ -709,14 +708,14 @@ func (network *Network) GetCapabilities() []string {
 func (network *Network) rerouteLink(l *Link) error {
 	logrus.Infof("link [l/%s] changed", l.Id.Token)
 
-	sessions := network.sessionController.all()
-	for _, s := range sessions {
+	circuits := network.circuitController.all()
+	for _, s := range circuits {
 		if s.Path.usesLink(l) {
-			logrus.Infof("session [s/%s] uses link [l/%s]", s.Id.Token, l.Id.Token)
-			if err := network.rerouteSession(s); err != nil {
-				logrus.Errorf("error rerouting session [s/%s], removing", s.Id.Token)
-				if err := network.RemoveSession(s.Id, true); err != nil {
-					logrus.Errorf("error removing session [s/%s] (%s)", s.Id.Token, err)
+			logrus.Infof("circuit [s/%s] uses link [l/%s]", s.Id, l.Id.Token)
+			if err := network.rerouteCircuit(s); err != nil {
+				logrus.Errorf("error rerouting circuit [s/%s], removing", s.Id)
+				if err := network.RemoveCircuit(s.Id, true); err != nil {
+					logrus.Errorf("error removing circuit [s/%s] (%s)", s.Id, err)
 				}
 			}
 		}
@@ -725,16 +724,16 @@ func (network *Network) rerouteLink(l *Link) error {
 	return nil
 }
 
-func (network *Network) rerouteSession(s *Session) error {
-	if s.Rerouting.CompareAndSwap(false, true) {
-		defer s.Rerouting.Set(false)
+func (network *Network) rerouteCircuit(circuit *Circuit) error {
+	if circuit.Rerouting.CompareAndSwap(false, true) {
+		defer circuit.Rerouting.Set(false)
 
-		logrus.Warnf("rerouting [s/%s]", s.Id.Token)
+		logrus.Warnf("rerouting [s/%s]", circuit.Id)
 
-		if cq, err := network.UpdatePath(s.Path); err == nil {
-			s.Path = cq
+		if cq, err := network.UpdatePath(circuit.Path); err == nil {
+			circuit.Path = cq
 
-			rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator)
+			rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator)
 			if err != nil {
 				logrus.Errorf("error creating route messages (%s)", err)
 				return err
@@ -746,21 +745,21 @@ func (network *Network) rerouteSession(s *Session) error {
 				}
 			}
 
-			logrus.Infof("rerouted session [s/%s]", s.Id.Token)
+			logrus.Infof("rerouted circuit [s/%s]", circuit.Id)
 
-			network.PathUpdated(s.Id, s.Path)
+			network.PathUpdated(circuit.Id, circuit.Path)
 
 			return nil
 		} else {
 			return err
 		}
 	} else {
-		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
+		logrus.Infof("not rerouting [s/%s], already in progress", circuit.Id)
 		return nil
 	}
 }
 
-func (network *Network) smartReroute(s *Session, cq *Path) error {
+func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 	if s.Rerouting.CompareAndSwap(false, true) {
 		defer s.Rerouting.Set(false)
 
@@ -778,14 +777,14 @@ func (network *Network) smartReroute(s *Session, cq *Path) error {
 			}
 		}
 
-		logrus.Debugf("rerouted session [s/%s]", s.Id.Token)
+		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
 
 		network.PathUpdated(s.Id, s.Path)
 
 		return nil
 
 	} else {
-		logrus.Infof("not rerouting [s/%s], already in progress", s.Id.Token)
+		logrus.Infof("not rerouting [s/%s], already in progress", s.Id)
 		return nil
 	}
 }
@@ -818,7 +817,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 }
 
 func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.PeerData, error) {
-	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
+	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.CircuitId)
 
 	body, err := proto.Marshal(createMsg)
 	if err != nil {
@@ -854,14 +853,14 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
 	case <-time.After(timeout):
-		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.SessionId)
+		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.CircuitId)
 		return nil, errors.New("timeout")
 	}
 }
 
-func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
+func sendUnroute(r *Router, circuitId string, now bool) error {
 	unroute := &ctrl_pb.Unroute{
-		SessionId: sessionId.Token,
+		CircuitId: circuitId,
 		Now:       now,
 	}
 	body, err := proto.Marshal(unroute)
@@ -962,10 +961,10 @@ func (e MultipleErrors) Error() string {
 	return buf.String()
 }
 
-type InvalidSessionError struct {
-	sessionId string
+type InvalidCircuitError struct {
+	circuitId string
 }
 
-func (err InvalidSessionError) Error() string {
-	return fmt.Sprintf("invalid session (%s)", err.sessionId)
+func (err InvalidCircuitError) Error() string {
+	return fmt.Sprintf("invalid circuit (%s)", err.circuitId)
 }

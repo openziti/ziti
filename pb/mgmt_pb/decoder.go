@@ -395,8 +395,8 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_ListSessionsRequestType):
-		data, err := channel2.NewTraceMessageDecode(DECODER, "List Sessions Request").MarshalTraceMessageDecode()
+	case int32(ContentType_ListCircuitsRequestType):
+		data, err := channel2.NewTraceMessageDecode(DECODER, "List Circuits Request").MarshalTraceMessageDecode()
 		if err != nil {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 			return nil, true
@@ -404,11 +404,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 
 		return data, true
 
-	case int32(ContentType_ListSessionsResponseType):
-		listSessions := &ListSessionsResponse{}
-		if err := proto.Unmarshal(msg.Body, listSessions); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "List Sessions Response")
-			meta["sessions"] = len(listSessions.Sessions)
+	case int32(ContentType_ListCircuitsResponseType):
+		listCircuits := &ListCircuitsResponse{}
+		if err := proto.Unmarshal(msg.Body, listCircuits); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "List Circuits Response")
+			meta["circuits"] = len(listCircuits.Circuits)
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {

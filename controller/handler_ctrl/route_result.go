@@ -53,16 +53,16 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 		var attempt uint32
 		buf := bytes.NewBuffer(v)
 		if err := binary.Read(buf, binary.LittleEndian, &attempt); err == nil {
-			sessionId := string(msg.Body)
+			circuitId := string(msg.Body)
 			peerData := xt.PeerData{}
 			for k, v := range msg.Headers {
 				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader && k != ctrl_msg.RouteResultAttemptHeader {
 					peerData[uint32(k)] = v
 				}
 			}
-			routing := self.network.RouteResult(self.r, sessionId, attempt, success, rerr, peerData)
+			routing := self.network.RouteResult(self.r, circuitId, attempt, success, rerr, peerData)
 			if !routing && attempt != network.SmartRerouteAttempt {
-				go self.notRoutingSession(sessionId)
+				go self.notRoutingCircuit(circuitId)
 			}
 
 		} else {
@@ -74,18 +74,18 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 	}
 }
 
-func (self *routeResultHandler) notRoutingSession(sessionId string) {
-	logrus.Warnf("not routing session [s/%s] for router [r/%s] (and not smart re-route), sending unroute", sessionId, self.r.Id)
+func (self *routeResultHandler) notRoutingCircuit(circuitId string) {
+	logrus.Warnf("not routing circuit [s/%s] for router [r/%s] (and not smart re-route), sending unroute", circuitId, self.r.Id)
 	unroute := &ctrl_pb.Unroute{
-		SessionId: sessionId,
+		CircuitId: circuitId,
 		Now:       true,
 	}
 	if body, err := proto.Marshal(unroute); err == nil {
 		unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err := self.r.Control.Send(unrouteMsg); err != nil {
-			logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", sessionId, self.r.Id, err)
+			logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", circuitId, self.r.Id, err)
 		}
 	} else {
-		logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", sessionId, self.r.Id, err)
+		logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", circuitId, self.r.Id, err)
 	}
 }

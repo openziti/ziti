@@ -3,21 +3,20 @@ package events
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
 )
 
-const SessionEventTypeCreated = "created"
-const SessionEventTypeDeleted = "deleted"
-const SessionEventTypeCircuitUpdated = "circuitUpdated"
+const CircuitEventTypeCreated = "created"
+const CircuitEventTypeDeleted = "deleted"
+const CircuitEventTypePathUpdated = "pathUpdated"
 
-func registerSessionEventHandler(val interface{}, config map[interface{}]interface{}) error {
-	handler, ok := val.(SessionEventHandler)
+func registerCircuitEventHandler(val interface{}, config map[interface{}]interface{}) error {
+	handler, ok := val.(CircuitEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/events/SessionEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/events/CircuitEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	var includeList []string
@@ -29,32 +28,32 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 				includeList = append(includeList, fmt.Sprintf("%v", val))
 			}
 		} else {
-			return errors.Errorf("invalid type %v for fabric.sessions include configuration", reflect.TypeOf(includeVar))
+			return errors.Errorf("invalid type %v for fabric.circuits include configuration", reflect.TypeOf(includeVar))
 		}
 	}
 
-	adapter := &sessionEventAdapter{
+	adapter := &circuitEventAdapter{
 		handler: handler,
 	}
 
 	if len(includeList) == 0 {
-		AddSessionEventHandler(adapter)
+		AddCircuitEventHandler(adapter)
 	} else {
 		for _, include := range includeList {
-			if include == SessionEventTypeCreated {
-				AddSessionEventHandler(&fabricSessionCreatedEventAdapter{
+			if include == CircuitEventTypeCreated {
+				AddCircuitEventHandler(&fabricCircuitCreatedEventAdapter{
 					wrapped: adapter,
 				})
-			} else if include == SessionEventTypeDeleted {
-				AddSessionEventHandler(&fabricSessionDeletedEventAdapter{
+			} else if include == CircuitEventTypeDeleted {
+				AddCircuitEventHandler(&fabricCircuitDeletedEventAdapter{
 					wrapped: adapter,
 				})
-			} else if include == SessionEventTypeCircuitUpdated {
-				AddSessionEventHandler(&fabricSessionCircuitUpdatedEventAdapter{
+			} else if include == CircuitEventTypePathUpdated {
+				AddCircuitEventHandler(&fabricCircuitPathUpdatedEventAdapter{
 					wrapped: adapter,
 				})
 			} else {
-				return errors.Errorf("invalid include %v for fabric.sessions. valid values are ['created', 'deleted', 'circuitUpdated']", include)
+				return errors.Errorf("invalid include %v for fabric.circuits. valid values are ['created', 'deleted', 'circuitUpdated']", include)
 			}
 		}
 	}
@@ -62,118 +61,118 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 	return nil
 }
 
-type fabricSessionCreatedEventAdapter struct {
-	wrapped network.SessionEventHandler
+type fabricCircuitCreatedEventAdapter struct {
+	wrapped network.CircuitEventHandler
 }
 
-func (adapter *fabricSessionCreatedEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Path) {
-	adapter.wrapped.SessionCreated(sessionId, clientId, serviceId, circuit)
+func (adapter *fabricCircuitCreatedEventAdapter) CircuitCreated(circuitId string, clientId string, serviceId string, circuit *network.Path) {
+	adapter.wrapped.CircuitCreated(circuitId, clientId, serviceId, circuit)
 }
 
-func (adapter *fabricSessionCreatedEventAdapter) SessionDeleted(*identity.TokenId, *identity.TokenId) {
+func (adapter *fabricCircuitCreatedEventAdapter) CircuitDeleted(string, string) {
 }
 
-func (adapter *fabricSessionCreatedEventAdapter) PathUpdated(*identity.TokenId, *network.Path) {
+func (adapter *fabricCircuitCreatedEventAdapter) PathUpdated(string, *network.Path) {
 }
 
-type fabricSessionDeletedEventAdapter struct {
-	wrapped network.SessionEventHandler
+type fabricCircuitDeletedEventAdapter struct {
+	wrapped network.CircuitEventHandler
 }
 
-func (adapter *fabricSessionDeletedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Path) {
+func (adapter *fabricCircuitDeletedEventAdapter) CircuitCreated(string, string, string, *network.Path) {
 }
 
-func (adapter *fabricSessionDeletedEventAdapter) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
-	adapter.wrapped.SessionDeleted(sessionId, clientId)
+func (adapter *fabricCircuitDeletedEventAdapter) CircuitDeleted(circuitId string, clientId string) {
+	adapter.wrapped.CircuitDeleted(circuitId, clientId)
 }
 
-func (adapter *fabricSessionDeletedEventAdapter) PathUpdated(*identity.TokenId, *network.Path) {
+func (adapter *fabricCircuitDeletedEventAdapter) PathUpdated(string, *network.Path) {
 }
 
-type fabricSessionCircuitUpdatedEventAdapter struct {
-	wrapped network.SessionEventHandler
+type fabricCircuitPathUpdatedEventAdapter struct {
+	wrapped network.CircuitEventHandler
 }
 
-func (adapter *fabricSessionCircuitUpdatedEventAdapter) SessionCreated(*identity.TokenId, *identity.TokenId, string, *network.Path) {
+func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitCreated(string, string, string, *network.Path) {
 }
 
-func (adapter *fabricSessionCircuitUpdatedEventAdapter) SessionDeleted(*identity.TokenId, *identity.TokenId) {
+func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitDeleted(string, string) {
 }
 
-func (adapter *fabricSessionCircuitUpdatedEventAdapter) PathUpdated(sessionId *identity.TokenId, circuit *network.Path) {
-	adapter.wrapped.PathUpdated(sessionId, circuit)
+func (adapter *fabricCircuitPathUpdatedEventAdapter) PathUpdated(circuitId string, circuit *network.Path) {
+	adapter.wrapped.PathUpdated(circuitId, circuit)
 }
 
-// Will work for all fabric session event types
-type SessionEvent struct {
+// Will work for all fabric circuit event types
+type CircuitEvent struct {
 	Namespace string    `json:"namespace"`
 	EventType string    `json:"event_type"`
-	SessionId string    `json:"session_id"`
+	CircuitId string    `json:"circuit_id"`
 	Timestamp time.Time `json:"timestamp"`
 	ClientId  string    `json:"client_id"`
 	ServiceId string    `json:"service_id"`
-	Circuit   string    `json:"circuit"`
+	Path      string    `json:"circuit"`
 }
 
-func (event *SessionEvent) String() string {
-	return fmt.Sprintf("%v.%v sessionId=%v clientId=%v serviceId=%v circuit=%v",
-		event.Namespace, event.EventType, event.SessionId, event.ClientId, event.ServiceId, event.Circuit)
+func (event *CircuitEvent) String() string {
+	return fmt.Sprintf("%v.%v circuitId=%v clientId=%v serviceId=%v path=%v",
+		event.Namespace, event.EventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path)
 }
 
-type SessionEventHandler interface {
-	AcceptSessionEvent(event *SessionEvent)
+type CircuitEventHandler interface {
+	AcceptCircuitEvent(event *CircuitEvent)
 }
 
-func RegisterSessionEventHandler(handler SessionEventHandler) func() {
-	adapter := &sessionEventAdapter{
+func RegisterCircuitEventHandler(handler CircuitEventHandler) func() {
+	adapter := &circuitEventAdapter{
 		handler: handler,
 	}
 
-	AddSessionEventHandler(adapter)
+	AddCircuitEventHandler(adapter)
 
 	return func() {
-		RemoveSessionEventHandler(adapter)
+		RemoveCircuitEventHandler(adapter)
 	}
 }
 
-type sessionEventAdapter struct {
-	handler SessionEventHandler
+type circuitEventAdapter struct {
+	handler CircuitEventHandler
 }
 
-func (adapter *sessionEventAdapter) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Path) {
-	event := &SessionEvent{
-		Namespace: "fabric.sessions",
+func (adapter *circuitEventAdapter) CircuitCreated(circuitId string, clientId string, serviceId string, path *network.Path) {
+	event := &CircuitEvent{
+		Namespace: "fabric.circuits",
 		EventType: "created",
-		SessionId: sessionId.Token,
+		CircuitId: circuitId,
 		Timestamp: time.Now(),
-		ClientId:  clientId.Token,
+		ClientId:  clientId,
 		ServiceId: serviceId,
-		Circuit:   circuit.String(),
+		Path:      path.String(),
 	}
 
-	adapter.handler.AcceptSessionEvent(event)
+	adapter.handler.AcceptCircuitEvent(event)
 }
 
-func (adapter *sessionEventAdapter) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
-	event := &SessionEvent{
-		Namespace: "fabric.sessions",
+func (adapter *circuitEventAdapter) CircuitDeleted(circuitId string, clientId string) {
+	event := &CircuitEvent{
+		Namespace: "fabric.circuits",
 		EventType: "deleted",
-		SessionId: sessionId.Token,
+		CircuitId: circuitId,
 		Timestamp: time.Now(),
-		ClientId:  clientId.Token,
+		ClientId:  clientId,
 	}
 
-	adapter.handler.AcceptSessionEvent(event)
+	adapter.handler.AcceptCircuitEvent(event)
 }
 
-func (adapter *sessionEventAdapter) PathUpdated(sessionId *identity.TokenId, circuit *network.Path) {
-	event := &SessionEvent{
-		Namespace: "fabric.sessions",
-		EventType: "circuitUpdated",
-		SessionId: sessionId.Token,
+func (adapter *circuitEventAdapter) PathUpdated(circuitId string, path *network.Path) {
+	event := &CircuitEvent{
+		Namespace: "fabric.circuits",
+		EventType: "pathUpdated",
+		CircuitId: circuitId,
 		Timestamp: time.Now(),
-		Circuit:   circuit.String(),
+		Path:      path.String(),
 	}
 
-	adapter.handler.AcceptSessionEvent(event)
+	adapter.handler.AcceptCircuitEvent(event)
 }

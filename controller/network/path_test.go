@@ -67,16 +67,15 @@ func TestSimplePath2(t *testing.T) {
 	assert.Equal(t, l0, path.Links[0])
 	assert.Equal(t, r1, path.EgressRouter())
 
-	s0 := &identity.TokenId{Token: "s0"}
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages, err := path.CreateRouteMessages(0, s0, terminator)
+	routeMessages, err := path.CreateRouteMessages(0, "s0", terminator)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(routeMessages))
 
 	// ingress route message
 	rm0 := routeMessages[0]
-	assert.Equal(t, s0.Token, rm0.SessionId)
+	assert.Equal(t, "s0", rm0.CircuitId)
 	assert.Nil(t, rm0.Egress)
 	assert.Equal(t, 2, len(rm0.Forwards))
 	assert.Equal(t, path.IngressId, rm0.Forwards[0].SrcAddress)
@@ -86,7 +85,7 @@ func TestSimplePath2(t *testing.T) {
 
 	// egress route message
 	rm1 := routeMessages[1]
-	assert.Equal(t, s0.Token, rm1.SessionId)
+	assert.Equal(t, "s0", rm1.CircuitId)
 	assert.NotNil(t, rm1.Egress)
 	assert.Equal(t, path.EgressId, rm1.Egress.Address)
 	assert.Equal(t, addr, rm1.Egress.Destination)
@@ -144,16 +143,15 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, l1, path.Links[1])
 	assert.Equal(t, r2, path.EgressRouter())
 
-	s0 := &identity.TokenId{Token: "s0"}
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages, err := path.CreateRouteMessages(0, s0, terminator)
+	routeMessages, err := path.CreateRouteMessages(0, "s0", terminator)
 	assert.NotNil(t, routeMessages)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(routeMessages))
 
 	// ingress route message
 	rm0 := routeMessages[0]
-	assert.Equal(t, s0.Token, rm0.SessionId)
+	assert.Equal(t, "s0", rm0.CircuitId)
 	assert.Nil(t, rm0.Egress)
 	assert.Equal(t, 2, len(rm0.Forwards))
 	assert.Equal(t, path.IngressId, rm0.Forwards[0].SrcAddress)
@@ -163,7 +161,7 @@ func TestTransitPath2(t *testing.T) {
 
 	// transit route message
 	rm1 := routeMessages[1]
-	assert.Equal(t, s0.Token, rm1.SessionId)
+	assert.Equal(t, "s0", rm1.CircuitId)
 	assert.Nil(t, rm1.Egress)
 	assert.Equal(t, 2, len(rm1.Forwards))
 	assert.Equal(t, l0.Id.Token, rm1.Forwards[0].SrcAddress)
@@ -173,7 +171,7 @@ func TestTransitPath2(t *testing.T) {
 
 	// egress route message
 	rm2 := routeMessages[2]
-	assert.Equal(t, s0.Token, rm2.SessionId)
+	assert.Equal(t, "s0", rm2.CircuitId)
 	assert.NotNil(t, rm2.Egress)
 	assert.Equal(t, path.EgressId, rm2.Egress.Address)
 	assert.Equal(t, transportAddr.String(), rm2.Egress.Destination)

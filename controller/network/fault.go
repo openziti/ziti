@@ -17,33 +17,31 @@
 package network
 
 import (
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 )
 
 type ForwardingFaultReport struct {
 	R          *Router
-	SessionIds []string
+	CircuitIds []string
 }
 
 func (network *Network) fault(ffr *ForwardingFaultReport) {
-	logrus.Infof("network fault processing for [%d] sessions", len(ffr.SessionIds))
-	for _, sessionId := range ffr.SessionIds {
-		sidt := &identity.TokenId{Token: sessionId}
-		s, found := network.sessionController.get(sidt)
+	logrus.Infof("network fault processing for [%d] circuits", len(ffr.CircuitIds))
+	for _, circuitId := range ffr.CircuitIds {
+		s, found := network.circuitController.get(circuitId)
 		if found {
-			if err := network.rerouteSession(s); err == nil {
-				logrus.Infof("rerouted [s/%s] in response to forwarding fault from [r/%s]", sessionId, ffr.R.Id)
+			if err := network.rerouteCircuit(s); err == nil {
+				logrus.Infof("rerouted [s/%s] in response to forwarding fault from [r/%s]", circuitId, ffr.R.Id)
 			} else {
-				logrus.Infof("error rerouting [s/%s] in response to forwarding fault from [r/%s] (should end session?! probably not reachable...)", sessionId, ffr.R.Id)
+				logrus.Infof("error rerouting [s/%s] in response to forwarding fault from [r/%s] (should remove circuit?! probably not reachable...)", circuitId, ffr.R.Id)
 			}
 
 		} else {
-			// unroute non-existent session
-			if err := sendUnroute(ffr.R, sidt, true); err == nil {
-				logrus.Infof("sent unroute for [s/%s] to [r/%s] in response to forwarding fault", sessionId, ffr.R.Id)
+			// unroute non-existent circuit
+			if err := sendUnroute(ffr.R, circuitId, true); err == nil {
+				logrus.Infof("sent unroute for [s/%s] to [r/%s] in response to forwarding fault", circuitId, ffr.R.Id)
 			} else {
-				logrus.Errorf("error sending unroute for [s/%s] to [r/%s] in response to forwarding fault (%v)", sessionId, ffr.R.Id, err)
+				logrus.Errorf("error sending unroute for [s/%s] to [r/%s] in response to forwarding fault (%v)", circuitId, ffr.R.Id, err)
 			}
 		}
 	}

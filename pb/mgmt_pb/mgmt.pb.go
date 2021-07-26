@@ -51,17 +51,17 @@ const (
 	ContentType_ListLinksResponseType  ContentType = 10021
 	ContentType_SetLinkCostRequestType ContentType = 10022
 	ContentType_SetLinkDownRequestType ContentType = 10023
-	// Sessions
-	ContentType_ListSessionsRequestType  ContentType = 10030
-	ContentType_ListSessionsResponseType ContentType = 10031
-	ContentType_RemoveSessionRequestType ContentType = 10032
+	// Circuits
+	ContentType_ListCircuitsRequestType  ContentType = 10030
+	ContentType_ListCircuitsResponseType ContentType = 10031
+	ContentType_RemoveCircuitRequestType ContentType = 10032
 	// Streams
 	ContentType_StreamMetricsRequestType       ContentType = 10040
 	ContentType_StreamMetricsEventType         ContentType = 10041
-	ContentType_StreamSessionsRequestType      ContentType = 10042
-	ContentType_StreamSessionsEventType        ContentType = 10043
+	ContentType_StreamCircuitsRequestType      ContentType = 10042
+	ContentType_StreamCircuitsEventType        ContentType = 10043
 	ContentType_TogglePipeTracesRequestType    ContentType = 10044
-	ContentType_ToggleSessionTracesRequestType ContentType = 10045
+	ContentType_ToggleCircuitTracesRequestType ContentType = 10045
 	ContentType_StreamTracesRequestType        ContentType = 10046
 	ContentType_StreamTracesEventType          ContentType = 10047
 	// Inspect
@@ -96,15 +96,15 @@ var (
 		10021: "ListLinksResponseType",
 		10022: "SetLinkCostRequestType",
 		10023: "SetLinkDownRequestType",
-		10030: "ListSessionsRequestType",
-		10031: "ListSessionsResponseType",
-		10032: "RemoveSessionRequestType",
+		10030: "ListCircuitsRequestType",
+		10031: "ListCircuitsResponseType",
+		10032: "RemoveCircuitRequestType",
 		10040: "StreamMetricsRequestType",
 		10041: "StreamMetricsEventType",
-		10042: "StreamSessionsRequestType",
-		10043: "StreamSessionsEventType",
+		10042: "StreamCircuitsRequestType",
+		10043: "StreamCircuitsEventType",
 		10044: "TogglePipeTracesRequestType",
-		10045: "ToggleSessionTracesRequestType",
+		10045: "ToggleCircuitTracesRequestType",
 		10046: "StreamTracesRequestType",
 		10047: "StreamTracesEventType",
 		10048: "InspectRequestType",
@@ -134,15 +134,15 @@ var (
 		"ListLinksResponseType":          10021,
 		"SetLinkCostRequestType":         10022,
 		"SetLinkDownRequestType":         10023,
-		"ListSessionsRequestType":        10030,
-		"ListSessionsResponseType":       10031,
-		"RemoveSessionRequestType":       10032,
+		"ListCircuitsRequestType":        10030,
+		"ListCircuitsResponseType":       10031,
+		"RemoveCircuitRequestType":       10032,
 		"StreamMetricsRequestType":       10040,
 		"StreamMetricsEventType":         10041,
-		"StreamSessionsRequestType":      10042,
-		"StreamSessionsEventType":        10043,
+		"StreamCircuitsRequestType":      10042,
+		"StreamCircuitsEventType":        10043,
 		"TogglePipeTracesRequestType":    10044,
-		"ToggleSessionTracesRequestType": 10045,
+		"ToggleCircuitTracesRequestType": 10045,
 		"StreamTracesRequestType":        10046,
 		"StreamTracesEventType":          10047,
 		"InspectRequestType":             10048,
@@ -279,55 +279,55 @@ func (TerminatorChangeMask) EnumDescriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{2}
 }
 
-type StreamSessionEventType int32
+type StreamCircuitEventType int32
 
 const (
-	StreamSessionEventType_SessionCreated StreamSessionEventType = 0
-	StreamSessionEventType_SessionDeleted StreamSessionEventType = 1
-	StreamSessionEventType_SessionPresent StreamSessionEventType = 2
-	StreamSessionEventType_PathUpdated    StreamSessionEventType = 3
+	StreamCircuitEventType_CircuitCreated StreamCircuitEventType = 0
+	StreamCircuitEventType_CircuitDeleted StreamCircuitEventType = 1
+	StreamCircuitEventType_CircuitPresent StreamCircuitEventType = 2
+	StreamCircuitEventType_PathUpdated    StreamCircuitEventType = 3
 )
 
-// Enum value maps for StreamSessionEventType.
+// Enum value maps for StreamCircuitEventType.
 var (
-	StreamSessionEventType_name = map[int32]string{
-		0: "SessionCreated",
-		1: "SessionDeleted",
-		2: "SessionPresent",
+	StreamCircuitEventType_name = map[int32]string{
+		0: "CircuitCreated",
+		1: "CircuitDeleted",
+		2: "CircuitPresent",
 		3: "PathUpdated",
 	}
-	StreamSessionEventType_value = map[string]int32{
-		"SessionCreated": 0,
-		"SessionDeleted": 1,
-		"SessionPresent": 2,
+	StreamCircuitEventType_value = map[string]int32{
+		"CircuitCreated": 0,
+		"CircuitDeleted": 1,
+		"CircuitPresent": 2,
 		"PathUpdated":    3,
 	}
 )
 
-func (x StreamSessionEventType) Enum() *StreamSessionEventType {
-	p := new(StreamSessionEventType)
+func (x StreamCircuitEventType) Enum() *StreamCircuitEventType {
+	p := new(StreamCircuitEventType)
 	*p = x
 	return p
 }
 
-func (x StreamSessionEventType) String() string {
+func (x StreamCircuitEventType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (StreamSessionEventType) Descriptor() protoreflect.EnumDescriptor {
+func (StreamCircuitEventType) Descriptor() protoreflect.EnumDescriptor {
 	return file_mgmt_proto_enumTypes[3].Descriptor()
 }
 
-func (StreamSessionEventType) Type() protoreflect.EnumType {
+func (StreamCircuitEventType) Type() protoreflect.EnumType {
 	return &file_mgmt_proto_enumTypes[3]
 }
 
-func (x StreamSessionEventType) Number() protoreflect.EnumNumber {
+func (x StreamCircuitEventType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use StreamSessionEventType.Descriptor instead.
-func (StreamSessionEventType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use StreamCircuitEventType.Descriptor instead.
+func (StreamCircuitEventType) EnumDescriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{3}
 }
 
@@ -1863,7 +1863,7 @@ func (x *Path) GetLinks() []string {
 	return nil
 }
 
-type Session struct {
+type Circuit struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -1875,8 +1875,8 @@ type Session struct {
 	Path         *Path  `protobuf:"bytes,5,opt,name=path,proto3" json:"path,omitempty"`
 }
 
-func (x *Session) Reset() {
-	*x = Session{}
+func (x *Circuit) Reset() {
+	*x = Circuit{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1884,13 +1884,13 @@ func (x *Session) Reset() {
 	}
 }
 
-func (x *Session) String() string {
+func (x *Circuit) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Session) ProtoMessage() {}
+func (*Circuit) ProtoMessage() {}
 
-func (x *Session) ProtoReflect() protoreflect.Message {
+func (x *Circuit) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1902,54 +1902,54 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Session.ProtoReflect.Descriptor instead.
-func (*Session) Descriptor() ([]byte, []int) {
+// Deprecated: Use Circuit.ProtoReflect.Descriptor instead.
+func (*Circuit) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *Session) GetId() string {
+func (x *Circuit) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *Session) GetClientId() string {
+func (x *Circuit) GetClientId() string {
 	if x != nil {
 		return x.ClientId
 	}
 	return ""
 }
 
-func (x *Session) GetServiceId() string {
+func (x *Circuit) GetServiceId() string {
 	if x != nil {
 		return x.ServiceId
 	}
 	return ""
 }
 
-func (x *Session) GetTerminatorId() string {
+func (x *Circuit) GetTerminatorId() string {
 	if x != nil {
 		return x.TerminatorId
 	}
 	return ""
 }
 
-func (x *Session) GetPath() *Path {
+func (x *Circuit) GetPath() *Path {
 	if x != nil {
 		return x.Path
 	}
 	return nil
 }
 
-type ListSessionsRequest struct {
+type ListCircuitsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *ListSessionsRequest) Reset() {
-	*x = ListSessionsRequest{}
+func (x *ListCircuitsRequest) Reset() {
+	*x = ListCircuitsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1957,13 +1957,13 @@ func (x *ListSessionsRequest) Reset() {
 	}
 }
 
-func (x *ListSessionsRequest) String() string {
+func (x *ListCircuitsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListSessionsRequest) ProtoMessage() {}
+func (*ListCircuitsRequest) ProtoMessage() {}
 
-func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
+func (x *ListCircuitsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1975,21 +1975,21 @@ func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
-func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListCircuitsRequest.ProtoReflect.Descriptor instead.
+func (*ListCircuitsRequest) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{27}
 }
 
-type ListSessionsResponse struct {
+type ListCircuitsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Sessions []*Session `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	Circuits []*Circuit `protobuf:"bytes,1,rep,name=circuits,proto3" json:"circuits,omitempty"`
 }
 
-func (x *ListSessionsResponse) Reset() {
-	*x = ListSessionsResponse{}
+func (x *ListCircuitsResponse) Reset() {
+	*x = ListCircuitsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1997,13 +1997,13 @@ func (x *ListSessionsResponse) Reset() {
 	}
 }
 
-func (x *ListSessionsResponse) String() string {
+func (x *ListCircuitsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListSessionsResponse) ProtoMessage() {}
+func (*ListCircuitsResponse) ProtoMessage() {}
 
-func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
+func (x *ListCircuitsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2015,29 +2015,29 @@ func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
-func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListCircuitsResponse.ProtoReflect.Descriptor instead.
+func (*ListCircuitsResponse) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{28}
 }
 
-func (x *ListSessionsResponse) GetSessions() []*Session {
+func (x *ListCircuitsResponse) GetCircuits() []*Circuit {
 	if x != nil {
-		return x.Sessions
+		return x.Circuits
 	}
 	return nil
 }
 
-type RemoveSessionRequest struct {
+type RemoveCircuitRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId string `protobuf:"bytes,1,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
+	CircuitId string `protobuf:"bytes,1,opt,name=circuitId,proto3" json:"circuitId,omitempty"`
 	Now       bool   `protobuf:"varint,2,opt,name=now,proto3" json:"now,omitempty"`
 }
 
-func (x *RemoveSessionRequest) Reset() {
-	*x = RemoveSessionRequest{}
+func (x *RemoveCircuitRequest) Reset() {
+	*x = RemoveCircuitRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2045,13 +2045,13 @@ func (x *RemoveSessionRequest) Reset() {
 	}
 }
 
-func (x *RemoveSessionRequest) String() string {
+func (x *RemoveCircuitRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RemoveSessionRequest) ProtoMessage() {}
+func (*RemoveCircuitRequest) ProtoMessage() {}
 
-func (x *RemoveSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *RemoveCircuitRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2063,19 +2063,19 @@ func (x *RemoveSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemoveSessionRequest.ProtoReflect.Descriptor instead.
-func (*RemoveSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RemoveCircuitRequest.ProtoReflect.Descriptor instead.
+func (*RemoveCircuitRequest) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{29}
 }
 
-func (x *RemoveSessionRequest) GetSessionId() string {
+func (x *RemoveCircuitRequest) GetCircuitId() string {
 	if x != nil {
-		return x.SessionId
+		return x.CircuitId
 	}
 	return ""
 }
 
-func (x *RemoveSessionRequest) GetNow() bool {
+func (x *RemoveCircuitRequest) GetNow() bool {
 	if x != nil {
 		return x.Now
 	}
@@ -2224,14 +2224,14 @@ func (x *StreamMetricsEvent) GetMetricGroup() map[string]string {
 	return nil
 }
 
-type StreamSessionsRequest struct {
+type StreamCircuitsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *StreamSessionsRequest) Reset() {
-	*x = StreamSessionsRequest{}
+func (x *StreamCircuitsRequest) Reset() {
+	*x = StreamCircuitsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2239,13 +2239,13 @@ func (x *StreamSessionsRequest) Reset() {
 	}
 }
 
-func (x *StreamSessionsRequest) String() string {
+func (x *StreamCircuitsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StreamSessionsRequest) ProtoMessage() {}
+func (*StreamCircuitsRequest) ProtoMessage() {}
 
-func (x *StreamSessionsRequest) ProtoReflect() protoreflect.Message {
+func (x *StreamCircuitsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2257,25 +2257,25 @@ func (x *StreamSessionsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StreamSessionsRequest.ProtoReflect.Descriptor instead.
-func (*StreamSessionsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use StreamCircuitsRequest.ProtoReflect.Descriptor instead.
+func (*StreamCircuitsRequest) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{32}
 }
 
-type StreamSessionsEvent struct {
+type StreamCircuitsEvent struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	EventType StreamSessionEventType `protobuf:"varint,1,opt,name=eventType,proto3,enum=mgmt_pb.StreamSessionEventType" json:"eventType,omitempty"`
-	SessionId string                 `protobuf:"bytes,2,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
+	EventType StreamCircuitEventType `protobuf:"varint,1,opt,name=eventType,proto3,enum=mgmt_pb.StreamCircuitEventType" json:"eventType,omitempty"`
+	CircuitId string                 `protobuf:"bytes,2,opt,name=circuitId,proto3" json:"circuitId,omitempty"`
 	ClientId  string                 `protobuf:"bytes,3,opt,name=clientId,proto3" json:"clientId,omitempty"`
 	ServiceId string                 `protobuf:"bytes,4,opt,name=serviceId,proto3" json:"serviceId,omitempty"`
 	Path      *Path                  `protobuf:"bytes,5,opt,name=path,proto3" json:"path,omitempty"`
 }
 
-func (x *StreamSessionsEvent) Reset() {
-	*x = StreamSessionsEvent{}
+func (x *StreamCircuitsEvent) Reset() {
+	*x = StreamCircuitsEvent{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2283,13 +2283,13 @@ func (x *StreamSessionsEvent) Reset() {
 	}
 }
 
-func (x *StreamSessionsEvent) String() string {
+func (x *StreamCircuitsEvent) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StreamSessionsEvent) ProtoMessage() {}
+func (*StreamCircuitsEvent) ProtoMessage() {}
 
-func (x *StreamSessionsEvent) ProtoReflect() protoreflect.Message {
+func (x *StreamCircuitsEvent) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2301,47 +2301,47 @@ func (x *StreamSessionsEvent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StreamSessionsEvent.ProtoReflect.Descriptor instead.
-func (*StreamSessionsEvent) Descriptor() ([]byte, []int) {
+// Deprecated: Use StreamCircuitsEvent.ProtoReflect.Descriptor instead.
+func (*StreamCircuitsEvent) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{33}
 }
 
-func (x *StreamSessionsEvent) GetEventType() StreamSessionEventType {
+func (x *StreamCircuitsEvent) GetEventType() StreamCircuitEventType {
 	if x != nil {
 		return x.EventType
 	}
-	return StreamSessionEventType_SessionCreated
+	return StreamCircuitEventType_CircuitCreated
 }
 
-func (x *StreamSessionsEvent) GetSessionId() string {
+func (x *StreamCircuitsEvent) GetCircuitId() string {
 	if x != nil {
-		return x.SessionId
+		return x.CircuitId
 	}
 	return ""
 }
 
-func (x *StreamSessionsEvent) GetClientId() string {
+func (x *StreamCircuitsEvent) GetClientId() string {
 	if x != nil {
 		return x.ClientId
 	}
 	return ""
 }
 
-func (x *StreamSessionsEvent) GetServiceId() string {
+func (x *StreamCircuitsEvent) GetServiceId() string {
 	if x != nil {
 		return x.ServiceId
 	}
 	return ""
 }
 
-func (x *StreamSessionsEvent) GetPath() *Path {
+func (x *StreamCircuitsEvent) GetPath() *Path {
 	if x != nil {
 		return x.Path
 	}
 	return nil
 }
 
-type ToggleSessionTracesRequest struct {
+type ToggleCircuitTracesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -2351,8 +2351,8 @@ type ToggleSessionTracesRequest struct {
 	ClientRegex  string `protobuf:"bytes,3,opt,name=clientRegex,proto3" json:"clientRegex,omitempty"`
 }
 
-func (x *ToggleSessionTracesRequest) Reset() {
-	*x = ToggleSessionTracesRequest{}
+func (x *ToggleCircuitTracesRequest) Reset() {
+	*x = ToggleCircuitTracesRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_mgmt_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2360,13 +2360,13 @@ func (x *ToggleSessionTracesRequest) Reset() {
 	}
 }
 
-func (x *ToggleSessionTracesRequest) String() string {
+func (x *ToggleCircuitTracesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ToggleSessionTracesRequest) ProtoMessage() {}
+func (*ToggleCircuitTracesRequest) ProtoMessage() {}
 
-func (x *ToggleSessionTracesRequest) ProtoReflect() protoreflect.Message {
+func (x *ToggleCircuitTracesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_mgmt_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2378,26 +2378,26 @@ func (x *ToggleSessionTracesRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToggleSessionTracesRequest.ProtoReflect.Descriptor instead.
-func (*ToggleSessionTracesRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ToggleCircuitTracesRequest.ProtoReflect.Descriptor instead.
+func (*ToggleCircuitTracesRequest) Descriptor() ([]byte, []int) {
 	return file_mgmt_proto_rawDescGZIP(), []int{34}
 }
 
-func (x *ToggleSessionTracesRequest) GetEnable() bool {
+func (x *ToggleCircuitTracesRequest) GetEnable() bool {
 	if x != nil {
 		return x.Enable
 	}
 	return false
 }
 
-func (x *ToggleSessionTracesRequest) GetServiceRegex() string {
+func (x *ToggleCircuitTracesRequest) GetServiceRegex() string {
 	if x != nil {
 		return x.ServiceRegex
 	}
 	return ""
 }
 
-func (x *ToggleSessionTracesRequest) GetClientRegex() string {
+func (x *ToggleCircuitTracesRequest) GetClientRegex() string {
 	if x != nil {
 		return x.ClientRegex
 	}
@@ -2929,7 +2929,7 @@ var file_mgmt_proto_rawDesc = []byte{
 	0x32, 0x0a, 0x04, 0x50, 0x61, 0x74, 0x68, 0x12, 0x14, 0x0a, 0x05, 0x6e, 0x6f, 0x64, 0x65, 0x73,
 	0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x12, 0x14, 0x0a,
 	0x05, 0x6c, 0x69, 0x6e, 0x6b, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x6c, 0x69,
-	0x6e, 0x6b, 0x73, 0x22, 0x9a, 0x01, 0x0a, 0x07, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12,
+	0x6e, 0x6b, 0x73, 0x22, 0x9a, 0x01, 0x0a, 0x07, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x12,
 	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12,
 	0x1a, 0x0a, 0x08, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x08, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x73,
@@ -2939,16 +2939,16 @@ var file_mgmt_proto_rawDesc = []byte{
 	0x0c, 0x74, 0x65, 0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x49, 0x64, 0x12, 0x21, 0x0a,
 	0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x6d, 0x67,
 	0x6d, 0x74, 0x5f, 0x70, 0x62, 0x2e, 0x50, 0x61, 0x74, 0x68, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68,
-	0x22, 0x15, 0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x44, 0x0a, 0x14, 0x4c, 0x69, 0x73, 0x74, 0x53,
-	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x2c, 0x0a, 0x08, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x10, 0x2e, 0x6d, 0x67, 0x6d, 0x74, 0x5f, 0x70, 0x62, 0x2e, 0x53, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x52, 0x08, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x46, 0x0a,
-	0x14, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
-	0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6e, 0x6f, 0x77, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08,
+	0x22, 0x15, 0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x44, 0x0a, 0x14, 0x4c, 0x69, 0x73, 0x74, 0x43,
+	0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x2c, 0x0a, 0x08, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x10, 0x2e, 0x6d, 0x67, 0x6d, 0x74, 0x5f, 0x70, 0x62, 0x2e, 0x43, 0x69, 0x72, 0x63,
+	0x75, 0x69, 0x74, 0x52, 0x08, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x22, 0x46, 0x0a,
+	0x14, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74,
+	0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69,
+	0x74, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6e, 0x6f, 0x77, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08,
 	0x52, 0x03, 0x6e, 0x6f, 0x77, 0x22, 0xb4, 0x01, 0x0a, 0x14, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d,
 	0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x47,
 	0x0a, 0x08, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
@@ -3027,22 +3027,22 @@ var file_mgmt_proto_rawDesc = []byte{
 	0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
 	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38,
-	0x01, 0x22, 0x17, 0x0a, 0x15, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69,
-	0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0xcf, 0x01, 0x0a, 0x13, 0x53,
-	0x74, 0x72, 0x65, 0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x76, 0x65,
+	0x01, 0x22, 0x17, 0x0a, 0x15, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75,
+	0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0xcf, 0x01, 0x0a, 0x13, 0x53,
+	0x74, 0x72, 0x65, 0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x45, 0x76, 0x65,
 	0x6e, 0x74, 0x12, 0x3d, 0x0a, 0x09, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1f, 0x2e, 0x6d, 0x67, 0x6d, 0x74, 0x5f, 0x70, 0x62, 0x2e,
-	0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x76, 0x65,
+	0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x45, 0x76, 0x65,
 	0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x52, 0x09, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70,
-	0x65, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12,
+	0x65, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x49, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x49, 0x64, 0x12,
 	0x1a, 0x0a, 0x08, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x08, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x73,
 	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09,
 	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x04, 0x70, 0x61, 0x74,
 	0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x6d, 0x67, 0x6d, 0x74, 0x5f, 0x70,
 	0x62, 0x2e, 0x50, 0x61, 0x74, 0x68, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x22, 0x7a, 0x0a, 0x1a,
-	0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x72, 0x61,
+	0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x54, 0x72, 0x61,
 	0x63, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x6e,
 	0x61, 0x62, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x65, 0x6e, 0x61, 0x62,
 	0x6c, 0x65, 0x12, 0x22, 0x0a, 0x0c, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x52, 0x65, 0x67,
@@ -3120,23 +3120,23 @@ var file_mgmt_proto_rawDesc = []byte{
 	0x6b, 0x43, 0x6f, 0x73, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65,
 	0x10, 0xa6, 0x4e, 0x12, 0x1b, 0x0a, 0x16, 0x53, 0x65, 0x74, 0x4c, 0x69, 0x6e, 0x6b, 0x44, 0x6f,
 	0x77, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xa7, 0x4e,
-	0x12, 0x1c, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73,
+	0x12, 0x1c, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73,
 	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xae, 0x4e, 0x12, 0x1d,
-	0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65,
+	0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x79, 0x70, 0x65, 0x10, 0xaf, 0x4e, 0x12, 0x1d, 0x0a,
-	0x18, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
+	0x18, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xb0, 0x4e, 0x12, 0x1d, 0x0a, 0x18,
 	0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xb8, 0x4e, 0x12, 0x1b, 0x0a, 0x16, 0x53,
 	0x74, 0x72, 0x65, 0x61, 0x6d, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x45, 0x76, 0x65, 0x6e,
 	0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xb9, 0x4e, 0x12, 0x1e, 0x0a, 0x19, 0x53, 0x74, 0x72, 0x65,
-	0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xba, 0x4e, 0x12, 0x1c, 0x0a, 0x17, 0x53, 0x74, 0x72, 0x65,
-	0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54,
+	0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x73, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54,
 	0x79, 0x70, 0x65, 0x10, 0xbb, 0x4e, 0x12, 0x20, 0x0a, 0x1b, 0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65,
 	0x50, 0x69, 0x70, 0x65, 0x54, 0x72, 0x61, 0x63, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xbc, 0x4e, 0x12, 0x23, 0x0a, 0x1e, 0x54, 0x6f, 0x67, 0x67,
-	0x6c, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x72, 0x61, 0x63, 0x65, 0x73, 0x52,
+	0x6c, 0x65, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x54, 0x72, 0x61, 0x63, 0x65, 0x73, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xbd, 0x4e, 0x12, 0x1c, 0x0a,
 	0x17, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x54, 0x72, 0x61, 0x63, 0x65, 0x73, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xbe, 0x4e, 0x12, 0x1a, 0x0a, 0x15, 0x53,
@@ -3156,11 +3156,11 @@ var file_mgmt_proto_rawDesc = []byte{
 	0x63, 0x43, 0x6f, 0x73, 0x74, 0x10, 0x01, 0x12, 0x0e, 0x0a, 0x0a, 0x50, 0x72, 0x65, 0x63, 0x65,
 	0x64, 0x65, 0x6e, 0x63, 0x65, 0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x44, 0x79, 0x6e, 0x61, 0x6d,
 	0x69, 0x63, 0x43, 0x6f, 0x73, 0x74, 0x10, 0x04, 0x2a, 0x65, 0x0a, 0x16, 0x53, 0x74, 0x72, 0x65,
-	0x61, 0x6d, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79,
-	0x70, 0x65, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x43, 0x72, 0x65,
-	0x61, 0x74, 0x65, 0x64, 0x10, 0x00, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x10, 0x01, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x65,
-	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x50, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x10, 0x02, 0x12, 0x0f,
+	0x61, 0x6d, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x12, 0x0a, 0x0e, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x64, 0x10, 0x00, 0x12, 0x12, 0x0a, 0x0e, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69,
+	0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x10, 0x01, 0x12, 0x12, 0x0a, 0x0e, 0x43, 0x69,
+	0x72, 0x63, 0x75, 0x69, 0x74, 0x50, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x10, 0x02, 0x12, 0x0f,
 	0x0a, 0x0b, 0x50, 0x61, 0x74, 0x68, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x10, 0x03, 0x2a,
 	0x2b, 0x0a, 0x0f, 0x54, 0x72, 0x61, 0x63, 0x65, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x54, 0x79,
 	0x70, 0x65, 0x12, 0x0b, 0x0a, 0x07, 0x45, 0x58, 0x43, 0x4c, 0x55, 0x44, 0x45, 0x10, 0x00, 0x12,
@@ -3188,7 +3188,7 @@ var file_mgmt_proto_goTypes = []interface{}{
 	(ContentType)(0),                           // 0: mgmt_pb.ContentType
 	(TerminatorPrecedence)(0),                  // 1: mgmt_pb.TerminatorPrecedence
 	(TerminatorChangeMask)(0),                  // 2: mgmt_pb.TerminatorChangeMask
-	(StreamSessionEventType)(0),                // 3: mgmt_pb.StreamSessionEventType
+	(StreamCircuitEventType)(0),                // 3: mgmt_pb.StreamCircuitEventType
 	(TraceFilterType)(0),                       // 4: mgmt_pb.TraceFilterType
 	(*Service)(nil),                            // 5: mgmt_pb.Service
 	(*Terminator)(nil),                         // 6: mgmt_pb.Terminator
@@ -3216,15 +3216,15 @@ var file_mgmt_proto_goTypes = []interface{}{
 	(*SetLinkCostRequest)(nil),                 // 28: mgmt_pb.SetLinkCostRequest
 	(*SetLinkDownRequest)(nil),                 // 29: mgmt_pb.SetLinkDownRequest
 	(*Path)(nil),                               // 30: mgmt_pb.Path
-	(*Session)(nil),                            // 31: mgmt_pb.Session
-	(*ListSessionsRequest)(nil),                // 32: mgmt_pb.ListSessionsRequest
-	(*ListSessionsResponse)(nil),               // 33: mgmt_pb.ListSessionsResponse
-	(*RemoveSessionRequest)(nil),               // 34: mgmt_pb.RemoveSessionRequest
+	(*Circuit)(nil),                            // 31: mgmt_pb.Circuit
+	(*ListCircuitsRequest)(nil),                // 32: mgmt_pb.ListCircuitsRequest
+	(*ListCircuitsResponse)(nil),               // 33: mgmt_pb.ListCircuitsResponse
+	(*RemoveCircuitRequest)(nil),               // 34: mgmt_pb.RemoveCircuitRequest
 	(*StreamMetricsRequest)(nil),               // 35: mgmt_pb.StreamMetricsRequest
 	(*StreamMetricsEvent)(nil),                 // 36: mgmt_pb.StreamMetricsEvent
-	(*StreamSessionsRequest)(nil),              // 37: mgmt_pb.StreamSessionsRequest
-	(*StreamSessionsEvent)(nil),                // 38: mgmt_pb.StreamSessionsEvent
-	(*ToggleSessionTracesRequest)(nil),         // 39: mgmt_pb.ToggleSessionTracesRequest
+	(*StreamCircuitsRequest)(nil),              // 37: mgmt_pb.StreamCircuitsRequest
+	(*StreamCircuitsEvent)(nil),                // 38: mgmt_pb.StreamCircuitsEvent
+	(*ToggleCircuitTracesRequest)(nil),         // 39: mgmt_pb.ToggleCircuitTracesRequest
 	(*StreamTracesRequest)(nil),                // 40: mgmt_pb.StreamTracesRequest
 	(*InspectRequest)(nil),                     // 41: mgmt_pb.InspectRequest
 	(*InspectResponse)(nil),                    // 42: mgmt_pb.InspectResponse
@@ -3251,8 +3251,8 @@ var file_mgmt_proto_depIdxs = []int32{
 	20, // 9: mgmt_pb.ListRoutersResponse.routers:type_name -> mgmt_pb.Router
 	20, // 10: mgmt_pb.CreateRouterRequest.router:type_name -> mgmt_pb.Router
 	25, // 11: mgmt_pb.ListLinksResponse.links:type_name -> mgmt_pb.Link
-	30, // 12: mgmt_pb.Session.path:type_name -> mgmt_pb.Path
-	31, // 13: mgmt_pb.ListSessionsResponse.sessions:type_name -> mgmt_pb.Session
+	30, // 12: mgmt_pb.Circuit.path:type_name -> mgmt_pb.Path
+	31, // 13: mgmt_pb.ListCircuitsResponse.circuits:type_name -> mgmt_pb.Circuit
 	43, // 14: mgmt_pb.StreamMetricsRequest.matchers:type_name -> mgmt_pb.StreamMetricsRequest.MetricMatcher
 	51, // 15: mgmt_pb.StreamMetricsEvent.timestamp:type_name -> google.protobuf.Timestamp
 	44, // 16: mgmt_pb.StreamMetricsEvent.tags:type_name -> mgmt_pb.StreamMetricsEvent.TagsEntry
@@ -3260,8 +3260,8 @@ var file_mgmt_proto_depIdxs = []int32{
 	46, // 18: mgmt_pb.StreamMetricsEvent.floatMetrics:type_name -> mgmt_pb.StreamMetricsEvent.FloatMetricsEntry
 	47, // 19: mgmt_pb.StreamMetricsEvent.intervalMetrics:type_name -> mgmt_pb.StreamMetricsEvent.IntervalMetric
 	48, // 20: mgmt_pb.StreamMetricsEvent.metricGroup:type_name -> mgmt_pb.StreamMetricsEvent.MetricGroupEntry
-	3,  // 21: mgmt_pb.StreamSessionsEvent.eventType:type_name -> mgmt_pb.StreamSessionEventType
-	30, // 22: mgmt_pb.StreamSessionsEvent.path:type_name -> mgmt_pb.Path
+	3,  // 21: mgmt_pb.StreamCircuitsEvent.eventType:type_name -> mgmt_pb.StreamCircuitEventType
+	30, // 22: mgmt_pb.StreamCircuitsEvent.path:type_name -> mgmt_pb.Path
 	4,  // 23: mgmt_pb.StreamTracesRequest.filterType:type_name -> mgmt_pb.TraceFilterType
 	50, // 24: mgmt_pb.InspectResponse.values:type_name -> mgmt_pb.InspectResponse.InspectValue
 	51, // 25: mgmt_pb.StreamMetricsEvent.IntervalMetric.intervalStartUTC:type_name -> google.protobuf.Timestamp
@@ -3593,7 +3593,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Session); i {
+			switch v := v.(*Circuit); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3605,7 +3605,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListSessionsRequest); i {
+			switch v := v.(*ListCircuitsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3617,7 +3617,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListSessionsResponse); i {
+			switch v := v.(*ListCircuitsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3629,7 +3629,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveSessionRequest); i {
+			switch v := v.(*RemoveCircuitRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3665,7 +3665,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StreamSessionsRequest); i {
+			switch v := v.(*StreamCircuitsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3677,7 +3677,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StreamSessionsEvent); i {
+			switch v := v.(*StreamCircuitsEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3689,7 +3689,7 @@ func file_mgmt_proto_init() {
 			}
 		}
 		file_mgmt_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ToggleSessionTracesRequest); i {
+			switch v := v.(*ToggleCircuitTracesRequest); i {
 			case 0:
 				return &v.state
 			case 1:

@@ -83,7 +83,7 @@ func Test_Ordering(t *testing.T) {
 			binary.LittleEndian.PutUint64(data, uint64(i))
 			payload := &Payload{
 				Header: Header{
-					SessionId:      "test",
+					CircuitId:      "test",
 					Flags:          0,
 					RecvBufferSize: 16000,
 					RTT:            0,

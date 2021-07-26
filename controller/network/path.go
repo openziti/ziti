@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"math"
 )
@@ -74,11 +73,11 @@ func (self *Path) EgressRouter() *Router {
 	return nil
 }
 
-func (self *Path) CreateRouteMessages(attempt uint32, sessionId *identity.TokenId, terminator xt.Terminator) ([]*ctrl_pb.Route, error) {
+func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator) ([]*ctrl_pb.Route, error) {
 	var routeMessages []*ctrl_pb.Route
 	if len(self.Links) == 0 {
 		// single router path
-		routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+		routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 			SrcAddress: self.IngressId,
 			DstAddress: self.EgressId,
@@ -98,7 +97,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, sessionId *identity.TokenI
 	for i, link := range self.Links {
 		if i == 0 {
 			// ingress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.IngressId,
 				DstAddress: link.Id.Token,
@@ -112,7 +111,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, sessionId *identity.TokenI
 		if i >= 0 && i < len(self.Links)-1 {
 			// transit
 			nextLink := self.Links[i+1]
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id.Token,
 				DstAddress: nextLink.Id.Token,
@@ -125,7 +124,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, sessionId *identity.TokenI
 		}
 		if i == len(self.Links)-1 {
 			// egress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 			routeMessage.Egress = &ctrl_pb.Route_Egress{
 				Binding:     terminator.GetBinding(),
 				Address:     self.EgressId,

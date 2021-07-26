@@ -38,19 +38,19 @@ enum ContentType {
   SetLinkCostRequestType = 10022;
   SetLinkDownRequestType = 10023;
 
-  // Sessions
-  ListSessionsRequestType = 10030;
-  ListSessionsResponseType = 10031;
-  RemoveSessionRequestType = 10032;
+  // Circuits
+  ListCircuitsRequestType = 10030;
+  ListCircuitsResponseType = 10031;
+  RemoveCircuitRequestType = 10032;
 
   // Streams
   StreamMetricsRequestType = 10040;
   StreamMetricsEventType = 10041;
-  StreamSessionsRequestType = 10042;
-  StreamSessionsEventType = 10043;
+  StreamCircuitsRequestType = 10042;
+  StreamCircuitsEventType = 10043;
 
   TogglePipeTracesRequestType = 10044;
-  ToggleSessionTracesRequestType = 10045;
+  ToggleCircuitTracesRequestType = 10045;
   StreamTracesRequestType = 10046;
   StreamTracesEventType = 10047;
 
@@ -220,7 +220,7 @@ message SetLinkDownRequest {
 }
 
 //
-// --- Session ------------------------------------------------------------------------------------------------------ //
+// --- Circuit ------------------------------------------------------------------------------------------------------ //
 //
 
 message Path {
@@ -228,7 +228,7 @@ message Path {
   repeated string links = 2;
 }
 
-message Session {
+message Circuit {
   string id = 1;
   string clientId = 2;
   string serviceId = 3;
@@ -236,14 +236,14 @@ message Session {
   Path path = 5;
 }
 
-message ListSessionsRequest {
+message ListCircuitsRequest {
 }
-message ListSessionsResponse {
-  repeated Session sessions = 1;
+message ListCircuitsResponse {
+  repeated Circuit circuits = 1;
 }
 
-message RemoveSessionRequest {
-  string sessionId = 1;
+message RemoveCircuitRequest {
+  string circuitId = 1;
   bool now = 2;
 }
 
@@ -280,25 +280,25 @@ message StreamMetricsEvent {
   map<string, string> metricGroup = 7;
 }
 
-message StreamSessionsRequest {
+message StreamCircuitsRequest {
 }
 
-enum StreamSessionEventType {
-  SessionCreated = 0;
-  SessionDeleted = 1;
-  SessionPresent = 2;
+enum StreamCircuitEventType {
+  CircuitCreated = 0;
+  CircuitDeleted = 1;
+  CircuitPresent = 2;
   PathUpdated = 3;
 }
 
-message StreamSessionsEvent {
-  StreamSessionEventType eventType = 1;
-  string sessionId = 2;
+message StreamCircuitsEvent {
+  StreamCircuitEventType eventType = 1;
+  string circuitId = 2;
   string clientId = 3;
   string serviceId = 4;
   Path path = 5;
 }
 
-message ToggleSessionTracesRequest {
+message ToggleCircuitTracesRequest {
   bool enable = 1;
   string serviceRegex = 2;
   string clientRegex = 3;
