@@ -225,7 +225,7 @@ func (options *Options) ToLoggableString() string {
 	buf.WriteString(fmt.Sprintf("retxScale=%v\n", options.RetxScale))
 	buf.WriteString(fmt.Sprintf("retxAddMs=%v\n", options.RetxAddMs))
 	buf.WriteString(fmt.Sprintf("maxCloseWait=%v\n", options.MaxCloseWait))
-	buf.WriteString(fmt.Sprintf("getSessionTimeout=%v\n", options.GetSessionTimeout))
+	buf.WriteString(fmt.Sprintf("getCircuitTimeout=%v\n", options.GetCircuitTimeout))
 
 	buf.WriteString(fmt.Sprintf("lookupApiSessionTimeout=%v\n", options.lookupApiSessionTimeout))
 	buf.WriteString(fmt.Sprintf("lookupSessionTimeout=%v\n", options.lookupSessionTimeout))

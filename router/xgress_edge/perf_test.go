@@ -46,7 +46,7 @@ func (link *mirrorLink) Id() *identity.TokenId {
 func (link *mirrorLink) SendPayload(payload *xgress.Payload) error {
 	ack := &xgress.Acknowledgement{
 		Header: xgress.Header{
-			SessionId:      "test",
+			CircuitId:      "test",
 			Flags:          0,
 			RecvBufferSize: 0,
 			RTT:            payload.RTT,
@@ -114,7 +114,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	fwd.RegisterLink(link)
 	fwd.Route(&ctrl_pb.Route{
-		SessionId: "test",
+		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
 			{SrcAddress: "test", DstAddress: "router1"},
@@ -127,7 +127,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
-	fwd.RegisterDestination(x.SessionId(), x.Address(), x)
+	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
 
 	x.Start()
 
@@ -184,7 +184,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	fwd.RegisterLink(link)
 	fwd.Route(&ctrl_pb.Route{
-		SessionId: "test",
+		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
 			{SrcAddress: "test", DstAddress: "router1"},
@@ -197,7 +197,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
 	//x.SetCloseHandler(bindHandler.closeHandler)
-	fwd.RegisterDestination(x.SessionId(), x.Address(), x)
+	fwd.RegisterDestination(x.CircuitId(), x.Address(), x)
 
 	x.Start()
 
