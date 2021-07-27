@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 	"sync/atomic"
 	"time"
@@ -33,7 +32,7 @@ import (
 var decoders = []channel2.TraceMessageDecoder{&channel2.Decoder{}, &ctrl_pb.Decoder{}, &xgress.Decoder{}, &mgmt_pb.Decoder{}}
 
 type ChannelPeekHandler struct {
-	appId      *identity.TokenId
+	appId      string
 	ch         channel2.Channel
 	enabled    int32
 	controller Controller
@@ -60,10 +59,10 @@ func (handler *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher 
 	}
 	resultChan <- &ToggleApplyResultImpl{matched,
 		fmt.Sprintf("Link %v.%v matched? %v. Old trace state: %v, New trace state: %v",
-			handler.appId.Token, name, matched, prevState, nextState)}
+			handler.appId, name, matched, prevState, nextState)}
 }
 
-func NewChannelPeekHandler(appId *identity.TokenId, ch channel2.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
+func NewChannelPeekHandler(appId string, ch channel2.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
 	handler := &ChannelPeekHandler{
 		appId:      appId,
 		ch:         ch,
@@ -122,7 +121,7 @@ func (handler *ChannelPeekHandler) trace(msg *channel2.Message, ch channel2.Chan
 
 	traceMsg := &trace_pb.ChannelMessage{
 		Timestamp:   time.Now().UnixNano(),
-		Identity:    handler.appId.Token,
+		Identity:    handler.appId,
 		Channel:     ch.LogicalName(),
 		IsRx:        rx,
 		ContentType: msg.ContentType,

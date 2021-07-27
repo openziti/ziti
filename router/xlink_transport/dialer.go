@@ -110,7 +110,11 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		return nil, errors.Wrapf(err, "dialing link [l/%s] for payload", linkId.Token)
 	}
 
-	xli := &impl{id: linkId, ch: payloadCh}
+	xli := &impl{
+		id:       linkId,
+		ch:       payloadCh,
+		routerId: routerId,
+	}
 
 	if self.chAccepter != nil {
 		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true); err != nil {

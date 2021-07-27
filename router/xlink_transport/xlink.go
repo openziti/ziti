@@ -38,7 +38,12 @@ func (self *impl) Close() error {
 	return self.ch.Close()
 }
 
+func (self *impl) DestinationId() string {
+	return self.routerId
+}
+
 type impl struct {
-	id *identity.TokenId
-	ch channel2.Channel
+	id       *identity.TokenId
+	ch       channel2.Channel
+	routerId string
 }

@@ -62,7 +62,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
 	ch.AddReceiveHandler(newInspectHandler(self.id))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
 	metrics.AddLatencyProbeResponder(ch)
 
 	for _, x := range self.xctrls {

@@ -46,6 +46,7 @@ type Xlink interface {
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	Close() error
+	DestinationId() string
 }
 
 type Forwarder interface {

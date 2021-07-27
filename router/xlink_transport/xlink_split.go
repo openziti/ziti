@@ -47,8 +47,13 @@ func (self *splitImpl) Close() error {
 	return errors.Errorf("multiple failures while closing transport link (%v) (%v)", err, err2)
 }
 
+func (self *splitImpl) DestinationId() string {
+	return self.routerId
+}
+
 type splitImpl struct {
 	id        *identity.TokenId
 	payloadCh channel2.Channel
 	ackCh     channel2.Channel
+	routerId  string
 }
