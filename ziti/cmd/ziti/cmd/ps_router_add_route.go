@@ -78,7 +78,7 @@ func (o *PsRouteOptions) Run() error {
 	}
 
 	route := &ctrl_pb.Route{
-		SessionId: o.Args[offset],
+		CircuitId: o.Args[offset],
 		Forwards: []*ctrl_pb.Route_Forward{
 			{
 				SrcAddress: o.Args[offset+1],

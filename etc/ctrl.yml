@@ -29,28 +29,34 @@ identity:
   #
   #routeTimeoutSeconds:  10
   #
-  # createSessionRetries controls the number of retries that will be attempted to create a circuit (and terminate it)
-  # for new sessions.
+  # createCircuitRetries controls the number of retries that will be attempted to create a path (and terminate it)
+  # for new circuits.
   #
-  #createSessionRetries: 3  
+  #createCircuitRetries: 3  
+  # 
+  # pendingLinkTimeoutSeconds controls how long we'll wait before creating a new link between routers where
+  # there isn't an established link, but a link request has been sent
   #
-  # Defines the period that the controller re-evaluates the performance of all of the sessions
+  #pendingLinkTimeoutSeconds: 10
+  # 
+  #
+  # Defines the period that the controller re-evaluates the performance of all of the circuits
   # running on the network.
   #
   cycleSeconds:         15
   #
   #smart:
     #
-    # Defines the fractional upper limit of underperforming sessions that are candidates to be re-routed. If 
-    # smart routing detects 100 sessions that are underperforming, and `smart.rerouteFraction` is set to `0.02`,
-    # then the upper limit of sessions that will be re-routed in this `cycleSeconds` period will be limited to 
+    # Defines the fractional upper limit of underperforming circuits that are candidates to be re-routed. If 
+    # smart routing detects 100 circuits that are underperforming, and `smart.rerouteFraction` is set to `0.02`,
+    # then the upper limit of circuits that will be re-routed in this `cycleSeconds` period will be limited to 
     # 2 (2% of 100). 
     #
     #rerouteFraction:    0.02
     # 
-    # Defines the hard upper limit of underperforming sessions that are candidates to be re-routed. If smart 
-    # routing detects 100 sessions that are underperforming, and `smart.rerouteCap` is set to `1`, and 
-    # `smart.rerouteFraction` is set to `0.02`, then the upper limit of sessions that will be re-routed in this 
+    # Defines the hard upper limit of underperforming circuits that are candidates to be re-routed. If smart 
+    # routing detects 100 circuits that are underperforming, and `smart.rerouteCap` is set to `1`, and 
+    # `smart.rerouteFraction` is set to `0.02`, then the upper limit of circuits that will be re-routed in this 
     # `cycleSeconds` period will be limited to 1.
     #
     #rerouteCap:         4  

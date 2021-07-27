@@ -17,17 +17,17 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"net/http"
 	"time"
 )
 
-func handleListSessions(w http.ResponseWriter, _ *http.Request) {
-	request := &mgmt_pb.ListSessionsRequest{}
+func handleListCircuits(w http.ResponseWriter, _ *http.Request) {
+	request := &mgmt_pb.ListCircuitsRequest{}
 	body, err := proto.Marshal(request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -35,16 +35,16 @@ func handleListSessions(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListSessionsRequestType), body)
+	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListCircuitsRequestType), body)
 	waitCh, err := mgmtCh.SendAndWait(requestMsg)
 	if err == nil {
 		select {
 		case responseMsg := <-waitCh:
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListSessionsResponseType) {
-				response := &mgmt_pb.ListSessionsResponse{}
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListCircuitsResponseType) {
+				response := &mgmt_pb.ListCircuitsResponse{}
 				err := proto.Unmarshal(responseMsg.Body, response)
 				if err == nil {
-					if err := json.NewEncoder(w).Encode(convertSessions(response.Sessions)); err != nil {
+					if err := json.NewEncoder(w).Encode(convertCircuits(response.Circuits)); err != nil {
 						pfxlog.Logger().Errorf("error encoding json (%s)", err)
 					}
 
@@ -75,17 +75,17 @@ func handleListSessions(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func convertSessions(in []*mgmt_pb.Session) interface{} {
+func convertCircuits(in []*mgmt_pb.Circuit) interface{} {
 	d := &data{}
 	for _, s := range in {
-		c := &circuit{}
-		for _, p := range s.Circuit.Path {
+		c := &path{}
+		for _, p := range s.Path.Nodes {
 			c.Path = append(c.Path, p)
 		}
-		for _, l := range s.Circuit.Links {
+		for _, l := range s.Path.Links {
 			c.Links = append(c.Links, l)
 		}
-		d.Data = append(d.Data, &session{
+		d.Data = append(d.Data, &circuit{
 			Id:        s.Id,
 			ClientId:  s.ClientId,
 			ServiceId: s.ServiceId,
