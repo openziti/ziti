@@ -80,3 +80,47 @@ func (o *ListCurrentAPISessionCertificatesOK) WriteResponse(rw http.ResponseWrit
 		}
 	}
 }
+
+// ListCurrentAPISessionCertificatesUnauthorizedCode is the HTTP code returned for type ListCurrentAPISessionCertificatesUnauthorized
+const ListCurrentAPISessionCertificatesUnauthorizedCode int = 401
+
+/*ListCurrentAPISessionCertificatesUnauthorized The currently supplied session does not have the correct access rights to request this resource
+
+swagger:response listCurrentApiSessionCertificatesUnauthorized
+*/
+type ListCurrentAPISessionCertificatesUnauthorized struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListCurrentAPISessionCertificatesUnauthorized creates ListCurrentAPISessionCertificatesUnauthorized with default headers values
+func NewListCurrentAPISessionCertificatesUnauthorized() *ListCurrentAPISessionCertificatesUnauthorized {
+
+	return &ListCurrentAPISessionCertificatesUnauthorized{}
+}
+
+// WithPayload adds the payload to the list current Api session certificates unauthorized response
+func (o *ListCurrentAPISessionCertificatesUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *ListCurrentAPISessionCertificatesUnauthorized {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list current Api session certificates unauthorized response
+func (o *ListCurrentAPISessionCertificatesUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListCurrentAPISessionCertificatesUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

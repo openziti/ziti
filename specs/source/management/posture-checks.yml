@@ -21,6 +21,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listPostureChecks'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
     post:
       summary: Creates a Posture Checks
       description: Creates a Posture Checks

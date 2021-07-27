@@ -16,6 +16,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listCas'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
     post:
       summary: Creates a CA
       description: Creates a CA in an unverified state. Requires admin access.
@@ -317,6 +319,7 @@ definitions:
       - isOttCaEnrollmentEnabled
       - isAuthEnabled
       - identityRoles
+      - identityNameFormat
     properties:
       name:
         type: string

@@ -44,7 +44,8 @@ import (
 type CaUpdate struct {
 
 	// identity name format
-	IdentityNameFormat string `json:"identityNameFormat,omitempty"`
+	// Required: true
+	IdentityNameFormat *string `json:"identityNameFormat"`
 
 	// identity roles
 	// Required: true
@@ -78,6 +79,10 @@ type CaUpdate struct {
 func (m *CaUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateIdentityNameFormat(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateIdentityRoles(formats); err != nil {
 		res = append(res, err)
 	}
@@ -105,6 +110,15 @@ func (m *CaUpdate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CaUpdate) validateIdentityNameFormat(formats strfmt.Registry) error {
+
+	if err := validate.Required("identityNameFormat", "body", m.IdentityNameFormat); err != nil {
+		return err
+	}
+
 	return nil
 }
 

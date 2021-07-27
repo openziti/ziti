@@ -16,6 +16,8 @@ paths:
       responses:
         '200':
           $ref: '#/responses/listCurrentApiSessionCertificates'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
     post:
       summary: Creates an ephemeral certificate for the current API Session
       description: Creates an ephemeral certificate for the current API Session. This endpoint
