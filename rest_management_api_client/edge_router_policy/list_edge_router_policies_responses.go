@@ -53,6 +53,12 @@ func (o *ListEdgeRouterPoliciesReader) ReadResponse(response runtime.ClientRespo
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListEdgeRouterPoliciesBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListEdgeRouterPoliciesUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListEdgeRouterPoliciesOK) GetPayload() *rest_model.ListEdgeRouterPolici
 func (o *ListEdgeRouterPoliciesOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListEdgeRouterPoliciesEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListEdgeRouterPoliciesBadRequest creates a ListEdgeRouterPoliciesBadRequest with default headers values
+func NewListEdgeRouterPoliciesBadRequest() *ListEdgeRouterPoliciesBadRequest {
+	return &ListEdgeRouterPoliciesBadRequest{}
+}
+
+/* ListEdgeRouterPoliciesBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListEdgeRouterPoliciesBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListEdgeRouterPoliciesBadRequest) Error() string {
+	return fmt.Sprintf("[GET /edge-router-policies][%d] listEdgeRouterPoliciesBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListEdgeRouterPoliciesBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListEdgeRouterPoliciesBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

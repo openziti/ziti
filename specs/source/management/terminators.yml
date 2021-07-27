@@ -19,6 +19,8 @@ paths:
           $ref: '#/responses/listTerminators'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a terminator resource
       description: Create a terminator resource. Requires admin access.

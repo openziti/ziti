@@ -53,6 +53,12 @@ func (o *ListServiceServicePoliciesReader) ReadResponse(response runtime.ClientR
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListServiceServicePoliciesBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListServiceServicePoliciesUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListServiceServicePoliciesOK) GetPayload() *rest_model.ListServicePolic
 func (o *ListServiceServicePoliciesOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListServicePoliciesEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListServiceServicePoliciesBadRequest creates a ListServiceServicePoliciesBadRequest with default headers values
+func NewListServiceServicePoliciesBadRequest() *ListServiceServicePoliciesBadRequest {
+	return &ListServiceServicePoliciesBadRequest{}
+}
+
+/* ListServiceServicePoliciesBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListServiceServicePoliciesBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListServiceServicePoliciesBadRequest) Error() string {
+	return fmt.Sprintf("[GET /services/{id}/service-policies][%d] listServiceServicePoliciesBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListServiceServicePoliciesBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListServiceServicePoliciesBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

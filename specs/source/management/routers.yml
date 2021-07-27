@@ -20,6 +20,8 @@ paths:
           $ref: '#/responses/listRouters'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a router resource
       description: Create a router resource. Requires admin access.
@@ -144,6 +146,8 @@ paths:
           $ref: '#/responses/listRouters'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a router resource
       description: Create a router resource. Requires admin access.

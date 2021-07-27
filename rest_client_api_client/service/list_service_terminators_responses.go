@@ -53,6 +53,12 @@ func (o *ListServiceTerminatorsReader) ReadResponse(response runtime.ClientRespo
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListServiceTerminatorsBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListServiceTerminatorsUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListServiceTerminatorsOK) GetPayload() *rest_model.ListClientTerminator
 func (o *ListServiceTerminatorsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListClientTerminatorsEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListServiceTerminatorsBadRequest creates a ListServiceTerminatorsBadRequest with default headers values
+func NewListServiceTerminatorsBadRequest() *ListServiceTerminatorsBadRequest {
+	return &ListServiceTerminatorsBadRequest{}
+}
+
+/* ListServiceTerminatorsBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListServiceTerminatorsBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListServiceTerminatorsBadRequest) Error() string {
+	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListServiceTerminatorsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListServiceTerminatorsBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

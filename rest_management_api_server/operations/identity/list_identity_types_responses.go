@@ -81,6 +81,50 @@ func (o *ListIdentityTypesOK) WriteResponse(rw http.ResponseWriter, producer run
 	}
 }
 
+// ListIdentityTypesBadRequestCode is the HTTP code returned for type ListIdentityTypesBadRequest
+const ListIdentityTypesBadRequestCode int = 400
+
+/*ListIdentityTypesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listIdentityTypesBadRequest
+*/
+type ListIdentityTypesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListIdentityTypesBadRequest creates ListIdentityTypesBadRequest with default headers values
+func NewListIdentityTypesBadRequest() *ListIdentityTypesBadRequest {
+
+	return &ListIdentityTypesBadRequest{}
+}
+
+// WithPayload adds the payload to the list identity types bad request response
+func (o *ListIdentityTypesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListIdentityTypesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list identity types bad request response
+func (o *ListIdentityTypesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListIdentityTypesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListIdentityTypesUnauthorizedCode is the HTTP code returned for type ListIdentityTypesUnauthorized
 const ListIdentityTypesUnauthorizedCode int = 401
 

@@ -81,6 +81,50 @@ func (o *ListServicesOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 	}
 }
 
+// ListServicesBadRequestCode is the HTTP code returned for type ListServicesBadRequest
+const ListServicesBadRequestCode int = 400
+
+/*ListServicesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServicesBadRequest
+*/
+type ListServicesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServicesBadRequest creates ListServicesBadRequest with default headers values
+func NewListServicesBadRequest() *ListServicesBadRequest {
+
+	return &ListServicesBadRequest{}
+}
+
+// WithPayload adds the payload to the list services bad request response
+func (o *ListServicesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServicesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list services bad request response
+func (o *ListServicesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServicesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServicesUnauthorizedCode is the HTTP code returned for type ListServicesUnauthorized
 const ListServicesUnauthorizedCode int = 401
 

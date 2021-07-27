@@ -23,6 +23,8 @@ paths:
           $ref: '#/responses/listPostureChecks'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Creates a Posture Checks
       description: Creates a Posture Checks

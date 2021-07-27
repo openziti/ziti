@@ -81,6 +81,50 @@ func (o *ListServiceServiceEdgeRouterPoliciesOK) WriteResponse(rw http.ResponseW
 	}
 }
 
+// ListServiceServiceEdgeRouterPoliciesBadRequestCode is the HTTP code returned for type ListServiceServiceEdgeRouterPoliciesBadRequest
+const ListServiceServiceEdgeRouterPoliciesBadRequestCode int = 400
+
+/*ListServiceServiceEdgeRouterPoliciesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServiceServiceEdgeRouterPoliciesBadRequest
+*/
+type ListServiceServiceEdgeRouterPoliciesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServiceServiceEdgeRouterPoliciesBadRequest creates ListServiceServiceEdgeRouterPoliciesBadRequest with default headers values
+func NewListServiceServiceEdgeRouterPoliciesBadRequest() *ListServiceServiceEdgeRouterPoliciesBadRequest {
+
+	return &ListServiceServiceEdgeRouterPoliciesBadRequest{}
+}
+
+// WithPayload adds the payload to the list service service edge router policies bad request response
+func (o *ListServiceServiceEdgeRouterPoliciesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServiceServiceEdgeRouterPoliciesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service service edge router policies bad request response
+func (o *ListServiceServiceEdgeRouterPoliciesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServiceServiceEdgeRouterPoliciesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServiceServiceEdgeRouterPoliciesUnauthorizedCode is the HTTP code returned for type ListServiceServiceEdgeRouterPoliciesUnauthorized
 const ListServiceServiceEdgeRouterPoliciesUnauthorizedCode int = 401
 

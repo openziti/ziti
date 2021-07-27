@@ -81,6 +81,50 @@ func (o *ListServiceTerminatorsOK) WriteResponse(rw http.ResponseWriter, produce
 	}
 }
 
+// ListServiceTerminatorsBadRequestCode is the HTTP code returned for type ListServiceTerminatorsBadRequest
+const ListServiceTerminatorsBadRequestCode int = 400
+
+/*ListServiceTerminatorsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServiceTerminatorsBadRequest
+*/
+type ListServiceTerminatorsBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServiceTerminatorsBadRequest creates ListServiceTerminatorsBadRequest with default headers values
+func NewListServiceTerminatorsBadRequest() *ListServiceTerminatorsBadRequest {
+
+	return &ListServiceTerminatorsBadRequest{}
+}
+
+// WithPayload adds the payload to the list service terminators bad request response
+func (o *ListServiceTerminatorsBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServiceTerminatorsBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service terminators bad request response
+func (o *ListServiceTerminatorsBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServiceTerminatorsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServiceTerminatorsUnauthorizedCode is the HTTP code returned for type ListServiceTerminatorsUnauthorized
 const ListServiceTerminatorsUnauthorizedCode int = 401
 

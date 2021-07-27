@@ -18,6 +18,8 @@ paths:
           $ref: '#/responses/listCas'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Creates a CA
       description: Creates a CA in an unverified state. Requires admin access.
@@ -345,18 +347,23 @@ definitions:
       name:
         type: string
         example: My CA
+        x-nullable: true
       isAutoCaEnrollmentEnabled:
         type: boolean
         example: true
+        x-nullable: true
       isOttCaEnrollmentEnabled:
         type: boolean
         example: true
+        x-nullable: true
       isAuthEnabled:
         type: boolean
         example: true
+        x-nullable: true
       identityRoles:
         $ref: '../shared/base-entity.yml#/definitions/roles'
       identityNameFormat:
         type: string
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'

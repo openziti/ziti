@@ -81,6 +81,50 @@ func (o *ListServiceEdgeRouterPoliciesOK) WriteResponse(rw http.ResponseWriter, 
 	}
 }
 
+// ListServiceEdgeRouterPoliciesBadRequestCode is the HTTP code returned for type ListServiceEdgeRouterPoliciesBadRequest
+const ListServiceEdgeRouterPoliciesBadRequestCode int = 400
+
+/*ListServiceEdgeRouterPoliciesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServiceEdgeRouterPoliciesBadRequest
+*/
+type ListServiceEdgeRouterPoliciesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServiceEdgeRouterPoliciesBadRequest creates ListServiceEdgeRouterPoliciesBadRequest with default headers values
+func NewListServiceEdgeRouterPoliciesBadRequest() *ListServiceEdgeRouterPoliciesBadRequest {
+
+	return &ListServiceEdgeRouterPoliciesBadRequest{}
+}
+
+// WithPayload adds the payload to the list service edge router policies bad request response
+func (o *ListServiceEdgeRouterPoliciesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServiceEdgeRouterPoliciesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service edge router policies bad request response
+func (o *ListServiceEdgeRouterPoliciesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServiceEdgeRouterPoliciesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServiceEdgeRouterPoliciesUnauthorizedCode is the HTTP code returned for type ListServiceEdgeRouterPoliciesUnauthorized
 const ListServiceEdgeRouterPoliciesUnauthorizedCode int = 401
 

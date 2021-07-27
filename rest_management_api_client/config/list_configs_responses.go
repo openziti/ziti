@@ -53,6 +53,12 @@ func (o *ListConfigsReader) ReadResponse(response runtime.ClientResponse, consum
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListConfigsBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListConfigsUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListConfigsOK) GetPayload() *rest_model.ListConfigsEnvelope {
 func (o *ListConfigsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListConfigsEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListConfigsBadRequest creates a ListConfigsBadRequest with default headers values
+func NewListConfigsBadRequest() *ListConfigsBadRequest {
+	return &ListConfigsBadRequest{}
+}
+
+/* ListConfigsBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListConfigsBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListConfigsBadRequest) Error() string {
+	return fmt.Sprintf("[GET /configs][%d] listConfigsBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListConfigsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListConfigsBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

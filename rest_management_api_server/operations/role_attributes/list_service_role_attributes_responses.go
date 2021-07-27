@@ -81,6 +81,50 @@ func (o *ListServiceRoleAttributesOK) WriteResponse(rw http.ResponseWriter, prod
 	}
 }
 
+// ListServiceRoleAttributesBadRequestCode is the HTTP code returned for type ListServiceRoleAttributesBadRequest
+const ListServiceRoleAttributesBadRequestCode int = 400
+
+/*ListServiceRoleAttributesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServiceRoleAttributesBadRequest
+*/
+type ListServiceRoleAttributesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServiceRoleAttributesBadRequest creates ListServiceRoleAttributesBadRequest with default headers values
+func NewListServiceRoleAttributesBadRequest() *ListServiceRoleAttributesBadRequest {
+
+	return &ListServiceRoleAttributesBadRequest{}
+}
+
+// WithPayload adds the payload to the list service role attributes bad request response
+func (o *ListServiceRoleAttributesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServiceRoleAttributesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service role attributes bad request response
+func (o *ListServiceRoleAttributesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServiceRoleAttributesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServiceRoleAttributesUnauthorizedCode is the HTTP code returned for type ListServiceRoleAttributesUnauthorized
 const ListServiceRoleAttributesUnauthorizedCode int = 401
 

@@ -53,6 +53,12 @@ func (o *ListAPISessionsReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListAPISessionsBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListAPISessionsUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListAPISessionsOK) GetPayload() *rest_model.ListAPISessionsEnvelope {
 func (o *ListAPISessionsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListAPISessionsEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListAPISessionsBadRequest creates a ListAPISessionsBadRequest with default headers values
+func NewListAPISessionsBadRequest() *ListAPISessionsBadRequest {
+	return &ListAPISessionsBadRequest{}
+}
+
+/* ListAPISessionsBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListAPISessionsBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListAPISessionsBadRequest) Error() string {
+	return fmt.Sprintf("[GET /api-sessions][%d] listApiSessionsBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListAPISessionsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListAPISessionsBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

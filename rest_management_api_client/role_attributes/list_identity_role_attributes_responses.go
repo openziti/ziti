@@ -53,6 +53,12 @@ func (o *ListIdentityRoleAttributesReader) ReadResponse(response runtime.ClientR
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListIdentityRoleAttributesBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListIdentityRoleAttributesUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListIdentityRoleAttributesOK) GetPayload() *rest_model.ListRoleAttribut
 func (o *ListIdentityRoleAttributesOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListRoleAttributesEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListIdentityRoleAttributesBadRequest creates a ListIdentityRoleAttributesBadRequest with default headers values
+func NewListIdentityRoleAttributesBadRequest() *ListIdentityRoleAttributesBadRequest {
+	return &ListIdentityRoleAttributesBadRequest{}
+}
+
+/* ListIdentityRoleAttributesBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListIdentityRoleAttributesBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListIdentityRoleAttributesBadRequest) Error() string {
+	return fmt.Sprintf("[GET /identity-role-attributes][%d] listIdentityRoleAttributesBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListIdentityRoleAttributesBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListIdentityRoleAttributesBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

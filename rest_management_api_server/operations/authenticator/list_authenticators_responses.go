@@ -80,3 +80,91 @@ func (o *ListAuthenticatorsOK) WriteResponse(rw http.ResponseWriter, producer ru
 		}
 	}
 }
+
+// ListAuthenticatorsBadRequestCode is the HTTP code returned for type ListAuthenticatorsBadRequest
+const ListAuthenticatorsBadRequestCode int = 400
+
+/*ListAuthenticatorsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listAuthenticatorsBadRequest
+*/
+type ListAuthenticatorsBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListAuthenticatorsBadRequest creates ListAuthenticatorsBadRequest with default headers values
+func NewListAuthenticatorsBadRequest() *ListAuthenticatorsBadRequest {
+
+	return &ListAuthenticatorsBadRequest{}
+}
+
+// WithPayload adds the payload to the list authenticators bad request response
+func (o *ListAuthenticatorsBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListAuthenticatorsBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list authenticators bad request response
+func (o *ListAuthenticatorsBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListAuthenticatorsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
+// ListAuthenticatorsUnauthorizedCode is the HTTP code returned for type ListAuthenticatorsUnauthorized
+const ListAuthenticatorsUnauthorizedCode int = 401
+
+/*ListAuthenticatorsUnauthorized The currently supplied session does not have the correct access rights to request this resource
+
+swagger:response listAuthenticatorsUnauthorized
+*/
+type ListAuthenticatorsUnauthorized struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListAuthenticatorsUnauthorized creates ListAuthenticatorsUnauthorized with default headers values
+func NewListAuthenticatorsUnauthorized() *ListAuthenticatorsUnauthorized {
+
+	return &ListAuthenticatorsUnauthorized{}
+}
+
+// WithPayload adds the payload to the list authenticators unauthorized response
+func (o *ListAuthenticatorsUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *ListAuthenticatorsUnauthorized {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list authenticators unauthorized response
+func (o *ListAuthenticatorsUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListAuthenticatorsUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(401)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

@@ -53,6 +53,12 @@ func (o *ListServicesReader) ReadResponse(response runtime.ClientResponse, consu
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListServicesBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListServicesUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListServicesOK) GetPayload() *rest_model.ListServicesEnvelope {
 func (o *ListServicesOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListServicesEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListServicesBadRequest creates a ListServicesBadRequest with default headers values
+func NewListServicesBadRequest() *ListServicesBadRequest {
+	return &ListServicesBadRequest{}
+}
+
+/* ListServicesBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListServicesBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListServicesBadRequest) Error() string {
+	return fmt.Sprintf("[GET /services][%d] listServicesBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListServicesBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListServicesBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

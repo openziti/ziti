@@ -53,6 +53,18 @@ func (o *ListAuthenticatorsReader) ReadResponse(response runtime.ClientResponse,
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListAuthenticatorsBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
+	case 401:
+		result := NewListAuthenticatorsUnauthorized()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -81,6 +93,70 @@ func (o *ListAuthenticatorsOK) GetPayload() *rest_model.ListAuthenticatorsEnvelo
 func (o *ListAuthenticatorsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListAuthenticatorsEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListAuthenticatorsBadRequest creates a ListAuthenticatorsBadRequest with default headers values
+func NewListAuthenticatorsBadRequest() *ListAuthenticatorsBadRequest {
+	return &ListAuthenticatorsBadRequest{}
+}
+
+/* ListAuthenticatorsBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListAuthenticatorsBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListAuthenticatorsBadRequest) Error() string {
+	return fmt.Sprintf("[GET /authenticators][%d] listAuthenticatorsBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListAuthenticatorsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListAuthenticatorsBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListAuthenticatorsUnauthorized creates a ListAuthenticatorsUnauthorized with default headers values
+func NewListAuthenticatorsUnauthorized() *ListAuthenticatorsUnauthorized {
+	return &ListAuthenticatorsUnauthorized{}
+}
+
+/* ListAuthenticatorsUnauthorized describes a response with status code 401, with default header values.
+
+The currently supplied session does not have the correct access rights to request this resource
+*/
+type ListAuthenticatorsUnauthorized struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListAuthenticatorsUnauthorized) Error() string {
+	return fmt.Sprintf("[GET /authenticators][%d] listAuthenticatorsUnauthorized  %+v", 401, o.Payload)
+}
+func (o *ListAuthenticatorsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListAuthenticatorsUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

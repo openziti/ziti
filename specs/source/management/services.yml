@@ -21,6 +21,8 @@ paths:
           $ref: '../shared/services.yml#/responses/listServices'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a services resource
       description: Create a services resource. Requires admin access.
@@ -147,6 +149,8 @@ paths:
           $ref: 'configs.yml#/responses/listConfigs'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   services-id-service-edge-router-policies:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
@@ -168,6 +172,8 @@ paths:
           $ref: 'service-edge-router-policies.yml#/responses/listServiceEdgeRouterPolicies'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   services-id-service-policies:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
@@ -189,6 +195,8 @@ paths:
           $ref: 'service-policies.yml#/responses/listServicePolicies'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
   services-id-identities:
     parameters:
@@ -211,6 +219,8 @@ paths:
           $ref: 'identities.yml#/responses/listIdentities'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
   services-id-edge-routers:
     parameters:
@@ -233,6 +243,8 @@ paths:
           $ref: 'edge-routers.yml#/responses/listEdgeRouters'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
   services-id-terminators:
     parameters:
@@ -255,6 +267,8 @@ paths:
           $ref: 'terminators.yml#/responses/listTerminators'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
 definitions:
   serviceCreate:

@@ -22,6 +22,8 @@ paths:
           $ref: '#/responses/listEdgeRouters'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create an edge router
       description: Create a edge router resource. Requires admin access.

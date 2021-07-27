@@ -81,6 +81,50 @@ func (o *ListRoutersOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 	}
 }
 
+// ListRoutersBadRequestCode is the HTTP code returned for type ListRoutersBadRequest
+const ListRoutersBadRequestCode int = 400
+
+/*ListRoutersBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listRoutersBadRequest
+*/
+type ListRoutersBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListRoutersBadRequest creates ListRoutersBadRequest with default headers values
+func NewListRoutersBadRequest() *ListRoutersBadRequest {
+
+	return &ListRoutersBadRequest{}
+}
+
+// WithPayload adds the payload to the list routers bad request response
+func (o *ListRoutersBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListRoutersBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list routers bad request response
+func (o *ListRoutersBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListRoutersBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListRoutersUnauthorizedCode is the HTTP code returned for type ListRoutersUnauthorized
 const ListRoutersUnauthorizedCode int = 401
 

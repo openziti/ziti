@@ -81,6 +81,50 @@ func (o *ListEnrollmentsOK) WriteResponse(rw http.ResponseWriter, producer runti
 	}
 }
 
+// ListEnrollmentsBadRequestCode is the HTTP code returned for type ListEnrollmentsBadRequest
+const ListEnrollmentsBadRequestCode int = 400
+
+/*ListEnrollmentsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listEnrollmentsBadRequest
+*/
+type ListEnrollmentsBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListEnrollmentsBadRequest creates ListEnrollmentsBadRequest with default headers values
+func NewListEnrollmentsBadRequest() *ListEnrollmentsBadRequest {
+
+	return &ListEnrollmentsBadRequest{}
+}
+
+// WithPayload adds the payload to the list enrollments bad request response
+func (o *ListEnrollmentsBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListEnrollmentsBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list enrollments bad request response
+func (o *ListEnrollmentsBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListEnrollmentsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListEnrollmentsUnauthorizedCode is the HTTP code returned for type ListEnrollmentsUnauthorized
 const ListEnrollmentsUnauthorizedCode int = 401
 

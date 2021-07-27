@@ -19,6 +19,8 @@ paths:
           $ref: 'authenticators.yml#/responses/listAuthenticators'
         '401':
           $ref: 'standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   current-identity-authenticators-id:
     parameters:
       - $ref: 'parameters.yml#/id'
