@@ -18,10 +18,13 @@ package edge_controller
 
 import (
 	"fmt"
-	"github.com/Jeffail/gabs"
+	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
@@ -30,14 +33,16 @@ import (
 
 type updateCaOptions struct {
 	edgeOptions
-	verify           bool
-	verifyCertPath   string
-	verifyCertBytes  []byte
-	nameOrId         string
-	name             string
-	autoCaEnrollment bool
-	ottCaEnrollment  bool
-	authEnabled      bool
+	verify             bool
+	verifyCertPath     string
+	verifyCertBytes    []byte
+	nameOrId           string
+	name               string
+	autoCaEnrollment   bool
+	ottCaEnrollment    bool
+	authEnabled        bool
+	identityAttributes []string
+	identityNameFormat string
 }
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
@@ -99,7 +104,9 @@ func newUpdateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	cmd.Flags().BoolVarP(&options.authEnabled, "auth", "e", false, "Whether the CA can be used for authentication or not")
 	cmd.Flags().BoolVarP(&options.ottCaEnrollment, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
-
+	cmd.Flags().StringSliceVarP(&options.identityAttributes, "identity-attributes", "i", nil, "The roles to give to identities enrolled via the CA")
+	cmd.Flags().StringVarP(&options.identityNameFormat, "identity-name-format", "f", "", "The naming format to use for identities enrolling via the CA")
+	options.AddCommonFlags(cmd)
 	return cmd
 }
 
@@ -114,18 +121,60 @@ func runUpdateCa(options updateCaOptions) error {
 		return err
 	}
 
-	data := gabs.New()
-	tags := map[string]interface{}{}
-	setJSONValue(data, options.name, "name")
-	setJSONValue(data, options.autoCaEnrollment, "isAutoCaEnrollmentEnabled")
-	setJSONValue(data, options.ottCaEnrollment, "isOttCaEnrollmentEnabled")
-	setJSONValue(data, options.authEnabled, "isAuthEnabled")
-	setJSONValue(data, tags, "tags")
-
-	_, err = putEntityOfType("cas/"+id, data.String(), &options.edgeOptions)
+	client, err := util.NewEdgeManagementClient(&options)
 
 	if err != nil {
 		return err
+	}
+
+	ca := &rest_model.CaPatch{}
+	changed := false
+
+	if options.Cmd.Flag("name").Changed {
+		ca.Name = &options.name
+		changed = true
+	}
+
+	if options.Cmd.Flag("auth").Changed {
+		ca.IsAuthEnabled = &options.authEnabled
+		changed = true
+	}
+
+	if options.Cmd.Flag("ottca").Changed {
+		ca.IsOttCaEnrollmentEnabled = &options.ottCaEnrollment
+		changed = true
+	}
+
+	if options.Cmd.Flag("autoca").Changed {
+		ca.IsAutoCaEnrollmentEnabled = &options.autoCaEnrollment
+		changed = true
+	}
+
+	if options.Cmd.Flag("identity-attributes").Changed {
+		ca.IdentityRoles = options.identityAttributes
+		changed = true
+	}
+
+	if options.Cmd.Flag("identity-name-format").Changed {
+		ca.IdentityNameFormat = &options.identityNameFormat
+		changed = true
+	}
+
+	if !changed {
+		return errors.New("no values changed")
+	}
+
+	context, cancelContext := options.TimeoutContext()
+	defer cancelContext()
+
+	_, err = client.CertificateAuthority.PatchCa(&certificate_authority.PatchCaParams{
+		Ca:      ca,
+		ID:      id,
+		Context: context,
+	}, nil)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
 	}
 
 	return nil

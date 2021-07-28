@@ -31,6 +31,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/rest_management_api_client"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -714,6 +715,50 @@ func (edgeTransport *edgeTransport) RoundTrip(r *http.Request) (*http.Response, 
 	}
 
 	return resp, err
+}
+
+type ApiErrorPayload interface {
+	GetPayload() *rest_model.APIErrorEnvelope
+}
+
+type RestApiError struct {
+	ApiErrorPayload
+}
+
+func formatApiError(error *rest_model.APIError) string {
+	cause := ""
+	if error.Cause != nil {
+		if error.Cause.APIError.Code != "" {
+			cause = formatApiError(&error.Cause.APIError)
+		} else if error.Cause.APIFieldError.Field != "" {
+			cause = fmt.Sprintf("INVALID_FIELD - %s [%s] %s", error.Cause.APIFieldError.Field, error.Cause.APIFieldError.Value, error.Cause.APIFieldError.Reason)
+		}
+	}
+
+	if cause != "" {
+		cause = ": " + cause
+	}
+	return fmt.Sprintf("%s - %s%s", error.Code, error.Message, cause)
+}
+
+func (a RestApiError) Error() string {
+	if payload := a.ApiErrorPayload.GetPayload(); payload != nil {
+
+		if payload.Error == nil {
+			return fmt.Sprintf("could not read API error, payload.error was nil: %v", a.Error())
+		}
+		return formatApiError(payload.Error)
+	}
+
+	return fmt.Sprintf("could not read API error, payload was nil: %v", a.Error())
+}
+
+func WrapIfApiError(err error) error {
+	if apiErrorPayload, ok := err.(ApiErrorPayload); ok {
+		return &RestApiError{apiErrorPayload}
+	}
+
+	return err
 }
 
 type EdgeManagementClientOpts interface {

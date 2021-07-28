@@ -1,3 +1,9 @@
+# Release 0.20.15
+
+## What's New
+
+* Feature: Ziti CLI now supports a comprehensive set of `ca` and `cas` options
+
 # Release 0.20.14
 
 ## What's New
