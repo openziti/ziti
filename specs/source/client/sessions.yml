@@ -22,6 +22,8 @@ paths:
           $ref: '../shared/sessions.yml#/responses/listSessions'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a session resource
       description: Create a session resource.

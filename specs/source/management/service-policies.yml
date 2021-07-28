@@ -19,6 +19,8 @@ paths:
           $ref: '#/responses/listServicePolicies'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create a service policy resource
       description: Create a service policy resource. Requires admin access.
@@ -147,6 +149,7 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
         '400':
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+
   service-policies-id-services:
     parameters:
       - $ref: '../shared/parameters.yml#/id'

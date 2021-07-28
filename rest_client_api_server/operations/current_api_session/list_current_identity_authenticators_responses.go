@@ -81,6 +81,50 @@ func (o *ListCurrentIdentityAuthenticatorsOK) WriteResponse(rw http.ResponseWrit
 	}
 }
 
+// ListCurrentIdentityAuthenticatorsBadRequestCode is the HTTP code returned for type ListCurrentIdentityAuthenticatorsBadRequest
+const ListCurrentIdentityAuthenticatorsBadRequestCode int = 400
+
+/*ListCurrentIdentityAuthenticatorsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listCurrentIdentityAuthenticatorsBadRequest
+*/
+type ListCurrentIdentityAuthenticatorsBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListCurrentIdentityAuthenticatorsBadRequest creates ListCurrentIdentityAuthenticatorsBadRequest with default headers values
+func NewListCurrentIdentityAuthenticatorsBadRequest() *ListCurrentIdentityAuthenticatorsBadRequest {
+
+	return &ListCurrentIdentityAuthenticatorsBadRequest{}
+}
+
+// WithPayload adds the payload to the list current identity authenticators bad request response
+func (o *ListCurrentIdentityAuthenticatorsBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListCurrentIdentityAuthenticatorsBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list current identity authenticators bad request response
+func (o *ListCurrentIdentityAuthenticatorsBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListCurrentIdentityAuthenticatorsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListCurrentIdentityAuthenticatorsUnauthorizedCode is the HTTP code returned for type ListCurrentIdentityAuthenticatorsUnauthorized
 const ListCurrentIdentityAuthenticatorsUnauthorizedCode int = 401
 

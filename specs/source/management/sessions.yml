@@ -22,6 +22,8 @@ paths:
           $ref: '#/responses/listSessionsManagement'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   sessions-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'

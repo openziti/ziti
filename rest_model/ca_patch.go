@@ -43,26 +43,26 @@ import (
 type CaPatch struct {
 
 	// identity name format
-	IdentityNameFormat string `json:"identityNameFormat,omitempty"`
+	IdentityNameFormat *string `json:"identityNameFormat,omitempty"`
 
 	// identity roles
 	IdentityRoles Roles `json:"identityRoles"`
 
 	// is auth enabled
 	// Example: true
-	IsAuthEnabled bool `json:"isAuthEnabled,omitempty"`
+	IsAuthEnabled *bool `json:"isAuthEnabled,omitempty"`
 
 	// is auto ca enrollment enabled
 	// Example: true
-	IsAutoCaEnrollmentEnabled bool `json:"isAutoCaEnrollmentEnabled,omitempty"`
+	IsAutoCaEnrollmentEnabled *bool `json:"isAutoCaEnrollmentEnabled,omitempty"`
 
 	// is ott ca enrollment enabled
 	// Example: true
-	IsOttCaEnrollmentEnabled bool `json:"isOttCaEnrollmentEnabled,omitempty"`
+	IsOttCaEnrollmentEnabled *bool `json:"isOttCaEnrollmentEnabled,omitempty"`
 
 	// name
 	// Example: My CA
-	Name string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 
 	// tags
 	Tags *Tags `json:"tags,omitempty"`

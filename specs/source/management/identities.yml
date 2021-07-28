@@ -21,6 +21,8 @@ paths:
           $ref: '#/responses/listIdentities'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Create an identity resource
       description: Create an identity resource. Requires admin access.

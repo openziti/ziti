@@ -19,6 +19,10 @@ paths:
       responses:
         '200':
           $ref: '../shared/authenticators.yml#/responses/listAuthenticators'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
     post:
       summary: Creates an authenticator
       description: |

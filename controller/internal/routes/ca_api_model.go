@@ -103,12 +103,12 @@ func MapPatchCaToModel(id string, ca *rest_model.CaPatch) *model.Ca {
 			Tags: TagsOrDefault(ca.Tags),
 			Id:   id,
 		},
-		Name:                      ca.Name,
-		IsAutoCaEnrollmentEnabled: ca.IsAutoCaEnrollmentEnabled,
-		IsOttCaEnrollmentEnabled:  ca.IsOttCaEnrollmentEnabled,
-		IsAuthEnabled:             ca.IsAuthEnabled,
+		Name:                      stringz.OrEmpty(ca.Name),
+		IsAutoCaEnrollmentEnabled: BoolOrDefault(ca.IsAutoCaEnrollmentEnabled),
+		IsOttCaEnrollmentEnabled:  BoolOrDefault(ca.IsOttCaEnrollmentEnabled),
+		IsAuthEnabled:             BoolOrDefault(ca.IsAuthEnabled),
 		IdentityRoles:             ca.IdentityRoles,
-		IdentityNameFormat:        ca.IdentityNameFormat,
+		IdentityNameFormat:        stringz.OrEmpty(ca.IdentityNameFormat),
 	}
 
 	return ret

@@ -20,6 +20,8 @@ paths:
           $ref: '#/responses/listIdentityTypes'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   identity-types-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'

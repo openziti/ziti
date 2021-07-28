@@ -81,6 +81,50 @@ func (o *ListEdgeRouterRoleAttributesOK) WriteResponse(rw http.ResponseWriter, p
 	}
 }
 
+// ListEdgeRouterRoleAttributesBadRequestCode is the HTTP code returned for type ListEdgeRouterRoleAttributesBadRequest
+const ListEdgeRouterRoleAttributesBadRequestCode int = 400
+
+/*ListEdgeRouterRoleAttributesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listEdgeRouterRoleAttributesBadRequest
+*/
+type ListEdgeRouterRoleAttributesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListEdgeRouterRoleAttributesBadRequest creates ListEdgeRouterRoleAttributesBadRequest with default headers values
+func NewListEdgeRouterRoleAttributesBadRequest() *ListEdgeRouterRoleAttributesBadRequest {
+
+	return &ListEdgeRouterRoleAttributesBadRequest{}
+}
+
+// WithPayload adds the payload to the list edge router role attributes bad request response
+func (o *ListEdgeRouterRoleAttributesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListEdgeRouterRoleAttributesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list edge router role attributes bad request response
+func (o *ListEdgeRouterRoleAttributesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListEdgeRouterRoleAttributesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListEdgeRouterRoleAttributesUnauthorizedCode is the HTTP code returned for type ListEdgeRouterRoleAttributesUnauthorized
 const ListEdgeRouterRoleAttributesUnauthorizedCode int = 401
 

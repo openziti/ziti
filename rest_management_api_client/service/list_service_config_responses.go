@@ -53,6 +53,12 @@ func (o *ListServiceConfigReader) ReadResponse(response runtime.ClientResponse, 
 			return nil, err
 		}
 		return result, nil
+	case 400:
+		result := NewListServiceConfigBadRequest()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 401:
 		result := NewListServiceConfigUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -87,6 +93,38 @@ func (o *ListServiceConfigOK) GetPayload() *rest_model.ListConfigsEnvelope {
 func (o *ListServiceConfigOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.ListConfigsEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewListServiceConfigBadRequest creates a ListServiceConfigBadRequest with default headers values
+func NewListServiceConfigBadRequest() *ListServiceConfigBadRequest {
+	return &ListServiceConfigBadRequest{}
+}
+
+/* ListServiceConfigBadRequest describes a response with status code 400, with default header values.
+
+The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+*/
+type ListServiceConfigBadRequest struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *ListServiceConfigBadRequest) Error() string {
+	return fmt.Sprintf("[GET /services/{id}/configs][%d] listServiceConfigBadRequest  %+v", 400, o.Payload)
+}
+func (o *ListServiceConfigBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *ListServiceConfigBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

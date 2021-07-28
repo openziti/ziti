@@ -81,6 +81,50 @@ func (o *ListConfigTypesOK) WriteResponse(rw http.ResponseWriter, producer runti
 	}
 }
 
+// ListConfigTypesBadRequestCode is the HTTP code returned for type ListConfigTypesBadRequest
+const ListConfigTypesBadRequestCode int = 400
+
+/*ListConfigTypesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listConfigTypesBadRequest
+*/
+type ListConfigTypesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListConfigTypesBadRequest creates ListConfigTypesBadRequest with default headers values
+func NewListConfigTypesBadRequest() *ListConfigTypesBadRequest {
+
+	return &ListConfigTypesBadRequest{}
+}
+
+// WithPayload adds the payload to the list config types bad request response
+func (o *ListConfigTypesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListConfigTypesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list config types bad request response
+func (o *ListConfigTypesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListConfigTypesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListConfigTypesUnauthorizedCode is the HTTP code returned for type ListConfigTypesUnauthorized
 const ListConfigTypesUnauthorizedCode int = 401
 

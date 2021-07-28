@@ -23,6 +23,8 @@ paths:
           $ref: '#/responses/listAPISessions'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   api-sessions-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'

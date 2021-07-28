@@ -19,6 +19,8 @@ paths:
           $ref: '#/responses/listRoleAttributes'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
   identity-role-attributes:
     get:
@@ -39,6 +41,8 @@ paths:
           $ref: '#/responses/listRoleAttributes'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
   service-role-attributes:
     get:
@@ -59,6 +63,8 @@ paths:
           $ref: '#/responses/listRoleAttributes'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
 responses:
   listRoleAttributes:

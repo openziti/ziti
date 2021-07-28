@@ -21,6 +21,8 @@ paths:
           $ref: '../shared/services.yml#/responses/listServices'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
   services-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
@@ -61,6 +63,8 @@ paths:
           $ref: '#/responses/listClientTerminators'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
 
 responses:
   listClientTerminators:

@@ -81,6 +81,50 @@ func (o *ListServiceEdgeRoutersOK) WriteResponse(rw http.ResponseWriter, produce
 	}
 }
 
+// ListServiceEdgeRoutersBadRequestCode is the HTTP code returned for type ListServiceEdgeRoutersBadRequest
+const ListServiceEdgeRoutersBadRequestCode int = 400
+
+/*ListServiceEdgeRoutersBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServiceEdgeRoutersBadRequest
+*/
+type ListServiceEdgeRoutersBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServiceEdgeRoutersBadRequest creates ListServiceEdgeRoutersBadRequest with default headers values
+func NewListServiceEdgeRoutersBadRequest() *ListServiceEdgeRoutersBadRequest {
+
+	return &ListServiceEdgeRoutersBadRequest{}
+}
+
+// WithPayload adds the payload to the list service edge routers bad request response
+func (o *ListServiceEdgeRoutersBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServiceEdgeRoutersBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service edge routers bad request response
+func (o *ListServiceEdgeRoutersBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServiceEdgeRoutersBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServiceEdgeRoutersUnauthorizedCode is the HTTP code returned for type ListServiceEdgeRoutersUnauthorized
 const ListServiceEdgeRoutersUnauthorizedCode int = 401
 

@@ -81,6 +81,50 @@ func (o *ListSessionsOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 	}
 }
 
+// ListSessionsBadRequestCode is the HTTP code returned for type ListSessionsBadRequest
+const ListSessionsBadRequestCode int = 400
+
+/*ListSessionsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listSessionsBadRequest
+*/
+type ListSessionsBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListSessionsBadRequest creates ListSessionsBadRequest with default headers values
+func NewListSessionsBadRequest() *ListSessionsBadRequest {
+
+	return &ListSessionsBadRequest{}
+}
+
+// WithPayload adds the payload to the list sessions bad request response
+func (o *ListSessionsBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListSessionsBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list sessions bad request response
+func (o *ListSessionsBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListSessionsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListSessionsUnauthorizedCode is the HTTP code returned for type ListSessionsUnauthorized
 const ListSessionsUnauthorizedCode int = 401
 

@@ -81,6 +81,50 @@ func (o *ListServicePoliciesOK) WriteResponse(rw http.ResponseWriter, producer r
 	}
 }
 
+// ListServicePoliciesBadRequestCode is the HTTP code returned for type ListServicePoliciesBadRequest
+const ListServicePoliciesBadRequestCode int = 400
+
+/*ListServicePoliciesBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+
+swagger:response listServicePoliciesBadRequest
+*/
+type ListServicePoliciesBadRequest struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewListServicePoliciesBadRequest creates ListServicePoliciesBadRequest with default headers values
+func NewListServicePoliciesBadRequest() *ListServicePoliciesBadRequest {
+
+	return &ListServicePoliciesBadRequest{}
+}
+
+// WithPayload adds the payload to the list service policies bad request response
+func (o *ListServicePoliciesBadRequest) WithPayload(payload *rest_model.APIErrorEnvelope) *ListServicePoliciesBadRequest {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the list service policies bad request response
+func (o *ListServicePoliciesBadRequest) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *ListServicePoliciesBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(400)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // ListServicePoliciesUnauthorizedCode is the HTTP code returned for type ListServicePoliciesUnauthorized
 const ListServicePoliciesUnauthorizedCode int = 401
 
