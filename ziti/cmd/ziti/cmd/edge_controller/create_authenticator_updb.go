@@ -100,7 +100,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 	}, nil)
 
 	if err != nil {
-		return err
+		return util.WrapIfApiError(err)
 	}
 
 	if len(result.Payload.Data) != 0 {

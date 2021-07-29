@@ -516,7 +516,7 @@ func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOp
 	resp, err := managementClient.PostureChecks.CreatePostureCheck(params, nil)
 
 	if err != nil {
-		panic(err)
+		return util.WrapIfApiError(err)
 	}
 
 	checkId := resp.GetPayload().Data.ID

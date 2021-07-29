@@ -839,7 +839,7 @@ func runListCAs(o *edgeOptions) error {
 	}, nil)
 
 	if err != nil {
-		return err
+		return util.WrapIfApiError(err)
 	}
 
 	if o.OutputJSONResponse {
@@ -872,8 +872,28 @@ func runListCAs(o *edgeOptions) error {
 
 		identityNameFormat := *entity.IdentityNameFormat
 
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isVerified: %v    token: %v    identityRoles: %v    identityNameFormat: %v    fingerprint: %v\n",
-			id, name, isVerified, token, identityRoles, identityNameFormat, fingerprint,
+		flags := ""
+
+		if isVerified {
+			flags = flags + "V"
+		}
+
+		if *entity.IsAutoCaEnrollmentEnabled {
+			flags = flags + "A"
+		}
+
+		if *entity.IsOttCaEnrollmentEnabled {
+			flags = flags + "O"
+		}
+
+		if *entity.IsAuthEnabled {
+			flags = flags + "E"
+		}
+
+		flags = "[" + flags + "]"
+
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v   token: %v    identityRoles: %v    flags: %s    identityNameFormat: %v    fingerprint: %v\n",
+			id, name, token, identityRoles, flags, identityNameFormat, getEllipsesString(fingerprint, 4, 2),
 		); err != nil {
 			return err
 		}
@@ -881,6 +901,8 @@ func runListCAs(o *edgeOptions) error {
 
 	pagingInfo := newPagingInfo(payload.Meta)
 	pagingInfo.output(o)
+
+	_, _ = fmt.Fprint(o.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
 
 	return nil
 }
