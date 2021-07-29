@@ -20,9 +20,20 @@ This guide can be used to run all of the Ziti applications via command line or i
 2. Change into the `ziti` dirrectory
     - `cd ziti`
 3. Build
-    - `go build ./ziti-controller`
-    - `go build ./ziti-router`
-    - `go build ./ziti/cmd/ziti`
+    - `go install ./...`
+
+### Initializing the Controller
+Before you can run the controller you have to initialize it's database with an administrative user. Assuming you want to run with the edge enabled, this can be done using as follows:
+
+```bash
+ziti-controller edge init etc/ctrl.with.edge.yml -u <admin name> -p <admin password>
+```
+
+Example:
+
+```bash
+ziti-controller edge init etc/ctrl.with.edge.yml -u admin -p o93wjh5n
+```
 
 ### Starting the Controller
 
