@@ -284,6 +284,8 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 		}
 	})
 
+	logger.WithField("address", request.Address).Info("created terminator")
+
 	terminator.terminatorId = response.TerminatorId
 	return terminator, nil
 }
