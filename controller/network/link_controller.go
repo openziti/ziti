@@ -18,9 +18,11 @@ package network
 
 import (
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/sequence"
 	"github.com/orcaman/concurrent-map"
 	"math"
+	"time"
 )
 
 type linkController struct {
@@ -119,12 +121,18 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	return nil, false
 }
 
-func (linkController *linkController) missingLinks(routers []*Router) ([]*Link, error) {
+func (linkController *linkController) missingLinks(routers []*Router, pendingTimeout time.Duration) ([]*Link, error) {
+	// When there's a flood of router connects at startup we can see the same link
+	// as missing multiple times as the new link will be marked as PENDING until it's
+	// connected. Give ourselves a little window to make the connection before we
+	// send another dial
+	pendingLimit := info.NowInMilliseconds() - pendingTimeout.Milliseconds()
+
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
 		for _, dstR := range routers {
 			if srcR != dstR && dstR.AdvertisedListener != "" {
-				if _, found := linkController.firstDirectedLink(srcR, dstR); !found {
+				if !linkController.hasLink(srcR, dstR, pendingLimit) {
 					id, err := linkController.sequence.NextHash()
 					if err != nil {
 						return nil, err
@@ -141,28 +149,24 @@ func (linkController *linkController) missingLinks(routers []*Router) ([]*Link, 
 	return missingLinks, nil
 }
 
-func (linkController *linkController) firstDirectedLink(a, b *Router) (*Link, bool) {
-	// a->b
+func (linkController *linkController) hasLink(a, b *Router, pendingLimit int64) bool {
+	return linkController.hasDirectedLink(a, b, pendingLimit) || linkController.hasDirectedLink(b, a, pendingLimit)
+}
+
+func (linkController *linkController) hasDirectedLink(a, b *Router, pendingLimit int64) bool {
 	if rlt, found := linkController.adjacencyTable.get(a.Id); found {
 		if links, found := rlt.allLinksForRouter(b.Id); found {
 			for _, link := range links {
-				if link.Src == a && link.Dst == b && link.CurrentState().Mode == Connected {
-					return link, true
+				state := link.CurrentState()
+				if link.Src == a && link.Dst == b && state != nil {
+					if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
+						return true
+					}
 				}
 			}
 		}
 	}
-	// b->a
-	if rlt, found := linkController.adjacencyTable.get(b.Id); found {
-		if links, found := rlt.allLinksForRouter(a.Id); found {
-			for _, link := range links {
-				if link.Src == b && link.Dst == a && link.CurrentState().Mode == Connected {
-					return link, true
-				}
-			}
-		}
-	}
-	return nil, false
+	return false
 }
 
 func (linkController *linkController) linksInMode(mode LinkMode) []*Link {

@@ -30,7 +30,7 @@ func (network *Network) assemble() {
 	if network.Routers.connectedCount() > 1 {
 		log.Debugf("assembling with [%d] routers", network.Routers.connectedCount())
 
-		missingLinks, err := network.linkController.missingLinks(network.Routers.allConnected())
+		missingLinks, err := network.linkController.missingLinks(network.Routers.allConnected(), network.options.PendingLinkTimeout)
 		if err == nil {
 			for _, missingLink := range missingLinks {
 				network.linkController.add(missingLink)
