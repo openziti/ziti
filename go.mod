@@ -33,6 +33,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/jessevdk/go-flags v1.5.0
+	github.com/jinzhu/copier v0.3.2 // indirect
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
 	github.com/lucsky/cuid v1.2.0
 	github.com/mailru/easyjson v0.7.7 // indirect

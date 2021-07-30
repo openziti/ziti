@@ -70,27 +70,34 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		LastUpdatedAt:  time.Now().UTC(),
 	}
 
-	pd := handler.postureCache.PostureData(identityId)
-
 	var passedAt *time.Time = nil
 
 	if isPassed {
 		passedAt = &postureResponse.LastUpdatedAt
 	}
 
-	if pd != nil {
-		for apiSessionId, _ := range pd.ApiSessions {
-			postureSubType := &PostureResponseMfa{
-				ApiSessionId: apiSessionId,
-				PassedMfaAt:  passedAt,
+	handler.postureCache.Upsert(identityId, true, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		if exist {
+			pd := valueInMap.(*PostureData)
+			if pd == nil {
+				return newValue
 			}
+			for apiSessionId, _ := range pd.ApiSessions {
+				postureSubType := &PostureResponseMfa{
+					ApiSessionId: apiSessionId,
+					PassedMfaAt:  passedAt,
+				}
 
-			postureResponse.SubType = postureSubType
-			postureSubType.PostureResponse = postureResponse
+				postureResponse.SubType = postureSubType
+				postureSubType.PostureResponse = postureResponse
 
-			handler.Create(identityId, []*PostureResponse{postureResponse})
+				postureResponse.Apply(pd)
+			}
+			return pd
 		}
-	}
+
+		return newValue
+	})
 }
 
 func (handler *PostureResponseHandler) AddPostureDataListener(cb func(env Env, identityId string)) {

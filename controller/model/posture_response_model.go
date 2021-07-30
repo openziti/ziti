@@ -17,6 +17,7 @@
 package model
 
 import (
+	"github.com/jinzhu/copier"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
@@ -114,6 +115,9 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 	pc.Emit(EventIdentityPostureDataAltered, identityId)
 }
 
+// Upsert is a convenience function to alter the existing PostureData for an identity. If
+// emitDataAltered is true, posture data listeners will be alerted: this will trigger
+// service update notifications and posture check evaluation.
 func (pc *PostureCache) Upsert(identityId string, emitDataAltered bool, cb func(exist bool, valueInMap interface{}, newValue interface{}) interface{}) {
 	pc.identityToPostureData.Upsert(identityId, newPostureData(), cb)
 
@@ -163,12 +167,24 @@ func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks 
 	return false, failures
 }
 
+// PostureData returns a copy of the current posture data for an identity.
+// Suitable for read only rendering. To alter/update posture data see Upsert.
 func (pc *PostureCache) PostureData(identityId string) *PostureData {
-	if val, found := pc.identityToPostureData.Get(identityId); found {
-		return val.(*PostureData)
-	}
+	var result *PostureData = nil
 
-	return newPostureData()
+	pc.Upsert(identityId, false, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		var pd *PostureData
+		if exist {
+			pd = valueInMap.(*PostureData)
+		} else {
+			pd = newValue.(*PostureData)
+		}
+
+		result = pd.Copy()
+		return pd
+	})
+
+	return result
 }
 
 func (pc *PostureCache) SessionCreated(args ...interface{}) {
@@ -412,6 +428,12 @@ func (pd *PostureData) CheckTimeouts() bool {
 	}
 
 	return false
+}
+
+func (pd *PostureData) Copy() *PostureData {
+	dest := &PostureData{}
+	copier.Copy(dest, pd)
+	return dest
 }
 
 func newPostureData() *PostureData {
