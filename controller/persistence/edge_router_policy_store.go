@@ -16,6 +16,7 @@ func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
 	return &EdgeRouterPolicy{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
+		Semantic:      SemanticAllOf,
 	}
 }
 
@@ -44,10 +45,6 @@ func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.Type
 }
 
 func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
-	if entity.Semantic == "" {
-		entity.Semantic = SemanticAllOf
-	}
-
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
 		ctx.Bucket.SetError(err)
 	}
@@ -56,14 +53,15 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 		ctx.Bucket.SetError(err)
 	}
 
-	if !isSemanticValid(entity.Semantic) {
-		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
-		return
-	}
-
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldSemantic, entity.Semantic)
+	ctx.SetRequiredString(FieldName, entity.Name)
+	if ctx.ProceedWithSet(FieldSemantic) {
+		if !isSemanticValid(entity.Semantic) {
+			ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
+			return
+		}
+		ctx.SetRequiredString(FieldSemantic, entity.Semantic)
+	}
 
 	edgeRouterPolicyStore := ctx.Store.(*edgeRouterPolicyStoreImpl)
 

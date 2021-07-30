@@ -115,6 +115,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType PolicyType, identityR
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          eid.New(),
 		PolicyType:    policyType,
+		Semantic:      SemanticAnyOf,
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
 	}

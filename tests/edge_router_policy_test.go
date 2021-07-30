@@ -243,7 +243,6 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 
 		t.Run("has  edge router 2 and not 1", func(t *testing.T) {
 			ctx.testContextChanged(t)
-
 			ctx.AdminManagementSession.validateAssociations(policy1, "edge-routers", edgeRouter2)
 		})
 
@@ -315,7 +314,30 @@ func Test_EdgeRouterPolicy(t *testing.T) {
 			ctx.testContextChanged(t)
 			ctx.AdminManagementSession.validateAssociations(identity3, "edge-router-policies", policy1, policy3, policy4, policy6)
 		})
-
 	})
 
+	t.Run("updated policy 1 with put", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		policy1.edgeRouterRoles = s("#" + edgeRouterRole1)
+		policy1.semantic = "AnyOf"
+		ctx.AdminManagementSession.requirePatchEntity(policy1, "edgeRouterRoles", "semantic")
+
+		policy1.edgeRouterRoles = s("#"+edgeRouterRole1, "#"+edgeRouterRole2)
+		ctx.AdminManagementSession.requirePatchEntity(policy1, "edgeRouterRoles")
+
+		t.Run("has edge router 2 and not 1", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.AdminManagementSession.validateAssociations(policy1, "edge-routers", edgeRouter1, edgeRouter2)
+		})
+
+		t.Run("edge router 1 has edge router policies 1, 4 and 6", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.AdminManagementSession.validateAssociations(edgeRouter1, "edge-router-policies", policy1, policy4, policy6)
+		})
+
+		t.Run("edge router 3 retained edge router policies: 3, 4", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.AdminManagementSession.validateAssociations(edgeRouter3, "edge-router-policies", policy3, policy4)
+		})
+	})
 }

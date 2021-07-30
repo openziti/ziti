@@ -186,6 +186,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {
 	policy := &EdgeRouterPolicy{
 		Name:            eid.New(),
+		Semantic:        persistence.SemanticAllOf,
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
@@ -198,6 +199,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeRouterRoles []string) *ServiceEdgeRouterPolicy {
 	policy := &ServiceEdgeRouterPolicy{
 		Name:            eid.New(),
+		Semantic:        persistence.SemanticAllOf,
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}

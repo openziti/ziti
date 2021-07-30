@@ -54,7 +54,8 @@ type ServicePolicyUpdate struct {
 	PostureCheckRoles Roles `json:"postureCheckRoles"`
 
 	// semantic
-	Semantic Semantic `json:"semantic,omitempty"`
+	// Required: true
+	Semantic *Semantic `json:"semantic"`
 
 	// service roles
 	ServiceRoles Roles `json:"serviceRoles"`
@@ -145,15 +146,22 @@ func (m *ServicePolicyUpdate) validatePostureCheckRoles(formats strfmt.Registry)
 }
 
 func (m *ServicePolicyUpdate) validateSemantic(formats strfmt.Registry) error {
-	if swag.IsZero(m.Semantic) { // not required
-		return nil
+
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
+		return err
 	}
 
-	if err := m.Semantic.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
-		}
+	if err := validate.Required("semantic", "body", m.Semantic); err != nil {
 		return err
+	}
+
+	if m.Semantic != nil {
+		if err := m.Semantic.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -273,11 +281,13 @@ func (m *ServicePolicyUpdate) contextValidatePostureCheckRoles(ctx context.Conte
 
 func (m *ServicePolicyUpdate) contextValidateSemantic(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("semantic")
+	if m.Semantic != nil {
+		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("semantic")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil
