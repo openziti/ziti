@@ -31,7 +31,7 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	ch.AddReceiveHandler(newQueuingAckHandler(xlink, self.ctrl, self.forwarder, closeNotify))
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
 	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id(), ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 
 	if trackLatency {
 		go metrics.ProbeLatency(

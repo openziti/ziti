@@ -59,11 +59,16 @@ func (self *listener) acceptLoop() {
 			continue
 		}
 
+		log := pfxlog.ChannelLogger("link", "linkListener").WithField("linkId", ch.Id().Token)
+
 		headers := ch.Underlay().Headers()
 		channelType := byte(0)
+		routerId := ""
 		if headers != nil {
 			if v, ok := headers[LinkHeaderRouterId]; ok {
-				logrus.Infof("accepting link from [r/%s]", string(v))
+				routerId = string(v)
+				log = log.WithField("routerId", routerId)
+				log.Info("accepting link")
 			}
 			if val, ok := headers[LinkHeaderType]; ok {
 				channelType = val[0]
@@ -72,37 +77,43 @@ func (self *listener) acceptLoop() {
 		if channelType != 0 {
 			id, ok := headers[LinkHeaderConnId]
 			if !ok {
-				logrus.Errorf("split conn %v received but missing connection id. closing", ch.Id())
+				log.Error("split conn received but missing connection id. closing")
 				_ = ch.Close()
 				continue
 			}
 
-			logrus.Infof("split conn of type %v for link [l/%s]", channelType, ch.Id().Token)
+			log.Infof("accepted %v part of split conn", channelType)
 
 			event := &newChannelEvent{
 				ch:          ch,
 				channelType: channelType,
 				id:          string(id),
 				eventTime:   time.Now(),
+				routerId:    routerId,
 			}
 			self.eventC <- event
 			continue
 		}
 
-		xlink := &impl{id: ch.Id(), ch: ch}
-		logrus.Infof("accepting link id [l/%s]", xlink.Id().Token)
+		xli := &impl{
+			id:       ch.Id(),
+			ch:       ch,
+			routerId: routerId,
+		}
+
+		log.Info("accepting link")
 
 		if self.chAccepter != nil {
-			if err := self.chAccepter.AcceptChannel(xlink, ch, true); err != nil {
-				logrus.Errorf("error accepting incoming channel (%v)", err)
+			if err := self.chAccepter.AcceptChannel(xli, ch, true); err != nil {
+				log.WithError(err).Error("error accepting incoming channel")
 			}
 		}
 
-		if err := self.accepter.Accept(xlink); err != nil {
-			logrus.Errorf("error accepting incoming Xlink (%v)", err)
+		if err := self.accepter.Accept(xli); err != nil {
+			log.WithError(err).Error("error accepting incoming Xlink")
 		}
 
-		logrus.Infof("accepted link [%s]", "l/"+ch.Id().Token)
+		log.Info("accepted link")
 	}
 }
 
@@ -144,9 +155,14 @@ type newChannelEvent struct {
 	channelType byte
 	id          string
 	eventTime   time.Time
+	routerId    string
 }
 
 func (event *newChannelEvent) handle(l *listener) {
+	log := pfxlog.ChannelLogger("link", "linkListener").
+		WithField("linkId", event.ch.Id().Token).
+		WithField("routerId", event.routerId)
+
 	partner, ok := l.pendingChannels[event.id]
 	if !ok {
 		l.pendingChannels[event.id] = event
@@ -171,34 +187,34 @@ func (event *newChannelEvent) handle(l *listener) {
 	}
 
 	if payloadCh == nil || ackCh == nil {
-		pfxlog.Logger().Errorf("got two link channels, but types aren't correct. %v %v", partner.channelType, event.channelType)
+		log.Errorf("got two link channels, but types aren't correct. %v %v", partner.channelType, event.channelType)
 		return
 	}
 
-	xlink := &splitImpl{
+	xli := &splitImpl{
 		id:        event.ch.Id(),
 		payloadCh: payloadCh,
 		ackCh:     ackCh,
+		routerId:  event.routerId,
 	}
 
-	logrus.Infof("accepting split link with id [l/%s]", xlink.Id().Token)
+	log.Info("accepting split link")
 
 	if l.chAccepter != nil {
-		if err := l.chAccepter.AcceptChannel(xlink, xlink.payloadCh, true); err != nil {
-			logrus.Errorf("error accepting incoming channel (%v)", err)
-			_ = xlink.Close()
+		if err := l.chAccepter.AcceptChannel(xli, xli.payloadCh, true); err != nil {
+			log.WithError(err).Error("error accepting incoming channel")
+			_ = xli.Close()
 		}
 
-		if err := l.chAccepter.AcceptChannel(xlink, xlink.ackCh, true); err != nil {
-			logrus.Errorf("error accepting incoming channel (%v)", err)
-			_ = xlink.Close()
+		if err := l.chAccepter.AcceptChannel(xli, xli.ackCh, true); err != nil {
+			log.WithError(err).Error("error accepting incoming channel")
+			_ = xli.Close()
 		}
 	}
 
-	if err := l.accepter.Accept(xlink); err != nil {
-		logrus.Errorf("error accepting incoming Xlink (%v)", err)
+	if err := l.accepter.Accept(xli); err != nil {
+		log.WithError(err).Error("error accepting incoming Xlink")
 	}
 
-	logrus.Infof("accepted link [%s]", "l/"+xlink.Id().Token)
-
+	log.Info("accepted link")
 }
