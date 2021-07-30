@@ -20,8 +20,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/golang-jwt/jwt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
@@ -264,7 +264,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 
 	claims := &config.EnrollmentClaims{
 		EnrollmentMethod: method,
-		StandardClaims: jwt2.StandardClaims{
+		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: notAfter,
 			Issuer:    fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
 		},

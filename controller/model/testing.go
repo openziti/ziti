@@ -17,7 +17,7 @@
 package model
 
 import (
-	jwt2 "github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
@@ -63,7 +63,7 @@ type TestContext struct {
 
 func (ctx *TestContext) HandleServiceUpdatedEventForIdentityId(identityId string) {}
 
-func (ctx *TestContext) Generate(string, string, jwt2.MapClaims) (string, error) {
+func (ctx *TestContext) Generate(string, string, jwt.MapClaims) (string, error) {
 	return "I'm a very legitimate claim", nil
 }
 
