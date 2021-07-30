@@ -97,6 +97,8 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 	cmd.AddCommand(NewCmdPsPprofCpu(f, out, errOut))
 	cmd.AddCommand(NewCmdPsTrace(f, out, errOut))
 	cmd.AddCommand(NewCmdPsSetLogLevel(f, out, errOut))
+	cmd.AddCommand(NewCmdPsSetChannelLogLevel(f, out, errOut))
+	cmd.AddCommand(NewCmdPsClearChannelLogLevel(f, out, errOut))
 
 	routerCmd.AddCommand(NewCmdPsRoute(f, out, errOut))
 	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-routes", router.DumpForwarderTables, f, out, errOut))
