@@ -32,7 +32,9 @@ import (
 )
 
 func init() {
-	pfxlog.GlobalInit(logrus.InfoLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").NoColor())
+	options := pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").NoColor()
+	pfxlog.GlobalInit(logrus.InfoLevel, options)
+
 	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
