@@ -16464,7 +16464,8 @@ func init() {
     },
     "edgeRouterPolicyCreate": {
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -16554,7 +16555,8 @@ func init() {
     },
     "edgeRouterPolicyUpdate": {
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -19275,7 +19277,8 @@ func init() {
     "serviceEdgeRouterPolicyCreate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -19363,7 +19366,8 @@ func init() {
     "serviceEdgeRouterPolicyUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -19422,7 +19426,8 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type"
+        "type",
+        "semantic"
       ],
       "properties": {
         "identityRoles": {
@@ -19535,7 +19540,8 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type"
+        "type",
+        "semantic"
       ],
       "properties": {
         "identityRoles": {
@@ -36511,7 +36517,8 @@ func init() {
     },
     "edgeRouterPolicyCreate": {
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -36601,7 +36608,8 @@ func init() {
     },
     "edgeRouterPolicyUpdate": {
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -39322,7 +39330,8 @@ func init() {
     "serviceEdgeRouterPolicyCreate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -39410,7 +39419,8 @@ func init() {
     "serviceEdgeRouterPolicyUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "semantic"
       ],
       "properties": {
         "edgeRouterRoles": {
@@ -39469,7 +39479,8 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type"
+        "type",
+        "semantic"
       ],
       "properties": {
         "identityRoles": {
@@ -39582,7 +39593,8 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "type"
+        "type",
+        "semantic"
       ],
       "properties": {
         "identityRoles": {

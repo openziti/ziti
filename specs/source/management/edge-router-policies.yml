@@ -164,7 +164,7 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
-          
+
 responses:
   listEdgeRouterPolicies:
     description: A list of edge router policies
@@ -199,6 +199,7 @@ definitions:
   edgeRouterPolicyCreate:
     required:
       - name
+      - semantic
     properties:
       name:
         type: string
@@ -213,6 +214,7 @@ definitions:
   edgeRouterPolicyUpdate:
     required:
       - name
+      - semantic
     properties:
       name:
         type: string

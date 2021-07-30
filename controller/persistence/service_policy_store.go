@@ -48,6 +48,7 @@ func newServicePolicy(name string) *ServicePolicy {
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Name:          name,
 		PolicyType:    policyType,
+		Semantic:      SemanticAllOf,
 	}
 }
 
@@ -80,10 +81,6 @@ func (entity *ServicePolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 }
 
 func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
-	if entity.Semantic == "" {
-		entity.Semantic = SemanticAllOf
-	}
-
 	if ctx.ProceedWithSet(FieldServicePolicyType) {
 		if entity.PolicyType != PolicyTypeBind && entity.PolicyType != PolicyTypeDial {
 			ctx.Bucket.SetError(errorz.NewFieldError("invalid policy type", FieldServicePolicyType, entity.PolicyType))
@@ -113,9 +110,9 @@ func (entity *ServicePolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
+	ctx.SetRequiredString(FieldName, entity.Name)
 	ctx.SetInt32(FieldServicePolicyType, int32(entity.PolicyType))
-	ctx.SetString(FieldSemantic, entity.Semantic)
+	ctx.SetRequiredString(FieldSemantic, entity.Semantic)
 	servicePolicyStore := ctx.Store.(*servicePolicyStoreImpl)
 
 	sort.Strings(entity.ServiceRoles)

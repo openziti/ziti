@@ -85,5 +85,4 @@ func toStringInterfaceMap(m map[string]string) map[string]interface{} {
 
 type Policy interface {
 	boltz.NamedExtEntity
-	GetSemantic() string
 }

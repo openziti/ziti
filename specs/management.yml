@@ -11866,6 +11866,7 @@ definitions:
   edgeRouterPolicyCreate:
     required:
     - name
+    - semantic
     properties:
       edgeRouterRoles:
         $ref: '#/definitions/roles'
@@ -11924,6 +11925,7 @@ definitions:
   edgeRouterPolicyUpdate:
     required:
     - name
+    - semantic
     properties:
       edgeRouterRoles:
         $ref: '#/definitions/roles'
@@ -13674,6 +13676,7 @@ definitions:
     type: object
     required:
     - name
+    - semantic
     properties:
       edgeRouterRoles:
         $ref: '#/definitions/roles'
@@ -13731,6 +13734,7 @@ definitions:
     type: object
     required:
     - name
+    - semantic
     properties:
       edgeRouterRoles:
         $ref: '#/definitions/roles'
@@ -13770,6 +13774,7 @@ definitions:
     required:
     - name
     - type
+    - semantic
     properties:
       identityRoles:
         $ref: '#/definitions/roles'
@@ -13845,6 +13850,7 @@ definitions:
     required:
     - name
     - type
+    - semantic
     properties:
       identityRoles:
         $ref: '#/definitions/roles'

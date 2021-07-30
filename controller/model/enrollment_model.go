@@ -18,7 +18,7 @@ package model
 
 import (
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"

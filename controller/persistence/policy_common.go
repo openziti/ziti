@@ -9,6 +9,7 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -147,13 +148,29 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 
 func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol) {
 	policyId := []byte(policy.GetId())
+	_, semanticB := ctx.rolesSymbol.GetStore().GetSymbol(FieldSemantic).Eval(ctx.tx, policyId)
+	semantic := string(semanticB)
+	if !isSemanticValid(semantic) {
+		ctx.SetError(errors.Errorf("unable to get valid semantic for %v with %v, value found: %v",
+			ctx.rolesSymbol.GetStore().GetSingularEntityType(), policy.GetId(), semantic))
+	}
+
+	log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
+		WithFields(logrus.Fields{
+			"id":       policyId,
+			"semantic": semantic,
+			"symbol":   ctx.rolesSymbol.GetName(),
+		})
 
 	roleSet := ctx.rolesSymbol.EvalStringList(ctx.tx, policyId)
 	roles, ids, err := splitRolesAndIds(roleSet)
+	log.Tracef("roleSet: %v", roleSet)
 	if err != nil {
 		ctx.SetError(err)
 		return
 	}
+	log.Tracef("roles: %v", roles)
+	log.Tracef("ids: %v", ids)
 
 	if err := validateEntityIds(ctx.tx, ctx.linkCollection.GetLinkedSymbol().GetStore(), ctx.rolesSymbol.GetName(), ids); err != nil {
 		ctx.SetError(err)
@@ -164,7 +181,8 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	for ; cursor.IsValid(); cursor.Next() {
 		entityId := cursor.Current()
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx, entityId)
-		evaluatePolicyAgainstEntity(ctx, policy.GetSemantic(), entityId, policyId, ids, roles, entityRoleAttributes)
+		match, change := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes)
+		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, change)
 	}
 }
 
@@ -203,49 +221,65 @@ func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRol
 	}
 }
 
-func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string) {
+func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string) (bool, bool) {
 	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, "all") ||
 		(strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(roleAttributes, roles...)) ||
 		(strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(roleAttributes, roles...)) {
-		ProcessEntityPolicyMatched(ctx, entityId, policyId)
+		return true, ProcessEntityPolicyMatched(ctx, entityId, policyId)
 	} else {
-		ProcessEntityPolicyUnmatched(ctx, entityId, policyId)
+		return false, ProcessEntityPolicyUnmatched(ctx, entityId, policyId)
 	}
 }
 
-func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) {
+func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) bool {
+	// first add it to the denormalize link table from the policy to the entity (ex: service policy -> identity)
+	// If it's already there (in other words, this policy didn't change in relation to the entity,
+	// we don't have any further work to do
 	if added, err := ctx.linkCollection.AddLink(ctx.tx, policyId, entityId); ctx.SetError(err) || !added {
-		return
+		return false
 	}
+
+	// next iterate over the denormalized link tables going from entity to entity (ex: service -> identity)
+	// If we were added to a policy, we need to update all the link tables for all the entities on the
+	// other side of the policy. If we're the first link, we get added to the link table, otherwise we
+	// increment the count of policies linking these entities
 	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx, policyId)
 	for ; cursor.IsValid(); cursor.Next() {
 		relatedEntityId := cursor.Current()
 		newCount, err := ctx.denormLinkCollection.IncrementLinkCount(ctx.tx, entityId, relatedEntityId)
 		if ctx.SetError(err) {
-			return
+			return false
 		}
 		if ctx.changeHandler != nil && newCount == 1 {
 			ctx.changeHandler(entityId, relatedEntityId, true)
 		}
 	}
+	return true
 }
 
-func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) {
+func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, policyId []byte) bool {
+	// first remove it from the denormalize link table from the policy to the entity (ex: service policy -> identity)
+	// If wasn't there (in other words, this policy didn't change in relation to the entity, we don't have any further work to do
 	if removed, err := ctx.linkCollection.RemoveLink(ctx.tx, policyId, entityId); ctx.SetError(err) || !removed {
-		return
+		return false
 	}
 
+	// next iterate over the denormalized link tables going from entity to entity (ex: service -> identity)
+	// If we were remove from a policy, we need to update all the link tables for all the entities on the
+	// other side of the policy. If we're the last link, we get removed from the link table, otherwise we
+	// decrement the count of policies linking these entities
 	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx, policyId)
 	for ; cursor.IsValid(); cursor.Next() {
 		relatedEntityId := cursor.Current()
 		newCount, err := ctx.denormLinkCollection.DecrementLinkCount(ctx.tx, entityId, relatedEntityId)
 		if ctx.SetError(err) {
-			return
+			return false
 		}
 		if ctx.changeHandler != nil && newCount == 0 {
 			ctx.changeHandler(entityId, relatedEntityId, false)
 		}
 	}
+	return true
 }
 
 type denormCheckCtx struct {

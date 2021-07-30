@@ -227,6 +227,7 @@ definitions:
     type: object
     required:
       - name
+      - semantic
     properties:
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
@@ -242,6 +243,7 @@ definitions:
     type: object
     required:
       - name
+      - semantic
     properties:
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'

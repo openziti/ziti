@@ -51,13 +51,18 @@ func (factory *ServicePolicyLinkFactoryImpl) Links(entity models.Entity) rest_mo
 }
 
 func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *model.ServicePolicy {
+	semantic := ""
+	if policy.Semantic != nil {
+		semantic = string(*policy.Semantic)
+	}
+
 	ret := &model.ServicePolicy{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(policy.Tags),
 		},
 		Name:              stringz.OrEmpty(policy.Name),
 		PolicyType:        string(*policy.Type),
-		Semantic:          string(policy.Semantic),
+		Semantic:          semantic,
 		ServiceRoles:      policy.ServiceRoles,
 		IdentityRoles:     policy.IdentityRoles,
 		PostureCheckRoles: policy.PostureCheckRoles,
@@ -67,6 +72,11 @@ func MapCreateServicePolicyToModel(policy *rest_model.ServicePolicyCreate) *mode
 }
 
 func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUpdate) *model.ServicePolicy {
+	semantic := ""
+	if policy.Semantic != nil {
+		semantic = string(*policy.Semantic)
+	}
+
 	ret := &model.ServicePolicy{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(policy.Tags),
@@ -74,7 +84,7 @@ func MapUpdateServicePolicyToModel(id string, policy *rest_model.ServicePolicyUp
 		},
 		Name:              stringz.OrEmpty(policy.Name),
 		PolicyType:        string(*policy.Type),
-		Semantic:          string(policy.Semantic),
+		Semantic:          semantic,
 		ServiceRoles:      policy.ServiceRoles,
 		IdentityRoles:     policy.IdentityRoles,
 		PostureCheckRoles: policy.PostureCheckRoles,

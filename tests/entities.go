@@ -399,7 +399,7 @@ func (entity *edgeRouter) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
+func newEdgeRouterPolicy(semantic string, edgeRouterRoles, identityRoles []string) *edgeRouterPolicy {
 	return &edgeRouterPolicy{
 		name:            eid.New(),
 		semantic:        semantic,
@@ -411,7 +411,7 @@ func newEdgeRouterPolicy(semantic *string, edgeRouterRoles, identityRoles []stri
 type edgeRouterPolicy struct {
 	id              string
 	name            string
-	semantic        *string
+	semantic        string
 	edgeRouterRoles []string
 	identityRoles   []string
 	tags            map[string]interface{}
@@ -429,26 +429,21 @@ func (entity *edgeRouterPolicy) getEntityType() string {
 	return "edge-router-policies"
 }
 
-func (entity *edgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
+func (entity *edgeRouterPolicy) toJson(_ bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
-	ctx.setJsonValue(entityData, entity.name, "name")
-	if entity.semantic != nil {
-		ctx.setJsonValue(entityData, *entity.semantic, "semantic")
-	}
-	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
-	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
+	ctx.setValue(entityData, entity.name, fields, "name")
+	ctx.setValue(entityData, entity.semantic, fields, "semantic")
+	ctx.setValue(entityData, entity.edgeRouterRoles, fields, "edgeRouterRoles")
+	ctx.setValue(entityData, entity.identityRoles, fields, "identityRoles")
+	ctx.setValue(entityData, entity.tags, fields, "tags")
 
-	if len(entity.tags) > 0 {
-		ctx.setJsonValue(entityData, entity.tags, "tags")
-	}
 	return entityData.String()
 }
 
 func (entity *edgeRouterPolicy) fromJson(ctx *TestContext, c *gabs.Container) {
 	entity.id = ctx.requireString(c, "id")
 	entity.name = ctx.requireString(c, "name")
-	semantic := ctx.requireString(c, "semantic")
-	entity.semantic = &semantic
+	entity.semantic = ctx.requireString(c, "semantic")
 	entity.edgeRouterRoles = ctx.requireStringSlice(c, "edgeRouterRoles")
 	entity.identityRoles = ctx.requireStringSlice(c, "identityRoles")
 }
@@ -457,12 +452,8 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
-	if entity.semantic == nil {
-		t := "AllOf"
-		entity.semantic = &t
-	}
 	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, *entity.semantic, path("semantic"))
+	ctx.pathEquals(c, entity.semantic, path("semantic"))
 	sort.Strings(entity.edgeRouterRoles)
 	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
 	sort.Strings(entity.identityRoles)
@@ -470,7 +461,7 @@ func (entity *edgeRouterPolicy) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newServiceEdgeRouterPolicy(semantic *string, edgeRouterRoles, serviceRoles []string) *serviceEdgeRouterPolicy {
+func newServiceEdgeRouterPolicy(semantic string, edgeRouterRoles, serviceRoles []string) *serviceEdgeRouterPolicy {
 	return &serviceEdgeRouterPolicy{
 		name:            eid.New(),
 		semantic:        semantic,
@@ -482,7 +473,7 @@ func newServiceEdgeRouterPolicy(semantic *string, edgeRouterRoles, serviceRoles 
 type serviceEdgeRouterPolicy struct {
 	id              string
 	name            string
-	semantic        *string
+	semantic        string
 	edgeRouterRoles []string
 	serviceRoles    []string
 	tags            map[string]interface{}
@@ -503,9 +494,7 @@ func (entity *serviceEdgeRouterPolicy) getEntityType() string {
 func (entity *serviceEdgeRouterPolicy) toJson(_ bool, ctx *TestContext, _ ...string) string {
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
-	if entity.semantic != nil {
-		ctx.setJsonValue(entityData, *entity.semantic, "semantic")
-	}
+	ctx.setJsonValue(entityData, entity.semantic, "semantic")
 	ctx.setJsonValue(entityData, entity.edgeRouterRoles, "edgeRouterRoles")
 	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
 
@@ -519,12 +508,8 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
-	if entity.semantic == nil {
-		t := "AllOf"
-		entity.semantic = &t
-	}
 	ctx.pathEquals(c, entity.name, path("name"))
-	ctx.pathEquals(c, *entity.semantic, path("semantic"))
+	ctx.pathEquals(c, entity.semantic, path("semantic"))
 	sort.Strings(entity.edgeRouterRoles)
 	ctx.pathEqualsStringSlice(c, entity.edgeRouterRoles, path("edgeRouterRoles"))
 	sort.Strings(entity.serviceRoles)
@@ -532,7 +517,7 @@ func (entity *serviceEdgeRouterPolicy) validate(ctx *TestContext, c *gabs.Contai
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func newServicePolicy(policyType string, semantic *string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
+func newServicePolicy(policyType string, semantic string, serviceRoles, identityRoles, postureCheckRoles []string) *servicePolicy {
 	return &servicePolicy{
 		name:              eid.New(),
 		policyType:        policyType,
@@ -547,7 +532,7 @@ type servicePolicy struct {
 	id                string
 	name              string
 	policyType        string
-	semantic          *string
+	semantic          string
 	identityRoles     []string
 	serviceRoles      []string
 	tags              map[string]interface{}
@@ -570,9 +555,7 @@ func (entity *servicePolicy) toJson(_ bool, ctx *TestContext, _ ...string) strin
 	entityData := gabs.New()
 	ctx.setJsonValue(entityData, entity.name, "name")
 	ctx.setJsonValue(entityData, entity.policyType, "type")
-	if entity.semantic != nil {
-		ctx.setJsonValue(entityData, entity.semantic, "semantic")
-	}
+	ctx.setJsonValue(entityData, entity.semantic, "semantic")
 	ctx.setJsonValue(entityData, entity.identityRoles, "identityRoles")
 	ctx.setJsonValue(entityData, entity.serviceRoles, "serviceRoles")
 	ctx.setJsonValue(entityData, entity.postureCheckRoles, "postureCheckRoles")
@@ -587,13 +570,9 @@ func (entity *servicePolicy) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
-	if entity.semantic == nil {
-		t := "AllOf"
-		entity.semantic = &t
-	}
 	ctx.pathEquals(c, entity.name, path("name"))
 	ctx.pathEquals(c, entity.policyType, path("type"))
-	ctx.pathEquals(c, *entity.semantic, path("semantic"))
+	ctx.pathEquals(c, entity.semantic, path("semantic"))
 	sort.Strings(entity.identityRoles)
 	ctx.pathEqualsStringSlice(c, entity.identityRoles, path("identityRoles"))
 	sort.Strings(entity.serviceRoles)
