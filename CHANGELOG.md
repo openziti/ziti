@@ -2,7 +2,12 @@
 
 ## What's New
 
+* Bug fix: Using PUT for policies without including the semantic would cause them to be evaluated using the AllOf semantic
 * Feature: Ziti CLI now supports a comprehensive set of `ca` and `cas` options
+* Feature: ziti ps now supports `set-channel-log-level` and `clear-channel-log-level` operations
+
+** Semantic now Required for policies (POTENTIALLY BREAKING CHANGE)
+Previouxly semantic was optional when creating or updating policies (POST or PUT), defaulting to `AllOf` when not specified. It is now required.
 
 # Release 0.20.14
 
