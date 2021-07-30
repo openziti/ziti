@@ -43,6 +43,7 @@ func (handler *PostureResponseHandler) Create(identityId string, postureResponse
 	handler.postureCache.Add(identityId, postureResponses)
 }
 
+// SetMfaPosture sets the MFA passing status a specific API Session owned by an identity
 func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessionId string, isPassed bool) {
 	postureResponse := &PostureResponse{
 		PostureCheckId: MfaProviderZiti,
@@ -51,9 +52,15 @@ func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessi
 		LastUpdatedAt:  time.Now().UTC(),
 	}
 
+	var passedAt *time.Time = nil
+
+	if isPassed {
+		passedAt = &postureResponse.LastUpdatedAt
+	}
+
 	postureSubType := &PostureResponseMfa{
 		ApiSessionId: apiSessionId,
-		PassedMfaAt:  &postureResponse.LastUpdatedAt,
+		PassedMfaAt:  passedAt,
 	}
 
 	postureResponse.SubType = postureSubType
@@ -62,6 +69,7 @@ func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessi
 	handler.Create(identityId, []*PostureResponse{postureResponse})
 }
 
+// SetMfaPostureForIdentity sets the MFA passing status for all API Sessions associated to an identity
 func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId string, isPassed bool) {
 	postureResponse := &PostureResponse{
 		PostureCheckId: MfaProviderZiti,
@@ -70,15 +78,26 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		LastUpdatedAt:  time.Now().UTC(),
 	}
 
-	pd := handler.postureCache.PostureData(identityId)
-
 	var passedAt *time.Time = nil
 
 	if isPassed {
 		passedAt = &postureResponse.LastUpdatedAt
 	}
 
-	if pd != nil {
+	handler.postureCache.Upsert(identityId, true, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		var pd *PostureData
+
+		if exist {
+			pd = valueInMap.(*PostureData)
+		} else {
+			pd = newValue.(*PostureData)
+		}
+
+		if pd == nil {
+			pfxlog.Logger().Errorf("attempting to set MFA status for identity [%s] but existing/new values was not posture data: existing [%v] new [%v]", identityId, valueInMap, newValue)
+			pd = newPostureData()
+		}
+
 		for apiSessionId, _ := range pd.ApiSessions {
 			postureSubType := &PostureResponseMfa{
 				ApiSessionId: apiSessionId,
@@ -88,9 +107,10 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 			postureResponse.SubType = postureSubType
 			postureSubType.PostureResponse = postureResponse
 
-			handler.Create(identityId, []*PostureResponse{postureResponse})
+			postureResponse.Apply(pd)
 		}
-	}
+		return pd
+	})
 }
 
 func (handler *PostureResponseHandler) AddPostureDataListener(cb func(env Env, identityId string)) {
