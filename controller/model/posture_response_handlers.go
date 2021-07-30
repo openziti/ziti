@@ -94,7 +94,7 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		}
 
 		if pd == nil {
-			pfxlog.Logger().Error("attempting to set MFA status for identity [%s] but existing/new values was not posture data: existing [%v] new [%v]", identityId, valueInMap, newValue)
+			pfxlog.Logger().Errorf("attempting to set MFA status for identity [%s] but existing/new values was not posture data: existing [%v] new [%v]", identityId, valueInMap, newValue)
 			pd = newPostureData()
 		}
 
