@@ -104,7 +104,7 @@ func newUpdateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	cmd.Flags().BoolVarP(&options.authEnabled, "auth", "e", false, "Whether the CA can be used for authentication or not")
 	cmd.Flags().BoolVarP(&options.ottCaEnrollment, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
-	cmd.Flags().StringSliceVarP(&options.identityAttributes, "identity-attributes", "i", nil, "The roles to give to identities enrolled via the CA")
+	cmd.Flags().StringSliceVarP(&options.identityAttributes, "identity-attributes", "a", nil, "The roles to give to identities enrolled via the CA")
 	cmd.Flags().StringVarP(&options.identityNameFormat, "identity-name-format", "f", "", "The naming format to use for identities enrolling via the CA")
 	options.AddCommonFlags(cmd)
 	return cmd

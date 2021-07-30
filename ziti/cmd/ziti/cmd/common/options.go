@@ -36,6 +36,7 @@ type CommonOptions struct {
 	Staging        bool
 	ConfigIdentity string
 	Timeout        int
+	Identity       string
 }
 
 func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelFunc) {

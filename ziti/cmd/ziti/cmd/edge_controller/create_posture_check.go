@@ -785,7 +785,7 @@ func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 	cmd.Flags().IntVarP(&options.timeoutSeconds, "seconds", "s", -1, "Seconds an MFA posture check allows before an additional MFA code must be submitted")
 	cmd.Flags().BoolVarP(&options.promptOnWake, "wake", "w", false, "Prompt for MFA code on endpoint wake")
 	cmd.Flags().BoolVarP(&options.promptOnUnlock, "unlock", "u", false, "Prompt for MFA code on endpoint unlock")
-	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "ignore-legacy", "i", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
+	cmd.Flags().BoolVar(&options.ignoreLegacyEndpoints, "ignore-legacy", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
 	options.addPostureFlags(cmd)
 
 	return cmd
