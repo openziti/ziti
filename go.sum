@@ -127,6 +127,7 @@ github.com/cheekybits/genny v1.0.0/go.mod h1:+tQajlRqAUrPI7DOSpB0XAqZYtQakVtB7wX
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
+github.com/cilium/ebpf v0.5.0 h1:E1KshmrMEtkMP2UjlWzfmUV1owWY+BnbL5FxxuatnrU=
 github.com/cilium/ebpf v0.5.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudflare/cloudflare-go v0.13.2/go.mod h1:27kfc1apuifUmJhp069y0+hwlKDg4bd8LWlu7oKeZvM=
@@ -186,10 +187,7 @@ github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI
 github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8vw=
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
 github.com/francoispqt/gojay v1.2.13/go.mod h1:ehT5mTG4ua4581f1++1WLG0vPdaA9HaiDsoyrBGkyDY=
-<<<<<<< HEAD
 github.com/frankban/quicktest v1.11.3 h1:8sXhOn0uLys67V8EsXLc6eszDs8VXWxL3iRvebPhedY=
-=======
->>>>>>> origin/release-next
 github.com/frankban/quicktest v1.11.3/go.mod h1:wRf/ReqHper53s+kmmSZizM8NamnL3IM0I9ntUbOk+k=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=
@@ -535,6 +533,7 @@ github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pretty v0.2.0/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
+github.com/kr/pretty v0.2.1 h1:Fmg33tUaq4/8ym9TJN1x7sLJnHVwhP33CNkpYV/7rwI=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/pty v1.1.3/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
@@ -683,11 +682,14 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge v0.20.2 h1:ZjkLOV12uzj+SE/0chzeRAIJtDbjqn0HeD4X5EJCly8=
 github.com/openziti/edge v0.20.2/go.mod h1:GSg6dhOBVfToZcn8RJbGyVdi9UJaxEiza5bLqVFxkjo=
+github.com/openziti/edge v0.20.4-0.20210802163913-d669ab81d7d1 h1:LBYXOPs4N5TFur+kh9bfYNl3XMYjJVZJLPoA66Wesmc=
+github.com/openziti/edge v0.20.4-0.20210802163913-d669ab81d7d1/go.mod h1:sOaPhWD3m5+L0fSOSsbdhDtIqCbN203UMawV3AICxMs=
 github.com/openziti/fabric v0.16.81/go.mod h1:2Y6bOG67R9n9XTvnIFz8A+oc+9pX+h6pDmbDZKot1Hk=
 github.com/openziti/fabric v0.16.82 h1:G0w+kcBICCaPCS0VcDKpoZpqB4i8xHdqAQ7/nCdf/6M=
 github.com/openziti/fabric v0.16.82/go.mod h1:2Y6bOG67R9n9XTvnIFz8A+oc+9pX+h6pDmbDZKot1Hk=
-github.com/openziti/foundation v0.15.65 h1:s8xOYQ271uN+G+PHWXhZ9jOFoqrkeWyB3fY1uxE/OYA=
 github.com/openziti/foundation v0.15.65/go.mod h1:ksnMJvct0z7WtQk2fdz00vDUfN4SuDEbxgOvIiHysI8=
+github.com/openziti/foundation v0.15.66-0.20210802163448-bf65cc329e16 h1:Vbul4qg4rrTy/hGx/kzoUyTzQ7oML9ou5MaAV1LCYjk=
+github.com/openziti/foundation v0.15.66-0.20210802163448-bf65cc329e16/go.mod h1:ksnMJvct0z7WtQk2fdz00vDUfN4SuDEbxgOvIiHysI8=
 github.com/openziti/sdk-golang v0.15.71/go.mod h1:qdGTdtVUHQG08gBk9u9YySM76IXXHrOfAFlIPmkul6M=
 github.com/openziti/sdk-golang v0.15.72 h1:PLTeCvfslbQ5aWX8t6H2Wt37TfK8ucGZdv0lGjdam2I=
 github.com/openziti/sdk-golang v0.15.72/go.mod h1:qdGTdtVUHQG08gBk9u9YySM76IXXHrOfAFlIPmkul6M=
