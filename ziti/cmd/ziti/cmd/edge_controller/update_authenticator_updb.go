@@ -136,7 +136,7 @@ func setIdentityPassword(identity, password string, options edgeOptions) error {
 		return err
 	}
 
-	client, err := util.DefaultEdgeManagementClient()
+	client, err := util.NewEdgeManagementClient(&options)
 
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func setIdentityPassword(identity, password string, options edgeOptions) error {
 	}, nil)
 
 	if err != nil {
-		return err
+		return util.WrapIfApiError(err)
 	}
 
 	if len(result.Payload.Data) != 1 {

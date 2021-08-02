@@ -42,6 +42,21 @@ type edgeOptions struct {
 	OutputJSONResponse bool
 }
 
+func (options *edgeOptions) OutputRequestJson() bool {
+	return options.OutputJSONRequest
+}
+
+func (options *edgeOptions) OutputResponseJson() bool {
+	return options.OutputJSONResponse
+}
+
+func (options *edgeOptions) OutputWriter() io.Writer {
+	return options.CommonOptions.Out
+}
+
+func (options *edgeOptions) ErrOutputWriter() io.Writer {
+	return options.CommonOptions.Err
+}
 func (options *edgeOptions) AddCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")

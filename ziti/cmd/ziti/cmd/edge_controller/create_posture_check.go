@@ -476,7 +476,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 }
 
 func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOptions) error {
-	managementClient, err := util.DefaultEdgeManagementClient()
+	managementClient, err := util.NewEdgeManagementClient(options)
 
 	if err != nil {
 		return err
@@ -516,7 +516,7 @@ func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOp
 	resp, err := managementClient.PostureChecks.CreatePostureCheck(params, nil)
 
 	if err != nil {
-		panic(err)
+		return util.WrapIfApiError(err)
 	}
 
 	checkId := resp.GetPayload().Data.ID

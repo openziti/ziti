@@ -64,7 +64,7 @@ func newCreateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the new service policy")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the new service policy")
-	cmd.Flags().StringVar(&options.semantic, "semantic", "", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
+	cmd.Flags().StringVar(&options.semantic, "semantic", "AllOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture check roles of the new service policy")
 	options.AddCommonFlags(cmd)
 
