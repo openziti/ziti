@@ -35,6 +35,10 @@ type mirrorLink struct {
 	acks chan *xgress.Acknowledgement
 }
 
+func (link *mirrorLink) DestinationId() string {
+	return "test"
+}
+
 func (link *mirrorLink) Id() *identity.TokenId {
 	return &identity.TokenId{Token: "router1"}
 }

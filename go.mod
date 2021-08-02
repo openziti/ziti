@@ -42,7 +42,7 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.16.81
+	github.com/openziti/fabric v0.16.82
 	github.com/openziti/foundation v0.15.65
 	github.com/openziti/sdk-golang v0.15.73
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
