@@ -79,11 +79,11 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 	var lastUpdate time.Time
 	if val, found := self.appEnv.IdentityRefreshMap.Get(ctx.identity.Id); found {
 		lastUpdate = val.(time.Time)
-	} else if lastUpdate.Before(self.appEnv.StartupTime) {
+	} else {
 		lastUpdate = self.appEnv.StartupTime
 	}
 
-	if !ctx.lastUpdate.IsZero() && !ctx.lastUpdate.Before(lastUpdate) {
+	if lastUpdate.Before(ctx.lastUpdate) {
 		logger.Debug("service list requested, but no update available")
 		return
 	}
