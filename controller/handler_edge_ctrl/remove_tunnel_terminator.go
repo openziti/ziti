@@ -73,7 +73,7 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 		return
 	}
 
-	logrus.Info("removed terminator")
+	logger.Info("removed terminator")
 
 	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType), nil)
 	responseMsg.ReplyTo(ctx.msg)
