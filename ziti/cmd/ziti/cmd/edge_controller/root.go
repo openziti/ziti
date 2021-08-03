@@ -57,7 +57,7 @@ func (options *edgeOptions) ErrOutputWriter() io.Writer {
 	return options.CommonOptions.Err
 }
 func (options *edgeOptions) AddCommonFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&options.Identity, "cli-identity", "i", "default", "Specify the saved identity you want the CLI to use when connect to the controller with")
+	cmd.Flags().StringVarP(&common.CliIdentity, "cli-identity", "i", "", "Specify the saved identity you want the CLI to use when connect to the controller with")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
 	cmd.Flags().IntVarP(&options.Timeout, "timeout", "", 5, "Timeout for REST operations (specified in seconds)")
@@ -68,6 +68,8 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newCreateCmd(f, out, errOut))
 	cmd.AddCommand(newDeleteCmd(f, out, errOut))
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
+	cmd.AddCommand(newLogoutCmd(f, out, errOut))
+	cmd.AddCommand(newUseCmd(f, out, errOut))
 	cmd.AddCommand(newListCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
 	cmd.AddCommand(newVersionCmd(f, out, errOut))

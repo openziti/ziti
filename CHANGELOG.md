@@ -3,11 +3,35 @@
 ## Breaking Changes
 Fabric sessions renamed to circuits. See below for details.
 
+Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. 
+Any command line argumet which previously had a `-i` short version now only has a long version.
+
+For consistency, policy roles parameters must all be specified in long form
+
+This includes the following flags:
+* ziti edge create edge-router-policy --identity-roles --edge-router-roles
+* ziti edge update edge-router-policy --identity-roles --edge-router-roles
+* ziti edge create service-policy --identity-roles --service-roles
+* ziti edge update service-policy --identity-roles --service-roles
+* ziti edge create service-edge-router-policy --service-roles --edge-router-roles
+* ziti edge update service-edge-router-policy --service-roles --edge-router-roles
+* ziti edge create posture-check mfa --ignore-legacy
+* ziti edge update posture-check mfa --ignore-legacy
+* ziti edge update authenticator updb --identity 
+* ziti egde update ca --identity-atributes (now -a)
+
+The `ziti edge` commands now store session credentials in a new location and new format. Existing sessions will be ignored.
+
+The `ziti edge controller` command was previously deprecated and has now been removed. All commands that were previously available 
+under `ziti edge controller` are available under `ziti edge`.
+
 # What's New
 
 * Refactor: Fabric Sessions renamed to Circuits
 * Feature: Links will now wait for a timeout for retrying 
 * Bug fix: Sessions created on the controller when circuit creation fails are now cleaned up
+* Feature: Enhanced `ziti` CLI login functionality
+* Feature: new `ziti edge list summary` command, which shows database entity counts
 
 ## Fabric Sessions renamed to Circuits
 Previously we had three separate entities named session: fabric sessions, edge sessions and edge API sessions. In order to reduce confusion, fabric sessions
@@ -31,6 +55,111 @@ If lots of routers connected at the same time, we might create duplicate links b
 Now we'll checking for links in Pending state, and if they haven't hit a configurable timeout, we won't create another link.
 
 The new config property is `pendingLinkTimeoutSeconds` in the controller config file under `network`, and defaults to 10 seconds.
+
+## Enhanced CLI Login Functionality
+### Server Trust
+#### Untrusted Servers
+If you don't provide a certificates file when logging in, the server's well known certificates will now be pulled from the server and you will be prompted if you want to use them. 
+If certs for the host have previously been retrieved they will be used. Certs stored locally will be checked against the certs on the server when logging in. 
+If a difference is found, the user will be notified and asked if they want to update the local certificate cache.
+
+If you provide certificates during login, the server's certificates will not be checked or downloaded. Locally cached certificates for that host will not be used.
+
+#### Trusted Servers
+If working with a server which is using certs that your OS already recognizes, nothing will change. No cert needs to be provided and the server's well known certs will not be downloaded.
+
+### Identities
+The Ziti CLI now suports multiple identities. An identity can be specified using `--cli-identity` or `-i`. 
+
+Example commands:
+```
+$ ziti edge login -i dev localhost:1280
+Enter username: admin
+Enter password: 
+Token: 76ff81b4-b528-4e2c-ad73-dcb0a39b6489
+Saving identity 'dev' to ~/.config/ziti/ziti-cli.json
+
+$ ziti edge -i dev list services
+id: -JucPW0kGR    name: ssh    encryption required: true    terminator strategy: smartrouting    role attributes: ["ssh"]
+results: 1-1 of 1
+```
+
+If no identity is specified, a default will be used. The default identity is `default`. 
+
+#### Switching Default Identity
+The default identity can be changed with the `ziti edge use` command.
+
+The above example could also be accomplished as follows:
+```
+$ ziti edge use dev
+Settting identity 'dev' as default in ~/.config/ziti/ziti-cli.json
+
+$ ziti edge login localhost:1280
+Enter username: admin
+Enter password: 
+Token: e325d91c-a452-4454-a733-cfad88bfa356
+Saving identity 'dev' to ~/.config/ziti/ziti-cli.json
+
+$ ziti edge list services
+id: -JucPW0kGR    name: ssh    encryption required: true    terminator strategy: smartrouting    role attributes: ["ssh"]
+results: 1-1 of 1
+
+$ ziti edge use default
+Settting identity 'default' as default in ~/.config/ziti/ziti-cli.json
+```
+
+`ziti edge use` without an argument will list logins you have made.
+
+```
+$ ziti edge use
+id:      default | current:  true | read-only:  true | urL: https://localhost:1280/edge/management/v1
+id:        cust1 | current: false | read-only: false | urL: https://customer1.com:443/edge/management/v1
+```
+
+#### Logout
+You can now also clear locally stored credentials using `ziti edge logout`
+
+```
+$ ziti edge -i cust1 logout  
+Removing identity 'cust1' from ~/.config/ziti/ziti-cli.json
+```
+
+#### Read-Only Mode
+When logging in one can mark the identity as read-only. This is a client side enforced flag which will attempt to make sure only
+read operations are performed by this session. 
+
+```
+$ ziti edge login --read-only localhost:1280
+Enter username: admin
+Enter password: 
+Token: 966192c6-fb7f-481e-8230-dcef157770ef
+Saving identity 'default' to ~/.config/ziti/ziti-cli.json
+
+$ ziti edge list services
+id: -JucPW0kGR    name: ssh    encryption required: true    terminator strategy: smartrouting    role attributes: ["ssh"]
+results: 1-1 of 1
+
+$ ziti edge create service test
+error: this login is marked read-only, only GET operations are allowed
+```
+
+NOTE: This is not guaranteed to prevent database changes. It is meant to help prevent accidental changes, if the wrong profile 
+is accidentally used. Caution should always be exercised when working with sensitive data!
+
+#### Login via Token
+If you already have an API session token, you can use that to create a client identity using the new `--token` flag.
+When using `--token` the saved identity will be marked as read-only unless `--read-only=false` is specified. This
+is because if you only have a token and not full credentials, it's more likely that you're inspecting a system to
+which you have limited privileges. 
+
+```
+$ ziti edge login localhost:1280 --token c9f37575-f660-409b-b731-5a256d74a931
+NOTE: When using --token the saved identity will be marked as read-only unless --read-only=false is provided
+Saving identity 'default' to ~/.config/ziti/ziti-cli.json
+```
+
+Using this option will still check the server certificates to see if they need to be downloaded and/or compare them with locally
+cached certificates.
 
 # Release 0.21.0
 

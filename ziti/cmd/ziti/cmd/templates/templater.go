@@ -19,12 +19,11 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"io"
 	"strings"
 	"text/template"
 	"unicode"
-
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
@@ -169,7 +168,7 @@ func (t *templater) cmdGroupsString(c *cobra.Command) string {
 			if cmd.Runnable() {
 				path := t.groupPath(cmd)
 				//cmds = append(cmds, "  "+rpad(path, maxLen - len(path))+" "+cmd.Short)
-				cmds = append(cmds, "  "+util.PadRight(path, " ", maxLen)+" "+cmd.Short)
+				cmds = append(cmds, "  "+table.PadRight(path, " ", maxLen)+" "+cmd.Short)
 			}
 		}
 		groups = append(groups, strings.Join(cmds, "\n"))
