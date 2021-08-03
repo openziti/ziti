@@ -85,7 +85,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 				self.apiSession = apiSession
 
 				if _, err := self.handler.getAppEnv().GetHandlers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
-					logger.WithError(err).Error("unexepcted error while marking api session activity")
+					logger.WithError(err).Error("unexpected error while marking api session activity")
 				}
 				return false
 			}
