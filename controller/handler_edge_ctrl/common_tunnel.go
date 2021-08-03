@@ -180,7 +180,9 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 		self.session, err = self.handler.getAppEnv().Handlers.Session.Read(id)
 		if err != nil {
 			err = internalError(err)
+			return
 		}
+		self.newSession = true
 	}
 }
 
