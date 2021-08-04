@@ -450,8 +450,8 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 	}
 }
 
-func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, peerData map[uint32][]byte) (*network.Session, map[uint32][]byte) {
-	var circuit *network.Session
+func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, peerData map[uint32][]byte) (*network.Circuit, map[uint32][]byte) {
+	var circuit *network.Circuit
 	returnPeerData := map[uint32][]byte{}
 
 	if self.err == nil {
@@ -469,7 +469,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, 
 
 		n := self.handler.getAppEnv().GetHostController().GetNetwork()
 		var err error
-		circuit, err = n.CreateSession(self.sourceRouter, clientId, serviceId)
+		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId)
 		if err != nil {
 			self.err = internalError(err)
 		}
@@ -487,7 +487,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, 
 
 			if self.service.EncryptionRequired && returnPeerData[edge.PublicKeyHeader] == nil {
 				self.err = encryptionDataMissing("encryption required on service, terminator did not send public header")
-				if err := n.RemoveSession(circuit.Id, true); err != nil {
+				if err := n.RemoveCircuit(circuit.Id, true); err != nil {
 					logrus.
 						WithField("operation", self.handler.Label()).
 						WithField("sourceRouter", self.sourceRouter.Id).

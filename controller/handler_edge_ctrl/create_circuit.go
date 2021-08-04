@@ -86,7 +86,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()
-	sessionInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
@@ -96,8 +96,8 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.SessionToken)
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{
-		SessionId: sessionInfo.Id.Token,
-		Address:   sessionInfo.Circuit.IngressId,
+		SessionId: circuitInfo.Id,
+		Address:   circuitInfo.Path.IngressId,
 		PeerData:  peerData,
 	}
 

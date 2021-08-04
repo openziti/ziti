@@ -153,7 +153,7 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 	}
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{}
-	timeout := self.listener.options.Options.GetSessionTimeout
+	timeout := self.listener.options.Options.GetCircuitTimeout
 	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
 
 	if err = getResultOrFailure(responseMsg, err, response); err != nil {

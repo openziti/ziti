@@ -91,7 +91,7 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 	ctx.loadServiceForName(ctx.req.ServiceName)
 	ctx.ensureSessionForService(ctx.req.SessionId, persistence.SessionTypeDial)
 	ctx.verifyEdgeRouterAccess()
-	sessionInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
@@ -100,8 +100,8 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 
 	response := &edge_ctrl_pb.CreateCircuitForServiceResponse{
 		Session:   ctx.getCreateSessionResponse(),
-		CircuitId: sessionInfo.Id.Token,
-		Address:   sessionInfo.Circuit.IngressId,
+		CircuitId: circuitInfo.Id,
+		Address:   circuitInfo.Path.IngressId,
 		PeerData:  peerData,
 	}
 
