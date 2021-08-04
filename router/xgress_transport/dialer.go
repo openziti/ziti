@@ -46,21 +46,21 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
 	txDestination, err := transport.ParseAddress(destination)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
 	}
 
-	peer, err := txDestination.Dial("x/"+sessionId.Token, sessionId, txd.options.ConnectTimeout, txd.tcfg)
+	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, txd.options.ConnectTimeout, txd.tcfg)
 	if err != nil {
 		return nil, err
 	}
 
-	logrus.Infof("successful connection to %v from %v (s/%v)", destination, peer.Conn().LocalAddr(), sessionId.Token)
+	logrus.Infof("successful connection to %v from %v (c/%v)", destination, peer.Conn().LocalAddr(), circuitId.Token)
 
 	conn := &transportXgressConn{Connection: peer}
-	x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, txd.options)
+	x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)
 	x.Start()
 

@@ -186,7 +186,7 @@ func (buffer *LinkSendBuffer) run() {
 	defer retransmitTicker.Stop()
 
 	for {
-		// don't block when we're closing, since the only thing that should still be coming in is end-of-session
+		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
 		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() {
 			buffered = nil
 		} else {
@@ -210,7 +210,7 @@ func (buffer *LinkSendBuffer) run() {
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
-			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.Closed() && buffer.x.IsEndOfSessionSent() {
+			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.Closed() && buffer.x.IsEndOfCircuitSent() {
 				go buffer.x.Close()
 			}
 

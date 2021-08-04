@@ -116,10 +116,10 @@ func (xwebimpl *XwebImpl) Run() {
 		}
 
 		xwebimpl.servers = append(xwebimpl.servers, server)
-
-		go func(){
+		name := webListener.Name
+		go func() {
 			if err := server.Start(); err != nil {
-				pfxlog.Logger().Errorf("error starting xweb_rest server %s: %v", webListener.Name, err)
+				pfxlog.Logger().Errorf("error starting xweb_rest server %s: %v", name, err)
 			}
 		}()
 	}

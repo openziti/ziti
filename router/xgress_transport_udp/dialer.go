@@ -26,7 +26,7 @@ import (
 	"net"
 )
 
-func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
 	logrus.Infof("parsing %v for xgress address: %v", destination, address)
 	packetAddress, err := xgress_udp.Parse(destination)
 	if err != nil {
@@ -41,7 +41,7 @@ func (txd *dialer) Dial(destination string, sessionId *identity.TokenId, address
 
 	logrus.Infof("bound on [%v]", conn.LocalAddr())
 
-	x := xgress.NewXgress(sessionId, address, newPacketConn(conn), xgress.Terminator, txd.options)
+	x := xgress.NewXgress(circuitId, address, newPacketConn(conn), xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)
 	x.Start()
 

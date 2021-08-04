@@ -2,7 +2,6 @@ package events
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/iomonad"
 	"io"
@@ -36,9 +35,9 @@ func (f *BaseFormatter) AcceptLoggingEvent(event LoggingEvent) {
 	f.events <- event
 }
 
-type JsonFabricSessionEvent SessionEvent
+type JsonFabricCircuitEvent CircuitEvent
 
-func (event *JsonFabricSessionEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonFabricCircuitEvent) WriteTo(output io.WriteCloser) error {
 	buf, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -59,10 +58,7 @@ func (event *JsonMetricsEvent) WriteTo(output io.WriteCloser) error {
 		jsonRep["source_entity_id"] = event.SourceEntityId
 	}
 
-	ts, err := ptypes.Timestamp(event.Timestamp)
-	if err != nil {
-		return err
-	}
+	ts := event.Timestamp.AsTime()
 
 	jsonRep["timestamp"] = ts.Format(time.RFC3339Nano)
 	if len(event.Tags) > 0 {
@@ -142,8 +138,8 @@ type JsonFormatter struct {
 	BaseFormatter
 }
 
-func (formatter *JsonFormatter) AcceptSessionEvent(event *SessionEvent) {
-	formatter.AcceptLoggingEvent((*JsonFabricSessionEvent)(event))
+func (formatter *JsonFormatter) AcceptCircuitEvent(event *CircuitEvent) {
+	formatter.AcceptLoggingEvent((*JsonFabricCircuitEvent)(event))
 }
 
 func (formatter *JsonFormatter) AcceptMetricsEvent(event *MetricsEvent) {
@@ -166,10 +162,10 @@ func (formatter *JsonFormatter) AcceptRouterEvent(event *RouterEvent) {
 	formatter.AcceptLoggingEvent((*JsonRouterEvent)(event))
 }
 
-type PlainTextFabricSessionEvent SessionEvent
+type PlainTextFabricCircuitEvent CircuitEvent
 
-func (event *PlainTextFabricSessionEvent) WriteTo(output io.WriteCloser) error {
-	_, err := output.Write([]byte((*SessionEvent)(event).String()))
+func (event *PlainTextFabricCircuitEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*CircuitEvent)(event).String()))
 	return err
 }
 
@@ -229,8 +225,8 @@ type PlainTextFormatter struct {
 	BaseFormatter
 }
 
-func (formatter *PlainTextFormatter) AcceptSessionEvent(event *SessionEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextFabricSessionEvent)(event))
+func (formatter *PlainTextFormatter) AcceptSessionEvent(event *CircuitEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextFabricCircuitEvent)(event))
 }
 
 func (formatter *PlainTextFormatter) AcceptMetricsEvent(event *MetricsEvent) {

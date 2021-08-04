@@ -45,8 +45,8 @@ type Options struct {
 	RetxAddMs    uint32
 
 	MaxCloseWait        time.Duration
-	GetSessionTimeout   time.Duration
-	SessionStartTimeout time.Duration
+	GetCircuitTimeout   time.Duration
+	CircuitStartTimeout time.Duration
 	ConnectTimeout      time.Duration
 }
 
@@ -114,20 +114,20 @@ func LoadOptions(data OptionsData) (*Options, error) {
 			options.MaxCloseWait = time.Duration(value.(int)) * time.Millisecond
 		}
 
-		if value, found := data["getSessionTimeout"]; found {
-			getSessionTimeout, err := time.ParseDuration(value.(string))
+		if value, found := data["getCircuitTimeout"]; found {
+			getCircuitTimeout, err := time.ParseDuration(value.(string))
 			if err != nil {
-				return nil, errors.Wrap(err, "invalid 'getSessionTimeout' value")
+				return nil, errors.Wrap(err, "invalid 'getCircuitTimeout' value")
 			}
-			options.GetSessionTimeout = getSessionTimeout
+			options.GetCircuitTimeout = getCircuitTimeout
 		}
 
-		if value, found := data["sessionStartTimeout"]; found {
-			sessionStartTimeout, err := time.ParseDuration(value.(string))
+		if value, found := data["circuitStartTimeout"]; found {
+			circuitStartTimeout, err := time.ParseDuration(value.(string))
 			if err != nil {
-				return nil, errors.Wrap(err, "invalid 'sessionStartTimeout' value")
+				return nil, errors.Wrap(err, "invalid 'circuitStartTimeout' value")
 			}
-			options.SessionStartTimeout = sessionStartTimeout
+			options.CircuitStartTimeout = circuitStartTimeout
 		}
 
 		if value, found := data["connectTimeout"]; found {
@@ -162,8 +162,8 @@ func DefaultOptions() *Options {
 		RetxScale:              2.0,
 		RetxAddMs:              100,
 		MaxCloseWait:           30 * time.Second,
-		GetSessionTimeout:      30 * time.Second,
-		SessionStartTimeout:    3 * time.Minute,
+		GetCircuitTimeout:      30 * time.Second,
+		CircuitStartTimeout:    3 * time.Minute,
 		ConnectTimeout:         0, // operating system default
 	}
 }

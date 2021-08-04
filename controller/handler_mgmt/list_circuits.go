@@ -25,37 +25,37 @@ import (
 	"github.com/openziti/foundation/channel2"
 )
 
-type listSessionsHandler struct {
+type listCircuitsHandler struct {
 	network *network.Network
 }
 
-func newListSessionsHandler(network *network.Network) *listSessionsHandler {
-	return &listSessionsHandler{network: network}
+func newListCircuitsHandler(network *network.Network) *listCircuitsHandler {
+	return &listCircuitsHandler{network: network}
 }
 
-func (h *listSessionsHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_ListSessionsRequestType)
+func (h *listCircuitsHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_ListCircuitsRequestType)
 }
 
-func (h *listSessionsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	list := &mgmt_pb.ListSessionsRequest{}
+func (h *listCircuitsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	list := &mgmt_pb.ListCircuitsRequest{}
 	if err := proto.Unmarshal(msg.Body, list); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	sessions := h.network.GetAllSessions()
-	response := &mgmt_pb.ListSessionsResponse{
-		Sessions: make([]*mgmt_pb.Session, 0),
+	circuits := h.network.GetAllCircuits()
+	response := &mgmt_pb.ListCircuitsResponse{
+		Circuits: make([]*mgmt_pb.Circuit, 0),
 	}
-	for _, s := range sessions {
-		responseSession := &mgmt_pb.Session{
-			Id:        s.Id.Token,
-			ClientId:  s.ClientId.Token,
-			ServiceId: s.Service.Id,
-			Circuit:   NewCircuit(s.Circuit),
+	for _, circuit := range circuits {
+		responseCircuit := &mgmt_pb.Circuit{
+			Id:        circuit.Id,
+			ClientId:  circuit.ClientId,
+			ServiceId: circuit.Service.Id,
+			Path:      NewPath(circuit.Path),
 		}
-		response.Sessions = append(response.Sessions, responseSession)
+		response.Circuits = append(response.Circuits, responseCircuit)
 	}
 	body, err := proto.Marshal(response)
 	if err != nil {
@@ -63,20 +63,20 @@ func (h *listSessionsHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 		return
 	}
 
-	responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListSessionsResponseType), body)
+	responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListCircuitsResponseType), body)
 	responseMsg.ReplyTo(msg)
 	if err := ch.Send(responseMsg); err != nil {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error sending response (%s)", err)
 	}
 }
 
-func NewCircuit(circuit *network.Circuit) *mgmt_pb.Circuit {
-	mgmtCircuit := &mgmt_pb.Circuit{}
-	for _, r := range circuit.Path {
-		mgmtCircuit.Path = append(mgmtCircuit.Path, r.Id)
+func NewPath(path *network.Path) *mgmt_pb.Path {
+	mgmtPath := &mgmt_pb.Path{}
+	for _, r := range path.Nodes {
+		mgmtPath.Nodes = append(mgmtPath.Nodes, r.Id)
 	}
-	for _, l := range circuit.Links {
-		mgmtCircuit.Links = append(mgmtCircuit.Links, l.Id.Token)
+	for _, l := range path.Links {
+		mgmtPath.Links = append(mgmtPath.Links, l.Id.Token)
 	}
-	return mgmtCircuit
+	return mgmtPath
 }

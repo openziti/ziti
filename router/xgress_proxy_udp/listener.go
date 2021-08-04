@@ -138,7 +138,7 @@ func (l *listener) rx() {
 
 func (l *listener) handleConnect(session xgress_udp.Session) {
 	request := &xgress.Request{ServiceId: l.service}
-	response := xgress.CreateSession(l.ctrl, session, request, l.bindHandler, l.options)
+	response := xgress.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
 	if response.Success {
 		session.SetState(xgress_udp.SessionStateEstablished)
 	} else {

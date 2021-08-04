@@ -30,7 +30,7 @@ const (
 	MinHeaderKey = 2000
 	MaxHeaderKey = MinHeaderKey + int32(math.MaxUint8)
 
-	HeaderKeySessionId      = 2256
+	HeaderKeyCircuitId      = 2256
 	HeaderKeySequence       = 2257
 	HeaderKeyFlags          = 2258
 	HeaderKeyRecvBufferSize = 2259
@@ -62,24 +62,24 @@ func (o Originator) String() string {
 type PayloadFlag uint32
 
 const (
-	PayloadFlagSessionEnd   PayloadFlag = 1
+	PayloadFlagCircuitEnd   PayloadFlag = 1
 	PayloadFlagEgress       PayloadFlag = 2
-	PayloadFlagSessionStart PayloadFlag = 4
+	PayloadFlagCircuitStart PayloadFlag = 4
 )
 
 type Header struct {
-	SessionId      string
+	CircuitId      string
 	Flags          uint32
 	RecvBufferSize uint32
 	RTT            uint16
 }
 
-func (header *Header) GetSessionId() string {
-	return header.SessionId
+func (header *Header) GetCircuitId() string {
+	return header.CircuitId
 }
 
 func (header *Header) GetFlags() string {
-	return header.SessionId
+	return header.CircuitId
 }
 
 func (header *Header) GetOriginator() Originator {
@@ -90,15 +90,15 @@ func (header *Header) GetOriginator() Originator {
 }
 
 func (header *Header) unmarshallHeader(msg *channel2.Message) error {
-	sessionId, ok := msg.Headers[HeaderKeySessionId]
+	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
 	if !ok {
-		return fmt.Errorf("no sessionId found in xgress payload message")
+		return fmt.Errorf("no circuitId found in xgress payload message")
 	}
 
 	// If no flags are present, it just means no flags have been set
 	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
 
-	header.SessionId = string(sessionId)
+	header.CircuitId = string(circuitId)
 	header.Flags = flags
 	if header.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
 		header.RecvBufferSize = math.MaxUint32
@@ -110,7 +110,7 @@ func (header *Header) unmarshallHeader(msg *channel2.Message) error {
 }
 
 func (header *Header) marshallHeader(msg *channel2.Message) {
-	msg.Headers[HeaderKeySessionId] = []byte(header.SessionId)
+	msg.Headers[HeaderKeyCircuitId] = []byte(header.CircuitId)
 	if header.Flags != 0 {
 		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
 	}
@@ -122,10 +122,10 @@ func (header *Header) marshallHeader(msg *channel2.Message) {
 	}
 }
 
-func NewAcknowledgement(sessionId string, originator Originator) *Acknowledgement {
+func NewAcknowledgement(circuitId string, originator Originator) *Acknowledgement {
 	return &Acknowledgement{
 		Header: Header{
-			SessionId: sessionId,
+			CircuitId: circuitId,
 			Flags:     SetOriginatorFlag(0, originator),
 		},
 	}
@@ -192,7 +192,7 @@ func UnmarshallAcknowledgement(msg *channel2.Message) (*Acknowledgement, error) 
 
 func (ack *Acknowledgement) GetLoggerFields() logrus.Fields {
 	return logrus.Fields{
-		"session":            ack.SessionId,
+		"circuitId":          ack.CircuitId,
 		"linkRecvBufferSize": ack.RecvBufferSize,
 		"seq":                fmt.Sprintf("%+v", ack.Sequence),
 		"RTT":                ack.RTT,
@@ -257,12 +257,12 @@ func isPayloadFlagSet(flags uint32, flag PayloadFlag) bool {
 	return PayloadFlag(flags)&flag == flag
 }
 
-func (payload *Payload) IsSessionEndFlagSet() bool {
-	return isPayloadFlagSet(payload.Flags, PayloadFlagSessionEnd)
+func (payload *Payload) IsCircuitEndFlagSet() bool {
+	return isPayloadFlagSet(payload.Flags, PayloadFlagCircuitEnd)
 }
 
-func (payload *Payload) IsSessionStartFlagSet() bool {
-	return isPayloadFlagSet(payload.Flags, PayloadFlagSessionStart)
+func (payload *Payload) IsCircuitStartFlagSet() bool {
+	return isPayloadFlagSet(payload.Flags, PayloadFlagCircuitStart)
 }
 
 func SetOriginatorFlag(flags uint32, originator Originator) uint32 {
@@ -274,9 +274,9 @@ func SetOriginatorFlag(flags uint32, originator Originator) uint32 {
 
 func (payload *Payload) GetLoggerFields() logrus.Fields {
 	return logrus.Fields{
-		"session": payload.SessionId,
-		"seq":     payload.Sequence,
-		"origin":  payload.GetOriginator(),
-		"uuid":    uuidz.ToString(payload.Headers[HeaderKeyUUID]),
+		"circuitId": payload.CircuitId,
+		"seq":       payload.Sequence,
+		"origin":    payload.GetOriginator(),
+		"uuid":      uuidz.ToString(payload.Headers[HeaderKeyUUID]),
 	}
 }

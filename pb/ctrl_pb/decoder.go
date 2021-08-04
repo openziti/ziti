@@ -33,14 +33,14 @@ const DECODER = "ctrl"
 
 func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	switch msg.ContentType {
-	case int32(ContentType_SessionRequestType):
-		sessionRequest := &SessionRequest{}
-		if err := proto.Unmarshal(msg.Body, sessionRequest); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Session Request")
-			meta["ingressId"] = sessionRequest.IngressId
-			meta["serviceId"] = sessionRequest.ServiceId
+	case int32(ContentType_CircuitRequestType):
+		circuitRequest := &CircuitRequest{}
+		if err := proto.Unmarshal(msg.Body, circuitRequest); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Circuit Request")
+			meta["ingressId"] = circuitRequest.IngressId
+			meta["serviceId"] = circuitRequest.ServiceId
 			headers := make([]string, 0)
-			for k := range sessionRequest.PeerData {
+			for k := range circuitRequest.PeerData {
 				headers = append(headers, strconv.Itoa(int(k)))
 			}
 			meta["peerData"] = strings.Join(headers, ",")
@@ -113,10 +113,10 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ctrl_msg.SessionSuccessType):
-		meta := channel2.NewTraceMessageDecode(DECODER, "Session Success Response")
-		meta["sessionId"] = string(msg.Body)
-		meta["address"] = string(msg.Headers[ctrl_msg.SessionSuccessAddressHeader])
+	case int32(ctrl_msg.CircuitSuccessType):
+		meta := channel2.NewTraceMessageDecode(DECODER, "Circuit Success Response")
+		meta["circuitId"] = string(msg.Body)
+		meta["address"] = string(msg.Headers[ctrl_msg.CircuitSuccessAddressHeader])
 
 		data, err := meta.MarshalTraceMessageDecode()
 		if err != nil {
@@ -125,8 +125,8 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 
 		return data, true
 
-	case int32(ctrl_msg.SessionFailedType):
-		meta := channel2.NewTraceMessageDecode(DECODER, "Session Failed Response")
+	case int32(ctrl_msg.CircuitFailedType):
+		meta := channel2.NewTraceMessageDecode(DECODER, "Circuit Failed Response")
 		message := string(msg.Body)
 		if message != "" {
 			meta["message"] = message
@@ -200,7 +200,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 		route := &Route{}
 		if err := proto.Unmarshal(msg.Body, route); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Route")
-			meta["sessionId"] = route.SessionId
+			meta["circuitId"] = route.CircuitId
 			if route.Egress != nil {
 				meta["egress.address"] = route.Egress.Address
 				meta["egress.destination"] = route.Egress.Destination
@@ -226,7 +226,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 		unroute := &Unroute{}
 		if err := proto.Unmarshal(msg.Body, unroute); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Unroute")
-			meta["sessionId"] = unroute.SessionId
+			meta["circuitId"] = unroute.CircuitId
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
@@ -281,7 +281,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 
 	case int32(ctrl_msg.RouteResultType):
 		meta := channel2.NewTraceMessageDecode(DECODER, "Route Result")
-		meta["sessionId"] = string(msg.Body)
+		meta["circuitId"] = string(msg.Body)
 		meta["attempt"], _ = msg.GetUint32Header(ctrl_msg.RouteResultAttemptHeader)
 		success, _ := msg.GetBoolHeader(ctrl_msg.RouteResultSuccessHeader)
 		meta["success"] = success

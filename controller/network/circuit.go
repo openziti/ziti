@@ -17,139 +17,76 @@
 package network
 
 import (
-	"fmt"
-	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/orcaman/concurrent-map"
 )
 
 type Circuit struct {
-	Path      []*Router
-	Links     []*Link
-	Binding   string
-	IngressId string
-	EgressId  string
+	Id         string
+	ClientId   string
+	Service    *Service
+	Terminator xt.Terminator
+	Path       *Path
+	Rerouting  concurrenz.AtomicBoolean
+	PeerData   xt.PeerData
 }
 
-func (circuit *Circuit) String() string {
-	if len(circuit.Path) < 1 {
-		return "{}"
+func (self *Circuit) latency() int64 {
+	var latency int64
+	for _, l := range self.Path.Links {
+		latency += l.GetSrcLatency()
+		latency += l.GetDstLatency()
 	}
-	if len(circuit.Links) != len(circuit.Path)-1 {
-		return "{malformed}"
-	}
-	out := fmt.Sprintf("[r/%s]", circuit.Path[0].Id)
-	for i := 0; i < len(circuit.Links); i++ {
-		out += fmt.Sprintf("->[l/%s]", circuit.Links[i].Id.Token)
-		out += fmt.Sprintf("->[r/%s]", circuit.Path[i+1].Id)
-	}
-	return out
+	return latency
 }
 
-func (circuit *Circuit) EqualPath(other *Circuit) bool {
-	if len(circuit.Path) != len(other.Path) {
-		return false
-	}
-	if len(circuit.Links) != len(other.Links) {
-		return false
-	}
-	for i := 0; i < len(circuit.Path); i++ {
-		if circuit.Path[i] != other.Path[i] {
-			return false
-		}
-	}
-	for i := 0; i < len(circuit.Links); i++ {
-		if circuit.Links[i] != other.Links[i] {
-			return false
-		}
-	}
-	return true
+type circuitController struct {
+	circuits          cmap.ConcurrentMap // map[string]*Circuit
+	circuitsByService cmap.ConcurrentMap // map[string]*Circuits
 }
 
-func (circuit *Circuit) EgressRouter() *Router {
-	if len(circuit.Path) > 0 {
-		return circuit.Path[len(circuit.Path)-1]
+func newCircuitController() *circuitController {
+	return &circuitController{
+		circuits:          cmap.New(),
+		circuitsByService: cmap.New(),
 	}
-	return nil
 }
 
-func (circuit *Circuit) CreateRouteMessages(attempt uint32, sessionId *identity.TokenId, egressAddress string) ([]*ctrl_pb.Route, error) {
-	var routeMessages []*ctrl_pb.Route
-	if len(circuit.Links) == 0 {
-		// single router path
-		routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
-		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-			SrcAddress: circuit.IngressId,
-			DstAddress: circuit.EgressId,
-		})
-		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-			SrcAddress: circuit.EgressId,
-			DstAddress: circuit.IngressId,
-		})
-		routeMessage.Egress = &ctrl_pb.Route_Egress{
-			Binding:     circuit.Binding,
-			Address:     circuit.EgressId,
-			Destination: egressAddress,
-		}
-		routeMessages = append(routeMessages, routeMessage)
-	}
+func (c *circuitController) add(sn *Circuit) {
+	c.circuits.Set(sn.Id, sn)
 
-	for i, link := range circuit.Links {
-		if i == 0 {
-			// ingress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: circuit.IngressId,
-				DstAddress: link.Id.Token,
-			})
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
-				DstAddress: circuit.IngressId,
-			})
-			routeMessages = append(routeMessages, routeMessage)
-		}
-		if i >= 0 && i < len(circuit.Links)-1 {
-			// transit
-			nextLink := circuit.Links[i+1]
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
-				DstAddress: nextLink.Id.Token,
-			})
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: nextLink.Id.Token,
-				DstAddress: link.Id.Token,
-			})
-			routeMessages = append(routeMessages, routeMessage)
-		}
-		if i == len(circuit.Links)-1 {
-			// egress
-			routeMessage := &ctrl_pb.Route{SessionId: sessionId.Token, Attempt: attempt}
-			routeMessage.Egress = &ctrl_pb.Route_Egress{
-				Binding:     circuit.Binding,
-				Address:     circuit.EgressId,
-				Destination: egressAddress,
-			}
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: circuit.EgressId,
-				DstAddress: link.Id.Token,
-			})
-			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
-				DstAddress: circuit.EgressId,
-			})
-			routeMessages = append(routeMessages, routeMessage)
-		}
+	if !c.circuitsByService.Has(sn.Service.Id) {
+		c.circuitsByService.Set(sn.Service.Id, cmap.New())
 	}
-	return routeMessages, nil
+	t, _ := c.circuitsByService.Get(sn.Service.Id)
+	circuitsForService := t.(cmap.ConcurrentMap)
+	circuitsForService.Set(sn.Id, sn)
 }
 
-func (circuit *Circuit) usesLink(l *Link) bool {
-	if circuit.Links != nil {
-		for _, o := range circuit.Links {
-			if o == l {
-				return true
-			}
+func (c *circuitController) get(id string) (*Circuit, bool) {
+	if t, found := c.circuits.Get(id); found {
+		return t.(*Circuit), true
+	}
+	return nil, false
+}
+
+func (c *circuitController) all() []*Circuit {
+	circuits := make([]*Circuit, 0)
+	for i := range c.circuits.IterBuffered() {
+		circuits = append(circuits, i.Val.(*Circuit))
+	}
+	return circuits
+}
+
+func (c *circuitController) remove(sn *Circuit) {
+	c.circuits.Remove(sn.Id)
+
+	if t, found := c.circuitsByService.Get(sn.Service.Id); found {
+		circuitsForService := t.(cmap.ConcurrentMap)
+		circuitsForService.Remove(sn.Id)
+		if circuitsForService.Count() < 1 {
+			c.circuitsByService.Remove(sn.Service.Id)
 		}
 	}
-	return false
 }

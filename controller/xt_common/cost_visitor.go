@@ -7,7 +7,7 @@ import (
 
 type CostVisitor struct {
 	FailureCosts xt.FailureCosts
-	SessionCost  uint16
+	CircuitCost  uint16
 }
 
 func (visitor *CostVisitor) VisitDialFailed(event xt.TerminatorEvent) {
@@ -25,10 +25,10 @@ func (visitor *CostVisitor) VisitDialFailed(event xt.TerminatorEvent) {
 
 func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
 	credit := visitor.FailureCosts.Success(event.GetTerminator().GetId())
-	if credit != visitor.SessionCost {
+	if credit != visitor.CircuitCost {
 		xt.GlobalCosts().UpdateDynamicCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-			if visitor.SessionCost > credit {
-				increase := visitor.SessionCost - credit
+			if visitor.CircuitCost > credit {
+				increase := visitor.CircuitCost - credit
 				if cost < (math.MaxUint16 - increase) {
 					// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, cost+increase)
 					return cost + increase
@@ -37,7 +37,7 @@ func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
 				return math.MaxUint16
 			}
 
-			decrease := credit - visitor.SessionCost
+			decrease := credit - visitor.CircuitCost
 			if decrease > cost {
 				// pfxlog.Logger().Infof("%v: dial+ %v -> %v", event.GetTerminator().GetId(), cost, 0)
 				return 0
@@ -48,11 +48,11 @@ func (visitor *CostVisitor) VisitDialSucceeded(event xt.TerminatorEvent) {
 	}
 }
 
-func (visitor *CostVisitor) VisitSessionEnded(event xt.TerminatorEvent) {
+func (visitor *CostVisitor) VisitCircuitRemoved(event xt.TerminatorEvent) {
 	xt.GlobalCosts().UpdateDynamicCost(event.GetTerminator().GetId(), func(cost uint16) uint16 {
-		if cost > visitor.SessionCost {
+		if cost > visitor.CircuitCost {
 			// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, cost-1)
-			return cost - visitor.SessionCost
+			return cost - visitor.CircuitCost
 		}
 		// pfxlog.Logger().Infof("%v: sess- %v -> %v", event.GetTerminator().GetId(), cost, 0)
 		return 0

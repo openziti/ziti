@@ -36,12 +36,13 @@ type usageAdapter struct {
 func (adapter *usageAdapter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 	for name, interval := range message.IntervalCounters {
 		for _, bucket := range interval.Buckets {
-			for session, usage := range bucket.Values {
+			for circuitId, usage := range bucket.Values {
 				event := &UsageEvent{
 					Namespace:        "fabric.usage",
+					Version:          2,
 					EventType:        name,
 					SourceId:         message.SourceId,
-					SessionId:        session,
+					CircuitId:        circuitId,
 					Usage:            usage,
 					IntervalStartUTC: bucket.IntervalStartUTC,
 					IntervalLength:   interval.IntervalLength,
@@ -54,9 +55,10 @@ func (adapter *usageAdapter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 
 type UsageEvent struct {
 	Namespace        string `json:"namespace"`
+	Version          uint32 `json:"version"`
 	EventType        string `json:"event_type"`
 	SourceId         string `json:"source_id"`
-	SessionId        string `json:"session_id"`
+	CircuitId        string `json:"circuit_id"`
 	Usage            uint64 `json:"usage"`
 	IntervalStartUTC int64  `json:"interval_start_utc"`
 	IntervalLength   uint64 `json:"interval_length"`
@@ -64,7 +66,7 @@ type UsageEvent struct {
 
 func (event *UsageEvent) String() string {
 	return fmt.Sprintf("%v source=%v session=%v usage=%v intervalStart=%v intervalLength=%v",
-		event.EventType, event.SourceId, event.SessionId, event.Usage, event.IntervalStartUTC, event.IntervalLength)
+		event.EventType, event.SourceId, event.CircuitId, event.Usage, event.IntervalStartUTC, event.IntervalLength)
 }
 
 type UsageEventHandler interface {

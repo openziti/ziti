@@ -6,9 +6,9 @@ option go_package = "github.com/openziti/fabric/pb/ctrl_pb";
 enum ContentType {
   Zero = 0;
 
-  SessionRequestType = 1000;
+  CircuitRequestType = 1000;
   // defined in ctrl_msg/messages.go now
-  // SessionSuccessType = 1001;
+  // CircuitSuccessType = 1001;
   DialType = 1002;
   LinkType = 1003;
   FaultType = 1004;
@@ -22,19 +22,19 @@ enum ContentType {
   InspectRequestType = 1013;
   InspectResponseType = 1014;
   // defined in ctrl_msg/messages.go now
-  // SessionFailedType = 1016;
+  // CircuitFailedType = 1016;
   ValidateTerminatorsRequestType = 1017;
   UpdateTerminatorRequestType = 1018;
 }
 
-message SessionRequest {
+message CircuitRequest {
   string ingressId = 1;
   string serviceId = 2;
   map<uint32, bytes> peerData = 3;
 }
 
-message SessionConfirmation {
-    repeated string sessionIds = 1;
+message CircuitConfirmation {
+  repeated string circuitIds = 1;
 }
 
 enum TerminatorPrecedence {
@@ -99,7 +99,7 @@ message Fault {
 }
 
 message Route {
-  string sessionId = 1;
+  string circuitId = 1;
   uint32 attempt = 2;
 
   message Egress {
@@ -118,7 +118,7 @@ message Route {
 }
 
 message Unroute {
-  string sessionId = 1;
+  string circuitId = 1;
   bool now = 2;
 }
 

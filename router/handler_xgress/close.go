@@ -39,22 +39,22 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	log.Debug("running")
 	defer log.Debug("complete")
 
-	x.ForwardEndOfSession(func(payload *xgress.Payload) bool {
-		log.Debug("sending end of session payload")
-		if err := txc.forwarder.ForwardPayload(x.Address(), x.GetEndSession()); err != nil {
+	x.ForwardEndOfCircuit(func(payload *xgress.Payload) bool {
+		log.Debug("sending end of circuit payload")
+		if err := txc.forwarder.ForwardPayload(x.Address(), x.GetEndCircuit()); err != nil {
 			// ok that we couldn't forward close, as that means it was already closed
-			log.Debugf("error forwarding end session payload (%s)", err)
+			log.Debugf("error forwarding end circuit payload (%s)", err)
 			return false
 		}
 		return true
 	})
 
-	// Notify the forwarder that the session is ending
-	log.Debug("removing session from forwarder")
-	txc.forwarder.EndSession(x.SessionId())
+	// Notify the forwarder that the circuit is ending
+	log.Debug("removing circuit from forwarder")
+	txc.forwarder.EndCircuit(x.CircuitId())
 
 	// Notify the controller of the xgress fault
-	fault := &ctrl_pb.Fault{Id: x.SessionId()}
+	fault := &ctrl_pb.Fault{Id: x.CircuitId()}
 	if x.Originator() == xgress.Initiator {
 		fault.Subject = ctrl_pb.FaultSubject_IngressFault
 	} else if x.Originator() == xgress.Terminator {

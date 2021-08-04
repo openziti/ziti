@@ -56,9 +56,9 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			}
 
 		case ctrl_pb.FaultSubject_IngressFault:
-			if err := h.network.RemoveSession(&identity.TokenId{Token: fault.Id}, false); err != nil {
-				invalidSessionErr := network.InvalidSessionError{}
-				if errors.As(err, &invalidSessionErr) {
+			if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+				invalidCircuitErr := network.InvalidCircuitError{}
+				if errors.As(err, &invalidCircuitErr) {
 					log.Debugf("error handling ingress fault (%s)", err)
 				} else {
 					log.Errorf("error handling ingress fault (%s)", err)
@@ -68,9 +68,9 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			}
 
 		case ctrl_pb.FaultSubject_EgressFault:
-			if err := h.network.RemoveSession(&identity.TokenId{Token: fault.Id}, false); err != nil {
-				invalidSessionErr := network.InvalidSessionError{}
-				if errors.As(err, &invalidSessionErr) {
+			if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+				invalidCircuitErr := network.InvalidCircuitError{}
+				if errors.As(err, &invalidCircuitErr) {
 					log.Debugf("error handling egress fault (%s)", err)
 				} else {
 					log.Errorf("error handling egress fault (%s)", err)
@@ -80,8 +80,8 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 			}
 
 		case ctrl_pb.FaultSubject_ForwardFault:
-			sessionIds := strings.Split(fault.Id, " ")
-			h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, SessionIds: sessionIds})
+			circuitIds := strings.Split(fault.Id, " ")
+			h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, CircuitIds: circuitIds})
 
 		default:
 			log.Errorf("unexpected subject (%s)", fault.Subject.String())

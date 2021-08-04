@@ -23,29 +23,27 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
-type removeSessionHandler struct {
+type removeCircuitHandler struct {
 	network *network.Network
 }
 
-func newRemoveSessionHandler(network *network.Network) *removeSessionHandler {
-	return &removeSessionHandler{network: network}
+func newRemoveCircuitHandler(network *network.Network) *removeCircuitHandler {
+	return &removeCircuitHandler{network: network}
 }
 
-func (handler *removeSessionHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_RemoveSessionRequestType)
+func (handler *removeCircuitHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_RemoveCircuitRequestType)
 }
 
-func (handler *removeSessionHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	request := &mgmt_pb.RemoveSessionRequest{}
+func (handler *removeCircuitHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	request := &mgmt_pb.RemoveCircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
-		sessionId := &identity.TokenId{Token: request.SessionId}
-		if err := handler.network.RemoveSession(sessionId, request.Now); err == nil {
+		if err := handler.network.RemoveCircuit(request.CircuitId, request.Now); err == nil {
 			handler_common.SendSuccess(msg, ch, "")
 		} else {
-			pfxlog.Logger().Errorf("unexpected error removing session s/[%s] (%s)", sessionId.Token, err)
+			pfxlog.Logger().WithError(err).WithField("circuitId", request.CircuitId).Error("unexpected error removing circuit")
 			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {

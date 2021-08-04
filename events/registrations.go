@@ -12,7 +12,7 @@ func init() {
 	RegisterEventType("metrics", registerMetricsEventHandler)
 	RegisterEventType("services", registerServiceEventHandler)
 	RegisterEventType("fabric.usage", registerUsageEventHandler)
-	RegisterEventType("fabric.sessions", registerSessionEventHandler)
+	RegisterEventType("fabric.circuits", registerCircuitEventHandler)
 	RegisterEventType("fabric.terminators", registerTerminatorEventHandler)
 	RegisterEventType("fabric.routers", registerRouterEventHandler)
 	RegisterEventType("fabric.traces", func(val interface{}, _ map[interface{}]interface{}) error {
@@ -25,12 +25,12 @@ func init() {
 	})
 }
 
-func AddSessionEventHandler(handler network.SessionEventHandler) {
-	cowslice.Append(network.SessionEventHandlerRegistry, handler)
+func AddCircuitEventHandler(handler network.CircuitEventHandler) {
+	cowslice.Append(network.CircuitEventHandlerRegistry, handler)
 }
 
-func RemoveSessionEventHandler(handler network.SessionEventHandler) {
-	cowslice.Delete(network.SessionEventHandlerRegistry, handler)
+func RemoveCircuitEventHandler(handler network.CircuitEventHandler) {
+	cowslice.Delete(network.CircuitEventHandlerRegistry, handler)
 }
 
 func AddTraceEventHandler(handler trace.EventHandler) {

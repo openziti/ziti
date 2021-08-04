@@ -24,40 +24,40 @@ import (
 	"time"
 )
 
-// sessionTable implements a directory of forwardTables, keyed by sessionId.
+// circuitTable implements a directory of forwardTables, keyed by circuitId.
 //
-type sessionTable struct {
-	sessions cmap.ConcurrentMap // map[string]*forwardTable
+type circuitTable struct {
+	circuits cmap.ConcurrentMap // map[string]*forwardTable
 }
 
-func newSessionTable() *sessionTable {
-	return &sessionTable{
-		sessions: cmap.New(),
+func newCircuitTable() *circuitTable {
+	return &circuitTable{
+		circuits: cmap.New(),
 	}
 }
 
-func (st *sessionTable) setForwardTable(sessionId string, ft *forwardTable) {
+func (st *circuitTable) setForwardTable(circuitId string, ft *forwardTable) {
 	ft.last = time.Now()
-	st.sessions.Set(sessionId, ft)
+	st.circuits.Set(circuitId, ft)
 }
 
-func (st *sessionTable) getForwardTable(sessionId string) (*forwardTable, bool) {
-	if ft, found := st.sessions.Get(sessionId); found {
+func (st *circuitTable) getForwardTable(circuitId string) (*forwardTable, bool) {
+	if ft, found := st.circuits.Get(circuitId); found {
 		ft.(*forwardTable).last = time.Now()
 		return ft.(*forwardTable), true
 	}
 	return nil, false
 }
 
-func (st *sessionTable) removeForwardTable(sessionId string) {
-	st.sessions.Remove(sessionId)
+func (st *circuitTable) removeForwardTable(circuitId string) {
+	st.circuits.Remove(circuitId)
 }
 
-func (st *sessionTable) debug() string {
-	out := fmt.Sprintf("sessions (%d):\n", st.sessions.Count())
-	for i := range st.sessions.IterBuffered() {
+func (st *circuitTable) debug() string {
+	out := fmt.Sprintf("circuits (%d):\n", st.circuits.Count())
+	for i := range st.circuits.IterBuffered() {
 		out += "\n"
-		out += fmt.Sprintf("\ts/%s", i.Key)
+		out += fmt.Sprintf("\tc/%s", i.Key)
 		out += i.Val.(*forwardTable).debug()
 	}
 	return out
@@ -99,7 +99,7 @@ func (ft *forwardTable) debug() string {
 //
 type destinationTable struct {
 	destinations cmap.ConcurrentMap // map[xgress.Address]Destination
-	xgress       cmap.ConcurrentMap // map[sessionId][]xgress.Address
+	xgress       cmap.ConcurrentMap // map[circuitId][]xgress.Address
 }
 
 func newDestinationTable() *destinationTable {
@@ -124,26 +124,26 @@ func (dt *destinationTable) removeDestination(addr xgress.Address) {
 	dt.destinations.Remove(string(addr))
 }
 
-func (dt *destinationTable) linkDestinationToSession(sessionId string, address xgress.Address) {
+func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
 	var addresses []xgress.Address
-	if i, found := dt.xgress.Get(sessionId); found {
+	if i, found := dt.xgress.Get(circuitId); found {
 		addresses = i.([]xgress.Address)
 	} else {
 		addresses = make([]xgress.Address, 0)
 	}
 	addresses = append(addresses, address)
-	dt.xgress.Set(sessionId, addresses)
+	dt.xgress.Set(circuitId, addresses)
 }
 
-func (dt *destinationTable) getAddressesForSession(sessionId string) ([]xgress.Address, bool) {
-	if addresses, found := dt.xgress.Get(sessionId); found {
+func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
+	if addresses, found := dt.xgress.Get(circuitId); found {
 		return addresses.([]xgress.Address), found
 	}
 	return nil, false
 }
 
-func (dt *destinationTable) unlinkSession(sessionId string) {
-	dt.xgress.Remove(sessionId)
+func (dt *destinationTable) unlinkCircuit(circuitId string) {
+	dt.xgress.Remove(circuitId)
 }
 
 func (dt *destinationTable) debug() string {
@@ -155,7 +155,7 @@ func (dt *destinationTable) debug() string {
 
 	out += fmt.Sprintf("xgress (%d):\n\n", dt.xgress.Count())
 	for i := range dt.xgress.IterBuffered() {
-		out += fmt.Sprintf("\ts/%s:\n", i.Key)
+		out += fmt.Sprintf("\tc/%s:\n", i.Key)
 		addresses := i.Val.([]xgress.Address)
 		for _, address := range addresses {
 			out += fmt.Sprintf("\t\t@/%s\n", address)

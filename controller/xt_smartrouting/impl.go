@@ -29,8 +29,8 @@ const (
 
 /**
 The smartrouting strategy relies purely on maninpulating costs and lets the smart routing algorithm pick the terminator.
-It increases costs by a small amount when a new session uses the terminator and drops it back down when the session
-finishes. It also increases the cost whenever a dial fails and decreases it whenever a dial succeeds. Dial successes
+It increases costs by a small amount when a new circuit uses the terminator and drops it back down when the circuit
+closes. It also increases the cost whenever a dial fails and decreases it whenever a dial succeeds. Dial successes
 will only reduce costs by the amount that failures have previously increased it.
 */
 
@@ -48,7 +48,7 @@ func (self *factory) NewStrategy() xt.Strategy {
 	strategy := strategy{
 		CostVisitor: xt_common.CostVisitor{
 			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
-			SessionCost:  2,
+			CircuitCost:  2,
 		},
 	}
 	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)

@@ -111,7 +111,7 @@ func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
 		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
-			h.usageRxCounter.Update(payload.SessionId, time.Now(), uint64(len(payload.Data)))
+			h.usageRxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
 		}
 	}
 }
@@ -129,7 +129,7 @@ func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
 		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
-			h.usageTxCounter.Update(payload.SessionId, time.Now(), uint64(len(payload.Data)))
+			h.usageTxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
 		}
 	}
 }
@@ -202,12 +202,12 @@ type xgressPeekHandler struct {
 func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressRxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
+		handler.ingressRxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
 		handler.ingressRxMsgMeter.Mark(1)
 		handler.ingressRxBytesMeter.Mark(msgSize)
 		handler.ingressRxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressRxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
+		handler.egressRxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
 		handler.egressRxMsgMeter.Mark(1)
 		handler.egressRxBytesMeter.Mark(msgSize)
 		handler.egressRxMsgSizeHistogram.Update(msgSize)
@@ -217,12 +217,12 @@ func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) 
 func (handler *xgressPeekHandler) Tx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressTxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
+		handler.ingressTxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
 		handler.ingressTxMsgMeter.Mark(1)
 		handler.ingressTxBytesMeter.Mark(msgSize)
 		handler.ingressTxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressTxUsageCounter.Update(x.SessionId(), time.Now(), uint64(msgSize))
+		handler.egressTxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
 		handler.egressTxMsgMeter.Mark(1)
 		handler.egressTxBytesMeter.Mark(msgSize)
 		handler.egressTxMsgSizeHistogram.Update(msgSize)

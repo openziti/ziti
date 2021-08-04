@@ -43,12 +43,12 @@ func TestSetOriginatorFlag(t *testing.T) {
 			},
 			want: 0,
 		},
-		{name: "set end of session to ingress",
+		{name: "set end of circuit to ingress",
 			args: args{
-				flags:      uint32(PayloadFlagSessionEnd),
+				flags:      uint32(PayloadFlagCircuitEnd),
 				originator: Initiator,
 			},
-			want: uint32(PayloadFlagSessionEnd),
+			want: uint32(PayloadFlagCircuitEnd),
 		},
 		{name: "set empty to egress",
 			args: args{
@@ -57,12 +57,12 @@ func TestSetOriginatorFlag(t *testing.T) {
 			},
 			want: uint32(PayloadFlagEgress),
 		},
-		{name: "set end of session to egress",
+		{name: "set end of circuit to egress",
 			args: args{
-				flags:      uint32(PayloadFlagSessionEnd),
+				flags:      uint32(PayloadFlagCircuitEnd),
 				originator: Terminator,
 			},
-			want: uint32(PayloadFlagSessionEnd) | uint32(PayloadFlagEgress),
+			want: uint32(PayloadFlagCircuitEnd) | uint32(PayloadFlagEgress),
 		},
 	}
 	for _, tt := range tests {

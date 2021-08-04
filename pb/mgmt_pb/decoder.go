@@ -395,8 +395,8 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_ListSessionsRequestType):
-		data, err := channel2.NewTraceMessageDecode(DECODER, "List Sessions Request").MarshalTraceMessageDecode()
+	case int32(ContentType_ListCircuitsRequestType):
+		data, err := channel2.NewTraceMessageDecode(DECODER, "List Circuits Request").MarshalTraceMessageDecode()
 		if err != nil {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 			return nil, true
@@ -404,11 +404,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 
 		return data, true
 
-	case int32(ContentType_ListSessionsResponseType):
-		listSessions := &ListSessionsResponse{}
-		if err := proto.Unmarshal(msg.Body, listSessions); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "List Sessions Response")
-			meta["sessions"] = len(listSessions.Sessions)
+	case int32(ContentType_ListCircuitsResponseType):
+		listCircuits := &ListCircuitsResponse{}
+		if err := proto.Unmarshal(msg.Body, listCircuits); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "List Circuits Response")
+			meta["circuits"] = len(listCircuits.Circuits)
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
@@ -439,16 +439,16 @@ func routerToString(router *Router) string {
 	return fmt.Sprintf("{id=[%s] fingerprint=[%s] listener=[%s] connected=[%t]}", router.Id, router.Fingerprint, router.ListenerAddress, router.Connected)
 }
 
-func (circuit *Circuit) CalculateDisplayPath() string {
-	if circuit == nil {
+func (self *Path) CalculateDisplayPath() string {
+	if self == nil {
 		return ""
 	}
 	out := ""
-	for i := 0; i < len(circuit.Path); i++ {
-		if i < len(circuit.Links) {
-			out += fmt.Sprintf("[r/%s]->{l/%s}->", circuit.Path[i], circuit.Links[i])
+	for i := 0; i < len(self.Nodes); i++ {
+		if i < len(self.Links) {
+			out += fmt.Sprintf("[r/%s]->{l/%s}->", self.Nodes[i], self.Links[i])
 		} else {
-			out += fmt.Sprintf("[r/%s]\n", circuit.Path[i])
+			out += fmt.Sprintf("[r/%s]\n", self.Nodes[i])
 		}
 	}
 	return out

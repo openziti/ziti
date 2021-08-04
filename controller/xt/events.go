@@ -72,10 +72,10 @@ func NewDialSucceeded(terminator Terminator) TerminatorEvent {
 	}
 }
 
-func NewSessionEnded(terminator Terminator) TerminatorEvent {
+func NewCircuitRemoved(terminator Terminator) TerminatorEvent {
 	return &defaultEvent{
 		terminator: terminator,
-		eventType:  eventTypeSessionEnded,
+		eventType:  eventTypeCircuitRemoved,
 	}
 }
 
@@ -84,7 +84,7 @@ type eventType int
 const (
 	eventTypeFailed eventType = iota
 	eventTypeSucceeded
-	eventTypeSessionEnded
+	eventTypeCircuitRemoved
 )
 
 type defaultEvent struct {
@@ -101,8 +101,8 @@ func (event *defaultEvent) Accept(visitor EventVisitor) {
 		visitor.VisitDialFailed(event)
 	} else if event.eventType == eventTypeSucceeded {
 		visitor.VisitDialSucceeded(event)
-	} else if event.eventType == eventTypeSessionEnded {
-		visitor.VisitSessionEnded(event)
+	} else if event.eventType == eventTypeCircuitRemoved {
+		visitor.VisitCircuitRemoved(event)
 	}
 }
 
@@ -110,6 +110,6 @@ var _ EventVisitor = DefaultEventVisitor{}
 
 type DefaultEventVisitor struct{}
 
-func (visitor DefaultEventVisitor) VisitDialFailed(TerminatorEvent)    {}
-func (visitor DefaultEventVisitor) VisitDialSucceeded(TerminatorEvent) {}
-func (visitor DefaultEventVisitor) VisitSessionEnded(TerminatorEvent)  {}
+func (visitor DefaultEventVisitor) VisitDialFailed(TerminatorEvent)     {}
+func (visitor DefaultEventVisitor) VisitDialSucceeded(TerminatorEvent)  {}
+func (visitor DefaultEventVisitor) VisitCircuitRemoved(TerminatorEvent) {}

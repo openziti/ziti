@@ -44,5 +44,5 @@ func (bindHandler *bindHandler) HandleXgressBind(x *xgress.Xgress) {
 
 	x.AddCloseHandler(bindHandler.closeHandler)
 
-	bindHandler.forwarder.RegisterDestination(x.SessionId(), x.Address(), x)
+	bindHandler.forwarder.RegisterDestination(x.CircuitId(), x.Address(), x)
 }

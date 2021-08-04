@@ -13,7 +13,7 @@ func InitRetransmitter(forwarder PayloadBufferForwarder, faultReporter Retransmi
 }
 
 type RetransmitterFaultReporter interface {
-	ReportForwardingFault(sessionId string)
+	ReportForwardingFault(circuitId string)
 }
 
 type Retransmitter struct {
@@ -146,11 +146,11 @@ func (retransmitter *Retransmitter) retransmitSender() {
 		case retransmit := <-retransmitter.retransmitSend:
 			if !retransmit.isAcked() {
 				if err := retransmitter.forwarder.ForwardPayload(retransmit.x.address, retransmit.payload); err != nil {
-					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of session
+					// if xgress is closed, don't log the error. We still want to try retransmitting in case we're re-sending end of circuit
 					if !retransmit.x.Closed() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
-						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.SessionId)
+						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.CircuitId)
 
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)

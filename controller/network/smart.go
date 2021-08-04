@@ -18,7 +18,6 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/identity"
 	"sort"
 )
 
@@ -27,36 +26,36 @@ func (network *Network) smart() {
 	log.Trace("smart network processing")
 
 	/*
-	 * Order sessions in decreasing overall latency order
+	 * Order circuits in decreasing overall latency order
 	 */
-	sessions := network.GetAllSessions()
-	if len(sessions) > 0 {
-		log.Debugf("observing [%d] sessions", len(sessions))
+	circuits := network.GetAllCircuits()
+	if len(circuits) > 0 {
+		log.Debugf("observing [%d] circuits", len(circuits))
 	} else {
-		log.Tracef("observing [%d] sessions", len(sessions))
+		log.Tracef("observing [%d] circuits", len(circuits))
 	}
 
-	sessionLatencies := make(map[*identity.TokenId]int64)
-	var orderedSessions []*identity.TokenId
-	for _, s := range sessions {
-		sessionLatencies[s.Id] = s.latency()
-		orderedSessions = append(orderedSessions, s.Id)
+	circuitLatencies := make(map[string]int64)
+	var orderedCircuits []string
+	for _, s := range circuits {
+		circuitLatencies[s.Id] = s.latency()
+		orderedCircuits = append(orderedCircuits, s.Id)
 	}
 
-	sort.SliceStable(orderedSessions, func(i, j int) bool {
-		iId := orderedSessions[i]
-		jId := orderedSessions[j]
-		return sessionLatencies[jId] < sessionLatencies[iId]
+	sort.SliceStable(orderedCircuits, func(i, j int) bool {
+		iId := orderedCircuits[i]
+		jId := orderedCircuits[j]
+		return circuitLatencies[jId] < circuitLatencies[iId]
 	})
 	/* */
 
 	/*
 	 * Develop candidates for rerouting.
 	 */
-	newCircuits := make(map[*Session]*Circuit)
-	var candidates []*Session
+	newPaths := make(map[*Circuit]*Path)
+	var candidates []*Circuit
 	count := 0
-	ceiling := int(float32(len(sessions)) * network.options.Smart.RerouteFraction)
+	ceiling := int(float32(len(circuits)) * network.options.Smart.RerouteFraction)
 	if ceiling < 1 {
 		ceiling = 1
 	}
@@ -64,15 +63,15 @@ func (network *Network) smart() {
 		ceiling = int(network.options.Smart.RerouteCap)
 	}
 	log.Tracef("smart reroute ceiling [%d]", ceiling)
-	for _, sId := range orderedSessions {
-		if session, found := network.GetSession(sId); found {
-			if updatedCircuit, err := network.UpdateCircuit(session.Circuit); err == nil {
-				if !updatedCircuit.EqualPath(session.Circuit) {
+	for _, sId := range orderedCircuits {
+		if circuit, found := network.GetCircuit(sId); found {
+			if updatedPath, err := network.UpdatePath(circuit.Path); err == nil {
+				if !updatedPath.EqualPath(circuit.Path) {
 					if count < ceiling {
 						count++
-						candidates = append(candidates, session)
-						newCircuits[session] = updatedCircuit
-						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", session.Id.Token, sessionLatencies[session.Id], session.Circuit.String(), updatedCircuit.String())
+						candidates = append(candidates, circuit)
+						newPaths[circuit] = updatedPath
+						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", circuit.Id, circuitLatencies[circuit.Id], circuit.Path.String(), updatedPath.String())
 					}
 				}
 			}
@@ -83,9 +82,9 @@ func (network *Network) smart() {
 	/*
 	 * Reroute.
 	 */
-	for _, session := range candidates {
-		if err := network.smartReroute(session, newCircuits[session]); err != nil {
-			log.Errorf("error rerouting [s/%s] (%s)", session.Id.Token, err)
+	for _, circuit := range candidates {
+		if err := network.smartReroute(circuit, newPaths[circuit]); err != nil {
+			log.Errorf("error rerouting [s/%s] (%s)", circuit.Id, err)
 		}
 	}
 	/* */

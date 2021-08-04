@@ -29,7 +29,7 @@ type Options struct {
 		RerouteCap      uint32
 	}
 	RouteTimeout            time.Duration
-	CreateSessionRetries    uint32
+	CreateCircuitRetries    uint32
 	CtrlChanLatencyInterval time.Duration
 	PendingLinkTimeout      time.Duration
 }
@@ -38,7 +38,7 @@ func DefaultOptions() *Options {
 	options := &Options{
 		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
-		CreateSessionRetries:    3,
+		CreateCircuitRetries:    3,
 		CtrlChanLatencyInterval: 10 * time.Second,
 		PendingLinkTimeout:      10 * time.Second,
 	}
@@ -66,14 +66,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
-	if value, found := src["createSessionRetries"]; found {
-		if createSessionRetries, ok := value.(int); ok {
-			if createSessionRetries < 0 {
-				return nil, errors.New("invalid uint32 value for 'createSessionRetries'")
+	if value, found := src["createCircuitRetries"]; found {
+		if createCircuitRetries, ok := value.(int); ok {
+			if createCircuitRetries < 0 {
+				return nil, errors.New("invalid uint32 value for 'createCircuitRetries'")
 			}
-			options.CreateSessionRetries = uint32(createSessionRetries)
+			options.CreateCircuitRetries = uint32(createCircuitRetries)
 		} else {
-			return nil, errors.New("invalid value for 'createSessionRetries'")
+			return nil, errors.New("invalid value for 'createCircuitRetries'")
 		}
 	}
 
@@ -111,7 +111,7 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		if pendingLinkTimeoutSeconds, ok := value.(int); ok {
 			options.PendingLinkTimeout = time.Duration(pendingLinkTimeoutSeconds) * time.Second
 		} else {
-			return nil, errors.New("invalid value for 'pendingLinkTimeout'")
+			return nil, errors.New("invalid value for 'pendingLinkTimeoutSeconds'")
 		}
 	}
 

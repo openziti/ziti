@@ -44,7 +44,7 @@ func (self *factory) NewStrategy() xt.Strategy {
 	strategy := &strategy{
 		CostVisitor: xt_common.CostVisitor{
 			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
-			SessionCost:  2,
+			CircuitCost:  2,
 		},
 	}
 	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
