@@ -31,14 +31,16 @@ type Options struct {
 	RouteTimeout            time.Duration
 	CreateSessionRetries    uint32
 	CtrlChanLatencyInterval time.Duration
+	PendingLinkTimeout      time.Duration
 }
 
 func DefaultOptions() *Options {
 	options := &Options{
 		CycleSeconds:            60,
 		RouteTimeout:            10 * time.Second,
-		CreateSessionRetries:	 3,
+		CreateSessionRetries:    3,
 		CtrlChanLatencyInterval: 10 * time.Second,
+		PendingLinkTimeout:      10 * time.Second,
 	}
 	options.Smart.RerouteFraction = 0.02
 	options.Smart.RerouteCap = 4
@@ -102,6 +104,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			}
 		} else {
 			logrus.Errorf("invalid or empty 'smart' stanza")
+		}
+	}
+
+	if value, found := src["pendingLinkTimeoutSeconds"]; found {
+		if pendingLinkTimeoutSeconds, ok := value.(int); ok {
+			options.PendingLinkTimeout = time.Duration(pendingLinkTimeoutSeconds) * time.Second
+		} else {
+			return nil, errors.New("invalid value for 'pendingLinkTimeout'")
 		}
 	}
 
