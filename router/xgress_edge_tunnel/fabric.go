@@ -53,9 +53,7 @@ type fabricProvider struct {
 	tunneler *tunneler
 
 	apiSessionLock  sync.Mutex
-	apiSessionId    string
 	apiSessionToken string
-	refreshInterval time.Duration
 	currentIdentity *edge.CurrentIdentity
 
 	dialSessions cmap.ConcurrentMap
@@ -84,9 +82,7 @@ func (self *fabricProvider) updateApiSession(resp *edge_ctrl_pb.CreateApiSession
 
 	self.tunneler.stateManager.RemoveConnectedApiSession(self.apiSessionToken)
 
-	self.apiSessionId = resp.SessionId
 	self.apiSessionToken = resp.Token
-	self.refreshInterval = time.Duration(resp.RefreshIntervalSeconds) * time.Second
 	self.currentIdentity = &edge.CurrentIdentity{
 		Id:                       resp.IdentityId,
 		Name:                     resp.IdentityName,
