@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ctrl.pb;
+package ziti.ctrl.pb;
 option go_package = "github.com/openziti/fabric/pb/ctrl_pb";
 
 enum ContentType {
