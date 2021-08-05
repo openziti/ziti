@@ -17,12 +17,12 @@
 package subcmd
 
 import (
+	"github.com/gorilla/mux"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/gorilla/mux"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
@@ -112,7 +112,7 @@ func NewRouter() http.Handler {
 	router.HandleFunc("/ctrl/services", handleCreateService).Methods("POST")
 	router.HandleFunc("/ctrl/services/{id}", handleGetService).Methods("GET")
 	router.HandleFunc("/ctrl/services/{id}", handleRemoveService).Methods("DELETE")
-	router.HandleFunc("/ctrl/sessions", handleListSessions).Methods("GET")
+	router.HandleFunc("/ctrl/sessions", handleListCircuits).Methods("GET")
 	return router
 }
 

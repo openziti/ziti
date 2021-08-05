@@ -1,3 +1,37 @@
+# Release 0.22.0
+
+## Breaking Changes
+Fabric sessions renamed to circuits. See below for details.
+
+# What's New
+
+* Refactor: Fabric Sessions renamed to Circuits
+* Feature: Links will now wait for a timeout for retrying 
+* Bug fix: Sessions created on the controller when circuit creation fails are now cleaned up
+
+## Fabric Sessions renamed to Circuits
+Previously we had three separate entities named session: fabric sessions, edge sessions and edge API sessions. In order to reduce confusion, fabric sessions
+have been renamed to circuits. This has the following impacts:
+
+* ziti-fabric CLI
+    * `list sessions` renamed to `list circuits`
+    * `remove session` renamed to `remove circuit`
+    * `stream sessions` renamed to `stream circuits`
+* Config properties
+    * In the controller config, under `networks`, `createSessionRetries` is now `createCircuitRetries`
+    * In the router config, under xgress dialer/listener options, `getSessionTimeout` is now `getCircuitTimeout`
+    * In the router config, under xgress dialer/listener options, `sessionStartTimeout` is now `circuitStartTimeout`
+    * In the router, under `forwarder`, `idleSessionTimeout` is now `idleCircuitTimeout`
+
+In the context of the fabric there was an existing construct call `Circuit` which has now been renamed to `Path`. This may be visible in a few `ziti-fabric` CLI outputs
+
+# Pending Link Timeout
+Previously whenever a router connected we'd look for new links possiblities and create new links between routers where any were missing. 
+If lots of routers connected at the same time, we might create duplicate links because the links hadn't been reported as established yet.
+Now we'll checking for links in Pending state, and if they haven't hit a configurable timeout, we won't create another link.
+
+The new config property is `pendingLinkTimeoutSeconds` in the controller config file under `network`, and defaults to 10 seconds.
+
 # Release 0.21.0
 
 ## Semantic now Required for policies (BREAKING CHANGE)
