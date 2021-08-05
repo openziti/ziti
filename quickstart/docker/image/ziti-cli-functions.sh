@@ -1165,8 +1165,8 @@ function ziti_createEnvFile {
   # shellcheck disable=SC2129
   echo "export PFXLOG_NO_JSON=true" >> "${ENV_FILE}"
 
-  echo "alias zec='ziti edge controller'" >> "${ENV_FILE}"
-  echo "alias zlogin='ziti edge controller login \"${ZITI_EDGE_CONTROLLER_API}\" -u \"${ZITI_USER-}\" -p \"${ZITI_PWD}\" -c \"${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zec='ziti edge '" >> "${ENV_FILE}"
+  echo "alias zlogin='ziti edge login \"${ZITI_EDGE_CONTROLLER_API}\" -u \"${ZITI_USER-}\" -p \"${ZITI_PWD}\" -c \"${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path
