@@ -143,7 +143,6 @@ function getLatestZiti {
   mkdir -p "${ziti_bin_root}"
 
   if ! getLatestZitiVersion; then
-    echo "here"
     return 1
   fi
 
