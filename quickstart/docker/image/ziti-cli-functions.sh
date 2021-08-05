@@ -5,9 +5,6 @@ set -uo pipefail
 # shellcheck disable=SC2155
 export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/$(hostname)"
 
-# shellcheck disable=SC2164
-# shellcheck disable=SC2155
-export ZITI_QUICKSTART_SCRIPT_ROOT="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
 ASCI_WHITE='\033[01;37m'
@@ -123,9 +120,9 @@ function getLatestZitiVersion {
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
     zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
+    export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | jq -r '.tag_name')
+    export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.tag_name')
   fi
   echo "ZITI_BINARIES_VERSION: ${ZITI_BINARIES_VERSION}"
 }
@@ -146,6 +143,7 @@ function getLatestZiti {
   mkdir -p "${ziti_bin_root}"
 
   if ! getLatestZitiVersion; then
+    echo "here"
     return 1
   fi
 
