@@ -99,8 +99,8 @@ func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitCreated(string, stri
 func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitDeleted(string, string) {
 }
 
-func (adapter *fabricCircuitPathUpdatedEventAdapter) PathUpdated(circuitId string, circuit *network.Path) {
-	adapter.wrapped.PathUpdated(circuitId, circuit)
+func (adapter *fabricCircuitPathUpdatedEventAdapter) PathUpdated(circuitId string, path *network.Path) {
+	adapter.wrapped.PathUpdated(circuitId, path)
 }
 
 // Will work for all fabric circuit event types
