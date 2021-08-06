@@ -60,8 +60,8 @@ func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router policy")
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the edge router policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the edge router policy")
+	cmd.Flags().StringSliceVar(&options.edgeRouterRoles, "edge-router-roles", nil, "Edge router roles of the edge router policy")
+	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the edge router policy")
 	options.AddCommonFlags(cmd)
 
 	return cmd

@@ -115,6 +115,8 @@ func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "posture-checks", outputPostureChecks, newOptions()))
 
+	cmd.AddCommand(newListCmdForEntityType("summary", runListSummary, newOptions()))
+
 	cmd.AddCommand(configTypeListRootCmd,
 		edgeRouterListRootCmd,
 		edgeRouterPolicyListRootCmd,
@@ -439,12 +441,12 @@ func outputEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container, paging
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
 
-		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities", *o)
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
 		}
 
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers", *o)
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
 		if err != nil {
 			return err
 		}
@@ -580,11 +582,11 @@ func outputServiceEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container,
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles", "edge-routers", *o)
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
 		if err != nil {
 			return err
 		}
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services", *o)
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
 		if err != nil {
 			return err
 		}
@@ -615,16 +617,16 @@ func outputServicePolicies(o *edgeOptions, children []*gabs.Container, pagingInf
 		name, _ := entity.Path("name").Data().(string)
 		policyType, _ := entity.Path("type").Data().(string)
 
-		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles", "identities", *o)
+		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
 		}
 
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles", "services", *o)
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
 		if err != nil {
 			return err
 		}
-		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles", "posture-checks", *o)
+		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles")
 		if err != nil {
 			return err
 		}
@@ -638,7 +640,18 @@ func outputServicePolicies(o *edgeOptions, children []*gabs.Container, pagingInf
 	return nil
 }
 
-func mapRoleIdsToNames(c *gabs.Container, path string, entityType string, o edgeOptions) ([]string, error) {
+func mapRoleIdsToNames(c *gabs.Container, path string) ([]string, error) {
+	displayValues := map[string]string{}
+	if displayValuesArr, err := c.Path(path + "Display").Children(); err == nil {
+		for _, val := range displayValuesArr {
+			role := val.S("role").Data().(string)
+			name := val.S("name").Data().(string)
+			displayValues[role] = name
+		}
+	} else {
+		return nil, errors.Wrapf(err, "unable to get display values in %v", path+"Display")
+	}
+
 	jsonValues := c.Path(path).Data()
 	if jsonValues == nil {
 		return nil, nil
@@ -650,12 +663,12 @@ func mapRoleIdsToNames(c *gabs.Container, path string, entityType string, o edge
 	for _, val := range values {
 		str := val.(string)
 		if strings.HasPrefix(str, "@") {
-			id := strings.TrimPrefix(str, "@")
-			name, err := mapIdToName(entityType, id, o)
-			if err != nil {
-				return nil, err
+			if name, found := displayValues[str]; found {
+				result = append(result, name)
+			} else {
+				fmt.Printf("no display name provided for %v\n", str)
+				result = append(result, str)
 			}
-			result = append(result, "@"+name)
 		} else {
 			result = append(result, str)
 		}
@@ -1094,6 +1107,29 @@ func runListPostureChecks(o *edgeOptions) error {
 	}
 
 	return err
+}
+
+func runListSummary(o *edgeOptions) error {
+	jsonParsed, err := util.EdgeControllerList("summary", url.Values{}, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
+
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	data := jsonParsed.S("data")
+	children, err := data.ChildrenMap()
+	if err != nil {
+		return err
+	}
+
+	for k, v := range children {
+		_, err = fmt.Fprintf(o.Out, "%v: %v\n", k, v.Data())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func containerArrayToString(containers []*gabs.Container, limit int) string {

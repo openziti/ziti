@@ -58,8 +58,8 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringSliceVarP(&options.edgeRouterRoles, "edge-router-roles", "e", nil, "Edge router roles of the new service edge router policy")
-	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Identity roles of the new service edge router policy")
+	cmd.Flags().StringSliceVar(&options.edgeRouterRoles, "edge-router-roles", nil, "Edge router roles of the new service edge router policy")
+	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Identity roles of the new service edge router policy")
 	cmd.Flags().StringVar(&options.semantic, "semantic", "AllOf", "Semantic dictating how multiple attributes should be interpreted. Valid values: AnyOf, AllOf")
 	options.AddCommonFlags(cmd)
 
