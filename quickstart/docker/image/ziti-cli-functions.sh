@@ -556,14 +556,25 @@ function createRouterPki {
 }
 
 function createPrivateRouterConfig {
+  router_name="${1-}"
+  if [[ "${router_name}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "createFabricRouterConfig requires a parameter to be supplied") "
+    return 1
+  fi
+
+  ziti_home="${ZITI_HOME-}"
+  if [[ "${ziti_home}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "ZITI_HOME is not set") "
+    return 1
+  fi
 cat > "${ZITI_HOME-}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" <<HereDocForEdgeRouter
 v: 3
 
 identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_ROUTER_RAWNAME}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-cas.cert"
+  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
+  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
+  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
 
 ctrl:
   endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
@@ -671,10 +682,10 @@ cat > "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" <<HereDocForEdgeRouter
 v: 3
 
 identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_ROUTER_RAWNAME}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-cas.cert"
+  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
+  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
+  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
 
 ctrl:
   endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
@@ -757,7 +768,7 @@ identity:
   cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
   server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
   key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-cas.cert"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
 
 ctrl:
   endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
@@ -841,7 +852,7 @@ identity:
   cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
   server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
   key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-cas.cert"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
 
 ctrl:
   endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
@@ -938,7 +949,7 @@ identity:
   cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"
   server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
   key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_RAWNAME}-cas.cert"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 ctrl:
   listener:             tls:0.0.0.0:${ZITI_FAB_CTRL_PORT}
