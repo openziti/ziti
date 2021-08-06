@@ -19,7 +19,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/fatih/color v1.7.0
-	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
+	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
 	github.com/go-openapi/runtime v0.19.29
 	github.com/go-openapi/strfmt v0.20.1
@@ -29,11 +29,11 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
-	github.com/michaelquigley/pfxlog v0.6.0
-	github.com/openziti/edge v0.20.8
-	github.com/openziti/fabric v0.16.84
-	github.com/openziti/foundation v0.15.65
-	github.com/openziti/sdk-golang v0.15.73
+	github.com/michaelquigley/pfxlog v0.6.1
+	github.com/openziti/edge v0.20.11
+	github.com/openziti/fabric v0.16.88
+	github.com/openziti/foundation v0.15.67
+	github.com/openziti/sdk-golang v0.15.77
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
