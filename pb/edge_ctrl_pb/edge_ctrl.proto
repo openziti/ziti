@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package edge_ctrl.pb;
+package ziti.edge_ctrl.pb;
 
 option go_package = "github.com/openziti/edge/pb/edge_ctrl_pb";
 
