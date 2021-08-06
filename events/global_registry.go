@@ -125,7 +125,7 @@ events:
       - type: metrics
         sourceFilter: .*
         metricFilter: .*xgress.*tx*.m1_rate
-      - type: fabric.sessions
+      - type: fabric.circuits
         include:
           - created
       - type: edge.sessions
