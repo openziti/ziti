@@ -11,7 +11,7 @@
 * Refactor: All protobuf packages have been prefixed with `ziti.` to help prevent namespace clashes. Should not be a breaking change.
 
 ## Breaking Changes
-Fabric sessions renamed to circuits. External intergrators may be impacted by changes to events. See below for details.
+Fabric sessions renamed to circuits. External integrators may be impacted by changes to events. See below for details.
 
 Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. 
 Any command line argumet which previously had a `-i` short version now only has a long version.
@@ -67,7 +67,7 @@ type CircuitEvent struct {
 }
 ```
 
-Additionally the Usage events now have `circuit_id` instead of `session_id`. The usage events also have a `version` field, which is set to 2.
+Additionally the Usage events now have `circuit_id` instead of `session_id`. The usage events also have a new `version` field, which is set to 2.
 
 
 # Pending Link Timeout
