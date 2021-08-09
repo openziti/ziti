@@ -124,6 +124,8 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 			continue
 		}
 
+		log.Infof("successful connection %v->%v", conn.LocalAddr(), conn.RemoteAddr())
+
 		if err := conn.CompleteAcceptSuccess(); err != nil {
 			logger.WithError(err).Error("complete accept success failed")
 

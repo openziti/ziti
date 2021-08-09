@@ -86,6 +86,7 @@ type AppEnv struct {
 	InstanceId               string
 	findEnrollmentSignerOnce sync.Once
 	enrollmentSigner         jwtsigner.Signer
+	TraceManager             *TraceManager
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {

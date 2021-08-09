@@ -355,6 +355,35 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  identities-id-trace:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    put:
+      summary: Enable/disable data flow tracing for an identity
+      description: |
+        Allows an admin to enable/disable data flow tracing for an identity
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+        - Tracing
+      operationId: updateIdentityTracing
+      parameters:
+        - name: traceSpec
+          in: body
+          required: true
+          description: A traceSpec object
+          schema:
+            $ref: '#/definitions/traceSpec'
+      responses:
+        '200':
+          $ref: '#/responses/traceDetail'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 
 responses:
   listIdentities:
@@ -381,6 +410,10 @@ responses:
     description: A list of service configs
     schema:
       $ref: 'service-configs.yml#/definitions/listServiceConfigsEnvelope'
+  traceDetail:
+    description: Returns the document that represents the trace state
+    schema:
+      $ref: '#/definitions/traceDetailEnvelope'
 
 definitions:
   listIdentitiesEnvelope:
@@ -403,6 +436,16 @@ definitions:
         $ref: '../shared/standard-responses.yml#/definitions/meta'
       data:
         $ref: '../shared/identities.yml#/definitions/identityDetail'
+  traceDetailEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '../shared/standard-responses.yml#/definitions/meta'
+      data:
+        $ref: '#/definitions/traceDetail'
   identityCreate:
     description: An identity to create
     type: object
@@ -525,3 +568,26 @@ definitions:
         type: "array"
         items:
           $ref: 'edge-routers.yml#/definitions/routerEntityRef'
+  traceSpec:
+    type: "object"
+    properties:
+      enabled:
+        type: "boolean"
+      duration:
+        type: "string"
+      traceId:
+        type: "string"
+      channels:
+        type: array
+        items:
+          type: string
+  traceDetail:
+    type: "object"
+    properties:
+      enabled:
+        type: "boolean"
+      until:
+        type: "string"
+        format: date-time
+      traceId:
+        type: "string"
