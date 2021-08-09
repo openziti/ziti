@@ -68,6 +68,7 @@ mgmt:
 #          - created
 #      - type: fabric.usage
 #      - type: services
+#      - type: fabric.usage
 #    handler:
 #      type: file
 #      format: json

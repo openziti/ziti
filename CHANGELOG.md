@@ -17,6 +17,7 @@
 ## Breaking Changes
 Fabric sessions renamed to circuits. External integrators may be impacted by changes to events. See below for details.
 
+### Ziti CLI
 Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. 
 Any command line argumet which previously had a `-i` short version now only has a long version.
 
