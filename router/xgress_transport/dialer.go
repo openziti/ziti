@@ -17,12 +17,13 @@
 package xgress_transport
 
 import (
-	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 type dialer struct {
@@ -46,18 +47,24 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+		WithField("binding", "transport").
+		WithField("destination", destination)
+
 	txDestination, err := transport.ParseAddress(destination)
 	if err != nil {
-		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)
+		return nil, errors.Wrapf(err, "cannot dial on invalid address [%s]", destination)
 	}
+
+	log.Debug("dialing")
 
 	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, txd.options.ConnectTimeout, txd.tcfg)
 	if err != nil {
 		return nil, err
 	}
 
-	logrus.Infof("successful connection to %v from %v (c/%v)", destination, peer.Conn().LocalAddr(), circuitId.Token)
+	log.Infof("successful connection to %v from %v", destination, peer.Conn().LocalAddr())
 
 	conn := &transportXgressConn{Connection: peer}
 	x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, txd.options)

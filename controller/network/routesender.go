@@ -19,7 +19,9 @@ package network
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
@@ -75,12 +77,16 @@ func newRouteSender(circuitId string, timeout time.Duration, serviceCounters Ser
 	}
 }
 
-func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator, ctx logcontext.Context) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
+
 	// send route messages
 	tr := path.Nodes[len(path.Nodes)-1]
 	for i := 0; i < len(path.Nodes); i++ {
 		r := path.Nodes[i]
-		go self.sendRoute(r, routeMsgs[i])
+		msg := routeMsgs[i]
+		logger.Debugf("sending route message to [r/%s] for attempt [#%d]", r.Id, msg.Attempt)
+		go self.sendRoute(r, msg, ctx)
 		self.attendance[r.Id] = false
 	}
 
@@ -92,7 +98,7 @@ attendance:
 		case status := <-self.in:
 			if status.success {
 				if status.attempt == attempt {
-					logrus.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.circuitId)
+					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.circuitId)
 
 					self.attendance[status.r.Id] = true
 					if status.r == tr {
@@ -101,12 +107,12 @@ attendance:
 						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId())
 					}
 				} else {
-					logrus.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
+					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
 				}
 
 			} else {
 				if status.attempt == attempt {
-					logrus.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.circuitId, status.rerr)
+					logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.circuitId, status.rerr)
 
 					if status.r == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
@@ -116,7 +122,7 @@ attendance:
 
 					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.r.Id, status.rerr)
 				} else {
-					logrus.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
+					logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
 				}
 			}
 
@@ -142,15 +148,19 @@ attendance:
 	return peerData, nil, nil
 }
 
-func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route) {
+func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
+	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
+
 	body, err := proto.Marshal(routeMsg)
 	if err != nil {
-		logrus.Errorf("error marshalling route message for [s/%s] to [r/%s] (%v)", routeMsg.CircuitId, r.Id, err)
+		logger.Errorf("error marshalling route message to [r/%s] (%v)", r.Id, err)
 		return
 	}
-	r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body))
-
-	logrus.Debugf("sent route message for [s/%s] to [r/%s]", routeMsg.CircuitId, r.Id)
+	if err := r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body)); err != nil {
+		logger.WithError(err).Errorf("failure sending route message to [r/%s]", r.Id)
+	} else {
+		logger.Debugf("sent route message to [r/%s]", r.Id)
+	}
 }
 
 func (self *routeSender) cleanups(path *Path) map[string]struct{} {

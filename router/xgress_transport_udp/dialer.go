@@ -18,28 +18,33 @@ package xgress_transport_udp
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/sirupsen/logrus"
 	"net"
 )
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler) (xt.PeerData, error) {
-	logrus.Infof("parsing %v for xgress address: %v", destination, address)
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+		WithField("binding", "transport_udp").
+		WithField("destination", destination)
+
+	log.Debugf("parsing %v for xgress address: %v", destination, address)
 	packetAddress, err := xgress_udp.Parse(destination)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%w)", destination, err)
 	}
 
-	logrus.Infof("dialing packet address [%v]", packetAddress)
+	log.Debugf("dialing packet address [%v]", packetAddress)
 	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
 	if err != nil {
 		return nil, err
 	}
 
-	logrus.Infof("bound on [%v]", conn.LocalAddr())
+	log.Infof("bound on [%v]", conn.LocalAddr())
 
 	x := xgress.NewXgress(circuitId, address, newPacketConn(conn), xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)

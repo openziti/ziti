@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
@@ -51,7 +52,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 		 */
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
-			if circuit, err := h.network.CreateCircuit(h.r, id, request.ServiceId); err == nil {
+			if circuit, err := h.network.CreateCircuit(h.r, id, request.ServiceId, logcontext.NewContext()); err == nil {
 				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 

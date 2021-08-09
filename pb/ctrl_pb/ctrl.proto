@@ -98,6 +98,11 @@ message Fault {
   string id = 2;
 }
 
+message Context {
+  map<string, string> fields = 1;
+  uint32 channelMask = 2;
+}
+
 message Route {
   string circuitId = 1;
   uint32 attempt = 2;
@@ -115,6 +120,7 @@ message Route {
     string dstAddress = 2;
   }
   repeated Forward forwards = 4;
+  Context context = 5;
 }
 
 message Unroute {
